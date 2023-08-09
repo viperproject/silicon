@@ -19,6 +19,7 @@ import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
+import viper.silicon.logger.records.data.CommentRecord
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -101,9 +102,14 @@ object producer extends ProductionRules {
               pve: PartialVerificationError,
               v: Verifier)
              (Q: (State, Verifier) => VerificationResult)
-             : VerificationResult =
+             : VerificationResult = {
 
-    produceR(s, sf, a.whenInhaling, pve, v)(Q)
+  val commentRecord = new CommentRecord("produce", null, null)
+  val sepIdentifier = v.symbExLog.openScope(commentRecord)
+  produceR(s, sf, a.whenInhaling, pve, v)((s, v) => {
+    v.symbExLog.closeScope(sepIdentifier)
+    Q(s, v)
+  })}
 
   /** @inheritdoc */
   def produces(s: State,
@@ -114,6 +120,8 @@ object producer extends ProductionRules {
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult = {
 
+    val commentRecord = new CommentRecord("produce", null, null)
+    val sepIdentifier = v.symbExLog.openScope(commentRecord)
     val allTlcs = mutable.ListBuffer[ast.Exp]()
     val allPves = mutable.ListBuffer[PartialVerificationError]()
 
@@ -125,7 +133,10 @@ object producer extends ProductionRules {
       allPves ++= pves
     })
 
-    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v)(Q)
+    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v)((s, v) => {
+      v.symbExLog.closeScope(sepIdentifier)
+      Q(s, v)
+    })
   }
 
   private def produceTlcs(s: State,

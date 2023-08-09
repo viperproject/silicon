@@ -28,13 +28,13 @@ object SymbExLogBenchmarker {
       for (rec <- allRecords) rec match {
         case _: DeciderAssumeRecord | _:ProverAssertRecord | _:CommentRecord if !rec.isInstanceOf[CommentRecord] || rec.asInstanceOf[CommentRecord].toSimpleString == "push" || rec.asInstanceOf[CommentRecord].toSimpleString == "pop" =>
           to_open = "prover"
+        case c:CommentRecord if c.toSimpleString == "consume" =>
+          to_open = "consume"
+        case c:CommentRecord if c.toSimpleString == "produce" =>
+          to_open = "produce"
         case _: BranchingRecord =>
           num_branches += 1
           to_open = ""
-        case _: ConsumeRecord =>
-          to_open = "consume"
-        case _: ProduceRecord =>
-          to_open = "produce"
         case s: OpenScopeRecord =>
           if (!to_open.isEmpty())
             running_times(s.refId) = (to_open, s.timeMs, s.timeMs)

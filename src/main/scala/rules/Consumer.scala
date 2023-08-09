@@ -17,6 +17,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
+import viper.silicon.logger.records.data.CommentRecord
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -71,9 +72,12 @@ object consumer extends ConsumptionRules {
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
+    val commentRecord = new CommentRecord("consume", null, null)
+    val sepIdentifier = v.symbExLog.openScope(commentRecord)
     consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, snap, v1) => {
       val s2 = s1.copy(h = h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+        partiallyConsumedHeap = s.partiallyConsumedHeap)
+      v.symbExLog.closeScope(sepIdentifier)
       Q(s2, snap, v1)})
   }
 
@@ -84,6 +88,9 @@ object consumer extends ConsumptionRules {
                v: Verifier)
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult = {
+
+    val commentRecord = new CommentRecord("consume", null, null)
+    val sepIdentifier = v.symbExLog.openScope(commentRecord)
 
     val allTlcs = mutable.ListBuffer[ast.Exp]()
     val allPves = mutable.ListBuffer[PartialVerificationError]()
@@ -99,6 +106,7 @@ object consumer extends ConsumptionRules {
     consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
         partiallyConsumedHeap = s.partiallyConsumedHeap)
+      v.symbExLog.closeScope(sepIdentifier)
       Q(s2, snap1, v1)
     })
   }
