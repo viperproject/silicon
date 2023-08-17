@@ -382,18 +382,16 @@ class SiliconFrontend(override val reporter: Reporter,
   * Performs consistency check and verification.
   * See [[viper.silver.frontend.ViperFrontendAPI]] for usage information.
   */
-class SiliconFrontendAPI(override val reporter: Reporter,
-                         override implicit val logger: Logger = ViperStdOutLogger("SiliconFrontendAPI", "INFO").get)
-  extends SiliconFrontend(reporter, logger) with ViperFrontendAPI
+class SiliconFrontendAPI(override val reporter: Reporter)
+  extends SiliconFrontend(reporter) with ViperFrontendAPI
 
 /**
   * Silicon "frontend" for use by actual Viper frontends.
   * Performs only verification (no consistency check).
   * See [[viper.silver.frontend.ViperFrontendAPI]] for usage information.
   */
-class MinimalSiliconFrontendAPI(override val reporter: Reporter,
-                                override implicit val logger: Logger = ViperStdOutLogger("MinimalSiliconFrontendAPI", "INFO").get)
-  extends SiliconFrontend(reporter, logger) with MinimalViperFrontendAPI
+class MinimalSiliconFrontendAPI(override val reporter: Reporter)
+  extends SiliconFrontend(reporter) with MinimalViperFrontendAPI
 
 
 object SiliconRunner extends SiliconRunnerInstance {
