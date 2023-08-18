@@ -428,7 +428,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False, None)
+    override def generateModel(): Unit = proverAssert(False, Verifier.config.assertTimeout.toOption)
 
     override def getModel(): Model = prover.getModel()
 
