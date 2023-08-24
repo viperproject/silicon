@@ -266,17 +266,22 @@ class FunctionData(val programFunction: ast.Function,
       Forall(arguments, body, allTriggers)})
   }
 
-  lazy val preconditionPropagationAxiom: Seq[Term] = {
+  lazy val bodyPreconditionPropagationAxiom: Seq[Term] = {
     val pre = preconditionFunctionApplication
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
       Forall(arguments, body, Seq(Trigger(functionApplication)))
     }) else None
+    bodyPreconditions.toSeq
+  }
+
+  lazy val postPreconditionPropagationAxiom: Seq[Term] = {
+    val pre = preconditionFunctionApplication
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
       bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
     } else Seq()
-    bodyPreconditions.toSeq ++ postPreconditions
+    postPreconditions
   }
 }
