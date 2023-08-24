@@ -91,6 +91,7 @@ object brancher extends BranchingRules {
     var functionsOfElseBranchDecider: Set[FunctionDecl] = null
     var macrosOfElseBranchDecider: Seq[MacroDecl] = null
     var pcsForElseBranch: PathConditionStack = null
+    var noOfErrors = 0
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
@@ -106,6 +107,7 @@ object brancher extends BranchingRules {
           functionsOfCurrentDecider = v.decider.freshFunctions
           macrosOfCurrentDecider = v.decider.freshMacros
           pcsForElseBranch = v.decider.pcs.duplicate()
+          noOfErrors = v.errorsReportedSoFar.get()
         }
 
         (v0: Verifier) => {
@@ -129,6 +131,7 @@ object brancher extends BranchingRules {
 
             v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
             v0.decider.setPcs(pcsForElseBranch)
+            v0.errorsReportedSoFar.set(noOfErrors)
           }
           elseBranchVerifier = v0.uniqueId
 
@@ -193,6 +196,7 @@ object brancher extends BranchingRules {
       try {
         if (parallelizeElseBranch) {
           val pcsAfterThenBranch = v.decider.pcs.duplicate()
+          val noOfErrorsAfterThenBranch = v.errorsReportedSoFar.get()
 
           val pcsBefore = v.decider.pcs
 
@@ -202,6 +206,7 @@ object brancher extends BranchingRules {
             // we have done other work during the join, need to reset
             v.decider.prover.comment(s"Resetting path conditions after interruption")
             v.decider.setPcs(pcsAfterThenBranch)
+            v.errorsReportedSoFar.set(noOfErrorsAfterThenBranch)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
           }
         }else{

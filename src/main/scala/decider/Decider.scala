@@ -379,8 +379,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def freshFunctions: Set[FunctionDecl] = _declaredFreshFunctions
     def freshMacros: Vector[MacroDecl] = _declaredFreshMacros
 
-    def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toStack: Boolean): Unit = {
-      if (!toStack) {
+    def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toSymbolStack: Boolean): Unit = {
+      if (!toSymbolStack) {
         functions foreach prover.declare
 
         _declaredFreshFunctions = _declaredFreshFunctions ++ functions

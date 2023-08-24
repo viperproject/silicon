@@ -260,7 +260,7 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s1, v1)((s2, v2) => {
                         eval(s2, eCond, WhileFailed(eCond), v2)((_, _, _) =>
                           Success())})}})})
-            && executionFlowController.locally(s, v)((s0, v0) => {
+            combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
                 consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
