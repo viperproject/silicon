@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.rules.chunks.{chunkSupporter, moreCompleteExhaleSupporter}
+
 import scala.annotation.unused
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet

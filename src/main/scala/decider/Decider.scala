@@ -49,7 +49,7 @@ trait Decider {
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, s: State, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -238,14 +238,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def checkSmoke(isAssert: Boolean = false): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
+
       prover.check(timeout) == Unsat
     }
 
     def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
 
-    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
+    def assert(t: Term, s: State, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
               (Q: Boolean => VerificationResult)
               : VerificationResult = {
+      if (s.loopPhaseStack.nonEmpty && s.loopPhaseStack.head._1 == LoopPhases.Assuming) {
+        assume(t)
+        return Q(true)
+      }
 
       val success = deciderAssert(t, timeout)
 

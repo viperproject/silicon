@@ -862,7 +862,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm) {
+    v.decider.assert(nonNegTerm, s) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -882,7 +882,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
         v.decider.prover.comment("Check receiver injectivity")
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
-        v.decider.assert(receiverInjectivityCheck) {
+        v.decider.assert(receiverInjectivityCheck, s) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
@@ -1067,7 +1067,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm) {
+    v.decider.assert(nonNegTerm, s) {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
@@ -1100,7 +1100,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assert(receiverInjectivityCheck) {
+        v.decider.assert(receiverInjectivityCheck, s) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)

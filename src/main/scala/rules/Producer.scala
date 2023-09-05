@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.rules.chunks.chunkSupporter
+
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion

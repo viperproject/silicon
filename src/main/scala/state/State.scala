@@ -11,11 +11,18 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.state.LoopPhases.LoopPhase
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.{Map, Stack}
+import viper.silver.cfg.silver.SilverCfg.SilverLoopHeadBlock
+
+object LoopPhases extends Enumeration {
+  type LoopPhase = Value
+  val Transferring, Assuming, Checking = Value
+}
 
 final case class State(g: Store = Store(),
                        h: Heap = Heap(),
@@ -68,7 +75,10 @@ final case class State(g: Store = Store(),
                        retryLevel: Int = 0,
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
-                       moreCompleteExhale: Boolean = false)
+                       moreCompleteExhale: Boolean = false,
+                       loopPhaseStack: Stack[(LoopPhase, Int, SilverLoopHeadBlock)] = Stack(),
+                       loopHeapStack: Stack[Heap] = Stack(),
+                       loopReadVarStack: Stack[Var] = Stack())
     extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {
@@ -156,7 +166,7 @@ object State {
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-                 moreCompleteExhale) =>
+                 moreCompleteExhale, loopPhase, loopHeaps, loopReadVars) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -181,7 +191,7 @@ object State {
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2) =>
+                     moreCompleteExhale2, `loopPhase`, loopHeaps2, loopReadVars2) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

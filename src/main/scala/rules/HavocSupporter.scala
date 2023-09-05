@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.rules.chunks.chunkSupporter
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
 import viper.silicon.Map
@@ -17,7 +18,7 @@ import viper.silicon.state.terms.predef.{`?r`, `?s`}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.verifier.errors.{QuasihavocFailed, HavocallFailed}
+import viper.silver.verifier.errors.{HavocallFailed, QuasihavocFailed}
 import viper.silver.verifier.reasons.QuasihavocallNotInjective
 
 object havocSupporter extends SymbolicExecutionRules {
@@ -125,7 +126,7 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
-        v.decider.assert(receiverInjectivityCheck) {
+        v.decider.assert(receiverInjectivityCheck, s1) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1)
           case true =>
             // Generate the inverse axioms

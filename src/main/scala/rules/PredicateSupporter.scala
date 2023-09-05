@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.rules.chunks.chunkSupporter
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission

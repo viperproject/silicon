@@ -4,21 +4,23 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silicon.rules
+package viper.silicon.rules.chunks
 
-import scala.collection.mutable.ListBuffer
-import viper.silicon.{MList, MMap}
+import viper.silicon.rules.chunks.chunkSupporter.findChunksWithID
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
-import viper.silicon.rules.chunkSupporter.findChunksWithID
+import viper.silicon.rules.{SnapshotMapDefinition, SymbolicExecutionRules}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
+import viper.silicon.{MList, MMap}
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
+
+import scala.collection.mutable.ListBuffer
 
 object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
   sealed trait TaggedSummarisingSnapshot {
@@ -140,6 +142,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                     (Q: (State, Term, Verifier) => VerificationResult)
                     : VerificationResult = {
 
+
     val id = ChunkIdentifier(resource, s.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
@@ -151,7 +154,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
-        v.decider.assert(IsPositive(permSum)) {
+        v.decider.assert(IsPositive(permSum), s1) {
           case true =>
             Q(s1, snap, v1)
           case false =>
@@ -189,7 +192,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
-      v.decider.assert(IsPositive(permSum)) {
+      v.decider.assert(IsPositive(permSum), s1) {
         case true =>
           Q(s1, h, Some(snap), v1)
         case false =>
@@ -217,7 +220,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      v.decider.assert(perms === NoPerm) {
+      v.decider.assert(perms === NoPerm, s) {
         case true => Q(s, h, None, v)
         case false => createFailure(ve, v, s)
       }
@@ -300,7 +303,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s1, newHeap, Some(condSnap), v1)
           } else {
-            v1.decider.assert(pNeeded === NoPerm) {
+            v1.decider.assert(pNeeded === NoPerm, s1) {
               case true =>
                 Q(s1, newHeap, Some(condSnap), v1)
               case false =>
@@ -353,7 +356,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     val s1 = s.copy(functionRecorder = newFr)
 
-    v.decider.assert(totalPermTaken !== NoPerm) {
+    v.decider.assert(totalPermTaken !== NoPerm, s1) {
       case true =>
         v.decider.assume(perms === totalPermTaken)
         summarise(s1, relevantChunks.toSeq, resource, args, v)((s2, snap, _, _, v1) =>

@@ -647,6 +647,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => opt
   }
 
+  val kinduction: ScallopOption[Int] = opt[Int]("enableKInduction",
+    descr = "Enable k-induction with the given k (default: 0, i.e., disabled).",
+    default = None,
+    noshort = true
+  )
+
   // DEPRECATED and replaced by exhaleMode.
   val moreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr =  "Warning: This option is deprecated. "

@@ -4,18 +4,20 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silicon.rules
+package viper.silicon.rules.chunks
 
-import scala.reflect.ClassTag
-import viper.silver.ast
-import viper.silver.verifier.VerificationError
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
+import viper.silicon.rules._
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.verifier.VerificationError
+
+import scala.reflect.ClassTag
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
   def consume(s: State,
@@ -41,13 +43,6 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              v: Verifier)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult
-
-  def findChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (chunks: Iterable[Chunk],
-                id: ChunkIdentifer,
-                args: Iterable[Term],
-                v: Verifier)
-               : Option[CH]
 
   def findMatchingChunk[CH <: NonQuantifiedChunk: ClassTag]
                        (chunks: Iterable[Chunk],
@@ -221,6 +216,8 @@ object chunkSupporter extends ChunkSupportRules {
                            v: Verifier)
                           (Q: (State, Term, Verifier) => VerificationResult)
                           : VerificationResult = {
+    if (s.loopPhaseStack.nonEmpty)
+      throw new Exception()
 
     val id = ChunkIdentifier(resource, s.program)
 
@@ -234,7 +231,7 @@ object chunkSupporter extends ChunkSupportRules {
     }
   }
 
-  def findChunk[CH <: NonQuantifiedChunk: ClassTag]
+  private[chunks] def findChunk[CH <: NonQuantifiedChunk: ClassTag]
                (chunks: Iterable[Chunk],
                 id: ChunkIdentifer,
                 args: Iterable[Term],

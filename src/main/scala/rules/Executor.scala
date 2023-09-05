@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.rules.chunks.chunkSupporter
+
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
@@ -77,6 +79,29 @@ object executor extends ExecutionRules {
 
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
+      case cfg.Kind.Out if Verifier.config.kinduction.isSupplied =>
+        val (phase, kRemaining, loopHeap) = s.loopPhaseStack.head
+        val sPop = s.copy(loopPhaseStack = s.loopPhaseStack.tail)
+        val sNew = phase match {
+          case LoopPhases.Transferring =>
+            // just merge back
+            val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.loopHeapStack.head, v)
+            val s1 = s.copy(functionRecorder = fr1, h = h1,
+              loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail)
+            s1
+          case LoopPhases.Assuming =>
+            v.decider.assume(False)
+            // assume false
+            val s1 = s.copy(loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail)
+            s1
+          case LoopPhases.Checking =>
+            // just merge back
+            val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.loopHeapStack.head, v)
+            val s1 = s.copy(functionRecorder = fr1, h = h1,
+              loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail)
+            s1
+        }
+        sNew
       case cfg.Kind.Out =>
         val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
@@ -166,6 +191,19 @@ object executor extends ExecutionRules {
 
       case block @ cfg.LoopHeadBlock(invs, stmts, _) =>
         incomingEdgeKind match {
+          case cfg.Kind.In if Verifier.config.kinduction.isSupplied =>
+            val readPerm = v.decider.fresh(sorts.Perm)
+            v.decider.assume(PermLess(NoPerm, readPerm))
+            val sFirstPhase = s.copy(loopPhaseStack = s.loopPhaseStack.prepended((LoopPhases.Transferring, Verifier.config.kinduction(), block)),
+              loopHeapStack = s.loopHeapStack.prepended(s.h),
+              h = Heap(),
+              loopReadVarStack = s.loopReadVarStack.prepended(readPerm))
+            val edges = s.methodCfg.outEdges(block)
+
+            execs(sFirstPhase, stmts, v)((s4, v3) => {
+              v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
+              follows(s4, edges, WhileFailed, v3)(Q)
+            })
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
              *   - Check loop invariant for self-framingness
@@ -223,9 +261,54 @@ object executor extends ExecutionRules {
                         if (v2.decider.checkSmoke())
                           Success()
                         else {
+                          //if (stmts.nonEmpty)
+                          //  throw new Exception()
                           execs(s3, stmts, v2)((s4, v3) => {
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
                             follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
+
+          case _ if Verifier.config.kinduction.isSupplied =>
+            val (phase, kRemaining, loopHeap) = s.loopPhaseStack.head
+            val edges = s.methodCfg.outEdges(block)
+            consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, v) =>
+              phase match {
+                case LoopPhases.Transferring =>
+                  if (kRemaining > 1) {
+                    val sNew = s.copy(loopPhaseStack = (LoopPhases.Transferring, kRemaining - 1, loopHeap) +: s.loopPhaseStack.tail)
+                    execs(sNew, stmts, v)((s4, v3) => {
+                      follows(s4, edges, WhileFailed, v3)(Q)
+                    })
+                  } else {
+                    /* Havoc local variables that are assigned to in the loop body */
+                    val wvs = s.methodCfg.writtenVars(block)
+                    /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
+
+                    val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
+                    val sNew = s.copy(g = gBody, h = Heap(),
+                      loopPhaseStack = (LoopPhases.Assuming, Verifier.config.kinduction(), loopHeap) +: s.loopPhaseStack.tail)
+                    execs(sNew, stmts, v)((s4, v3) => {
+                      follows(s4, edges, WhileFailed, v3)(Q)
+                    })
+                  }
+                case LoopPhases.Assuming =>
+                  if (kRemaining > 1) {
+                    val sNew = s.copy(loopPhaseStack = (LoopPhases.Assuming, kRemaining - 1, loopHeap) +: s.loopPhaseStack.tail)
+                    execs(sNew, stmts, v)((s4, v3) => {
+                      follows(s4, edges, WhileFailed, v3)(Q)
+                    })
+                  } else {
+                    val sNew = s.copy(loopPhaseStack = (LoopPhases.Checking, 1, loopHeap) +: s.loopPhaseStack.tail)
+                    execs(sNew, stmts, v)((s4, v3) => {
+                      follows(s4, edges, WhileFailed, v3)(Q)
+                    })
+                  }
+                case LoopPhases.Checking =>
+                  val outEdges = edges filter(_.kind == cfg.Kind.Out)
+                  execs(s, stmts, v)((s4, v3) => {
+                    follows(s4, outEdges, WhileFailed, v3)(Q)
+                  })
+              }
+            )
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or

@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.rules.chunks.chunkSupporter
+
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -480,7 +482,7 @@ object consumer extends ConsumptionRules {
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
-        v2.decider.assert(termToAssert) {
+        v2.decider.assert(termToAssert, s3) {
           case true =>
             v2.decider.assume(t)
             QS(s3, v2)
