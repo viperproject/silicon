@@ -1761,7 +1761,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         if (greedyMatch.nonEmpty) {
           greedyMatch ++ chunks.diff(greedyMatch)
         } else {
-          fallback(chunks)
+          // It doesn't seem to be any of the singletons. Use the fallback on the non-singletons.
+          val (qpChunks, singletons) = chunks.partition(_.singletonArguments.isEmpty)
+          fallback(qpChunks) ++ singletons
         }
       }
     }
