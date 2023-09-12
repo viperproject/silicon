@@ -192,6 +192,7 @@ object evaluator extends EvaluationRules {
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(fa.field.name))
+
           s1.smCache.get((fa.field, relevantChunks)) match {
             case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) if !Verifier.config.disableValueMapCaching() =>
               /* The next assertion must be made if the FVF definition is taken from the cache;
@@ -227,6 +228,45 @@ object evaluator extends EvaluationRules {
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
+              if (!s.isLastRetry) {
+                val syntacticMatches = relevantChunks.filter(_.singletonRcvr.contains(tRcvr))
+                val semanticMatches = if (syntacticMatches.isEmpty) {
+                  val greedyMatches = relevantChunks.filter(c => c.singletonArguments match {
+                    case Some(Seq(arg)) =>
+                      v.decider.check(arg === tRcvr, Verifier.config.checkTimeout())
+                    case _ =>
+                      false
+                  })
+                  greedyMatches
+                } else {
+                  syntacticMatches
+                }
+                if (semanticMatches.nonEmpty) {
+                  val matchChunk = semanticMatches.head
+                  if (s1.heapDependentTriggers.contains(fa.field)) {
+                    val trigger = FieldTrigger(fa.field.name, matchChunk.fvf, tRcvr)
+                    v1.decider.assume(trigger)
+                  }
+                  val permCheck =
+                    if (s1.triggerExp) {
+                      True
+                    } else {
+                      val totalPermissions = matchChunk.perm.replace(matchChunk.quantifiedVars.head, tRcvr)
+                      IsPositive(totalPermissions)
+                    }
+                  v1.decider.assert(permCheck) {
+                    case false =>
+                      createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
+                    case true =>
+                      val smLookup = Lookup(fa.field.name, matchChunk.fvf, tRcvr)
+                      val fr2 =
+                        s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
+                      val s3 = s1.copy(functionRecorder = fr2 /*,
+                                       smCache = smCache1*/)
+                      return Q(s3, smLookup, v1)
+                  }
+                }
+              }
               val (_, smDef1, pmDef1) =
                 quantifiedChunkSupporter.heapSummarisingMaps(
                   s = s1,
