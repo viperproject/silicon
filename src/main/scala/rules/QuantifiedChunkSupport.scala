@@ -1300,19 +1300,31 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       result match {
         case (Complete(), s1, remainingChunks) =>
           val h1 = Heap(remainingChunks ++ otherChunks)
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s = s1,
-              resource = resource,
-              codomainQVars = codomainQVars,
-              relevantChunks = relevantChunks,
-              optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True) else None,
-              optQVarsInstantiations = Some(arguments),
-              v = v)
-          val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
-                           smCache = smCache1)
-          val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
-          Q(s2, h1, snap, v)
+
+          val chunkDiff = relevantChunks.toSet -- remainingChunks
+          if (chunkDiff.size == 1 && chunkDiff.head.singletonArguments.isDefined && !s1.isLastRetry) {
+            val fvf = chunkDiff.head match {
+              case qfc: QuantifiedFieldChunk => qfc.fvf
+              case qpc: QuantifiedPredicateChunk => qpc.psf
+              case qwc: QuantifiedMagicWandChunk => qwc.wsf
+            }
+            val snap = ResourceLookup(resource, fvf, arguments, s1.program).convert(sorts.Snap)
+            Q(s1, h1, snap, v)
+          } else {
+            val (smDef1, smCache1) =
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s = s1,
+                resource = resource,
+                codomainQVars = codomainQVars,
+                relevantChunks = relevantChunks,
+                optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True) else None,
+                optQVarsInstantiations = Some(arguments),
+                v = v)
+            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
+              smCache = smCache1)
+            val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
+            Q(s2, h1, snap, v)
+          }
         case (Incomplete(_), _, _) =>
           resourceAccess match {
             case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
