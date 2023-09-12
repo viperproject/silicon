@@ -184,7 +184,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     MultiRunRecorders.source = inputFile
 
     // TODO: Check consistency of cfgs.
-    val consistencyErrors = utils.consistency.check(program)
+    //val consistencyErrors = utils.consistency.check(program)
 
     if (consistencyErrors.nonEmpty) {
       SilFailure(consistencyErrors)
