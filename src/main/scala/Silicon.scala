@@ -186,9 +186,9 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     // TODO: Check consistency of cfgs.
     //val consistencyErrors = utils.consistency.check(program)
 
-    if (consistencyErrors.nonEmpty) {
-      SilFailure(consistencyErrors)
-    } else {
+    //if (consistencyErrors.nonEmpty) {
+    //  SilFailure(consistencyErrors)
+    //} else {
       var result: Option[SilVerificationResult] = None
       val executor = Executors.newSingleThreadExecutor()
 
@@ -232,7 +232,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
       result.get
-    }
+    //}
   }
 
   private def runVerifier(program: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[Failure] = {
