@@ -56,13 +56,13 @@ object brancher extends BranchingRules {
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+      ||{v.decider.prover.comment("branching!!!") ; !v.decider.check(negatedCondition, Verifier.config.checkTimeout())} || true)
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout()))
+      || {v.decider.prover.comment("branching!!!") ; !v.decider.check(condition, Verifier.config.checkTimeout())} || true)
 
     val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin && executeThenBranch && executeElseBranch
 
