@@ -566,7 +566,7 @@ object executor extends ExecutionRules {
                 val (relevantChunks, _) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
+                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
                 val (smDef, smCache) =
                   quantifiedChunkSupporter.summarisingSnapshotMap(
                     s2, wand, formalVars, relevantChunks, v1)

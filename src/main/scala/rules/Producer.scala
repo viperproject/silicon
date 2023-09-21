@@ -295,7 +295,7 @@ object producer extends ProductionRules {
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
         evals(s, bodyVars, _ => pve, v)((s1, args,v1) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
@@ -399,7 +399,7 @@ object producer extends ProductionRules {
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)

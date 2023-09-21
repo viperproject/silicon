@@ -21,8 +21,8 @@ class TriggerGeneratorTests extends AnyFunSuite with BeforeAndAfter {
   }
 
   test("Work in simple cases") {
-    val i = Var(Identifier("i"), sorts.Int)
-    val s = Var(Identifier("S"), sorts.Seq(sorts.Int))
+    val i = Var(Identifier("i"), sorts.Int, false)
+    val s = Var(Identifier("S"), sorts.Seq(sorts.Int), false)
     val t = SeqAt(s, i)
 
     assert(triggerGenerator.generateTriggerSetGroups(i :: Nil, t) match {
@@ -32,8 +32,8 @@ class TriggerGeneratorTests extends AnyFunSuite with BeforeAndAfter {
   }
 
   test("Fail in these cases") {
-    val i = Var(Identifier("i"), sorts.Int)
-    val s = Var(Identifier("S"), sorts.Seq(sorts.Int))
+    val i = Var(Identifier("i"), sorts.Int, false)
+    val s = Var(Identifier("S"), sorts.Seq(sorts.Int), false)
     val t = SeqAt(s, Plus(i, IntLiteral(1)))
 
     assert(triggerGenerator.generateTriggerSetGroups(i :: Nil, t).isEmpty)

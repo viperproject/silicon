@@ -12,7 +12,7 @@ import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{Term, Var}
+import viper.silicon.state.terms.{PermLiteral, Term, Var}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.{Map, Stack}
@@ -102,8 +102,9 @@ final case class State(g: Store = Store(),
     copy(constrainableARPs = newConstrainableARPs)
   }
 
-  def scalePermissionFactor(p: Term) =
+  def scalePermissionFactor(p: Term) = {
     copy(permissionScalingFactor = terms.PermTimes(p, permissionScalingFactor))
+  }
 
   def merge(other: State): State =
     State.merge(this, other)

@@ -247,8 +247,8 @@ object Macro extends CondFlyweightFactory[(Identifier, Seq[Sort], Sort), Macro, 
   override def actualCreate(args: (Identifier, Stack[Sort], Sort)): Macro = new Macro(args._1, args._2, args._3)
 }
 
-class Var private[terms] (val id: Identifier, val sort: Sort) extends Function with Application[Var] with ConditionalFlyweight[(Identifier, Sort), Var] {
-  override val equalityDefiningMembers: (Identifier, Sort) = (id, sort)
+class Var private[terms] (val id: Identifier, val sort: Sort, val isWildcard: Boolean) extends Function with Application[Var] with ConditionalFlyweight[(Identifier, Sort, Boolean), Var] {
+  override val equalityDefiningMembers: (Identifier, Sort, Boolean) = (id, sort, isWildcard)
   val applicable: Var = this
   val args: Seq[Term] = Seq.empty
   val argSorts: Seq[Sort] = Seq(sorts.Unit)
@@ -256,11 +256,11 @@ class Var private[terms] (val id: Identifier, val sort: Sort) extends Function w
 
   override lazy val toString = id.toString
 
-  def copy(id: Identifier = id, sort: Sort = sort) = Var(id, sort)
+  def copy(id: Identifier = id, sort: Sort = sort, isWildcard: Boolean = isWildcard) = Var(id, sort, isWildcard)
 }
 
-object Var extends CondFlyweightFactory[(Identifier, Sort), Var, Var] {
-  override def actualCreate(args: (Identifier, Sort)): Var = new Var(args._1, args._2)
+object Var extends CondFlyweightFactory[(Identifier, Sort, Boolean), Var, Var] {
+  override def actualCreate(args: (Identifier, Sort, Boolean)): Var = new Var(args._1, args._2, args._3)
 }
 
 class App private[terms] (val applicable: Applicable, val args: Seq[Term])
@@ -1303,7 +1303,12 @@ object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
     case (t, FullPerm) => t
     case (NoPerm, _) => NoPerm
     case (_, NoPerm) => NoPerm
+    case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
+    case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
+    case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
+    case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, PermTimes(t1, t2), PermTimes(t1, t3))
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -2459,8 +2464,8 @@ object Let extends CondFlyweightTermFactory[(Map[Var, Term], Term), Let] {
 /* Predefined terms */
 
 object predef {
-  val `?s` = Var(Identifier("s@$"), sorts.Snap) // with SnapshotTerm
-  val `?r` = Var(Identifier("r"), sorts.Ref)
+  val `?s` = Var(Identifier("s@$"), sorts.Snap, false) // with SnapshotTerm
+  val `?r` = Var(Identifier("r"), sorts.Ref, false)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)

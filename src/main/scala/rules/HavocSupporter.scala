@@ -321,7 +321,7 @@ object havocSupporter extends SymbolicExecutionRules {
         case w: ast.MagicWand =>
           val bodyVars = w.subexpressionsToEvaluate(s.program)
           bodyVars.indices.toList.map(i =>
-              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
     }
   }
 

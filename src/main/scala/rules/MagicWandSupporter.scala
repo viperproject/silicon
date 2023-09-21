@@ -291,7 +291,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val preMark = v3.decider.setPathConditionMark()
       if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
         evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
