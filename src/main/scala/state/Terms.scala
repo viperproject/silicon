@@ -1308,6 +1308,10 @@ object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
     case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
     case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(PermTimes(t1, t2), PermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(PermTimes(t1, t2), PermTimes(t1, t3))
     case (t1, Ite(c, t2, t3)) => Ite(c, PermTimes(t1, t2), PermTimes(t1, t3))
     case (_, _) => createIfNonExistent(v0)
   }
