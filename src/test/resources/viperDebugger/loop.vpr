@@ -1,0 +1,17 @@
+
+method gaussian_sum_ref()
+{
+    var i : Int
+    var max : Int
+    i := 0
+    max := 10
+
+    while(i < max)
+        invariant max == 10
+        invariant 0 <= i && i <= max
+    {
+        i := i + 1
+    }
+
+    assert i < max
+}

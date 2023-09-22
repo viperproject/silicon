@@ -6,28 +6,33 @@
 
 package viper.silicon.rules
 
+import debugger.DebugExp
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
 import viper.silicon.state.terms.{And, Or, Term}
+import viper.silicon.utils.ast
+import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.{Bool, Exp, LocalVar}
 
-case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions)
+case class JoinDataEntry[D](s: State, data: D, dataExp: Exp, pathConditions: RecordedPathConditions)
 
 trait JoiningRules extends SymbolicExecutionRules {
   def join[D, JD](s: State, v: Verifier)
-                 (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
-                 (merge: Seq[JoinDataEntry[D]] => (State, JD))
-                 (Q: (State, JD, Verifier) => VerificationResult)
+                 (block: (State, Verifier, (State, D, Exp, Verifier) => VerificationResult) => VerificationResult)
+                 (merge: Seq[JoinDataEntry[D]] => (State, JD, Exp))
+                 (Q: (State, JD, Exp, Verifier) => VerificationResult)
                  : VerificationResult
 }
 
 object joiner extends JoiningRules {
   def join[D, JD](s: State, v: Verifier)
-                 (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
-                 (merge: Seq[JoinDataEntry[D]] => (State, JD))
-                 (Q: (State, JD, Verifier) => VerificationResult)
+                 (block: (State, Verifier, (State, D, Exp, Verifier) => VerificationResult) => VerificationResult)
+                 (merge: Seq[JoinDataEntry[D]] => (State, JD, Exp))
+                 (Q: (State, JD, Exp, Verifier) => VerificationResult)
                  : VerificationResult = {
 
     var entries: Seq[JoinDataEntry[D]] = Vector.empty
@@ -39,7 +44,7 @@ object joiner extends JoiningRules {
       val preMark = v1.decider.setPathConditionMark()
       val s2 = s1.copy(underJoin = true)
 
-      block(s2, v1, (s3, data, v2) => {
+      block(s2, v1, (s3, data, e, v2) => {
         /* In order to prevent mismatches between different final states of the evaluation
          * paths that are to be joined, we reset certain state properties that may have been
          * affected by the evaluation - such as the store (by let-bindings) or the heap (by
@@ -50,7 +55,7 @@ object joiner extends JoiningRules {
                          oldHeaps = s1.oldHeaps,
                          underJoin = s1.underJoin,
                          retrying = s1.retrying)
-        entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
+        entries :+= JoinDataEntry(s4, data, e, v2.decider.pcs.after(preMark))
         Success()
       })
     }) combine {
@@ -62,20 +67,25 @@ object joiner extends JoiningRules {
          */
         Success()
       } else {
-        val (sJoined, dataJoined) = merge(entries)
+        val (sJoined, dataJoined, dataJoinedExp) = merge(entries)
 
         var feasibleBranches: List[Term] = Nil
+        var feasibleBranchesExp: List[Exp] = Nil
+        var feasibleBranchesExpNew: List[Exp] = Nil
 
         entries foreach (entry => {
           val pcs = entry.pathConditions.conditionalized
-          v.decider.prover.comment("Joined path conditions")
-          v.decider.assume(pcs)
+          val pcsExp = entry.pathConditions.conditionalizedExp
+          val comment = "Joined path conditions"
+          v.decider.prover.comment(comment)
+          v.decider.assume(pcs, new DebugExp(comment, InsertionOrderedSet(pcsExp)))
           feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
+          feasibleBranchesExp = BigAnd(entry.pathConditions.branchConditionExps.map(_.getFirst)) :: feasibleBranchesExp
+          feasibleBranchesExpNew = BigAnd(entry.pathConditions.branchConditionExps.map(_.getSecond)) :: feasibleBranchesExpNew
         })
         // Assume we are in a feasible branch
-        v.decider.assume(Or(feasibleBranches))
-
-        Q(sJoined, dataJoined, v)
+        v.decider.assume(Or(feasibleBranches), new DebugExp(Some("Feasible Branches"), Some(ast.BigOr(feasibleBranchesExp)), Some(ast.BigOr(feasibleBranchesExpNew)), InsertionOrderedSet.empty))
+        Q(sJoined, dataJoined, dataJoinedExp, v)
       }
     }
   }

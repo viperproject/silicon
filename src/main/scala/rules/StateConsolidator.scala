@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import scala.annotation.unused
+import debugger.DebugExp
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
@@ -17,14 +17,17 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
+import viper.silicon.utils.ast.convertTermVarToExpVarDecl
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+
+import scala.annotation.unused
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
   def consolidateIfRetrying(s: State, v: Verifier): State
-  def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
-  def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap)
+  def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap)
 
   protected def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State
   protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
@@ -39,10 +42,10 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   def consolidate(s: State, @unused v: Verifier): State = s
   def consolidateIfRetrying(s: State, @unused v: Verifier): State = s
 
-  def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
+  def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
 
-  def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
     (fr, h + ch)
 
   protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s
@@ -80,7 +83,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
           val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
 
-          snapEqs foreach v.decider.assume
+          snapEqs foreach (t => v.decider.assume(t, new DebugExp("Snapshot Equations", true)))
 
           functionRecorder = _functionRecorder
           mergedChunks = _mergedChunks
@@ -97,11 +100,13 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
         mergedChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
-          v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+          val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
+          pathCond.foreach(p => v.decider.assume(p.getFirst, new DebugExp(p.getSecond, s.substituteVarsInExp(p.getSecond))))
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
-          v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
+          val pathCond = interpreter.buildPathConditionsForResource(id, desc.delayedProperties)
+          pathCond.foreach(p => v.decider.assume(p.getFirst, new DebugExp(p.getSecond, p.getSecond)))
         }
 
         v.symbExLog.closeScope(sepIdentifier)
@@ -121,23 +126,24 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     if (s.retrying) consolidate(s, v)
     else s
 
-  def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) = {
-    merge(fr, h, Heap(Seq(ch)), v)
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) = {
+    merge(fr, s, h, Heap(Seq(ch)), v)
   }
 
-  def merge(fr1: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
+  def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
     val (nonQuantifiedChunks, otherChunks) = partition(h)
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
 
-    v.decider.assume(snapEqs)
+    v.decider.assume(snapEqs, new DebugExp("Snapshot", true))
 
     val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
     newlyAddedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
-      v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+      val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
+      pathCond.foreach(p => v.decider.assume(p.getFirst, new DebugExp(p.getSecond, s.substituteVarsInExp(p.getSecond))))
     }
 
     v.symbExLog.closeScope(sepIdentifier)
@@ -186,10 +192,10 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)
   // and returns the merged chunk or None, if the chunks could not be merged
   private def mergeChunks(fr1: FunctionRecorder, chunk1: NonQuantifiedChunk, chunk2: NonQuantifiedChunk, v: Verifier) = (chunk1, chunk2) match {
-    case (BasicChunk(rid1, id1, args1, snap1, perm1), BasicChunk(_, _, _, snap2, perm2)) =>
+    case (BasicChunk(rid1, id1, args1, args1Exp, snap1, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, perm2, perm2Exp)) =>
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, v)
 
-      Some(fr2, BasicChunk(rid1, id1, args1, combinedSnap, PermPlus(perm1, perm2)), snapEq)
+      Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, PermPlus(perm1, perm2), ast.PermAdd(perm1Exp, perm2Exp)()), snapEq) // FIXME ake: pos/info/errT
     case (_, _) =>
       None
   }
@@ -244,8 +250,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val trigger = FieldTrigger(field.name, smDef.sm, receiver)
           val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
+          val receiverExp = convertTermVarToExpVarDecl(receiver)
+          val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(ast.FuncApp("permOf",
+            Seq(ast.FieldAccess(receiverExp.localVar, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos), ast.FullPerm()())())()
           v.decider.assume(
-            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"))
+            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"), new DebugExp(exp, s.substituteVarsInExp(exp)))  // TODO ake: verify
         } else {
           /*
           If we don't use heap-dependent triggers, the trigger x.f does not work. Instead, we assume the permission
@@ -255,14 +264,18 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
            */
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
-              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm))
+              val exp = ast.FuncApp("permOf", Seq(ast.FieldAccess(chunk.singletonRcvrExp.get, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos) // TODO ake: verify
+              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), new DebugExp(exp, s.substituteVarsInExp(exp)))
             } else {
               val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
               val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
+              val firstVar = convertTermVarToExpVarDecl(chunk.quantifiedVars.head).localVar
+              val exp = ast.Forall(chunk.quantifiedVars.map(convertTermVarToExpVarDecl), Seq(), ast.PermLeCmp(ast.FuncApp("permOf",
+                Seq(ast.FieldAccess(firstVar, field)()))(firstVar.pos, firstVar.info, ast.Perm, firstVar.errT), ast.FullPerm()())())()
               v.decider.assume(
-                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"))
+                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"), new DebugExp(exp, s.substituteVarsInExp(exp))) // TODO ake: substitution, e.g. quantifiedpermissions -> assignments.vpr -> test04
             }
 
           }
@@ -306,10 +319,10 @@ class RetryingStateConsolidator(config: Config) extends DefaultStateConsolidator
   *   - Merging heaps and assuming QP permission bounds is equivalent to [[MinimalStateConsolidator]]
   */
 class MinimalRetryingStateConsolidator(config: Config) extends RetryingStateConsolidator(config) {
-  override def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
+  override def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
 
-  override def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
+  override def merge(fr: FunctionRecorder, s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
     (fr, h + ch)
 
   override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s

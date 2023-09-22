@@ -1,0 +1,17 @@
+function add(a : Int, b : Int) : Int
+    requires a >= 0
+    requires b >= 0
+    ensures result == a + b
+{
+    a + b
+}
+
+method main()
+{
+    var x : Int
+    var y : Int
+    assume y >= 0
+    x := 4
+    y := add(x, y)
+    assert y == 4
+}

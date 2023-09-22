@@ -16,6 +16,8 @@ import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.{Map, Stack}
+import viper.silver.ast.LocalVar
+import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),
                        h: Heap = Heap(),
@@ -68,7 +70,9 @@ final case class State(g: Store = Store(),
                        retryLevel: Int = 0,
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
-                       moreCompleteExhale: Boolean = false)
+                       moreCompleteExhale: Boolean = false,
+                       permissionScalingFactorExp: ast.Exp = ast.FullPerm()(),
+                       isEvalInOld : Boolean = false)
     extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {
@@ -102,8 +106,9 @@ final case class State(g: Store = Store(),
     copy(constrainableARPs = newConstrainableARPs)
   }
 
-  def scalePermissionFactor(p: Term) =
-    copy(permissionScalingFactor = terms.PermTimes(p, permissionScalingFactor))
+  def scalePermissionFactor(p: Term, exp: ast.Exp) =
+    copy(permissionScalingFactor = terms.PermTimes(p, permissionScalingFactor),
+      permissionScalingFactorExp = ast.PermMul(exp, permissionScalingFactorExp)(exp.pos, exp.info, exp.errT))
 
   def merge(other: State): State =
     State.merge(this, other)
@@ -121,6 +126,18 @@ final case class State(g: Store = Store(),
 
   def relevantQuantifiedVariables(occurringIn: Seq[Term]): Seq[Var] =
     relevantQuantifiedVariables(x => occurringIn.exists(_.contains(x)))
+
+
+  def substituteVarsInExp(e : ast.Exp): ast.Exp = {
+    val varMapping = g.values.map { case (localVar, term) => {
+      val newName = term match {
+        case Var(n, _) => n.name.substring(0, n.name.lastIndexOf("@"))
+        case _ => term.toString.replaceAll("@.. ", " ")
+      }
+      localVar.name -> LocalVar(newName, localVar.typ)(localVar.pos, localVar.info, localVar.errT)
+    } }
+    Sanitizer.replaceFreeVariablesInExpression(e, varMapping, Set())
+  }
 
   lazy val relevantQuantifiedVariables: Seq[Var] =
     relevantQuantifiedVariables(_ => true)
@@ -156,7 +173,7 @@ object State {
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-                 moreCompleteExhale) =>
+                 moreCompleteExhale, permissionScalingFactorExp1, isEvalInOld) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -181,7 +198,7 @@ object State {
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2) =>
+                     moreCompleteExhale2, `permissionScalingFactorExp1`, `isEvalInOld`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

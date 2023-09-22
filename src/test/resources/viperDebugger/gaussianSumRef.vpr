@@ -1,0 +1,23 @@
+field val : Int
+
+method gaussian_sum_ref(n : Ref)
+    requires acc(n.val) && n.val >= 0
+{
+    var i : Int
+    var r : Int
+
+    i := 0
+    r := 0
+
+    while(i < n.val)
+        invariant acc(n.val)
+        invariant r == i * (i-1) / 2
+        invariant i <= n.val
+    {
+        r := r + i
+        i := i + 1
+    }
+
+    //:: ExpectedCounterexample(assert.failed:assertion.false, (i == 42, r == -42))
+    assert r == n.val * (n.val+1) / 2
+}

@@ -1,0 +1,10 @@
+
+method test_div()
+{
+    var x : Int
+    var y : Int
+
+    var z : Int
+
+    z := x / y
+}

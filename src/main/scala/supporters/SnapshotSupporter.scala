@@ -6,13 +6,15 @@
 
 package viper.silicon.supporters
 
-import scala.annotation.unused
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silicon.state.{State, SymbolConverter}
+import debugger.DebugExp
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
+import viper.silicon.state.{State, SymbolConverter}
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+
+import scala.annotation.unused
 
 trait SnapshotSupporter {
   def optimalSnapshotSort(a: ast.Exp, program: ast.Program): (Sort, Boolean)
@@ -144,8 +146,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
 
         (snap0, snap1, snap === Combine(snap0, snap1))
       }
-
-    v.decider.assume(snapshotEq)
+    v.decider.assume(snapshotEq, new DebugExp("Snapshot", true))
 
     (snap0, snap1)
   }

@@ -1,0 +1,6 @@
+
+method test_quantifiers(ls: Seq[Int])
+    requires forall i : Int :: 0 <= i && i < |ls| ==> ls[i] >= 0
+{
+    assert |ls| > 0 ==> ls[0] > 0
+}

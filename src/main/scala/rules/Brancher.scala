@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import org.jgrapht.alg.util.Pair
+
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
@@ -15,13 +17,13 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.reporter.{BranchFailureMessage}
+import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
-             conditionExp: Option[ast.Exp],
+             conditionExp: Pair[ast.Exp, ast.Exp],
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
@@ -32,7 +34,7 @@ trait BranchingRules extends SymbolicExecutionRules {
 object brancher extends BranchingRules {
   def branch(s: State,
              condition: Term,
-             conditionExp: Option[ast.Exp],
+             conditionExp: Pair[ast.Exp, ast.Exp],
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
@@ -40,7 +42,8 @@ object brancher extends BranchingRules {
             : VerificationResult = {
 
     val negatedCondition = Not(condition)
-    val negatedConditionExp = conditionExp.fold[Option[ast.Exp]](None)(c => Some(ast.Not(c)(pos = conditionExp.get.pos, info = conditionExp.get.info, ast.NoTrafos)))
+    val negatedConditionExp = ast.Not(conditionExp.getFirst)(pos = conditionExp.getFirst.pos, info = conditionExp.getFirst.info, ast.NoTrafos)
+    val negatedConditionExpNew = ast.Not(conditionExp.getSecond)(pos = conditionExp.getSecond.pos, info = conditionExp.getSecond.info, ast.NoTrafos)
 
 
     /* Skip path feasibility check if one of the following holds:
@@ -82,7 +85,7 @@ object brancher extends BranchingRules {
 
     var elseBranchVerifier: String = null
 
-    val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), conditionExp)
+    val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), Some(conditionExp.getFirst))
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
     var pcsForElseBranch: PathConditionStack = null
@@ -126,7 +129,7 @@ object brancher extends BranchingRules {
 
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
+            v1.decider.setCurrentBranchCondition(negatedCondition, new Pair(negatedConditionExp, negatedConditionExpNew))
 
             if (v.uniqueId != v0.uniqueId)
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)

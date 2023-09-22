@@ -1,0 +1,25 @@
+method add(a : Int, b : Int) returns (res : Int)
+    requires a >= 0
+    requires b >= 0
+    ensures res == a + b + 1
+{
+    res := a + b
+}
+
+method foo()
+{
+  var res : Int
+  res := 4
+  assert res <= 0
+}
+
+method main()
+{
+    var x : Int
+    var y : Int
+    assume y >= 0
+    x := 4
+    y := add(x, y)
+    assert y <= 4
+    foo()
+}

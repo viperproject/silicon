@@ -1,0 +1,12 @@
+field f: Int
+
+method test_aliasing(x: Ref, y: Ref, b: Bool, k: Perm) {
+  inhale none < k
+  inhale acc(x.f, k) && acc(y.f, k)
+  inhale b <==> x == y
+
+  assume x.f == 4
+  y.f := 5
+
+  assert x.f == 4
+}

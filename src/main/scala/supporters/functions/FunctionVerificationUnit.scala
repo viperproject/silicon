@@ -7,6 +7,8 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
+import debugger.DebugExp
+import org.jgrapht.alg.util.Pair
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
@@ -245,11 +247,15 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, pcsPre)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            decider.setCurrentBranchCondition(And(bcsPre))
-            decider.assume(pcsPre)
+            decider.setCurrentBranchCondition(And(bcsPre), new Pair(ast.LocalVar("unknown", ast.Bool)(), ast.LocalVar("unknown", ast.Bool)())) /* TODO ake: branch condition */
+            val preExp = function.pres.map(e => new DebugExp(e, s1.substituteVarsInExp(e)))
+            val argsName = function.formalArgs.map(d => d.name).mkString(", ")
+            decider.assume(pcsPre, new DebugExp(s"precondition ${function.name}($argsName)", InsertionOrderedSet(preExp))) // TODO ake: term<->exp mapping
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-            eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {
-              decider.assume(data.formalResult === tBody)
+            eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
+              val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
+              val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew)(function.pos, function.info, function.errT)
+              decider.assume(data.formalResult === tBody, new DebugExp(e, eNew))
               consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}

@@ -1,0 +1,17 @@
+
+predicate smaller10(j : Int){
+    j < 10
+}
+
+
+predicate greater0(i : Int)
+{
+    i >= 0 && smaller10(i) && (unfolding smaller10(i) in i < 20)
+}
+
+method my_unfold(n : Int)
+    requires greater0(n)
+    ensures n >= 0
+{
+    assert unfolding greater0(n) in (0 <= n && n < 5)
+}

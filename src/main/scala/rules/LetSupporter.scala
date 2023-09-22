@@ -58,7 +58,7 @@ object letSupporter extends LetSupportRules {
 
     val ast.Let(x, exp, body) = let
 
-    eval(s, exp, pve, v)((s1, t, v1) => {
+    eval(s, exp, pve, v)((s1, t, _, v1) => {
       val bindings1 = bindings :+ (x.localVar, t)
       val s2 = s1.copy(s1.g + (x.localVar, t))
       body match {

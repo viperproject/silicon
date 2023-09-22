@@ -6,11 +6,9 @@
 
 package viper.silicon.decider
 
-import scala.reflect.{ClassTag, classTag}
 import com.typesafe.scalalogging.Logger
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.{DependencyNotFoundError, Model}
+import debugger.DebugExp
+import org.jgrapht.alg.util.Pair
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -19,9 +17,13 @@ import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeReco
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
+import viper.silver.verifier.{DependencyNotFoundError, Model}
 
 import scala.collection.immutable.HashSet
+import scala.reflect.{ClassTag, classTag}
 
 /*
  * Interfaces
@@ -36,12 +38,17 @@ trait Decider {
 
   def checkSmoke(isAssert: Boolean = false): Boolean
 
-  def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit
+  def setCurrentBranchCondition(t: Term, te: Pair[ast.Exp, ast.Exp]): Unit
   def setPathConditionMark(): Mark
 
-  def assume(t: Term): Unit
-  def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit
-  def assume(ts: Iterable[Term]): Unit
+  def finishDebugSubExp(str : String): Unit
+
+  def startDebugSubExp(): Unit
+
+  def assume(t: Term, e: ast.Exp, substitutedE: ast.Exp): Unit
+  def assume(t: Term, debugExp: DebugExp): Unit
+  def assume(ts: InsertionOrderedSet[Term], e: DebugExp, enforceAssumption: Boolean = false): Unit
+  def assume(ts: Iterable[Term], e: DebugExp): Unit
 
   def check(t: Term, timeout: Int): Boolean
 
@@ -102,6 +109,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def prover: Prover = _prover
 
     def pcs: PathConditionStack = pathConditions
+
+    var debugExpStack : Stack[InsertionOrderedSet[DebugExp]] = Stack.empty
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */
@@ -196,36 +205,77 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit = {
+    def setCurrentBranchCondition(t: Term, te: Pair[ast.Exp, ast.Exp]): Unit = {
       pathConditions.setCurrentBranchCondition(t, te)
-      assume(InsertionOrderedSet(Seq(t)))
+      assume(t, te.getFirst, te.getSecond)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()
 
     /* Assuming facts */
 
-    def assume(t: Term): Unit = {
-      assume(InsertionOrderedSet(Seq(t)), false)
+    def startDebugSubExp(): Unit = {
+      debugExpStack = InsertionOrderedSet[DebugExp]().empty +: debugExpStack
     }
 
-    def assume(terms: Iterable[Term]): Unit =
-      assume(InsertionOrderedSet(terms), false)
+    private def popDebugSubExp(): InsertionOrderedSet[DebugExp] = {
+      val res = debugExpStack.head
+      debugExpStack = debugExpStack.tail
+      res
+    }
 
-    def assume(terms: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit = {
+    def finishDebugSubExp(str : String): Unit ={
+      val debugExp = new DebugExp(str = str, children = popDebugSubExp())
+      addDebugExp(debugExp)
+    }
+
+    private def addDebugExp(e: DebugExp): Unit = {
+      if(e.getTerms().nonEmpty && e.getTerms().forall(t => PathConditions.isGlobal(t))){
+        pathConditions.addGlobalDebugExp(e)
+      }else{
+        if (e.getTerms().exists(t => PathConditions.isGlobal(t)) && !e.isInternal()) {
+          // TODO ake: this should not happen
+          pathConditions.addGlobalDebugExp(new DebugExp("failed to distinguish global and non-global terms"))
+        }
+
+        if (debugExpStack.isEmpty) {
+          pathConditions.addNonGlobalDebugExp(e)
+        } else {
+          // DebugSubExp -> will be attached to another DebugExp later on
+          val d = debugExpStack.head + e
+          debugExpStack = d +: debugExpStack.tail
+        }
+      }
+    }
+
+    def assume(t: Term, e : ast.Exp, substitutedE : ast.Exp): Unit = {
+      assume(InsertionOrderedSet(Seq(t)), new DebugExp(e, substitutedE), false)
+    }
+
+    def assume(t: Term, debugExp: DebugExp): Unit = {
+      assume(InsertionOrderedSet(Seq(t)), debugExp, false)
+    }
+
+    def assume(terms: Iterable[Term], e: DebugExp): Unit =
+      assume(InsertionOrderedSet(terms), e, false)
+
+    def assume(terms: InsertionOrderedSet[Term], e : DebugExp, enforceAssumption: Boolean = false): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms)
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms, e)
     }
 
-    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
+    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], e : DebugExp) = {
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
 
       /* Add terms to Silicon-managed path conditions */
       terms foreach pathConditions.add
+
+      val debugExp = e.withTerms(terms)
+      addDebugExp(debugExp)
 
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume

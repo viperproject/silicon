@@ -1,0 +1,16 @@
+
+method test_assg()
+{
+    var n : Int         /* n -> n@0 */
+    assume n >= 0       /* n@0 >= 0 */
+    var n2 : Int        /* n2 -> n2@0 */
+    assert n >= 0
+    n := n + 1          /* n -> n@1, n@1 == n@0 + 1 */
+    assert n >= 1
+    n := n2             /* n -> n2@0 */
+    assert n == n2
+    n := n + 1          /* n -> n@3, n@3 == n2@0 + 1 */
+    assert n2 + 1 == n
+    n := 0              /* n -> 0 (concrete value!) */
+    assert n == 5
+}

@@ -6,18 +6,19 @@
 
 package viper.silicon.rules
 
+import debugger.DebugExp
+import viper.silicon.Map
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
-import viper.silicon.Map
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
-import viper.silicon.state.terms._
 import viper.silicon.state._
+import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.{`?r`, `?s`}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.verifier.errors.{QuasihavocFailed, HavocallFailed}
+import viper.silver.verifier.errors.{HavocallFailed, QuasihavocFailed}
 import viper.silver.verifier.reasons.QuasihavocallNotInjective
 
 object havocSupporter extends SymbolicExecutionRules {
@@ -46,8 +47,8 @@ object havocSupporter extends SymbolicExecutionRules {
     // If there is no havoc condition, use True as the condition
     val lhsExpr = havoc.lhs.getOrElse(ast.TrueLit()(havoc.pos))
 
-    eval(s, lhsExpr, pve, v)((s0, lhsTerm, v0) => {
-      evals(s0, resourceArgs(s0, havoc.exp), _ => pve, v0)((s1, tRcvrs, v1) => {
+    eval(s, lhsExpr, pve, v)((s0, lhsTerm, _, v0) => {
+      evals(s0, resourceArgs(s0, havoc.exp), _ => pve, v0)((s1, tRcvrs, _, v1) => {
         val resource = havoc.exp.res(s1.program)
 
         // Call the havoc helper function, which returns a new set of chunks, some of
@@ -104,9 +105,9 @@ object havocSupporter extends SymbolicExecutionRules {
       pve   = pve,
       v     = v)
     {
-      case (s1, tVars, Seq(tCond), tArgs, Seq(), _, v1) =>
+      case (s1, tVars, Seq(tCond), Seq(eCondNew), tArgs, eArgsNew, Seq(), _, _, v1) => // TODO ake: newExp?
         // Seq() represents an empty list of Triggers
-        // TODO: unnamed argument is (tAuxGlobal, tAux). How should these be handled?
+        // TODO: unnamed arguments are (tAuxGlobal, tAux) and (auxGlobalsExp, auxNonGlobalsExp). How should these be handled?
 
         val resource = eRsc.res(s1.program)
         val codomainQVars = getCodomainQVars(s1, resource, v1)
@@ -126,7 +127,7 @@ object havocSupporter extends SymbolicExecutionRules {
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
         v.decider.assert(receiverInjectivityCheck) {
-          case false => createFailure(pve dueTo notInjectiveReason, v, s1)
+          case false => createFailure(pve dueTo notInjectiveReason, v, s1, None)
           case true =>
             // Generate the inverse axioms
             // TODO: Second return value (imagesOfCodomain) currently not used — OK?
@@ -140,8 +141,10 @@ object havocSupporter extends SymbolicExecutionRules {
               qidPrefix = qid,
               v = v1
             )
-            v.decider.prover.comment("Definitional axioms for havocall inverse functions")
-            v.decider.assume(inverseFunctions.definitionalAxioms)
+            val comment = "Definitional axioms for havocall inverse functions"
+            v.decider.prover.comment(comment)
+            val debugExp = new DebugExp(comment, true)
+            v.decider.assume(inverseFunctions.definitionalAxioms, debugExp)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
             // which may be havocked. Since we are executing a Havocall statement, we wrap
@@ -263,7 +266,8 @@ object havocSupporter extends SymbolicExecutionRules {
       )
 
       v.decider.prover.comment("axiomatized snapshot map after havoc")
-      v.decider.assume(newAxiom)
+      val debugExp = new DebugExp("havoc new axiom", isInternal_ = true)
+      v.decider.assume(newAxiom, debugExp)
 
       ch.withSnapshotMap(newSm)
     }

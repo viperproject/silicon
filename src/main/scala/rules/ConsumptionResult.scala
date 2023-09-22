@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.state.terms.Term
 import viper.silicon.state.terms.perms.IsNonPositive
+import viper.silver.ast
 import viper.silicon.verifier.Verifier
 
 sealed trait ConsumptionResult {
@@ -20,16 +21,16 @@ private case class Complete() extends ConsumptionResult {
   override def ||(other: => ConsumptionResult): ConsumptionResult = this
 }
 
-private case class Incomplete(permsNeeded: Term) extends ConsumptionResult {
+private case class Incomplete(permsNeeded: Term, permsNeededExp: ast.Exp) extends ConsumptionResult {
   override def isComplete: Boolean = false
   override def ||(other: => ConsumptionResult): ConsumptionResult = other
 }
 
 object ConsumptionResult {
-  def apply(term: Term, v: Verifier, timeout: Int): ConsumptionResult = {
+  def apply(term: Term, exp: ast.Exp, v: Verifier, timeout: Int): ConsumptionResult = {
     if (v.decider.check(IsNonPositive(term), timeout))
       Complete()
     else
-      Incomplete(term)
+      Incomplete(term, exp)
   }
 }

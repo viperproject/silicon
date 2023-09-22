@@ -9,12 +9,13 @@ package viper.silicon.rules
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
-  protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssertExp: Option[ast.Exp], generateNewModel: Boolean = false): Failure = {
     if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
     val res = ve match {
@@ -56,7 +57,7 @@ trait SymbolicExecutionRules {
     }
 
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
-      v.decider.pcs.branchConditionExps.flatten
+      v.decider.pcs.branchConditionExps.map(_.getFirst)
         .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
         .sortBy(_.pos match {
           /* Order branchconditions according to source position */
@@ -64,7 +65,12 @@ trait SymbolicExecutionRules {
           case _ => (-1, -1)
         })
     } else Seq()
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
+
+    val state = s.copy()
+
+    val assumptions = v.decider.pcs.assumptionExps
+
+    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, Some(state), Some(v), assumptions, failedAssertExp))
     Failure(res, v.reportFurtherErrors())
 
   }

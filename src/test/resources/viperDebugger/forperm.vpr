@@ -1,0 +1,14 @@
+field f: Int
+field g: Int
+
+method test01(x: Ref, b: Bool)
+  requires acc(x.f, b ? write : none)
+{
+  assert b || forperm y: Ref [y.f] :: false
+
+  assert (forperm y: Ref [y.f] :: false) ==> (forperm y: Ref [y.f] :: true)
+  assert (forperm y: Ref [y.f] :: false) ==> !b
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert forperm y: Ref [y.f] :: false
+}

@@ -6,17 +6,19 @@
 
 package viper.silicon
 
-import scala.annotation.implicitNotFound
-import scala.collection.immutable.ArraySeq
+import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 import viper.silver
+import viper.silver.ast.utility.Triggers.TriggerGenerationWithAddAndSubtract
+import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.{NoInfo, NoPosition, NoTrafos}
 import viper.silver.components.StatefulComponent
-import viper.silver.verifier.{VerificationError, errors}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
-import viper.silver.ast.utility.rewriter.Traverse
-import viper.silicon.state.terms.{Sort, Term, Var}
-import viper.silicon.verifier.Verifier
-import viper.silver.ast.utility.Triggers.TriggerGenerationWithAddAndSubtract
+import viper.silver.verifier.{VerificationError, errors}
+
+import scala.annotation.implicitNotFound
+import scala.collection.immutable.ArraySeq
 
 package object utils {
   def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort)
@@ -130,6 +132,58 @@ package object utils {
                     f,
                     (e0: silver.ast.Exp, e1: silver.ast.Exp) => silver.ast.Or(e0, e1)(e0.pos, e0.info),
                      silver.ast.FalseLit()(emptyPos))
+
+    def removeKnownToBeTrueExp(exps: List[silver.ast.Exp], terms: List[Term]): List[silver.ast.Exp] = {
+      exps.zip(terms).filter(t => t._2 != True).map(e => e._1)
+    }
+
+    def simplifyVariableName(str: String) : String = {
+      str.substring(0, str.lastIndexOf("@"))
+    }
+
+    def buildIteExp(condExp: silver.ast.Exp, ifExp: silver.ast.Exp, elseExp: silver.ast.Exp, typ: silver.ast.Type): silver.ast.Exp ={
+        silver.ast.FuncApp("Ite", Seq(condExp, ifExp, elseExp))(condExp.pos, condExp.info, typ, condExp.errT)
+    }
+
+     def buildImpliesExp(assmptExp: silver.ast.Exp, rhsExp: silver.ast.Exp): silver.ast.Exp= {
+        silver.ast.Implies(assmptExp, rhsExp)()
+    }
+
+    def buildMinExp(exps: Seq[silver.ast.Exp], typ: silver.ast.Type): silver.ast.Exp = {
+      silver.ast.FuncApp("min", exps)(NoPosition, NoInfo, typ, NoTrafos)
+    }
+
+    def buildQuantExp(quantifier: Quantifier, vars: Seq[Var], eBody: silver.ast.Exp, eTrigger: Seq[silver.ast.Trigger]): silver.ast.Exp = {
+      quantifier match {
+        case Forall => silver.ast.Forall(vars.map(convertTermVarToExpVarDecl), eTrigger, eBody)(eBody.pos, eBody.info, eBody.errT)
+        case Exists => silver.ast.Exists(vars.map(convertTermVarToExpVarDecl), eTrigger, eBody)(eBody.pos, eBody.info, eBody.errT)
+      }
+    }
+
+    def convertSortToAstType(s : Sort): silver.ast.Type ={
+      s match {
+        case sorts.Snap => ???
+        case sorts.Int => silver.ast.Int
+        case sorts.Bool => silver.ast.Bool
+        case sorts.Ref => silver.ast.Ref
+        case sorts.Perm => silver.ast.Perm
+        case sorts.Unit => ???
+        case sorts.Seq(elementsSort) => silver.ast.SeqType(convertSortToAstType(elementsSort))
+        case sorts.Set(elementsSort) => silver.ast.SetType(convertSortToAstType(elementsSort))
+        case sorts.Multiset(elementsSort) => silver.ast.MultisetType(convertSortToAstType(elementsSort))
+        case sorts.Map(keySort, valueSort) => silver.ast.MapType(convertSortToAstType(keySort), convertSortToAstType(valueSort))
+        case sorts.UserSort(id) => silver.ast.DomainType(id.name, Map.empty)(Nil)
+        case sorts.SMTSort(id) => ???
+        case sorts.FieldValueFunction(codomainSort, fieldName) => ???
+        case sorts.PredicateSnapFunction(codomainSort, predName) => ???
+        case sorts.FieldPermFunction() => ???
+        case sorts.PredicatePermFunction() => ???
+      }
+    }
+
+    def convertTermVarToExpVarDecl(tVar : Var): silver.ast.LocalVarDecl ={
+      silver.ast.LocalVarDecl(tVar.id.name, convertSortToAstType(tVar.sort))()
+    }
 
     /** Note: be aware of Silver issue #95!*/
     def rewriteRangeContains(program: silver.ast.Program): silver.ast.Program =

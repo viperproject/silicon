@@ -6,6 +6,8 @@
 
 package viper.silicon.interfaces
 
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.DebugExp
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
 import viper.silicon.state.{State, Store}
@@ -103,7 +105,10 @@ case class Failure/*[ST <: Store[ST],
 
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
-                                 reasonUnknown: Option[String]) extends FailureContext {
+                                 reasonUnknown: Option[String],
+                                 state: Option[State],
+                                 assumptions: InsertionOrderedSet[DebugExp],
+                                 failedAssertion: Option[ast.Exp]) extends FailureContext {
   lazy val branchConditionString: String = {
     if(branchConditions.nonEmpty) {
       val branchConditionsString =
@@ -129,7 +134,32 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
     }
   }
 
-  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
+  lazy val stateString: String = {
+    if(state.isDefined){
+      s"\n\nStore:\n\t\t${state.get.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${state.get.h.values.mkString("\n\t\t")}"
+    }else{
+      ""
+    }
+  }
+
+  lazy val assumptionsString: String = {
+    if(assumptions.nonEmpty){
+      val nonInternalAssumptions = assumptions.filter(de => !de.isInternal())
+      s"\n\nassumptions:\n${nonInternalAssumptions.tail.foldLeft[String](nonInternalAssumptions.head.toString(printInternals = false, 5))((s, de) => s + " && " + de.toString(printInternals = false, 5)) + ")"}"
+    }else{
+      ""
+    }
+  }
+
+  lazy val failedAssertionString: String ={
+    if(failedAssertion.isDefined){
+      s"\n\nFailed Assertion:\n\t\t${failedAssertion.get.toString()}"
+    }else{
+      ""
+    }
+  }
+
+  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString + stateString + assumptionsString + failedAssertionString
 }
 
 trait SiliconCounterexample extends Counterexample {

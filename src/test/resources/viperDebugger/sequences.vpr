@@ -1,0 +1,36 @@
+
+
+method test_sequence()
+{
+    var s : Seq[Int]
+    s := Seq(1,3,3)
+    var z : Int
+    z := s[1] + s[2]
+    assert z == 7
+}
+
+method test_sequence_append(s1 : Seq[Int], s2: Seq[Int])
+    requires |s1| > 0 && |s2| > 0
+{
+    var s : Seq[Int]
+    s := s1 ++ s2
+    assert |s| == 1
+}
+
+method seq_sum(list : Seq[Int])
+{
+    var i : Int
+    var sum : Int
+
+    i := 0
+    sum := 0
+
+    while(i < |list|)
+        invariant 0 <= i && i <= |list|
+    {
+        sum := sum + list[i]
+        i := i + 1
+    }
+
+    assert i == |list| + 1
+}

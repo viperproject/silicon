@@ -1,0 +1,25 @@
+field val : Int
+
+method test_references(n : Ref)
+    requires acc(n.val) && n.val >= 0
+{
+    var i : Int
+
+    i := 2
+    i := i + n.val
+
+    assert i == n.val
+}
+
+
+method test_references2(n : Ref)
+    requires acc(n.val, 1/2) && n.val >= 0
+{
+    var i : Ref
+    i := new(*)
+
+    i.val := 2
+    i.val := i.val + n.val
+
+    assert i.val == n.val
+}

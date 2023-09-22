@@ -6,9 +6,11 @@
 
 package viper.silicon.resources
 
+import org.jgrapht.alg.util.Pair
 import viper.silicon.interfaces.state.QuantifiedChunk
 import viper.silicon.state.terms
 import viper.silicon.state.terms.{Term, Trigger, Var}
+import viper.silver.ast
 
 class QuantifiedPropertyInterpreter extends PropertyInterpreter {
 
@@ -25,23 +27,25 @@ class QuantifiedPropertyInterpreter extends PropertyInterpreter {
                                  triggers: Seq[Trigger],
                                  qidPrefix: String)
                                 : Term = {
-    val body = buildPathCondition(property.expression, Info(chunk, args, perms)).replace(chunk.quantifiedVars, args)
+    val body = buildPathCondition(property.expression, Info(chunk, args, perms))
+    val bodyTerm = body.getFirst.replace(chunk.quantifiedVars, args)
     val description = s"$qidPrefix-${property.name}"
     val cond = if (argsUsed) condition else terms.True
     argsUsed = false
-    terms.Forall(qvars, terms.Implies(cond, body), triggers, description)
+    terms.Forall(qvars, terms.Implies(cond, bodyTerm), triggers, description)
   }
 
-  override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = info.perms
+  override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = new Pair(info.perms, ast.TrueLit()())
 
   override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     argsUsed = true
-    info.chunk.valueAt(info.args)
+    new Pair(info.chunk.valueAt(info.args), ast.TrueLit()())
   }
 
-  override protected def extractArguments(chunkVariable: ChunkPlaceholder, info: Info) = {
+  override protected def extractArguments(chunkPlaceholder: ChunkPlaceholder,
+                                          info: Info): Pair[Seq[Term], Seq[ast.Exp]] = {
     argsUsed = true
-    info.args
+    new Pair(info.args, Seq())
   }
 
   override protected def buildCheck[K <: IteUsableKind]

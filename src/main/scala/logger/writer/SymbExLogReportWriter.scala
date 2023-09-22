@@ -10,14 +10,14 @@ import spray.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsT
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.logger.{LogConfig, MemberSymbExLog}
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
 import viper.silicon.logger.records.structural.{BranchInfo, BranchingRecord, JoiningRecord}
 import viper.silicon.logger.records.{RecordData, SymbolicRecord}
+import viper.silicon.logger.{LogConfig, MemberSymbExLog}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.InverseFunctions
-import viper.silicon.state.terms.Term
 import viper.silicon.state._
+import viper.silicon.state.terms.Term
 import viper.silver.ast.AbstractLocalVar
 
 /** Wrapper for the SymbExLogReport conversion to JSON. */
@@ -31,7 +31,7 @@ object SymbExLogReportWriter {
   }
 
   private def heapChunkToJSON(chunk: Chunk) = chunk match {
-    case BasicChunk(PredicateID, id, args, snap, perm) =>
+    case BasicChunk(PredicateID, id, args, argsExp, snap, perm, permExp) => // TODO ake
       JsObject(
         "type" -> JsString("basic_predicate_chunk"),
         "predicate" -> JsString(id.toString),
@@ -40,7 +40,7 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case BasicChunk(FieldID, id, Seq(receiver), snap, perm) =>
+    case BasicChunk(FieldID, id, Seq(receiver), Seq(recvExp), snap, perm, permExp) => // TODO ake
       JsObject(
         "type" -> JsString("basic_field_chunk"),
         "field" -> JsString(id.toString),
@@ -50,7 +50,7 @@ object SymbExLogReportWriter {
       )
 
     // TODO: Are ID and bindings needed?
-    case MagicWandChunk(_, _, args, snap, perm) =>
+    case MagicWandChunk(_, _, args, eargs, snap, perm, permExp) => // TODO ake
       JsObject(
         "type" -> JsString("basic_magic_wand_chunk"),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
@@ -58,7 +58,7 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case QuantifiedFieldChunk(id, fvf, perm, invs, cond, receiver, hints) =>
+    case QuantifiedFieldChunk(id, fvf, perm, permExp, invs, cond, receiver, receiverExp, hints) =>
       JsObject(
         "type" -> JsString("quantified_field_chunk"),
         "field" -> JsString(id.toString),
@@ -70,7 +70,7 @@ object SymbExLogReportWriter {
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedPredicateChunk(id, vars, psf, perm, invs, cond, singletonArgs, hints) =>
+    case QuantifiedPredicateChunk(id, vars, psf, perm, permExp, invs, cond, singletonArgs, singletonArgsExp, hints) =>
       JsObject(
         "type" -> JsString("quantified_predicate_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
@@ -83,7 +83,7 @@ object SymbExLogReportWriter {
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedMagicWandChunk(id, vars, wsf, perm, invs, cond, singletonArgs, hints) =>
+    case QuantifiedMagicWandChunk(id, vars, wsf, perm, permExp, invs, cond, singletonArgs, singletonArgsExp, hints) =>
       JsObject(
         "type" -> JsString("quantified_magic_wand_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),

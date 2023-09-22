@@ -1,0 +1,13 @@
+
+predicate greater0(i : Int)
+{
+    i >= 0
+}
+
+method my_unfold_fold(n : Int)
+    requires greater0(n)
+    ensures greater0(n) && n >= 0
+{
+    unfold greater0(n)
+    fold greater0(n)
+}

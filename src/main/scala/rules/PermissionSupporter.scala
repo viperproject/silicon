@@ -25,7 +25,7 @@ object permissionSupporter extends SymbolicExecutionRules {
       case _ =>
         v.decider.assert(perms.IsNonNegative(tPerm)) {
           case true => Q(s, v)
-          case false => createFailure(pve dueTo NegativePermission(ePerm), v, s)
+          case false => createFailure(pve dueTo NegativePermission(ePerm), v, s, Some(ast.GeCmp(ePerm, ast.IntLit(0)())(ePerm.pos, ePerm.info, ePerm.errT)))
         }
     }
   }

@@ -1,0 +1,13 @@
+
+predicate greater0(i : Int)
+{
+    i >= 0
+}
+
+method my_unfold(n : Int)
+    requires greater0(n + 1)
+    ensures n >= 0
+{
+    unfold greater0(n + 1)
+    assert n >= 4
+}
