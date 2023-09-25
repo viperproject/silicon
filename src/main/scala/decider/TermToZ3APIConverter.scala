@@ -471,9 +471,17 @@ class TermToZ3APIConverter
     // workaround: since we cannot create a function application with just the name, we let Z3 parse
     // a string that uses the function, take the AST, and get the func decl from there, so that we can
     // programmatically create a func app.
-    val decls = args.zipWithIndex.map{case (a, i) => s"(declare-const workaround${i} ${smtlibConverter.convert(a.sort)})"}.mkString(" ")
+
+
+    val declPreamble = "(define-sort $Perm () Real) " // ME: Re-declare the Perm sort.
+    // ME: The parsing happens in a fresh context that doesn't know any of our current declarations.
+    // In principle, it might be necessary to re-declare all sorts we're using anywhere. However, I don't see how there
+    // could be any Z3 internal functions that exist for those custom sorts. For the Real (i.e., Perm) sort, however,
+    // such functions exist. So we re-declare *only* this sort.
+    val decls = declPreamble + args.zipWithIndex.map{case (a, i) => s"(declare-const workaround${i} ${smtlibConverter.convert(a.sort)})"}.mkString(" ")
     val funcAppString = s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
     val assertion = decls + s" (assert (= ${funcAppString} ${funcAppString}))"
+    println(assertion)
     val workaround = ctx.parseSMTLIB2String(assertion, null, null, null, null)
     val app = workaround(0).getArgs()(0)
     val decl = app.getFuncDecl
