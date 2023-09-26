@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, TypecheckerWarning}
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -23,8 +23,8 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
-import viper.silver.reporter.WarningsDuringTypechecking
-import viper.silver.ast.WeightedQuantifier
+import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
+import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -290,8 +290,12 @@ object evaluator extends EvaluationRules {
             evalInOldState(s, lbl, e0, pve, v)(Q)}
 
       case ast.Let(x, e0, e1) =>
-        eval(s, e0, pve, v)((s1, t0, v1) =>
-          eval(s1.copy(g = s1.g + (x.localVar, t0)), e1, pve, v1)(Q))
+        eval(s, e0, pve, v)((s1, t0, v1) => {
+          val t = v1.decider.appliedFresh("letvar", v1.symbolConverter.toSort(x.typ), s1.relevantQuantifiedVariables)
+          v1.decider.assume(t === t0)
+          val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t.applicable.asInstanceOf[Function])
+          eval(s1.copy(g = s1.g + (x.localVar, t0), functionRecorder = newFuncRec), e1, pve, v1)(Q)
+        })
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
@@ -642,9 +646,25 @@ object evaluator extends EvaluationRules {
             (exists, Exists, exists.triggers)
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
-        val quantWeight = sourceQuant.info match {
-          case w: WeightedQuantifier => Some(w.weight)
-          case _ => None
+        val quantWeight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
+          case Some(w) =>
+            if (w.weight >= 0) {
+              Some(w.weight)
+            } else {
+              v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${w}"))
+              None
+            }
+          case None => sourceQuant.info.getUniqueInfo[AnnotationInfo] match {
+            case Some(ai) if ai.values.contains("weight") =>
+              ai.values("weight") match {
+                case Seq(w) if w.toIntOption.exists(w => w >= 0) =>
+                  Some(w.toInt)
+                case s =>
+                  v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${s}"))
+                  None
+              }
+            case _ => None
+          }
         }
 
         val body = eQuant.exp
@@ -1345,8 +1365,8 @@ object evaluator extends EvaluationRules {
         Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
         for (e <- remainingTriggerExpressions)
-          v.reporter.report(WarningsDuringTypechecking(Seq(
-            TypecheckerWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
+          v.reporter.report(WarningsDuringVerification(Seq(
+            VerifierWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
         Q(s, cachedTriggerTerms, v)
     }
   }
@@ -1396,13 +1416,15 @@ object evaluator extends EvaluationRules {
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
       case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
-        val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
+        val (axioms, trigs, _, smDef) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
+        smDefs = smDefs ++ smDef
       case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) =>
-        val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
+        val (axioms, trigs, _, smDef) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
+        smDefs = smDefs ++ smDef
       case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
         triggers = triggers ++ t
         Success()
@@ -1482,7 +1504,11 @@ object evaluator extends EvaluationRules {
   }
 
   /* TODO: Try to unify with generateFieldTrigger above, or at least with generateWandTrigger below */
-  private def generatePredicateTrigger(pa: ast.PredicateAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
+  private def generatePredicateTrigger(pa: ast.PredicateAccess,
+                                       s: State,
+                                       pve: PartialVerificationError,
+                                       v: Verifier)
+                                      : (Seq[Term], Seq[Term], PredicateTrigger, Seq[SnapshotMapDefinition]) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
@@ -1504,11 +1530,15 @@ object evaluator extends EvaluationRules {
       Success()
     })
 
-    (axioms, triggers, mostRecentTrig)
+    (axioms, triggers, mostRecentTrig, Seq(smDef1))
   }
 
   /* TODO: See comments for generatePredicateTrigger above */
-  private def generateWandTrigger(wand: ast.MagicWand, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
+  private def generateWandTrigger(wand: ast.MagicWand,
+                                  s: State,
+                                  pve: PartialVerificationError,
+                                  v: Verifier)
+                                 : (Seq[Term], Seq[Term], PredicateTrigger, Seq[SnapshotMapDefinition]) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
@@ -1532,7 +1562,7 @@ object evaluator extends EvaluationRules {
       Success()
     })
 
-    (axioms, triggers, mostRecentTrig)
+    (axioms, triggers, mostRecentTrig, Seq(smDef1))
   }
 
   /* Evaluate a sequence of expressions in Order

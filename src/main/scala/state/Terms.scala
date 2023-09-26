@@ -2479,7 +2479,7 @@ object Let extends CondFlyweightTermFactory[(Map[Var, Term], Term), Let] {
   def apply(v: Var, t: Term, body: Term): Term = apply(Map(v -> t), body)
   def apply(vs: Seq[Var], ts: Seq[Term], body: Term): Term = apply(toMap(vs zip ts), body)
 
-  override def apply(v0: (Map[Var, Term], Term)) = {
+  override def apply(v0: (Map[Var, Term], Term)): Term = {
     val (bindings, body) = v0
     if (bindings.isEmpty) body
     else createIfNonExistent(v0)

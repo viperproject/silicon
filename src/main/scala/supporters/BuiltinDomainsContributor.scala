@@ -17,7 +17,6 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
-import viper.silver.ast.LineCol
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
@@ -194,23 +193,14 @@ private object utils {
       }
 
     val fp = new viper.silver.parser.FastParser()
-    val lc = new LineCol(fp)
-    fp.parse(content, fromPath) match {
-      case fastparse.Parsed.Success(parsedProgram: viper.silver.parser.PProgram, _) =>
-        assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
+    val parsedProgram = fp.parse(content, fromPath)
+    assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
 
-        val resolver = viper.silver.parser.Resolver(parsedProgram)
-        val resolved = resolver.run.get
-        val translator = viper.silver.parser.Translator(resolved)
-        val program = translator.translate.get
+    val resolver = viper.silver.parser.Resolver(parsedProgram)
+    val resolved = resolver.run.get
+    val translator = viper.silver.parser.Translator(resolved)
+    val program = translator.translate.get
 
-        program
-
-      case fastparse.Parsed.Failure(msg, index, _) =>
-        val (line, col) = lc.getPos(index)
-        sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, line, col)}")
-        //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
-        //? sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, pos(0), pos(1))}")
-    }
+    program
   }
 }

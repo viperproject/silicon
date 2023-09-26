@@ -431,6 +431,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  lazy val outputProverLog: Boolean = {
+    enableTempDirectory.isSupplied || rawProverLogFile.isSupplied || rawZ3LogFile.isSupplied
+  }
+
   private val rawZ3Exe = opt[String]("z3Exe",
     descr = (s"Z3 executable. The environment variable ${Z3ProverStdIO.exeEnvironmentalVariable}"
              + " can also be used to specify the path of the executable."),
@@ -810,19 +814,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   validateOpt(counterexample, moreCompleteExhale, exhaleModeOption) {
     case (Some(_), Some(false), None) |
-         (Some(_), Some(_), Some(ExhaleMode.Greedy)) |
-         (Some(_), Some(_), Some(ExhaleMode.MoreCompleteOnDemand)) =>
+         (Some(_), Some(_), Some(ExhaleMode.Greedy)) =>
       Left(s"Option ${counterexample.name} requires setting "
         + s"${exhaleModeOption.name} to 1 (more complete exhale)")
     case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
       Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
     case _ => Right(())
-  }
-
-  validateOpt(assertionMode, parallelizeBranches) {
-    case (Some(AssertionMode.SoftConstraints), Some(true)) =>
-      Left(s"Assertion mode SoftConstraints is not supported in combination with ${parallelizeBranches.name}")
-    case _ => Right()
   }
 
   validateFileOpt(logConfig)
