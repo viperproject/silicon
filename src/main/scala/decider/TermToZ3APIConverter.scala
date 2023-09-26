@@ -483,7 +483,10 @@ class TermToZ3APIConverter
       // could be any Z3 internal functions that exist for those custom sorts. For the Real (i.e., Perm) sort, however,
       // such functions exist. So we re-declare *only* this sort.
       val decls = declPreamble + args.zipWithIndex.map { case (a, i) => s"(declare-const workaround${i} ${smtlibConverter.convert(a.sort)})" }.mkString(" ")
-      val funcAppString = s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
+      val funcAppString = if (args.nonEmpty)
+        s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
+      else
+        functionName
       val assertion = decls + s" (assert (= ${funcAppString} ${funcAppString}))"
       val workaround = ctx.parseSMTLIB2String(assertion, null, null, null, null)
       val app = workaround(0).getArgs()(0)

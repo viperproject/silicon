@@ -263,7 +263,7 @@ class Z3ProverAPI(uniqueId: String,
           case t => triggerGenerator.isForbiddenInTrigger(t)
         }.nonEmpty))
         q.copy(triggers = goodTriggers)
-    }({t => true})
+    }(_ => true)
     cleanTerm
   }
 
