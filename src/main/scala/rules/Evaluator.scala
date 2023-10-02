@@ -68,34 +68,32 @@ object evaluator extends EvaluationRules {
            (Q: (State, List[Term], Verifier) => VerificationResult)
            : VerificationResult =
 
-    evals2(s, es, Nil, pvef, v)(Q)
+    evals2(s, es, pvef, v)(Q)
 
-  private def evals2(s: State, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, v: Verifier)
+  private def evals2(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier)
                     (Q: (State, List[Term], Verifier) => VerificationResult)
                     : VerificationResult = {
 
-    if (es.isEmpty)
-      Q(s, ts.reverse, v)
-    else
-      eval(s, es.head, pvef(es.head), v)((s1, t, v1) =>
-        evals2(s1, es.tail, t :: ts, pvef, v1)(Q))
+
+    val (s1: State, ts1: List[Term], v1: Verifier) = es.fold((s, Nil, v))((sofar: (State, List[Term], Verifier), e: ast.Exp) => {
+      val (s_sofar: State, ts_sofar: List[Term], v_sofar: Verifier) = sofar
+      val (s_new: State, t: Term, v_new: Verifier) = eval(s_sofar, e, pvef(e), v_sofar)
+      (s_new, t :: ts_sofar, v_new)
+    })
+    Q(s1, ts1.reverse, v1)
   }
 
   /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   @inline
-  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-          (Q: (State, Term, Verifier) => VerificationResult)
-          : VerificationResult = {
+  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier) : (State, Term, Verifier) = {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
-    eval3(s, e, pve, v)((s1, t, v1) => {
-      v1.symbExLog.closeScope(sepIdentifier)
-      Q(s1, t, v1)})
+    val (s1, t1, v1) = eval3(s, e, pve, v)
+    v1.symbExLog.closeScope(sepIdentifier)
+    (s1, t1, v1)
   }
 
-  def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-           (Q: (State, Term, Verifier) => VerificationResult)
-           : VerificationResult = {
+  def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier) : (State, Term, Verifier) = {
 
 
     /* For debugging only */
