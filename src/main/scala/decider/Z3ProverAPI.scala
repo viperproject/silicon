@@ -9,19 +9,17 @@ package viper.silicon.decider
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
-import viper.silicon.state.{IdentifierFactory, State}
-import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, Ite, MacroDecl, Quantification, Sort, SortDecl, SortWrapperDecl, Term, Trigger, TriggerGenerator, sorts}
+import viper.silicon.state.IdentifierFactory
+import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Not, Quantification, Sort, SortDecl, SortWrapperDecl, Term, TriggerGenerator, Var, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
 
-import java.io.PrintWriter
 import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
-import viper.silicon.decider.Z3ProverAPI.oldVersionOnlyParams
 import viper.silicon.reporting.ExternalToolError
 
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -64,7 +62,6 @@ object Z3ProverAPI {
     "smt.qi.eager_threshold" -> 100.0,
   )
   val allParams = boolParams ++ intParams ++ stringParams ++ doubleParams
-  val oldVersionOnlyParams = Set("smt.arith.solver")
 }
 
 
@@ -122,26 +119,21 @@ class Z3ProverAPI(uniqueId: String,
         s
     }
 
-    val useOldVersionParams = version() <= Version("4.8.7.0")
     Z3ProverAPI.boolParams.foreach{
       case (k, v) =>
-        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
-          params.add(removeSmtPrefix(k), v)
+        params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.intParams.foreach{
       case (k, v) =>
-        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
-          params.add(removeSmtPrefix(k), v)
+        params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.doubleParams.foreach{
       case (k, v) =>
-        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
-          params.add(removeSmtPrefix(k), v)
+        params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.stringParams.foreach{
       case (k, v) =>
-        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
-          params.add(removeSmtPrefix(k), v)
+        params.add(removeSmtPrefix(k), v)
     }
     val userProvidedArgs = Verifier.config.proverConfigArgs
     prover = ctx.mkSolver()
@@ -256,17 +248,23 @@ class Z3ProverAPI(uniqueId: String,
         // When used via API, Z3 completely discards assumptions that contain invalid triggers (whereas it just ignores
         // the invalid trigger when used via stdio). Thus, to make sure our assumption is not discarded, we manually
         // walk through all quantifiers and remove invalid terms inside the trigger.
-        triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
-        val cleanTerm = term.transform{
-          case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
-            val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect{
-              case t => triggerGenerator.isForbiddenInTrigger(t)
-            }.nonEmpty))
-            q.copy(triggers = goodTriggers)
-        }()
+        val cleanTerm = cleanTriggers(term)
         prover.add(termConverter.convert(cleanTerm).asInstanceOf[BoolExpr])
         reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
     }
+  }
+
+  def cleanTriggers(term: Term): Term = {
+    triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
+    val cleanTerm = term.transform {
+      case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
+        val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn =>
+          ptrn.isInstanceOf[Var] || ptrn.shallowCollect {
+          case t => triggerGenerator.isForbiddenInTrigger(t)
+        }.nonEmpty))
+        q.copy(triggers = goodTriggers)
+    }(_ => true)
+    cleanTerm
   }
 
   def assert(goal: Term, timeout: Option[Int]): Boolean = {
@@ -279,7 +277,14 @@ class Z3ProverAPI(uniqueId: String,
       }
       result
     } catch {
-      case e: Z3Exception => throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
+      case e: Z3Exception => {
+        val cleanGoal = cleanTriggers(goal)
+        if (cleanGoal == goal) {
+          throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
+        } else {
+          assert(cleanGoal, timeout)
+        }
+      }
     }
   }
 
@@ -342,7 +347,7 @@ class Z3ProverAPI(uniqueId: String,
 
     val guard = fresh("grd", Nil, sorts.Bool)
     val guardApp = App(guard, Nil)
-    val goalImplication = Implies(guardApp, goal)
+    val goalImplication = Implies(guardApp, Not(goal))
 
     prover.add(termConverter.convertTerm(goalImplication).asInstanceOf[BoolExpr])
 

@@ -12,9 +12,9 @@ import viper.silicon.common.collections.immutable.MultiMap._
 import viper.silicon.toMap
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.state.{SymbolConverter, terms}
+import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
-import viper.silver.ast.{NamedDomainAxiom}
+import viper.silver.ast.NamedDomainAxiom
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]
@@ -100,7 +100,8 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
       domain.axioms foreach (axiom => {
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
-        collectedAxioms += tAx
+        val tAxPres = FunctionPreconditionTransformer.transform(tAx, program, false)
+        collectedAxioms += terms.And(tAxPres, tAx)
       })
     })
   }

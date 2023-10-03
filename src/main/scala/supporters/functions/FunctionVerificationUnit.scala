@@ -178,7 +178,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiomForMethodVerification.toSeq
 
           if (function.body.isEmpty) {
-
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
