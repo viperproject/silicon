@@ -1416,13 +1416,15 @@ object evaluator extends EvaluationRules {
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
       case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
-        val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
+        val (axioms, trigs, _, smDef) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
+        smDefs = smDefs ++ smDef
       case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) =>
-        val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
+        val (axioms, trigs, _, smDef) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
+        smDefs = smDefs ++ smDef
       case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
         triggers = triggers ++ t
         Success()
@@ -1502,7 +1504,11 @@ object evaluator extends EvaluationRules {
   }
 
   /* TODO: Try to unify with generateFieldTrigger above, or at least with generateWandTrigger below */
-  private def generatePredicateTrigger(pa: ast.PredicateAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
+  private def generatePredicateTrigger(pa: ast.PredicateAccess,
+                                       s: State,
+                                       pve: PartialVerificationError,
+                                       v: Verifier)
+                                      : (Seq[Term], Seq[Term], PredicateTrigger, Seq[SnapshotMapDefinition]) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
@@ -1524,11 +1530,15 @@ object evaluator extends EvaluationRules {
       Success()
     })
 
-    (axioms, triggers, mostRecentTrig)
+    (axioms, triggers, mostRecentTrig, Seq(smDef1))
   }
 
   /* TODO: See comments for generatePredicateTrigger above */
-  private def generateWandTrigger(wand: ast.MagicWand, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
+  private def generateWandTrigger(wand: ast.MagicWand,
+                                  s: State,
+                                  pve: PartialVerificationError,
+                                  v: Verifier)
+                                 : (Seq[Term], Seq[Term], PredicateTrigger, Seq[SnapshotMapDefinition]) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
@@ -1552,7 +1562,7 @@ object evaluator extends EvaluationRules {
       Success()
     })
 
-    (axioms, triggers, mostRecentTrig)
+    (axioms, triggers, mostRecentTrig, Seq(smDef1))
   }
 
   /* Evaluate a sequence of expressions in Order
