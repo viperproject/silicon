@@ -160,6 +160,34 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     }
   }
 
+  def lookupCompleteFromQuantified(s: State,
+                                   relevantChunks: Seq[NonQuantifiedChunk],
+                                   resource: ast.Resource,
+                                   args: Seq[Term],
+                                   ve: VerificationError,
+                                   v: Verifier)
+                                  (Q: (State, Term, Verifier) => VerificationResult)
+  : VerificationResult = {
+    executionFlowController.tryOrFail1[Term](s, v)((s1, v1, QS) => {
+      if (relevantChunks.isEmpty) {
+        if (v1.decider.checkSmoke(true)) {
+          Success() // TODO: Mark branch as dead?
+        } else {
+          createFailure(ve, v1, s1)
+        }
+      } else {
+        summarise(s1, relevantChunks, resource, args, v1)((s2, snap, _, permSum, v2) =>
+          v2.decider.assert(IsPositive(permSum)) {
+            case true =>
+              QS(s2, snap, v2)
+            case false =>
+              createFailure(ve, v2, s2)
+          })
+      }
+    })(Q)
+
+  }
+
   def consumeComplete(s: State,
                       h: Heap,
                       resource: ast.Resource,

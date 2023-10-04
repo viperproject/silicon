@@ -239,6 +239,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       None,
       Some(conditionalizedPermissions),
       Some(arguments),
+      Some(permissions),
       hints,
       program)
   }
@@ -288,7 +289,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         conditionalizedPermissions,
         Some(inverseFunctions),
         Some(conditionalizedPermissions),
-        None,
+        None, None,
         hints,
         program)
 
@@ -327,6 +328,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      optInverseFunctions: Option[InverseFunctions],
                                      optInitialCond: Option[Term],
                                      optSingletonArguments: Option[Seq[Term]],
+                                     optSingletonPerm: Option[Term],
                                      hints: Seq[Term],
                                      program: ast.Program)
                                     : QuantifiedBasicChunk = {
@@ -343,6 +345,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optInverseFunctions,
           optInitialCond,
           optSingletonArguments.map(_.head),
+          optSingletonPerm,
           hints)
 
       case predicate: ast.Predicate =>
@@ -354,6 +357,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optInverseFunctions,
           optInitialCond,
           optSingletonArguments,
+          optSingletonPerm,
           hints)
 
       case wand: ast.MagicWand =>
@@ -365,6 +369,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optInverseFunctions,
           optInitialCond,
           optSingletonArguments,
+          optSingletonPerm,
           hints)
 
       case other =>
@@ -1136,6 +1141,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     relevantChunks,
                     formalQVars,
                     And(condOfInvOfLoc, And(imagesOfFormalQVars)),
+                    None,
                     resource,
                     rPerm,
                     chunkOrderHeuristics,
@@ -1182,6 +1188,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   relevantChunks,
                   formalQVars,
                   And(condOfInvOfLoc, And(imagesOfFormalQVars)),
+                  None,
                   resource,
                   lossOfInvOfLoc,
                   chunkOrderHeuristics,
@@ -1249,6 +1256,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           relevantChunks,
           codomainQVars,
           And(codomainQVars.zip(arguments).map { case (r, e) => r === e }),
+          Some(arguments),
           resource,
           rPerm,
           chunkOrderHeuristics,
@@ -1270,7 +1278,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         }
         val consumedChunk =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            codomainQVars, resource, arguments, permsTaken, smDef1.sm, s.program)
+            codomainQVars, resource, arguments, permsTaken.replace(codomainQVars, arguments), smDef1.sm, s.program)
         val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
                          smCache = smCache1)
         (result, s3, h2, Some(consumedChunk))
@@ -1292,6 +1300,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         relevantChunks,
         codomainQVars,
         And(codomainQVars.zip(arguments).map { case (r, e) => r === e }),
+        Some(arguments),
         resource,
         permissions,
         chunkOrderHeuristics,
@@ -1329,6 +1338,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         relevantChunks: Seq[QuantifiedBasicChunk],
                         codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                         condition: Term, // c(rs)
+                        singletonArgs: Option[Seq[Term]],
                         resource: ast.Resource, // field f: e_1(rs).f; or predicate P: P(es); or magic wand
                         perms: Term, // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
@@ -1358,19 +1368,30 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val additionalArgs = s.relevantQuantifiedVariables
     var currentFunctionRecorder = s.functionRecorder
 
-    val precomputedData = candidates map { ch =>
+    val precomputedData = candidates.to(LazyList) map { ch =>
+
       // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
       // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
       // that already exists.
       // ME: Update: Actually, it seems better to use macros even with the API since Silicon terms can grow so large
       // that e.g. the instantiate call in createPermissionConstraintAndDepletedCheck takes forever, before even
       // converting to a Z3 term.
-      // During function verification, we should not define macros, since they could contain resullt, which is not
+      // During function verification, we should not define macros, since they could contain result, which is not
       // defined elsewhere.
-      val declareMacro = s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
+      val declareMacro = false // s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
 
       val permsProvided = ch.perm
-      val permsTaken = if (declareMacro) {
+      val permsTaken = if (singletonArgs.isDefined && ch.singletonArguments.isDefined) {
+        val actualCondition = And(ch.singletonArguments.get.zip(singletonArgs.get).map { case (r, e) => r === e })
+        val res = Ite(actualCondition, PermMin(ch.singletonPerm.get, permsNeeded), NoPerm)
+        val otherother = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
+        val other = otherother.replace(ch.quantifiedVars, ch.singletonArguments.get)
+        //println(res)
+        //println(other)
+        //println(otherother)
+        val outerCond = And(ch.singletonArguments.get.zip(ch.quantifiedVars).map { case (r, e) => r === e })
+        Ite(outerCond, res, NoPerm)
+      } else if (declareMacro) {
         val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
         val permsTakenArgs = codomainQVars ++ additionalArgs
         val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
@@ -1393,6 +1414,50 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
 
+
+    var i = 0
+    while (!success.isComplete && i < candidates.size) {
+      val (ithChunk: QuantifiedBasicChunk, ithPTaken: Term, ithPNeeded: Term) = precomputedData(i)
+
+      val (permissionConstraint, depletedCheck) =
+        createPermissionConstraintAndDepletedCheck(
+          codomainQVars, condition, singletonArgs, perms, constrainPermissions, ithChunk, ithPTaken, v)
+
+      if (constrainPermissions) {
+        v.decider.prover.comment(s"Constrain original permissions $perms")
+        v.decider.assume(permissionConstraint)
+
+        remainingChunks =
+          remainingChunks :+ ithChunk.subtractPerm(ithPTaken) //withPerm(PermMinus(ithChunk.perm, ithPTaken))
+      } else {
+        v.decider.prover.comment(s"Chunk depleted?")
+        val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
+
+        if (!chunkDepleted) {
+          remainingChunks =
+            remainingChunks :+ ithChunk.subtractPerm(ithPTaken) //withPerm(PermMinus(ithChunk.perm, ithPTaken))
+        }
+      }
+
+      /* The success-check inside this loop is done with a (short) timeout.
+       * Outside of the loop, the last success-check (potentially) needs to be
+       * re-done, but without a timeout. In order to make this possible,
+       * the assertion to check is recorded by tookEnoughCheck.
+       */
+      tookEnoughCheck =
+        Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm), Nil)
+
+      v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
+      success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
+        Complete()
+      } else {
+        Incomplete(ithPNeeded)
+      }
+
+      i += 1
+    }
+    remainingChunks = remainingChunks ++ candidates.drop(i)
+    /*
     precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
       if (success.isComplete)
         remainingChunks = remainingChunks :+ ithChunk
@@ -1432,7 +1497,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           Incomplete(ithPNeeded)
         }
       }
-    }
+    }*/
 
     v.decider.prover.comment("Final check if taken enough permissions")
     success =
@@ -1449,12 +1514,21 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   private def createPermissionConstraintAndDepletedCheck(codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                                                          condition: Term, // c(rs)
+                                                         singletonArgs: Option[Seq[Term]],
                                                          perms: Term, // p(rs)
                                                          constrainPermissions: Boolean,
                                                          ithChunk: QuantifiedBasicChunk,
                                                          ithPTaken: Term,
                                                          v: Verifier)
                                                         : (Term, Term) = {
+    if (false && singletonArgs.isDefined && ithChunk.singletonArguments.isDefined) {
+      val actualCondition = And(singletonArgs.get.zip(ithChunk.singletonArguments.get).map { case (r, e) => r === e })
+      val condPerms = Ite(actualCondition, perms, NoPerm)
+      val chunkPerm = ithChunk.singletonPerm.get
+      val permConstraint = if (!constrainPermissions) True else Implies(chunkPerm !== NoPerm, PermLess(condPerms, chunkPerm))
+      val depletedCheck = PermMinus(chunkPerm, ithPTaken) === NoPerm
+      return (permConstraint, depletedCheck)
+    }
 
     val conditionalizedPerms =
       Ite(condition, perms, NoPerm) // c(rs) ? p(rs) : none

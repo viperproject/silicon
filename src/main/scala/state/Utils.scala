@@ -134,7 +134,9 @@ package object utils {
          * assertions.
          */
         assert(t0New.sort == t0.sort, s"Unexpected sort change: from ${t0.sort} to ${t0New.sort}")
-        BuiltinEquals(t0New, t1New)
+        // ME: We need to make sure we still use BuiltinEquals here in case we're transforming the sequence/set/...
+        // axiomatization, but we'd still like to simplify if possible.
+        SimplifyingBuiltinEquals(t0New, t1New)
       case CustomEquals(t0, t1) =>
         val t0New = go(t0)
         val t1New = go(t1)
@@ -145,7 +147,7 @@ package object utils {
          * arguments, either a built-in or a custom equality.
          */
         assert(t0New.sort == t0.sort, s"Unexpected sort change: from ${t0.sort} to ${t0New.sort}")
-        CustomEquals(t0New, t1New)
+        Equals(t0New, t1New)
       case Less(t0, t1) => Less(go(t0), go(t1))
       case AtMost(t0, t1) => AtMost(go(t0), go(t1))
       case Greater(t0, t1) => Greater(go(t0), go(t1))

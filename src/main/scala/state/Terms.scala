@@ -11,9 +11,11 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.state.terms.BuiltinEquals.createIfNonExistent
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
+
 import scala.collection.concurrent.TrieMap
 
 sealed trait Node {
@@ -1091,6 +1093,20 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Conditio
 
 object BuiltinEquals extends CondFlyweightFactory[(Term, Term), BooleanTerm, BuiltinEquals] {
   override def apply(v0: (Term, Term)) = v0 match {
+    case (p0: PermLiteral, p1: PermLiteral) =>
+      // NOTE: The else-case (False) is only justified because permission literals are stored in a normal form
+      // such that two literals are semantically equivalent iff they are syntactically equivalent.
+      if (p0.literal == p1.literal) True else False
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term)): BuiltinEquals = new BuiltinEquals(args._1, args._2)
+}
+
+object SimplifyingBuiltinEquals extends CondFlyweightFactory[(Term, Term), BooleanTerm, BuiltinEquals] {
+  override def apply(v0: (Term, Term)) = v0 match {
+    case (e0, e1) if e0 == e1 => True
+    case (l1: Literal, l2: Literal) => BooleanLiteral(l1 == l2)
     case (p0: PermLiteral, p1: PermLiteral) =>
       // NOTE: The else-case (False) is only justified because permission literals are stored in a normal form
       // such that two literals are semantically equivalent iff they are syntactically equivalent.

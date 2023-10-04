@@ -193,6 +193,15 @@ object evaluator extends EvaluationRules {
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(fa.field.name))
           s1.smCache.get((fa.field, relevantChunks)) match {
+            case _ if !s.heapDependentTriggers.contains(fa.field) && relevantChunks.forall(ch => ch.singletonRcvr.isDefined) =>
+              val resource = fa.res(s.program)
+              val ve = pve dueTo InsufficientPermission(fa)
+              val adaptedChunks = relevantChunks.map(SingletonQuantifiedChunk(_))
+              moreCompleteExhaleSupporter.lookupCompleteFromQuantified(s1, adaptedChunks, resource, Seq(tRcvr), ve, v1)((s2, tSnap, v2) => {
+                val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
+                val s3 = s2.copy(functionRecorder = fr)
+                Q(s3, tSnap, v2)
+              })
             case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) if !Verifier.config.disableValueMapCaching() =>
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
