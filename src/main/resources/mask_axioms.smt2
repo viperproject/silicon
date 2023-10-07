@@ -76,6 +76,14 @@
     :qid |qp.$Hp.maskAdd-def|
     )))
 
+(assert (forall ((m $Hp<$Perm>) (r1 $Ref) (v Real)) (!
+        (=
+          ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r1)
+          (+ ($Hp.get_$Perm m r1) v))
+    :pattern (($Hp.maskAdd m r1 v))
+    :qid |qp.$Hp.maskAdd-def|
+    )))
+
 (assert (forall ((m $Hp<$Perm>)) (!
   (=> ($Hp.maskGood m)
   (forall ((r2 $Ref)) (!

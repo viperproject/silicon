@@ -43,6 +43,8 @@ trait Decider {
   def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit
   def assume(ts: Iterable[Term]): Unit
 
+  def getTriggerGenerator(): TriggerGenerator
+
   def check(t: Term, timeout: Int): Boolean
 
   /* TODO: Consider changing assert such that
@@ -102,6 +104,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def prover: Prover = _prover
 
     def pcs: PathConditionStack = pathConditions
+
+    override def getTriggerGenerator(): TriggerGenerator = triggerGenerator
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */

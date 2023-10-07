@@ -9,15 +9,26 @@
 
 (assert (forall ((m1 $Hp<$T$>) (r1 $Ref) (v $S$)) (!
       (forall ((r2 $Ref)) (!
+            (implies (not (= r1 r2))
             (=
               ($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r2)
-              (ite (= r1 r2) v ($Hp.get_$T$ m1 r2)))
+              ($Hp.get_$T$ m1 r2)))
           :pattern (($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r2))
           :qid |qp.$Hp.update_$T$-def-inner|
           ))
     :pattern (($Hp.update_$T$ m1 r1 v))
     :qid |qp.$Hp.update_$T$-def|
     )))
+
+
+(assert (forall ((m1 $Hp<$T$>) (r1 $Ref) (v $S$)) (!
+            (=
+              ($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r1)
+              v)
+    :pattern (($Hp.update_$T$ m1 r1 v))
+    :qid |qp.$Hp.update_$T$-def|
+    )))
+
 
 (assert (forall ((r1 $Ref) (v $S$)) (!
       (=

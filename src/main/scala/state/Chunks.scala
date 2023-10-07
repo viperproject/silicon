@@ -6,15 +6,43 @@
 
 package viper.silicon.state
 
+import viper.silicon.decider.Decider
 import viper.silver.ast
 import viper.silicon.interfaces.state._
 import viper.silicon.resources._
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.supporters.functions.FunctionRecorder
+import viper.silicon.verifier.Verifier
 
 
-case class BasicMaskHeapChunk(resourceID: ResourceID, resource: Any, mask: Term, heap: Term) extends MaskHeapChunk
+case class BasicMaskHeapChunk private[state] (resourceID: ResourceID, resource: Any, mask: Term, heap: Term) extends MaskHeapChunk {
+  def copy(heap: Term): BasicMaskHeapChunk = new BasicMaskHeapChunk(resourceID, resource, mask, heap)
+  def copy(newMask: Term, d: Decider, fr: FunctionRecorder, newHeap: Term = heap): (BasicMaskHeapChunk, FunctionRecorder) = {
+    BasicMaskHeapChunk(resourceID, resource, newMask, newHeap, d, fr)
+  }
+}
+
+object BasicMaskHeapChunk {
+  def apply(resourceID: ResourceID, resource: Any, mask: Term, heap: Term, d: Decider, fr: FunctionRecorder): (BasicMaskHeapChunk, FunctionRecorder) = {
+    // Attempting to keep the mask term in a form that can be used in triggers
+    var newFr = fr
+    val cleanMask = mask.transform{
+      case t if d.getTriggerGenerator().isForbiddenInTrigger(t) =>
+        val newVar = d.fresh(t.sort)
+        val constraint = newVar === t
+        newFr = newFr.recordArp(newVar, constraint)
+        d.assume(constraint)
+        newVar
+    }()
+    (new BasicMaskHeapChunk(resourceID, resource, cleanMask, heap), newFr)
+  }
+  private def apply(resourceID: ResourceID, resource: Any, mask: Term, heap: Term): BasicMaskHeapChunk = {
+    new BasicMaskHeapChunk(resourceID, resource, mask, heap)
+  }
+}
+
 
 object ChunkIdentifier {
   def apply(from: ast.Resource, program: ast.Program): ChunkIdentifer = {

@@ -187,8 +187,8 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
 
             val bodyHeap = if (Verifier.config.maskHeapMode()) {
-              val fieldChunks = s.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
-              val predChunks = s.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
+              val fieldChunks = s.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ))), v.decider, null)._1)
+              val predChunks = s.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort), v.decider, null)._1)
               Heap(fieldChunks ++ predChunks)
             } else {
               Heap()
@@ -398,16 +398,18 @@ object executor extends ExecutionRules {
         val tRcvr = v.decider.fresh(x)
         v.decider.assume(tRcvr !== Null)
         var heap = s.h
+        var newFr = s.functionRecorder
         for (field <- fields) {
           // assume currently none
           val fieldChunk = maskHeapSupporter.findMaskHeapChunk(heap, field)
           v.decider.assume(HeapLookup(fieldChunk.mask, tRcvr) === NoPerm)
           // add one
-          val newFieldChunk = fieldChunk.copy(mask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm))
+          val (newFieldChunk, newNewFr) = fieldChunk.copy(newMask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm), v.decider, newFr)
+          newFr = newNewFr
           heap = heap - fieldChunk + newFieldChunk
         }
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
-        val s1 = s.copy(g = s.g + (x, tRcvr), h = heap)
+        val s1 = s.copy(g = s.g + (x, tRcvr), h = heap, functionRecorder = newFr)
         v.decider.assume(ts)
         Q(s1, v)
 
@@ -587,14 +589,14 @@ object executor extends ExecutionRules {
 
             if (Verifier.config.maskHeapMode()) {
               val mwi = MagicWandIdentifier(wand, s1.program)
-              val hOps = maskHeapSupporter.findMaskHeapChunkOptionally(s1.reserveHeaps.head, mwi) match {
-                case None => s1.reserveHeaps.head + chWand
+              val (newFr, hOps) = maskHeapSupporter.findMaskHeapChunkOptionally(s1.reserveHeaps.head, mwi) match {
+                case None => (s1.functionRecorder, s1.reserveHeaps.head + chWand)
                 case Some(curChunk) =>
                   val newChunk = chWand.asInstanceOf[BasicMaskHeapChunk]
                   val mergedMask = MaskSum(curChunk.mask, newChunk.mask)
                   val mergedHeap = MergeHeaps(curChunk.heap, curChunk.mask, newChunk.heap, newChunk.mask)
-                  val mergedChunk = curChunk.copy(mask = mergedMask, heap = mergedHeap)
-                  s1.reserveHeaps.head - curChunk + mergedChunk
+                  val (mergedChunk, newFr) = curChunk.copy(newMask = mergedMask, v1.decider, s1.functionRecorder, newHeap = mergedHeap)
+                  (newFr, s1.reserveHeaps.head - curChunk + mergedChunk)
               }
               assert(s.exhaleExt || s1.reserveHeaps.length == 1)
               val s2 =
@@ -608,12 +610,12 @@ object executor extends ExecutionRules {
                      * execution. hUsed should therefore be empty unless the package statement
                      * was triggered by heuristics during a consume operation.
                      */
-                    reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
+                    reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail, functionRecorder = newFr)
                 } else {
                   /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
                   s1.copy(h = hOps,
                     exhaleExt = false,
-                    reserveHeaps = Nil)
+                    reserveHeaps = Nil, functionRecorder = newFr)
                 }
               assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 

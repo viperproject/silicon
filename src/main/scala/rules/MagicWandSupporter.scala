@@ -198,8 +198,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
   def getEmptyHeap(s: State, v: Verifier) = {
     if (Verifier.config.maskHeapMode()) {
-      val fieldChunks = s.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
-      val predChunks = s.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
+      val fieldChunks = s.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ))), v.decider, null)._1)
+      val predChunks = s.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort), v.decider, null)._1)
       Heap(fieldChunks ++ predChunks)
     } else {
       Heap()
@@ -311,8 +311,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val argTerm = toSnapTree(tArgs)
           val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
           val newHeap = HeapSingleton(argTerm, wandSnap, PredHeapSort)
-          val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
-          appendToResults(s5, newChunk, v4.decider.pcs.after(preMark), v4)
+          val (newChunk, newFr) = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap, v4.decider, s5.functionRecorder)
+          appendToResults(s5.copy(functionRecorder = newFr), newChunk, v4.decider.pcs.after(preMark), v4)
           Success()
         })
       } else {

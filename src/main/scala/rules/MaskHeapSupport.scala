@@ -66,7 +66,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       case Some(c: BasicMaskHeapChunk) => (h, c)
       case None =>
         val newHeap = v.decider.fresh("mwHeap", PredHeapSort)
-        val newChunk = BasicMaskHeapChunk(MagicWandID, mwi, PredZeroMask, newHeap)
+        val newChunk = BasicMaskHeapChunk(MagicWandID, mwi, PredZeroMask, newHeap, v.decider, null)._1
         (h + newChunk, newChunk)
     }
   }
@@ -86,7 +86,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
             if (newMask != c1.mask && newMask != c2.mask)
               v.decider.assume(upperBoundAssertion(newMask, v))
           }
-          c1.copy(mask = newMask, heap = newHeap)
+          c1.copy(newMask = newMask, v.decider, null, newHeap = newHeap)._1
         case (Some(c1), None) => c1
         case (None, Some(c2)) => c2
       }
@@ -342,13 +342,13 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
             //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
             val taken = PermMin(maskValue, rPerm)
-            val remainingChunk = resChunk.copy(mask = MaskAdd(resChunk.mask, argTerm, PermNegation(taken)))
-            val consumedChunk = resChunk.copy(mask = MaskAdd(if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask, argTerm, taken))
-
+            val (remainingChunk, fr1) = resChunk.copy(newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(taken)), v.decider, s1.functionRecorder)
+            val (consumedChunk, fr2) = resChunk.copy(newMask = MaskAdd(if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask, argTerm, taken), v.decider, fr1)
+            val s2 = s1.copy(functionRecorder = fr2)
             if (v.decider.check(hasAll, 0)) {
-              (Complete(), s1, h1 - resChunk + remainingChunk, Some(consumedChunk))
+              (Complete(), s2, h1 - resChunk + remainingChunk, Some(consumedChunk))
             } else {
-              (Incomplete(PermMinus(rPerm, taken)), s1, h1 - resChunk + remainingChunk, Some(consumedChunk))
+              (Incomplete(PermMinus(rPerm, taken)), s2, h1 - resChunk + remainingChunk, Some(consumedChunk))
             }
           case true =>
             val remaining = rPerm
@@ -391,13 +391,13 @@ object maskHeapSupporter extends SymbolicExecutionRules {
           if (assumeGoodMask)
             v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
 
-          val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
+          val (newChunk, newFr) = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
             // no need to havoc
-            resChunk.copy(mask = newMask)
+            resChunk.copy(newMask = newMask, v.decider, s.functionRecorder)
           } else {
             val freshHeap = v.decider.fresh("heap", resChunk.heap.sort)
             v.decider.assume(IdenticalOnKnownLocations(resChunk.heap, freshHeap, newMask))
-            resChunk.copy(mask = newMask, heap = freshHeap)
+            resChunk.copy(newMask = newMask, v.decider, s.functionRecorder, newHeap = freshHeap)
           }
 
           //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
@@ -405,7 +405,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
           val newSnapMask = MaskAdd(resMap(resourceToFind), argTerm, snapPermTerm) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
           val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
           // set up partially consumed heap
-          Q(s, h - resChunk + newChunk, snap, v)
+          Q(s.copy(functionRecorder = newFr), h - resChunk + newChunk, snap, v)
         case false =>
           val failure = resourceAccess match {
             case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
@@ -549,8 +549,8 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                 }
 
                 val remainingMask = MaskDiff(currentChunk.mask, qpMask)
-                val consumedChunk = currentChunk.copy(mask = qpMask)
-                val remainingChunk = currentChunk.copy(mask = remainingMask)
+                val (consumedChunk, fr1) = currentChunk.copy(newMask = qpMask, v.decider, newFr)
+                val (remainingChunk, fr2) = currentChunk.copy(newMask = remainingMask, v.decider, fr1)
 
                 val qpMaskGet = HeapLookup(qpMask, argTerm)
 
@@ -567,7 +567,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                 }
 
                  */
-                val s1p = s1.copy(functionRecorder = newFr)
+                val s1p = s1.copy(functionRecorder = fr2)
 
                 if (v.decider.check(allPerms, 0)) {
                   (Complete(), s1p, hp - currentChunk + remainingChunk, Some(consumedChunk))
@@ -629,18 +629,18 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                 if (assumeGoodMask)
                   v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
 
-                val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
+                val (newChunk, newNewFr) = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
                   // no need to havoc
-                  currentChunk.copy(mask = newMask)
+                  currentChunk.copy(newMask = newMask, v.decider, newFr)
                 } else {
                   val freshHeap = v.decider.fresh("heap", currentChunk.heap.sort)
                   v.decider.assume(IdenticalOnKnownLocations(currentChunk.heap, freshHeap, newMask))
-                  currentChunk.copy(mask = newMask, heap = freshHeap)
+                  currentChunk.copy(newMask = newMask, v.decider, newFr, newHeap = freshHeap)
                 }
 
                 // continue
                 val newHeap = hp - currentChunk + newChunk
-                val s2 = s.copy(functionRecorder = newFr, partiallyConsumedHeap = Some(newHeap))
+                val s2 = s.copy(functionRecorder = newNewFr, partiallyConsumedHeap = Some(newHeap))
                 val newSnapMask = MaskSum(resMap(resourceToFind), qpMask)
                 val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
                 Q(s2, newHeap, snap, v)
@@ -675,7 +675,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
     val snapHeapMap = snap.asInstanceOf[FakeMaskMapTerm].masks
 
     val newHeap = MergeSingle(resChunk.heap, resChunk.mask, argTerm, HeapLookup(snapHeapMap(resource), argTerm))
-    val ch = resChunk.copy(mask = newMask, heap = newHeap)
+    val (ch, newFr) = resChunk.copy(newMask = newMask, v.decider, s.functionRecorder, newHeap = newHeap)
     val h1 = s.h - resChunk + ch
 
     val permConstraint = if (resource.isInstanceOf[ast.Field])
@@ -683,7 +683,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
     else True
     v.decider.assume(permConstraint)
 
-    val s1 = s.copy(h = h1)
+    val s1 = s.copy(h = h1, functionRecorder = newFr)
     Q(s1, v)
   }
 
@@ -757,7 +757,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
 
     val newHeap = MergeHeaps(currentChunk.heap, currentChunk.mask, snapHeapMap(resource), qpMask)
-    val newChunk = currentChunk.copy(mask = newMask, heap = newHeap)
+    val (newChunk, fr0) = currentChunk.copy(newMask = newMask, v.decider, s.functionRecorder, newHeap = newHeap)
     val newMaskGet = HeapLookup(newMask, argTerm)
 
 
@@ -843,7 +843,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
             val h1 = hp - currentChunk + newChunk
             v.decider.assume(permBoundConstraint)
-            val newFr = s.functionRecorder.recordFieldInv(inv).recordArp(qpMask, qpMaskConstraint)
+            val newFr = fr0.recordFieldInv(inv).recordArp(qpMask, qpMaskConstraint)
 
             val s1 =
               s.copy(h = h1,

@@ -158,8 +158,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       decider.prover.declare(ConstDecl(data.formalResult))
 
       val heap = if (Verifier.config.maskHeapMode()) {
-        val fieldChunks = sInit.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, DummyHeap(HeapSort(symbolConverter.toSort(f.typ)))))
-        val predChunks = sInit.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, DummyHeap(PredHeapSort)))
+        val fieldChunks = sInit.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, DummyHeap(HeapSort(symbolConverter.toSort(f.typ))), decider, null)._1)
+        val predChunks = sInit.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, DummyHeap(PredHeapSort), decider, null)._1)
         Heap(fieldChunks ++ predChunks)
       } else {
         sInit.h
