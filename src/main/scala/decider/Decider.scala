@@ -40,7 +40,8 @@ trait Decider {
   def setPathConditionMark(): Mark
 
   def assume(t: Term): Unit
-  def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit
+  def assumeDefinition(t: Term): Unit
+  def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
   def assume(ts: Iterable[Term]): Unit
 
   def check(t: Term, timeout: Int): Boolean
@@ -209,23 +210,30 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       assume(InsertionOrderedSet(Seq(t)), false)
     }
 
+    override def assumeDefinition(t: Term): Unit =
+      assume(InsertionOrderedSet(Seq(t)), false, true)
+
     def assume(terms: Iterable[Term]): Unit =
       assume(InsertionOrderedSet(terms), false)
 
-    def assume(terms: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit = {
+    def assume(terms: InsertionOrderedSet[Term], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms)
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms, isDefinition)
     }
 
-    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
+    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], isDefinition: Boolean = false) = {
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
 
       /* Add terms to Silicon-managed path conditions */
-      terms foreach pathConditions.add
+      if (isDefinition) {
+        terms foreach pathConditions.addDefinition
+      } else {
+        terms foreach pathConditions.add
+      }
 
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume
