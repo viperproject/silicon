@@ -311,8 +311,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val argTerm = toSnapTree(tArgs)
           val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
           val newHeap = HeapSingleton(argTerm, wandSnap, PredHeapSort)
+          val definitionalAxiomMark = v4.decider.setPathConditionMark()
           val (newChunk, newFr) = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap, v4.decider, s5.functionRecorder)
-          appendToResults(s5.copy(functionRecorder = newFr), newChunk, v4.decider.pcs.after(preMark), v4)
+          val conservedPcs = if (s5.recordPcs)
+            (s5.conservedPcs.head :+ v4.decider.pcs.after(definitionalAxiomMark)) +: s5.conservedPcs.tail
+          else
+            s5.conservedPcs
+          appendToResults(s5.copy(functionRecorder = newFr, conservedPcs = conservedPcs), newChunk, v4.decider.pcs.after(preMark), v4)
           Success()
         })
       } else {
