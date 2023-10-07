@@ -823,8 +823,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   validateOpt(counterexample, moreCompleteExhale, exhaleModeOption) {
     case (Some(_), Some(false), None) |
-         (Some(_), Some(_), Some(ExhaleMode.Greedy)) |
-         (Some(_), Some(_), Some(ExhaleMode.MoreCompleteOnDemand)) =>
+         (Some(_), Some(_), Some(ExhaleMode.Greedy)) =>
       Left(s"Option ${counterexample.name} requires setting "
         + s"${exhaleModeOption.name} to 1 (more complete exhale)")
     case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
