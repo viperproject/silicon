@@ -2512,6 +2512,8 @@ object utils {
     case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
     case PermPermDiv(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case Ite(_, t0, NoPerm) => consumeExactRead(t0, constrainableARPs)
+    case Ite(_, NoPerm, t1) => consumeExactRead(t1, constrainableARPs)
     case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case _ => true
   }
