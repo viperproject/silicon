@@ -23,6 +23,8 @@
 
 (declare-sort $Ref 0)
 (declare-const $Ref.null $Ref)
+(declare-const $Snap.null $Snap) ; hack
+
 
 ; --- Permissions ---
 

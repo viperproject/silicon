@@ -100,6 +100,7 @@
 
 (assert (forall ((m $Hp<$Perm>)) (!
   (=> ($Hp.maskGoodField m)
+  (and
   (forall ((r2 $Ref)) (!
         (and (>=
           ($Hp.get_$Perm m r2)
@@ -109,7 +110,9 @@
                     1.0))
       :pattern (($Hp.get_$Perm m r2))
       :qid |qp.$Hp.maskGoodField-def-inner|
-      )))
+      ))
+  (= ($Hp.get_$Perm m $Ref.null) 0.0)
+      ))
     :pattern (($Hp.maskGoodField m))
     :qid |qp.$Hp.maskGoodField-def|
     )))

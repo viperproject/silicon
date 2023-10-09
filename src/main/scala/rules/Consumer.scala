@@ -382,10 +382,10 @@ object consumer extends ConsumptionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        assert(!Verifier.config.maskHeapMode())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(wand, s.program).toString
+        val mwi = MagicWandIdentifier(wand, s.program)
+        val qid = mwi.toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -397,10 +397,10 @@ object consumer extends ConsumptionRules {
               maskHeapSupporter.consume(
                 s = s1,
                 h = h,
-                resource = qid,
+                resource = mwi,
                 qvars = qvars,
                 formalQVars = formalVars,
-                qid = qid.toString,
+                qid = qid,
                 optTrigger = optTrigger,
                 tTriggers = tTriggers,
                 auxGlobals = auxGlobals,
