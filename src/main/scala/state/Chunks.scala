@@ -33,7 +33,7 @@ object BasicMaskHeapChunk {
         val newVar = d.fresh(t.sort)
         val constraint = newVar === t
         newFr = newFr.recordArp(newVar, constraint)
-        d.assume(constraint)
+        d.assumeDefinition(constraint)
         newVar
     }()
     (new BasicMaskHeapChunk(resourceID, resource, cleanMask, heap), newFr)
