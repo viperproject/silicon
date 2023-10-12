@@ -42,7 +42,7 @@ method foo() {
         !(q < i.val_int) ||
         idx_into(to_domain(a.val_ref), q) <=
         idx_into(to_domain(a.val_ref), i.val_int)))
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/557/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/387/)
   assert (unfolding acc(usize(i), write) in
       (forall q: Int :: { idx_into(to_domain(a.val_ref), q) }
         !(q < i.val_int) ||
