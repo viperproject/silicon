@@ -178,10 +178,10 @@ private trait LayeredPathConditionStackLike {
     for (layer <- layers) {
       val actualBranchCondition = layer.branchCondition.getOrElse(True)
       val relevantNonGlobals = layer.nonGlobalAssumptions -- ignores
-      val (trueNonGlobals, additionalGlobals) = if (qvars.forall(qv => !actualBranchCondition.contains(qv))) {
+      val (trueNonGlobals, additionalGlobals) = if (!actualBranchCondition.existsDefined{ case t if qvars.contains(t) => }) {
         // The branch condition is independent of all quantified variables
         // Any assumptions that are also independent of all quantified variables can be treated as global assumptions.
-        val (trueNonGlobals, unconditionalGlobals) = relevantNonGlobals.partition(a => qvars.exists(a.contains(_)))
+        val (trueNonGlobals, unconditionalGlobals) = relevantNonGlobals.partition(a => a.existsDefined{ case t if qvars.contains(t) => })
         (trueNonGlobals, unconditionalGlobals.map(Implies(actualBranchCondition, _)))
       } else {
         (relevantNonGlobals, Seq())
