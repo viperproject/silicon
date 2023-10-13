@@ -86,6 +86,8 @@ private class PathConditionStackLayer
   def definitionsOnly(): PathConditionStackLayer = {
     val result = new PathConditionStackLayer
     result._globalAssumptions = _globalDefiningAssumptions
+    result._globalDefiningAssumptions = _globalDefiningAssumptions
+    result._nonGlobalAssumptions = _nonGlobalDefiningAssumptions
     result._nonGlobalDefiningAssumptions = _nonGlobalDefiningAssumptions
     result._declarations = _declarations
     result
