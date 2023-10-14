@@ -130,8 +130,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                pLoss: Term,
                                failure: Failure,
                                v: Verifier)
-                              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
-                              (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
+                              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Heap, Option[CH]))
+                              (Q: (State, Stack[Heap], Heap, Stack[Option[CH]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
     val initialConsumptionResult = ConsumptionResult(pLoss, v, Verifier.config.checkTimeout())
@@ -143,13 +143,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
        *       (significantly) higher to reduce the chances of missing a chunk that can provide
        *       permissions.
        */
-    val initial = (initialConsumptionResult, s, Stack.empty[Heap], Stack.empty[Option[CH]])
-    val (result, s1, heaps, consumedChunks) =
-      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])](initial)((partialResult, heap) =>
+    val initial = (initialConsumptionResult, s, Stack.empty[Heap], Heap(), Stack.empty[Option[CH]])
+    val (result, s1, heaps, actualConsumedChunks, consumedChunks) =
+      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Heap, Stack[Option[CH]])](initial)((partialResult, heap) =>
         partialResult match  {
-          case (r: Complete, sIn, hps, cchs)  => (r, sIn, heap +: hps, None +: cchs)
-          case (Incomplete(permsNeeded), sIn, hps, cchs) =>
-            val (success, sOut, h, cch) = consumeFunction(sIn, heap, permsNeeded, v)
+          case (r: Complete, sIn, hps, ch, cchs)  => (r, sIn, heap +: hps, ch, None +: cchs)
+          case (Incomplete(permsNeeded), sIn, hps, ch, cchs) =>
+            val (success, sOut, h, cHeap, cch) = consumeFunction(sIn, heap, permsNeeded, v)
             val tEq = (cchs.flatten.lastOption, cch) match {
               /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
                * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
@@ -176,16 +176,16 @@ object magicWandSupporter extends SymbolicExecutionRules {
              * consuming from heap.
              */
             if (v.decider.checkSmoke()) {
-              (Complete(), sOut, h +: hps, cch +: cchs)
+              (Complete(), sOut, h +: hps, ch + cHeap, cch +: cchs)
             } else {
-              (success, sOut, h +: hps, cch +: cchs)
+              (success, sOut, h +: hps, ch + cHeap, cch +: cchs)
             }
         })
     result match {
       case Complete() =>
         assert(heaps.length == hs.length)
         assert(consumedChunks.length == hs.length)
-        Q(s1, heaps.reverse, consumedChunks.reverse, v)
+        Q(s1, heaps.reverse, actualConsumedChunks, consumedChunks.reverse, v)
       case Incomplete(_) => failure
     }
   }
@@ -407,7 +407,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                perms: Term,
                failure: Failure,
                v: Verifier)
-              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
+              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Heap, Option[CH]))
               (Q: (State, Option[CH], Verifier) => VerificationResult)
               : VerificationResult = {
     assert(s.recordPcs)
@@ -422,9 +422,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
      * the apply operation.
      */
     val preMark = v.decider.setPathConditionMark()
-    executionFlowController.tryOrFail2[Stack[Heap], Stack[Option[CH]]](s, v)((s1, v1, QS) =>
+    executionFlowController.tryOrFail3[Stack[Heap], Heap, Stack[Option[CH]]](s, v)((s1, v1, QS) =>
       magicWandSupporter.consumeFromMultipleHeaps(s1, s1.reserveHeaps.tail, perms, failure, v1)(consumeFunction)(QS)
-    )((s2, hs2, chs2, v2) => {
+    )((s2, hs2, cHeap, chs2, v2) => {
       val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark)
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 

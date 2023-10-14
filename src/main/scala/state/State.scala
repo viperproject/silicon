@@ -52,6 +52,7 @@ final case class State(g: Store = Store(),
                        triggerExp: Boolean = false,
 
                        partiallyConsumedHeap: Option[Heap] = None,
+                       consumedHeapParts: Option[Heap] = None,
                        permissionScalingFactor: Term = terms.FullPerm,
 
                        reserveHeaps: Stack[Heap] = Nil,
@@ -161,6 +162,7 @@ object State {
                  recordPossibleTriggers1, possibleTriggers1,
                  triggerExp1,
                  partiallyConsumedHeap1,
+                 consumedHeapParts1,
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
@@ -186,6 +188,7 @@ object State {
                      `recordPossibleTriggers1`, possibleTriggers2,
                      triggerExp2,
                      `partiallyConsumedHeap1`,
+                     consumedHeapParts2,
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,

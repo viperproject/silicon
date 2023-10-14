@@ -1022,7 +1022,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
               v: Verifier)
-             (Q: (State, Heap, Term, Verifier) => VerificationResult)
+             (Q: (State, Heap, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
     val (inverseFunctions, imagesOfFormalQVars) =
@@ -1130,7 +1130,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
                     heap, ChunkIdentifier(resource, s.program))
-                val (result, s3, remainingChunks) =
+                val (result, s3, remainingChunks, consumedChunks) =
                   quantifiedChunkSupporter.removePermissions(
                     s2,
                     relevantChunks,
@@ -1170,8 +1170,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 (result, s4, h2, Some(consumedChunk))
               })((s4, optCh, v3) =>
                 optCh match {
-                  case Some(ch) => Q(s4, s4.h, ch.snapshotMap.convert(sorts.Snap), v3)
-                  case _ => Q(s4, s4.h, v3.decider.fresh(sorts.Snap), v3)
+                  case Some(ch) => Q(s4, s4.h, ???, ch.snapshotMap.convert(sorts.Snap), v3)
+                  case _ => Q(s4, s4.h, ???, v3.decider.fresh(sorts.Snap), v3)
                 }
               )
             } else {
@@ -1188,7 +1188,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   v
                 )
               permissionRemovalResult match {
-                case (Complete(), s2, remainingChunks) =>
+                case (Complete(), s2, remainingChunks, consumedChunks) =>
                   val h3 = Heap(remainingChunks ++ otherChunks)
                   val optSmDomainDefinitionCondition2 =
                     if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
@@ -1202,8 +1202,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                    partiallyConsumedHeap = Some(h3),
                                    constrainableARPs = s.constrainableARPs,
                                    smCache = smCache2)
-                  Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
-                case (Incomplete(_), s2, _) =>
+                  Q(s3, h3, Heap(consumedChunks), smDef2.sm.convert(sorts.Snap), v)
+                case (Incomplete(_), s2, _, _) =>
                   createFailure(pve dueTo insufficientPermissionReason, v, s2)}
             }
           case false =>
@@ -1221,7 +1221,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
                             v: Verifier)
-                           (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                           (Q: (State, Heap, Heap, Term, Verifier) => VerificationResult)
                            : VerificationResult = {
 
     val resource = resourceAccess.res(s.program)
@@ -1244,7 +1244,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
-        val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
+        val (result, s2, remainingChunks, consumedChunks) = quantifiedChunkSupporter.removePermissions(
           s1,
           relevantChunks,
           codomainQVars,
@@ -1278,9 +1278,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         optCh match {
           case Some(ch) =>
             val snap = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
-            Q(s4, s4.h, snap, v2)
+            Q(s4, s4.h, ???, snap, v2)
           case _ =>
-            Q(s4, s4.h, v2.decider.fresh(sorts.Snap), v2)
+            Q(s4, s4.h, ???, v2.decider.fresh(sorts.Snap), v2)
         }
       )
     } else {
@@ -1298,7 +1298,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v
       )
       result match {
-        case (Complete(), s1, remainingChunks) =>
+        case (Complete(), s1, remainingChunks, consumedChunks) =>
           val h1 = Heap(remainingChunks ++ otherChunks)
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1312,8 +1312,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
                            smCache = smCache1)
           val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
-          Q(s2, h1, snap, v)
-        case (Incomplete(_), _, _) =>
+          Q(s2, h1, Heap(consumedChunks), snap, v)
+        case (Incomplete(_), _, _, _) =>
           resourceAccess match {
             case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
             case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
@@ -1333,7 +1333,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         perms: Term, // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
                         v: Verifier)
-                       : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
+                       : (ConsumptionResult, State, Seq[QuantifiedBasicChunk], Seq[QuantifiedBasicChunk]) = {
 
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(rmPermRecord)
@@ -1444,7 +1444,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     v.decider.prover.comment("Done removing quantified permissions")
     v.symbExLog.closeScope(sepIdentifier)
     
-    (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks)
+    (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks, ???)
   }
 
   private def createPermissionConstraintAndDepletedCheck(codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */

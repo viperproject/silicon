@@ -418,7 +418,7 @@ object executor extends ExecutionRules {
               v2
             )
             result match {
-              case (Complete(), s3, remainingChunks) =>
+              case (Complete(), s3, remainingChunks, consumedChunks) =>
                 val h3 = Heap(remainingChunks ++ otherChunks)
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
@@ -427,7 +427,7 @@ object executor extends ExecutionRules {
                 if (s3.heapDependentTriggers.contains(field))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
-              case (Incomplete(_), s3, _) =>
+              case (Incomplete(_), s3, _, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
@@ -438,7 +438,7 @@ object executor extends ExecutionRules {
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm, ve, v2, description)((s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm, ve, v2, description)((s3, h3, cHeap, _, v3) => {
               val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm)

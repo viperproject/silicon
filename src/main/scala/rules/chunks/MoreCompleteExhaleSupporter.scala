@@ -10,7 +10,7 @@ import viper.silicon.rules.chunks.chunkSupporter.findChunksWithID
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
-import viper.silicon.rules.{SnapshotMapDefinition, SymbolicExecutionRules}
+import viper.silicon.rules.{Complete, ConsumptionResult, ConsumptionRules, Incomplete, SnapshotMapDefinition, SymbolicExecutionRules, magicWandSupporter}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
@@ -170,13 +170,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       perms: Term,
                       ve: VerificationError,
                       v: Verifier)
-                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
+                     (Q: (State, Heap, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
     if (!s.hackIssue387DisablePermissionConsumption)
       actualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
     else
-      summariseHeapAndAssertReadAccess(s, h, resource, args, ve, v)(Q)
+      ??? // summariseHeapAndAssertReadAccess(s, h, resource, args, ve, v)(Q)
   }
 
   private def summariseHeapAndAssertReadAccess(s: State,
@@ -207,8 +207,28 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     perms: Term,
                                     ve: VerificationError,
                                     v: Verifier)
-                                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                                   : VerificationResult = {
+                                   (Q: (State, Heap, Heap, Option[Term], Verifier) => VerificationResult)
+  : VerificationResult = {
+    val heaps = Seq(h) ++ s.loopHeapStack
+    val failure = createFailure(ve, v, s)
+    def consumeSingle(s: State, h: Heap, perms: Term, v: Verifier): (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = {
+      doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
+    }
+
+    magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, v)(consumeSingle)((_, _, _, _, _) => {
+      ???
+    })
+
+  }
+
+  private def doActualConsumeComplete2(s: State,
+                                      h: Heap,
+                                      resource: ast.Resource,
+                                      args: Seq[Term],
+                                      perms: Term,
+                                      ve: VerificationError,
+                                      v: Verifier)
+  : (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = {
 
     val id = ChunkIdentifier(resource, s.program)
     val relevantChunks = ListBuffer[NonQuantifiedChunk]()
@@ -220,18 +240,21 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      v.decider.assert(perms === NoPerm, s) {
-        case true => Q(s, h, None, v)
-        case false => createFailure(ve, v, s)
+      v.decider.check(perms === NoPerm, Verifier.config.assertTimeout.getOrElse(0)) match {
+        case true => (Complete(), s, h, Heap(), None) // Q(s, h, Heap(), None, v)
+        case false => (Incomplete(perms), s, h, Heap(), None)
       }
     } else {
-      if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, optSnap, v2) => {
-          Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)})
+      if (!terms.utils.consumeExactRead(perms, s.constrainableARPs ++ s.loopReadVarStack)) {
+        //actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, consumedChunks, optSnap, v2) => {
+        //  Q(s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), optSnap, v2)
+        //})
+        ???
       } else {
         var pNeeded = perms
         var pSum: Term = NoPerm
         val newChunks = ListBuffer[NonQuantifiedChunk]()
+        val consumedChunks = ListBuffer[NonQuantifiedChunk]()
         var moreNeeded = true
 
         val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
@@ -271,6 +294,11 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
             val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
             pNeeded = PermMinus(pNeeded, pTaken)
+            val consumedChunk = ch.withPerm(pTaken)
+
+            if (!v.decider.check(pTaken === NoPerm, Verifier.config.splitTimeout())) {
+              consumedChunks.append(consumedChunk)
+            }
 
             if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
               newChunks.append(newChunk)
@@ -291,6 +319,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
         }
         val newHeap = Heap(allChunks)
+        val consumedHeap = Heap(consumedChunks)
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
@@ -301,11 +330,133 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
           }
           if (!moreNeeded) {
-            Q(s1, newHeap, Some(condSnap), v1)
+            (Complete(), s1, newHeap, consumedHeap, None)//Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
           } else {
             v1.decider.assert(pNeeded === NoPerm, s1) {
               case true =>
-                Q(s1, newHeap, Some(condSnap), v1)
+                Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
+              case false =>
+                createFailure(ve, v1, s1)
+            }
+          }
+        })
+      }
+    }
+  }
+
+  private def doActualConsumeComplete(s: State,
+                                    h: Heap,
+                                    resource: ast.Resource,
+                                    args: Seq[Term],
+                                    perms: Term,
+                                    ve: VerificationError,
+                                    v: Verifier)
+                                   (Q: (State, Heap, Heap, Option[Term], Verifier) => VerificationResult)
+                                   : VerificationResult = {
+
+    val id = ChunkIdentifier(resource, s.program)
+    val relevantChunks = ListBuffer[NonQuantifiedChunk]()
+    val otherChunks = ListBuffer[Chunk]()
+    h.values foreach {
+      case c: NonQuantifiedChunk if id == c.id => relevantChunks.append(c)
+      case ch => otherChunks.append(ch)
+    }
+
+    if (relevantChunks.isEmpty) {
+      // if no permission is exhaled, return none
+      v.decider.assert(perms === NoPerm, s) {
+        case true => Q(s, h, Heap(), None, v)
+        case false => createFailure(ve, v, s)
+      }
+    } else {
+      if (!terms.utils.consumeExactRead(perms, s.constrainableARPs ++ s.loopReadVarStack)) {
+        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, consumedChunks, optSnap, v2) => {
+          Q(s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), optSnap, v2)})
+      } else {
+        var pNeeded = perms
+        var pSum: Term = NoPerm
+        val newChunks = ListBuffer[NonQuantifiedChunk]()
+        val consumedChunks = ListBuffer[NonQuantifiedChunk]()
+        var moreNeeded = true
+
+        val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
+
+        val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
+          // The definitive alias and syntactic aliases should get priority, since it is always
+          // possible to consume from them
+          definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
+        }
+
+        val additionalArgs = s.relevantQuantifiedVariables
+        var currentFunctionRecorder = s.functionRecorder
+
+        relevantChunks.sortWith(sortFunction) foreach { ch =>
+          if (moreNeeded) {
+            val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
+
+            val pTaken = if (s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
+              // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
+              // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
+              // that already exists.
+              // During function verification, we should not define macros, since they could contain resullt, which is not
+              // defined elsewhere.
+              Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
+            } else {
+              val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
+              val pTakenArgs = additionalArgs
+              val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
+              val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
+              currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
+              val pTakenApp = App(pTakenMacro, pTakenArgs)
+              v.symbExLog.addMacro(pTakenApp, pTakenBody)
+              pTakenApp
+            }
+
+            pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
+
+            val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
+            pNeeded = PermMinus(pNeeded, pTaken)
+            val consumedChunk = ch.withPerm(pTaken)
+
+            if (!v.decider.check(pTaken=== NoPerm, Verifier.config.splitTimeout())) {
+              consumedChunks.append(consumedChunk)
+            }
+
+            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
+              newChunks.append(newChunk)
+            }
+
+            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout())
+          } else {
+            newChunks.append(ch)
+          }
+        }
+
+        val allChunks = otherChunks ++ newChunks
+        // TODO: Since no permissions were gained, I don't see why the PropertyInterpreter would yield any new assumptions.
+        //       See if it can be removed here.
+        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+        newChunks foreach { ch =>
+          val resource = Resources.resourceDescriptions(ch.resourceID)
+          v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+        }
+        val newHeap = Heap(allChunks)
+        val consumedHeap = Heap(consumedChunks)
+
+        val s0 = s.copy(functionRecorder = currentFunctionRecorder)
+
+        summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) => {
+          val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
+            snap
+          } else {
+            Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
+          }
+          if (!moreNeeded) {
+            Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
+          } else {
+            v1.decider.assert(pNeeded === NoPerm, s1) {
+              case true =>
+                Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
               case false =>
                 createFailure(ve, v1, s1)
             }
@@ -321,7 +472,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                  perms: Term, // Expected to be constrainable. Will be assumed to equal the consumed permission amount.
                                                  ve: VerificationError,
                                                  v: Verifier)
-                                                (Q: (State, ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
+                                                (Q: (State, ListBuffer[NonQuantifiedChunk], ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
                                                 : VerificationResult = {
 
     var totalPermSum: Term = NoPerm
@@ -360,7 +511,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       case true =>
         v.decider.assume(perms === totalPermTaken)
         summarise(s1, relevantChunks.toSeq, resource, args, v)((s2, snap, _, _, v1) =>
-          Q(s2, updatedChunks, Some(snap), v1))
+          Q(s2, updatedChunks, ???, Some(snap), v1))
       case false =>
         createFailure(ve, v, s)
     }

@@ -134,7 +134,7 @@ object predicateSupporter extends PredicateSupportRules {
         None,
         pve,
         v
-      )((s2, h2, snap, v1) => {
+      )((s2, h2, cHeap, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
@@ -152,7 +152,7 @@ object predicateSupporter extends PredicateSupportRules {
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, predicate, tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, snap, v1) => {
+      chunkSupporter.consume(s1, s1.h, predicate, tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, cHeap, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
