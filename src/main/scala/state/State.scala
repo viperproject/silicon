@@ -69,7 +69,8 @@ final case class State(g: Store = Store(),
                        retryLevel: Int = 0,
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
-                       moreCompleteExhale: Boolean = false)
+                       moreCompleteExhale: Boolean = false,
+                       moreJoins: Boolean = false)
     extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {
@@ -157,7 +158,7 @@ object State {
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-                 moreCompleteExhale) =>
+                 moreCompleteExhale, moreJoins) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -182,7 +183,7 @@ object State {
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2) =>
+                     moreCompleteExhale2, `moreJoins`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -307,7 +308,7 @@ object State {
       ssCache1, hackIssue387DisablePermissionConsumption1,
       qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-      moreCompleteExhale) =>
+      moreCompleteExhale, moreJoins) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -330,14 +331,15 @@ object State {
           reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
           ssCache2, `hackIssue387DisablePermissionConsumption1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, smDomainNeeded2,
-          `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`, moreCompleteExhale2) =>
+          `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
+          moreCompleteExhale2, `moreJoins`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
 
-            val smDomainNeeded3 = smDomainNeeded1 || smDomainNeeded2 // TODO: Use AND or OR to merge?
+            val smDomainNeeded3 = smDomainNeeded1 || smDomainNeeded2
 
             val conditions1 = And(pc1.branchConditions)
             val conditions2 = And(pc2.branchConditions)
@@ -381,13 +383,11 @@ object State {
               Some(mergeHeap(heap1, cond1, heap2, cond2))
             }))
 
-            // TODO: InvariantContexts should most likely be the same
             assert(invariantContexts1.length == invariantContexts2.length)
             val invariantContexts3 = invariantContexts1
               .zip(invariantContexts2)
               .map({case (h1, h2) => mergeHeap(h1, conditions1, h2, conditions2)})
 
-            // TODO: Workout situations in which reserve heaps differ
             assert(reserveHeaps1.length == reserveHeaps2.length)
             val reserveHeaps3 = reserveHeaps1
               .zip(reserveHeaps2)
@@ -399,14 +399,17 @@ object State {
               .zip(conservedPcs1)
               .map({case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct})
 
+            val ssCache3 = ssCache1 ++ ssCache2
+            val smCache3 = smCache1.union(smCache2)
+            val pmCache3 = pmCache1 ++ pmCache2
+
             val s3 = s1.copy(functionRecorder = functionRecorder3,
                              possibleTriggers = possibleTriggers3,
                              triggerExp = triggerExp3,
                              constrainableARPs = constrainableARPs3,
-                             // TODO: Merge caches.
-                             ssCache = Map.empty,
-                             smCache = SnapshotMapCache.empty,
-                             pmCache = Map.empty,
+                             ssCache = ssCache3,
+                             smCache = smCache3,
+                             pmCache = pmCache3,
                              g = g3,
                              h = h3,
                              oldHeaps = oldHeaps3,

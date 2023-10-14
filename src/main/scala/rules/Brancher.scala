@@ -23,7 +23,6 @@ trait BranchingRules extends SymbolicExecutionRules {
              condition: Term,
              conditionExp: Option[ast.Exp],
              v: Verifier,
-             sequentialOnly: Boolean = false,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
              fFalse: (State, Verifier) => VerificationResult)
@@ -35,7 +34,6 @@ object brancher extends BranchingRules {
              condition: Term,
              conditionExp: Option[ast.Exp],
              v: Verifier,
-             sequentialOnly: Boolean = false,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
@@ -66,7 +64,7 @@ object brancher extends BranchingRules {
       || skipPathFeasibilityCheck
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
-    val parallelizeElseBranch = s.parallelizeBranches && !sequentialOnly && executeThenBranch && executeElseBranch
+    val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
 //    val additionalPaths =
 //      if (executeThenBranch && exploreFalseBranch) 1

@@ -183,44 +183,10 @@ object consumer extends ConsumptionRules {
       v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
 
     val consumed = a match {
-      case imp @ ast.Implies(e0, a0) if !a.isPure && Verifier.config.moreJoins() =>
+      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
-
-        evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
-          joiner.join[(Heap, Term), (Heap, Term)](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1, t0, Some(e0), v1, true)(
-              (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
-                v.symbExLog.closeScope(uidImplies)
-                QB(s3, (h1, t1), v3)
-              }),
-              (s2, v2) => {
-                v.symbExLog.closeScope(uidImplies)
-                QB(s2, (h, Unit), v2)
-              })
-          )(entries => {
-            val s2 = entries match {
-              case Seq(entry) => // One branch is dead
-                (entry.s, entry.data)
-              case Seq(entry1, entry2) => // Both branches are alive
-                // Here we merge additional data collected in each branch.
-                // We assume that entry1.pcs is negation of entry2.pcs.
-                val mergedData = (
-                  // The partially consumed heap is merged based on the corresponding branch conditions of each branch.
-                  State.mergeHeap(
-                    entry1.data._1, And(entry1.pathConditions.branchConditions),
-                    entry2.data._1, And(entry2.pathConditions.branchConditions),
-                  ),
-                  Ite(And(entry1.pathConditions.branchConditions), entry1.data._2, entry2.data._2)
-                )
-                (entry1.pathConditionAwareMerge(entry2, v1), mergedData)
-              case _ =>
-                sys.error(s"Unexpected join data entries: $entries")}
-            s2
-          })((s4, data, v4) => {
-            Q(s4, data._1, data._2, v4)
-          })
-        )
+        consumeConditionalTlcMoreJoins(s, h, e0, a0, None, uidImplies, pve, v)(Q)
 
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
@@ -237,43 +203,10 @@ object consumer extends ConsumptionRules {
               Q(s2, h, Unit, v2)
             }))
 
-      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && Verifier.config.moreJoins() =>
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
-
-        eval(s, e0, pve, v)((s1, t0, v1) =>
-          joiner.join[(Heap, Term), (Heap, Term)](s1, v1, resetState = false)((s1, v1, QB) => {
-            branch(s1, t0, Some(e0), v1, true)(
-              (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
-                v3.symbExLog.closeScope(uidCondExp)
-                QB(s3, (h1, t1), v3)
-              }),
-              (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
-                v3.symbExLog.closeScope(uidCondExp)
-                QB(s3, (h1, t1), v3)
-              }))
-          })(entries => {
-            val s2 = entries match {
-              case Seq(entry) => // One branch is dead
-                (entry.s, entry.data)
-              case Seq(entry1, entry2) => // Both branches are alive
-                val mergedData = (
-                  State.mergeHeap(
-                    entry1.data._1, And(entry1.pathConditions.branchConditions),
-                    entry2.data._1, And(entry2.pathConditions.branchConditions),
-                  ),
-                  // Asume that entry1.pcs is inverse of entry2.pcs
-                  Ite(And(entry1.pathConditions.branchConditions), entry1.data._2, entry2.data._2)
-                )
-                (entry1.pathConditionAwareMerge(entry2, v1), mergedData)
-              case _ =>
-                sys.error(s"Unexpected join data entries: $entries")}
-            s2
-          })((s4, data, v4) => {
-            Q(s4, data._1, data._2, v4)
-          })
-        )
-
+        consumeConditionalTlcMoreJoins(s, h, e0, a1, Some(a2), uidCondExp, pve, v)(Q)
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
@@ -529,6 +462,53 @@ object consumer extends ConsumptionRules {
 
     consumed
   }
+
+  private def consumeConditionalTlcMoreJoins(s: State, h: Heap, e0: ast.Exp, a1: ast.Exp, a2: Option[ast.Exp], scopeUid: Int,
+                                             pve: PartialVerificationError, v: Verifier)
+                                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                                            : VerificationResult = {
+    eval(s, e0, pve, v)((s1, t0, v1) =>
+      joiner.join[(Heap, Term), (Heap, Term)](s1, v1, resetState = false)((s1, v1, QB) => {
+        branch(s1.copy(parallelizeBranches = false), t0, Some(e0), v1)(
+          (s2, v2) =>
+            consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a1, pve, v2)((s3, h1, t1, v3) => {
+            v3.symbExLog.closeScope(scopeUid)
+            QB(s3, (h1, t1), v3)
+          }),
+          (s2, v2) =>
+            a2 match {
+              case Some(a2) => consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a2, pve, v2)((s3, h1, t1, v3) => {
+                v3.symbExLog.closeScope(scopeUid)
+                QB(s3, (h1, t1), v3)
+              })
+              case None =>
+                v2.symbExLog.closeScope(scopeUid)
+                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (h, Unit), v2)
+            })
+      })(entries => {
+        val s2 = entries match {
+          case Seq(entry) => // One branch is dead
+            (entry.s, entry.data)
+          case Seq(entry1, entry2) => // Both branches are alive
+            val mergedData = (
+              State.mergeHeap(
+                entry1.data._1, And(entry1.pathConditions.branchConditions),
+                entry2.data._1, And(entry2.pathConditions.branchConditions),
+              ),
+              // Asume that entry1.pcs is inverse of entry2.pcs
+              Ite(And(entry1.pathConditions.branchConditions), entry1.data._2, entry2.data._2)
+            )
+            (entry1.pathConditionAwareMerge(entry2, v1), mergedData)
+          case _ =>
+            sys.error(s"Unexpected join data entries: $entries")
+        }
+        s2
+      })((s4, data, v4) => {
+        Q(s4, data._1, data._2, v4)
+      })
+    )
+  }
+
 
   private def evalAndAssert(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
                            (Q: (State, Term, Verifier) => VerificationResult)

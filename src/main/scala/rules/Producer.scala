@@ -214,15 +214,15 @@ object producer extends ProductionRules {
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
     val produced = a match {
-      case imp @ ast.Implies(e0, a0) if !a.isPure && Verifier.config.moreJoins() =>
+      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1, t0, Some(e0), v1, true)(
-              (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
+            branch(s1.copy(parallelizeBranches = false), t0, Some(e0), v1)(
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a0, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidImplies)
                 QB(s3, null, v3)
               }),
@@ -233,7 +233,7 @@ object producer extends ProductionRules {
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                  */
                 v2.symbExLog.closeScope(uidImplies)
-                QB(s2, null, v2)
+                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), null, v2)
               })
           )(entries => {
             val s2 = entries match {
@@ -267,19 +267,19 @@ object producer extends ProductionRules {
                 Q(s2, v2)
             }))
 
-      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && Verifier.config.moreJoins() =>
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1, t0, Some(e0), v1, true)(
-              (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
+            branch(s1.copy(parallelizeBranches = false), t0, Some(e0), v1)(
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a1, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }),
-              (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a2, pve, v2)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }))
