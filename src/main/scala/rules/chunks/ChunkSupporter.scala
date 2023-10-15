@@ -202,7 +202,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction = {
-        if (s1.loopPhaseStack.nonEmpty && s1.loopPhaseStack.head._1 == LoopPhases.Transferring) {
+        if (s1.loopPhaseStack.nonEmpty && (s1.loopPhaseStack.head._1 == LoopPhases.Transferring || s1.loopPhaseStack.head._1 == LoopPhases.Assuming)) {
           assert(s1.moreCompleteExhale)
           val perms = s1.loopReadVarStack.head
           def fn(s: State, h: Heap, resource: ast.Resource, args: Seq[Term], ve: VerificationError, v: Verifier)(QP: (State, Term, Verifier) => VerificationResult): VerificationResult = {

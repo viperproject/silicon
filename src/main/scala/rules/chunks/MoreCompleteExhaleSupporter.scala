@@ -209,18 +209,50 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     v: Verifier)
                                    (Q: (State, Heap, Heap, Option[Term], Verifier) => VerificationResult)
   : VerificationResult = {
-    val heaps = Seq(h) ++ s.loopHeapStack
-    val failure = createFailure(ve, v, s)
-    def consumeSingle(s: State, h: Heap, perms: Term, v: Verifier): (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = {
-      doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
+    if (s.loopPhaseStack.nonEmpty && s.loopPhaseStack.head._1 != LoopPhases.Checking) {
+      if (s.loopPhaseStack.head._1 == LoopPhases.Transferring) {
+        val heaps = Seq(h) ++ s.loopHeapStack
+        val failure = createFailure(ve, v, s)
+
+        def consumeSingle(s: State, h: Heap, perms: Term, v: Verifier): (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = {
+          doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
+        }
+
+        magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, v)(consumeSingle)((s1, hs1, cHeap1, optChunks, v1) => {
+          val newTopHeap = hs1.head + cHeap1
+          val s1p = s1.copy(loopHeapStack = hs1.tail)
+          Q(s1p, newTopHeap, cHeap1, optChunks.filter(_.isDefined).head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
+        })
+      } else {
+        // TODO: Try actual consume complete
+        val identifier = resource match {
+          case f: ast.Field => BasicChunkIdentifier(f.name)
+          case p: ast.Predicate => BasicChunkIdentifier(p.name)
+          case mw: ast.MagicWand => ??? // MagicWandIdentifier(mw, s.program)
+        }
+        val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
+        val currentPermAmount =
+          chs.foldLeft(NoPerm: Term)((q, ch) => {
+            val argsPairWiseEqual = And(args.zip(ch.args).map { case (a1, a2) => a1 === a2 })
+            PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm))
+          })
+        val maxGain = PermMinus(perms, currentPermAmount)
+        val gain = PermMax(maxGain, NoPerm)
+        val snapSort = resource match {
+          case f: ast.Field => v.symbolConverter.toSort(f.typ)
+          case p: ast.Predicate => p.body.map(v.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
+            .getOrElse(sorts.Snap)
+          case _ => sorts.Snap
+        }
+        val snap = v.decider.fresh(snapSort)
+        val ch = BasicChunk(FieldID, identifier, args, snap, gain)
+        chunkSupporter.produce(s, s.partiallyConsumedHeap.getOrElse(s.h), ch, v)((s2, h2, v2) => {
+          doActualConsumeComplete(s2.copy(h = s2.h + ch), h2, resource, args, perms, ve, v2)(Q)
+        })
+      }
+    } else {
+      doActualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
     }
-
-    magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, v)(consumeSingle)((s1, hs1, cHeap1, optChunks, v1) => {
-      val newTopHeap = hs1.head + cHeap1
-      val s1p = s1.copy(loopHeapStack = hs1.tail)
-      Q(s1p, newTopHeap, cHeap1, optChunks.filter(_.isDefined).head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
-    })
-
   }
 
   private def doActualConsumeComplete2(s: State,

@@ -1490,6 +1490,26 @@ object PermMin extends CondFlyweightTermFactory[(Term, Term), PermMin] {
   override def actualCreate(args: (Term, Term)): PermMin = new PermMin(args._1, args._2)
 }
 
+class PermMax private[terms] (val p0: Term, val p1: Term) extends Permissions
+  with BinaryOp[Term]
+  with ConditionalFlyweightBinaryOp[PermMax] {
+
+  utils.assertSort(p0, "Permission 1st", sorts.Perm)
+  utils.assertSort(p1, "Permission 2nd", sorts.Perm)
+
+  override lazy val toString = s"max ($p0, $p1)"
+}
+
+object PermMax extends CondFlyweightTermFactory[(Term, Term), PermMax] {
+  override def apply(v0: (Term, Term)) = v0 match {
+    case (t0, t1) if t0 == t1 => t0
+    case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal < p1.literal) p1 else p0
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term)): PermMax = new PermMax(args._1, args._2)
+}
+
 /* Sequences */
 
 sealed trait SeqTerm extends Term {
