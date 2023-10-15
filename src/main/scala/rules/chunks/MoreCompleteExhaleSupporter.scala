@@ -215,8 +215,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
     }
 
-    magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, v)(consumeSingle)((_, _, _, _, _) => {
-      ???
+    magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, v)(consumeSingle)((s1, hs1, cHeap1, optChunks, v1) => {
+      val newTopHeap = hs1.head + cHeap1
+      val s1p = s1.copy(loopHeapStack = hs1.tail)
+      Q(s1p, newTopHeap, cHeap1, optChunks.filter(_.isDefined).head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
     })
 
   }
@@ -246,10 +248,14 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs ++ s.loopReadVarStack)) {
-        //actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, consumedChunks, optSnap, v2) => {
-        //  Q(s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), optSnap, v2)
-        //})
-        ???
+        var res: (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = (Incomplete(perms), s, h, Heap(), None)
+        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, consumedChunks, optSnap, v2) => {
+          //Q(s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), optSnap, v2)
+          val consumedChunk = Some(consumedChunks.head.withSnap(optSnap.get).withPerm(perms))
+          res = (Complete(), s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), consumedChunk)
+          Success()
+        })
+        res
       } else {
         var pNeeded = perms
         var pSum: Term = NoPerm
@@ -323,6 +329,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
+        var result: (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = null
         summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) => {
           val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
             snap
@@ -330,16 +337,24 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
           }
           if (!moreNeeded) {
-            (Complete(), s1, newHeap, consumedHeap, None)//Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
+            val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms))
+            result = (Complete(), s1, newHeap, consumedHeap, consumedChunk)//Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
+            Success()
           } else {
             v1.decider.assert(pNeeded === NoPerm, s1) {
               case true =>
-                Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
+                val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms))
+                result = (Complete(), s1, newHeap, consumedHeap, consumedChunk)
+                //Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
+                Success()
               case false =>
-                createFailure(ve, v1, s1)
+                result = (Incomplete(pNeeded), s1, newHeap, consumedHeap, None)
+                //Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
+                Success()
             }
           }
         })
+        result
       }
     }
   }
@@ -479,6 +494,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     var totalPermTaken: Term = NoPerm
     var newFr = s.functionRecorder
 
+    var consumedChunks = ListBuffer[NonQuantifiedChunk]()
+
     val updatedChunks =
       relevantChunks map (ch => {
         val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
@@ -494,7 +511,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         v.decider.assume(constraint)
         newFr = newFr.recordArp(permTaken, constraint)
-
+        consumedChunks.append(ch.withPerm(permTaken))
         ch.withPerm(PermMinus(ch.perm, permTaken))
       })
 
@@ -511,7 +528,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       case true =>
         v.decider.assume(perms === totalPermTaken)
         summarise(s1, relevantChunks.toSeq, resource, args, v)((s2, snap, _, _, v1) =>
-          Q(s2, updatedChunks, ???, Some(snap), v1))
+          Q(s2, updatedChunks, consumedChunks, Some(snap), v1))
       case false =>
         createFailure(ve, v, s)
     }

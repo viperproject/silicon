@@ -1167,7 +1167,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 val h2 = Heap(remainingChunks ++ otherChunks)
                 val s4 = s3.copy(smCache = smCache2,
                                  constrainableARPs = s.constrainableARPs)
-                (result, s4, h2, Some(consumedChunk))
+                (result, s4, h2, Heap(Seq(consumedChunk)), Some(consumedChunk))
               })((s4, optCh, v3) =>
                 optCh match {
                   case Some(ch) => Q(s4, s4.h, ???, ch.snapshotMap.convert(sorts.Snap), v3)
@@ -1273,7 +1273,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             codomainQVars, resource, arguments, permsTaken, smDef1.sm, s.program)
         val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
                          smCache = smCache1)
-        (result, s3, h2, Some(consumedChunk))
+        (result, s3, h2, Heap(Seq(consumedChunk)), Some(consumedChunk))
       })((s4, optCh, v2) =>
         optCh match {
           case Some(ch) =>

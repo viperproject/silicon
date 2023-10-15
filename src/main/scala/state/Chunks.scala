@@ -35,10 +35,10 @@ case class BasicChunk(resourceID: BaseID,
     extends NonQuantifiedChunk {
 
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
-  resourceID match {
-    case FieldID => require(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
-    case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
-  }
+  //resourceID match {
+    //case FieldID => require(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
+    //case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+  //}
 
   override def withPerm(newPerm: Term) = BasicChunk(resourceID, id, args, snap, newPerm)
   override def withSnap(newSnap: Term) = BasicChunk(resourceID, id, args, newSnap, perm)

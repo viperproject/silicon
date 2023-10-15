@@ -99,8 +99,9 @@ object chunkSupporter extends ChunkSupportRules {
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s)
-      magicWandSupporter.transfer(s, perms, failure, v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
-        Q(s1, h, ???, optCh.flatMap(ch => Some(ch.snap)), v1))
+      //magicWandSupporter.transfer(s, perms, failure, v)(moreCompleteExhaleSupporter.consumeComplete(_, _, id, args, _, _))((s1, optCh, cHeap, v1) =>
+      //  Q(s1, h, cHeap, optCh.flatMap(ch => Some(ch.snap)), v1))
+      ???
     } else {
       executionFlowController.tryOrFail2[(Heap, Heap), Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
         // 2022-05-07 MHS: MoreCompleteExhale isn't yet integrated into function verification, hence the limitation to method verification
@@ -206,8 +207,7 @@ object chunkSupporter extends ChunkSupportRules {
           val perms = s1.loopReadVarStack.head
           def fn(s: State, h: Heap, resource: ast.Resource, args: Seq[Term], ve: VerificationError, v: Verifier)(QP: (State, Term, Verifier) => VerificationResult): VerificationResult = {
             moreCompleteExhaleSupporter.consumeComplete(s, h, resource, args, perms, ve, v)((s2, h2, hConsumed, snap2, v2) => {
-              throw new Exception()
-              QP(s2.copy(h = s.h), snap2.get, v2)
+              QP(s2.copy(h = h2), snap2.get, v2)
             })
           }
           fn _
@@ -216,7 +216,7 @@ object chunkSupporter extends ChunkSupportRules {
         else lookupGreedy _
       }
       lookupFunction(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
-        QS(s2.copy(h = s.h), s2.h, tSnap, v2))
+        QS(s2, s2.h, tSnap, v2))
     })(Q)
   }
 

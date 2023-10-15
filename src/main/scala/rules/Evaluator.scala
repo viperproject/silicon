@@ -140,8 +140,7 @@ object evaluator extends EvaluationRules {
               s2}
         else
           s2
-      val s4 = s3.copy(h = s.h,
-                       reserveHeaps = s.reserveHeaps,
+      val s4 = s3.copy(reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
       Q(s4, t, v1)})
   }
