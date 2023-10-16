@@ -1413,6 +1413,10 @@ object evaluator extends EvaluationRules {
       case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) =>
         val (axioms, trigs, _, smDef) = generateFieldTrigger(fa, s, pve, v)
         triggers = triggers ++ trigs
+        trigs foreach {
+          case FieldTrigger(f, sm, _) => v.decider.assume(FieldTriggerMarker(f, sm))
+          case _ =>
+        }
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
       case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
@@ -1451,11 +1455,11 @@ object evaluator extends EvaluationRules {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(fa.field.name))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); Some(relevantChunks.map(_.)) }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
-        s, fa.field, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
+        s.copy(smDomainNeeded = true), fa.field, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
 
     var smRes = Seq(smDef1)
     /* TODO: Reduce code duplication below */

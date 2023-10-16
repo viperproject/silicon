@@ -275,6 +275,8 @@ class TermToSMTLib2Converter
       case _ => render(fvf) <+> render(at)
     }))
 
+    case FieldTriggerMarker(field, fvf) => parens(text("$FVF.is_loc_target_") <> field <+> render(fvf))
+
     case PermLookup(field, pm, at) => parens(text("$FVF.perm_") <> field <+> render(pm) <+> render(at))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))

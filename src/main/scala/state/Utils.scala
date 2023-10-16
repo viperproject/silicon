@@ -91,6 +91,7 @@ package object utils {
     case PredicatePermLookup(_, pm, args) => Seq(pm) ++ args
     case FieldTrigger(_, fvf, at) => fvf :: at :: Nil
     case PredicateTrigger(_, psf, args) => psf +: args
+    case FieldTriggerMarker(_, fvf) => fvf :: Nil
 
   }
 

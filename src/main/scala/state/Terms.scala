@@ -2178,6 +2178,17 @@ object FieldTrigger extends PreciseCondFlyweightFactory[(String, Term, Term), Fi
   override def actualCreate(args: (String, Term, Term)): FieldTrigger = new FieldTrigger(args._1, args._2, args._3)
 }
 
+class FieldTriggerMarker(val field: String, val fvf: Term) extends Term with ConditionalFlyweight[(String, Term), FieldTriggerMarker] {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+
+  val sort = sorts.Bool
+  override val equalityDefiningMembers: (String, Term) = (field, fvf)
+}
+
+object FieldTriggerMarker extends PreciseCondFlyweightFactory[(String, Term), FieldTriggerMarker] {
+  override def actualCreate(args: (String, Term)): FieldTriggerMarker = new FieldTriggerMarker(args._1, args._2)
+}
+
 /* Quantified predicates */
 
 class PredicateLookup(val predname: String, val psf: Term, val args: Seq[Term]) extends Term with ConditionalFlyweight[(String, Term, Seq[Term]), PredicateLookup] {

@@ -11,5 +11,6 @@
 (declare-fun $FVF.lookup_$FLD$ ($FVF<$FLD$> $Ref) $S$)
 (declare-fun $FVF.after_$FLD$ ($FVF<$FLD$> $FVF<$FLD$>) Bool)
 (declare-fun $FVF.loc_$FLD$ ($S$ $Ref) Bool)
+(declare-fun $FVF.is_loc_target_$FLD$ ($FVF<$FLD$>) Bool)
 (declare-fun $FVF.perm_$FLD$ ($FPM $Ref) $Perm)
 (declare-const $fvfTOP_$FLD$ $FVF<$FLD$>)

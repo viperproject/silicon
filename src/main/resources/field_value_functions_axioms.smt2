@@ -29,6 +29,24 @@
     :qid |qp.$FVF<$FLD$>-eq-outer|
     )))
 
+(assert (forall ((vs $FVF<$FLD$>) (ws $FVF<$FLD$>) (r $Ref)) (!
+    (=>
+      (and
+        (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
+        (forall ((x $Ref)) (!
+          (=>
+            (Set_in x ($FVF.domain_$FLD$ vs))
+            (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
+          :pattern (($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x))
+          :qid |qp.$FVF<$FLD$>-eq-inner|
+          )))
+      (= vs ws))
+    :pattern (($FVF.loc_$FLD$ ($FVF.lookup_$FLD$ vs r) r)
+              ($FVF.is_loc_target_$FLD$ ws)
+              )
+    :qid |qp.$FVF<$FLD$>-eq-outer|
+    )))
+
 (assert (forall ((r $Ref) (pm $FPM)) (!
     ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
     :pattern (($FVF.perm_$FLD$ pm r)))))
