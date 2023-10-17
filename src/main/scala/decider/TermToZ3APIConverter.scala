@@ -30,6 +30,7 @@ class TermToZ3APIConverter
 
   val sortCache = mutable.HashMap[Sort, Z3Sort]()
   val funcDeclCache = mutable.HashMap[(String, Seq[Sort], Sort), Z3FuncDecl]()
+  val smtFuncDeclCache = mutable.HashMap[(String, Seq[Sort]), (Z3FuncDecl, Seq[Z3Expr])]()
   val termCache = mutable.HashMap[Term, Z3Expr]()
 
   def convert(s: Sort): Z3Sort = convertSort(s)
@@ -472,19 +473,37 @@ class TermToZ3APIConverter
     // workaround: since we cannot create a function application with just the name, we let Z3 parse
     // a string that uses the function, take the AST, and get the func decl from there, so that we can
     // programmatically create a func app.
-    val decls = args.zipWithIndex.map{case (a, i) => s"(declare-const workaround${i} ${smtlibConverter.convert(a.sort)})"}.mkString(" ")
-    val funcAppString = s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
-    val assertion = decls + s" (assert (= ${funcAppString} ${funcAppString}))"
-    val workaround = ctx.parseSMTLIB2String(assertion, null, null, null, null)
-    val app = workaround(0).getArgs()(0)
-    val decl = app.getFuncDecl
-    val actualArgs =  if (decl.getArity > args.length){
-      // the function name we got wasn't just a function name but also contained a first argument.
-      // this happens with float operations where functionName contains a rounding mode.
-      app.getArgs.toSeq.slice(0, decl.getArity - args.length) ++ args.map(convertTerm(_))
-    }else {
-      args.map(convertTerm(_))
+
+    val cacheKey = (functionName, args.map(_.sort))
+    val (decl, additionalArgs: Seq[Z3Expr]) = if (smtFuncDeclCache.contains(cacheKey)) {
+      smtFuncDeclCache(cacheKey)
+    } else {
+      val declPreamble = "(define-sort $Perm () Real) " // ME: Re-declare the Perm sort.
+      // ME: The parsing happens in a fresh context that doesn't know any of our current declarations.
+      // In principle, it might be necessary to re-declare all sorts we're using anywhere. However, I don't see how there
+      // could be any Z3 internal functions that exist for those custom sorts. For the Real (i.e., Perm) sort, however,
+      // such functions exist. So we re-declare *only* this sort.
+      val decls = declPreamble + args.zipWithIndex.map { case (a, i) => s"(declare-const workaround${i} ${smtlibConverter.convert(a.sort)})" }.mkString(" ")
+      val funcAppString = if (args.nonEmpty)
+        s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
+      else
+        functionName
+      val assertion = decls + s" (assert (= ${funcAppString} ${funcAppString}))"
+      val workaround = ctx.parseSMTLIB2String(assertion, null, null, null, null)
+      val app = workaround(0).getArgs()(0)
+      val decl = app.getFuncDecl
+      val additionalArgs = if (decl.getArity > args.length) {
+        // the function name we got wasn't just a function name but also contained a first argument.
+        // this happens with float operations where functionName contains a rounding mode.
+        app.getArgs.toSeq.slice(0, decl.getArity - args.length)
+      } else {
+        Seq()
+      }
+      smtFuncDeclCache.put(cacheKey, (decl, additionalArgs))
+      (decl, additionalArgs)
     }
+
+    val actualArgs = additionalArgs ++ args.map(convertTerm(_))
     ctx.mkApp(decl, actualArgs.toArray : _*)
   }
 
@@ -523,6 +542,7 @@ class TermToZ3APIConverter
     sanitizedNamesCache.clear()
     macros.clear()
     funcDeclCache.clear()
+    smtFuncDeclCache.clear()
     sortCache.clear()
     termCache.clear()
     unitConstructor = null

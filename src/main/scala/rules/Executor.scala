@@ -339,7 +339,7 @@ object executor extends ExecutionRules {
                 val h3 = Heap(remainingChunks ++ otherChunks)
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-                v1.decider.assume(smValueDef)
+                v1.decider.assumeDefinition(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
                 if (s3.heapDependentTriggers.contains(field))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
@@ -374,7 +374,7 @@ object executor extends ExecutionRules {
           if (s.qpFields.contains(field)) {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-            v.decider.assume(smValueDef)
+            v.decider.assumeDefinition(smValueDef)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm, s.program)
           } else {
             BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
@@ -507,7 +507,7 @@ object executor extends ExecutionRules {
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
-            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predicate, tArgs, tPerm, wildcards, pve, v3)(Q)})))
 
@@ -529,7 +529,7 @@ object executor extends ExecutionRules {
               s2.smCache
             }
 
-            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v3, pa)(Q)
             })
@@ -627,7 +627,7 @@ object executor extends ExecutionRules {
           *   reported by Silicon issue #328.
           */
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
-         v.decider.assume(t === rhs)
+         v.decider.assumeDefinition(t === rhs)
 
          t
      }
