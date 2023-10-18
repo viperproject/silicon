@@ -656,6 +656,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val moreJoins: ScallopOption[Boolean] = opt[Boolean]("moreJoins",
+    descr = "Enable more joins using a more complete implementation of state merging.",
+    default = Some(false),
+    noshort = true
+  )
+
   val exhaleModeOption: ScallopOption[ExhaleMode] = opt[ExhaleMode]("exhaleMode",
     descr = "Exhale mode. Options are 0 (greedy, default), 1 (more complete exhale), 2 (more complete exhale on demand).",
     default = None,
