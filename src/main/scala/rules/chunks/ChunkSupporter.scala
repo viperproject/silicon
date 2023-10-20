@@ -204,10 +204,10 @@ object chunkSupporter extends ChunkSupportRules {
       val lookupFunction = {
         if (s1.loopPhaseStack.nonEmpty && (s1.loopPhaseStack.head._1 == LoopPhases.Transferring || s1.loopPhaseStack.head._1 == LoopPhases.Assuming)) {
           assert(s1.moreCompleteExhale)
-          val perms = s1.loopReadVarStack.head
+          val perms = FractionPermLiteral(Rational(1, 100))// s1.loopReadVarStack.head._1
           def fn(s: State, h: Heap, resource: ast.Resource, args: Seq[Term], ve: VerificationError, v: Verifier)(QP: (State, Term, Verifier) => VerificationResult): VerificationResult = {
             moreCompleteExhaleSupporter.consumeComplete(s, h, resource, args, perms, ve, v)((s2, h2, hConsumed, snap2, v2) => {
-              QP(s2.copy(h = h2), snap2.get, v2)
+              QP(s2, snap2.get, v2)
             })
           }
           fn _

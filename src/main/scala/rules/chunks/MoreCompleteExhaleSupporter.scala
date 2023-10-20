@@ -220,8 +220,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, v)(consumeSingle)((s1, hs1, cHeap1, optChunks, v1) => {
           val newTopHeap = hs1.head + cHeap1
-          val s1p = s1.copy(loopHeapStack = hs1.tail)
-          Q(s1p, newTopHeap, cHeap1, optChunks.filter(_.isDefined).head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
+          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap)
+          Q(s1p, hs1.head, cHeap1, optChunks.filter(_.isDefined).head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
         })
       } else {
         // TODO: Try actual consume complete
@@ -279,7 +279,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         case false => (Incomplete(perms), s, h, Heap(), None)
       }
     } else {
-      if (!terms.utils.consumeExactRead(perms, s.constrainableARPs ++ s.loopReadVarStack)) {
+      val constrainableVars = s.constrainableARPs ++ (if (s.loopPhaseStack.nonEmpty && s.loopPhaseStack.head._1 == LoopPhases.Transferring && s.loopReadVarStack.head._2) Seq(s.loopReadVarStack.head._1) else Seq())
+      if (!terms.utils.consumeExactRead(perms, constrainableVars)) {
         var res: (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = (Incomplete(perms), s, h, Heap(), None)
         actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, consumedChunks, optSnap, v2) => {
           //Q(s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), optSnap, v2)
@@ -328,21 +329,25 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
               pTakenApp
             }
 
-            pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
+            if (v.decider.check(Not(eq), Verifier.config.checkTimeout())) {
+              newChunks.append(ch)
+            } else {
+              pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
 
-            val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
-            pNeeded = PermMinus(pNeeded, pTaken)
-            val consumedChunk = ch.withPerm(pTaken)
+              val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
+              pNeeded = PermMinus(pNeeded, pTaken)
+              val consumedChunk = ch.withPerm(pTaken)
 
-            if (!v.decider.check(pTaken === NoPerm, Verifier.config.splitTimeout())) {
-              consumedChunks.append(consumedChunk)
+              if (!v.decider.check(pTaken === NoPerm, Verifier.config.splitTimeout())) {
+                consumedChunks.append(consumedChunk)
+              }
+
+              if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
+                newChunks.append(newChunk)
+              }
+
+              moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout())
             }
-
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
-              newChunks.append(newChunk)
-            }
-
-            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout())
           } else {
             newChunks.append(ch)
           }
@@ -366,7 +371,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
             snap
           } else {
-            Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
+            Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit).convert(snap.sort)
           }
           if (!moreNeeded) {
             val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms))
@@ -416,7 +421,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         case false => createFailure(ve, v, s)
       }
     } else {
-      if (!terms.utils.consumeExactRead(perms, s.constrainableARPs ++ s.loopReadVarStack)) {
+      val constrainableVars = s.constrainableARPs ++ (if (s.loopPhaseStack.nonEmpty && s.loopPhaseStack.head._1 == LoopPhases.Transferring && s.loopReadVarStack.head._2) Seq(s.loopReadVarStack.head._1) else Seq())
+      if (!terms.utils.consumeExactRead(perms, constrainableVars)) {
         actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, consumedChunks, optSnap, v2) => {
           Q(s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), optSnap, v2)})
       } else {
@@ -496,7 +502,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
             snap
           } else {
-            Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
+            Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit).convert(snap.sort)
           }
           if (!moreNeeded) {
             Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
@@ -531,20 +537,24 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val updatedChunks =
       relevantChunks map (ch => {
         val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
-        val permTaken = v.decider.fresh("p", sorts.Perm)
+        if (v.decider.check(Not(eq), Verifier.config.checkTimeout())) {
+          ch
+        } else {
+          val permTaken = v.decider.fresh("p", sorts.Perm)
 
-        totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm))
-        totalPermTaken = PermPlus(totalPermTaken, permTaken)
+          totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm))
+          totalPermTaken = PermPlus(totalPermTaken, permTaken)
 
-        val constraint = And(IsValidPermVar(permTaken),
-          PermAtMost(permTaken, ch.perm),
-          Implies(Not(eq), permTaken === NoPerm)
-        )
+          val constraint = And(IsValidPermVar(permTaken),
+            PermAtMost(permTaken, ch.perm),
+            Implies(Not(eq), permTaken === NoPerm)
+          )
 
-        v.decider.assume(constraint)
-        newFr = newFr.recordArp(permTaken, constraint)
-        consumedChunks.append(ch.withPerm(permTaken))
-        ch.withPerm(PermMinus(ch.perm, permTaken))
+          v.decider.assume(constraint)
+          newFr = newFr.recordArp(permTaken, constraint)
+          consumedChunks.append(ch.withPerm(permTaken))
+          ch.withPerm(PermMinus(ch.perm, permTaken))
+        }
       })
 
     v.decider.assume(

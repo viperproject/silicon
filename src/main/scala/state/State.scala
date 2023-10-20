@@ -79,8 +79,10 @@ final case class State(g: Store = Store(),
                        moreCompleteExhale: Boolean = false,
                        loopPhaseStack: Stack[(LoopPhase, Int, SilverLoopHeadBlock)] = Stack(),
                        loopHeapStack: Stack[Heap] = Stack(),
-                       loopReadVarStack: Stack[Var] = Stack())
+                       loopReadVarStack: Stack[(Var, Boolean)] = Stack())
     extends Mergeable[State] {
+
+  assert(loopPhaseStack.length == loopHeapStack.length)
 
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.

@@ -81,24 +81,23 @@ object executor extends ExecutionRules {
     edge.kind match {
       case cfg.Kind.Out if Verifier.config.kinduction.isSupplied =>
         val (phase, kRemaining, loopHeap) = s.loopPhaseStack.head
-        val sPop = s.copy(loopPhaseStack = s.loopPhaseStack.tail)
         val sNew = phase match {
           case LoopPhases.Transferring =>
             // just merge back
             val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.loopHeapStack.head, v)
             val s1 = s.copy(functionRecorder = fr1, h = h1,
-              loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail)
+              loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
           case LoopPhases.Assuming =>
             v.decider.assume(False)
             // assume false
-            val s1 = s.copy(loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail)
+            val s1 = s.copy(loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
           case LoopPhases.Checking =>
             // just merge back
             val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.loopHeapStack.head, v)
             val s1 = s.copy(functionRecorder = fr1, h = h1,
-              loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail)
+              loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
         }
         sNew
@@ -197,7 +196,7 @@ object executor extends ExecutionRules {
             val sFirstPhase = s.copy(loopPhaseStack = s.loopPhaseStack.prepended((LoopPhases.Transferring, Verifier.config.kinduction(), block)),
               loopHeapStack = s.loopHeapStack.prepended(s.h),
               h = Heap(),
-              loopReadVarStack = s.loopReadVarStack.prepended(readPerm))
+              loopReadVarStack = s.loopReadVarStack.prepended((readPerm, true)))
             val edges = s.methodCfg.outEdges(block)
 
             execs(sFirstPhase, stmts, v)((s4, v3) => {
@@ -514,8 +513,8 @@ object executor extends ExecutionRules {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, pve, v)((s1, _, v1) => {
-            val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
+          consume(s, a, pve, v, true)((s1, _, v1) => {
+            val s2 = s1.copy(reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
       // Calling hack407_R() results in Silicon efficiently havocking all instances of resource R.

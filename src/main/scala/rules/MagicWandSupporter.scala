@@ -147,17 +147,21 @@ object magicWandSupporter extends SymbolicExecutionRules {
     val (result, s1, heaps, actualConsumedChunks, consumedChunks) =
       hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Heap, Stack[Option[CH]])](initial)((partialResult, heap) =>
         partialResult match  {
-          case (r: Complete, sIn, hps, ch, cchs)  => (r, sIn, heap +: hps, ch, None +: cchs)
+          case (r: Complete, sIn, hps, ch, cchs)  =>
+            (r, sIn, heap +: hps, ch, None +: cchs)
           case (Incomplete(permsNeeded), sIn, hps, ch, cchs) =>
-            val (success, sOut, h, cHeap, cch) = consumeFunction(sIn, heap, permsNeeded, v)
+            val sInP = if (hps.nonEmpty) sIn else sIn.copy(loopReadVarStack = sIn.loopReadVarStack.tail.prepended((sIn.loopReadVarStack.head._1, false)))
+            val (success, sOutP, h, cHeap, cch) = consumeFunction(sInP, heap, permsNeeded, v)
+            val sOut = sOutP.copy(loopReadVarStack = sIn.loopReadVarStack)
+            println("===")
             val tEq = (cchs.flatten.lastOption, cch) match {
               /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
                * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
                * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
                */
-              case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
-              case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
-              case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
+              //case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
+              //case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
+              //case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
               case _ => True
             }
             v.decider.assume(tEq)

@@ -34,7 +34,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     *          consumed partial heap.
     * @return The result of the continuation.
     */
-  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier, isAssert: Boolean = false)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -69,12 +69,12 @@ object consumer extends ConsumptionRules {
    */
 
   /** @inheritdoc */
-  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier, isAssert: Boolean = false)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
     consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, cHeap, snap, v1) => {
-      val s2 = s1.copy(h = h1,
+      val s2 = s1.copy(h = if (isAssert) h1 + cHeap else h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap,
                        consumedHeapParts = s.consumedHeapParts)
       Q(s2, snap, v1)})

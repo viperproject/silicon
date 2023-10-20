@@ -1,0 +1,161 @@
+field f: Int
+field g: Ref
+
+predicate P(x: Ref) { acc(x.f) && acc(x.g, 1/2) }
+
+method havocBool() returns (b: Bool)
+
+method m(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires acc(r1.f) && acc(r2.f, 1/2) && acc(r3.f, 1/2)
+    requires acc(r2.g)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        assert acc(r2.f, 1/2) && acc(r3.f, 1/2) && acc(r1.f, 1/2)
+        tmp := r1.f
+        if (r2 == r3)
+        {
+            r2.f := tmp + 1
+        }
+        assert tmp == r1.f  // should actually pass :/ does not because we dont take all the perm into the loop.
+        bp := havocBool()
+    }
+    r1.f := 0
+    assert acc(r2.f, 1/2) && acc(r3.f, 1/2)
+}
+
+method ms(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires acc(r1.f) && acc(r2.f, 1/2) && acc(r3.f, 1/2)
+    requires acc(r2.g)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r1.f
+        if (r2 == r3)
+        {
+            r2.f := tmp + 1
+        }
+        //assert tmp == r1.f  // should actually pass :/ does not because we dont take all the perm into the loop.
+        bp := havocBool()
+    }
+    r1.f := 0
+    assert acc(r2.f, 1/2) && acc(r3.f, 1/2)
+}
+
+method msf(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires acc(r1.f) && acc(r2.f, 1/2) && acc(r3.f, 1/2)
+    requires acc(r2.g)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r1.f
+        if (r2 == r3)
+        {
+            r2.f := tmp + 1
+        }
+        //assert tmp == r1.f  // should actually pass :/ does not because we dont take all the perm into the loop.
+        bp := havocBool()
+    }
+    r1.f := 0
+    assert acc(r2.f, 1/2) && acc(r3.f, 1/2)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert acc(r2.f, 1/2) && acc(r3.f, 1/1)
+}
+
+method mp(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires acc(r1.f) && acc(r2.f, 1/2) && acc(r3.f, 1/2)
+    requires acc(r2.g)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r1.f
+        //if (r2 == r3)
+        //{
+        //:: ExpectedOutput(assignment.failed:insufficient.permission)
+            r2.f := tmp + 1
+        //}
+        assert tmp == r1.f
+        bp := havocBool()
+    }
+}
+
+method mpp(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires acc(r1.f) && acc(r2.f, 1/2) && acc(r3.f, 1/2)
+    requires acc(r2.g)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r2.f
+        if (r2 == r3)
+        {
+            r3.f := tmp + 1
+        }
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert tmp == r2.f
+        bp := havocBool()
+    }
+}
+
+method m0(n: Int, d: Int)
+    requires n > 0 && d > 0
+{
+  var i: Int := d
+  var res: Int := n
+  while (i > 0)
+  {
+    res := sqrt(res)
+    i := i - 1
+  }
+}
+
+method m0p(n: Int, d: Int, d0: Int)
+    requires n > 0 && d > 0 && d0 > 0
+{
+  var i: Int := d
+  var res: Int := n
+  while (i > 0)
+  {
+    //:: ExpectedOutput(call.precondition:assertion.false)
+    res := div(d0, res)
+    i := i - 1
+  }
+}
+
+method sqrt(n: Int) returns (r: Int)
+  requires n >= 0
+  ensures r >= 0
+
+method div(n0: Int, n: Int) returns (r: Int)
+  requires n > 0 && n0 >= n
+  ensures r >= 0
+
+// assert
+// exhale
+// read
+// unfold
+// write
+// under condition
+// value thing (div by zero)
+
+// not enough perm initially
+// not enough perm
+
+// function read
+
+
+// linkedlist thing
