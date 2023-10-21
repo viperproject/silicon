@@ -15,6 +15,7 @@ import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
+import viper.silver.ast.AnnotationInfo
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
@@ -127,7 +128,16 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
-        val fun = symbolConverter.toFunction(silverFunc)
+        val funcAnn = silverFunc.info.getUniqueInfo[AnnotationInfo]
+        val fun = funcAnn match {
+          case Some(a) if a.values.contains("opaque") =>
+            val funcAppAnn = eFApp.info.getUniqueInfo[AnnotationInfo]
+            funcAppAnn match {
+              case Some(a) if a.values.contains("useDef") => symbolConverter.toFunction(silverFunc)
+              case _ => functionSupporter.limitedVersion(symbolConverter.toFunction(silverFunc))
+            }
+          case _ => symbolConverter.toFunction(silverFunc)
+        }
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap)
         val fapp = App(fun, snap +: args)

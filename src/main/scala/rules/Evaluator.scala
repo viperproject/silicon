@@ -768,7 +768,16 @@ object evaluator extends EvaluationRules {
               val snap1 = snap.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               v3.decider.assume(preFApp)
-              val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+              val funcAnn = func.info.getUniqueInfo[AnnotationInfo]
+              val tFApp = funcAnn match {
+                case Some(a) if a.values.contains("opaque") =>
+                  val funcAppAnn = fapp.info.getUniqueInfo[AnnotationInfo]
+                  funcAppAnn match {
+                    case Some(a) if a.values.contains("useDef") => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+                  }
+                case _ => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+              }
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)
                                    .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
