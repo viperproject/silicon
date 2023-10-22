@@ -153,7 +153,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
             val sInP = if (hps.nonEmpty) sIn else sIn.copy(loopReadVarStack = sIn.loopReadVarStack.tail.prepended((sIn.loopReadVarStack.head._1, false)))
             val (success, sOutP, h, cHeap, cch) = consumeFunction(sInP, heap, permsNeeded, v)
             val sOut = sOutP.copy(loopReadVarStack = sIn.loopReadVarStack)
-            println("===")
             val tEq = (cchs.flatten.lastOption, cch) match {
               /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
                * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their

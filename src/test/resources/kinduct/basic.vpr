@@ -4,6 +4,7 @@ field g: Ref
 predicate P(x: Ref) { acc(x.f) && acc(x.g, 1/2) }
 
 method havocBool() returns (b: Bool)
+function detBool(): Bool
 
 method m(r1: Ref, r2: Ref, r3: Ref, b: Bool)
     requires acc(r1.f) && acc(r2.f, 1/2) && acc(r3.f, 1/2)
@@ -143,6 +144,167 @@ method sqrt(n: Int) returns (r: Int)
 method div(n0: Int, n: Int) returns (r: Int)
   requires n > 0 && n0 >= n
   ensures r >= 0
+
+method mFrame(r: Ref)
+    requires acc(r.f)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+    {
+        b := havocBool()
+    }
+    assert r.f == 1
+}
+
+method mFrame2(r: Ref)
+    requires acc(r.f)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+    {
+        assert acc(r.f)
+        b := havocBool()
+    }
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f == 1
+}
+
+method mFrame3(r: Ref)
+    requires acc(r.f)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+        invariant r.f == 1
+    {
+        assert acc(r.f)
+        b := havocBool()
+    }
+    assert r.f == 1
+}
+
+method mFrame4(r: Ref)
+    requires acc(r.f) && acc(r.g)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+        invariant r.f == 1
+    {
+        assert acc(r.f)
+        var tmp: Bool
+        tmp := havocBool()
+        if (tmp)
+        {
+            //:: ExpectedOutput(assignment.failed:insufficient.permission)
+            r.g := r.g
+        }
+        b := havocBool()
+    }
+
+}
+
+method mFrame5(r: Ref)
+    requires acc(r.f) && acc(r.g)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+        invariant r.f == 1
+    {
+        assert acc(r.f)
+        var tmp: Bool
+        tmp := detBool()
+        if (tmp)
+        {
+            r.g := r.g
+        }
+        b := havocBool()
+    }
+
+}
+
+method mRead(r: Ref, p: Perm)
+    requires p > none
+    requires acc(r.f, p)
+{
+    var b: Bool
+    b := havocBool()
+    var tmp: Int
+    tmp := 0
+    while (b)
+    {
+        tmp := tmp + r.f
+        tmp := tmp + r.f
+        b := havocBool()
+    }
+}
+
+method mRead2(r: Ref, p: Perm)
+    requires p >= none
+    requires acc(r.f, p)
+{
+    var b: Bool
+    b := havocBool()
+    var tmp: Int
+    tmp := 0
+    while (b)
+    {
+        //:: ExpectedOutput(assignment.failed:insufficient.permission)
+        tmp := tmp + r.f
+        tmp := tmp + r.f
+        b := havocBool()
+    }
+}
+
+method mRead3(r: Ref, p: Perm)
+    requires p > none
+    requires acc(r.f, p)
+{
+    var b: Bool
+    b := havocBool()
+    var tmp: Int
+    tmp := 0
+    var before: Int
+    before := r.f
+    while (b)
+    {
+        tmp := tmp + r.f
+        tmp := tmp + r.f
+        b := havocBool()
+    }
+    assert before == r.f
+    assert perm(r.f) == p
+}
+
+method mRead4(r: Ref, p: Perm)
+    requires p > none
+    requires acc(r.f, p)
+{
+    var b: Bool
+    b := havocBool()
+    var tmp: Int
+    tmp := 0
+    var before: Int
+    before := r.f
+    while (b)
+    {
+        tmp := tmp + r.f
+        tmp := tmp + r.f
+        b := havocBool()
+    }
+    assert before == r.f
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert perm(r.f) > p
+}
+
 
 // assert
 // exhale

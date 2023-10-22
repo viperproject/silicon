@@ -201,22 +201,48 @@ object chunkSupporter extends ChunkSupportRules {
             : VerificationResult = {
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
-      val lookupFunction = {
+      {
         if (s1.loopPhaseStack.nonEmpty && (s1.loopPhaseStack.head._1 == LoopPhases.Transferring || s1.loopPhaseStack.head._1 == LoopPhases.Assuming)) {
           assert(s1.moreCompleteExhale)
-          val perms = FractionPermLiteral(Rational(1, 100))// s1.loopReadVarStack.head._1
-          def fn(s: State, h: Heap, resource: ast.Resource, args: Seq[Term], ve: VerificationError, v: Verifier)(QP: (State, Term, Verifier) => VerificationResult): VerificationResult = {
-            moreCompleteExhaleSupporter.consumeComplete(s, h, resource, args, perms, ve, v)((s2, h2, hConsumed, snap2, v2) => {
-              QP(s2, snap2.get, v2)
-            })
+
+          val identifier = resource match {
+            case f: ast.Field => BasicChunkIdentifier(f.name)
+            case p: ast.Predicate => BasicChunkIdentifier(p.name)
+            case mw: ast.MagicWand => ??? // MagicWandIdentifier(mw, s.program)
           }
-          fn _
-        } else
-        if (s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
-        else lookupGreedy _
+          val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
+          val currentPermAmount =
+            chs.foldLeft(NoPerm: Term)((q, ch) => {
+              val argsPairWiseEqual = And(args.zip(ch.args).map { case (a1, a2) => a1 === a2 })
+              PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm))
+            })
+          val havePerm = IsPositive(currentPermAmount)
+          brancher.branch(s1, havePerm, None, v1)((s2, v2) => {
+            moreCompleteExhaleSupporter.lookupComplete(s2, h, resource, args, ve, v2)((s3, tSnap, v3) =>
+              QS(s3, s3.h, tSnap, v3))
+          },
+            (s2, v2) => {
+              val perms = s2.loopReadVarStack.head._1 // FractionPermLiteral(Rational(1, 100))
+
+              def fn(s: State, h: Heap, resource: ast.Resource, args: Seq[Term], ve: VerificationError, v: Verifier)(QP: (State, Term, Verifier) => VerificationResult): VerificationResult = {
+                moreCompleteExhaleSupporter.consumeComplete(s, h, resource, args, perms, ve, v)((s2, h2, hConsumed, snap2, v2) => {
+                  QP(s2, snap2.get, v2)
+                })
+              }
+
+              fn(s2, s2.h, resource, args, ve, v2)((s3, tSnap, v3) =>
+                QS(s3, s3.h, tSnap, v3))
+            })
+        } else {
+          if (s1.moreCompleteExhale) {
+            moreCompleteExhaleSupporter.lookupComplete(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
+              QS(s2, s2.h, tSnap, v2))
+          } else {
+            lookupGreedy(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
+              QS(s2, s2.h, tSnap, v2))
+          }
+        }
       }
-      lookupFunction(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
-        QS(s2, s2.h, tSnap, v2))
     })(Q)
   }
 
