@@ -258,8 +258,8 @@ object chunkSupporter extends ChunkSupportRules {
       throw new Exception()
 
     val id = ChunkIdentifier(resource, s.program)
-
-    findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+    val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
+    findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(true) =>

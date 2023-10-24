@@ -13,10 +13,18 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{And, Or, Term}
 import viper.silicon.verifier.Verifier
 
-case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions)
+case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
+  // Instead of merging states by calling State.merge,
+  // we can directly merge JoinDataEntries to obtain new States,
+  // and the join data entries themselves provide information about the path conditions to State.merge.
+  def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
+    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+    v.stateConsolidator.consolidate(res, v)
+  }
+}
 
 trait JoiningRules extends SymbolicExecutionRules {
-  def join[D, JD](s: State, v: Verifier)
+  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -24,7 +32,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 }
 
 object joiner extends JoiningRules {
-  def join[D, JD](s: State, v: Verifier)
+  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -40,16 +48,27 @@ object joiner extends JoiningRules {
       val s2 = s1.copy(underJoin = true)
 
       block(s2, v1, (s3, data, v2) => {
-        /* In order to prevent mismatches between different final states of the evaluation
-         * paths that are to be joined, we reset certain state properties that may have been
-         * affected by the evaluation - such as the store (by let-bindings) or the heap (by
-         * state consolidations) to their initial values.
-         */
-        val s4 = s3.copy(g = s1.g,
-                         h = s1.h,
-                         oldHeaps = s1.oldHeaps,
-                         underJoin = s1.underJoin,
-                         retrying = s1.retrying)
+        val s4 =
+          if (resetState) {
+            /* In order to prevent mismatches between different final states of the evaluation
+             * paths that are to be joined, we reset certain state properties that may have been
+             * affected by the evaluation - such as the store (by let-bindings) or the heap (by
+             * state consolidations) to their initial values.
+             */
+            s3.copy(g = s1.g,
+                    h = s1.h,
+                    oldHeaps = s1.oldHeaps,
+                    underJoin = s1.underJoin,
+                    // TODO: Evaluation should not affect partiallyConsumedHeap, probably
+                    ssCache = s1.ssCache,
+                    partiallyConsumedHeap = s1.partiallyConsumedHeap,
+                    invariantContexts = s1.invariantContexts,
+                    retrying = s1.retrying)
+          } else {
+            // For more joins, state shouldn't be reset.
+            s3
+          }
+
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })

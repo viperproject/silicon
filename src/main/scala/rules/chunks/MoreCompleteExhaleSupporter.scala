@@ -116,7 +116,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     }
     val (s1, taggedSnap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
 
-    v.decider.assume(And(snapDefs))
+    v.decider.assumeDefinition(And(snapDefs))
 //    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
     val s2 =
