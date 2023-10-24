@@ -301,6 +301,12 @@ object State {
   }
 
   def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions): State = {
+    val conditions1 = And(pc1.branchConditions)
+    val conditions2 = And(pc2.branchConditions)
+    merge(s1, conditions1, s2, conditions2)
+  }
+
+  def merge(s1: State, conditions1: Term, s2: State, conditions2: Term): State = {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
@@ -357,9 +363,6 @@ object State {
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
 
             val smDomainNeeded3 = smDomainNeeded1 || smDomainNeeded2
-
-            val conditions1 = And(pc1.branchConditions)
-            val conditions2 = And(pc2.branchConditions)
 
             val mergeStore = (g1: Store, g2: Store) => {
               Store(mergeMaps(g1.values, conditions1, g2.values, conditions2)

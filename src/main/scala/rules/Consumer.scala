@@ -55,7 +55,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
   def consumes(s: State,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
-               v: Verifier)
+               v: Verifier, isAssert: Boolean = false)
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult
 }
@@ -84,7 +84,7 @@ object consumer extends ConsumptionRules {
   def consumes(s: State,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
-               v: Verifier)
+               v: Verifier, isAssert: Boolean = false)
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult = {
 
@@ -100,7 +100,7 @@ object consumer extends ConsumptionRules {
     })
 
     consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, cHeap, snap1, v1) => {
-      val s2 = s1.copy(h = h1,
+      val s2 = s1.copy(h = if (isAssert) h1 + cHeap else h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap,
                        consumedHeapParts = Some(cHeap))
       Q(s2, snap1, v1)
@@ -467,6 +467,7 @@ object consumer extends ConsumptionRules {
 
       case _ =>
         evalAndAssert(s, a, pve, v)((s1, t, v1) => {
+          val old = s.consumedHeapParts
           Q(s1, h, Heap(), t, v1)
         })
     }
@@ -560,8 +561,7 @@ object consumer extends ConsumptionRules {
               failure combine QS(s3, v2)
             } else failure}})
     })((s4, v4) => {
-      val s5 = s4.copy(h = s.h,
-                       reserveHeaps = s.reserveHeaps,
+      val s5 = s4.copy(reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
       Q(s5, Unit, v4)
     })

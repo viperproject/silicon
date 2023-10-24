@@ -321,44 +321,46 @@ object executor extends ExecutionRules {
           case _ if Verifier.config.kinduction.isSupplied =>
             val (phase, kRemaining, loopHeap) = s.loopPhaseStack.head
             val edges = s.methodCfg.outEdges(block)
-            consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, v) =>
+            consumes(s, invs, e => LoopInvariantNotPreserved(e), v, true)((sp, _, v) => {
+              val shuh = s
+              println("??")
               phase match {
                 case LoopPhases.Transferring =>
                   if (kRemaining > 1) {
-                    val sNew = s.copy(loopPhaseStack = (LoopPhases.Transferring, kRemaining - 1, loopHeap) +: s.loopPhaseStack.tail)
+                    val sNew = sp.copy(loopPhaseStack = (LoopPhases.Transferring, kRemaining - 1, loopHeap) +: sp.loopPhaseStack.tail)
                     execs(sNew, stmts, v)((s4, v3) => {
                       follows(s4, edges, WhileFailed, v3, None)(Q)
                     })
                   } else {
                     /* Havoc local variables that are assigned to in the loop body */
-                    val wvs = s.methodCfg.writtenVars(block)
+                    val wvs = sp.methodCfg.writtenVars(block)
                     /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
-                    val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
-                    val sNew = s.copy(g = gBody, h = Heap(),
-                      loopPhaseStack = (LoopPhases.Assuming, Verifier.config.kinduction(), loopHeap) +: s.loopPhaseStack.tail)
+                    val gBody = Store(wvs.foldLeft(sp.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
+                    val sNew = sp.copy(g = gBody, h = Heap(),
+                      loopPhaseStack = (LoopPhases.Assuming, Verifier.config.kinduction(), loopHeap) +: sp.loopPhaseStack.tail)
                     execs(sNew, stmts, v)((s4, v3) => {
                       follows(s4, edges, WhileFailed, v3, None)(Q)
                     })
                   }
                 case LoopPhases.Assuming =>
                   if (kRemaining > 1) {
-                    val sNew = s.copy(loopPhaseStack = (LoopPhases.Assuming, kRemaining - 1, loopHeap) +: s.loopPhaseStack.tail)
+                    val sNew = sp.copy(loopPhaseStack = (LoopPhases.Assuming, kRemaining - 1, loopHeap) +: sp.loopPhaseStack.tail)
                     execs(sNew, stmts, v)((s4, v3) => {
                       follows(s4, edges, WhileFailed, v3, None)(Q)
                     })
                   } else {
-                    val sNew = s.copy(loopPhaseStack = (LoopPhases.Checking, 1, loopHeap) +: s.loopPhaseStack.tail)
+                    val sNew = sp.copy(loopPhaseStack = (LoopPhases.Checking, 1, loopHeap) +: sp.loopPhaseStack.tail)
                     execs(sNew, stmts, v)((s4, v3) => {
                       follows(s4, edges, WhileFailed, v3, None)(Q)
                     })
                   }
                 case LoopPhases.Checking =>
                   val outEdges = edges filter(_.kind == cfg.Kind.Out)
-                  execs(s, stmts, v)((s4, v3) => {
+                  execs(sp, stmts, v)((s4, v3) => {
                     follows(s4, outEdges, WhileFailed, v3, None)(Q)
                   })
-              }
+              }}
             )
 
           case _ =>
