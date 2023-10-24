@@ -212,7 +212,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
             reporter report ExecutionTraceReport(symbExLog.logs.toSeq, List(), List())
           }
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
-          stop()
+          reset()
           Thread.sleep(2000)
         case exception: Exception if !config.disableCatchingExceptions() =>
           config.assertVerified() // Raises an exception itself, if it fails
