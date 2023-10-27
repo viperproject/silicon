@@ -1,0 +1,65 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Copyright (c) 2011-2022 ETH Zurich.
+
+name: Update Submodules
+
+on:
+  workflow_dispatch: # allow to manually trigger this workflow
+  schedule:
+    - cron: '0 6 * * *' # run every day at 06:00 UTC
+
+jobs:
+  # Update silver and create a PR if there are any changes
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Get current commits
+        run: echo "PREV_SILVER_REF=$(git -C silver rev-parse HEAD)" >> $GITHUB_ENV
+
+      - name: Update Silver submodule
+        run: git checkout master && git pull
+        working-directory: silver
+
+      - name: Get new commits
+        run: echo "CUR_SILVER_REF=$(git -C silver rev-parse HEAD)" >> $GITHUB_ENV
+
+      - name: Create PR body
+        run: |
+          if [[ "${{ env.PREV_SILVER_REF }}" != "${{ env.CUR_SILVER_REF }}" ]]; then
+            echo 'PR_BODY_LINE=* Updates Silver from `${{ env.PREV_SILVER_REF }}` to `${{ env.CUR_SILVER_REF }}`.' >> $GITHUB_ENV
+          else
+            echo 'PR_BODY_LINE=' >> $GITHUB_ENV
+          fi
+
+      - name: Open a pull request
+        id: pr
+        uses: peter-evans/create-pull-request@v4
+        if: (env.PREV_SILVER_REF != env.CUR_SILVER_REF)
+        with:
+          # Use viper-admin's token to workaround a restriction of GitHub.
+          # See: https://github.com/peter-evans/create-pull-request/issues/48
+          token: ${{ secrets.UPDATE_SILVER }}
+          commit-message: Updates submodules
+          title: Update Submodules
+          branch: auto-update-submodules
+          delete-branch: true
+          labels: |
+            automated pr
+          body: |
+            ${{ env.PR_BODY_LINE1 }}
+
+      - name: Enable auto-merge of PR
+        uses: peter-evans/create-or-update-comment@v2
+        if: (env.PREV_SILVER_REF != env.CUR_SILVER_REF)
+        with:
+          token: ${{ secrets.UPDATE_SILVER }}
+          issue-number: ${{ steps.pr.outputs.pull-request-number }}"
+          body: bors merge
