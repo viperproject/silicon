@@ -133,7 +133,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           case Some(a) if a.values.contains("opaque") =>
             val funcAppAnn = eFApp.info.getUniqueInfo[AnnotationInfo]
             funcAppAnn match {
-              case Some(a) if a.values.contains("useDef") => symbolConverter.toFunction(silverFunc)
+              case Some(a) if a.values.contains("reveal") => symbolConverter.toFunction(silverFunc)
               case _ => functionSupporter.limitedVersion(symbolConverter.toFunction(silverFunc))
             }
           case _ => symbolConverter.toFunction(silverFunc)

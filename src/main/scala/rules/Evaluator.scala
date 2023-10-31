@@ -773,7 +773,7 @@ object evaluator extends EvaluationRules {
                 case Some(a) if a.values.contains("opaque") =>
                   val funcAppAnn = fapp.info.getUniqueInfo[AnnotationInfo]
                   funcAppAnn match {
-                    case Some(a) if a.values.contains("useDef") => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
                     case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
                   }
                 case _ => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
