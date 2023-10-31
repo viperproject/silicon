@@ -14,7 +14,7 @@ import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silver.ast
-import viper.silver.frontend.{DefaultStates, SilFrontend}
+import viper.silver.frontend.{DefaultStates, MinimalViperFrontendAPI, SilFrontend, ViperFrontendAPI}
 import viper.silver.reporter._
 import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
@@ -377,6 +377,23 @@ class SiliconFrontend(override val reporter: Reporter,
     _config = siliconInstance.config
   }
 }
+
+/**
+  * Silicon "frontend" for use by actual Viper frontends.
+  * Performs consistency check and verification.
+  * See [[viper.silver.frontend.ViperFrontendAPI]] for usage information.
+  */
+class SiliconFrontendAPI(override val reporter: Reporter)
+  extends SiliconFrontend(reporter) with ViperFrontendAPI
+
+/**
+  * Silicon "frontend" for use by actual Viper frontends.
+  * Performs only verification (no consistency check).
+  * See [[viper.silver.frontend.ViperFrontendAPI]] for usage information.
+  */
+class MinimalSiliconFrontendAPI(override val reporter: Reporter)
+  extends SiliconFrontend(reporter) with MinimalViperFrontendAPI
+
 
 object SiliconRunner extends SiliconRunnerInstance {
   def main(args: Array[String]): Unit = {

@@ -14,9 +14,14 @@ import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, Unexpec
 import viper.silver.verifier.Verifier
 
 class SiliconTests extends SilSuite {
-  private val siliconTestDirectories = Seq("/home/pcorrect/repos/benchmarking_silicon/viper_tests")
+  private val siliconTestDirectories =
+    Seq("consistency")
 
-  private val silTestDirectories = Seq()
+  private val silTestDirectories =
+    Seq("all",
+        "quantifiedpermissions", "quantifiedpredicates", "quantifiedcombinations",
+        "wands", "termination", "refute",
+        "examples")
 
   val testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
 

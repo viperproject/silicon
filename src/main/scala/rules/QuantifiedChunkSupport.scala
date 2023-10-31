@@ -967,7 +967,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
     v.decider.prover.comment("Definitional axioms for singleton-SM's value")
     val definitionalAxiomMark = v.decider.setPathConditionMark()
-    v.decider.assume(smValueDef)
+    v.decider.assumeDefinition(smValueDef)
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
@@ -1231,8 +1231,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case Some(heuristics) =>
         heuristics
       case None =>
-        quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(
-          quantifiedChunkSupporter.extractHints(None, arguments))
+        quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(arguments,
+          quantifiedChunkSupporter.extractHints(None, arguments), v)
     }
 
     if (s.exhaleExt) {
@@ -1736,6 +1736,38 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
       matchingChunks ++ otherChunks
     }
+
+  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier)
+                                       : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
+    // Heuristic that emulates greedy Silicon behavior for consuming single-receiver permissions.
+    // First:  Find singleton chunks that have the same receiver syntactically.
+    //         If so, consider those first, then all others.
+    // Second: If nothing matches syntactically, try to find a chunk that matches the receiver using the decider.
+    //         If that's the case, consider that chunk first, then all others.
+    // Third:  As a fallback, use the standard hint based heuristics.
+    val fallback = hintBasedChunkOrderHeuristic(hints)
+
+    (chunks: Seq[QuantifiedBasicChunk]) => {
+      val (syntacticMatches, others) = chunks.partition(c => c.singletonArguments.contains(receiver))
+      if (syntacticMatches.nonEmpty) {
+        syntacticMatches ++ others
+      } else {
+        val greedyMatch = chunks.find(c => c.singletonArguments match {
+          case Some(args) if args.length == receiver.length =>
+            args.zip(receiver).forall(ts => v.decider.check(ts._1 === ts._2, Verifier.config.checkTimeout()))
+          case _ =>
+            false
+        }).toSeq
+        if (greedyMatch.nonEmpty) {
+          greedyMatch ++ chunks.diff(greedyMatch)
+        } else {
+          // It doesn't seem to be any of the singletons. Use the fallback on the non-singletons.
+          val (qpChunks, singletons) = chunks.partition(_.singletonArguments.isEmpty)
+          fallback(qpChunks) ++ singletons
+        }
+      }
+    }
+  }
 
   def extractHints(cond: Option[Term], arguments: Seq[Term]): Seq[Term] = {
     var hints =

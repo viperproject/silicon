@@ -173,10 +173,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
+          emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
           if (function.body.isEmpty) {
-            emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -187,7 +187,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
                 emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
-                emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
+                emitAndRecordFunctionAxioms(data.bodyPreconditionPropagationAxiom: _*)
             }
 
             result1 && result2
