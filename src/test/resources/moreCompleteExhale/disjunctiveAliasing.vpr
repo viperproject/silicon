@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+function fn(x: Ref, y: Ref, z: Ref): Int
+  requires acc(x.f) && acc(y.f)
+  requires (z == x) || (z == y)
+{
+  z.f
+}
+
+method m(x: Ref, y: Ref, z: Ref)
+  requires acc(x.f) && acc(y.f)
+  requires (z == x) || (z == y)
+{
+  var tmp: Int
+  tmp := z.f
+}
+
