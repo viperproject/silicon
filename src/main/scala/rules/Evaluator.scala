@@ -93,7 +93,7 @@ object evaluator extends EvaluationRules {
     (s1, t1, v1)
   }
 
-  def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier) : (State, Term, Verifier) = {
+  def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier) : Either[(State, Term, Verifier), VerificationResult] = {
 
 
     /* For debugging only */
