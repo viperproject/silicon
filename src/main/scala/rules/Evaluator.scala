@@ -869,7 +869,7 @@ object evaluator extends EvaluationRules {
                     } else failure}
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
-                if (s1.retryLevel == 0) {
+                if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)))
                   v1.decider.assert(Less(t1, SeqLength(t0))) {
                     case true =>
@@ -907,7 +907,7 @@ object evaluator extends EvaluationRules {
                     else failure}
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
-                if (s1.retryLevel == 0) {
+                if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)))
                   v1.decider.assert(Less(t1, SeqLength(t0))) {
                     case true =>
@@ -1008,9 +1008,13 @@ object evaluator extends EvaluationRules {
           case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
             case true => Q(s1, MapLookup(baseT, keyT), v1)
             case false =>
-              v1.decider.assume(SetIn(keyT, MapDomain(baseT)))
-              createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1) combine
-                Q(s1, MapLookup(baseT, keyT), v1) //TODO:J write tests for this case!
+              val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1)
+              if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
+                v1.decider.assume(SetIn(keyT, MapDomain(baseT)))
+                failure1 combine Q(s1, MapLookup(baseT, keyT), v1)
+              } else {
+                failure1
+              }
           }
         })
 
