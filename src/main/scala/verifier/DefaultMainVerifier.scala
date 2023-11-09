@@ -150,6 +150,11 @@ class DefaultMainVerifier(config: Config,
       decider.prover.emitSettings(contents)
       _verificationPoolManager.pooledVerifiers.emitSettings(contents)
     }
+
+    override def setOption(name: String, value: String): String = {
+      decider.prover.setOption(name, value)
+      _verificationPoolManager.pooledVerifiers.setOption(name, value)
+    }
   }
 
   /* Program verification */

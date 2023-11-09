@@ -18,6 +18,7 @@ import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
+import viper.silver.reporter.AnnotationWarning
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -43,6 +44,23 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
     def verify(sInit: State, method: ast.Method): Seq[VerificationResult] = {
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
+
+      val toReset = method.info.getUniqueInfo[ast.AnnotationInfo] match {
+        case Some(ai) if ai.values.contains("proverArgs") =>
+          ai.values("proverArgs").flatMap(o => {
+            val index = o.indexOf("=")
+            if (index == -1) {
+              reporter report AnnotationWarning(s"Invalid proverArgs annotation ${o} on method ${method.name}. Required format for each option is optionName=value.")
+              None
+            } else {
+              val (name, value) = (o.take(index), o.drop(index + 1))
+              val oldVal = v.decider.prover.setOption(name, value)
+              Some((name, oldVal))
+            }
+          })
+        case _ =>
+          Seq()
+      }
 
       openSymbExLogger(method)
 
@@ -93,6 +111,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   exec(s3, body, v3)((s4, v4) =>
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})
+
+      toReset.foreach(o => v.decider.prover.setOption(o._1, o._2))
 
       symbExLog.closeMemberScope()
       Seq(result)
