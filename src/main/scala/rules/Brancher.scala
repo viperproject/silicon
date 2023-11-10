@@ -85,8 +85,10 @@ object brancher extends BranchingRules {
     val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), conditionExp)
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
+    var proverArgsOfCurrentDecider: viper.silicon.Map[String, String] = null
     var wasElseExecutedOnDifferentVerifier = false
     var functionsOfElseBranchDecider: Set[FunctionDecl] = null
+    var proverArgsOfElseBranchDecider: viper.silicon.Map[String, String] = null
     var macrosOfElseBranchDecider: Seq[MacroDecl] = null
     var pcsForElseBranch: PathConditionStack = null
     var noOfErrors = 0
@@ -104,6 +106,7 @@ object brancher extends BranchingRules {
         if (parallelizeElseBranch){
           functionsOfCurrentDecider = v.decider.freshFunctions
           macrosOfCurrentDecider = v.decider.freshMacros
+          proverArgsOfCurrentDecider = v.decider.getProverOptions()
           pcsForElseBranch = v.decider.pcs.duplicate()
           noOfErrors = v.errorsReportedSoFar.get()
         }
@@ -122,6 +125,9 @@ object brancher extends BranchingRules {
             val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
 
             v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
+            proverArgsOfElseBranchDecider = v0.decider.getProverOptions()
+            v0.decider.resetProverOptions()
+            v0.decider.setProverOptions(proverArgsOfCurrentDecider)
             v0.decider.prover.comment(s"Bulk-declaring functions")
             v0.decider.declareAndRecordAsFreshFunctions(newFunctions, false)
             v0.decider.prover.comment(s"Bulk-declaring macros")
@@ -141,10 +147,14 @@ object brancher extends BranchingRules {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
 
             val result = fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
-            if (wasElseExecutedOnDifferentVerifier && s.underJoin) {
-              val newSymbols = v1.decider.popSymbolStack()
-              functionsOfElseBranchDecider = newSymbols._1
-              macrosOfElseBranchDecider = newSymbols._2
+            if (wasElseExecutedOnDifferentVerifier) {
+              v1.decider.resetProverOptions()
+              v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
+              if (s.underJoin) {
+                val newSymbols = v1.decider.popSymbolStack()
+                functionsOfElseBranchDecider = newSymbols._1
+                macrosOfElseBranchDecider = newSymbols._2
+              }
             }
             result
           })
@@ -206,6 +216,8 @@ object brancher extends BranchingRules {
             v.decider.setPcs(pcsAfterThenBranch)
             v.errorsReportedSoFar.set(noOfErrorsAfterThenBranch)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            v.decider.resetProverOptions()
+            v.decider.setProverOptions(proverArgsOfCurrentDecider)
           }
         }else{
           rs = elseBranchFuture.get()
