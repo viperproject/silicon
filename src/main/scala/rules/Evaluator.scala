@@ -1140,7 +1140,7 @@ object evaluator extends EvaluationRules {
           !possibleTriggersBefore.contains(t._1) || possibleTriggersBefore(t._1) != t._2)
 
         def wrapInOld(e: ast.Exp) = {
-          if (label == "old") {
+          if (label == Verifier.PRE_STATE_LABEL) {
             ast.Old(e)(e.pos, e.info, e.errT)
           } else {
             ast.LabelledOld(e, label)(e.pos, e.info, e.errT)
