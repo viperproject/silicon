@@ -19,18 +19,25 @@ import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.ast
+import viper.silver.components.StatefulComponent
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.{immutable, mutable}
 
-object maskHeapSupporter extends SymbolicExecutionRules {
+object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
 
   val assumeGoodMask = true
-  val simplifyOnConsume = !Verifier.config.prover.toOption.contains("Z3-API")
+  val simplifyOnConsume = false // !Verifier.config.prover.toOption.contains("Z3-API")
 
   val resCache = mutable.HashMap[(Seq[ast.Exp], ast.Program), Seq[Any]]()
+
+  override def start(): Unit = { }
+  override def stop(): Unit = {}
+  override def reset(): Unit = {
+    resCache.clear()
+  }
   def getResourceSeq(tlcs: Seq[ast.Exp], program: ast.Program): Seq[Any] = {
     val key = (tlcs, program)
     val current = resCache.get(key)
@@ -741,8 +748,6 @@ object maskHeapSupporter extends SymbolicExecutionRules {
     val qpMaskGet = HeapLookup(qpMask, argTerm)
     val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
 
-    v.decider.assume(qpMaskConstraint)
-
     val resourceToFind = resource match {
       case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
       case _ => resource
@@ -753,8 +758,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       case r: ast.Resource => (s.h, findMaskHeapChunk(s.h, r))
     }
     val newMask =  MaskSum(currentChunk.mask, qpMask)
-    if (assumeGoodMask)
-      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
+
 
     val newHeap = MergeHeaps(currentChunk.heap, currentChunk.mask, snapHeapMap(resource), qpMask)
     val (newChunk, fr0) = currentChunk.copy(newMask = newMask, v.decider, s.functionRecorder, newHeap = newHeap)
@@ -830,6 +834,11 @@ object maskHeapSupporter extends SymbolicExecutionRules {
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
+            v.decider.assume(qpMaskConstraint)
+
+            if (assumeGoodMask)
+              v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
+
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
 
