@@ -331,7 +331,17 @@ object evaluator extends EvaluationRules {
           val t = v1.decider.appliedFresh("letvar", v1.symbolConverter.toSort(x.typ), s1.relevantQuantifiedVariables)
           v1.decider.assumeDefinition(t === t0)
           val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t.applicable.asInstanceOf[Function])
-          eval(s1.copy(g = s1.g + (x.localVar, t0), functionRecorder = newFuncRec), e1, pve, v1)(Q)
+          val possibleTriggersBefore = if (s1.recordPossibleTriggers) s1.possibleTriggers else Map.empty
+          eval(s1.copy(g = s1.g + (x.localVar, t0), functionRecorder = newFuncRec), e1, pve, v1)((s2, t2, v2) => {
+            val newPossibleTriggers = if (s2.recordPossibleTriggers) {
+              val addedTriggers = s2.possibleTriggers -- possibleTriggersBefore.keys
+              val addedTriggersReplaced = addedTriggers.map(at => at._1.replace(x.localVar, e0) -> at._2)
+              s2.possibleTriggers ++ addedTriggersReplaced
+            } else {
+              s2.possibleTriggers
+            }
+            Q(s2.copy(possibleTriggers = newPossibleTriggers), t2, v2)
+          })
         })
 
       /* Strict evaluation of AND */
@@ -367,9 +377,9 @@ object evaluator extends EvaluationRules {
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, Some(e0), v2)(
-              (s3, v3) => eval(s3, e1, pve, v3)(QB),
-              (s3, v3) => eval(s3, e2, pve, v3)(QB))
+            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(e0), v2)(
+              (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e1, pve, v3)(QB),
+              (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e2, pve, v3)(QB))
           )(entries => {
             /* TODO: If branch(...) took orElse-continuations that are executed if a branch is dead, then then
                 comparisons with t0/Not(t0) wouldn't be necessary. */
@@ -816,7 +826,8 @@ object evaluator extends EvaluationRules {
                                  * of the recorded snapshots - which is wrong (probably only
                                  * incomplete).
                                  */
-                             smDomainNeeded = true)
+                             smDomainNeeded = true,
+                             moreJoins = false)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val (snapArgs, snapToRecord) = if (Verifier.config.heapFunctionEncoding()) {
                 val resources = maskHeapSupporter.getResourceSeq(func.pres, s4.program)
@@ -840,7 +851,8 @@ object evaluator extends EvaluationRules {
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded,
-                               hackIssue387DisablePermissionConsumption = s.hackIssue387DisablePermissionConsumption)
+                               hackIssue387DisablePermissionConsumption = s.hackIssue387DisablePermissionConsumption,
+                               moreJoins = s2.moreJoins)
               QB(s5, tFApp, v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
@@ -855,7 +867,7 @@ object evaluator extends EvaluationRules {
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
             eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
-              v2.decider.assert(IsNonNegative(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
+              v2.decider.assert(IsPositive(tPerm)) {
                 case true =>
                   joiner.join[Term, Term](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
@@ -904,7 +916,7 @@ object evaluator extends EvaluationRules {
                         eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
-                  createFailure(pve dueTo NegativePermission(ePerm), v2, s2)}))
+                  createFailure(pve dueTo NonPositivePermission(ePerm), v2, s2)}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables)
           Q(s, unknownValue, v)
@@ -939,7 +951,7 @@ object evaluator extends EvaluationRules {
                     } else failure}
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
-                if (s1.retryLevel == 0) {
+                if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)))
                   v1.decider.assert(Less(t1, SeqLength(t0))) {
                     case true =>
@@ -977,7 +989,7 @@ object evaluator extends EvaluationRules {
                     else failure}
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
-                if (s1.retryLevel == 0) {
+                if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)))
                   v1.decider.assert(Less(t1, SeqLength(t0))) {
                     case true =>
@@ -1078,9 +1090,13 @@ object evaluator extends EvaluationRules {
           case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
             case true => Q(s1, MapLookup(baseT, keyT), v1)
             case false =>
-              v1.decider.assume(SetIn(keyT, MapDomain(baseT)))
-              createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1) combine
-                Q(s1, MapLookup(baseT, keyT), v1) //TODO:J write tests for this case!
+              val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1)
+              if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
+                v1.decider.assume(SetIn(keyT, MapDomain(baseT)))
+                failure1 combine Q(s1, MapLookup(baseT, keyT), v1)
+              } else {
+                failure1
+              }
           }
         })
 
@@ -1163,9 +1179,9 @@ object evaluator extends EvaluationRules {
                          : VerificationResult = {
 
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
-      brancher.branch(s1, tLhs, eLhs, v1, fromShortCircuitingAnd)(
-        (s2, v2) => eval(s2, eRhs, pve, v2)(QB),
-        (s2, v2) => QB(s2, True, v2))
+      brancher.branch(s1.copy(parallelizeBranches = false), tLhs, eLhs, v1, fromShortCircuitingAnd = fromShortCircuitingAnd)(
+        (s2, v2) => eval(s2.copy(parallelizeBranches = s1.parallelizeBranches), eRhs, pve, v2)(QB),
+        (s2, v2) => QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), True, v2))
     )(entries => {
       assert(entries.length <= 2)
       val s1 = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
@@ -1196,7 +1212,7 @@ object evaluator extends EvaluationRules {
           !possibleTriggersBefore.contains(t._1) || possibleTriggersBefore(t._1) != t._2)
 
         def wrapInOld(e: ast.Exp) = {
-          if (label == "old") {
+          if (label == Verifier.PRE_STATE_LABEL) {
             ast.Old(e)(e.pos, e.info, e.errT)
           } else {
             ast.LabelledOld(e, label)(e.pos, e.info, e.errT)
@@ -1716,9 +1732,9 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, true) _ tupled swapIfAnd(
-              (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
-              (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
+            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, fromShortCircuitingAnd = true) _ tupled swapIfAnd(
+              (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), constructor(Seq(t0)), v3),
+              (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>
                 (ent.s, ent.data)
               case Seq(ent1, ent2) =>
