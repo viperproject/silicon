@@ -80,6 +80,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
 
   val commandLineArguments: Seq[String] = Seq(
     "--disableCatchingExceptions",
+    "--maskHeapMode",
     "--timeout", System.getProperty(timeoutPropertyName, "180") /* timeout in seconds */
   ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--proverRandomizeSeeds") else Seq.empty)
 
