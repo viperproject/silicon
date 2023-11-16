@@ -511,7 +511,7 @@ class Z3ProverAPI(uniqueId: String,
       if(Verifier.config.proverEnableResourceBounds) {
         ctx.updateParamValue("rlimit", (effectiveTimeout * Verifier.config.proverResourcesPerMillisecond).toString)
       } else {
-        ctx.updateParamValue("timeout", effectiveTimeout.toString)
+        ctx.updateParamValue("timeout", (effectiveTimeout * Verifier.config.proverMillisecondsPerMillisecond()).toInt.toString)
       }
     }
   }

@@ -384,6 +384,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
   )
 
+  val proverMillisecondsPerMillisecond: ScallopOption[Float] = opt[Float]("proverMillisecondsPerMillisecond",
+    descr = "Prover milliseconds per milliseconds. Is used to convert timeouts to timeouts.",
+    default = Some(1),
+    noshort = true,
+  )
+
   // DEPRECATED and replaced by proverResourcesPerMillisecond
   // but continues to work for now for backwards compatibility.
   private val rawZ3ResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("z3ResourcesPerMillisecond",
