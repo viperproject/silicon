@@ -31,7 +31,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
   val assumeGoodMask = true
   val simplifyOnConsume = false // !Verifier.config.prover.toOption.contains("Z3-API")
 
-  val resCache = mutable.HashMap[(Seq[ast.Exp], ast.Program), Seq[Any]]()
+  val resCache = mutable.HashMap[Seq[ast.Exp], Seq[Any]]()
 
   override def start(): Unit = { }
   override def stop(): Unit = {}
@@ -39,7 +39,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
     resCache.clear()
   }
   def getResourceSeq(tlcs: Seq[ast.Exp], program: ast.Program): Seq[Any] = {
-    val key = (tlcs, program)
+    val key = tlcs
     val current = resCache.get(key)
     if (current.isDefined)
       return current.get
