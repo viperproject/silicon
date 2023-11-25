@@ -440,7 +440,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           codomainQVar,
-          Implies(effectiveCondition, lookupSummary === lookupChunk),
+          Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
           isGlobal = true)
@@ -526,7 +526,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           qvar,
-          Implies(effectiveCondition, And(snapshotNotUnit, lookupSummary === lookupChunk)),
+          Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.psmValDef${v.counter(this).next()}",
           isGlobal = true)
@@ -644,7 +644,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val additionalSmArgs = s.relevantQuantifiedVariables(arguments)
     val sm = freshSnapshotMap(s, resource, additionalSmArgs, v)
-    val smValueDef = ResourceLookup(resource, sm, arguments, s.program) === value
+    val smValueDef = BuiltinEquals(ResourceLookup(resource, sm, arguments, s.program), value)
 
     (sm, smValueDef)
   }
