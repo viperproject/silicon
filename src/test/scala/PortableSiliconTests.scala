@@ -81,7 +81,6 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
   val commandLineArguments: Seq[String] = Seq(
     "--disableCatchingExceptions",
     "--numberOfParallelVerifiers=1",
-    "--enableTempDirectory",
     "--assumeInjectivityOnInhale",
     "--numberOfErrorsToReport=0",
     "--timeout", System.getProperty(timeoutPropertyName, "180") /* timeout in seconds */
