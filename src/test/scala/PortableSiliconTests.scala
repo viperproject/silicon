@@ -82,6 +82,8 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     "--disableCatchingExceptions",
     "--numberOfParallelVerifiers=1",
     "--enableTempDirectory",
+    "--assumeInjectivityOnInhale",
+    "--numberOfErrorsToReport=0",
     "--timeout", System.getProperty(timeoutPropertyName, "180") /* timeout in seconds */
   ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--proverRandomizeSeeds") else Seq.empty)
 
