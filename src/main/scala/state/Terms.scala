@@ -765,6 +765,16 @@ object Quantification
 
   private val qidCounter = new AtomicInteger()
 
+  def transformSeqTerms(t: Trigger): Seq[Trigger] = {
+    val transformed = Trigger(t.p.map(_.transform{
+      case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
+    }()))
+    if (transformed != t)
+      Seq(t, transformed)
+    else
+      Seq(t)
+  }
+
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}")
 
@@ -799,6 +809,8 @@ object Quantification
             weight: Option[Int])
            : Quantification = {
 
+    val rewrittenTriggers = if (Verifier.config.useOldAxiomatization()) triggers else triggers.flatMap(transformSeqTerms(_))
+
 //    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
@@ -806,7 +818,7 @@ object Quantification
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    createIfNonExistent(q, vars, tBody, triggers, name, isGlobal, weight)
+    createIfNonExistent(q, vars, tBody, rewrittenTriggers, name, isGlobal, weight)
 //    tBody match {
 //    case True | False => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
@@ -1698,6 +1710,23 @@ object SeqIn extends CondFlyweightTermFactory[(Term, Term), SeqIn] {
   override def actualCreate(args: (Term, Term)): SeqIn = new SeqIn(args._1, args._2)
 }
 
+class SeqInTrigger private[terms] (val p0: Term, val p1: Term) extends BooleanTerm
+  with ConditionalFlyweightBinaryOp[SeqInTrigger] {
+
+  override lazy val toString = s"$p1 in $p0"
+}
+
+object SeqInTrigger extends CondFlyweightTermFactory[(Term, Term), SeqInTrigger] {
+  override def apply(v0: (Term, Term)) = {
+    val (t0, t1) = v0
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+    utils.assertSort(t1, "second operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
+    createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term)): SeqInTrigger = new SeqInTrigger(args._1, args._2)
+}
+
 class SeqUpdate private[terms] (val t0: Term, val t1: Term, val t2: Term)
     extends SeqTerm
        with ConditionalFlyweight[(Term, Term, Term), SeqUpdate] {
@@ -1715,7 +1744,10 @@ object SeqUpdate extends CondFlyweightTermFactory[(Term, Term, Term), SeqUpdate]
     utils.assertSort(t1, "second operand", sorts.Int)
     utils.assertSort(t2, "third operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
 
-    createIfNonExistent(v0)
+    if (Verifier.config.useOldAxiomatization())
+      createIfNonExistent(v0)
+    else
+      SeqAppend(SeqTake(t0,t1),SeqAppend(SeqSingleton(t2),SeqDrop(t0,Plus(t1,IntLiteral(1)))))
   }
 
   override def actualCreate(args: (Term, Term, Term)): SeqUpdate = new SeqUpdate(args._1, args._2, args._3)

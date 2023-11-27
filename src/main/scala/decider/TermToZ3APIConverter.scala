@@ -371,6 +371,7 @@ class TermToZ3APIConverter
       case bop: SeqTake => createApp("Seq_take", Seq(bop.p0, bop.p1), term.sort)
       case bop: SeqDrop => createApp("Seq_drop", Seq(bop.p0, bop.p1), term.sort)
       case bop: SeqIn => createApp("Seq_contains", Seq(bop.p0, bop.p1), term.sort)
+      case bop: SeqInTrigger => createApp("Seq_contains_trigger", Seq(bop.p0, bop.p1), term.sort)
       case SeqUpdate(t0, t1, t2) => createApp("Seq_update", Seq(t0, t1, t2), term.sort)
 
       /* Sets */

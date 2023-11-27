@@ -10,6 +10,7 @@ import scala.reflect.{ClassTag, classTag}
 import viper.silicon.Config
 import viper.silver.ast
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
 class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
@@ -17,7 +18,12 @@ class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term],
   type BuiltinDomainType = ast.MultisetType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.MultisetType]
 
-  val defaultSourceResource: String = "/dafny_axioms/multisets.vpr"
+  lazy val defaultSourceResource: String = {
+    if (Verifier.config.useOldAxiomatization())
+      "/dafny_axioms/multisets_old.vpr"
+    else
+      "/dafny_axioms/multisets.vpr"
+  }
   val userProvidedSourceFilepath: Option[String] = config.multisetAxiomatizationFile.toOption
   val sourceDomainName: String = "$Multiset"
 
