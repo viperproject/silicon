@@ -292,7 +292,7 @@ object evaluator extends EvaluationRules {
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) => {
           val t = v1.decider.appliedFresh("letvar", v1.symbolConverter.toSort(x.typ), s1.relevantQuantifiedVariables)
-          v1.decider.assumeDefinition(t === t0)
+          v1.decider.assumeDefinition(BuiltinEquals(t, t0))
           val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t.applicable.asInstanceOf[Function])
           val possibleTriggersBefore = if (s1.recordPossibleTriggers) s1.possibleTriggers else Map.empty
           eval(s1.copy(g = s1.g + (x.localVar, t0), functionRecorder = newFuncRec), e1, pve, v1)((s2, t2, v2) => {
@@ -1417,7 +1417,7 @@ object evaluator extends EvaluationRules {
         val joinTerm = App(joinSymbol, joinFunctionArgs)
 
         val joinDefEqs = entries map (entry =>
-          Implies(And(entry.pathConditions.branchConditions), joinTerm === entry.data))
+          Implies(And(entry.pathConditions.branchConditions), BuiltinEquals(joinTerm, entry.data)))
 
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) =>sAcc.merge(entry.s))
         sJoined = sJoined.copy(functionRecorder = sJoined.functionRecorder.recordPathSymbol(joinSymbol))
