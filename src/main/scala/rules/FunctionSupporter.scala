@@ -16,9 +16,9 @@ object functionSupporter {
     HeapDepFun(id, function.argSorts, function.resultSort)
   }
 
-  def statelessVersion(function: HeapDepFun): Fun = {
+  def statelessVersion(function: HeapDepFun, nHeaps: Int): Fun = {
     val id = function.id.withSuffix("%", "stateless")
-    if (Verifier.config.heapFunctionEncoding()) Fun(id, function.argSorts, terms.sorts.Bool) else Fun(id, function.argSorts.tail, terms.sorts.Bool)
+    if (Verifier.config.heapFunctionEncoding()) Fun(id, function.argSorts.drop(nHeaps), terms.sorts.Bool) else Fun(id, function.argSorts.tail, terms.sorts.Bool)
   }
 
   def preconditionVersion(function: HeapDepFun): HeapDepFun = {

@@ -54,7 +54,15 @@ class FunctionData(val programFunction: ast.Function,
 
   val function: HeapDepFun = symbolConverter.toFunction(programFunction, program)
   val limitedFunction = functionSupporter.limitedVersion(function)
-  val statelessFunction = functionSupporter.statelessVersion(function)
+  val statelessFunction = {
+    val nHeaps = if (Verifier.config.heapFunctionEncoding()) {
+      val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+      resources.size
+    } else {
+      0
+    }
+    functionSupporter.statelessVersion(function, nHeaps)
+  }
   val preconditionFunction = functionSupporter.preconditionVersion(function)
   val frameFunction = {
     if (Verifier.config.heapFunctionEncoding()) {
@@ -96,7 +104,7 @@ class FunctionData(val programFunction: ast.Function,
 
   val functionApplication = App(function, snapArgs ++ formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, snapArgs ++ formalArgs.values.toSeq)
-  val triggerFunctionApplication = if (Verifier.config.heapFunctionEncoding()) null else App(statelessFunction, formalArgs.values.toSeq)
+  val triggerFunctionApplication = if (Verifier.config.heapFunctionEncoding()) App(statelessFunction, formalArgs.values.toSeq) else App(statelessFunction, formalArgs.values.toSeq)
   val preconditionFunctionApplication = App(preconditionFunction, snapArgs ++ formalArgs.values.toSeq)
 
   val limitedAxiom =
@@ -273,9 +281,17 @@ class FunctionData(val programFunction: ast.Function,
       val predicate = program.findPredicate(predAcc.predicateName)
       val triggerFunction = predicateData(predicate).triggerFunction
 
+      val snapArg = if (Verifier.config.heapFunctionEncoding()) {
+        val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+        val resIndex = resources.indexOf(predicate)
+        snapArgs(resIndex)
+      } else {
+        expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap)
+      }
+
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap)
+           snapArg
         +: expressionTranslator.translatePrecondition(program, predAcc.args, this))
 
       val fapp = App(triggerFunction, args)
@@ -312,18 +328,29 @@ class FunctionData(val programFunction: ast.Function,
       val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
       if (Verifier.config.maskHeapMode()) {
         val predTriggers = predicateTriggers.values.map(pt => pt match {
-          case App(f, args) => Trigger(Seq(limitedFunctionApplication, App(f, `?sp` +: args.tail)))
+          case App(f, args) =>
+            if (Verifier.config.heapFunctionEncoding()) {
+              Trigger(Seq(limitedFunctionApplication, App(f, args)))
+            } else {
+              Trigger(Seq(limitedFunctionApplication, App(f, `?sp` +: args.tail)))
+            }
         }).toSeq
-        val predAxiom = Forall(`?sp` +: arguments, body, predTriggers)
+        val predAxiom = if (Verifier.config.heapFunctionEncoding()) {
+          Forall(arguments, body, predTriggers)
+        } else {
+          Forall(`?sp` +: arguments, body, predTriggers)
+        }
         val directAxiom = Forall(arguments, body, Seq(Trigger(functionApplication)))
         val res = if (predTriggers.nonEmpty)
           And(predAxiom, directAxiom)
         else
           directAxiom
-        if (Verifier.config.heapFunctionEncoding())
-          transformToHeapVersion(res)
-        else
+        if (Verifier.config.heapFunctionEncoding()) {
+          val r = transformToHeapVersion(res)
+          r
+        } else {
           res
+        }
       } else {
         val allTriggers = (
           Seq(Trigger(functionApplication))

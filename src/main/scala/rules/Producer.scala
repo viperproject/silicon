@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.interfaces.state.MaskHeapChunk
+
 import scala.collection.{immutable, mutable}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -404,7 +406,13 @@ object producer extends ProductionRules {
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                   if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {
-                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                    val snapArg = if (Verifier.config.heapFunctionEncoding()) {
+                      val chunk = s3.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+                      chunk.heap
+                    } else {
+                      snap1
+                    }
+                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snapArg +: tArgs))
                   }
                   Q(s3.copy(h = h3), v3)})
               }}})))

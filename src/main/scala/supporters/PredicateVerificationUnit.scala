@@ -24,7 +24,7 @@ import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 
-class PredicateData(predicate: ast.Predicate)
+class PredicateData(predicate: ast.Predicate, program: ast.Program)
                    /* Note: Holding a reference to a fixed symbol converter (instead of going
                     *       through a verifier) is only safe if the converter is effectively
                     *       independent of the verifiers.
@@ -33,8 +33,12 @@ class PredicateData(predicate: ast.Predicate)
 
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
 
-  val triggerFunction =
-    Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
+  val triggerFunction = {
+    if (Verifier.config.heapFunctionEncoding())
+      Fun(Identifier(s"${predicate.name}%trigger"), sorts.PredHeapSort +: argumentSorts, sorts.Bool)
+    else
+      Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
+  }
 }
 
 trait PredicateVerificationUnit
@@ -60,7 +64,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
     def analyze(program: Program): Unit = {
       this.predicateData = toMap(
-        program.predicates map (pred => pred -> new PredicateData(pred)(symbolConverter)))
+        program.predicates map (pred => pred -> new PredicateData(pred, program)(symbolConverter)))
     }
 
     /* Predicate supporter generates no sorts */

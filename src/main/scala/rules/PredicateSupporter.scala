@@ -11,6 +11,7 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.state.MaskHeapChunk
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -64,11 +65,6 @@ object predicateSupporter extends PredicateSupportRules {
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm)
     consume(s1, body, pve, v)((s1a, snap, v1) => {
-      if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-        val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
-          snap.convert(terms.sorts.Snap) +: tArgs)
-        v1.decider.assume(predTrigger)
-      }
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (Verifier.config.maskHeapMode()) {
         val s3 = s2.copy(g = s.g,
@@ -77,6 +73,17 @@ object predicateSupporter extends PredicateSupportRules {
         val newSf = (_: Sort, _: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort),
           HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate)
         produce(s3, newSf, pap, pve, v1)((s4, v2) => {
+          if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+            val snapArg = if (Verifier.config.heapFunctionEncoding()) {
+              val chunk = s4.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+              chunk.heap
+            } else {
+              snap.convert(sorts.Snap)
+            }
+            val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
+              snapArg +: tArgs)
+            v1.decider.assume(predTrigger)
+          }
           Q(s4, v2)})
       } else {
         if (s2.qpPredicates.contains(predicate)) {
@@ -108,14 +115,36 @@ object predicateSupporter extends PredicateSupportRules {
             smCache = smCache,
             permissionScalingFactor = s.permissionScalingFactor,
             functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
+          if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+            val snapArg = if (Verifier.config.heapFunctionEncoding()) {
+              val chunk = s3.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+              chunk.heap
+            } else {
+              snap.convert(sorts.Snap)
+            }
+            val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
+              snapArg +: tArgs)
+            v1.decider.assume(predTrigger)
+          }
           Q(s3, v1)
         } else {
           val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap.convert(sorts.Snap), tPerm)
           val s3 = s2.copy(g = s.g,
             smDomainNeeded = s.smDomainNeeded,
             permissionScalingFactor = s.permissionScalingFactor)
-          chunkSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) =>
-            Q(s4.copy(h = h1), v2))
+          chunkSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) => {
+            if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+              val snapArg = if (Verifier.config.heapFunctionEncoding()) {
+                val chunk = s4.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+                chunk.heap
+              } else {
+                snap.convert(sorts.Snap)
+              }
+              val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
+                snapArg +: tArgs)
+              v1.decider.assume(predTrigger)
+            }
+            Q(s4.copy(h = h1), v2)})
         }
       }
     })
@@ -149,9 +178,15 @@ object predicateSupporter extends PredicateSupportRules {
         val predSnapFunc = (_: Sort, _: Verifier) => predSnap
         produce(s3, predSnapFunc, body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
+          val snapArg = if (Verifier.config.heapFunctionEncoding()) {
+            val chunk = s1.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+            chunk.heap
+          } else {
+            snap
+          }
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
-              App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
+              App(s4.predicateData(predicate).triggerFunction, snapArg +: tArgs)
             v2.decider.assume(predicateTrigger)
           }
           val s5 = s4.copy(g = s.g,
@@ -177,9 +212,15 @@ object predicateSupporter extends PredicateSupportRules {
           produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
             if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+              val snapArg = if (Verifier.config.heapFunctionEncoding()) {
+                val chunk = s1.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+                chunk.heap
+              } else {
+                snap.convert(sorts.Snap)
+              }
               val predicateTrigger =
                 App(s4.predicateData(predicate).triggerFunction,
-                  snap.convert(terms.sorts.Snap) +: tArgs)
+                  snapArg +: tArgs)
               v2.decider.assume(predicateTrigger)
             }
             Q(s4.copy(g = s.g,
@@ -195,8 +236,14 @@ object predicateSupporter extends PredicateSupportRules {
           produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
             if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+              val snapArg = if (Verifier.config.heapFunctionEncoding()) {
+                val chunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+                chunk.heap
+              } else {
+                snap
+              }
               val predicateTrigger =
-                App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
+                App(s4.predicateData(predicate).triggerFunction, snapArg +: tArgs)
               v2.decider.assume(predicateTrigger)
             }
             val s5 = s4.copy(g = s.g,

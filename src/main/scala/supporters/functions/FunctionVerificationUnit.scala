@@ -186,6 +186,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           if (!Verifier.config.heapFunctionEncoding()) {
             emitAndRecordFunctionAxioms(data.triggerAxiom)
           } else {
+            emitAndRecordFunctionAxioms(data.triggerAxiom)
             data.qpFrameFunctionDecls map decider.prover.declare
             emitAndRecordFunctionAxioms(data.frameAxiom)
             emitAndRecordFunctionAxioms(data.qpFrameAxioms: _*)
