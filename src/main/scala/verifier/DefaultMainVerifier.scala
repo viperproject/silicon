@@ -6,6 +6,8 @@
 
 package viper.silicon.verifier
 
+import debugger.SiliconDebugger
+import geny.Generator.from
 import viper.silicon.Config.ExhaleMode
 
 import java.text.SimpleDateFormat
@@ -17,7 +19,7 @@ import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.SMTLib2PreambleReader
+import viper.silicon.decider.{Cvc5ProverStdIO, SMTLib2PreambleReader, TermToSMTLib2Converter, Z3ProverStdIO}
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -32,8 +34,12 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
+import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
 import viper.silver.verifier.VerifierWarning
+
+import scala.collection.IterableOnce.iterableOnceExtensionMethods
+import scala.io.StdIn.readLine
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -286,12 +292,18 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
-    (   functionVerificationResults
+    val verificationResults = (   functionVerificationResults
      ++ predicateVerificationResults
      ++ methodVerificationResults)
+
+    // TODO ake: if debugging enabled
+    val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator)
+    debugger.startDebugger()
+
+    verificationResults
   }
 
-  private def createInitialState(member: ast.Member,
+    private def createInitialState(member: ast.Member,
                                  program: ast.Program,
                                  functionData: Map[ast.Function, FunctionData],
                                  predicateData: Map[ast.Predicate, PredicateData]): State = {

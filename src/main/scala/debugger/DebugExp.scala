@@ -45,7 +45,11 @@ class DebugExp(val str : Option[String],
   }
 
   def getTerms(): InsertionOrderedSet[Term] ={
-    terms
+    if(terms.isEmpty){
+      children.flatMap(_.getTerms())
+    }else{
+      terms
+    }
   }
 
   def isInternal(): Boolean = isInternal_
@@ -95,6 +99,8 @@ class ImplicationDebugExp(str : Option[String],
                           isInternal_ : Boolean,
                           children : InsertionOrderedSet[DebugExp]) extends DebugExp(str, exp, substitutedExp, terms, isInternal_, children) {
 
+  override def getTerms(): InsertionOrderedSet[Term] = terms
+
   override def toString(printInternals: Boolean, printChildrenDepth: Mark): String = {
       if (isInternal_ && !printInternals) {
         return ""
@@ -117,6 +123,8 @@ class QuantifiedDebugExp(str : Option[String],
                           children : InsertionOrderedSet[DebugExp],
                           val quantifier: String,
                           val qvars : Seq[ast.Exp]) extends DebugExp(str, exp, substitutedExp, terms, isInternal_, children) {
+
+  override def getTerms(): InsertionOrderedSet[Term] = terms
 
   override def toString(printInternals: Boolean, printChildrenDepth: Mark): String = {
     if (isInternal_ && !printInternals) {
