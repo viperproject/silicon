@@ -820,7 +820,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   }
 
   validateOpt(disableNLRI, prover) {
-    case (Some(true), n) if n != Some(Z3ProverStdIO.name) => Left(s"Option ${disableNLRI.name} is only supported with prover ${Z3ProverStdIO.name}")
+    case (Some(true), n) if n != Some(Z3ProverStdIO.name) =>
+        Left(s"Option ${disableNLRI.name} is only supported with prover ${Z3ProverStdIO.name}")
     case _ => Right(())
   }
 
