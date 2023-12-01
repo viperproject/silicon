@@ -230,7 +230,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableNLRI: ScallopOption[Boolean] = opt[Boolean]("disableNLRI",
+  val disableNL: ScallopOption[Boolean] = opt[Boolean]("disableNL",
     descr = "Disable non-linear integer arithmetic when using Z3",
     default = Some(false),
     noshort = true
@@ -819,9 +819,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
-  validateOpt(disableNLRI, prover) {
+  validateOpt(disableNL, prover) {
     case (Some(true), n) if n != Some(Z3ProverStdIO.name) =>
-        Left(s"Option ${disableNLRI.name} is only supported with prover ${Z3ProverStdIO.name}")
+        Left(s"Option ${disableNL.name} is only supported with prover ${Z3ProverStdIO.name}")
     case _ => Right(())
   }
 
