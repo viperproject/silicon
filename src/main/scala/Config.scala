@@ -231,7 +231,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val disableNLRI: ScallopOption[Boolean] = opt[Boolean]("disableNLRI",
-    descr = "Disable non-linear integer arithetics (prover must be Z3)",
+    descr = "Disable non-linear integer arithmetic when using Z3",
     default = Some(false),
     noshort = true
   )
