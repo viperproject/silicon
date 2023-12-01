@@ -65,5 +65,11 @@ class Z3ProverStdIO(uniqueId: String,
     Paths.get(Verifier.config.z3Exe)
   }
 
-  override def emitSettings(contents: Iterable[String]): Unit = emit(contents)
+  override def emitSettings(contents: Iterable[String]): Unit = {
+    emit(contents)
+    if(Verifier.config.disableNLRI.getOrElse(false)) {
+      comment("We disable non-linear integer arithmetics")
+      writeLine(s"(set-option :smt.arith.nl false)")
+    }
+  }
 }
