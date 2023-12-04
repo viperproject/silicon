@@ -9,12 +9,13 @@ import viper.silicon.state.terms.{Decl, False, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.Reporter
 import viper.silver.ast
-import viper.silver.parser.{FastParser, PPrimitiv, PProgram, Resolver, Translator}
+import viper.silver.parser.{FastParser, NameAnalyser, PPrimitiv, PProgram, Resolver, Translator}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.ContractNotWellformed
 import viper.silver.frontend.FrontendStateCache
 
 import scala.io.StdIn.readLine
+import scala.language.postfixOps
 
 case class ProofObligation(s: State,
                            v: Verifier,
@@ -26,7 +27,8 @@ case class ProofObligation(s: State,
                           ){
 
   def removeAssumption(t: Term, e: ast.Exp, eEval: ast.Exp): ProofObligation = {
-    this.copy(assumptions = assumptions filter(!_.equals(t))) // TODO ake: remove assumptions from verifier & prover
+    // TODO: how do I find the correct DebugExp to remove
+    this.copy(assumptions = assumptions filter(!_.equals(t))) // TODO ake: remove assumptions from verifier & prover??
   }
 }
 
@@ -88,16 +90,14 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         obl = _obl
       }
 
-      // TODO ake: "neuer" verifier oder prover?
-      val prover = getNewProver(chooseProver())
-      // obl.v.decier.prover = prover
-
       obl = removeAssumptions(obl)
 
+      // TODO: brauchen wir fürs eval einen verifier, bei dem die assumptions entfernt wurden?
       obl = addAssumptions(obl)
 
       obl = chooseAssertion(obl)
 
+      val prover = getNewProver(chooseProver())
       assertProofObligation(obl, prover)
 
     }
@@ -173,7 +173,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     val pmethod = pprogram.methods.find(_.idndef.name == obl.s.currentMember.get.name)
     resolver.typechecker.curMember = pmethod.get
     val pexp = parsedExp.get.value
-    resolver.typechecker.check(pexp, PPrimitiv("Bool")()) // FIXME ake
+    resolver.typechecker.check(pexp, PPrimitiv("Bool")()) // FIXME ake: scopeId is wrong -> cannot find any VarDecls (Resolver acceptAndCheckTypedEntity)
     translator.exp(pexp)
   }
 
@@ -212,11 +212,11 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   }
 
   private def assertProofObligation(obl: ProofObligation, prover:  ProverStdIO): Unit = {
-// TODO ake
-//    obl.s.g.decls.foreach {
-//      case Left(d) => prover.declare(d)
-//      case Right(ss) => prover.emit(ss)
-//    }
+    val pmethod = pprogram.methods.find(_.idndef.name == obl.s.currentMember.get.name)
+    val pFormalArgDecls = pmethod.get.formalArgs
+    val formalArgDecls = pFormalArgDecls map (translator.liftArgDecl)
+//    formalArgDecls foreach (prover.declare(_)) TODO
+
     val assumptionsInOrder = obl.assumptionsExp.toSeq.reverse // TODO ake: or take obl.assumptions?
     assumptionsInOrder.zipWithIndex.foreach(a => {
       println("" + a._2 + ": " + a._1)
