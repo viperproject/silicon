@@ -1,0 +1,7 @@
+method f(x: Int, y: Int) returns (res: Int)
+  requires 0 <= x <= 10
+  requires 0 <= y <= 10
+  ensures 0 <= res <= 100 // this fails with --disableNL
+{
+  res := x * y
+}
