@@ -228,6 +228,7 @@ abstract class ProverStdIO(uniqueId: String,
   def assert(goal: String, timeout: Option[Int]): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
+    reporter report BenchmarkingAccumulator("assert")
     val (result, duration) = Verifier.config.assertionMode() match {
       case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
@@ -329,6 +330,7 @@ abstract class ProverStdIO(uniqueId: String,
   def check(timeout: Option[Int] = None): Result = {
     setTimeout(timeout)
 
+    reporter report BenchmarkingAccumulator("check")
     writeLine("(check-sat)")
 
     readLine() match {

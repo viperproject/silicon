@@ -286,6 +286,9 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
+    reporter report BenchmarkingReport("assert")
+    reporter report BenchmarkingReport("check")
+
     (   functionVerificationResults
      ++ predicateVerificationResults
      ++ methodVerificationResults)
