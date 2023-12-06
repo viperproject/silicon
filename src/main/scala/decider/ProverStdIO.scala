@@ -19,7 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter, QuantifierInstantiationsMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter, QuantifierInstantiationsMessage, BenchmarkingAccumulator}
 import viper.silver.verifier.Model
 
 import scala.collection.mutable

@@ -32,8 +32,7 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.verifier.TypecheckerWarning
-import viper.silver.reporter.BenchmarkingPhase
+import viper.silver.reporter.{BenchmarkingPhase, BenchmarkingReport}
 import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
 import viper.silver.verifier.VerifierWarning
 import viper.silicon.logger.benchmarker.SymbExLogBenchmarker
