@@ -798,6 +798,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val benchmark = opt[Boolean]("benchmark",
+    descr = "Prints benchmarking information using the SymbExLogger",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
@@ -815,6 +822,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (_, Some(false)) => Right(())
     case (Some(true), Some(true)) =>
       Left(s"Option ${ideModeAdvanced.name} is not supported in combination with ${parallelizeBranches.name}")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
+
+  validateOpt(benchmark, parallelizeBranches) {
+    case (Some(false), _) => Right(())
+    case (_, Some(false)) => Right(())
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${benchmark.name} is not supported in combination with ${parallelizeBranches.name}")
     case other =>
       sys.error(s"Unexpected combination: $other")
   }

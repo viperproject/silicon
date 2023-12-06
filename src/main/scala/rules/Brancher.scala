@@ -15,8 +15,8 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.reporter.{BranchFailureMessage}
 import viper.silver.verifier.Failure
+import viper.silver.reporter.BranchFailureMessage
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,

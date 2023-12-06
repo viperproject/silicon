@@ -75,7 +75,7 @@ object Silicon {
   }
 }
 
-class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] = Nil)
+class Silicon(val passed_reporter: Reporter, private var debugInfo: Seq[(String, Any)] = Nil)
     extends SilVerifier
        with LazyLogging {
 
@@ -88,6 +88,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   val buildVersion = Silicon.buildVersion.getOrElse("<unknown-build-version>")
   val copyright = Silicon.copyright
   val dependencies = Silicon.dependencies
+  override def reporter: Reporter = if (_config.benchmark()) BenchmarkingReporter() else StdIOReporter()
 
   private var _config: Config = _
   final def config = _config
@@ -206,7 +207,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         result = Some(condenseToViperResult(failures))
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
-          if (config.ideModeAdvanced()) {
+          if (config.ideModeAdvanced() || config.benchmark()) {
             symbExLog.close()
             reporter report ExecutionTraceReport(symbExLog.logs.toSeq, List(), List())
           }

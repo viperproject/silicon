@@ -81,18 +81,18 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
-            (  executionFlowController.locally(s2a, v2)((s3, v3) => {
-                  val s4 = s3.copy(h = Heap())
-                  val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
-                  val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
-                    symbExLog.closeScope(sepIdentifier)
-                    Success()})})
+            (executionFlowController.locally(s2a, v2)((s3, v3) => {
+              val s4 = s3.copy(h = Heap())
+              val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
+              val sepIdentifier = symbExLog.openScope(impLog)
+              produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                symbExLog.closeScope(sepIdentifier)
+                Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) =>
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
-                      Success()))}) }  )})})
+                      Success()))})})})})
 
       symbExLog.closeMemberScope()
       Seq(result)

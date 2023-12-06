@@ -162,7 +162,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data), conservingSnapshotGeneration = true)
 
       /* Phase 1: Check well-definedness of the specifications */
-      checkSpecificationWelldefinedness(s, function) match {
+      val wellDef = checkSpecificationWelldefinedness(s, function)
+      wellDef match {
         case (result1: FatalResult, _) =>
           data.verificationFailures = data.verificationFailures :+ result1
 

@@ -15,7 +15,7 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
-import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
+import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord, CommentRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -192,19 +192,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Assumption scope handling */
 
     def pushScope(): Unit = {
-      //val commentRecord = new CommentRecord("push", null, null)
-      //val sepIdentifier = symbExLog.openScope(commentRecord)
+      val commentRecord = new CommentRecord("push", null, null)
+      val sepIdentifier = symbExLog.openScope(commentRecord)
       pathConditions.pushScope()
       _prover.push(timeout = Verifier.config.pushTimeout.toOption)
-      //symbExLog.closeScope(sepIdentifier)
+      symbExLog.closeScope(sepIdentifier)
     }
 
     def popScope(): Unit = {
-      //val commentRecord = new CommentRecord("pop", null, null)
-      //val sepIdentifier = symbExLog.openScope(commentRecord)
+      val commentRecord = new CommentRecord("pop", null, null)
+      val sepIdentifier = symbExLog.openScope(commentRecord)
       _prover.pop()
       pathConditions.popScope()
-      //symbExLog.closeScope(sepIdentifier)
+      symbExLog.closeScope(sepIdentifier)
     }
 
     def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit = {
