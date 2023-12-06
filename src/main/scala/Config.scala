@@ -230,6 +230,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableNL: ScallopOption[Boolean] = opt[Boolean]("disableNL",
+    descr = "Disable non-linear integer arithmetic when using Z3",
+    default = Some(false),
+    noshort = true
+  )
+
   private val rawProverSaturationTimeout = opt[Int]("proverSaturationTimeout",
     descr = (  "Timeout (in ms) used for the prover's state saturation calls (default: 100). "
              + "A timeout of 0 disables all saturation checks."
@@ -811,6 +817,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       Left(s"Option ${ideModeAdvanced.name} is not supported in combination with ${parallelizeBranches.name}")
     case other =>
       sys.error(s"Unexpected combination: $other")
+  }
+
+  validateOpt(disableNL, prover) {
+    case (Some(true), n) if (n != Some(Z3ProverStdIO.name) && n != Some(Z3ProverAPI.name)) =>
+        Left(s"Option ${disableNL.name} is only supported with Z3")
+    case _ => Right(())
   }
 
   validateOpt(counterexample, moreCompleteExhale, exhaleModeOption) {
