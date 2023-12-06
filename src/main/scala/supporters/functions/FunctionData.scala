@@ -73,7 +73,7 @@ class FunctionData(val programFunction: ast.Function,
 
   val limitedAxiom =
     Forall(arguments,
-           limitedFunctionApplication === functionApplication,
+           BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication))
 
   val triggerAxiom =
@@ -258,10 +258,14 @@ class FunctionData(val programFunction: ast.Function,
     optBody.map(translatedBody => {
       val pre = preconditionFunctionApplication
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
-      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
+      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(BuiltinEquals(functionApplication, translatedBody)))))
+      val funcAnn = programFunction.info.getUniqueInfo[ast.AnnotationInfo]
+      val actualPredicateTriggers = funcAnn match {
+        case Some(a) if a.values.contains("opaque") => Seq()
+        case _ => predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt)))
+      }
       val allTriggers = (
-           Seq(Trigger(functionApplication))
-        ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
+           Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
       Forall(arguments, body, allTriggers)})
   }

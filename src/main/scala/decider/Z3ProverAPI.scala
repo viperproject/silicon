@@ -135,6 +135,9 @@ class Z3ProverAPI(uniqueId: String,
       case (k, v) =>
         params.add(removeSmtPrefix(k), v)
     }
+    if (Verifier.config.disableNL.getOrElse(false)) {
+      params.add("arith.nl", false)
+    }
     val userProvidedArgs = Verifier.config.proverConfigArgs
     prover = ctx.mkSolver()
     val descrs = prover.getParameterDescriptions
