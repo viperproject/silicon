@@ -164,7 +164,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
               case _ => True
             }
-            v.decider.assume(tEq, new DebugExp("Snapshots", isInternal_ = true))
+            v.decider.assume(tEq, DebugExp.createInstance("Snapshots", isInternal_ = true))
 
             /* In the future it might be worth to recheck whether the permissions needed, in the case of
              * success being an instance of Incomplete, are zero.
@@ -300,7 +300,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
           v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          val debugExp = new DebugExp("Definitional axioms for singleton-SM's value", true)
+          val debugExp = DebugExp.createInstance("Definitional axioms for singleton-SM's value", true)
           v4.decider.assume(smValueDef, debugExp)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, bodyVars, wand, args, bodyVars, FullPerm, ast.FullPerm()(), sm, s.program)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
@@ -386,7 +386,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val expNew = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_.getSecond))
           v1.decider.setCurrentBranchCondition(And(branchConditions), new Pair(exp, expNew))
           conservedPcs.foreach(pcs => {
-            v1.decider.assume(pcs.conditionalized, new DebugExp("conditionalized", InsertionOrderedSet(pcs.conditionalizedExp)))
+            v1.decider.assume(pcs.conditionalized, DebugExp.createInstance("conditionalized", InsertionOrderedSet(pcs.conditionalizedExp)))
           })
           Q(s2, magicWandChunk, v1)})}})
   }
@@ -404,7 +404,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
              * Since a wand can only be applied once, equating the two snapshots is sound.
              */
             assert(snap.sort == sorts.Snap, s"expected snapshot but found: $snap")
-            v2.decider.assume(snap === wandSnap.abstractLhs, new DebugExp("Magic wand snapshot", true))
+            v2.decider.assume(snap === wandSnap.abstractLhs, DebugExp.createInstance("Magic wand snapshot", true))
             val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)

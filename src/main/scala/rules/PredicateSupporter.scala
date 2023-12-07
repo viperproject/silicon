@@ -71,7 +71,7 @@ object predicateSupporter extends PredicateSupportRules {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.convert(terms.sorts.Snap) +: tArgs)
         val eArgsString = eArgs.mkString(", ")
-        v1.decider.assume(predTrigger, new DebugExp(s"PredicateTrigger(${predicate.name}($eArgsString))"))
+        v1.decider.assume(predTrigger, DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))"))
       }
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
@@ -80,7 +80,7 @@ object predicateSupporter extends PredicateSupportRules {
         val (sm, smValueDef) =
           quantifiedChunkSupporter.singletonSnapshotMap(s2, predicate, tArgs, predSnap, v1)
         v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
-        val debugExp = new DebugExp("Definitional axioms for singleton-SM's value", true)
+        val debugExp = DebugExp.createInstance("Definitional axioms for singleton-SM's value", true)
         v1.decider.assume(smValueDef, debugExp)
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
@@ -94,7 +94,7 @@ object predicateSupporter extends PredicateSupportRules {
             quantifiedChunkSupporter.summarisingSnapshotMap(
               s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
           val eArgsString = eArgs.mkString(", ")
-          v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), new DebugExp(s"PredicateTrigger(${predicate.name}($eArgsString))"))
+          v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))"))
           smCache1
         } else {
           s2.smCache
@@ -160,7 +160,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate).triggerFunction,
                 snap.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, new DebugExp(s"PredicateTrigger(${predicate.name}($eargs))"))
+            v2.decider.assume(predicateTrigger, DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))"))
           }
           Q(s4.copy(g = s.g,
                     permissionScalingFactor = s.permissionScalingFactor,
@@ -179,7 +179,7 @@ object predicateSupporter extends PredicateSupportRules {
             val predicateTrigger =
               App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, new DebugExp(s"PredicateTrigger(${pa.predicateName}($eargs))"))
+            v2.decider.assume(predicateTrigger, DebugExp.createInstance(s"PredicateTrigger(${pa.predicateName}($eargs))"))
           }
           val s5 = s4.copy(g = s.g,
                            permissionScalingFactor = s.permissionScalingFactor,

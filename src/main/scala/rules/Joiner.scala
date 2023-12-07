@@ -78,13 +78,13 @@ object joiner extends JoiningRules {
           val pcsExp = entry.pathConditions.conditionalizedExp
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          v.decider.assume(pcs, new DebugExp(comment, InsertionOrderedSet(pcsExp)))
+          v.decider.assume(pcs, DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp)))
           feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
           feasibleBranchesExp = BigAnd(entry.pathConditions.branchConditionExps.map(_.getFirst)) :: feasibleBranchesExp
           feasibleBranchesExpNew = BigAnd(entry.pathConditions.branchConditionExps.map(_.getSecond)) :: feasibleBranchesExpNew
         })
         // Assume we are in a feasible branch
-        v.decider.assume(Or(feasibleBranches), new DebugExp(Some("Feasible Branches"), Some(ast.BigOr(feasibleBranchesExp)), Some(ast.BigOr(feasibleBranchesExpNew)), InsertionOrderedSet.empty))
+        v.decider.assume(Or(feasibleBranches), DebugExp.createInstance(Some("Feasible Branches"), Some(ast.BigOr(feasibleBranchesExp)), Some(ast.BigOr(feasibleBranchesExpNew)), InsertionOrderedSet.empty))
         Q(sJoined, dataJoined, dataJoinedExp, v)
       }
     }

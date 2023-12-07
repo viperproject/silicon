@@ -143,7 +143,7 @@ object havocSupporter extends SymbolicExecutionRules {
             )
             val comment = "Definitional axioms for havocall inverse functions"
             v.decider.prover.comment(comment)
-            val debugExp = new DebugExp(comment, true)
+            val debugExp = DebugExp.createInstance(comment, true)
             v.decider.assume(inverseFunctions.definitionalAxioms, debugExp)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
@@ -266,7 +266,7 @@ object havocSupporter extends SymbolicExecutionRules {
       )
 
       v.decider.prover.comment("axiomatized snapshot map after havoc")
-      val debugExp = new DebugExp("havoc new axiom", isInternal_ = true)
+      val debugExp = DebugExp.createInstance("havoc new axiom", isInternal_ = true)
       v.decider.assume(newAxiom, debugExp)
 
       ch.withSnapshotMap(newSm)

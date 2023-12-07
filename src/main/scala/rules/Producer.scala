@@ -229,7 +229,7 @@ object producer extends ProductionRules {
               Q(s3, v3)
             }),
             (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit, new DebugExp("Empty snapshot", true))
+                v2.decider.assume(sf(sorts.Snap, v2) === Unit, DebugExp.createInstance("Empty snapshot", true))
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -295,7 +295,7 @@ object producer extends ProductionRules {
                   if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {
                     val argsString = eArgsNew.mkString(", ")
-                    val debugExp = new DebugExp(s"PredicateTrigger(${predicate.name}($argsString))")
+                    val debugExp = DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))")
                     v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp)
                   }
                   Q(s3.copy(h = h3), v3)})
@@ -309,7 +309,7 @@ object producer extends ProductionRules {
             quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
           v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val definitionalAxiomMark = v1.decider.setPathConditionMark()
-          val debugExp = new DebugExp("Definitional axioms for singleton-SM's value", true)
+          val debugExp = DebugExp.createInstance("Definitional axioms for singleton-SM's value", true)
           v1.decider.assume(smValueDef, debugExp)
           val conservedPcs =
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
@@ -324,7 +324,7 @@ object producer extends ProductionRules {
               quantifiedChunkSupporter.summarisingSnapshotMap(
                 s1, wand, formalVars, relevantChunks, v1)
             val argsStr = bodyVarsNew.mkString(", ")
-            val debugExp = new DebugExp(s"PredicateTrigger(${ch.id.toString}($argsStr))")
+            val debugExp = DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}($argsStr))")
             v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args), debugExp)
             smCache1
           } else {
@@ -451,7 +451,7 @@ object producer extends ProductionRules {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        v.decider.assume(sf(sorts.Snap, v) === Unit, new DebugExp("Empty snapshot", true)) /* TODO: See comment for case ast.Implies above */
+        v.decider.assume(sf(sorts.Snap, v) === Unit, DebugExp.createInstance("Empty snapshot", true)) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, aNew, v1) => {
           v1.decider.assume(t, a, aNew)
           Q(s1, v1)})

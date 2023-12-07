@@ -160,7 +160,7 @@ object chunkSupporter extends ChunkSupportRules {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties)
-      pathCond.foreach(p => v.decider.assume(p.getFirst, new DebugExp(p.getSecond, p.getSecond)))
+      pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
     }
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
@@ -179,7 +179,7 @@ object chunkSupporter extends ChunkSupportRules {
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             val exp = ast.PermLtCmp(permsExp, ch.permExp)(permsExp.pos, permsExp.info, permsExp.errT)
-            v.decider.assume(PermLess(perms, ch.perm), new DebugExp(exp, s.substituteVarsInExp(exp)))
+            v.decider.assume(PermLess(perms, ch.perm), DebugExp.createInstance(exp, s.substituteVarsInExp(exp)))
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms), ast.PermSub(ch.permExp, permsExp)(permsExp.pos, permsExp.info, permsExp.errT))
             val takenChunk = ch.withPerm(perms, permsExp)
             val newHeap = h - ch + newChunk

@@ -146,8 +146,8 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
 
   lazy val assumptionsString: String = {
     if(assumptions.nonEmpty){
-      val nonInternalAssumptions = assumptions.filter(de => !de.isInternal())
-      s"\n\nassumptions:\n${nonInternalAssumptions.tail.foldLeft[String](nonInternalAssumptions.head.toString(printInternals = false, 5))((s, de) => s + " && " + de.toString(printInternals = false, 5)) + ")"}"
+      val nonInternalAssumptions = assumptions.filter(de => !de.isInternal)
+      s"\n\nassumptions:\n${nonInternalAssumptions.tail.foldLeft[String](nonInternalAssumptions.head.toString(printInternals = false, 5))((s, de) => s + " && " + de.toString(printInternals = false, 5))}"
     }else{
       ""
     }

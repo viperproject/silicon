@@ -225,17 +225,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def finishDebugSubExp(str : String): Unit ={
-      val debugExp = new DebugExp(str = str, children = popDebugSubExp())
+      val debugExp = DebugExp.createInstance(str = str, children = popDebugSubExp())
       addDebugExp(debugExp)
     }
 
     private def addDebugExp(e: DebugExp): Unit = {
-      if(e.getTerms().nonEmpty && e.getTerms().forall(t => PathConditions.isGlobal(t))){
+      if(e.getTerms.nonEmpty && e.getTerms.forall(t => PathConditions.isGlobal(t))){
         pathConditions.addGlobalDebugExp(e)
       }else{
-        if (e.getTerms().exists(t => PathConditions.isGlobal(t)) && !e.isInternal()) {
+        if (e.getTerms.exists(t => PathConditions.isGlobal(t)) && !e.isInternal) {
           // TODO ake: this should not happen
-          pathConditions.addGlobalDebugExp(new DebugExp("failed to distinguish global and non-global terms"))
+          pathConditions.addGlobalDebugExp(DebugExp.createInstance("failed to distinguish global and non-global terms"))
         }
 
         if (debugExpStack.isEmpty) {
@@ -249,7 +249,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(t: Term, e : ast.Exp, substitutedE : ast.Exp): Unit = {
-      assume(InsertionOrderedSet(Seq(t)), new DebugExp(e, substitutedE), false)
+      assume(InsertionOrderedSet(Seq(t)), DebugExp.createInstance(e, substitutedE), false)
     }
 
     def assume(t: Term, debugExp: DebugExp): Unit = {

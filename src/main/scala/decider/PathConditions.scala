@@ -6,7 +6,7 @@
 
 package viper.silicon.decider
 
-import debugger.{DebugExp, ImplicationDebugExp, QuantifiedDebugExp}
+import debugger.DebugExp
 import org.jgrapht.alg.util.Pair
 import viper.silicon.{Stack, decider}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -218,7 +218,7 @@ private trait LayeredPathConditionStackLike {
       }
 
       if(layer.nonGlobalAssumptionDebugExps.nonEmpty){
-        conditionalTerms :+= new ImplicationDebugExp(None, Some(implicationLHSExp), Some(implicationLHSExpNew), InsertionOrderedSet(implicationLHS),
+        conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew), InsertionOrderedSet(implicationLHS),
           false, layer.nonGlobalAssumptionDebugExps)
       }else{
         conditionalTerms ++= layer.nonGlobalAssumptionDebugExps
@@ -275,13 +275,13 @@ private trait LayeredPathConditionStackLike {
 
       val branchConditionExp = layer.branchConditionExp
         if(branchConditionExp.isDefined){
-          val quantBody = new ImplicationDebugExp(str=None, exp=Some(branchConditionExp.get.getFirst), substitutedExp=Some(branchConditionExp.get.getSecond), terms=InsertionOrderedSet(layer.branchCondition.get), isInternal_ = false,
+          val quantBody = DebugExp.createImplicationInstance(str=None, exp=Some(branchConditionExp.get.getFirst), substitutedExp=Some(branchConditionExp.get.getSecond), terms=InsertionOrderedSet(layer.branchCondition.get), isInternal_ = false,
             children=layer.nonGlobalAssumptionDebugExps)
-          val quantDebugExp = new QuantifiedDebugExp(str=None, exp=None, substitutedExp = None, terms = InsertionOrderedSet.empty, isInternal_ = false,
+          val quantDebugExp = DebugExp.createQuantifiedInstance(str=None, exp=None, substitutedExp = None, terms = InsertionOrderedSet.empty, isInternal_ = false,
             children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars) // TODO ake: substituted qvars?
           nonGlobals += quantDebugExp
         }else{
-          nonGlobals += new DebugExp("quantifiedExp", layer.nonGlobalAssumptionDebugExps)
+          nonGlobals += DebugExp.createInstance("quantifiedExp", layer.nonGlobalAssumptionDebugExps)
         }
     }
 

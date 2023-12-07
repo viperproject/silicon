@@ -225,7 +225,7 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
 
-                        v2.decider.assume(pcs.assumptions, new DebugExp("Loop invariant", pcs.assumptionExps))
+                        v2.decider.assume(pcs.assumptions, DebugExp.createInstance("Loop invariant", pcs.assumptionExps))
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()
@@ -325,7 +325,7 @@ object executor extends ExecutionRules {
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, field, Seq(`?r`), relevantChunks, v1)
-              val debugExp = new DebugExp(s"Field Trigger: (${eRcvrNew.toString()}).${field.name}")
+              val debugExp = DebugExp.createInstance(s"Field Trigger: (${eRcvrNew.toString()}).${field.name}")
               v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
               s2.copy(smCache = smCache1)
             } else {
@@ -347,11 +347,11 @@ object executor extends ExecutionRules {
                 val h3 = Heap(remainingChunks ++ otherChunks)
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-                val debugExp = new DebugExp("Definitional axioms for singleton-FVF's value", true)
+                val debugExp = DebugExp.createInstance("Definitional axioms for singleton-FVF's value", true)
                 v1.decider.assume(smValueDef, debugExp)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Seq(LocalVar("r", ast.Ref)(ass.pos, ass.info, ass.errT)), field, Seq(tRcvr), Seq(eRcvr), FullPerm, ast.FullPerm()(ass.pos, ass.info, ass.errT), sm, s.program)
                 if (s3.heapDependentTriggers.contains(field)) {
-                  val debugExp2 = new DebugExp(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})")
+                  val debugExp2 = DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})")
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
                 }
                 Q(s3.copy(h = h3 + ch), v2)
@@ -389,7 +389,7 @@ object executor extends ExecutionRules {
           if (s.qpFields.contains(field)) {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-            val debugExp = new DebugExp("Definitional axioms for singleton-FVF's value", true)
+            val debugExp = DebugExp.createInstance("Definitional axioms for singleton-FVF's value", true)
             v.decider.assume(smValueDef, debugExp)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Seq(LocalVar("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT)), field, Seq(tRcvr), Seq(eRcvr), p, pExp, sm, s.program)
           } else {
@@ -400,7 +400,7 @@ object executor extends ExecutionRules {
         val es = BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, eRcvr))
         val esSubstituted = s.substituteVarsInExp(es) // need to substitute on s
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
-        v.decider.assume(ts, new DebugExp(Some("Reference Disjointness"), Some(es), Some(esSubstituted), InsertionOrderedSet.empty)) // TODO ake: mapping Term -> Exp?
+        v.decider.assume(ts, DebugExp.createInstance(Some("Reference Disjointness"), Some(es), Some(esSubstituted), InsertionOrderedSet.empty)) // TODO ake: mapping Term -> Exp?
         Q(s1, v)
 
       case inhale @ ast.Inhale(a) => a match {
@@ -547,7 +547,7 @@ object executor extends ExecutionRules {
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
               val eArgsStr = eArgsNew.mkString(", ")
-              val debugExp = new DebugExp(Some(s"PredicateTrigger(${predicate.name}($eArgsStr))"), Some(pa), Some(ast.PredicateAccess(eArgsNew, predicateName)(pa.pos, pa.info, pa.errT)), InsertionOrderedSet.empty)
+              val debugExp = DebugExp.createInstance(Some(s"PredicateTrigger(${predicate.name}($eArgsStr))"), Some(pa), Some(ast.PredicateAccess(eArgsNew, predicateName)(pa.pos, pa.info, pa.errT)), InsertionOrderedSet.empty)
               v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
               smCache1
             } else {
@@ -600,7 +600,7 @@ object executor extends ExecutionRules {
                 val (smDef, smCache) =
                   quantifiedChunkSupporter.summarisingSnapshotMap(
                     s2, wand, formalVars, relevantChunks, v1)
-                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get), new DebugExp(s"PredicateTrigger(${ch.id.toString}(${ch.singletonArgExps.get}))"))
+                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get), DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}(${ch.singletonArgExps.get}))"))
                 smCache
               case _ => s2.smCache
             }

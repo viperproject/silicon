@@ -129,7 +129,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
   private def addAssumptions(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assumption you want to add or s(skip):")
-    val userInput = "n == n2" // readLine()
+    val userInput = "n2@3 == n2@3" // readLine()
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
@@ -141,7 +141,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
   private def chooseAssertion(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assertion or s(skip) to assert the previous assertion again:")
-    val userInput = "n >= 0" // readLine()
+    val userInput = "b@2 >= n2@3" // readLine()
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
@@ -225,8 +225,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     // assume remaining
     var resultingAssumptions: Seq[Term] = Seq()
     assumptionsInOrder.zipWithIndex.foreach(a => {
-      a._1.getTerms().foreach(prover.assume)
-      resultingAssumptions ++= a._1.getTerms()
+      a._1.getTerms.foreach(prover.assume)
+      resultingAssumptions ++= a._1.getTerms
     })
   }
 

@@ -248,14 +248,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, pcsPre)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre), new Pair(ast.LocalVar("unknown", ast.Bool)(), ast.LocalVar("unknown", ast.Bool)())) /* TODO ake: branch condition */
-            val preExp = function.pres.map(e => new DebugExp(e, s1.substituteVarsInExp(e)))
+            val preExp = function.pres.map(e => DebugExp.createInstance(e, s1.substituteVarsInExp(e)))
             val argsName = function.formalArgs.map(d => d.name).mkString(", ")
-            decider.assume(pcsPre, new DebugExp(s"precondition ${function.name}($argsName)", InsertionOrderedSet(preExp))) // TODO ake: term<->exp mapping
+            decider.assume(pcsPre, DebugExp.createInstance(s"precondition ${function.name}($argsName)", InsertionOrderedSet(preExp))) // TODO ake: term<->exp mapping
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
               val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
               val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew)(function.pos, function.info, function.errT)
-              decider.assume(data.formalResult === tBody, new DebugExp(e, eNew))
+              decider.assume(data.formalResult === tBody, DebugExp.createInstance(e, eNew))
               consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}

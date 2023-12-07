@@ -341,7 +341,7 @@ object consumer extends ConsumptionRules {
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, field, Seq(`?r`), relevantChunks, v2)
-              val debugExp = new DebugExp(s"Field Trigger: ${eRcvrNew.toString()}.${field.name}")
+              val debugExp = DebugExp.createInstance(s"Field Trigger: ${eRcvrNew.toString()}.${field.name}")
               v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
               //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
               s2.copy(smCache = smCache1)
@@ -383,7 +383,7 @@ object consumer extends ConsumptionRules {
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
               val argsString = eArgsNew.mkString(", ")
-              val debugExp = new DebugExp(s"PredicateTrigger(${predicate.name}($argsString))")
+              val debugExp = DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))")
               v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
               s2.copy(smCache = smCache1)
             } else {
@@ -446,7 +446,7 @@ object consumer extends ConsumptionRules {
                 s1, wand, formalVars, relevantChunks, v1)
             val argsString = bodyVarsNew.mkString(", ")
             val predName = MagicWandIdentifier(wand, s.program).toString
-            val debugExp = new DebugExp(s"PredicateTrigger($predName($argsString))")
+            val debugExp = DebugExp.createInstance(s"PredicateTrigger($predName($argsString))")
             v1.decider.assume(PredicateTrigger(predName, smDef1.sm, tArgs), debugExp)
             s1.copy(smCache = smCache1)
           } else {
