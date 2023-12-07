@@ -215,9 +215,9 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     val pmethod = pprogram.methods.find(_.idndef.name == obl.s.currentMember.get.name)
     val pFormalArgDecls = pmethod.get.formalArgs
     val formalArgDecls = pFormalArgDecls map (translator.liftArgDecl)
-//    formalArgDecls foreach (prover.declare(_)) TODO
+//    formalArgDecls foreach (prover.declare(_)) TODO ake: pass all declarations
 
-    val assumptionsInOrder = obl.assumptionsExp.toSeq.reverse // TODO ake: or take obl.assumptions?
+    val assumptionsInOrder = obl.assumptionsExp.toSeq.reverse
     assumptionsInOrder.zipWithIndex.foreach(a => {
       println("" + a._2 + ": " + a._1)
     })
@@ -228,6 +228,12 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       a._1.getTerms.foreach(prover.assume)
       resultingAssumptions ++= a._1.getTerms
     })
+    val assertionResult = prover.assert(obl.assertion)
+    if(assertionResult){
+      println("Correct")
+    }else{
+      println("Could not prove")
+    }
   }
 
   private def getNewProver(proverId: Int): ProverStdIO = {

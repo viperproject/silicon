@@ -67,6 +67,7 @@ trait SymbolicExecutionRules {
     } else Seq()
 
     val state = s.copy()
+    // TODO ake: copy verifier
 
     val assumptions = v.decider.pcs.assumptionExps
 

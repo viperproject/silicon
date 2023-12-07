@@ -163,6 +163,11 @@ object evaluator extends EvaluationRules {
       case ast.EqCmp(e0, e1) => evalBinOp(s, e0, e1, Equals, pve, v)((s1, t, e0new, e1new, v1) => Q(s1, t, ast.EqCmp(e0new, e1new)(e.pos, e.info, e.errT), v1))
       case ast.NeCmp(e0, e1) => evalBinOp(s, e0, e1, (p0: Term, p1: Term) => Not(Equals(p0, p1)), pve, v)((s1, t, e0new, e1new, v1) => Q(s1, t, ast.NeCmp(e0new, e1new)(e.pos, e.info, e.errT), v1))
 
+      case x: ast.LocalVarWithVersion =>
+        val sort = v.symbolConverter.toSort(x.typ)
+        val term = Var(Identifier.apply(x.name + "@" + v.uniqueId), sort)
+        Q(s, term, e, v)
+
       case x: ast.AbstractLocalVar => Q(s, s.g(x), s.substituteVarsInExp(e), v)
 
       case _: ast.FullPerm => Q(s, FullPerm, e, v)
@@ -193,9 +198,10 @@ object evaluator extends EvaluationRules {
            .setConstrainable(Seq(tVar), true)
         Q(s1, tVar, e, v)
 
-      case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
+      case fa: ast.FieldAccess if s.qpFields.contains(fa.field) => // TODO ake: what if fa is wrapped in labelledOld (Debug)
         eval(s, fa.rcv, pve, v)((s1, tRcvr, eRcvr, v1) => {
-          val newFa = ast.FieldAccess(eRcvr, fa.field)(fa.pos, fa.info, fa.errT)
+          val newFa = if (s1.isEvalInOld) ast.FieldAccess(eRcvr, fa.field)(fa.pos, fa.info, fa.errT)
+                      else ast.LabelledOld(ast.FieldAccess(eRcvr, fa.field)(), s"${e.pos.toString}")(fa.pos, fa.info, fa.errT)
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(fa.field.name))
           s1.smCache.get((fa.field, relevantChunks)) match {
@@ -270,7 +276,7 @@ object evaluator extends EvaluationRules {
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, eArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(s.program)
-          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => { // TODO ake: what if fa is wrapped in labelledOld (Debug)
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             val newFa = if(s3.isEvalInOld) ast.FieldAccess(eArgs.head, fa.field)(e.pos, e.info, e.errT)
