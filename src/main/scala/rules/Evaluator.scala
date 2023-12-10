@@ -26,7 +26,7 @@ import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
-import viper.silver.ast.{AnnotationInfo, IntLit, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, HasLineColumn, IntLit, NoPosition, VirtualPosition, WeightedQuantifier}
 
 import scala.collection.immutable.Seq
 
@@ -168,7 +168,7 @@ object evaluator extends EvaluationRules {
         val term = Var(Identifier.apply(x.name + "@" + v.uniqueId), sort)
         Q(s, term, e, v)
 
-      case x: ast.AbstractLocalVar => Q(s, s.g(x), s.substituteVarsInExp(e), v)
+      case x: ast.AbstractLocalVar => Q(s, s.g(x), s.substituteVarsInExp(e), v) // TODO ake: LocalVarWithVersion?
 
       case _: ast.FullPerm => Q(s, FullPerm, e, v)
       case _: ast.NoPerm => Q(s, NoPerm, e, v)
@@ -198,10 +198,11 @@ object evaluator extends EvaluationRules {
            .setConstrainable(Seq(tVar), true)
         Q(s1, tVar, e, v)
 
-      case fa: ast.FieldAccess if s.qpFields.contains(fa.field) => // TODO ake: what if fa is wrapped in labelledOld (Debug)
+      case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, eRcvr, v1) => {
+          val debugOldLabel = getDebugOldLabel(fa)
           val newFa = if (s1.isEvalInOld) ast.FieldAccess(eRcvr, fa.field)(fa.pos, fa.info, fa.errT)
-                      else ast.LabelledOld(ast.FieldAccess(eRcvr, fa.field)(), s"${e.pos.toString}")(fa.pos, fa.info, fa.errT)
+                      else ast.DebugLabelledOld(ast.FieldAccess(eRcvr, fa.field)(), debugOldLabel)(fa.pos, fa.info, fa.errT)
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(fa.field.name))
           s1.smCache.get((fa.field, relevantChunks)) match {
@@ -214,7 +215,7 @@ object evaluator extends EvaluationRules {
                * quantifier in whose body field 'fa.field' was accessed)
                * which is protected by a trigger term that we currently don't have.
                */
-              v1.decider.assume(fvfDef.valueDefinitions, DebugExp.createInstance("Value definitions", true))
+              v1.decider.assume(fvfDef.valueDefinitions, DebugExp.createInstance("Value definitions", isInternal_ = true))
               if (s1.heapDependentTriggers.contains(fa.field)){
                 val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
                 v1.decider.assume(trigger, DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
@@ -223,7 +224,8 @@ object evaluator extends EvaluationRules {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                 val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
                 val s2 = s1.copy(functionRecorder = fr1)
-                Q(s2, fvfLookup, newFa, v1)
+                val s3 = if (!s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
+                Q(s3, fvfLookup, newFa, v1)
               } else {
                 v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                   case false =>
@@ -236,7 +238,8 @@ object evaluator extends EvaluationRules {
                     else
                       s1.possibleTriggers
                     val s2 = s1.copy(functionRecorder = fr1, possibleTriggers = possTriggers)
-                    Q(s2, fvfLookup, newFa, v1)}
+                    val s3 = if (!s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
+                    Q(s3, fvfLookup, newFa, v1)}
               }
             case _ =>
               val (_, smDef1, pmDef1) =
@@ -269,19 +272,22 @@ object evaluator extends EvaluationRules {
                                        .recordFvfAndDomain(smDef1)
                   val s3 = s1.copy(functionRecorder = fr2/*,
                                    smCache = smCache1*/)
-                  Q(s3, smLookup, newFa, v1)}
+                  val s4 = if (!s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
+                  Q(s4, smLookup, newFa, v1)}
               }})
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, eArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(s.program)
-          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => { // TODO ake: what if fa is wrapped in labelledOld (Debug)
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
+            val debugOldLabel = getDebugOldLabel(fa)
             val newFa = if(s3.isEvalInOld) ast.FieldAccess(eArgs.head, fa.field)(e.pos, e.info, e.errT)
-                        else ast.LabelledOld(ast.FieldAccess(eArgs.head, fa.field)(), s"${e.pos.toString}")(e.pos, e.info, e.errT)
-            Q(s3, tSnap, newFa, v1)
+                        else ast.DebugLabelledOld(ast.FieldAccess(eArgs.head, fa.field)(), debugOldLabel)(e.pos, e.info, e.errT)
+            val s4 = if(!s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
+            Q(s4, tSnap, newFa, v1)
           })
         })
 
@@ -296,6 +302,15 @@ object evaluator extends EvaluationRules {
       case ast.Old(e0) =>
         evalInOldState(s, Verifier.PRE_STATE_LABEL, e0, pve, v)((s1, t0, e0new, v1) =>
           Q(s1, t0, ast.Old(e0new)(e.pos, e.info, e.errT), v1))
+
+      case old@ast.DebugLabelledOld(e0, lbl) =>
+        s.oldHeaps.get(lbl) match {
+          case None =>
+            createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, lbl)(old.pos, old.info, old.errT)), v, s, None)
+          case _ =>
+            evalInOldState(s, lbl, e0, pve, v)((s1, t0, _, v1) =>
+              Q(s1, Minus(0, t0), old, v1))
+        }
 
       case old @ ast.LabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
@@ -1707,6 +1722,14 @@ object evaluator extends EvaluationRules {
                 sys.error(s"Unexpected join data entries $entries")
             }(Q)
       }})
+  }
+
+  private def getDebugOldLabel(exp: ast.Exp): String = {
+    exp.pos match {
+      case NoPosition => "line@unknown"
+      case column: HasLineColumn => s"line@${column.line}"
+      case VirtualPosition(identifier) => s"line@$identifier"
+    }
   }
 
   private[silicon] case object FromShortCircuitingAnd extends ast.Info {

@@ -14,21 +14,21 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.ContractNotWellformed
 import viper.silver.frontend.FrontendStateCache
 
+import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 import scala.language.postfixOps
 
 case class ProofObligation(s: State,
                            v: Verifier,
                           // prover: Prover,
-                           assumptions: InsertionOrderedSet[Term],
+//                           assumptions: InsertionOrderedSet[Term],
                            assumptionsExp: InsertionOrderedSet[DebugExp],
                            assertion: Term,
                            eAssertion: ast.Exp
                           ){
 
-  def removeAssumption(t: Term, e: ast.Exp, eEval: ast.Exp): ProofObligation = {
-    // TODO: how do I find the correct DebugExp to remove
-    this.copy(assumptions = assumptions filter(!_.equals(t))) // TODO ake: remove assumptions from verifier & prover??
+  def removeAssumption(id: Int): ProofObligation = {
+    this.copy(assumptionsExp = assumptionsExp.filter(_.id != id)) // TODO ake: removing children should be possible as well?
   }
 }
 
@@ -57,17 +57,16 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         val failureContexts = (currResult.message.failureContexts filter  (_.isInstanceOf[SiliconFailureContext])) map (_.asInstanceOf[SiliconFailureContext])
 
         if(failureContexts.isEmpty){
-          println(s"Debugging results are not available")
+          println(s"Debugging results are not available. No failure context found.")
           return
         }
-        val failureContext = failureContexts.head // TODO: which one?
+        val failureContext = failureContexts.head
         if (failureContext.state.isEmpty || failureContext.verifier.isEmpty || failureContext.failedAssertion.isEmpty) {
-          println(s"Debugging results are not available")
+          println(s"Debugging results are not available. Failure context is empty.")
           return
         }
 
         val obl = ProofObligation(failureContext.state.get, failureContext.verifier.get,
-          failureContext.verifier.get.decider.pcs.assumptions,
           failureContext.verifier.get.decider.pcs.assumptionExps, False /* TODO */, failureContext.failedAssertion.get)
 
         // TODO: setup typechecker such that user can use variable versions
@@ -103,39 +102,32 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
+  @tailrec
   private def removeAssumptions(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assumption you want to remove or s(skip):")
     val userInput = "s" // readLine()
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
-      val assumptionE = translateStringToExp(userInput, obl)
-      var resT: Term = null
-      var resE: ast.Exp = null
-      val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assumptionE, r))
-      val verificationResult = evaluator.eval3(obl.s, assumptionE, pve, obl.v)((_, t, newE, _) => {
-        resT = t
-        resE = newE
-        Success()
-      })
-      verificationResult match {
-        case Success() =>
-        case _ =>
-          println("Error evaluating expression: " + verificationResult.toString)
+      userInput.toIntOption match {
+        case None =>
+          println(s"Invalid input. Expected int got $userInput")
+          removeAssumptions(obl)
+        case Some(value) =>
+          obl.removeAssumption(value)
       }
-      obl.removeAssumption(resT, assumptionE, resE)
     }
   }
 
   private def addAssumptions(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assumption you want to add or s(skip):")
-    val userInput = "n2@3 == n2@3" // readLine()
+    val userInput = "i@4 - 2 == old[line@4](n@1.val)" // readLine()
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
       val assumptionE = translateStringToExp(userInput, obl)
       val (_, _, _, resV) = evalAssumption(assumptionE, obl)
-      obl.copy(v = resV, assumptions = resV.decider.pcs.assumptions, assumptionsExp = resV.decider.pcs.assumptionExps) // TODO ake: add assumptions that have been added during eval
+      obl.copy(v = resV, assumptionsExp = resV.decider.pcs.assumptionExps) // TODO ake: add assumptions that have been added during eval
     }
   }
 
@@ -173,7 +165,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     val pmethod = pprogram.methods.find(_.idndef.name == obl.s.currentMember.get.name)
     resolver.typechecker.curMember = pmethod.get
     val pexp = parsedExp.get.value
-    resolver.typechecker.check(pexp, PPrimitiv("Bool")()) // FIXME ake: scopeId is wrong -> cannot find any VarDecls (Resolver acceptAndCheckTypedEntity)
+    //resolver.typechecker.check(pexp, PPrimitiv("Bool")()) // FIXME ake: scopeId is wrong -> cannot find any VarDecls (Resolver acceptAndCheckTypedEntity)
     translator.exp(pexp)
   }
 

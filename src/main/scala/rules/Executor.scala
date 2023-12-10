@@ -19,7 +19,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.LocalVar
+import viper.silver.ast.{HasLineColumn, LocalVar, VirtualPosition}
 import viper.silver.cfg.ConditionalEdge
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
@@ -29,6 +29,7 @@ import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationErro
 import viper.silver.{ast, cfg}
 
 import scala.annotation.unused
+import scala.reflect.runtime.universe.NoPosition
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -354,7 +355,13 @@ object executor extends ExecutionRules {
                   val debugExp2 = DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})")
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
                 }
-                Q(s3.copy(h = h3 + ch), v2)
+                val s4 = s3.copy(h = h3 + ch)
+                val debugOldLabel: String = ass.pos match {
+                  case column: HasLineColumn => s"line@${column.line + 1}"
+                  case _ => s"line@unknown"
+                }
+                val s5 = s4.copy(oldHeaps = s4.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s4)))
+                Q(s5, v2)
               case (Incomplete(_, _), s3, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3, None)}}))
 
@@ -370,8 +377,15 @@ object executor extends ExecutionRules {
               val tSnap = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), Seq(eRcvrNew), tSnap, FullPerm, ast.FullPerm()(ass.pos, ass.info, ass.errT))
-              chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) =>
-                Q(s4.copy(h = h4), v4))
+              chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
+                val s5 = s4.copy(h = h4)
+                val debugOldLabel: String = ass.pos match {
+                  case column: HasLineColumn => s"line@${column.line + 1}"
+                  case _ => s"line@unknown"
+                }
+                val s6 = s5.copy(oldHeaps = s5.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s5)))
+                Q(s6, v4)
+              })
             })
           })
         )
