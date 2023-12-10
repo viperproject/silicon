@@ -12,7 +12,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
 import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{Decl, FunctionDecl, MacroDecl, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Program
@@ -109,6 +109,8 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  reasonUnknown: Option[String],
                                  state: Option[State],
                                  verifier: Option[Verifier],
+                                 macroDecls: Vector[MacroDecl],
+                                 functionDecls: Set[FunctionDecl],
                                  assumptions: InsertionOrderedSet[DebugExp],
                                  failedAssertion: Option[ast.Exp]) extends FailureContext {
   lazy val branchConditionString: String = {

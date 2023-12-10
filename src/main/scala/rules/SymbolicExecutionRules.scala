@@ -71,7 +71,7 @@ trait SymbolicExecutionRules {
 
     val assumptions = v.decider.pcs.assumptionExps
 
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, Some(state), Some(v), assumptions, failedAssertExp))
+    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, Some(state), Some(v), v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssertExp))
     Failure(res, v.reportFurtherErrors())
 
   }

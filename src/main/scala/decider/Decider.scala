@@ -30,6 +30,9 @@ import scala.reflect.{ClassTag, classTag}
  */
 
 trait Decider {
+  def functionDecls: Set[FunctionDecl]
+
+  def macroDecls: Vector[MacroDecl]
   def prover: Prover
   def pcs: PathConditionStack
 
@@ -105,6 +108,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private var _freshFunctions: Set[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
     private var _freshMacros: Vector[MacroDecl] = _
+
+    def functionDecls: Set[FunctionDecl] = _freshFunctions
+    def macroDecls: Vector[MacroDecl] = _freshMacros
 
     def prover: Prover = _prover
 

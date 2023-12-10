@@ -1,17 +1,21 @@
 package debugger
 
+import org.jgrapht.alg.util.Pair
+import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{Cvc5ProverStdIO, ProverStdIO, SMTLib2PreambleReader, TermToSMTLib2Converter, Z3ProverStdIO}
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, Success, VerificationResult}
+import viper.silicon.logger.NoopSymbExLog
 import viper.silicon.rules.evaluator
 import viper.silicon.state.{IdentifierFactory, State}
-import viper.silicon.state.terms.{Decl, False, Term}
-import viper.silicon.verifier.Verifier
-import viper.silver.reporter.Reporter
+import viper.silicon.state.terms.{And, Decl, False, FunctionDecl, MacroDecl, Term}
+import viper.silicon.utils.ast.BigAnd
+import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
+import viper.silver.reporter.{NoopReporter, Reporter}
 import viper.silver.ast
 import viper.silver.parser.{FastParser, NameAnalyser, PPrimitiv, PProgram, Resolver, Translator}
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.ContractNotWellformed
+import viper.silver.verifier.errors.{ContractNotWellformed, TerminationFailed}
 import viper.silver.frontend.FrontendStateCache
 
 import scala.annotation.tailrec
@@ -19,9 +23,11 @@ import scala.io.StdIn.readLine
 import scala.language.postfixOps
 
 case class ProofObligation(s: State,
-                           v: Verifier,
-                          // prover: Prover,
-//                           assumptions: InsertionOrderedSet[Term],
+                           //                           v: Verifier,
+                           // prover: Prover,
+                           //                           assumptions: InsertionOrderedSet[Term],
+                           macroDecl: Vector[MacroDecl],
+                           functionDecl: Set[FunctionDecl],
                            assumptionsExp: InsertionOrderedSet[DebugExp],
                            assertion: Term,
                            eAssertion: ast.Exp
@@ -37,8 +43,10 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
                       reporter: Reporter,
                       resolver: Resolver,
                       pprogram: PProgram,
-                      translator: Translator) {
+                      translator: Translator,
+                      mainVerifier: MainVerifier) {
   val failures : List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
+  var counter: Int = 0
 
   def startDebugger(): Unit = {
     if (failures.isEmpty) {
@@ -66,8 +74,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           return
         }
 
-        val obl = ProofObligation(failureContext.state.get, failureContext.verifier.get,
-          failureContext.verifier.get.decider.pcs.assumptionExps, False /* TODO */, failureContext.failedAssertion.get)
+        val obl = ProofObligation(failureContext.state.get, failureContext.macroDecls, failureContext.functionDecls, failureContext.assumptions, False /* TODO */, failureContext.failedAssertion.get)
 
         // TODO: setup typechecker such that user can use variable versions
 
@@ -75,6 +82,18 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
       }
     }
+  }
+
+  private def createVerifier(obl: ProofObligation): Verifier = {
+    val v = new WorkerVerifier(this.mainVerifier, s"debugWorkerVerifier_No${counter}", NoopReporter)
+    counter += 1
+    v.start()
+    // TODO: set branch conditions?
+    v.decider.declareAndRecordAsFreshFunctions(obl.functionDecl)
+    v.decider.declareAndRecordAsFreshMacros(obl.macroDecl)
+    obl.assumptionsExp foreach (debugExp =>
+      v.decider.assume(debugExp.getTerms, debugExp))
+    v
   }
 
   private def debugProofObligation(_obl: ProofObligation): Unit = {
@@ -91,14 +110,15 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
       obl = removeAssumptions(obl)
 
-      // TODO: brauchen wir fürs eval einen verifier, bei dem die assumptions entfernt wurden?
-      obl = addAssumptions(obl)
-
-      obl = chooseAssertion(obl)
+      val v = createVerifier(obl)
+//      val res = addAssumptions(obl, v)
+//      obl = res._1
+//      val v2 = res._2
+//
+//      obl = chooseAssertion(obl, v2)
 
       val prover = getNewProver(chooseProver())
       assertProofObligation(obl, prover)
-
     }
   }
 
@@ -119,19 +139,19 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
-  private def addAssumptions(obl: ProofObligation): ProofObligation = {
+  private def addAssumptions(obl: ProofObligation, v: Verifier): (ProofObligation, Verifier) = {
     println(s"Enter the assumption you want to add or s(skip):")
     val userInput = "i@4 - 2 == old[line@4](n@1.val)" // readLine()
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
-      obl
+      (obl, v)
     } else {
       val assumptionE = translateStringToExp(userInput, obl)
-      val (_, _, _, resV) = evalAssumption(assumptionE, obl)
-      obl.copy(v = resV, assumptionsExp = resV.decider.pcs.assumptionExps) // TODO ake: add assumptions that have been added during eval
+      val (_, _, _, resV) = evalAssumption(assumptionE, obl, v)
+      (obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps), resV) // TODO ake: add assumptions that have been added during eval
     }
   }
 
-  private def chooseAssertion(obl: ProofObligation): ProofObligation = {
+  private def chooseAssertion(obl: ProofObligation, v: Verifier): ProofObligation = {
     println(s"Enter the assertion or s(skip) to assert the previous assertion again:")
     val userInput = "b@2 >= n2@3" // readLine()
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
@@ -142,7 +162,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       var resE: ast.Exp = null
       var resV: Verifier = null
       val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assumptionE, r))
-      val verificationResult = evaluator.eval3(obl.s, assumptionE, pve, obl.v)((_, t, newE, newV) => {
+      val verificationResult = evaluator.eval3(obl.s, assumptionE, pve, v)((_, t, newE, newV) => {
         resT = t
         resE = newE
         resV = newV
@@ -169,13 +189,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     translator.exp(pexp)
   }
 
-  private def evalAssumption(e: ast.Exp, obl: ProofObligation): (State, Term, ast.Exp, Verifier) = {
+  private def evalAssumption(e: ast.Exp, obl: ProofObligation, v: Verifier): (State, Term, ast.Exp, Verifier) = {
     var resT: Term = null
     var resS: State = null
     var resE: ast.Exp = null
     var resV: Verifier = null
     val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(e, r))
-    val verificationResult = evaluator.eval3(obl.s, e, pve, obl.v)((newS, t, newE, newV) => {
+    val verificationResult = evaluator.eval3(obl.s, e, pve, v)((newS, t, newE, newV) => {
       resS = newS
       resT = t
       resE = newE
