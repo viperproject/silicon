@@ -769,7 +769,7 @@ object executor extends ExecutionRules {
           *   reported by Silicon issue #328.
           */
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
-         v.decider.assumeDefinition(t === rhs)
+         v.decider.assumeDefinition(BuiltinEquals(t, rhs))
 
          t
      }

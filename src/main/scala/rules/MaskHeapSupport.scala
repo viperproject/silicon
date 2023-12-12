@@ -29,7 +29,7 @@ import scala.collection.{immutable, mutable}
 object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
 
   val assumeGoodMask = true
-  val simplifyOnConsume = false // !Verifier.config.prover.toOption.contains("Z3-API")
+  val simplifyOnConsume = true // !Verifier.config.prover.toOption.contains("Z3-API")
 
   val resCache = mutable.HashMap[Seq[ast.Exp], Seq[Any]]()
 

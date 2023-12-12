@@ -109,7 +109,7 @@ class FunctionData(val programFunction: ast.Function,
 
   val limitedAxiom =
     Forall(arguments,
-           limitedFunctionApplication === functionApplication,
+           BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication))
 
   val triggerAxiom =
@@ -325,7 +325,7 @@ class FunctionData(val programFunction: ast.Function,
     optBody.map(translatedBody => {
       val pre = preconditionFunctionApplication
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
-      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
+      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(BuiltinEquals(functionApplication, translatedBody)))))
       if (Verifier.config.maskHeapMode()) {
         val predTriggers = predicateTriggers.values.map(pt => pt match {
           case App(f, args) =>
@@ -474,7 +474,7 @@ class FunctionData(val programFunction: ast.Function,
     assert(Verifier.config.heapFunctionEncoding())
 
     val frameFuncApp = App(frameFunction, funcFrame +: formalArgs.values.toSeq)
-    val body = functionApplication === frameFuncApp
+    val body = BuiltinEquals(functionApplication, frameFuncApp)
 
     val res = Forall(arguments, body, Trigger(functionApplication))
     res
@@ -534,7 +534,7 @@ class FunctionData(val programFunction: ast.Function,
       val sameVals: Term = Forall(qvars, Implies(And(cond1, cond2), lookup1 === lookup2), Trigger(Seq(lookup1, lookup2)))
       val app1: Term = App(func._1, heaps1 ++ restArgs)
       val app2: Term = App(func._1, heaps2 ++ restArgs)
-      val res = Forall(heaps1 ++ heaps2 ++ restArgs, Implies(sameVals, app1 === app2), Trigger(Seq(app1, app2)))
+      val res = Forall(heaps1 ++ heaps2 ++ restArgs, Implies(sameVals, BuiltinEquals(app1, app2)), Trigger(Seq(app1, app2)))
       result.append(res)
     }
     result.toSeq
