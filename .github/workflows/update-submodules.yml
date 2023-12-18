@@ -56,7 +56,7 @@ jobs:
           body: |
             ${{ env.PR_BODY_LINE1 }}
 
-   - name: Enable auto-merge of PR
+      - name: Enable auto-merge of PR
         if: (env.PREV_SILVER_REF != env.CUR_SILVER_REF)
         run: gh pr merge --merge --auto "${{ steps.pr.outputs.pull-request-number }}"
         env:
