@@ -56,10 +56,9 @@ jobs:
           body: |
             ${{ env.PR_BODY_LINE1 }}
 
-      - name: Enable auto-merge of PR
-        uses: peter-evans/create-or-update-comment@v2
+   - name: Enable auto-merge of PR
         if: (env.PREV_SILVER_REF != env.CUR_SILVER_REF)
-        with:
-          token: ${{ secrets.UPDATE_SILVER }}
-          issue-number: ${{ steps.pr.outputs.pull-request-number }}"
-          body: bors merge
+        run: gh pr merge --merge --auto "${{ steps.pr.outputs.pull-request-number }}"
+        env:
+          GH_TOKEN: ${{ secrets.UPDATE_SILVER }}
+  
