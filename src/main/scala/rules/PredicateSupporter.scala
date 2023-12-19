@@ -70,8 +70,8 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)
-        val newSf = (_: Sort, _: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort),
-          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate)
+        val newSf = (_: Sort, v: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort),
+          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm, s3, v.decider), predicate, s3, v.decider)
         produce(s3, newSf, pap, pve, v1)((s4, v2) => {
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val snapArg = if (Verifier.config.heapFunctionEncoding()) {
@@ -173,7 +173,7 @@ object predicateSupporter extends PredicateSupportRules {
           .setConstrainable(constrainableWildcards, false)
         val predSnap = snap match {
           case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
-          case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort), toSnapTree(tArgs))
+          case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort, s1, v1.decider), toSnapTree(tArgs))
         }
         val predSnapFunc = (_: Sort, _: Verifier) => predSnap
         produce(s3, predSnapFunc, body, pve, v1)((s4, v2) => {

@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.decider.Decider
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.MaskHeapChunk
 import viper.silicon.resources.MagicWandID
@@ -78,7 +79,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
     }
   }
 
-  def mergeWandHeaps(h: Heap, newH: Heap, v: Verifier): Heap = {
+  def mergeWandHeaps(h: Heap, newH: Heap, v: Verifier, s: Option[State]): Heap = {
     val resources = (h.values.map(c => c.asInstanceOf[BasicMaskHeapChunk].resource) ++
       newH.values.map(c => c.asInstanceOf[BasicMaskHeapChunk].resource)).toSeq.distinct
 
@@ -88,7 +89,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
       (oldChunk, newChunk) match {
         case (Some(c1), Some(c2)) =>
           val newMask = MaskSum(c1.mask, c2.mask)
-          val newHeap = MergeHeaps(c1.heap, c1.mask, c2.heap, c2.mask)
+          val newHeap = if (s.isDefined) MergeHeaps(c1.heap, c1.mask, c2.heap, c2.mask, s.get, v.decider) else MergeHeaps(c1.heap, c1.mask, c2.heap, c2.mask)
           if (r.isInstanceOf[ast.Field]) {
             if (newMask != c1.mask && newMask != c2.mask)
               v.decider.assume(upperBoundAssertion(newMask, v))
@@ -103,7 +104,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
     mergedHeap
   }
 
-  def convertToSnapshot(masks: Map[Any, Term], resources: Seq[Any], h: Heap) = {
+  def convertToSnapshot(masks: Map[Any, Term], resources: Seq[Any], h: Heap, s: State, d: Decider) = {
     val snapTerms = resources.map(r => {
       val chunk = findMaskHeapChunkOptionally(h, r)
       if (chunk.isEmpty) {
@@ -111,7 +112,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
       } else if (chunk.get.heap.isInstanceOf[DummyHeap]) {
         terms.Unit
       } else {
-        HeapToSnap(chunk.get.heap, masks(r), r)
+        HeapToSnap(chunk.get.heap, masks(r), r, s, d)
       }
     })
     toSnapTree(snapTerms)
@@ -139,9 +140,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
     And(individualAssumes, maskAssume)
   }
 
-  def removeSingleAdd(origMask: Term, at: Term, amount: Term, v: Verifier): Term = {
+  def removeSingleAdd(origMask: Term, at: Term, amount: Term, s: State, v: Verifier): Term = {
     if (!simplifyOnConsume) {
-      return MaskAdd(origMask, at, PermNegation(amount))
+      return MaskAdd(origMask, at, PermNegation(amount), s, v.decider)
     }
 
     val termAdditions = mutable.LinkedHashMap[Term, Term]()
@@ -191,10 +192,10 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
     if (toReplace.nonEmpty) {
       def replace(mask: Term): Term = mask match {
         case mask if toReplace.isEmpty => mask
-        case MaskAdd(m, r, v) if toReplace.contains((r, v)) =>
-          val newVal = toReplace((r, v))
-          toReplace.remove((r, v))
-          MaskAdd(replace(m), r, newVal)
+        case MaskAdd(m, r, vl) if toReplace.contains((r, vl)) =>
+          val newVal = toReplace((r, vl))
+          toReplace.remove((r, vl))
+          MaskAdd(replace(m), r, newVal, s, v.decider)
         case MaskAdd(m, r, v) => MaskAdd(replace(m), r, v)
         case MaskSum(m1, m2) => MaskSum(replace(m1), replace(m2))
         case MaskDiff(m1, m2) => MaskDiff(replace(m1), m2)
@@ -203,10 +204,10 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
         case t => t
       }
       val replaced = replace(origMask)
-      val res = MaskAdd(replaced, at, PermNegation(remainingAmount))
+      val res = MaskAdd(replaced, at, PermNegation(remainingAmount), s, v.decider)
       res
     } else {
-      MaskAdd(origMask, at, PermNegation(amount))
+      MaskAdd(origMask, at, PermNegation(amount), s, v.decider)
     }
   }
 
@@ -335,9 +336,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
               // constrain wildcard
               v.decider.assume(PermLess(rPerm, maskValue))
             }
-            var newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(rPerm)) //HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
+            var newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(rPerm), s, v.decider) //HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
             newMask = newMask match {
-              case MaskAdd(resChunk.mask, argTerm, PermNegation(rPerm)) if s.isConsumingFunctionPre.isEmpty => removeSingleAdd(resChunk.mask, argTerm, rPerm, v)
+              case MaskAdd(resChunk.mask, argTerm, PermNegation(rPerm)) if s.isConsumingFunctionPre.isEmpty => removeSingleAdd(resChunk.mask, argTerm, rPerm, s, v)
               case _ => newMask
             }
 
@@ -349,8 +350,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
 
             //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
             val taken = PermMin(maskValue, rPerm)
-            val (remainingChunk, fr1) = resChunk.copy(newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(taken)), v.decider, s1.functionRecorder)
-            val (consumedChunk, fr2) = resChunk.copy(newMask = MaskAdd(if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask, argTerm, taken), v.decider, fr1)
+            val (remainingChunk, fr1) = resChunk.copy(newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(taken), s1, v.decider), v.decider, s1.functionRecorder)
+            val (consumedChunk, fr2) = resChunk.copy(newMask = MaskAdd(if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask, argTerm, taken, s1, v.decider), v.decider, fr1)
             val s2 = s1.copy(functionRecorder = fr2)
             if (v.decider.check(hasAll, 0)) {
               (Complete(), s2, h1 - resChunk + remainingChunk, Some(consumedChunk))
@@ -389,9 +390,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
             // constrain wildcard
             v.decider.assume(PermLess(permissions, maskValue))
           }
-          var newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(permissions))//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
+          var newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(permissions), s, v.decider)//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
           newMask = newMask match {
-            case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) if s.isConsumingFunctionPre.isEmpty => removeSingleAdd(resChunk.mask, argTerm, permissions, v)
+            case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) if s.isConsumingFunctionPre.isEmpty => removeSingleAdd(resChunk.mask, argTerm, permissions, s, v)
             case _ => newMask
           }
 
@@ -409,7 +410,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
 
           //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
           val snapPermTerm = if (!consumeExact && s.isConsumingFunctionPre.isDefined) FullPerm else permissions
-          val newSnapMask = MaskAdd(resMap(resourceToFind), argTerm, snapPermTerm) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
+          val newSnapMask = MaskAdd(resMap(resourceToFind), argTerm, snapPermTerm, s, v.decider) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
           val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
           // set up partially consumed heap
           Q(s.copy(functionRecorder = newFr), h - resChunk + newChunk, snap, v)
@@ -676,12 +677,12 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
       case _: ast.Predicate => toSnapTree(tArgs)
       case _: MagicWandIdentifier => toSnapTree(tArgs)
     }
-    val newMask = MaskAdd(resChunk.mask, argTerm, tPerm) // HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm))
+    val newMask = MaskAdd(resChunk.mask, argTerm, tPerm, s, v.decider) // HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm))
     if (assumeGoodMask)
       v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
     val snapHeapMap = snap.asInstanceOf[FakeMaskMapTerm].masks
 
-    val newHeap = MergeSingle(resChunk.heap, resChunk.mask, argTerm, HeapLookup(snapHeapMap(resource), argTerm))
+    val newHeap = MergeSingle(resChunk.heap, resChunk.mask, argTerm, HeapLookup(snapHeapMap(resource), argTerm), s, v.decider)
     val (ch, newFr) = resChunk.copy(newMask = newMask, v.decider, s.functionRecorder, newHeap = newHeap)
     val h1 = s.h - resChunk + ch
 
@@ -760,7 +761,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
     val newMask =  MaskSum(currentChunk.mask, qpMask)
 
 
-    val newHeap = MergeHeaps(currentChunk.heap, currentChunk.mask, snapHeapMap(resource), qpMask)
+    val newHeap = MergeHeaps(currentChunk.heap, currentChunk.mask, snapHeapMap(resource), qpMask, s, v.decider)
     val (newChunk, fr0) = currentChunk.copy(newMask = newMask, v.decider, s.functionRecorder, newHeap = newHeap)
     val newMaskGet = HeapLookup(newMask, argTerm)
 

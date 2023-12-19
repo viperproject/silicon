@@ -54,7 +54,7 @@ class MaskHeapStateConsolidator extends MinimalStateConsolidator {
   override def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) = ???
 
   override def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
-    (fr, maskHeapSupporter.mergeWandHeaps(h, newH, v))
+    (fr, maskHeapSupporter.mergeWandHeaps(h, newH, v, None))
   }
 }
 

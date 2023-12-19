@@ -375,7 +375,7 @@ object executor extends ExecutionRules {
             val maskValue = HeapLookup(resChunk.mask, tRcvr)
             v2.decider.assert(AtLeast(maskValue, FullPerm)) {
               case true =>
-                val heapUpdated = HeapUpdate(resChunk.heap, tRcvr, tRhs)
+                val heapUpdated = HeapUpdate(resChunk.heap, tRcvr, tRhs, s2, v2.decider)
                 val newChunk = resChunk.copy(heap = heapUpdated)
                 Q(s2.copy(h = s2.h - resChunk + newChunk), v1)
               case false => createFailure(ve, v, s)
@@ -462,7 +462,7 @@ object executor extends ExecutionRules {
           val fieldChunk = maskHeapSupporter.findMaskHeapChunk(heap, field)
           v.decider.assume(HeapLookup(fieldChunk.mask, tRcvr) === NoPerm)
           // add one
-          val (newFieldChunk, newNewFr) = fieldChunk.copy(newMask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm), v.decider, newFr)
+          val (newFieldChunk, newNewFr) = fieldChunk.copy(newMask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm, s, v.decider), v.decider, newFr)
           newFr = newNewFr
           heap = heap - fieldChunk + newFieldChunk
         }
@@ -652,7 +652,7 @@ object executor extends ExecutionRules {
                 case Some(curChunk) =>
                   val newChunk = chWand.asInstanceOf[BasicMaskHeapChunk]
                   val mergedMask = MaskSum(curChunk.mask, newChunk.mask)
-                  val mergedHeap = MergeHeaps(curChunk.heap, curChunk.mask, newChunk.heap, newChunk.mask)
+                  val mergedHeap = MergeHeaps(curChunk.heap, curChunk.mask, newChunk.heap, newChunk.mask, s1, v1.decider)
                   val (mergedChunk, newFr) = curChunk.copy(newMask = mergedMask, v1.decider, s1.functionRecorder, newHeap = mergedHeap)
                   (newFr, s1.reserveHeaps.head - curChunk + mergedChunk)
               }

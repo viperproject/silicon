@@ -908,7 +908,7 @@ object evaluator extends EvaluationRules {
                       val predSnapFunc = if (Verifier.config.maskHeapMode()) {
                         val predSnap = snap match {
                           case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
-                          case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort), toSnapTree(tArgs))
+                          case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort, s7a, v4.decider), toSnapTree(tArgs))
                         }
                         (_: Sort, _: Verifier) => predSnap
                       } else toSf(snap)

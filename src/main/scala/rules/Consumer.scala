@@ -141,7 +141,7 @@ object consumer extends ConsumptionRules {
         val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
 
         val heapToUse = if (s.exhaleExt) s2.reserveHeaps.head else h // TODO I'm just guessing
-        Q(s2, h2, maskHeapSupporter.convertToSnapshot(resMap, resources, heapToUse), v2)
+        Q(s2, h2, maskHeapSupporter.convertToSnapshot(resMap, resources, heapToUse, s2, v2.decider), v2)
       }
     })
   }

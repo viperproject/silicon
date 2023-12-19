@@ -300,7 +300,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         evaluateWandArguments(s4, wand, pve, v3)((s5, tArgs, v4) => {
           val wandSnap = MagicWandSnapshot(freshSnapRoot, snap)
           val argTerm = toSnapTree(tArgs)
-          val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
+          val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm, s5, v4.decider)
           val newHeap = HeapSingleton(argTerm, wandSnap, PredHeapSort)
           val definitionalAxiomMark = v4.decider.setPathConditionMark()
           val (newChunk, newFr) = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap, v4.decider, s5.functionRecorder)
@@ -417,7 +417,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             val wandSnap = if (Verifier.config.maskHeapMode()) {
               val mwi = MagicWandIdentifier(wand, s1.program)
               val argTerm = toSnapTree(tArgs)
-              MagicWandSnapshot(HeapLookup(SnapToHeap(snap, mwi, PredHeapSort), argTerm))
+              MagicWandSnapshot(HeapLookup(SnapToHeap(snap, mwi, PredHeapSort, s1, v1.decider), argTerm))
             } else {
               MagicWandSnapshot(snap)
             }
@@ -465,7 +465,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
       val usedChunks = chs2.flatten
       val (fr4, hUsed) = if (Verifier.config.maskHeapMode())
-        (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => maskHeapSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2)))
+        (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => maskHeapSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2, Some(s2))))
       else
         v2.stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
@@ -496,7 +496,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * is sound.
        */
       if (Verifier.config.maskHeapMode()) {
-        maskHeapSupporter.mergeWandHeaps(maskHeapSupporter.mergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v), s.reserveHeaps(2), v)
+        maskHeapSupporter.mergeWandHeaps(maskHeapSupporter.mergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v, Some(s)), s.reserveHeaps(2), v, Some(s))
       } else {
         s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
       }
