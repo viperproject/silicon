@@ -24,6 +24,7 @@ import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
+import viper.silver.utility.{FileProgramSubmitter, ProgramSubmitter}
 
 import scala.util.chaining._
 
@@ -404,6 +405,9 @@ class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
   def runMain(args: Array[String]): Unit = {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
 
+    val submitter = new FileProgramSubmitter(this)
+    submitter.setArgs(args)
+
     try {
       execute(ArraySeq.unsafeWrapArray(args))
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
@@ -452,6 +456,7 @@ class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
          *       the process to kill has no input/output data left in the
          *       corresponding streams.
          */
+      submitter.submit()
     }
 
     sys.exit(exitCode)
