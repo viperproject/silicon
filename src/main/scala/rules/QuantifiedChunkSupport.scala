@@ -1763,7 +1763,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             receiverTerms.zip(cInvertibles).forall(p => {
               if (cQvars.length == quantVars.length && cQvars.zip(quantVars).forall(vars => vars._1.sort == vars._2.sort)) {
                 val secondReplaced = p._2.replace(cQvars, quantVars)
-                v.decider.check(p._1 === secondReplaced, Verifier.config.checkTimeout())
+                v.decider.check(Forall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout())
               } else {
                 false
               }
