@@ -1071,7 +1071,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
-          quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
         val loss = PermTimes(tPerm, s.permissionScalingFactor)
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
@@ -1736,6 +1736,48 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
       matchingChunks ++ otherChunks
     }
+
+  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier)
+                               : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
+    // Heuristics that looks for quantified chunks that have the same shape (as in, the same number and types of
+    // quantified variables) and identical receiver terms.
+    // E.g., if the QP we're looking to find or remove has a quantified variable i: Int and receiver term f(a, i), and
+    // an existing chunk with quantified variable x has receiver term f(g(), x), where a == g(), then that chunk
+    // would be selected first.
+    // If no such chunk exists, the standard hint based heuristics are used.
+    val fallback = hintBasedChunkOrderHeuristic(hints)
+    (chunks: Seq[QuantifiedBasicChunk]) => {
+      val (matches, others) = chunks.partition(c => {
+        // We extract the receiver terms, i.e., the invertibles
+        val chunkInfo = c match {
+          case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
+            Some(qfc.invs.get.invertibles, qfc.invs.get.qvarsToInverses.keys.toSeq)
+          case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
+            Some(qpc.invs.get.invertibles, qpc.invs.get.qvarsToInverses.keys.toSeq)
+          case qwc: QuantifiedMagicWandChunk if qwc.invs.isDefined =>
+            Some(qwc.invs.get.invertibles, qwc.invs.get.qvarsToInverses.keys.toSeq)
+          case _ => None
+        }
+        chunkInfo match {
+          case Some((cInvertibles, cQvars)) =>
+            receiverTerms.zip(cInvertibles).forall(p => {
+              if (cQvars.length == quantVars.length && cQvars.zip(quantVars).forall(vars => vars._1.sort == vars._2.sort)) {
+                val secondReplaced = p._2.replace(cQvars, quantVars)
+                v.decider.check(p._1 === secondReplaced, Verifier.config.checkTimeout())
+              } else {
+                false
+              }
+            })
+          case _ => false
+        }
+      })
+      if (matches.nonEmpty) {
+        matches ++ fallback(others)
+      } else {
+        fallback(chunks)
+      }
+    }
+  }
 
   def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier)
                                        : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
