@@ -767,13 +767,48 @@ object Quantification
   private val qidCounter = new AtomicInteger()
 
   def transformSeqTerms(t: Trigger): Seq[Trigger] = {
-    val transformed = Trigger(t.p.map(_.transform{
-      case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
-    }()))
+    val needsTrafo = t.p.exists(trm => trm.existsDefined{
+      case SeqIn(_, _) => true
+    })
+    val transformed = if (needsTrafo) {
+      Trigger(t.p.map(_.transform{
+        case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
+      }()).filter(trm => isPossibleTrigger(trm)))
+    } else {
+      t
+    }
     if (transformed != t)
       Seq(t, transformed)
     else
       Seq(t)
+  }
+
+  def isPossibleTrigger(e: Term): Boolean = e match {
+    case _: Var => false
+    case app: App => app.applicable.isInstanceOf[Function]
+    case _: CustomEquals
+         | _: PermMin
+         | _: SeqTerm
+         | _: SeqLength
+         | _: SeqAt
+         | _: SeqIn
+         | _: SetTerm
+         | _: SetIn
+         | _: SetCardinality
+         | _: MultisetTerm
+         | _: MultisetCardinality
+         | _: MultisetCount
+         | _: MapLookup
+         | _: MapCardinality
+         | _: MapDomain
+         | _: MapRange
+         | _: MapUpdate
+         | _: SnapshotTerm
+         | _: Domain
+         | _: Lookup
+         | _: PredicateLookup
+    => true
+    case _ => false
   }
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
