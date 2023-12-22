@@ -724,6 +724,29 @@ object executor extends ExecutionRules {
         val pve = ApplyFailed(apply)
         magicWandSupporter.applyWand(s, e, pve, v)(Q)
 
+      case qh@ast.Quasihavoc(lhs, ast.PredicateAccess(args, predName)) if Verifier.config.maskHeapMode() =>
+        if (lhs.isDefined) {
+          throw new Exception("unsupported quasihavoc")
+        }
+        val chunk = maskHeapSupporter.findMaskHeapChunk(s.h, s.program.findPredicate(predName))
+        val newVal = v.decider.fresh(sorts.Snap)
+        evals(s, args, _ => QuasihavocFailed(qh), v)((s1, tArgs, v1) => {
+          val receiver = toSnapTree(tArgs)
+          val newHeap = HeapUpdate(chunk.heap, receiver, newVal)
+          val newChunk = chunk.copy(heap = newHeap)
+          Q(s1.copy(h = s1.h - chunk + newChunk), v1)
+        })
+
+
+      case ast.Quasihavocall(vars, lhs, ast.PredicateAccess(args, predName)) if Verifier.config.maskHeapMode() =>
+        if (lhs.isDefined || vars.map(_.localVar) != args) {
+          throw new Exception("unsupported quasihavocall")
+        }
+        val chunk = maskHeapSupporter.findMaskHeapChunk(s.h, s.program.findPredicate(predName))
+        val newVal = v.decider.fresh(chunk.heap.sort)
+        val newChunk = chunk.copy(heap = newVal)
+        Q(s.copy(h = s.h - chunk + newChunk), v)
+
       case havoc: ast.Quasihavoc =>
         havocSupporter.execHavoc(havoc, v, s)(Q)
 
