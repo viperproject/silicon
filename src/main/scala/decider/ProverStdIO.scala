@@ -21,6 +21,7 @@ import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter, QuantifierInstantiationsMessage}
 import viper.silver.verifier.Model
+import viper.silver.testing.BenchmarkStatCollector
 
 import scala.collection.mutable
 
@@ -449,6 +450,7 @@ abstract class ProverStdIO(uniqueId: String,
         val msg = s"Prover warning: $result"
         reporter report InternalWarningMessage(msg)
         logger warn msg
+        BenchmarkStatCollector.addToStat("proverWarnings", 1)
       }
 
       // When `smt.qi.profile` is `true`, Z3 periodically reports the quantifier instantiations using the format

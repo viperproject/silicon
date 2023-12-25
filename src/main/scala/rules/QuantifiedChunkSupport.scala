@@ -26,6 +26,7 @@ import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.InternalWarningMessage
+import viper.silver.testing.BenchmarkStatCollector
 
 case class InverseFunctions(condition: Term,
                             invertibles: Seq[Term],
@@ -793,6 +794,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               v: Verifier)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
+    BenchmarkStatCollector.addToStat("QPs", 1)
 
     val gain = PermTimes(tPerm, s.permissionScalingFactor)
     val (ch: QuantifiedBasicChunk, inverseFunctions) =

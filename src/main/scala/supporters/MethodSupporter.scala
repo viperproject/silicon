@@ -18,6 +18,7 @@ import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
+import viper.silver.testing.BenchmarkStatCollector
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -41,6 +42,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
     def units = _units
 
     def verify(sInit: State, method: ast.Method): Seq[VerificationResult] = {
+      BenchmarkStatCollector.addToStat("methods", 1)
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
@@ -87,6 +89,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
+                    BenchmarkStatCollector.addToStat("postBranches", 1)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {

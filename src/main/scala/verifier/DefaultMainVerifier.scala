@@ -34,6 +34,7 @@ import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
 import viper.silver.verifier.VerifierWarning
+import viper.silver.testing.BenchmarkStatCollector
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -155,6 +156,11 @@ class DefaultMainVerifier(config: Config,
   /* Program verification */
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
+    BenchmarkStatCollector.addStat("proverWarnings")
+    BenchmarkStatCollector.addStat("postBranches")
+    BenchmarkStatCollector.addStat("methods")
+    BenchmarkStatCollector.addStat("QPs")
+
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
