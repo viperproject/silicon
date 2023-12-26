@@ -165,6 +165,7 @@ class DefaultMainVerifier(config: Config,
     BenchmarkStatCollector.addStat("postBranches")
     BenchmarkStatCollector.addStat("methods")
     BenchmarkStatCollector.addStat("QPs")
+    BenchmarkStatCollector.addStat("SCcomps")
 
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
