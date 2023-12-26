@@ -19,6 +19,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.testing.BenchmarkStatCollector
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
@@ -78,7 +79,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
           val roundSepIdentifier = v.symbExLog.openScope(roundLog)
 
-          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
+          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, true, v)
 
           snapEqs foreach v.decider.assume
 
@@ -130,7 +131,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
     val (nonQuantifiedChunks, otherChunks) = partition(h)
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
-    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
+    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, false, v)
 
     v.decider.assume(snapEqs)
 
@@ -147,6 +148,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def singleMerge(fr: FunctionRecorder,
                           destChunks: Seq[NonQuantifiedChunk],
                           newChunks: Seq[NonQuantifiedChunk],
+                          countForStats: Boolean,
                           v: Verifier)
                          : (FunctionRecorder,
                             Seq[NonQuantifiedChunk],
@@ -159,6 +161,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
     val initial = (fr, destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
 
+    if (countForStats)
+      BenchmarkStatCollector.addToStat("SCcomps", newChunks.length)
     val result = newChunks.foldLeft(initial) { case ((fr1, accMergedChunks, accNewChunks, accSnapEqs), nextChunk) =>
       /* accMergedChunks: already merged chunks
        * accNewChunks: newly added chunks
@@ -166,7 +170,6 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
        * nextChunk: current chunk from the sequence of new chunks/of chunks to merge into the
        *           sequence of destination chunks
        */
-
       chunkSupporter.findMatchingChunk(accMergedChunks, nextChunk, v) match {
         case Some(ch) =>
           mergeChunks(fr1, ch, nextChunk, v) match {
