@@ -101,13 +101,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
-                    BenchmarkStatCollector.addToStat("postBranches", 1)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>
+                  exec(s3, body, v3)((s4, v4) => {
+                    BenchmarkStatCollector.addToStat("postBranches", 1)
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
-                      Success()))}) }  )})})
+                      Success())
+                  })}) }  )})})
 
       symbExLog.closeMemberScope()
       Seq(result)
