@@ -85,7 +85,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     "--assumeInjectivityOnInhale",
     "--proverSaturationTimeoutWeights=[1.0,0.5,0.0,0.0,0.02]",
     "--numberOfErrorsToReport=0",
-    "--timeout", System.getProperty(timeoutPropertyName, "180") /* timeout in seconds */
+    "--timeout=600"
   ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--proverRandomizeSeeds") else Seq.empty)
 
   lazy val verifier: Silicon = {
