@@ -66,12 +66,9 @@ trait SymbolicExecutionRules {
         })
     } else Seq()
 
-    val state = s.copy()
-    // TODO ake: copy verifier
-
     val assumptions = v.decider.pcs.assumptionExps
 
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, Some(state), Some(v), v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssertExp))
+    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssertExp))
     Failure(res, v.reportFurtherErrors())
 
   }

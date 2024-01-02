@@ -8,26 +8,25 @@ import viper.silicon.interfaces.{Failure, SiliconFailureContext, Success, Verifi
 import viper.silicon.logger.NoopSymbExLog
 import viper.silicon.rules.evaluator
 import viper.silicon.state.{IdentifierFactory, State}
-import viper.silicon.state.terms.{And, Decl, False, FunctionDecl, MacroDecl, Term}
+import viper.silicon.state.terms.{And, Decl, False, FunctionDecl, MacroDecl, SortWrapperDecl, Term, sorts}
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
 import viper.silver.reporter.{NoopReporter, Reporter}
 import viper.silver.ast
-import viper.silver.parser.{FastParser, NameAnalyser, PPrimitiv, PProgram, Resolver, Translator}
+import viper.silver.ast.{AtomicType, BackendType, Bool, BuiltInType, CollectionType, DomainType, ExtensionType, GenericType, InternalType, MapType, MultisetType, Perm, Ref, SeqType, SetType, Type, TypeVar, Wand}
+import viper.silver.parser.{FastParser, NameAnalyser, PMapType, PMultisetType, PPrimitiv, PProgram, PSeqType, PSetType, PType, PWandType, Resolver, Translator}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.{ContractNotWellformed, TerminationFailed}
 import viper.silver.frontend.FrontendStateCache
+import viper.silver.plugin.standard.adt.AdtType
 
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 import scala.language.postfixOps
 
 case class ProofObligation(s: State,
-                           //                           v: Verifier,
-                           // prover: Prover,
-                           //                           assumptions: InsertionOrderedSet[Term],
-                           macroDecl: Vector[MacroDecl],
-                           functionDecl: Set[FunctionDecl],
+                           v: Verifier,
+                           proverEmits: Seq[String],
                            assumptionsExp: InsertionOrderedSet[DebugExp],
                            assertion: Term,
                            eAssertion: ast.Exp
@@ -74,26 +73,31 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           return
         }
 
-        val obl = ProofObligation(failureContext.state.get, failureContext.macroDecls, failureContext.functionDecls, failureContext.assumptions, False /* TODO */, failureContext.failedAssertion.get)
+        var obl = ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls, failureContext.assumptions, False /* TODO */, failureContext.failedAssertion.get)
 
-        // TODO: setup typechecker such that user can use variable versions
-
+        initTypechecker(obl)
+        obl = initVerifier(obl)
         debugProofObligation(obl)
 
       }
     }
   }
 
-  private def createVerifier(obl: ProofObligation): Verifier = {
-    val v = new WorkerVerifier(this.mainVerifier, s"debugWorkerVerifier_No${counter}", NoopReporter)
+  private def initTypechecker(obl: ProofObligation): Unit = {
+    resolver.typechecker.debugVariableTypes =
+      obl.v.decider.debugVariableTypes map { case (str, t) => (str.substring(0, str.lastIndexOf("@")), typeToPType(t)) }
+  }
+
+  private def initVerifier(obl: ProofObligation): ProofObligation = {
+    val v = new WorkerVerifier(this.mainVerifier, obl.v.uniqueId, NoopReporter)
     counter += 1
+//    v.decider.prover = getNewProver(chooseProver()) // TODO ake: choose prover
     v.start()
-    // TODO: set branch conditions?
-    v.decider.declareAndRecordAsFreshFunctions(obl.functionDecl)
-    v.decider.declareAndRecordAsFreshMacros(obl.macroDecl)
+    v.decider.prover.emit(obl.proverEmits)
+
     obl.assumptionsExp foreach (debugExp =>
       v.decider.assume(debugExp.getTerms, debugExp))
-    v
+    obl.copy(v = v)
   }
 
   private def debugProofObligation(_obl: ProofObligation): Unit = {
@@ -102,6 +106,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     while (true) {
       println(s"Enter 'q' to quit, 'r' to reset the proof obligation or 'c' to continue:")
       val userInput = "c" // readLine()
+      println(userInput)
       if (userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit")) {
         return
       }else if (userInput.equalsIgnoreCase("r") || userInput.equalsIgnoreCase("reset")) {
@@ -110,22 +115,20 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
       obl = removeAssumptions(obl)
 
-      val v = createVerifier(obl)
-//      val res = addAssumptions(obl, v)
-//      obl = res._1
-//      val v2 = res._2
-//
-//      obl = chooseAssertion(obl, v2)
+      obl = initVerifier(obl)
 
-      val prover = getNewProver(chooseProver())
-      assertProofObligation(obl, prover)
+      obl = addAssumptions(obl)
+      obl = chooseAssertion(obl)
+
+      assertProofObligation(obl)
     }
   }
 
   @tailrec
   private def removeAssumptions(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assumption you want to remove or s(skip):")
-    val userInput = "s" // readLine()
+    val userInput = "24" // readLine()
+    println(userInput)
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
@@ -139,21 +142,25 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
-  private def addAssumptions(obl: ProofObligation, v: Verifier): (ProofObligation, Verifier) = {
+  private def addAssumptions(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assumption you want to add or s(skip):")
-    val userInput = "i@4 - 2 == old[line@4](n@1.val)" // readLine()
+    val userInput = "s" // readLine()
+    println(userInput)
+//    val userInput = "i@4 - 2 == old[line@4](n@1.val)" // readLine()
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
-      (obl, v)
+      obl
     } else {
       val assumptionE = translateStringToExp(userInput, obl)
-      val (_, _, _, resV) = evalAssumption(assumptionE, obl, v)
-      (obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps), resV) // TODO ake: add assumptions that have been added during eval
+      val (_, _, _, resV) = evalAssumption(assumptionE, obl, obl.v)
+      obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, v = resV)
     }
   }
 
-  private def chooseAssertion(obl: ProofObligation, v: Verifier): ProofObligation = {
+  private def chooseAssertion(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assertion or s(skip) to assert the previous assertion again:")
-    val userInput = "b@2 >= n2@3" // readLine()
+//    val userInput = "old[line@4](n@1.val) >= -5" // readLine()
+    val userInput = "k@7 == rand(1)" // readLine()
+    println(userInput)
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
@@ -162,7 +169,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       var resE: ast.Exp = null
       var resV: Verifier = null
       val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assumptionE, r))
-      val verificationResult = evaluator.eval3(obl.s, assumptionE, pve, v)((_, t, newE, newV) => {
+      val verificationResult = evaluator.eval3(obl.s, assumptionE, pve, obl.v)((_, t, newE, newV) => {
         resT = t
         resE = newE
         resV = newV
@@ -174,7 +181,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           println("Error evaluating expression: " + verificationResult.toString)
       }
 
-      obl.copy(assertion = resT, eAssertion = resE) // TODO ake: add assumptions that have been added during eval
+      obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, assertion = resT, eAssertion = resE, v = resV)
     }
   }
 
@@ -183,9 +190,9 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     fp._line_offset = Seq(0, str.length + 1).toArray
     val parsedExp = fastparse.parse(str, fp.exp(_))
     val pmethod = pprogram.methods.find(_.idndef.name == obl.s.currentMember.get.name)
-    resolver.typechecker.curMember = pmethod.get
+    resolver.typechecker.curMember = pmethod.get // TODO: or a child from pmethod!
     val pexp = parsedExp.get.value
-    //resolver.typechecker.check(pexp, PPrimitiv("Bool")()) // FIXME ake: scopeId is wrong -> cannot find any VarDecls (Resolver acceptAndCheckTypedEntity)
+    resolver.typechecker.check(pexp, PPrimitiv("Bool")()) // FIXME ake: scopeId is wrong -> cannot find any VarDecls (Resolver acceptAndCheckTypedEntity)
     translator.exp(pexp)
   }
 
@@ -210,7 +217,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           println("correct! assuming now")
           resV.decider.assume(resT, e, resE)
         } else {
-          println("nope, couldn't prove that.")
+          println("nope, couldn't prove assumption.")
         }
       case _ =>
         println("Error evaluating expression: " + verificationResult.toString)
@@ -218,34 +225,18 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     (resS, resT, resE, resV)
   }
 
+  private def assertProofObligation(obl: ProofObligation): Unit = {
+    val verificationResult = obl.v.decider.prover.assert(obl.assertion)
+    if (verificationResult) {
+      println("Proving proof obligation was successful.\n")
+    } else {
+      println("Proving proof obligation failed.\n")
+      // TODO: createFailure
+    }
+  }
 
   private def chooseProver(): Int = {
     0 // TODO
-  }
-
-  private def assertProofObligation(obl: ProofObligation, prover:  ProverStdIO): Unit = {
-    val pmethod = pprogram.methods.find(_.idndef.name == obl.s.currentMember.get.name)
-    val pFormalArgDecls = pmethod.get.formalArgs
-    val formalArgDecls = pFormalArgDecls map (translator.liftArgDecl)
-//    formalArgDecls foreach (prover.declare(_)) TODO ake: pass all declarations
-
-    val assumptionsInOrder = obl.assumptionsExp.toSeq.reverse
-    assumptionsInOrder.zipWithIndex.foreach(a => {
-      println("" + a._2 + ": " + a._1)
-    })
-
-    // assume remaining
-    var resultingAssumptions: Seq[Term] = Seq()
-    assumptionsInOrder.zipWithIndex.foreach(a => {
-      a._1.getTerms.foreach(prover.assume)
-      resultingAssumptions ++= a._1.getTerms
-    })
-    val assertionResult = prover.assert(obl.assertion)
-    if(assertionResult){
-      println("Correct")
-    }else{
-      println("Could not prove")
-    }
   }
 
   private def getNewProver(proverId: Int): ProverStdIO = {
@@ -268,6 +259,37 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     //      new SMTLib2PreambleReader().emitPreamble(Z3ProverStdIO.staticPreamble, z3Prover, true)
     //      z3Prover
     //    }
+  }
+
+  private def typeToPType(t: Type): PType = {
+    t match {
+      case viper.silver.ast.Int => PPrimitiv("Int")()
+      case Bool => PPrimitiv("Bool")()
+      case Perm => PPrimitiv("Perm")()
+      case Ref => PPrimitiv("Ref")()
+      //      case InternalType => PPrimitiv("internal")()
+      //      case Wand => PWandType
+      //      case BackendType(viperName, interpretations) => ???
+
+      case SeqType(eType) => PSeqType(typeToPType(eType))()
+      case SetType(eType) => PSetType(typeToPType(eType))()
+      case MultisetType(eType) => PMultisetType(typeToPType(eType))()
+
+      case MapType(keyType, valueType) => PMapType(typeToPType(keyType), typeToPType(valueType))()
+      // TODO ake
+      //      case extensionType: ExtensionType => extensionType match {
+      //        case AdtType(adtName, partialTypVarsMap) => ???
+      //        case ast.ViperEmbedding(embeddedSort) => ???
+      //        case _ => ???
+      //      }
+      //      case genericType: GenericType => genericType match {
+      //        case collectionType: CollectionType => ???
+      //        case MapType(keyType, valueType) => ???
+      //        case DomainType(domainName, partialTypVarsMap) => ???
+      //      }
+      //      case TypeVar(name) => ???
+      case _ => PPrimitiv("unknown")()
+    }
   }
 
 }

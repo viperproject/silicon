@@ -109,6 +109,7 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  reasonUnknown: Option[String],
                                  state: Option[State],
                                  verifier: Option[Verifier],
+                                 proverDecls: Seq[String],
                                  macroDecls: Vector[MacroDecl],
                                  functionDecls: Set[FunctionDecl],
                                  assumptions: InsertionOrderedSet[DebugExp],
@@ -146,11 +147,19 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
     }
   }
 
-  lazy val assumptionsString: String = {
+  lazy val nonInternalassumptionsString: String = {
     if(assumptions.nonEmpty){
       val nonInternalAssumptions = assumptions.filter(de => !de.isInternal)
-      s"\n\nassumptions:\n${nonInternalAssumptions.tail.foldLeft[String](nonInternalAssumptions.head.toString(printInternals = false, 5))((s, de) => s + " && " + de.toString(printInternals = false, 5))}"
+      s"\n\nassumptions:\n\t${nonInternalAssumptions.tail.foldLeft[String](nonInternalAssumptions.head.toString(printInternals = false, 5))((s, de) => de.toString(printInternals = false, 5) + "\n\t" + s)}"
     }else{
+      ""
+    }
+  }
+
+  lazy val allAssumptionsString: String = {
+    if (assumptions.nonEmpty) {
+      s"\n\nassumptions:\n\t${assumptions.tail.foldLeft[String](assumptions.head.toString(printInternals = true, 5))((s, de) => de.toString(printInternals = true, 5) + "\n\t" + s)}"
+    } else {
       ""
     }
   }
@@ -163,7 +172,7 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
     }
   }
 
-  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString + stateString + assumptionsString + failedAssertionString
+  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString + stateString + allAssumptionsString + failedAssertionString
 }
 
 trait SiliconCounterexample extends Counterexample {

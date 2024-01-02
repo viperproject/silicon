@@ -260,6 +260,7 @@ object executor extends ExecutionRules {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
+    // TODO ake: set scope for debugging typechecking?
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)

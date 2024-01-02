@@ -309,7 +309,7 @@ object evaluator extends EvaluationRules {
             createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, lbl)(old.pos, old.info, old.errT)), v, s, None)
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)((s1, t0, _, v1) =>
-              Q(s1, Minus(0, t0), old, v1))
+              Q(s1, t0, old, v1))
         }
 
       case old @ ast.LabelledOld(e0, lbl) =>

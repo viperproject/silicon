@@ -38,6 +38,8 @@ abstract class ProverStdIO(uniqueId: String,
   protected var proverShutdownHook: Thread = _
   protected var input: BufferedReader = _
   protected var output: PrintWriter = _
+  protected var allDecls: Seq[Decl] = Seq()
+  protected var allEmits: Seq[String] = Seq()
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
@@ -191,9 +193,12 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def emit(content: String): Unit = {
+    allEmits :+= content
     writeLine(content)
     readSuccess()
   }
+
+  def getAllEmits() : Seq[String] = allEmits
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
@@ -386,6 +391,7 @@ abstract class ProverStdIO(uniqueId: String,
 
   def declare(decl: Decl): Unit = {
     val str = termConverter.convert(decl)
+    allDecls = allDecls :+ decl
     emit(str)
   }
 
@@ -492,4 +498,6 @@ abstract class ProverStdIO(uniqueId: String,
     lastReasonUnknown = null
     lastModel = null
   }
+
+  def getAllDecls(): Seq[Decl] = allDecls
 }

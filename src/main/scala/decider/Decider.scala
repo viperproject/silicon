@@ -16,6 +16,7 @@ import viper.silicon.interfaces.decider._
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.utils.ast.convertSortToAstType
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
@@ -35,6 +36,8 @@ trait Decider {
   def macroDecls: Vector[MacroDecl]
   def prover: Prover
   def pcs: PathConditionStack
+
+  def debugVariableTypes: Map[String, ast.Type]
 
   def pushScope(): Unit
   def popScope(): Unit
@@ -117,6 +120,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def pcs: PathConditionStack = pathConditions
 
     var debugExpStack : Stack[InsertionOrderedSet[DebugExp]] = Stack.empty
+
+    var debugVariableTypes : Map[String, ast.Type] = Map.empty
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */
@@ -356,17 +361,28 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function =
       prover_fresh[Fun](id, argSorts, resultSort)
 
-    def fresh(id: String, sort: Sort): Var = prover_fresh[Var](id, Nil, sort)
+    def fresh(id: String, sort: Sort): Var = {
+      val term = prover_fresh[Var](id, Nil, sort)
+      debugVariableTypes += (term.id.name -> convertSortToAstType(sort))
+      term
+    }
 
-    def fresh(s: Sort): Var = prover_fresh[Var]("$t", Nil, s)
+    def fresh(s: Sort): Var = {
+      val term = prover_fresh[Var]("$t", Nil, s)
+      debugVariableTypes += (term.id.name -> convertSortToAstType(s))
+      term
+    }
 
-    def fresh(v: ast.AbstractLocalVar): Var =
-      prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
+    def fresh(v: ast.AbstractLocalVar): Var = {
+      val term = prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
+      debugVariableTypes += (term.id.name -> v.typ)
+      term
+    }
 
     def freshARP(id: String = "$k"): (Var, Term) = {
       val permVar = prover_fresh[Var](id, Nil, sorts.Perm)
       val permVarConstraints = IsReadPermVar(permVar)
-
+      debugVariableTypes += (permVar.id.name -> ast.Perm)
       (permVar, permVarConstraints)
     }
 

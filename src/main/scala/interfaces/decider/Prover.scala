@@ -51,4 +51,8 @@ trait Prover extends ProverLike with StatefulComponent {
   def push(n: Int = 1, timeout: Option[Int] = None): Unit
 
   def pop(n: Int = 1): Unit
+
+  def getAllDecls(): Seq[Decl]
+
+  def getAllEmits(): Seq[String]
 }

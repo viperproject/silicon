@@ -90,6 +90,8 @@ class Z3ProverAPI(uniqueId: String,
   val emittedSortSymbols = mutable.LinkedHashSet[Symbol]()
   val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
   val emittedFuncSymbols = mutable.Queue[Symbol]()
+  var allDecls: Seq[Decl] = Seq()
+  var allEmits: Seq[String] = Seq()
 
   // If true, we do not define macros on the Z3 level, but perform macro expansion ourselves on Silicon Terms.
   // Otherwise, we define a function on the Z3 level and axiomatize it according to the macro definition.
@@ -213,6 +215,7 @@ class Z3ProverAPI(uniqueId: String,
     if (preamblePhaseOver) {
       sys.error("emitting phase over")
     }
+    allEmits :+= content
     emittedPreambleString.append(content)
   }
 
@@ -220,8 +223,11 @@ class Z3ProverAPI(uniqueId: String,
     if (preamblePhaseOver) {
       sys.error("emitting phase over")
     }
+    allEmits ++= contents
     emittedPreambleString.appendAll(contents)
   }
+
+  def getAllEmits(): Seq[String] = allEmits
 
   override def emitSettings(contents: Iterable[String]): Unit = {
     // we ignore this, don't know any better solution atm.
@@ -420,6 +426,7 @@ class Z3ProverAPI(uniqueId: String,
     // current state) and record it in out collection(s) of emmitted declarations.
     // Special handling for macro declarations if expandMacros is true; in that case,
     // nothing is declared on the Z3 level, and we simply remember the definition ourselves.
+    allDecls = allDecls :+ decl
     decl match {
       case SortDecl(s) =>
         val convertedSort = termConverter.convertSort(s)
@@ -454,6 +461,8 @@ class Z3ProverAPI(uniqueId: String,
         }
     }
   }
+
+  override def getAllDecls(): Seq[Decl] = allDecls
 
   override def getModel(): ViperModel = {
     val entries = new mutable.HashMap[String, ModelEntry]()

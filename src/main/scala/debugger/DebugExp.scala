@@ -10,6 +10,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Mark
 import viper.silicon.state.terms.Term
 import viper.silver.ast
+import viper.silver.ast.Exp
 
 import scala.annotation.unused
 
@@ -84,7 +85,7 @@ class DebugExp(val id: Int,
                val children : InsertionOrderedSet[DebugExp]) {
 
   def withTerms(newTerms : InsertionOrderedSet[Term]): DebugExp = {
-    DebugExp.createInstance(str, exp, substitutedExp, newTerms, isInternal_, children)
+    new DebugExp(id, str, exp, substitutedExp, newTerms, isInternal_, children)
   }
 
   def getTerms: InsertionOrderedSet[Term] ={
