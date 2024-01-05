@@ -112,8 +112,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   private var elapsedMillis: Long = _
 
   def parseCommandLine(args: Seq[String]): Unit = {
-    assert(lifetimeState == LifetimeState.Instantiated, "Silicon can only be configured once")
-    lifetimeState = LifetimeState.Configured
+    if(lifetimeState == LifetimeState.Instantiated)
+      lifetimeState = LifetimeState.Configured
 
     _config = new Config(args)
     _symbExLog = SymbExLogger.ofConfig(_config)

@@ -394,6 +394,12 @@ class DefaultMainVerifier(config: Config,
         .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
       preambleReader.emitPreamble(options, sink, true)
+    } else if (config.proverSpecificRandomSeed.isSupplied) {
+      val seed = config.proverSpecificRandomSeed()
+      sink.comment(s"\n; Use random seed [--${config.proverSpecificRandomSeed.name}]")
+      val options = decider.prover.randomizeSeedsOptions
+        .map(key => s"(set-option :$key ${seed})")
+      preambleReader.emitPreamble(options, sink, true)
     }
 
     val smt2ConfigOptions =
