@@ -405,6 +405,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val proverSpecificRandomSeed: ScallopOption[Int] = opt[Int]("proverSpecificRandomSeed",
+    descr = "Set the random seeds of the prover to a specific value",
+    default = None,
+    noshort = true
+  )
+
   // DEPRECATED and replaced by proverRandomizedSeeds
   // but continues to work for now for backwards compatibility.
   private val rawZ3RandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("z3RandomizeSeeds",

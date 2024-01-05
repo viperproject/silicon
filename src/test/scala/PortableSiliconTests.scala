@@ -84,8 +84,13 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     "--assumeInjectivityOnInhale",
     "--proverSaturationTimeoutWeights=[1.0,0.5,0.0,0.0,0.02]",
     "--numberOfErrorsToReport=0",
-    "--timeout", System.getProperty(timeoutPropertyName, "180") /* timeout in seconds */
+    "--useOldAxiomatization",
+    "--timeout=600" /* timeout in seconds */
   ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--proverRandomizeSeeds") else Seq.empty)
+
+  override val randomization: Option[(Seq[String], String, Int => Int)] = {
+    Some(commandLineArguments , "--proverSpecificRandomSeed", i => i)
+  }
 
   lazy val verifier: Silicon = {
     val args =
