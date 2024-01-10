@@ -162,12 +162,12 @@ package object utils {
 
     def convertSortToAstType(s : Sort): silver.ast.Type ={
       s match {
-        case sorts.Snap => ???
+        case sorts.Snap => silver.ast.InternalType
         case sorts.Int => silver.ast.Int
         case sorts.Bool => silver.ast.Bool
         case sorts.Ref => silver.ast.Ref
         case sorts.Perm => silver.ast.Perm
-        case sorts.Unit => ???
+        case sorts.Unit => silver.ast.InternalType
         case sorts.Seq(elementsSort) => silver.ast.SeqType(convertSortToAstType(elementsSort))
         case sorts.Set(elementsSort) => silver.ast.SetType(convertSortToAstType(elementsSort))
         case sorts.Multiset(elementsSort) => silver.ast.MultisetType(convertSortToAstType(elementsSort))

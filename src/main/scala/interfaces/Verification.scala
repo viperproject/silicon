@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces
 
-import debugger.DebugExp
+import debugger.{DebugExp, DebugExpPrintConfiguration}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
@@ -150,7 +150,9 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
   lazy val nonInternalassumptionsString: String = {
     if(assumptions.nonEmpty){
       val nonInternalAssumptions = assumptions.filter(de => !de.isInternal)
-      s"\n\nassumptions:\n\t${nonInternalAssumptions.tail.foldLeft[String](nonInternalAssumptions.head.toString(printInternals = false, 5))((s, de) => de.toString(printInternals = false, 5) + "\n\t" + s)}"
+      val config = new DebugExpPrintConfiguration
+      config.isPrintInternalEnabled = false
+      s"\n\nassumptions:\n\t${nonInternalAssumptions.tail.foldLeft[String](nonInternalAssumptions.head.toString(config))((s, de) => de.toString(config) + "\n\t" + s)}"
     }else{
       ""
     }
@@ -158,7 +160,9 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
 
   lazy val allAssumptionsString: String = {
     if (assumptions.nonEmpty) {
-      s"\n\nassumptions:\n\t${assumptions.tail.foldLeft[String](assumptions.head.toString(printInternals = true, 5))((s, de) => de.toString(printInternals = true, 5) + "\n\t" + s)}"
+      val config = new DebugExpPrintConfiguration
+      config.isPrintInternalEnabled = true
+      s"\n\nassumptions:\n\t${assumptions.tail.foldLeft[String](assumptions.head.toString(config))((s, de) => de.toString(config) + "\n\t" + s)}"
     } else {
       ""
     }

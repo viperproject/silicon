@@ -13,6 +13,7 @@ import viper.silver.ast
 import viper.silver.ast.Exp
 
 import scala.annotation.unused
+import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 
 object DebugExp {
   private var idCounter: Int = 0
@@ -104,14 +105,15 @@ class DebugExp(val id: Int,
   }
 
   override def toString: String = {
-    toString(printInternals = true, 5)
+    toString(5, new DebugExpPrintConfiguration)
   }
 
-  def childrenToString(printInternals: Boolean, printChildrenDepth: Int): String = {
-    val nonInternalChildren = children.filter(de => printInternals || !de.isInternal)
-    if (nonInternalChildren.isEmpty || printChildrenDepth <= 0) ""
+  def childrenToString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
+    val nonInternalChildren = children.filter(de => config.isPrintInternalEnabled || !de.isInternal)
+    if (nonInternalChildren.isEmpty) ""
+    else if(printChildrenDepth <= 0) ": [...]"
     else {
-      "(" + nonInternalChildren.tail.foldLeft[String](nonInternalChildren.head.toString(printInternals, printChildrenDepth - 1))((s, de) => s + " && " + de.toString(printInternals, printChildrenDepth - 1)) + ")"
+      ": (" + nonInternalChildren.tail.foldLeft[String](nonInternalChildren.head.toString(printChildrenDepth-1, config))((s, de) => s + " && " + de.toString(printChildrenDepth-1, config)) + ")"
     }
   }
 
@@ -124,13 +126,15 @@ class DebugExp(val id: Int,
   }
 
 
-  def toString(printInternals: Boolean, printChildrenDepth: Int): String = {
-    if(isInternal_ && !printInternals){
+  def toString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
+    if(isInternal_ && !config.isPrintInternalEnabled){
       return ""
     }
+    getTopLevelString + childrenToString(math.max(printChildrenDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
+  }
 
-    if (children.isEmpty || printChildrenDepth <= 0) getTopLevelString + ""
-    else "(" + getTopLevelString + ": " + childrenToString(printInternals, printChildrenDepth) + ")"
+  def toString(config: DebugExpPrintConfiguration): String = {
+    toString(config.printHierarchyLevel, config)
   }
 
 }
@@ -146,13 +150,13 @@ class ImplicationDebugExp(id: Int,
 
   override def getTerms: InsertionOrderedSet[Term] = terms
 
-  override def toString(printInternals: Boolean, printChildrenDepth: Mark): String = {
-      if (isInternal_ && !printInternals) {
+  override def toString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
+      if (isInternal_ && !config.isPrintInternalEnabled) {
         return ""
       }
 
       if (children.nonEmpty) {
-        "(" + getTopLevelString + " ==> (" + childrenToString(printInternals, math.max(printChildrenDepth, 1)) + "))"
+        "(" + getTopLevelString + " ==> (" + childrenToString(math.max(1, math.max(printChildrenDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0))), config) + "))"
       }else{
         getTopLevelString
       }
@@ -172,15 +176,56 @@ class QuantifiedDebugExp(id: Int,
 
   override def getTerms: InsertionOrderedSet[Term] = terms
 
-  override def toString(printInternals: Boolean, printChildrenDepth: Mark): String = {
-    if (isInternal_ && !printInternals) {
+  override def toString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
+    if (isInternal_ && !config.isPrintInternalEnabled) {
       return ""
     }
 
     if (qvars.nonEmpty) {
-      "([" + id + "] " + quantifier + " " + qvars.mkString(", ") + " :: (" + childrenToString(printInternals, math.max(printChildrenDepth, 1)) + "))"
+      "([" + id + "] " + quantifier + " " + qvars.mkString(", ") + " :: (" + childrenToString(math.max(1, math.max(printChildrenDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0))), config) + "))"
     }else{
       getTopLevelString
     }
+  }
+}
+
+
+class DebugExpPrintConfiguration {
+  var isPrintInternalEnabled: Boolean = true
+  var printHierarchyLevel: Int = 100
+  var nodeToHierarchyLevelMap: Map[Int, Int] = Map.empty
+
+  def setPrintHierarchyLevel(level: String): Unit ={
+    printHierarchyLevel = level match {
+      case "full" => 100
+      case "top" => 0
+      case _ => level.toIntOption match {
+        case Some(v) => v
+        case None    => printHierarchyLevel
+      }
+    }
+  }
+
+  def addHierarchyLevelForId(str: String): Unit ={
+    val strSplit = str.split("->")
+    if(strSplit.size < 2){
+      println("invalid input")
+      return
+    }
+    val level = strSplit(1).trim.toIntOption
+    if(level.isEmpty){
+      println("invalid input")
+      return
+    }
+    strSplit(0).split(",").foreach(s_id => s_id.trim.toIntOption match {
+      case Some(value) => nodeToHierarchyLevelMap += value -> level.get
+      case None =>
+    })
+  }
+
+  override def toString: String = {
+    s"isPrintInternalEnabled = $isPrintInternalEnabled\n" +
+      s"printHierarchyLevel    = $printHierarchyLevel\n" +
+      s"hierarchy per id  = $nodeToHierarchyLevelMap\n"
   }
 }

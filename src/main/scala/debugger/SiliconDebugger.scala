@@ -14,7 +14,7 @@ import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
 import viper.silver.reporter.{NoopReporter, Reporter}
 import viper.silver.ast
 import viper.silver.ast.{AtomicType, BackendType, Bool, BuiltInType, CollectionType, DomainType, ExtensionType, GenericType, InternalType, MapType, MultisetType, Perm, Ref, SeqType, SetType, Type, TypeVar, Wand}
-import viper.silver.parser.{FastParser, NameAnalyser, PMapType, PMultisetType, PPrimitiv, PProgram, PSeqType, PSetType, PType, PWandType, Resolver, Translator}
+import viper.silver.parser.{FastParser, NameAnalyser, PExp, PMapType, PMultisetType, PNode, PPrimitiv, PProgram, PScope, PSeqType, PSetType, PType, PWandType, Resolver, Translator}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.{ContractNotWellformed, TerminationFailed}
 import viper.silver.frontend.FrontendStateCache
@@ -29,11 +29,35 @@ case class ProofObligation(s: State,
                            proverEmits: Seq[String],
                            assumptionsExp: InsertionOrderedSet[DebugExp],
                            assertion: Term,
-                           eAssertion: ast.Exp
+                           eAssertion: ast.Exp,
+                           printConfig: DebugExpPrintConfiguration
                           ){
 
-  def removeAssumption(id: Int): ProofObligation = {
-    this.copy(assumptionsExp = assumptionsExp.filter(_.id != id)) // TODO ake: removing children should be possible as well?
+  def removeAssumptions(ids: Seq[Int]): ProofObligation = {
+    this.copy(assumptionsExp = assumptionsExp.filter(a => !ids.contains(a.id))) // TODO ake: removing children should be possible as well?
+  }
+
+  private lazy val stateString: String = s"Store:\n\t\t${s.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.mkString("\n\t\t")}"
+
+  private def assumptionString: String = {
+    val filteredAssumptions = assumptionsExp.filter(d => !d.isInternal || printConfig.isPrintInternalEnabled)
+    if (filteredAssumptions.nonEmpty) {
+      s"assumptions:\n\t${filteredAssumptions.tail.foldLeft[String](filteredAssumptions.head.toString(printConfig))((s, de) => de.toString(printConfig) + "\n\t" + s)}"
+    } else {
+      ""
+    }
+  }
+
+  private def assertionString: String = {
+    if(eAssertion.nonEmpty){
+      s"assertion:\n\t$eAssertion"
+    }else{
+      ""
+    }
+  }
+
+  override def toString(): String = {
+    "\n" + stateString + "\n\n" + assumptionString + "\n\n" + assertionString + "\n\n"
   }
 }
 
@@ -54,11 +78,11 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
     var userInput = "1"
     while (!(userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit"))) {
-      println(s"Which verification result do you want to debug next [0 - ${failures.size - 1}]:")
-      userInput = "0" // readLine()
-      val resultsIdx = userInput.toInt
+      println(s"Which verification result do you want to debug next [0 - ${failures.size - 1}] (or q to quit):")
+      userInput = readLine()
+      val resultsIdx = userInput.toIntOption.getOrElse(-1)
       if (0 <= resultsIdx && resultsIdx < failures.size) {
-        println(s"Verification result ${resultsIdx}:")
+        println(s"Verification result $resultsIdx:")
         val currResult: Failure = failures(resultsIdx)
         println(s"$currResult")
         val failureContexts = (currResult.message.failureContexts filter  (_.isInstanceOf[SiliconFailureContext])) map (_.asInstanceOf[SiliconFailureContext])
@@ -73,17 +97,26 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           return
         }
 
-        var obl = ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls, failureContext.assumptions, False /* TODO */, failureContext.failedAssertion.get)
+        var obl = ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls, failureContext.assumptions, False /* TODO */, failureContext.failedAssertion.get, new DebugExpPrintConfiguration)
 
-        initTypechecker(obl)
+        initTypechecker(obl, failureContext.failedAssertion.get)
         obl = initVerifier(obl)
         debugProofObligation(obl)
-
+      }else{
+        println("Invalid input")
       }
     }
   }
 
-  private def initTypechecker(obl: ProofObligation): Unit = {
+  private def initTypechecker(obl: ProofObligation, failedAssertion: ast.Exp): Unit = {
+    var failedPExp: Option[PNode] = failedAssertion.sourcePExp
+    while(failedPExp.isDefined && !failedPExp.get.isInstanceOf[PScope]){
+      failedPExp = failedPExp.get.parent
+    }
+    if(failedPExp.isDefined){
+      resolver.typechecker.curMember = failedPExp.get.asInstanceOf[PScope]
+    }
+
     resolver.typechecker.debugVariableTypes =
       obl.v.decider.debugVariableTypes map { case (str, t) => (str.substring(0, str.lastIndexOf("@")), typeToPType(t)) }
   }
@@ -104,50 +137,47 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     var obl = _obl
 
     while (true) {
-      println(s"Enter 'q' to quit, 'r' to reset the proof obligation or 'c' to continue:")
-      val userInput = "c" // readLine()
-      println(userInput)
-      if (userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit")) {
-        return
-      }else if (userInput.equalsIgnoreCase("r") || userInput.equalsIgnoreCase("reset")) {
-        obl = _obl
+      println(s"Enter 'q' to quit, 'r' to reset the proof obligation, 'ra' to remove assumptions, 'aa' to add assumptions, 'ass' to choose an assertion, 'p' to execute proof, 'c' to change print configuration")
+      val userInput = readLine()
+      userInput.toLowerCase match {
+        case "q" | "quit" => return
+        case "r" | "reset" =>
+          obl = _obl
+          println(s"Current obligation:$obl")
+        case "ra" | "remove" | "remove assumption" =>
+          obl = removeAssumptions(obl)
+          println(s"Current obligation:$obl")
+        case "aa" | "add" | "add assumption" =>
+          obl = addAssumptions(obl)
+          println(s"Current obligation:$obl")
+        case "ass" | "assertion" | "set assertion" =>
+          obl = chooseAssertion(obl)
+          println(s"Current obligation:$obl")
+        case "p" | "prove" =>
+          assertProofObligation(obl)
+        case "c" | "config" =>
+          changePrintConfiguration(obl)
+          println(s"Current obligation:$obl")
+        case "print" =>
+          printSingleAssumption(obl)
+        case _ => println("Invalid input!")
       }
-
-      obl = removeAssumptions(obl)
-
-      obl = initVerifier(obl)
-
-      obl = addAssumptions(obl)
-      obl = chooseAssertion(obl)
-
-      assertProofObligation(obl)
     }
   }
 
-  @tailrec
   private def removeAssumptions(obl: ProofObligation): ProofObligation = {
-    println(s"Enter the assumption you want to remove or s(skip):")
-    val userInput = "24" // readLine()
-    println(userInput)
-    if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
-      obl
-    } else {
-      userInput.toIntOption match {
-        case None =>
-          println(s"Invalid input. Expected int got $userInput")
-          removeAssumptions(obl)
-        case Some(value) =>
-          obl.removeAssumption(value)
-      }
-    }
+    println(s"Enter the assumptions you want to remove:")
+    val userInput = readLine()
+    val indices = userInput.split(",").map(s => s.trim.toIntOption).filter(o => o.isDefined).map(i => i.get).toSeq
+    println(s"Removing assumptions with ids $indices")
+    val oblTmp = obl.removeAssumptions(indices)
+    initVerifier(oblTmp)
   }
 
   private def addAssumptions(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assumption you want to add or s(skip):")
-    val userInput = "s" // readLine()
-    println(userInput)
-//    val userInput = "i@4 - 2 == old[line@4](n@1.val)" // readLine()
-    if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
+    val userInput = readLine()
+    if (userInput.isEmpty || userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
       val assumptionE = translateStringToExp(userInput, obl)
@@ -158,9 +188,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
   private def chooseAssertion(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assertion or s(skip) to assert the previous assertion again:")
-//    val userInput = "old[line@4](n@1.val) >= -5" // readLine()
-    val userInput = "k@7 == rand(1)" // readLine()
-    println(userInput)
+    val userInput = readLine()
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
@@ -189,10 +217,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     val fp = new FastParser()
     fp._line_offset = Seq(0, str.length + 1).toArray
     val parsedExp = fastparse.parse(str, fp.exp(_))
-    val pmethod = pprogram.methods.find(_.idndef.name == obl.s.currentMember.get.name)
-    resolver.typechecker.curMember = pmethod.get // TODO: or a child from pmethod!
     val pexp = parsedExp.get.value
-    resolver.typechecker.check(pexp, PPrimitiv("Bool")()) // FIXME ake: scopeId is wrong -> cannot find any VarDecls (Resolver acceptAndCheckTypedEntity)
+    resolver.typechecker.check(pexp, PPrimitiv("Bool")())
     translator.exp(pexp)
   }
 
@@ -214,13 +240,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       case Success() =>
         val proved = resV.decider.prover.assert(resT, None)
         if (proved) {
-          println("correct! assuming now")
+          println("Assumption was added successfully!")
           resV.decider.assume(resT, e, resE)
         } else {
-          println("nope, couldn't prove assumption.")
+          println("Fail! Could not prove assumption. Skipping")
         }
       case _ =>
-        println("Error evaluating expression: " + verificationResult.toString)
+        println("Error while evaluating expression: " + verificationResult.toString)
     }
     (resS, resT, resE, resV)
   }
@@ -228,10 +254,34 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   private def assertProofObligation(obl: ProofObligation): Unit = {
     val verificationResult = obl.v.decider.prover.assert(obl.assertion)
     if (verificationResult) {
-      println("Proving proof obligation was successful.\n")
+      println("PASS: Proving obligation was successful.\n")
     } else {
-      println("Proving proof obligation failed.\n")
-      // TODO: createFailure
+      println("FAIL: Proving obligation failed.\n")
+    }
+  }
+
+  private def changePrintConfiguration(obl: ProofObligation): Unit = {
+    println(s"Current configuration: ${obl.printConfig}")
+    println(s"Enter the new value for isPrintInternalEnabled:")
+    readLine().toLowerCase match {
+      case "true" | "1" | "t" => obl.printConfig.isPrintInternalEnabled = true
+      case "false" | "0" | "f" => obl.printConfig.isPrintInternalEnabled = false
+      case _ =>
+    }
+
+    println(s"Enter the new value for printHierarchyLevel:")
+    obl.printConfig.setPrintHierarchyLevel(readLine())
+
+    println(s"Enter the new value for nodeToHierarchyLevelMap:")
+    obl.printConfig.addHierarchyLevelForId(readLine())
+  }
+
+  private def printSingleAssumption(obl: ProofObligation): Unit={
+    println(s"Enter the id of the assumption that should be printed:")
+    val userInput = readLine()
+    userInput.toIntOption match {
+      case Some(value) => obl.assumptionsExp.filter(d => d.id == value).foreach(d => println(d.toString(obl.printConfig))) // TODO ake: children
+      case None =>
     }
   }
 
