@@ -22,7 +22,11 @@ trait ProverLike {
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
-  def assume(term: Term): Unit
+
+  def assume(term: Term): Unit = {
+    assume(term, isPreamble = true)
+  }
+  def assume(term: Term, isPreamble: Boolean): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
   def saturate(timeout: Int, comment: String): Unit
@@ -30,6 +34,7 @@ trait ProverLike {
 }
 
 trait Prover extends ProverLike with StatefulComponent {
+  var preambleAssumptions: Seq[Term] = Seq()
   def assert(goal: Term, timeout: Option[Int] = None): Boolean
   def check(timeout: Option[Int] = None): Result
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function

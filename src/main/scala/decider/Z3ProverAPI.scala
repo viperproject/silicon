@@ -242,7 +242,7 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def assume(term: Term): Unit = {
+  def assume(term: Term, isPreamble: Boolean): Unit = { // TODO ake: use isPreamble
     try {
       if (preamblePhaseOver)
         prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])

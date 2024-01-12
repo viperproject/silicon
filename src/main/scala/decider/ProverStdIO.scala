@@ -202,7 +202,7 @@ abstract class ProverStdIO(uniqueId: String,
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
-  def assume(term: Term): Unit = {
+  def assume(term: Term, isPreamble: Boolean): Unit = {
 //    /* Detect certain simple problems with quantifiers.
 //     * Note that the current checks don't take in account whether or not a
 //     * quantification occurs in positive or negative position.
@@ -217,6 +217,9 @@ abstract class ProverStdIO(uniqueId: String,
 //      }
 //    })
 
+    if (isPreamble) {
+      preambleAssumptions :+= term
+    }
     assume(termConverter.convert(term))
   }
 

@@ -289,7 +289,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       addDebugExp(debugExp)
 
       /* Add terms to the prover's assumptions */
-      terms foreach prover.assume
+      terms foreach (t => prover.assume(t, isPreamble = false))
 
       symbExLog.closeScope(sepIdentifier)
       None

@@ -1,26 +1,19 @@
 package debugger
 
-import org.jgrapht.alg.util.Pair
-import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.{Cvc5ProverStdIO, ProverStdIO, SMTLib2PreambleReader, TermToSMTLib2Converter, Z3ProverStdIO}
+import viper.silicon.decider._
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, Success, VerificationResult}
-import viper.silicon.logger.NoopSymbExLog
 import viper.silicon.rules.evaluator
+import viper.silicon.state.terms.{False, Term}
 import viper.silicon.state.{IdentifierFactory, State}
-import viper.silicon.state.terms.{And, Decl, False, FunctionDecl, MacroDecl, SortWrapperDecl, Term, sorts}
-import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
-import viper.silver.reporter.{NoopReporter, Reporter}
 import viper.silver.ast
-import viper.silver.ast.{AtomicType, BackendType, Bool, BuiltInType, CollectionType, DomainType, ExtensionType, GenericType, InternalType, MapType, MultisetType, Perm, Ref, SeqType, SetType, Type, TypeVar, Wand}
-import viper.silver.parser.{FastParser, NameAnalyser, PExp, PMapType, PMultisetType, PNode, PPrimitiv, PProgram, PScope, PSeqType, PSetType, PType, PWandType, Resolver, Translator}
+import viper.silver.ast._
+import viper.silver.parser._
+import viper.silver.reporter.{NoopReporter, Reporter}
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.{ContractNotWellformed, TerminationFailed}
-import viper.silver.frontend.FrontendStateCache
-import viper.silver.plugin.standard.adt.AdtType
+import viper.silver.verifier.errors.ContractNotWellformed
 
-import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 import scala.language.postfixOps
 
@@ -128,6 +121,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     v.start()
     v.decider.prover.emit(obl.proverEmits)
 
+    obl.v.decider.prover.preambleAssumptions foreach (pa => v.decider.prover.assume(pa))
+
     obl.assumptionsExp foreach (debugExp =>
       v.decider.assume(debugExp.getTerms, debugExp))
     obl.copy(v = v)
@@ -137,7 +132,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     var obl = _obl
 
     while (true) {
-      println(s"Enter 'q' to quit, 'r' to reset the proof obligation, 'ra' to remove assumptions, 'aa' to add assumptions, 'ass' to choose an assertion, 'p' to execute proof, 'c' to change print configuration")
+      println(s"\nEnter 'q' to quit, 'r' to reset the proof obligation, 'ra' to remove assumptions, 'aa' to add assumptions, 'ass' to choose an assertion, 'p' to execute proof, 'c' to change print configuration")
       val userInput = readLine()
       userInput.toLowerCase match {
         case "q" | "quit" => return
