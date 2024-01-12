@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.reporter.{NoopReporter, Reporter}
-import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.errors.ContractNotWellformed
 
 import scala.io.StdIn.readLine
@@ -20,17 +20,31 @@ import scala.language.postfixOps
 case class ProofObligation(s: State,
                            v: Verifier,
                            proverEmits: Seq[String],
+                           branchConditions: Seq[ast.Exp],
                            assumptionsExp: InsertionOrderedSet[DebugExp],
                            assertion: Term,
                            eAssertion: ast.Exp,
-                           printConfig: DebugExpPrintConfiguration
+                           printConfig: DebugExpPrintConfiguration,
+                           originalErrorReason: ErrorReason
                           ){
 
   def removeAssumptions(ids: Seq[Int]): ProofObligation = {
     this.copy(assumptionsExp = assumptionsExp.filter(a => !ids.contains(a.id))) // TODO ake: removing children should be possible as well?
   }
 
+  private lazy val originalErrorInfo: String =
+    s"Original Error: " +
+      s"\n\t\t${originalErrorReason.pos}" +
+        (if(s.currentMember.isDefined){
+         s" (inside ${s.currentMember.get.name})"
+        }else{
+          ""
+        }) +
+      "\n\t\t" + originalErrorReason.readableMessage
+
   private lazy val stateString: String = s"Store:\n\t\t${s.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.mkString("\n\t\t")}"
+
+  private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.mkString(", ")}"
 
   private def assumptionString: String = {
     val filteredAssumptions = assumptionsExp.filter(d => !d.isInternal || printConfig.isPrintInternalEnabled)
@@ -50,7 +64,7 @@ case class ProofObligation(s: State,
   }
 
   override def toString(): String = {
-    "\n" + stateString + "\n\n" + assumptionString + "\n\n" + assertionString + "\n\n"
+    "\n" + originalErrorInfo + "\n\n" + branchConditionString + "\n\n" + stateString + "\n\n" + assumptionString + "\n\n" + assertionString + "\n"
   }
 }
 
@@ -69,37 +83,58 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       println("Nothing to debug. All assertions verified.")
       return
     }
-    var userInput = "1"
-    while (!(userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit"))) {
-      println(s"Which verification result do you want to debug next [0 - ${failures.size - 1}] (or q to quit):")
-      userInput = readLine()
-      val resultsIdx = userInput.toIntOption.getOrElse(-1)
-      if (0 <= resultsIdx && resultsIdx < failures.size) {
-        println(s"Verification result $resultsIdx:")
-        val currResult: Failure = failures(resultsIdx)
-        println(s"$currResult")
-        val failureContexts = (currResult.message.failureContexts filter  (_.isInstanceOf[SiliconFailureContext])) map (_.asInstanceOf[SiliconFailureContext])
-
-        if(failureContexts.isEmpty){
-          println(s"Debugging results are not available. No failure context found.")
-          return
-        }
-        val failureContext = failureContexts.head
-        if (failureContext.state.isEmpty || failureContext.verifier.isEmpty || failureContext.failedAssertion.isEmpty) {
-          println(s"Debugging results are not available. Failure context is empty.")
-          return
-        }
-
-        var obl = ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls, failureContext.assumptions, False /* TODO */, failureContext.failedAssertion.get, new DebugExpPrintConfiguration)
-
-        initTypechecker(obl, failureContext.failedAssertion.get)
-        obl = initVerifier(obl)
-        debugProofObligation(obl)
+    while (true) {
+      val oblOption = if(failures.size == 1){
+        getObligationByIndex(0)
       }else{
-        println("Invalid input")
+        println(s"Which verification result do you want to debug next [0 - ${failures.size - 1}] (or q to quit):")
+        val userInput = readLine()
+        if (userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit")) {
+          return
+        }
+        val idx = userInput.toIntOption.getOrElse(-1)
+        getObligationByIndex(idx)
       }
+
+
+      oblOption match {
+        case Some(obl) =>
+          initTypechecker(obl, obl.eAssertion)
+          val obl1 = initVerifier(obl)
+          debugProofObligation(obl1)
+        case None =>
+          println("Debug mode for this obligation are not available")
+      }
+
     }
   }
+
+  private def getObligationByIndex(idx: Int): Option[ProofObligation] = {
+    if (0 <= idx && idx < failures.size) {
+      println(s"Verification result $idx:")
+      val currResult: Failure = failures(idx)
+      println(s"$currResult")
+      val failureContexts = (currResult.message.failureContexts filter (_.isInstanceOf[SiliconFailureContext])) map (_.asInstanceOf[SiliconFailureContext])
+
+      if (failureContexts.isEmpty) {
+        println(s"Debugging results are not available. No failure context found.")
+        return None
+      }
+      val failureContext = failureContexts.head
+      if (failureContext.state.isEmpty || failureContext.verifier.isEmpty) {
+        println(s"State or verifier not found.")
+        return None
+      }
+
+      Some(ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls,
+        failureContext.branchConditions, failureContext.assumptions,
+        False /* TODO */ , failureContext.failedAssertion.getOrElse(ast.TrueLit()()),
+        new DebugExpPrintConfiguration, currResult.message.reason))
+    }else{
+      None
+    }
+  }
+
 
   private def initTypechecker(obl: ProofObligation, failedAssertion: ast.Exp): Unit = {
     var failedPExp: Option[PNode] = failedAssertion.sourcePExp
@@ -133,29 +168,34 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     while (true) {
       println(s"\nEnter 'q' to quit, 'r' to reset the proof obligation, 'ra' to remove assumptions, 'aa' to add assumptions, 'ass' to choose an assertion, 'p' to execute proof, 'c' to change print configuration")
-      val userInput = readLine()
-      userInput.toLowerCase match {
-        case "q" | "quit" => return
-        case "r" | "reset" =>
-          obl = _obl
-          println(s"Current obligation:$obl")
-        case "ra" | "remove" | "remove assumption" =>
-          obl = removeAssumptions(obl)
-          println(s"Current obligation:$obl")
-        case "aa" | "add" | "add assumption" =>
-          obl = addAssumptions(obl)
-          println(s"Current obligation:$obl")
-        case "ass" | "assertion" | "set assertion" =>
-          obl = chooseAssertion(obl)
-          println(s"Current obligation:$obl")
-        case "p" | "prove" =>
-          assertProofObligation(obl)
-        case "c" | "config" =>
-          changePrintConfiguration(obl)
-          println(s"Current obligation:$obl")
-        case "print" =>
-          printSingleAssumption(obl)
-        case _ => println("Invalid input!")
+      try {
+        val userInput = readLine()
+        userInput.toLowerCase match {
+          case "q" | "quit" => return
+          case "r" | "reset" =>
+            obl = _obl
+            println(s"Current obligation:\n$obl")
+          case "ra" | "remove" | "remove assumption" =>
+            obl = removeAssumptions(obl)
+            println(s"Current obligation:\n$obl")
+          case "aa" | "add" | "add assumption" =>
+            obl = addAssumptions(obl)
+            println(s"Current obligation:\n$obl")
+          case "ass" | "assertion" | "set assertion" =>
+            obl = chooseAssertion(obl)
+            println(s"Current obligation:\n$obl")
+            assertProofObligation(obl)
+          case "p" | "prove" =>
+            assertProofObligation(obl)
+          case "c" | "config" =>
+            changePrintConfiguration(obl)
+            println(s"Current obligation:\n$obl")
+          case "print" =>
+            printSingleAssumption(obl)
+          case _ => println("Invalid input!")
+        }
+      }catch {
+        case e => println(s"Unexpected error: ${e.getMessage}. Try again")
       }
     }
   }
@@ -312,27 +352,24 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       case Bool => PPrimitiv("Bool")()
       case Perm => PPrimitiv("Perm")()
       case Ref => PPrimitiv("Ref")()
-      //      case InternalType => PPrimitiv("internal")()
-      //      case Wand => PWandType
-      //      case BackendType(viperName, interpretations) => ???
+      case Wand => PWandType()(NoPosition, NoPosition)
 
       case SeqType(eType) => PSeqType(typeToPType(eType))()
       case SetType(eType) => PSetType(typeToPType(eType))()
       case MultisetType(eType) => PMultisetType(typeToPType(eType))()
 
       case MapType(keyType, valueType) => PMapType(typeToPType(keyType), typeToPType(valueType))()
+//      case AdtType(adt, partialTypVarsMap) => PDomainType(adt., partialTypVarsMap.values.map(typeToPType).toSeq)
       // TODO ake
       //      case extensionType: ExtensionType => extensionType match {
-      //        case AdtType(adtName, partialTypVarsMap) => ???
       //        case ast.ViperEmbedding(embeddedSort) => ???
       //        case _ => ???
       //      }
       //      case genericType: GenericType => genericType match {
       //        case collectionType: CollectionType => ???
-      //        case MapType(keyType, valueType) => ???
       //        case DomainType(domainName, partialTypVarsMap) => ???
       //      }
-      //      case TypeVar(name) => ???
+//      case TypeVar(name) => PDomainType(name, Seq())()
       case _ => PPrimitiv("unknown")()
     }
   }
