@@ -11,16 +11,13 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 class TryBlockParserPlugin(fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
   import fastparse._
-  import viper.silver.parser.FastParserCompanion.whitespace
-  import fp.{FP, stmtBlock, ParserExtension}
+  import viper.silver.parser.FastParserCompanion.{PositionParsing, reservedKw, whitespace}
+  import fp.{ParserExtension, lineCol, _file, stmtBlock}
 
-
-  private val tryKeyword = "try"
-
-  def tryBlock[_:P]: P[PTryBlock] =FP("try" ~/ stmtBlock) map { case (pos, s) => PTryBlock(s)(pos) }
+  def tryBlock[$: P]: P[PTryBlock] = P((P(PTryKeyword) ~ stmtBlock()) map (PTryBlock.apply _).tupled).pos
 
   override def beforeParse(input: String, isImported: Boolean): String = {
-    ParserExtension.addNewKeywords(Set(tryKeyword))
+    ParserExtension.addNewKeywords(Set(PTryKeyword.keyword))
     ParserExtension.addNewStmtAtEnd(tryBlock(_))
 
     input
