@@ -29,7 +29,7 @@ case class ProofObligation(s: State,
                           ){
 
   def removeAssumptions(ids: Seq[Int]): ProofObligation = {
-    this.copy(assumptionsExp = assumptionsExp.filter(a => !ids.contains(a.id))) // TODO ake: removing children should be possible as well?
+    this.copy(assumptionsExp = assumptionsExp.filter(a => !ids.contains(a.id)).map(c => c.removeChildrenById(ids)))
   }
 
   private lazy val originalErrorInfo: String =
@@ -83,9 +83,14 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       println("Nothing to debug. All assertions verified.")
       return
     }
+
+    failures.zipWithIndex.foreach{case (f, idx) => println(s"[$idx]: ${f.message.reason.readableMessage} (${f.message.reason.pos})")}
+
     while (true) {
-      val oblOption = if(failures.size == 1){
-        getObligationByIndex(0)
+      if(failures.size == 1){
+        val obl = getObligationByIndex(0)
+        initializeAndDebugObligation(obl)
+        return
       }else{
         println(s"Which verification result do you want to debug next [0 - ${failures.size - 1}] (or q to quit):")
         val userInput = readLine()
@@ -93,19 +98,20 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           return
         }
         val idx = userInput.toIntOption.getOrElse(-1)
-        getObligationByIndex(idx)
+        val obl = getObligationByIndex(idx)
+        initializeAndDebugObligation(obl)
       }
+    }
+  }
 
-
-      oblOption match {
-        case Some(obl) =>
-          initTypechecker(obl, obl.eAssertion)
-          val obl1 = initVerifier(obl)
-          debugProofObligation(obl1)
-        case None =>
-          println("Debug mode for this obligation are not available")
-      }
-
+  private def initializeAndDebugObligation(oblOption: Option[ProofObligation]): Unit = {
+    oblOption match {
+      case Some(obl) =>
+        initTypechecker(obl, obl.eAssertion)
+        val obl1 = initVerifier(obl)
+        debugProofObligation(obl1)
+      case None =>
+        println("Debug mode for this obligation are not available")
     }
   }
 
@@ -156,15 +162,15 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     v.start()
     v.decider.prover.emit(obl.proverEmits)
 
-    obl.v.decider.prover.preambleAssumptions foreach (pa => v.decider.prover.assume(pa))
+    obl.v.decider.prover.preambleAssumptions foreach v.decider.prover.assume
 
     obl.assumptionsExp foreach (debugExp =>
       v.decider.assume(debugExp.getTerms, debugExp))
     obl.copy(v = v)
   }
 
-  private def debugProofObligation(_obl: ProofObligation): Unit = {
-    var obl = _obl
+  private def debugProofObligation(originalObl: ProofObligation): Unit = {
+    var obl = originalObl
 
     while (true) {
       println(s"\nEnter 'q' to quit, 'r' to reset the proof obligation, 'ra' to remove assumptions, 'aa' to add assumptions, 'ass' to choose an assertion, 'p' to execute proof, 'c' to change print configuration")
@@ -173,7 +179,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         userInput.toLowerCase match {
           case "q" | "quit" => return
           case "r" | "reset" =>
-            obl = _obl
+            obl = originalObl
             println(s"Current obligation:\n$obl")
           case "ra" | "remove" | "remove assumption" =>
             obl = removeAssumptions(obl)

@@ -77,15 +77,15 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk => new Pair(c.perm, c.permExp)
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => new Pair(c.perm.replace(c.quantifiedVars, c.singletonArguments.get), c.permExp) // TODO ake: substitution
+      case c: QuantifiedBasicChunk => new Pair(c.perm.replace(c.quantifiedVars, c.singletonArguments.get), c.permExp)
     }
   }
 
   override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     info.pm(chunkPlaceholder) match {
-      case c: NonQuantifiedChunk => new Pair(c.snap, ast.LocalVar("buildValueAccess not implemented", ast.Int)()) // TODO ake: permission
+      case c: NonQuantifiedChunk => new Pair(c.snap, ast.LocalVar("SnapshotValue", ast.Int)())
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => new Pair(c.valueAt(c.singletonArguments.get), ast.LocalVar("buildValueAccess not implemented", ast.Int)()) // TODO ake: permission
+      case c: QuantifiedBasicChunk => new Pair(c.valueAt(c.singletonArguments.get), c.singletonArgumentExps.get.head)
     }
   }
 

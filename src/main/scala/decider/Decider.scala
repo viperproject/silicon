@@ -245,7 +245,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         pathConditions.addGlobalDebugExp(e)
       }else{
         if (e.getTerms.exists(t => PathConditions.isGlobal(t)) && !e.isInternal) {
-          // TODO ake: this should not happen
+          // this should not happen
           pathConditions.addGlobalDebugExp(DebugExp.createInstance("failed to distinguish global and non-global terms"))
         }
 

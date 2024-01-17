@@ -254,7 +254,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(ast.FuncApp("permOf",
             Seq(ast.FieldAccess(receiverExp.localVar, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos), ast.FullPerm()())())()
           v.decider.assume(
-            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"), DebugExp.createInstance(exp, s.substituteVarsInExp(exp)))  // TODO ake: verify
+            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"), DebugExp.createInstance(exp, s.substituteVarsInExp(exp)))
         } else {
           /*
           If we don't use heap-dependent triggers, the trigger x.f does not work. Instead, we assume the permission
@@ -264,7 +264,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
            */
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
-              val exp = ast.FuncApp("permOf", Seq(ast.FieldAccess(chunk.singletonRcvrExp.get, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos) // TODO ake: verify
+              val exp = ast.FuncApp("permOf", Seq(ast.FieldAccess(chunk.singletonRcvrExp.get, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos)
               v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), DebugExp.createInstance(exp, s.substituteVarsInExp(exp)))
             } else {
               val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))

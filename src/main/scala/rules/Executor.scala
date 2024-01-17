@@ -260,7 +260,6 @@ object executor extends ExecutionRules {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
-    // TODO ake: set scope for debugging typechecking?
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
@@ -415,7 +414,7 @@ object executor extends ExecutionRules {
         val es = BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, eRcvr))
         val esSubstituted = s.substituteVarsInExp(es) // need to substitute on s
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
-        v.decider.assume(ts, DebugExp.createInstance(Some("Reference Disjointness"), Some(es), Some(esSubstituted), InsertionOrderedSet.empty)) // TODO ake: mapping Term -> Exp?
+        v.decider.assume(ts, DebugExp.createInstance(Some("Reference Disjointness"), Some(es), Some(esSubstituted), InsertionOrderedSet.empty))
         Q(s1, v)
 
       case inhale @ ast.Inhale(a) => a match {
@@ -543,7 +542,7 @@ object executor extends ExecutionRules {
             permissionSupporter.assertNotNegative(s2, tPerm, ePermNew, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               v.decider.startDebugSubExp()
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => { // TODO ake: passing ePerm?
+              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
                   v4.decider.finishDebugSubExp(s"folded ${predAcc.toString()}")
                   Q(s4, v4)
                 }

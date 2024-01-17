@@ -292,7 +292,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         permissions.replace(qvarsToInversesOfCodomain),
         NoPerm)
 
-    val conditionalizedPermissionsExp = ast.TrueLit()() // TODO ake: qp inverse
+    val conditionalizedPermissionsExp = ast.LocalVarWithVersion("unknownPermission", ast.Perm)()
 
     val hints = extractHints(Some(condition), arguments)
 
@@ -990,7 +990,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           case false =>
             createFailure(pve dueTo notInjectiveReason, v, s, None)}
       case false =>
-        createFailure(pve dueTo negativePermissionReason, v, s, None)} // TODO ake: assertion
+        createFailure(pve dueTo negativePermissionReason, v, s, None)}
   }
 
   def produceSingleLocation(s: State,
@@ -1206,7 +1206,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                       s3, resource, formalQVars, relevantChunks, v2, optSmDomainDefinitionCondition2)
                 val (permsTaken, permsTakenExp) = result match {
                   case Complete() => (rPerm, rPermExp)
-                  case Incomplete(remaining, remainingExp) => (PermMinus(rPerm, remaining), ast.PermSub(rPermExp, remainingExp)()) // TODO ake pos/info/errT
+                  case Incomplete(remaining, remainingExp) => (PermMinus(rPerm, remaining), ast.PermSub(rPermExp, remainingExp)(rPermExp.pos, rPermExp.info, rPermExp.errT))
                 }
                 val (consumedChunk, _) = quantifiedChunkSupporter.createQuantifiedChunk(
                   qvars,

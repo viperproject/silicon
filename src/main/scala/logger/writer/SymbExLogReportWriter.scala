@@ -31,7 +31,7 @@ object SymbExLogReportWriter {
   }
 
   private def heapChunkToJSON(chunk: Chunk) = chunk match {
-    case BasicChunk(PredicateID, id, args, argsExp, snap, perm, permExp) => // TODO ake
+    case BasicChunk(PredicateID, id, args, _, snap, perm, _) =>
       JsObject(
         "type" -> JsString("basic_predicate_chunk"),
         "predicate" -> JsString(id.toString),
@@ -40,7 +40,7 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case BasicChunk(FieldID, id, Seq(receiver), Seq(recvExp), snap, perm, permExp) => // TODO ake
+    case BasicChunk(FieldID, id, Seq(receiver), _, snap, perm, _) =>
       JsObject(
         "type" -> JsString("basic_field_chunk"),
         "field" -> JsString(id.toString),
@@ -50,7 +50,7 @@ object SymbExLogReportWriter {
       )
 
     // TODO: Are ID and bindings needed?
-    case MagicWandChunk(_, _, args, eargs, snap, perm, permExp) => // TODO ake
+    case MagicWandChunk(_, _, args, _, snap, perm, _) =>
       JsObject(
         "type" -> JsString("basic_magic_wand_chunk"),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
@@ -58,7 +58,7 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case QuantifiedFieldChunk(id, fvf, perm, permExp, invs, cond, receiver, receiverExp, hints) =>
+    case QuantifiedFieldChunk(id, fvf, perm, _, invs, cond, receiver, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_field_chunk"),
         "field" -> JsString(id.toString),
@@ -70,7 +70,7 @@ object SymbExLogReportWriter {
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedPredicateChunk(id, vars, psf, perm, permExp, invs, cond, singletonArgs, singletonArgsExp, hints) =>
+    case QuantifiedPredicateChunk(id, vars, psf, perm, _, invs, cond, singletonArgs, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_predicate_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
@@ -83,7 +83,7 @@ object SymbExLogReportWriter {
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedMagicWandChunk(id, vars, wsf, perm, permExp, invs, cond, singletonArgs, singletonArgsExp, hints) =>
+    case QuantifiedMagicWandChunk(id, vars, wsf, perm, _, invs, cond, singletonArgs, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_magic_wand_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),

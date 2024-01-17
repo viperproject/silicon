@@ -42,6 +42,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              h: Heap,
              resource: ast.Resource,
              args: Seq[Term],
+             argsExp: Seq[ast.Exp],
              ve: VerificationError,
              v: Verifier)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -212,6 +213,7 @@ object chunkSupporter extends ChunkSupportRules {
              h: Heap,
              resource: ast.Resource,
              args: Seq[Term],
+             argsExp: Seq[ast.Exp],
              ve: VerificationError,
              v: Verifier)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -221,7 +223,7 @@ object chunkSupporter extends ChunkSupportRules {
       val lookupFunction =
         if (s.isMethodVerification && s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
         else lookupGreedy _
-      lookupFunction(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
+      lookupFunction(s1, s1.h, resource, args, argsExp, ve, v1)((s2, tSnap, v2) =>
         QS(s2.copy(h = s.h), s2.h, tSnap, v2))
     })(Q)
   }
@@ -230,6 +232,7 @@ object chunkSupporter extends ChunkSupportRules {
                            h: Heap,
                            resource: ast.Resource,
                            args: Seq[Term],
+                           argsExp: Seq[ast.Exp],
                            ve: VerificationError,
                            v: Verifier)
                           (Q: (State, Term, Verifier) => VerificationResult)

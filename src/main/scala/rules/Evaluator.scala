@@ -168,7 +168,7 @@ object evaluator extends EvaluationRules {
         val term = Var(Identifier.apply(x.name + "@" + v.uniqueId), sort)
         Q(s, term, e, v)
 
-      case x: ast.AbstractLocalVar => Q(s, s.g(x), s.substituteVarsInExp(e), v) // TODO ake: LocalVarWithVersion?
+      case x: ast.AbstractLocalVar => Q(s, s.g(x), s.substituteVarsInExp(e), v)
 
       case _: ast.FullPerm => Q(s, FullPerm, e, v)
       case _: ast.NoPerm => Q(s, NoPerm, e, v)
@@ -280,7 +280,7 @@ object evaluator extends EvaluationRules {
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, eArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(s.program)
-          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             val debugOldLabel = getDebugOldLabel(fa)
@@ -323,7 +323,8 @@ object evaluator extends EvaluationRules {
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
           val t = v1.decider.appliedFresh("letvar", v1.symbolConverter.toSort(x.typ), s1.relevantQuantifiedVariables)
-          v1.decider.assume(t === t0, ast.EqCmp(x.localVar, e0)(), ast.EqCmp(x.localVar, e0New)())
+          val debugExp = DebugExp.createInstance("letvar assignment", InsertionOrderedSet(DebugExp.createInstance(ast.EqCmp(x.localVar, e0)(), ast.EqCmp(x.localVar, e0New)())))
+          v1.decider.assume(t === t0, debugExp)
           val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t.applicable.asInstanceOf[Function])
           eval(s1.copy(g = s1.g + (x.localVar, t0), functionRecorder = newFuncRec), e1, pve, v1)((s2, tNew, e1New, v2)
             => Q(s2, tNew, ast.Let(x, e0New, e1New)(e.pos, e.info, e.errT), v2))
@@ -613,7 +614,7 @@ object evaluator extends EvaluationRules {
               val zippedArgsExp = argsWithIndexExp map (ai => (ai._1, ch.argsExp(ai._2)))
               val argsPairWiseEqualExp = BigAnd(zippedArgsExp map { case (a1, a2) => ast.EqCmp(a1, a2)() })
 
-              val isPositiveExp = ast.GeCmp(ch.permExp, ast.IntLit(0)())(ch.permExp.pos, ch.permExp.info, ch.permExp.errT)
+              val isPositiveExp = ast.GeCmp(ch.permExp, ast.NoPerm()())(ch.permExp.pos, ch.permExp.info, ch.permExp.errT)
 
               val lhsExp = buildIteExp(argsPairWiseEqualExp, BigAnd(addConsExp :+ isPositiveExp), ast.FalseLit()(), ast.Bool)
               val lhsExpNew = buildIteExp(argsPairWiseEqualExpNew, BigAnd(addConsExp :+ isPositiveExp), ast.FalseLit()(), ast.Bool)
@@ -650,7 +651,7 @@ object evaluator extends EvaluationRules {
 
             evals(s1, args, _ => pve, v)((s2, ts1, es1, v1) => {
               val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts1)) // TODO ake: substitute quantified vars in ch.permExp
-              val bcExp = ast.GeCmp(ch.permExp, ast.IntLit(0)())(ch.permExp.pos, ch.permExp.info, ch.permExp.errT)
+              val bcExp = ast.GeCmp(ch.permExp, ast.NoPerm()())(ch.permExp.pos, ch.permExp.info, ch.permExp.errT)
               val tTriggers = Seq(Trigger(ch.valueAt(ts1)))
 
               val trig = ch match {
@@ -915,15 +916,15 @@ object evaluator extends EvaluationRules {
                   createFailure(pve dueTo NegativePermission(ePermNew), v2, s2, Some(ast.PermGeCmp(ePermNew, ast.NoPerm()())(ePermNew.pos, ePermNew.info, ePermNew.errT)))}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables)
-          Q(s, unknownValue, e, v) // TODO ake: eval e
+          Q(s, unknownValue, ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT), v)
         }
 
       case ast.Applying(wand, eIn) =>
         joiner.join[Term, Term](s, v)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
-            eval(s2, eIn, pve, v2)((s3, t, eIn1, v3) => QB(s3, t, eIn1, v3))
+            eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) => QB(s3, t, eInNew, v3))
         }))(join(v.symbolConverter.toSort(eIn.typ), "joined_applying", s.relevantQuantifiedVariables, s.relevantQuantifiedVariables.map(convertTermVarToExpVarDecl(_).localVar), v))((s4, t2, eNew, v4)
-          => Q(s4, t2, ast.Applying(wand, eIn)(e.pos, e.info, e.errT), v4)) // TODO ake: eval eIn
+          => Q(s4, t2, eNew, v4))
 
       /* Sequences */
 
@@ -1178,7 +1179,7 @@ object evaluator extends EvaluationRules {
             val (auxGlobals, auxNonGlobalQuants) =
               v3.decider.pcs.after(preMark).quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc)
             val (auxGlobalsExp, auxNonGlobalQuantsExp) =
-              v3.decider.pcs.after(preMark).quantifiedExp(quant, localVars, optTriggers.getOrElse(Nil), s"$name-aux", isGlobal = false, bc)
+              v3.decider.pcs.after(preMark).quantifiedExp(quant, localVars.map(v => s5.substituteVarsInExp(v.asInstanceOf[ast.Exp])), optTriggers.getOrElse(Nil), s"$name-aux", isGlobal = false, bc)
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()
             QB((s5, ts1, es1New, ts2, es2New, tTriggers, (auxGlobals, auxNonGlobalQuants), (auxGlobalsExp, auxNonGlobalQuantsExp), additionalPossibleTriggers))})})})
@@ -1202,7 +1203,7 @@ object evaluator extends EvaluationRules {
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
       brancher.branch(s1, tLhs, eLhs, v1, fromShortCircuitingAnd)(
         (s2, v2) => eval(s2, eRhs, pve, v2)((s3, t, eNew, v3) => QB(s3, t, eNew, v3)),
-        (s2, v2) => QB(s2, True, ast.TrueLit()(), v2)) // TODO ake: pos/info/errT
+        (s2, v2) => QB(s2, True, ast.TrueLit()(eRhs.pos, eRhs.info, eRhs.errT), v2))
     )(entries => {
       assert(entries.length <= 2)
       val s1 = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
@@ -1716,7 +1717,7 @@ object evaluator extends EvaluationRules {
             ){case Seq(ent) =>
                 (ent.s, ent.data, ent.dataExp)
               case Seq(ent1, ent2) =>
-                val exp = if(constructor == Or) ast.Or(ent1.dataExp, ent2.dataExp)() else ast.And(ent1.dataExp, ent2.dataExp)() // TODO ake : what if not and/or
+                val exp = if(constructor == Or) ast.Or(ent1.dataExp, ent2.dataExp)() else ast.And(ent1.dataExp, ent2.dataExp)()
                 (ent1.s.merge(ent2.s), constructor(Seq(ent1.data, ent2.data)), exp)
               case entries =>
                 sys.error(s"Unexpected join data entries $entries")

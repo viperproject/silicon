@@ -24,6 +24,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.supporters.PredicateData
+import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
 
@@ -37,7 +38,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
   def decider: Decider
   def symbolConverter: SymbolConverter
 
-  private case class Phase1Data(sPre: State, bcsPre: Stack[Term], pcsPre: InsertionOrderedSet[Term])
+  private case class Phase1Data(sPre: State, bcsPre: Stack[Term], bcsPreExp: Stack[Pair[ast.Exp, ast.Exp]], pcsPre: InsertionOrderedSet[Term], pcsPreExp: InsertionOrderedSet[DebugExp])
 
   object functionsSupporter
       extends FunctionVerificationUnit[Sort, Decl, Term]
@@ -216,7 +217,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         val preMark = decider.setPathConditionMark()
         produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
           val relevantPathConditionStack = decider.pcs.after(preMark)
-          phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.assumptions)
+          phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps, relevantPathConditionStack.assumptions, relevantPathConditionStack.assumptionExps)
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
@@ -245,12 +246,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
-        case (intermediateResult, Phase1Data(sPre, bcsPre, pcsPre)) =>
+        case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            decider.setCurrentBranchCondition(And(bcsPre), new Pair(ast.LocalVar("unknown", ast.Bool)(), ast.LocalVar("unknown", ast.Bool)())) /* TODO ake: branch condition */
-            val preExp = function.pres.map(e => DebugExp.createInstance(e, s1.substituteVarsInExp(e)))
+            decider.setCurrentBranchCondition(And(bcsPre), new Pair(BigAnd(bcsPreExp.map(_.getFirst)), BigAnd(bcsPreExp.map(_.getSecond))))
             val argsName = function.formalArgs.map(d => d.name).mkString(", ")
-            decider.assume(pcsPre, DebugExp.createInstance(s"precondition ${function.name}($argsName)", InsertionOrderedSet(preExp))) // TODO ake: term<->exp mapping
+            decider.assume(pcsPre, DebugExp.createInstance(s"precondition ${function.name}($argsName)", pcsPreExp))
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
               val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)

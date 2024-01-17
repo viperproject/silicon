@@ -70,9 +70,10 @@ object DebugExp {
                                isInternal_ : Boolean,
                                children: InsertionOrderedSet[DebugExp],
                                quantifier: String,
-                               qvars: Seq[ast.Exp]
+                               qvars: Seq[ast.Exp],
+                               triggers: Seq[ast.Trigger]
                               ): QuantifiedDebugExp ={
-    val debugExp = new QuantifiedDebugExp(idCounter, str, exp, substitutedExp, terms, isInternal_, children, quantifier, qvars)
+    val debugExp = new QuantifiedDebugExp(idCounter, str, exp, substitutedExp, terms, isInternal_, children, quantifier, qvars, triggers)
     idCounter += 1
     debugExp
   }
@@ -98,6 +99,11 @@ class DebugExp(val id: Int,
   }
 
   def isInternal: Boolean = isInternal_
+
+  def removeChildrenById(ids: Seq[Int]): DebugExp ={
+    val newChildren = children.filter(i => !ids.contains(i.id)).map(c => c.removeChildrenById(ids))
+    new DebugExp(id, str, exp, substitutedExp, terms, isInternal_, newChildren)
+  }
 
   @unused
   def termsToString: String = {
@@ -172,7 +178,8 @@ class QuantifiedDebugExp(id: Int,
                           isInternal_ : Boolean,
                           children : InsertionOrderedSet[DebugExp],
                           val quantifier: String,
-                          val qvars : Seq[ast.Exp]) extends DebugExp(id, str, exp, substitutedExp, terms, isInternal_, children) {
+                          val qvars : Seq[ast.Exp],
+                         val triggers: Seq[ast.Trigger]) extends DebugExp(id, str, exp, substitutedExp, terms, isInternal_, children) {
 
   override def getTerms: InsertionOrderedSet[Term] = terms
 

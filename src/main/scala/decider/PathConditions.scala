@@ -47,7 +47,7 @@ trait RecordedPathConditions {
                 : (Seq[Term], Seq[Quantification])
 
   def quantifiedExp(quantifier: Quantifier,
-                    qvars: Seq[ast.LocalVar],
+                    qvars: Seq[ast.Exp],
                     triggers: Seq[ast.Trigger],
                  name: String,
                  isGlobal: Boolean,
@@ -260,7 +260,7 @@ private trait LayeredPathConditionStackLike {
 
   def quantifiedExp(layers: Stack[PathConditionStackLayer],
                     quantifier: Quantifier,
-                    qvars: Seq[ast.LocalVar],
+                    qvars: Seq[ast.Exp],
                     /* TODO ake: do I need these args? */
                     triggers: Seq[ast.Trigger],
                     name: String,
@@ -278,7 +278,7 @@ private trait LayeredPathConditionStackLike {
           val quantBody = DebugExp.createImplicationInstance(str=None, exp=Some(branchConditionExp.get.getFirst), substitutedExp=Some(branchConditionExp.get.getSecond), terms=InsertionOrderedSet(layer.branchCondition.get), isInternal_ = false,
             children=layer.nonGlobalAssumptionDebugExps)
           val quantDebugExp = DebugExp.createQuantifiedInstance(str=None, exp=None, substitutedExp = None, terms = InsertionOrderedSet.empty, isInternal_ = false,
-            children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars) // TODO ake: substituted qvars?
+            children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars, triggers = triggers)
           nonGlobals += quantDebugExp
         }else{
           nonGlobals += DebugExp.createInstance("quantifiedExp", layer.nonGlobalAssumptionDebugExps)
@@ -316,7 +316,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   }
 
   def quantifiedExp(quantifier: Quantifier,
-                    qvars: Seq[ast.LocalVar],
+                    qvars: Seq[ast.Exp],
                     triggers: Seq[ast.Trigger],
                     name: String,
                     isGlobal: Boolean,
@@ -449,7 +449,7 @@ private[decider] class LayeredPathConditionStack
   }
 
   def quantifiedExp(quantifier: Quantifier,
-                    qvars: Seq[ast.LocalVar],
+                    qvars: Seq[ast.Exp],
                     triggers: Seq[ast.Trigger],
                  name: String,
                  isGlobal: Boolean,
