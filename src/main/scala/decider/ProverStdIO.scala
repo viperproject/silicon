@@ -444,7 +444,7 @@ abstract class ProverStdIO(uniqueId: String,
 
     while (repeat) {
       result = readLineFromInput()
-      if (result.toLowerCase != "success") comment(result)
+      if (result.toLowerCase != "success") { println(s"[Benchmarking] prover line: $result"); comment(result) }
 
       val warning = result.startsWith("WARNING")
       if (warning) {
