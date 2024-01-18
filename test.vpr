@@ -1,0 +1,12 @@
+field val: Int
+field next: Ref
+
+predicate yes(x: Ref){
+    true
+}
+
+method test(x: Ref, y: Ref, z: Ref)
+requires yes(x)
+{
+    assert yes(x)
+}

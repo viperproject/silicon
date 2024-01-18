@@ -81,7 +81,7 @@ object chunkSupporter extends ChunkSupportRules {
           /* Not having consumed anything could mean that we are in an infeasible
            * branch, or that the permission amount to consume was zero.
            *
-           * [MS 2022-01-28] Previously, a a fresh snapshot was retured, which also had to be
+           * [MS 2022-01-28] Previously, a a fresh snapshot was returned, which also had to be
            * registered with the function recorder. However, since nothing was consumed,
            * returning the unit snapshot seems more appropriate.
            */
