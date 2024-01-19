@@ -10,8 +10,9 @@ import viper.silicon.state.{ChunkIdentifier, State}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.AbductionFailed
+import viper.silver.verifier.errors.Internal
+import viper.silver.verifier.reasons.InsufficientPermission
+import viper.silver.verifier.{NullPartialVerificationError, PartialVerificationError}
 
 
 case class AbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], result: Seq[Exp]) {
@@ -49,7 +50,7 @@ trait AbductionRule[T] {
   protected def apply(q: AbductionQuestion, inst: T)(Q: AbductionQuestion => VerificationResult): VerificationResult
 
   protected def checkPathCondition(s: State, v: Verifier, e: Exp)(Q: Boolean => VerificationResult): VerificationResult = {
-    val pve: PartialVerificationError = AbductionFailed(e)
+    val pve: PartialVerificationError = Internal(e)
     eval(s, e, pve, v)((_, t, v1) => {
       v1.decider.assert(t)(Q)
     })
@@ -90,7 +91,7 @@ object AccessPredicateRemove extends AbductionRule[Seq[ast.AccessPredicate]] {
     }
 
     val acc = accs.head
-    val pve: PartialVerificationError = AbductionFailed(acc)
+    val pve: PartialVerificationError = Internal(acc)
     acc match {
       case ast.AccessPredicate(loc: ast.LocationAccess, perm) =>
         eval(q.s, perm, pve, q.v)((s1, tPerm, v1) =>
@@ -110,7 +111,7 @@ object AccessPredicateRemove extends AbductionRule[Seq[ast.AccessPredicate]] {
 
   override def apply(q: AbductionQuestion, inst: Seq[ast.AccessPredicate])(Q: AbductionQuestion => VerificationResult): VerificationResult = {
     val g1 = q.goal.filterNot(inst.contains)
-    consumer.consumes(q.s, inst, AbductionFailed, q.v)((s1, _, v1) => Q(q.copy().withGoal(g1).withState(s1, v1)))
+    consumer.consumes(q.s, inst, _ => Internal(), q.v)((s1, _, v1) => Q(q.copy().withGoal(g1).withState(s1, v1)))
   }
 }
 
