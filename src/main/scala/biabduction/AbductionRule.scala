@@ -1,26 +1,18 @@
 package viper.silicon.biabduction
 
 
-import viper.silicon.interfaces.{Failure, Success}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.rules.chunkSupporter.findChunk
-import viper.silicon.rules.{consumer, permissionSupporter}
 import viper.silicon.rules.evaluator.{eval, evalLocationAccess}
+import viper.silicon.rules.{consumer, permissionSupporter}
 import viper.silicon.state.{ChunkIdentifier, State}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.{EqCmp, Exp, NullLit, Predicate, PredicateAccessPredicate}
-import viper.silver.verifier.{DummyReason, PartialVerificationError}
+import viper.silver.ast._
+import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.AbductionFailed
 
-
-object AbductionTest {
-  def abductionTest(s: State, v: Verifier, a: Exp): Unit = {
-    val res = PredicateRemove.apply(AbductionQuestion(s, v, Seq(a), Seq()))
-    print("Hi")
-  }
-
-}
 
 case class AbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], result: Seq[Exp]) {
 
@@ -37,132 +29,123 @@ case class AbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], result: Seq[
   }
 }
 
-trait AbductionRule {
+/**
+  * A rule for abduction. A rule is a pair of a check method and an apply method. The check method checks whether the
+  * rule can be applied to the current goal and returns an optional expression from the goal that we can apply the rule
+  * to. The apply method applies the rule to the given expression and returns a new goal.
+  * If the rule was applied, then we have to return to the start of the rule list, otherwise we increment the rule index.
+  */
+trait AbductionRule[T] {
 
-  def canApply(q: AbductionQuestion): Boolean
-
-  def apply(q: AbductionQuestion): AbductionQuestion
-
-  def withoutChunks(s: State, v: Verifier, rem: Seq[Exp]): (State, Verifier) = {
-    var newS = s
-    var newV = v
-    consumer.consumes(s, rem, AbductionFailed, v)((s1, t, v1) => {
-      newS = s1
-      newV = v1
-      Success()
-    })
-    (newS, newV)
-  }
-
-  def checkChunk(s: State, v: Verifier, a: ast.AccessPredicate): Boolean = {
-
-    var found: Option[NonQuantifiedChunk] = None
-
-    val pve: PartialVerificationError = AbductionFailed(a)
-    a match {
-      case ast.AccessPredicate(locacc: ast.LocationAccess, perm) =>
-        eval(s, perm, pve, v)((s1, tPerm, v1) =>
-          evalLocationAccess(s1, locacc, pve, v1)((s2, _, tArgs, v2) =>
-            permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
-              val resource = locacc.res(s.program)
-              val id = ChunkIdentifier(resource, s.program)
-              found = findChunk[NonQuantifiedChunk](s.h.values, id, tArgs, v)
-              Success()
-            })))
+  def checkAndApply(q: AbductionQuestion, rule: Int)(Q: (AbductionQuestion, Int) => VerificationResult): VerificationResult = {
+    check(q) {
+      case Some(e) => apply(q, e)(Q(_, 0))
+      case None => Q(q, rule + 1)
     }
-    found.isDefined
   }
 
-  def checkPathCondition(s: State, v: Verifier, e: Exp): Boolean = {
+  protected def check(q: AbductionQuestion)(Q: Option[T] => VerificationResult): VerificationResult
 
-    var res = false
+  protected def apply(q: AbductionQuestion, inst: T)(Q: AbductionQuestion => VerificationResult): VerificationResult
+
+  protected def checkPathCondition(s: State, v: Verifier, e: Exp)(Q: Boolean => VerificationResult): VerificationResult = {
     val pve: PartialVerificationError = AbductionFailed(e)
-
-    eval(s, e, pve, v)((s1, t, v1) => {
-      v1.decider.assert(t) {
-        case true =>
-          res = true; Success()
-
-      }
+    eval(s, e, pve, v)((_, t, v1) => {
+      v1.decider.assert(t)(Q)
     })
-
-    res
   }
 
-  def getPredicate(q: AbductionQuestion): Predicate = {
+  protected def getPredicate(q: AbductionQuestion): Predicate = {
     q.s.program.predicates.head
   }
 
-  def getField(q: AbductionQuestion) = {
+  protected def getField(q: AbductionQuestion): Field = {
     q.s.program.fields.head
   }
 }
 
+/**
+  * Covers the rules pred-remove and acc-remove
+  * Remove predicate and fields accesses which are both in the goal and in the current state
+  */
+object AccessPredicateRemove extends AbductionRule[Seq[ast.AccessPredicate]] {
 
-object PredicateAccessRemove extends AbductionRule {
+  override def check(q: AbductionQuestion)(Q: Option[Seq[ast.AccessPredicate]] => VerificationResult): VerificationResult = {
 
-  private def matches(q: AbductionQuestion): Seq[PredicateAccessPredicate] = {
-    q.goal.collect { case e: PredicateAccessPredicate if checkChunk(q.s, q.v, e) => e }
+    val accs = q.goal.collect { case e: AccessPredicate => e }
+    if (accs.isEmpty) return Q(None)
+
+    val R: Option[Seq[ast.AccessPredicate]] => VerificationResult = if (accs.tail.isEmpty) {
+      Q
+    } else {
+      f: Option[Seq[ast.AccessPredicate]] =>
+        check(q.withGoal(accs.tail)) { fs =>
+          (f, fs) match {
+            case (None, None) => Q(None)
+            case (Some(f1), None) => Q(Some(f1))
+            case (None, Some(fs1)) => Q(Some(fs1))
+            case (Some(f1), Some(fs1)) => Q(Some(f1 ++ fs1))
+          }
+        }
+    }
+
+    val acc = accs.head
+    val pve: PartialVerificationError = AbductionFailed(acc)
+    acc match {
+      case ast.AccessPredicate(loc: ast.LocationAccess, perm) =>
+        eval(q.s, perm, pve, q.v)((s1, tPerm, v1) =>
+          evalLocationAccess(s1, loc, pve, v1)((s2, _, tArgs, v2) =>
+            permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
+              val resource = loc.res(s3.program)
+              val id = ChunkIdentifier(resource, s3.program)
+              findChunk[NonQuantifiedChunk](s3.h.values, id, tArgs, v3) match {
+                case Some(_) => R(Some(Seq(acc)))
+                case _ => R(None)
+              }
+            }
+            )))
+    }
   }
 
-  override def canApply(q: AbductionQuestion): Boolean = {
-    matches(q).nonEmpty
-  }
 
-  override def apply(q: AbductionQuestion): AbductionQuestion = {
-    val rem = matches(q)
-    val goal = q.goal.filterNot(rem.contains)
-    val (s1, v1) = withoutChunks(q.s, q.v, rem)
-    q.copy().withGoal(goal).withState(s1, v1)
+  override def apply(q: AbductionQuestion, inst: Seq[ast.AccessPredicate])(Q: AbductionQuestion => VerificationResult): VerificationResult = {
+    val g1 = q.goal.filterNot(inst.contains)
+    consumer.consumes(q.s, inst, AbductionFailed, q.v)((s1, _, v1) => Q(q.copy().withGoal(g1).withState(s1, v1)))
   }
 }
 
-// This currenlty breaks if there are also field values known, so the field match rule
-object FieldAccessRemove extends AbductionRule {
+/**
+  * Covers the rule fold-base, which removes a predicate instance from the goal if its base case is met
+  * Currently, the base case has to be a null Ref
+  */
+object FoldBase extends AbductionRule[PredicateAccessPredicate] {
 
-  private def matches(q: AbductionQuestion): Seq[ast.FieldAccessPredicate] = {
-    q.goal.collect { case e: ast.FieldAccessPredicate if checkChunk(q.s, q.v, e) => e }
+  private def baseCondition(p: PredicateAccessPredicate): Exp = {
+    EqCmp(p.loc.args.head, NullLit()())()
   }
 
-  override def canApply(q: AbductionQuestion): Boolean = {
-    matches(q).nonEmpty
+  override protected def check(q: AbductionQuestion)(Q: Option[PredicateAccessPredicate] => VerificationResult): VerificationResult = {
+    q.goal match {
+      case Seq() => Q(None)
+      case (a: PredicateAccessPredicate) :: as => checkPathCondition(q.s, q.v, baseCondition(a)) {
+        case true => Q(Some(a))
+        case false => check(q.withGoal(as))(Q)
+      }
+    }
   }
 
-  override def apply(q: AbductionQuestion): AbductionQuestion = {
-    val rem = matches(q)
-    val goal = q.goal.filterNot(rem.contains)
-    val (s1, v1) = withoutChunks(q.s, q.v, rem)
-    q.copy().withGoal(goal).withState(s1, v1)
-  }
-
-}
-
-object FoldBase extends AbductionRule {
-
-  private def getEqualsNull(p: PredicateAccessPredicate): Exp = {
-    EqCmp(p.loc.args(0), NullLit()())()
-  }
-
-  private def matches(q: AbductionQuestion): Seq[ast.PredicateAccessPredicate] = {
-    q.goal.collect { case e: ast.PredicateAccessPredicate if checkPathCondition(q.s, q.v, getEqualsNull(e)) => e }
-  }
-
-  override def canApply(q: AbductionQuestion): Boolean = {
-    matches(q).nonEmpty
-  }
-
-  override def apply(q: AbductionQuestion): AbductionQuestion = {
-    val rem = matches(q)(0)
-    val goal = q.goal - rem
+  override protected def apply(q: AbductionQuestion, inst: PredicateAccessPredicate)(Q: AbductionQuestion => VerificationResult): VerificationResult = {
+    val g1 = q.goal.filterNot(_ == inst)
     // TODO Do we have to remove the path condition? How do we do this? Maybe havoc?
-    q.copy().withGoal(goal)
+    Q(q.copy().withGoal(g1))
   }
 
 }
 
+/*
 object Fold extends AbductionRule {
 
     private def matches(q: AbductionQuestion): Seq[ast.PredicateAccessPredicate] = {
       q.goal.collect { case e: ast.PredicateAccessPredicate if checkPathCondition(q.s, q.v, e) => e }
     }
-}
+}*/

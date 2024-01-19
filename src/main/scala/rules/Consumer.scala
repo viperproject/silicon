@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.biabduction.AbductionSolver
+
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -460,7 +462,7 @@ object consumer extends ConsumptionRules {
         })
     }
 
-    consumed
+    AbductionSolver.solve(s, v, consumed, a)
   }
 
   private def consumeConditionalTlcMoreJoins(s: State, h: Heap, e0: ast.Exp, a1: ast.Exp, a2: Option[ast.Exp], scopeUid: Int,

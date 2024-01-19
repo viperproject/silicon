@@ -6,8 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.AbductionTest
-
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
@@ -478,8 +476,6 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
-
-        AbductionTest.abductionTest(s, v, assert.exp)
 
         if (s.exhaleExt) {
           Predef.assert(s.h.values.isEmpty)
