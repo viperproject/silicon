@@ -266,7 +266,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     }
 
     private def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
-      axiom foreach decider.prover.assume
+      decider.prover.assumeAxioms(InsertionOrderedSet(axiom), "Function axioms")
       emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }
 
@@ -302,7 +302,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms
 
     def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
-      emittedFunctionAxioms foreach sink.assume
+      sink.assumeAxioms(InsertionOrderedSet(emittedFunctionAxioms), "Function axioms")
     }
 
     /* Lifetime */

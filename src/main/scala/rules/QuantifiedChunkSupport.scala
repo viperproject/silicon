@@ -887,14 +887,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
-    v.decider.assume(auxGlobals, DebugExp.createInstance(str=commentGlobals, children=auxGlobalsExp))
+    v.decider.assume(auxGlobals, DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp))
 
     val commentNonGlobals = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(commentNonGlobals)
     v.decider.assume(
       auxNonGlobals.map(_.copy(
         vars = effectiveTriggersQVars,
-        triggers = effectiveTriggers)), DebugExp.createInstance(str=commentNonGlobals, children=auxNonGlobalsExp))
+        triggers = effectiveTriggers)), DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp))
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
@@ -1101,7 +1101,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
-    v.decider.assume(auxGlobals, DebugExp.createInstance(str=comment, children=auxGlobalsExp))
+    v.decider.assume(auxGlobals, DebugExp.createInstance(description=comment, children=auxGlobalsExp))
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)
@@ -1111,10 +1111,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(
           auxNonGlobals.map(_.copy(
             vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers)), DebugExp.createInstance(str=comment2, children=auxNonGlobalsExp))
+            triggers = effectiveTriggers)), DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp))
       case Some(_) =>
         /* Explicit triggers were provided. */
-        v.decider.assume(auxNonGlobals, DebugExp.createInstance(str=comment2, children=auxNonGlobalsExp))
+        v.decider.assume(auxNonGlobals, DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp))
     }
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))

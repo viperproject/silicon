@@ -141,14 +141,6 @@ package object utils {
       str.substring(0, str.lastIndexOf("@"))
     }
 
-    def buildIteExp(condExp: silver.ast.Exp, ifExp: silver.ast.Exp, elseExp: silver.ast.Exp, typ: silver.ast.Type): silver.ast.Exp ={
-        silver.ast.FuncApp("Ite", Seq(condExp, ifExp, elseExp))(condExp.pos, condExp.info, typ, condExp.errT)
-    }
-
-     def buildImpliesExp(assmptExp: silver.ast.Exp, rhsExp: silver.ast.Exp): silver.ast.Exp= {
-        silver.ast.Implies(assmptExp, rhsExp)()
-    }
-
     def buildMinExp(exps: Seq[silver.ast.Exp], typ: silver.ast.Type): silver.ast.Exp = {
       silver.ast.FuncApp("min", exps)(NoPosition, NoInfo, typ, NoTrafos)
     }

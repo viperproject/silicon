@@ -275,9 +275,9 @@ private trait LayeredPathConditionStackLike {
 
       val branchConditionExp = layer.branchConditionExp
         if(branchConditionExp.isDefined){
-          val quantBody = DebugExp.createImplicationInstance(str=None, exp=Some(branchConditionExp.get.getFirst), substitutedExp=Some(branchConditionExp.get.getSecond), terms=InsertionOrderedSet(layer.branchCondition.get), isInternal_ = false,
+          val quantBody = DebugExp.createImplicationInstance(description=None, originalExp=Some(branchConditionExp.get.getFirst), substitutedExp=Some(branchConditionExp.get.getSecond), terms=InsertionOrderedSet(layer.branchCondition.get), isInternal_ = false,
             children=layer.nonGlobalAssumptionDebugExps)
-          val quantDebugExp = DebugExp.createQuantifiedInstance(str=None, exp=None, substitutedExp = None, terms = InsertionOrderedSet.empty, isInternal_ = false,
+          val quantDebugExp = DebugExp.createQuantifiedInstance(description=None, originalExp=None, substitutedExp = None, terms = InsertionOrderedSet.empty, isInternal_ = false,
             children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars, triggers = triggers)
           nonGlobals += quantDebugExp
         }else{

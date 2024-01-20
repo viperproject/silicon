@@ -6,6 +6,7 @@ import viper.silicon.interfaces.{Failure, SiliconFailureContext, Success, Verifi
 import viper.silicon.rules.evaluator
 import viper.silicon.state.terms.{False, Term}
 import viper.silicon.state.{IdentifierFactory, State}
+import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
 import viper.silver.ast
 import viper.silver.ast._
@@ -49,8 +50,16 @@ case class ProofObligation(s: State,
   private def assumptionString: String = {
     val filteredAssumptions = assumptionsExp.filter(d => !d.isInternal || printConfig.isPrintInternalEnabled)
     if (filteredAssumptions.nonEmpty) {
-      s"assumptions:\n\t${filteredAssumptions.tail.foldLeft[String](filteredAssumptions.head.toString(printConfig))((s, de) => de.toString(printConfig) + "\n\t" + s)}"
+      s"assumptions: ${filteredAssumptions.foldLeft[String]("")((s, de) => s + "\n\t" + de.toString(printConfig))}"
     } else {
+      ""
+    }
+  }
+
+  private def axiomsString: String = {
+    if(printConfig.isPrintAxiomsEnabled){
+      s"axioms: ${v.decider.prover.preambleAssumptions.foldLeft[String]("")((s, de) => s + "\n\t" + de.toString)}"
+    }else{
       ""
     }
   }
@@ -64,7 +73,7 @@ case class ProofObligation(s: State,
   }
 
   override def toString(): String = {
-    "\n" + originalErrorInfo + "\n\n" + branchConditionString + "\n\n" + stateString + "\n\n" + assumptionString + "\n\n" + assertionString + "\n"
+    "\n" + originalErrorInfo + "\n\n" + branchConditionString + "\n\n" + stateString + "\n\n" + axiomsString +  "\n\n" + assumptionString + "\n\n" + assertionString + "\n"
   }
 }
 
@@ -84,7 +93,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       return
     }
 
-    failures.zipWithIndex.foreach{case (f, idx) => println(s"[$idx]: ${f.message.reason.readableMessage} (${f.message.reason.pos})")}
+    failures.zipWithIndex.foreach{case (f, idx) => println(s"[$idx]: ${f.message.reason.readableMessage} (${f.message.reason.pos})\n")}
 
     while (true) {
       if(failures.size == 1){
@@ -117,7 +126,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
   private def getObligationByIndex(idx: Int): Option[ProofObligation] = {
     if (0 <= idx && idx < failures.size) {
-      println(s"Verification result $idx:")
+      println(s"\nVerification result $idx:")
       val currResult: Failure = failures(idx)
       println(s"$currResult")
       val failureContexts = (currResult.message.failureContexts filter (_.isInstanceOf[SiliconFailureContext])) map (_.asInstanceOf[SiliconFailureContext])
@@ -143,16 +152,22 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
 
   private def initTypechecker(obl: ProofObligation, failedAssertion: ast.Exp): Unit = {
-    var failedPExp: Option[PNode] = failedAssertion.sourcePExp
+    var failedPExp: Option[PNode] =
+      failedAssertion.info.getUniqueInfo[SourcePNodeInfo] match {
+        case Some(info) => Some(info.sourcePNode)
+        case _ => None
+      }
     while(failedPExp.isDefined && !failedPExp.get.isInstanceOf[PScope]){
       failedPExp = failedPExp.get.parent
     }
     if(failedPExp.isDefined){
       resolver.typechecker.curMember = failedPExp.get.asInstanceOf[PScope]
+    }else{
+      println("Could not determine the scope for typechecking.")
     }
 
     resolver.typechecker.debugVariableTypes =
-      obl.v.decider.debugVariableTypes map { case (str, t) => (str.substring(0, str.lastIndexOf("@")), typeToPType(t)) }
+      obl.v.decider.debugVariableTypes map { case (str, t) => (simplifyVariableName(str), typeToPType(t)) }
   }
 
   private def initVerifier(obl: ProofObligation): ProofObligation = {
@@ -162,7 +177,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     v.start()
     v.decider.prover.emit(obl.proverEmits)
 
-    obl.v.decider.prover.preambleAssumptions foreach v.decider.prover.assume
+    obl.v.decider.prover.preambleAssumptions foreach (a => v.decider.prover.assumeAxioms(a.terms, a.description))
 
     obl.assumptionsExp foreach (debugExp =>
       v.decider.assume(debugExp.getTerms, debugExp))
@@ -201,7 +216,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           case _ => println("Invalid input!")
         }
       }catch {
-        case e => println(s"Unexpected error: ${e.getMessage}. Try again")
+        case e: Throwable => println(s"Unexpected error: ${e.getMessage}. Try again")
       }
     }
   }
@@ -221,7 +236,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     if (userInput.isEmpty || userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
-      val assumptionE = translateStringToExp(userInput, obl)
+      val assumptionE = translateStringToExp(userInput)
       val (_, _, _, resV) = evalAssumption(assumptionE, obl, obl.v)
       obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, v = resV)
     }
@@ -233,7 +248,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
-      val assumptionE = translateStringToExp(userInput, obl)
+      val assumptionE = translateStringToExp(userInput)
       var resT: Term = null
       var resE: ast.Exp = null
       var resV: Verifier = null
@@ -254,13 +269,40 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
-  private def translateStringToExp(str: String, obl: ProofObligation): ast.Exp ={
-    val fp = new FastParser()
-    fp._line_offset = Seq(0, str.length + 1).toArray
-    val parsedExp = fastparse.parse(str, fp.exp(_))
-    val pexp = parsedExp.get.value
-    resolver.typechecker.check(pexp, PPrimitiv("Bool")())
-    translator.exp(pexp)
+  private def translateStringToExp(str: String): ast.Exp ={
+    def parseToPExp(): PExp = {
+      try {
+        val fp = new FastParser()
+        fp._line_offset = Seq(0, str.length + 1).toArray
+        val parsedExp = fastparse.parse(str, fp.exp(_))
+        parsedExp.get.value
+      } catch {
+        case e: Throwable => println(s"Error while parsing $str: ${e.getMessage}")
+          throw e
+      }
+    }
+
+    def typecheckPExp(pexp: PExp): Unit = {
+      try {
+        resolver.typechecker.check(pexp, PPrimitiv("Bool")())
+      } catch {
+        case e: Throwable => println(s"Error while typechecking $str: ${e.getMessage}")
+          throw e
+      }
+    }
+
+    def translatePExp(pexp: PExp): ast.Exp = {
+      try {
+        translator.exp(pexp)
+      } catch {
+        case e: Throwable => println(s"Error while translating $str: ${e.getMessage}")
+          throw e
+      }
+    }
+
+    val pexp = parseToPExp()
+    typecheckPExp(pexp)
+    translatePExp(pexp)
   }
 
   private def evalAssumption(e: ast.Exp, obl: ProofObligation, v: Verifier): (State, Term, ast.Exp, Verifier) = {
@@ -312,6 +354,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     println(s"Enter the new value for printHierarchyLevel:")
     obl.printConfig.setPrintHierarchyLevel(readLine())
+
+    println(s"Enter the new value for isPrintAxiomsEnabled:")
+    readLine().toLowerCase match {
+      case "true" | "1" | "t" => obl.printConfig.isPrintAxiomsEnabled = true
+      case "false" | "0" | "f" => obl.printConfig.isPrintAxiomsEnabled = false
+      case _ =>
+    }
 
     println(s"Enter the new value for nodeToHierarchyLevelMap:")
     obl.printConfig.addHierarchyLevelForId(readLine())

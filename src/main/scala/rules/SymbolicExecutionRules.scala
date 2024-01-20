@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import org.jgrapht.alg.util.Pair
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier

@@ -47,7 +47,7 @@ trait Decider {
   def setCurrentBranchCondition(t: Term, te: Pair[ast.Exp, ast.Exp]): Unit
   def setPathConditionMark(): Mark
 
-  def finishDebugSubExp(str : String): Unit
+  def finishDebugSubExp(description : String): Unit
 
   def startDebugSubExp(): Unit
 
@@ -235,8 +235,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       res
     }
 
-    def finishDebugSubExp(str : String): Unit ={
-      val debugExp = DebugExp.createInstance(str = str, children = popDebugSubExp())
+    def finishDebugSubExp(description : String): Unit ={
+      val debugExp = DebugExp.createInstance(description = description, children = popDebugSubExp())
       addDebugExp(debugExp)
     }
 
@@ -289,7 +289,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       addDebugExp(debugExp)
 
       /* Add terms to the prover's assumptions */
-      terms foreach (t => prover.assume(t, isPreamble = false))
+      terms foreach prover.assume
 
       symbExLog.closeScope(sepIdentifier)
       None

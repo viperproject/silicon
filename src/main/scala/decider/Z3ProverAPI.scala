@@ -20,6 +20,8 @@ import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
+import debugger.DebugAxiom
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.reporting.ExternalToolError
 
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -242,11 +244,8 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def assume(term: Term, isPreamble: Boolean): Unit = {
+  def assume(term: Term): Unit = {
     try {
-      if(isPreamble){
-        preambleAssumptions :+= term
-      }
       if (preamblePhaseOver)
         prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
       else

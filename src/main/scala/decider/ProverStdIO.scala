@@ -9,8 +9,9 @@ package viper.silicon.decider
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-
 import com.typesafe.scalalogging.LazyLogging
+import debugger.DebugAxiom
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
@@ -19,7 +20,7 @@ import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter, QuantifierInstantiationsMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, QuantifierInstantiationsMessage, Reporter}
 import viper.silver.verifier.Model
 
 import scala.collection.mutable
@@ -202,7 +203,7 @@ abstract class ProverStdIO(uniqueId: String,
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
-  def assume(term: Term, isPreamble: Boolean): Unit = {
+  def assume(term: Term): Unit = {
 //    /* Detect certain simple problems with quantifiers.
 //     * Note that the current checks don't take in account whether or not a
 //     * quantification occurs in positive or negative position.
@@ -217,9 +218,6 @@ abstract class ProverStdIO(uniqueId: String,
 //      }
 //    })
 
-    if (isPreamble) {
-      preambleAssumptions :+= term
-    }
     assume(termConverter.convert(term))
   }
 

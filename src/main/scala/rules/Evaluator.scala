@@ -8,25 +8,25 @@ package viper.silicon.rules
 
 import debugger.DebugExp
 import org.jgrapht.alg.util.Pair
-import viper.silver.ast
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
-import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
-import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.utils.ast._
 import viper.silicon.utils.toSf
-import viper.silicon.utils.ast.{BigAnd, buildIteExp, buildQuantExp, convertSortToAstType, convertTermVarToExpVarDecl, flattenOperator}
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
-import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
-import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
-import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
+import viper.silver.ast
 import viper.silver.ast.{AnnotationInfo, HasLineColumn, IntLit, NoPosition, VirtualPosition, WeightedQuantifier}
+import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
+import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
+import viper.silver.verifier.reasons._
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 
 import scala.collection.immutable.Seq
 
@@ -355,7 +355,7 @@ object evaluator extends EvaluationRules {
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           evalImplies(s1, t0, new Pair(e0, e0New), e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, e1New, v2) => {
             v2.symbExLog.closeScope(uidImplies)
-            Q(s2, t1, e1New, v2)
+            Q(s2, t1, ast.Implies(e0New, e1New)(e.pos, e.info, e.errT), v2)
           }))
 
       case condExp @ ast.CondExp(e0, e1, e2) =>
@@ -373,7 +373,7 @@ object evaluator extends EvaluationRules {
               case Seq(entry) => // One branch is dead
                 (entry.s, entry.data, entry.dataExp)
               case Seq(entry1, entry2) => // Both branches are alive
-                (entry1.s.merge(entry2.s), Ite(t0, entry1.data, entry2.data), buildIteExp(e0, entry1.dataExp, entry2.dataExp, ast.Bool))
+                (entry1.s.merge(entry2.s), Ite(t0, entry1.data, entry2.data), ast.CondExp(e0, entry1.dataExp, entry2.dataExp)(e0.pos, e0.info, e0.errT))
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, result, resultExp)
@@ -616,11 +616,12 @@ object evaluator extends EvaluationRules {
 
               val isPositiveExp = ast.GeCmp(ch.permExp, ast.NoPerm()())(ch.permExp.pos, ch.permExp.info, ch.permExp.errT)
 
-              val lhsExp = buildIteExp(argsPairWiseEqualExp, BigAnd(addConsExp :+ isPositiveExp), ast.FalseLit()(), ast.Bool)
-              val lhsExpNew = buildIteExp(argsPairWiseEqualExpNew, BigAnd(addConsExp :+ isPositiveExp), ast.FalseLit()(), ast.Bool)
+              val lhsExp = ast.CondExp(argsPairWiseEqualExp, BigAnd(addConsExp :+ isPositiveExp), ast.FalseLit()())()
+              val lhsExpNew = ast.CondExp(argsPairWiseEqualExpNew, BigAnd(addConsExp :+ isPositiveExp), ast.FalseLit()())()
 
-              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False), new Pair(lhsExp, lhsExpNew), body, false, pve, v1) ((s4, tImplies, eImpliesNew, v2) =>{
+              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False), new Pair(lhsExp, lhsExpNew), body, false, pve, v1) ((s4, tImplies, bodyNew, v2) =>{
                 val eImplies: ast.Exp = ast.Implies(lhsExp, body)()
+                val eImpliesNew: ast.Exp = ast.Implies(lhsExpNew, bodyNew)()
                 bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, new Pair(eImplies, eImpliesNew) +: es, v2)((s5, ts1, es1, v3) => {
                   v3.symbExLog.closeScope(uidImplies)
                   Q(s5, ts1, es1, v3)
@@ -660,10 +661,10 @@ object evaluator extends EvaluationRules {
                 case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts1)
               }
 
-              evalImplies(s2, And(trig, bc), new Pair(bcExp, bcExp), body, false, pve, v1)((s3, tImplies, eImpliesNew, v2) => {
+              evalImplies(s2, And(trig, bc), new Pair(bcExp, bcExp), body, false, pve, v1)((s3, tImplies, bodyNew, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
                 val eQuant: ast.Exp = ast.Forall(vars, Seq(), ast.Implies(bcExp, body)())()
-                val eQuantNew: ast.Exp = ast.Forall(varsNew, Seq(), eImpliesNew)()
+                val eQuantNew: ast.Exp = ast.Forall(varsNew, Seq(), ast.Implies(bcExp, bodyNew)())()
                 bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, new Pair(eQuant, eQuantNew) +: es, v2)((s4, ts2, es2, v3) => {
                   v3.symbExLog.closeScope(uidImplies)
                   Q(s4, ts2, es2, v3)
@@ -742,10 +743,10 @@ object evaluator extends EvaluationRules {
 
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            v1.decider.assume(tAuxGlobal,  DebugExp.createInstance(str=commentGlobal, children=auxGlobalsExp))
+            v1.decider.assume(tAuxGlobal,  DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp))
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
-            v1.decider.assume(tAuxHeapIndep/*tAux*/, DebugExp.createInstance(str=commentNonGlobals, children=auxNonGlobalsExp))
+            v1.decider.assume(tAuxHeapIndep/*tAux*/, DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp))
 
             if (qantOp == Exists) {
               // For universal quantification, the non-global auxiliary assumptions will contain the information that
@@ -1208,7 +1209,7 @@ object evaluator extends EvaluationRules {
       assert(entries.length <= 2)
       val s1 = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
       val t = Implies(tLhs, entries.headOption.map(_.data).getOrElse(True))
-      val e = ast.Implies(eLhs.getSecond, entries.headOption.map(_.dataExp).getOrElse(ast.TrueLit()()))()
+      val e = entries.headOption.map(_.dataExp).getOrElse(ast.TrueLit()())
       (s1, t, e)
     })(Q)
   }
@@ -1521,7 +1522,7 @@ object evaluator extends EvaluationRules {
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) =>sAcc.merge(entry.s))
         sJoined = sJoined.copy(functionRecorder = sJoined.functionRecorder.recordPathSymbol(joinSymbol))
 
-        v.decider.assume(joinDefEqs, DebugExp.createInstance(str=Some("Join"), exp=Some(BigAnd(joinDefEqsExp)), substitutedExp=Some(BigAnd(joinDefEqsExpNew)), children=InsertionOrderedSet.empty))
+        v.decider.assume(joinDefEqs, DebugExp.createInstance(description=Some("Join"), originalExp=Some(BigAnd(joinDefEqsExp)), substitutedExp=Some(BigAnd(joinDefEqsExpNew)), children=InsertionOrderedSet.empty))
 
         (sJoined, joinTerm, joinExp)
     }

@@ -127,9 +127,9 @@ class DefaultMainVerifier(config: Config,
       _verificationPoolManager.pooledVerifiers.emit(contents)
     }
 
-    def assume(term: Term, isPreamble: Boolean): Unit = {
-      decider.prover.assume(term, isPreamble)
-      _verificationPoolManager.pooledVerifiers.assume(term, isPreamble)
+    def assume(term: Term): Unit = {
+      decider.prover.assume(term)
+      _verificationPoolManager.pooledVerifiers.assume(term)
     }
 
     def declare(decl: Decl): Unit = {
@@ -298,7 +298,7 @@ class DefaultMainVerifier(config: Config,
 
     // TODO ake: if debugging enabled
     val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
-//    debugger.startDebugger()
+    debugger.startDebugger()
 
     verificationResults
   }

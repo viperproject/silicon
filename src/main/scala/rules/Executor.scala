@@ -673,7 +673,7 @@ object executor extends ExecutionRules {
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
          val tStr = t.toString
          val exp = ast.EqCmp(ast.LocalVar(name, typ)(), rhsExp)()
-         val expNew = ast.EqCmp(ast.LocalVar(tStr.substring(0, tStr.lastIndexOf("@")), typ)(), rhsExpNew)()
+         val expNew = ast.EqCmp(ast.LocalVar(simplifyVariableName(tStr), typ)(), rhsExpNew)()
          v.decider.assume(t === rhs, exp, expNew)
          t
      }

@@ -15,6 +15,7 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
+import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.{Map, Stack}
 import viper.silver.ast.{LocalVar, LocalVarWithVersion}
 import viper.silver.utility.Sanitizer
@@ -131,7 +132,7 @@ final case class State(g: Store = Store(),
   def substituteVarsInExp(e : ast.Exp): ast.Exp = {
     val varMapping = g.values.map { case (localVar, term) => {
       val newName = term match {
-        case Var(n, _) => n.name.substring(0, n.name.lastIndexOf("@"))
+        case Var(n, _) => simplifyVariableName(n.name)
         case _ => term.toString.replaceAll("@.. ", " ")
       }
       localVar.name -> LocalVarWithVersion(newName, localVar.typ)(localVar.pos, localVar.info, localVar.errT)
