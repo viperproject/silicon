@@ -150,6 +150,11 @@ class DefaultMainVerifier(config: Config,
       decider.prover.emitSettings(contents)
       _verificationPoolManager.pooledVerifiers.emitSettings(contents)
     }
+
+    override def setOption(name: String, value: String): String = {
+      decider.prover.setOption(name, value)
+      _verificationPoolManager.pooledVerifiers.setOption(name, value)
+    }
   }
 
   /* Program verification */
@@ -317,6 +322,7 @@ class DefaultMainVerifier(config: Config,
         }
       case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
+    val moreJoins = Verifier.config.moreJoins() && member.isInstanceOf[ast.Method]
 
     State(program = program,
           functionData = functionData,
@@ -328,7 +334,8 @@ class DefaultMainVerifier(config: Config,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           currentMember = Some(member),
           heapDependentTriggers = resourceTriggers,
-          moreCompleteExhale = mce)
+          moreCompleteExhale = mce,
+          moreJoins = moreJoins)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -349,7 +356,8 @@ class DefaultMainVerifier(config: Config,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
       predicateFormalVarMap = predSnapGenerator.formalVarMap,
-      moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
+      moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete,
+      moreJoins = Verifier.config.moreJoins())
   }
 
   private def excludeMethod(method: ast.Method) = (
