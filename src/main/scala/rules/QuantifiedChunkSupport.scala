@@ -1827,6 +1827,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       // TODO: Take all seq/set/fun inside cond, not only those on the top level
       cond.flatMap(_.find {
         case SeqIn(seq, _) => seq
+        case SeqInTrigger(seq, _) => seq
         case SetIn(_, set) => set
         // TODO: Add a case for function applications
       }).toSeq
