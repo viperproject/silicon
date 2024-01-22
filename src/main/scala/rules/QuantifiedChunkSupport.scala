@@ -1124,8 +1124,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             if (s.exhaleExt) {
               magicWandSupporter.transfer[QuantifiedBasicChunk](
                                           s.copy(smCache = smCache1),
-                                          loss,
+                                          lossOfInvOfLoc,
                                           createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s),
+                                          formalQVars,
                                           v)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
@@ -1241,7 +1242,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
         case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
       }
-      magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
+      magicWandSupporter.transfer(s, permissions, failure, Seq(), v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
         val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
