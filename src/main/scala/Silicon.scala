@@ -24,7 +24,7 @@ import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.utility.{FileProgramSubmitter, ProgramSubmitter}
+import viper.silver.utility.{FileProgramSubmitter}
 
 import scala.util.chaining._
 
