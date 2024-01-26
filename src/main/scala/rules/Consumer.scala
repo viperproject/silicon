@@ -462,6 +462,9 @@ object consumer extends ConsumptionRules {
         })
     }
 
+    // TODO We end up here multiple times, but not in all the cases.
+    //  I guess we should extend a verification error
+    // with an abduction question and solve it further up the call stack.
     AbductionSolver.solve(s, v, consumed, a)
   }
 

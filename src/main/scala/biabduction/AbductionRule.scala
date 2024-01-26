@@ -197,7 +197,7 @@ object Fold extends AbductionRule[PredicateAccessPredicate] {
   override protected def apply(q: AbductionQuestion, inst: PredicateAccessPredicate)(Q: AbductionQuestion => VerificationResult): VerificationResult = {
     val next = getNextAccess(q, inst.loc.args.head, inst.perm)
     val pve: PartialVerificationError = Internal(inst)
-    val g1: Seq[Exp] = q.goal.filterNot(_ == inst) ++ next
+    val g1: Seq[Exp] = q.goal.filterNot(_ == inst) :+ next
     consumer.consume(q.s, inst, pve, q.v)((s1, _, v1) => Q(q.copy().withGoal(g1).withState(s1, v1)))
   }
 

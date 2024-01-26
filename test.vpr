@@ -1,12 +1,17 @@
-field val: Int
 field next: Ref
 
-predicate yes(x: Ref){
-    true
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
 }
 
-method test(x: Ref, y: Ref, z: Ref)
-requires yes(x)
+method test(x: Ref)
 {
-    assert yes(x)
+    var y: Ref
+    y := new()
+    y.next := x
+    reverse(y)
 }
+
+method reverse(x: Ref)
+requires list(x)
+ensures list(x)

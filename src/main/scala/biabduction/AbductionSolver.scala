@@ -18,11 +18,11 @@ object AbductionSolver {
     * successful.
     */
   private def applyRule(q: AbductionQuestion, rule: Int)(Q: VerificationResult): VerificationResult = {
-    rules(rule).checkAndApply(q, 0)((q1, r1) => {
+    rules(rule).checkAndApply(q, rule)((q1, r1) => {
       if (r1 == rules.length) {
         if (q.goal.isEmpty) {
           println("Abduction successful. Found preconditions:")
-          q.result.foreach(_.toString())
+          for (q <- q.result) println(q.toString())
         } else {
           println("Abduction failed.")
         }
