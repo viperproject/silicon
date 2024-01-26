@@ -12,8 +12,8 @@ import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.reporter.{NoopReporter, Reporter}
-import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.errors.ContractNotWellformed
+import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
 import scala.io.StdIn.readLine
 import scala.language.postfixOps
@@ -26,7 +26,9 @@ case class ProofObligation(s: State,
                            assertion: Term,
                            eAssertion: ast.Exp,
                            printConfig: DebugExpPrintConfiguration,
-                           originalErrorReason: ErrorReason
+                           originalErrorReason: ErrorReason,
+                           resolver: DebugResolver,
+                           translator: DebugTranslator
                           ){
 
   def removeAssumptions(ids: Seq[Int]): ProofObligation = {
@@ -144,7 +146,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       Some(ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls,
         failureContext.branchConditions, failureContext.assumptions,
         False /* TODO */ , failureContext.failedAssertion.getOrElse(ast.TrueLit()()),
-        new DebugExpPrintConfiguration, currResult.message.reason))
+        new DebugExpPrintConfiguration, currResult.message.reason,
+        new DebugResolver(this.pprogram, this.resolver.names), new DebugTranslator(this.pprogram, translator.getMembers())))
     }else{
       None
     }
@@ -161,12 +164,12 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       failedPExp = failedPExp.get.parent
     }
     if(failedPExp.isDefined){
-      resolver.typechecker.curMember = failedPExp.get.asInstanceOf[PScope]
+      obl.resolver.typechecker.curMember = failedPExp.get.asInstanceOf[PScope]
     }else{
       println("Could not determine the scope for typechecking.")
     }
 
-    resolver.typechecker.debugVariableTypes =
+    obl.resolver.typechecker.debugVariableTypes =
       obl.v.decider.debugVariableTypes map { case (str, t) => (simplifyVariableName(str), typeToPType(t)) }
   }
 
@@ -236,7 +239,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     if (userInput.isEmpty || userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
-      val assumptionE = translateStringToExp(userInput)
+      val assumptionE = translateStringToExp(userInput, obl)
       val (_, _, _, resV) = evalAssumption(assumptionE, obl, obl.v)
       obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, v = resV)
     }
@@ -248,7 +251,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
-      val assumptionE = translateStringToExp(userInput)
+      val assumptionE = translateStringToExp(userInput, obl)
       var resT: Term = null
       var resE: ast.Exp = null
       var resV: Verifier = null
@@ -269,10 +272,10 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
-  private def translateStringToExp(str: String): ast.Exp ={
+  private def translateStringToExp(str: String, obl: ProofObligation): ast.Exp ={
     def parseToPExp(): PExp = {
       try {
-        val fp = new FastParser()
+        val fp = new DebugParser()
         fp._line_offset = Seq(0, str.length + 1).toArray
         val parsedExp = fastparse.parse(str, fp.exp(_))
         parsedExp.get.value
@@ -284,7 +287,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     def typecheckPExp(pexp: PExp): Unit = {
       try {
-        resolver.typechecker.check(pexp, PPrimitiv("Bool")())
+        obl.resolver.typechecker.check(pexp, PPrimitiv("Bool")())
       } catch {
         case e: Throwable => println(s"Error while typechecking $str: ${e.getMessage}")
           throw e
@@ -293,7 +296,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     def translatePExp(pexp: PExp): ast.Exp = {
       try {
-        translator.exp(pexp)
+        obl.translator.exp(pexp)
       } catch {
         case e: Throwable => println(s"Error while translating $str: ${e.getMessage}")
           throw e

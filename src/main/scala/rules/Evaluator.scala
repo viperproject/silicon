@@ -1078,7 +1078,7 @@ object evaluator extends EvaluationRules {
         case _: ast.SetType => evalBinOp(s, e0, e1, SetIn, pve, v)((s1, t, e0New, e1New, v1)
           => Q(s1, t, ast.AnySetContains(e0New, e1New)(e.pos, e.info, e.errT), v1))
         case _: ast.MultisetType => evalBinOp(s, e0, e1, (t0, t1) => MultisetCount(t1, t0), pve, v)((s1, t, e0New, e1New, v1)
-          => Q(s1, t, ast.AnySetContains(e0New, e1New)(e.pos, e.info, e.errT), v1)) // TODO ake: multiset COUNT
+          => Q(s1, t, ast.AnySetContains(e0New, e1New)(e.pos, e.info, e.errT), v1))
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
