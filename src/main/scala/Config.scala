@@ -765,6 +765,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val useOldAxiomatization: ScallopOption[Boolean] = opt[Boolean]("useOldAxiomatization",
+    descr = s"Use Silicon's old axiomatization for sequences, sets, and multisets, " +
+            s"instead of the newer one shared with Carbon.",
+    default = Some(false),
+    noshort = true
+  )
+
   val disableHavocHack407: ScallopOption[Boolean] = opt[Boolean]("disableHavocHack407",
     descr = "A Viper method call to " +
             viper.silicon.rules.executor.hack407_havoc_all_resources_method_name("R") +

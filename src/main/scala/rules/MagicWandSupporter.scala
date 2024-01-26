@@ -129,12 +129,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                hs: Stack[Heap],
                                pLoss: Term,
                                failure: Failure,
+                               qvars: Seq[Var],
                                v: Verifier)
                               (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
                               (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
-    val initialConsumptionResult = ConsumptionResult(pLoss, v, Verifier.config.checkTimeout())
+    val initialConsumptionResult = ConsumptionResult(pLoss, qvars, v, Verifier.config.checkTimeout())
       /* TODO: Introduce a dedicated timeout for the permission check performed by ConsumptionResult,
        *       instead of using checkTimeout. Reason: checkTimeout is intended for checks that are
        *       optimisations, e.g. detecting if a chunk provided no permissions or if a branch is
@@ -397,6 +398,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               (s: State,
                perms: Term,
                failure: Failure,
+               qvars: Seq[Var],
                v: Verifier)
               (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
               (Q: (State, Option[CH], Verifier) => VerificationResult)
@@ -414,7 +416,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
      */
     val preMark = v.decider.setPathConditionMark()
     executionFlowController.tryOrFail2[Stack[Heap], Stack[Option[CH]]](s, v)((s1, v1, QS) =>
-      magicWandSupporter.consumeFromMultipleHeaps(s1, s1.reserveHeaps.tail, perms, failure, v1)(consumeFunction)(QS)
+      magicWandSupporter.consumeFromMultipleHeaps(s1, s1.reserveHeaps.tail, perms, failure, qvars, v1)(consumeFunction)(QS)
     )((s2, hs2, chs2, v2) => {
       val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark)
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
