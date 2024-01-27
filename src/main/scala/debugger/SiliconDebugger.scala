@@ -170,7 +170,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
 
     obl.resolver.typechecker.debugVariableTypes =
-      obl.v.decider.debugVariableTypes map { case (str, t) => (simplifyVariableName(str), typeToPType(t)) }
+      obl.v.decider.debugVariableTypes map { case (str, pType) => (simplifyVariableName(str), pType) }
   }
 
   private def initVerifier(obl: ProofObligation): ProofObligation = {
@@ -428,7 +428,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       //        case DomainType(domainName, partialTypVarsMap) => ???
       //      }
 //      case TypeVar(name) => PDomainType(name, Seq())()
-      case _ => PPrimitiv("unknown")()
+      case _ => PUnknown()()
     }
   }
 

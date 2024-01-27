@@ -27,6 +27,7 @@ import viper.silicon.supporters.PredicateData
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
+import viper.silver.parser.PType
 
 import scala.annotation.unused
 
@@ -75,8 +76,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       * these can later on (after the analysis and/or the verification phase) be declared to
       * the other verifiers.
       */
-    private def fresh(id: String, sort: Sort): Var = {
-      val x = v.decider.fresh(id, sort)
+    private def fresh(id: String, sort: Sort, pType: PType): Var = {
+      val x = v.decider.fresh(id, sort, pType)
       freshVars = freshVars :+ x
 
       x

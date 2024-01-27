@@ -23,6 +23,7 @@ import viper.silicon.utils.ast.{BigAnd, convertTermVarToExpVarDecl}
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
@@ -518,7 +519,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
 
-    val qvar = v.decider.fresh("s", sorts.Snap) /* Quantified snapshot s */
+    val qvar = v.decider.fresh("s", sorts.Snap, PUnknown()()) /* Quantified snapshot s */
 
     // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
     // including necessary sort wrapper applications
@@ -1229,7 +1230,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               })((s4, optCh, v3) =>
                 optCh match {
                   case Some(ch) => Q(s4, s4.h, ch.snapshotMap.convert(sorts.Snap), v3)
-                  case _ => Q(s4, s4.h, v3.decider.fresh(sorts.Snap), v3)
+                  case _ => Q(s4, s4.h, v3.decider.fresh(sorts.Snap, PUnknown()()), v3)
                 }
               )
             } else {
@@ -1341,7 +1342,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val snap = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
             Q(s4, s4.h, snap, v2)
           case _ =>
-            Q(s4, s4.h, v2.decider.fresh(sorts.Snap), v2)
+            Q(s4, s4.h, v2.decider.fresh(sorts.Snap, PUnknown()()), v2)
         }
       )
     } else {

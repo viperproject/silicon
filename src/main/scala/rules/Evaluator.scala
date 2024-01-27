@@ -640,7 +640,7 @@ object evaluator extends EvaluationRules {
             val ch = chs.head
 
             val localVars = vars map (_.localVar)
-            val tVars = localVars map (x => v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ)))
+            val tVars = localVars map (x => v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ), extractPTypeFromExp(x)))
             val varsNew: Seq[ast.LocalVarDecl] = tVars.map (tv => convertTermVarToExpVarDecl(tv))
             val gVars = Store(localVars zip tVars)
 
@@ -1162,7 +1162,7 @@ object evaluator extends EvaluationRules {
 
     val localVars = vars map (_.localVar)
 
-    val tVars = localVars map (x => v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ)))
+    val tVars = localVars map (x => v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ), extractPTypeFromExp(x)))
     val gVars = Store(localVars zip tVars)
     val s1 = s.copy(g = s.g + gVars,
                     quantifiedVariables = tVars ++ s.quantifiedVariables,

@@ -16,7 +16,7 @@ import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
+import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, extractPTypeFromStmt, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.{HasLineColumn, LocalVar, VirtualPosition}
@@ -296,7 +296,7 @@ object executor extends ExecutionRules {
 
       case ast.LocalVarDeclStmt(decl) =>
         val x = decl.localVar
-        val t = v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ))
+        val t = v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ), extractPTypeFromStmt(stmt))
         Q(s.copy(g = s.g + (x -> t)), v)
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
@@ -399,7 +399,7 @@ object executor extends ExecutionRules {
         val newChunks = fields map (field => {
           val p = FullPerm
           val pExp = ast.FullPerm()(stmt.pos, stmt.info, stmt.errT)
-          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
+          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ), extractPTypeFromExp(x))
           if (s.qpFields.contains(field)) {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
@@ -670,7 +670,7 @@ object executor extends ExecutionRules {
           *   performance; instead, it can cause an exponential blow-up in term size, as
           *   reported by Silicon issue #328.
           */
-         val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
+         val t = v.decider.fresh(name, v.symbolConverter.toSort(typ), extractPTypeFromExp(rhsExp))
          val tStr = t.toString
          val exp = ast.EqCmp(ast.LocalVar(name, typ)(), rhsExp)()
          val expNew = ast.EqCmp(ast.LocalVar(simplifyVariableName(tStr), typ)(), rhsExpNew)()

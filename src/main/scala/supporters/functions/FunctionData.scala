@@ -19,6 +19,7 @@ import viper.silicon.state.terms.predef._
 import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.{Config, Map, toMap}
+import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
 
 /* TODO: Refactor FunctionData!
@@ -237,7 +238,7 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap)
+           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap, PUnknown()())
         +: expressionTranslator.translatePrecondition(program, predAcc.args, this))
 
       val fapp = App(triggerFunction, args)

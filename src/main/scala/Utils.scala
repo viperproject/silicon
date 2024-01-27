@@ -11,8 +11,9 @@ import viper.silicon.verifier.Verifier
 import viper.silver
 import viper.silver.ast.utility.Triggers.TriggerGenerationWithAddAndSubtract
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{NoInfo, NoPosition, NoTrafos}
+import viper.silver.ast.{NoInfo, NoPosition, NoTrafos, SourcePNodeInfo}
 import viper.silver.components.StatefulComponent
+import viper.silver.parser.{PExp, PNode, PStmt, PType, PUnknown, PUnnamedTypedDeclaration}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
 import viper.silver.verifier.{VerificationError, errors}
@@ -21,7 +22,7 @@ import scala.annotation.implicitNotFound
 import scala.collection.immutable.ArraySeq
 
 package object utils {
-  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort)
+  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort, PUnknown()())
   def toSf(t: Term): (Sort, Verifier) => Term = (sort, _) => t.convert(sort)
 
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
@@ -139,6 +140,31 @@ package object utils {
 
     def simplifyVariableName(str: String) : String = {
       str.substring(0, str.lastIndexOf("@"))
+    }
+
+    def extractPTypeFromStmt(stmt: silver.ast.Stmt): PType = {
+      stmt.info.getUniqueInfo[SourcePNodeInfo] match {
+        case Some(info) =>
+          val sourceNode = info.sourcePNode
+          sourceNode match {
+            case decl: PUnnamedTypedDeclaration => decl.typ
+            case _ => PUnknown()()
+          }
+        case _ => PUnknown()()
+      }
+    }
+
+    def extractPTypeFromExp(exp: silver.ast.Exp): PType = {
+      exp.info.getUniqueInfo[SourcePNodeInfo] match {
+        case Some(info) =>
+          val sourceNode = info.sourcePNode
+          sourceNode match {
+            case e: PExp => e.typ
+            case d: PUnnamedTypedDeclaration => d.typ
+            case _ => PUnknown()()
+          }
+        case _ => PUnknown()()
+      }
     }
 
     def buildMinExp(exps: Seq[silver.ast.Exp], typ: silver.ast.Type): silver.ast.Exp = {

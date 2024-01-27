@@ -15,10 +15,12 @@ import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
+import viper.silicon.utils.ast.extractPTypeFromExp
+import viper.silver.parser.{PType, PUnknown}
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
-                                              fresh: (String, Sort) => Var,
+                                              fresh: (String, Sort, PType) => Var,
                                               resolutionFailureMessage: (ast.Positioned, FunctionData) => String,
                                               stopOnResolutionFailure: (ast.Positioned, FunctionData) => Boolean,
                                               reporter: Reporter)
@@ -121,7 +123,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         })()
 
-      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ))
+      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), extractPTypeFromExp(loc))
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
@@ -129,7 +131,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val silverFunc = program.findFunction(eFApp.funcname)
         val fun = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
-        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap)
+        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, PUnknown()())
         val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height
@@ -143,7 +145,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case _ => super.translate(symbolConverter.toSort)(e)
     }
 
-  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort): Term =
+  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, pType: PType): Term =
     map.get(key) match {
       case Some(s) =>
         s.convert(sort)
@@ -161,6 +163,6 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
          *       including the formal arguments of a function, if the unresolved expression is from
          *       a function body.
          */
-        fresh("$unresolved", sort)
+        fresh("$unresolved", sort, pType)
     }
 }

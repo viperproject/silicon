@@ -19,6 +19,7 @@ import viper.silicon.utils.ast.{BigAnd, buildMinExp, removeKnownToBeTrueExp, sim
 import viper.silicon.verifier.Verifier
 import viper.silicon.{MList, MMap}
 import viper.silver.ast
+import viper.silver.parser.PPrimitiv
 import viper.silver.verifier.VerificationError
 
 import scala.collection.mutable.ListBuffer
@@ -363,7 +364,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val eqCmps = ch.args.zip(args).map { case (t1, t2) => t1 === t2 }
         val eq = And(eqCmps)
         val eqExp = BigAnd(removeKnownToBeTrueExp(ch.argsExp.zip(argsExp).map{ case (t1, t2) => ast.EqCmp(t1, t2)(permsExp.pos, permsExp.info, permsExp.errT) }.toList, eqCmps.toList))
-        val permTaken = v.decider.fresh("p", sorts.Perm)
+        val permTaken = v.decider.fresh("p", sorts.Perm, PPrimitiv("Perm")())
         val permTakenExp = ast.LocalVar(simplifyVariableName(permTaken.id.name), ast.Perm)(permsExp.pos, permsExp.info, permsExp.errT)
 
         totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm))

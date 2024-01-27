@@ -20,6 +20,7 @@ import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.utils.ast.convertTermVarToExpVarDecl
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.parser.PUnknown
 
 import scala.annotation.unused
 
@@ -221,7 +222,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
          * we have to introduce a fresh snapshot. Note that it is not sound
          * to use t1 or t2 and constrain it.
          */
-        val t3 = v.decider.fresh(t1.sort)
+        val t3 = v.decider.fresh(t1.sort, PUnknown()())
         (fr.recordFreshSnapshot(t3), t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
     }
   }

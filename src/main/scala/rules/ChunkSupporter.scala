@@ -16,6 +16,7 @@ import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.utils.ast.buildMinExp
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
 import scala.reflect.ClassTag
@@ -93,7 +94,7 @@ object chunkSupporter extends ChunkSupportRules {
            * registered with the function recorder. However, since nothing was consumed,
            * returning the unit snapshot seems more appropriate.
            */
-          val fresh = v2.decider.fresh(sorts.Snap)
+          val fresh = v2.decider.fresh(sorts.Snap, PUnknown()())
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
           Q(s3, h2, fresh, v2)
       })
