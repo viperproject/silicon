@@ -1,18 +1,21 @@
 
-method test_if_else(b : Int)
+method test_if_else(b : Int, n2 : Int)
+    requires b >= n2
 {
-    var n : Int
-
+    var n: Int
     if(b >= 0){
+        var ifBranch: Int := 1
         if(b >= 10){
-            n := -5
+            var innermostIf: Int := 1
+            n := n2 + innermostIf + ifBranch
         }else{
-            n := b + 1
+            var innermostThen: Int := 1
+            n := n2 + innermostThen
         }
     }else{
-        n := -b - 1
+        var elseBranch: Int := 1
+        n := n2 - elseBranch
     }
 
-    n := n + 1
-    assert n < 0
+    assert n2 == n
 }

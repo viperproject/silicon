@@ -265,7 +265,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
            */
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
-              val exp = ast.FuncApp("permOf", Seq(ast.FieldAccess(chunk.singletonRcvrExp.get, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos)
+              val exp = ast.FuncApp("permOf", Seq(ast.FieldAccess(chunk.singletonRcvrExp.get, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos) // TODO ake: permof
               v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), DebugExp.createInstance(exp, s.substituteVarsInExp(exp)))
             } else {
               val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))

@@ -8,7 +8,7 @@ method test_old(n : Ref)
     assert n.val == old(n.val) + 4
 }
 
-/*
+
 method test_old2(n : Ref)
     requires acc(n.val, 1/2) && n.val >= 0
 {
@@ -20,4 +20,3 @@ method test_old2(n : Ref)
 
     assert old(i.val == n.val)
 }
-*/

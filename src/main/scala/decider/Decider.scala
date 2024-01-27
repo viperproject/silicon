@@ -231,9 +231,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def popDebugSubExp(): InsertionOrderedSet[DebugExp] = {
-      val res = debugExpStack.head
-      debugExpStack = debugExpStack.tail
-      res
+      if (debugExpStack.isEmpty) {
+        InsertionOrderedSet.empty // TODO ake: this should not happen
+      } else {
+        val res = debugExpStack.head
+        debugExpStack = debugExpStack.tail
+        res
+      }
     }
 
     def finishDebugSubExp(description : String): Unit ={

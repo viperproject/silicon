@@ -318,7 +318,7 @@ object evaluator extends EvaluationRules {
             createFailure(pve dueTo LabelledStateNotReached(old), v, s, None)
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)((s1, t0, e0new, v1) =>
-              Q(s1, Minus(0, t0), ast.LabelledOld(e0new, lbl)(old.pos, old.info, old.errT), v1))}
+              Q(s1, t0, ast.LabelledOld(e0new, lbl)(old.pos, old.info, old.errT), v1))}
 
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
@@ -863,6 +863,7 @@ object evaluator extends EvaluationRules {
 
         val predicate = s.program.findPredicate(predicateName)
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
+          v.decider.startDebugSubExp()
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
             eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
               v2.decider.assert(IsNonNegative(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
@@ -886,7 +887,6 @@ object evaluator extends EvaluationRules {
                       val s6 = s5.copy(functionRecorder = fr6,
                                        constrainableARPs = s1.constrainableARPs)
 
-                      v4.decider.startDebugSubExp()
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
                          * additional predicate-based trigger function applications because these are applied
                          * to the function arguments and the predicate snapshot
@@ -909,11 +909,13 @@ object evaluator extends EvaluationRules {
                                          permissionScalingFactorExp = s6.permissionScalingFactorExp)
                                    .decCycleCounter(predicate)
                         val s10 = v5.stateConsolidator.consolidateIfRetrying(s9, v5)
-                        v5.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
                         eval(s10, eIn, pve, v5)((s11, t, eInNew, v6) => QB(s11, t, eInNew, v6))})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, s.relevantQuantifiedVariables.map(convertTermVarToExpVarDecl(_).localVar), v2))((s12, t2, eNew, v7)
-                    => Q(s12, t2, eNew, v7))
+                    => {
+                    v7.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
+                    Q(s12, t2, eNew, v7)})
                 case false =>
+                  v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
                   createFailure(pve dueTo NegativePermission(ePermNew), v2, s2, Some(ast.PermGeCmp(ePermNew, ast.NoPerm()())(ePermNew.pos, ePermNew.info, ePermNew.errT)))}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables)

@@ -1,0 +1,10 @@
+
+method test_simple(n: Int)
+{
+    var n2 : Int
+    assume n >= 0
+
+    // n := n + n2
+
+    assert n < 0 // fails
+}

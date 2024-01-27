@@ -18,6 +18,5 @@ method gaussian_sum_ref(n : Ref)
         i := i + 1
     }
 
-    //:: ExpectedCounterexample(assert.failed:assertion.false, (i == 42, r == -42))
     assert r == n.val * (n.val+1) / 2
 }

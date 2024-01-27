@@ -297,8 +297,8 @@ class DefaultMainVerifier(config: Config,
      ++ methodVerificationResults)
 
     // TODO ake: if debugging enabled
-    val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
-    debugger.startDebugger()
+//    val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
+//    debugger.startDebugger()
 
     verificationResults
   }
