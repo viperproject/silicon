@@ -224,7 +224,7 @@ object evaluator extends EvaluationRules {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                 val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
                 val s2 = s1.copy(functionRecorder = fr1)
-                val s3 = if (!s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
+                val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
                 Q(s3, fvfLookup, newFa, v1)
               } else {
                 v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
@@ -238,7 +238,7 @@ object evaluator extends EvaluationRules {
                     else
                       s1.possibleTriggers
                     val s2 = s1.copy(functionRecorder = fr1, possibleTriggers = possTriggers)
-                    val s3 = if (!s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
+                    val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
                     Q(s3, fvfLookup, newFa, v1)}
               }
             case _ =>
@@ -272,7 +272,7 @@ object evaluator extends EvaluationRules {
                                        .recordFvfAndDomain(smDef1)
                   val s3 = s1.copy(functionRecorder = fr2/*,
                                    smCache = smCache1*/)
-                  val s4 = if (!s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
+                  val s4 = if (Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
                   Q(s4, smLookup, newFa, v1)}
               }})
 
@@ -286,7 +286,7 @@ object evaluator extends EvaluationRules {
             val debugOldLabel = getDebugOldLabel(fa)
             val newFa = if(s3.isEvalInOld) ast.FieldAccess(eArgs.head, fa.field)(e.pos, e.info, e.errT)
                         else ast.DebugLabelledOld(ast.FieldAccess(eArgs.head, fa.field)(), debugOldLabel)(e.pos, e.info, e.errT)
-            val s4 = if(!s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
+            val s4 = if(Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
             Q(s4, tSnap, newFa, v1)
           })
         })

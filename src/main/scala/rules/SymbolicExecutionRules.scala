@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import org.jgrapht.alg.util.Pair
-import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
+import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -67,9 +67,13 @@ trait SymbolicExecutionRules {
         })
     } else Seq()
 
-    val assumptions = v.decider.pcs.assumptionExps
+    if(Verifier.config.enableDebugging()){
+      val assumptions = v.decider.pcs.assumptionExps
+      res.failureContexts = Seq(SiliconDebuggingFailureContext(branchconditions, counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssertExp))
+    }else{
+      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
+    }
 
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssertExp))
     Failure(res, v.reportFurtherErrors())
 
   }

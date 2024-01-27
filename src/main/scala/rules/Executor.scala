@@ -360,7 +360,7 @@ object executor extends ExecutionRules {
                   case column: HasLineColumn => s"line@${column.line + 1}"
                   case _ => s"line@unknown"
                 }
-                val s5 = s4.copy(oldHeaps = s4.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s4)))
+                val s5 = if(Verifier.config.enableDebugging()) s4.copy(oldHeaps = s4.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s4))) else s4
                 Q(s5, v2)
               case (Incomplete(_, _), s3, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3, None)}}))
@@ -383,7 +383,7 @@ object executor extends ExecutionRules {
                   case column: HasLineColumn => s"line@${column.line + 1}"
                   case _ => s"line@unknown"
                 }
-                val s6 = s5.copy(oldHeaps = s5.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s5)))
+                val s6 = if(Verifier.config.enableDebugging()) s5.copy(oldHeaps = s5.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s5))) else s5
                 Q(s6, v4)
               })
             })

@@ -296,9 +296,10 @@ class DefaultMainVerifier(config: Config,
      ++ predicateVerificationResults
      ++ methodVerificationResults)
 
-    // TODO ake: if debugging enabled
-//    val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
-//    debugger.startDebugger()
+    if(Verifier.config.enableDebugging()){
+      val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
+      debugger.startDebugger()
+    }
 
     verificationResults
   }

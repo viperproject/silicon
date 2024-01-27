@@ -2,7 +2,7 @@ package debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider._
-import viper.silicon.interfaces.{Failure, SiliconFailureContext, Success, VerificationResult}
+import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, Success, VerificationResult}
 import viper.silicon.rules.evaluator
 import viper.silicon.state.terms.{False, Term}
 import viper.silicon.state.{IdentifierFactory, State}
@@ -90,8 +90,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   var counter: Int = 0
 
   def startDebugger(): Unit = {
+    if(!Verifier.config.enableDebugging()){
+      println("Debugging mode is disabled")
+      return
+    }
+
     if (failures.isEmpty) {
-      println("Nothing to debug. All assertions verified.")
+      println("No failures found. Debugging mode terminated.")
       return
     }
 
@@ -131,7 +136,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       println(s"\nVerification result $idx:")
       val currResult: Failure = failures(idx)
       println(s"$currResult")
-      val failureContexts = (currResult.message.failureContexts filter (_.isInstanceOf[SiliconFailureContext])) map (_.asInstanceOf[SiliconFailureContext])
+      val failureContexts = (currResult.message.failureContexts filter (_.isInstanceOf[SiliconDebuggingFailureContext])) map (_.asInstanceOf[SiliconDebuggingFailureContext])
 
       if (failureContexts.isEmpty) {
         println(s"Debugging results are not available. No failure context found.")

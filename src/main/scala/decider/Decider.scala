@@ -227,10 +227,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Assuming facts */
 
     def startDebugSubExp(): Unit = {
-      debugExpStack = InsertionOrderedSet[DebugExp]().empty +: debugExpStack
+      if (Verifier.config.enableDebugging()) {
+        debugExpStack = InsertionOrderedSet[DebugExp]().empty +: debugExpStack
+      }
     }
 
     private def popDebugSubExp(): InsertionOrderedSet[DebugExp] = {
+      if (!Verifier.config.enableDebugging()) return InsertionOrderedSet.empty
+
       if (debugExpStack.isEmpty) {
         InsertionOrderedSet.empty // TODO ake: this should not happen
       } else {
@@ -241,11 +245,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def finishDebugSubExp(description : String): Unit ={
+      if (!Verifier.config.enableDebugging()) return
+
       val debugExp = DebugExp.createInstance(description = description, children = popDebugSubExp())
       addDebugExp(debugExp)
     }
 
     private def addDebugExp(e: DebugExp): Unit = {
+      if (!Verifier.config.enableDebugging()) return
+
       if(e.getTerms.nonEmpty && e.getTerms.forall(t => PathConditions.isGlobal(t))){
         pathConditions.addGlobalDebugExp(e)
       }else{
@@ -283,15 +291,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms, e)
     }
 
-    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], e : DebugExp) = {
+    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], e: DebugExp) = {
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
 
       /* Add terms to Silicon-managed path conditions */
       terms foreach pathConditions.add
 
-      val debugExp = e.withTerms(terms)
-      addDebugExp(debugExp)
+      if(Verifier.config.enableDebugging()){
+        val debugExp = e.withTerms(terms)
+        addDebugExp(debugExp)
+      }
 
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume
@@ -368,26 +378,26 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def fresh(id: String, sort: Sort, pType: PType): Var = {
       val term = prover_fresh[Var](id, Nil, sort)
-      debugVariableTypes += (term.id.name -> pType)
+      if(Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType)
       term
     }
 
     def fresh(s: Sort, pType: PType): Var = {
       val term = prover_fresh[Var]("$t", Nil, s)
-      debugVariableTypes += (term.id.name -> pType)
+      if(Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType)
       term
     }
 
     def fresh(v: ast.AbstractLocalVar): Var = {
       val term = prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
-      debugVariableTypes += (term.id.name -> extractPTypeFromExp(v))
+      if(Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> extractPTypeFromExp(v))
       term
     }
 
     def freshARP(id: String = "$k"): (Var, Term) = {
       val permVar = prover_fresh[Var](id, Nil, sorts.Perm)
       val permVarConstraints = IsReadPermVar(permVar)
-      debugVariableTypes += (permVar.id.name -> PPrimitiv("Perm")())
+      if(Verifier.config.enableDebugging()) debugVariableTypes += (permVar.id.name -> PPrimitiv("Perm")())
       (permVar, permVarConstraints)
     }
 

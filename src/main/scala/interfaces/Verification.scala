@@ -106,14 +106,7 @@ case class Failure/*[ST <: Store[ST],
 
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
-                                 reasonUnknown: Option[String],
-                                 state: Option[State],
-                                 verifier: Option[Verifier],
-                                 proverDecls: Seq[String],
-                                 macroDecls: Vector[MacroDecl],
-                                 functionDecls: Set[FunctionDecl],
-                                 assumptions: InsertionOrderedSet[DebugExp],
-                                 failedAssertion: Option[ast.Exp]) extends FailureContext {
+                                 reasonUnknown: Option[String]) extends FailureContext {
   lazy val branchConditionString: String = {
     if(branchConditions.nonEmpty) {
       val branchConditionsString =
@@ -139,20 +132,47 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
     }
   }
 
-  lazy val stateString: String = {
-    if(state.isDefined){
-      s"\n\nStore:\n\t\t${state.get.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${state.get.h.values.mkString("\n\t\t")}"
-    }else{
+  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
+}
+
+case class SiliconDebuggingFailureContext(branchConditions: Seq[ast.Exp],
+                                 counterExample: Option[Counterexample],
+                                 reasonUnknown: Option[String],
+                                 state: Option[State],
+                                 verifier: Option[Verifier],
+                                 proverDecls: Seq[String],
+                                 macroDecls: Vector[MacroDecl],
+                                 functionDecls: Set[FunctionDecl],
+                                 assumptions: InsertionOrderedSet[DebugExp],
+                                 failedAssertion: Option[ast.Exp]) extends FailureContext {
+  lazy val branchConditionString: String = {
+    if (branchConditions.nonEmpty) {
+      val branchConditionsString =
+        branchConditions
+          .map(bc => s"$bc [ ${bc.pos} ] ")
+          .mkString("\t\t", " ~~> ", "")
+
+      s"\n\t\tunder branch conditions:\n$branchConditionsString"
+    } else {
       ""
     }
   }
 
-  lazy val nonInternalassumptionsString: String = {
-    if(assumptions.nonEmpty){
-      val nonInternalAssumptions = assumptions.filter(de => !de.isInternal)
-      val config = new DebugExpPrintConfiguration
-      config.isPrintInternalEnabled = false
-      s"\n\nassumptions:\n\t${nonInternalAssumptions.tail.foldLeft[String](nonInternalAssumptions.head.toString(config))((s, de) => de.toString(config) + "\n\t" + s)}"
+  lazy val counterExampleString: String = {
+    counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
+  }
+
+  lazy val reasonUnknownString: String = {
+    if (reasonUnknown.isDefined) {
+      s"\nPotential prover incompleteness: ${reasonUnknown.get}"
+    } else {
+      ""
+    }
+  }
+
+  lazy val stateString: String = {
+    if(state.isDefined){
+      s"\n\nStore:\n\t\t${state.get.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${state.get.h.values.mkString("\n\t\t")}"
     }else{
       ""
     }
