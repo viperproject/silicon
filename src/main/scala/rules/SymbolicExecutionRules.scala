@@ -6,11 +6,14 @@
 
 package viper.silicon.rules
 
+import viper.silicon.biabduction.AbductionQuestion
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.{FieldAccess, FieldAccessPredicate, FullPerm, PredicateAccess, PredicateAccessPredicate}
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
+import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
@@ -64,7 +67,18 @@ trait SymbolicExecutionRules {
           case _ => (-1, -1)
         })
     } else Seq()
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
+
+    val abductionQuestion = ve.reason match {
+      case reason: InsufficientPermission =>
+        val goal = reason.offendingNode match {
+          case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()
+          case n: PredicateAccess => PredicateAccessPredicate(n, FullPerm()())()
+        }
+        Some(AbductionQuestion(s, v, Seq(goal), Seq()))
+      case _ => None
+    }
+
+    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionQuestion))
     Failure(res, v.reportFurtherErrors())
 
   }

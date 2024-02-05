@@ -7,10 +7,11 @@ predicate list(x: Ref){
 method test(x: Ref)
 {
     var y: Ref
-    y := new()
+    y := new(*)
     y.next := x
     reverse(y)
 }
+
 
 method reverse(x: Ref)
 requires list(x)

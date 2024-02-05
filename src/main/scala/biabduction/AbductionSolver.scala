@@ -9,8 +9,8 @@ object AbductionSolver {
 
   private val rules = Seq(AccessPredicateRemove, Match, FoldBase, Fold, Unfold, AccessPredicateMissing)
 
-  def solve(s: State, v: Verifier, fail: VerificationResult, missing: Exp): VerificationResult = {
-    applyRule(AbductionQuestion(s, v, Seq(missing), Seq()), 0)(fail)
+  def solve(question: AbductionQuestion, fail: VerificationResult): VerificationResult = {
+    applyRule(question, 0)(fail)
   }
 
   /**

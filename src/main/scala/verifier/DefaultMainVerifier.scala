@@ -16,6 +16,7 @@ import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
+import viper.silicon.biabduction.AbductionSolver
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
@@ -42,21 +43,24 @@ import viper.silver.verifier.VerifierWarning
 
 trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
+
   def verificationPoolManager: VerificationPoolManager
+
   def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
 }
 
 class DefaultMainVerifier(config: Config,
                           override val reporter: Reporter,
                           override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
-    extends BaseVerifier(config, "00")
-       with MainVerifier
-       with DefaultFunctionVerificationUnitProvider
-       with DefaultPredicateVerificationUnitProvider {
+  extends BaseVerifier(config, "00")
+    with MainVerifier
+    with DefaultFunctionVerificationUnitProvider
+    with DefaultPredicateVerificationUnitProvider {
 
   Verifier.config = config
 
   private val uniqueIdCounter = new Counter(1)
+
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
 
   override def openSymbExLogger(member: Member): Unit = {
@@ -75,6 +79,7 @@ class DefaultMainVerifier(config: Config,
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
+
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
 
   private val statefulSubcomponents = List[StatefulComponent](
@@ -274,7 +279,7 @@ class DefaultMainVerifier(config: Config,
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
-          reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
+          reporter report VerificationResultMessage(s"silicon" /*, cfg*/ , elapsed, condenseToViperResult(results))
           logger debug s"Silicon finished verification of method `CFG` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
 
           results
@@ -282,6 +287,14 @@ class DefaultMainVerifier(config: Config,
       })
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
+
+    methodVerificationResults.map {
+      case res@Failure(error, _) => error.failureContexts.head match {
+        case SiliconFailureContext(_, _, _, Some(abductionQuestion)) =>
+          AbductionSolver.solve(abductionQuestion, res)
+      }
+      case _ =>
+    }
 
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(
@@ -291,9 +304,9 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
-    (   functionVerificationResults
-     ++ predicateVerificationResults
-     ++ methodVerificationResults)
+    (functionVerificationResults
+      ++ predicateVerificationResults
+      ++ methodVerificationResults)
   }
 
   private def createInitialState(member: ast.Member,
@@ -303,7 +316,7 @@ class DefaultMainVerifier(config: Config,
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
-    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
+    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map {
       case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
       case r => r
     }
@@ -325,17 +338,17 @@ class DefaultMainVerifier(config: Config,
     val moreJoins = Verifier.config.moreJoins() && member.isInstanceOf[ast.Method]
 
     State(program = program,
-          functionData = functionData,
-          predicateData = predicateData,
-          qpFields = quantifiedFields,
-          qpPredicates = quantifiedPredicates,
-          qpMagicWands = quantifiedMagicWands,
-          predicateSnapMap = predSnapGenerator.snapMap,
-          predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          currentMember = Some(member),
-          heapDependentTriggers = resourceTriggers,
-          moreCompleteExhale = mce,
-          moreJoins = moreJoins)
+      functionData = functionData,
+      predicateData = predicateData,
+      qpFields = quantifiedFields,
+      qpPredicates = quantifiedPredicates,
+      qpMagicWands = quantifiedMagicWands,
+      predicateSnapMap = predSnapGenerator.snapMap,
+      predicateFormalVarMap = predSnapGenerator.formalVarMap,
+      currentMember = Some(member),
+      heapDependentTriggers = resourceTriggers,
+      moreCompleteExhale = mce,
+      moreJoins = moreJoins)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -361,8 +374,8 @@ class DefaultMainVerifier(config: Config,
   }
 
   private def excludeMethod(method: ast.Method) = (
-       !method.name.matches(config.includeMethods())
-    || method.name.matches(config.excludeMethods()))
+    !method.name.matches(config.includeMethods())
+      || method.name.matches(config.excludeMethods()))
 
   /* Prover preamble: Static preamble */
 
@@ -373,7 +386,7 @@ class DefaultMainVerifier(config: Config,
     if (config.proverRandomizeSeeds) {
       sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
       val options = decider.prover.randomizeSeedsOptions
-        .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
+        .map(key => s"(set-option :$key ${Random.nextInt(10000)})")
 
       preambleReader.emitPreamble(options, sink, true)
     }
@@ -479,7 +492,7 @@ class DefaultMainVerifier(config: Config,
       emitSortWrappers(component.sortsAfterAnalysis, sink))
 
     val backendTypes = new mutable.LinkedHashSet[BackendType]
-    program.visit{
+    program.visit {
       case t: BackendType => backendTypes.add(t)
     }
     emitSortWrappers(backendTypes map symbolConverter.toSort, sink)
@@ -527,13 +540,13 @@ class DefaultMainVerifier(config: Config,
 
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$T$" -> s"$$T$i$$",
-                "$S$" -> sanitizedSortString,
-                s"$$T$i$$" -> sortString),
+              "$S$" -> sanitizedSortString,
+              s"$$T$i$$" -> sortString),
             sink)
         } else {
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$S$" -> sanitizedSortString,
-                "$T$" -> sortString),
+              "$T$" -> sortString),
             sink)
         }
 

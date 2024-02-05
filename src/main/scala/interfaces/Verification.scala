@@ -6,6 +6,7 @@
 
 package viper.silicon.interfaces
 
+import viper.silicon.biabduction.AbductionQuestion
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
 import viper.silicon.state.{State, Store}
@@ -103,7 +104,9 @@ case class Failure/*[ST <: Store[ST],
 
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
-                                 reasonUnknown: Option[String]) extends FailureContext {
+                                 reasonUnknown: Option[String],
+                                 abductionQuestion: Option[AbductionQuestion]) extends FailureContext {
+
   lazy val branchConditionString: String = {
     if(branchConditions.nonEmpty) {
       val branchConditionsString =
