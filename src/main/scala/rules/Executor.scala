@@ -6,10 +6,12 @@
 
 package viper.silicon.rules
 
+import viper.silicon.biabduction.SiliconAbductionQuestion
+
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
+import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
@@ -537,7 +539,11 @@ object executor extends ExecutionRules {
             case ce: SiliconCounterexample => ce.withStore(s1.g)
             case ce => ce
           })
-          val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
+          val abductionTrafo = AbductionQuestionTransformer({
+            case a: SiliconAbductionQuestion => a.withState(s1, v1)
+            case a => a
+          })
+          val pvePre = ErrorWrapperWithTransformers(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo, abductionTrafo)
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
           val preCondId = v1.symbExLog.openScope(preCondLog)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),

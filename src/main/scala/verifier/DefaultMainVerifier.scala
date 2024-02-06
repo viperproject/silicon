@@ -16,7 +16,7 @@ import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
-import viper.silicon.biabduction.AbductionSolver
+import viper.silicon.biabduction.{AbductionSolver, SiliconAbductionQuestion}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
@@ -290,7 +290,7 @@ class DefaultMainVerifier(config: Config,
 
     methodVerificationResults.map {
       case res@Failure(error, _) => error.failureContexts.head match {
-        case SiliconFailureContext(_, _, _, Some(abductionQuestion)) =>
+        case SiliconFailureContext(_, _, _, Some(abductionQuestion: SiliconAbductionQuestion)) =>
           AbductionSolver.solve(abductionQuestion, res)
       }
       case _ =>

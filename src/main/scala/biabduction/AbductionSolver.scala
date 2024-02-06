@@ -9,7 +9,7 @@ object AbductionSolver {
 
   private val rules = Seq(AccessPredicateRemove, Match, FoldBase, Fold, Unfold, AccessPredicateMissing)
 
-  def solve(question: AbductionQuestion, fail: VerificationResult): VerificationResult = {
+  def solve(question: SiliconAbductionQuestion, fail: VerificationResult): VerificationResult = {
     applyRule(question, 0)(fail)
   }
 
@@ -17,7 +17,7 @@ object AbductionSolver {
     * Recursively applies the abduction rules until we reach the end of the rules list. If the goal is empty, we were
     * successful.
     */
-  private def applyRule(q: AbductionQuestion, rule: Int)(Q: VerificationResult): VerificationResult = {
+  private def applyRule(q: SiliconAbductionQuestion, rule: Int)(Q: VerificationResult): VerificationResult = {
     rules(rule).checkAndApply(q, rule)((q1, r1) => {
       if (r1 == rules.length) {
         if (q.goal.isEmpty) {

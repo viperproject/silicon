@@ -6,13 +6,14 @@
 
 package viper.silicon.rules
 
+import viper.silicon.biabduction.SiliconAbductionQuestion
 import viper.silver.ast
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
-import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
+import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, PartialVerificationError, VerifierWarning}
+import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
-import viper.silicon.state.{terms, _}
+import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
@@ -743,9 +744,13 @@ object evaluator extends EvaluationRules {
               case ce: SiliconCounterexample => ce.withStore(s2.g)
               case ce => ce
             })
+            val abductionTrafo = AbductionQuestionTransformer({
+              case a: SiliconAbductionQuestion => a.withState(s2, v2)
+              case a => a
+            })
             val pvePre =
-              ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
-                reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
+              ErrorWrapperWithTransformers(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
+                reasonOffendingNode.replace(formalsToActuals)), exampleTrafo, abductionTrafo)
             val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
                              recordVisited = true,
                              functionRecorder = s2.functionRecorder.changeDepthBy(+1),

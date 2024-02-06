@@ -6,11 +6,11 @@
 
 package viper.silicon.interfaces
 
-import viper.silicon.biabduction.AbductionQuestion
+import viper.silicon.biabduction.SiliconAbductionQuestion
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
+import viper.silver.verifier.{AbductionQuestion, ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 import viper.silver.ast.Program

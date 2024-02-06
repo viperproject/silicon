@@ -6,23 +6,25 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.AbductionQuestion
+import viper.silicon.biabduction.SiliconAbductionQuestion
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.{FieldAccess, FieldAccessPredicate, FullPerm, PredicateAccess, PredicateAccessPredicate}
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
-import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
+import viper.silver.verifier.errors.ErrorWrapperWithTransformers
 import viper.silver.verifier.reasons.InsufficientPermission
-import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
+import viper.silver.verifier.{AbductionQuestionTransformer, Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
     if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
+    var aqTrafo: Option[AbductionQuestionTransformer] = None
     val res = ve match {
-      case ErrorWrapperWithExampleTransformer(wrapped, trafo) =>
-        ceTrafo = Some(trafo)
+      case ErrorWrapperWithTransformers(wrapped, ceTra, aqTra) =>
+        ceTrafo = Some(ceTra)
+        aqTrafo = Some(aqTra)
         wrapped
       case _ => ve
     }
@@ -74,7 +76,11 @@ trait SymbolicExecutionRules {
           case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()
           case n: PredicateAccess => PredicateAccessPredicate(n, FullPerm()())()
         }
-        Some(AbductionQuestion(s, v, Seq(goal), Seq()))
+        val q = SiliconAbductionQuestion(s, v, Seq(goal), Seq())
+        aqTrafo match {
+          case Some(trafo) => Some(trafo.f(q))
+          case _ => Some(q)
+        }
       case _ => None
     }
 
