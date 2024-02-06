@@ -227,7 +227,7 @@ object evaluator extends EvaluationRules {
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
-              val (_, smDef1, pmDef1) =
+              val (s2, smDef1, pmDef1) =
                 quantifiedChunkSupporter.heapSummarisingMaps(
                   s = s1,
                   resource = fa.field,
@@ -236,12 +236,12 @@ object evaluator extends EvaluationRules {
                   optSmDomainDefinitionCondition =  None,
                   optQVarsInstantiations = None,
                   v = v1)
-              if (s1.heapDependentTriggers.contains(fa.field)){
+              if (s2.heapDependentTriggers.contains(fa.field)){
                 val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
                 v1.decider.assume(trigger)
               }
               val permCheck =
-                if (s1.triggerExp) {
+                if (s2.triggerExp) {
                   True
                 } else {
                   val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
@@ -249,14 +249,13 @@ object evaluator extends EvaluationRules {
                 }
               v1.decider.assert(permCheck) {
                 case false =>
-                  createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
+                  createFailure(pve dueTo InsufficientPermission(fa), v1, s2)
                 case true =>
                   val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                   val fr2 =
-                    s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
+                    s2.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
                                        .recordFvfAndDomain(smDef1)
-                  val s3 = s1.copy(functionRecorder = fr2/*,
-                                   smCache = smCache1*/)
+                  val s3 = s2.copy(functionRecorder = fr2)
                   Q(s3, smLookup, v1)}
               }})
 
@@ -1620,7 +1619,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, fromShortCircuitingAnd = true) _ tupled swapIfAnd(
+            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(exps.head), v2, fromShortCircuitingAnd = true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>

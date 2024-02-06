@@ -15,6 +15,7 @@ class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryO
 }
 
 object Trigger extends (Seq[Term] => Trigger) {
+
   def apply(t: Term) = new Trigger(t :: Nil)
   def apply(ts: Seq[Term]) = new Trigger(ts)
 
