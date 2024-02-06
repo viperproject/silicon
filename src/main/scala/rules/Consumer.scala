@@ -341,7 +341,10 @@ object consumer extends ConsumptionRules {
             } else {
               s2
             }
-            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
+            val loss = if (s2.permLocations.contains(field))
+              PermTimes(tPerm, s2.permissionScalingFactor)
+            else
+              WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
               s2p,
               h,
@@ -377,7 +380,10 @@ object consumer extends ConsumptionRules {
               s2
             }
 
-            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
+            val loss = if (s2.permLocations.contains(loc.loc(s2.program)))
+              PermTimes(tPerm, s2.permissionScalingFactor)
+            else
+              WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
               s2p,
               h,
@@ -403,7 +409,10 @@ object consumer extends ConsumptionRules {
           evalLocationAccess(s1, locacc, pve, v1)((s2, _, tArgs, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
               val resource = locacc.res(s.program)
-              val loss = PermTimes(tPerm, s3.permissionScalingFactor)
+              val loss = if (s2.permLocations.contains(locacc.loc(s2.program)))
+                PermTimes(tPerm, s2.permissionScalingFactor)
+              else
+                WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val ve = pve dueTo InsufficientPermission(locacc)
               val description = s"consume ${a.pos}: $a"
               chunkSupporter.consume(s3, h, resource, tArgs, loss, ve, v3, description)((s4, h1, snap1, v4) => {
