@@ -17,7 +17,7 @@ class TryBlockParserPlugin(fp: FastParser) extends SilverPlugin with ParserPlugi
   def tryBlock[$: P]: P[PTryBlock] = P((P(PTryKeyword) ~ stmtBlock()) map (PTryBlock.apply _).tupled).pos
 
   override def beforeParse(input: String, isImported: Boolean): String = {
-    ParserExtension.addNewKeywords(Set(PTryKeyword.keyword))
+    ParserExtension.addNewKeywords(Set(PTryKeyword))
     ParserExtension.addNewStmtAtEnd(tryBlock(_))
 
     input

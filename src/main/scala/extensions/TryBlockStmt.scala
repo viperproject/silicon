@@ -8,17 +8,12 @@ package viper.silicon.extensions
 
 import viper.silver.ast._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.parser.{NameAnalyser, PExtender, PNode, PStmt, Translator, TypeChecker, PKw, PKeywordStmt, PReserved}
-import viper.silver.ast.utility.lsp.BuiltinFeature
+import viper.silver.parser.{NameAnalyser, PExtender, PStmt, Translator, TypeChecker, PKw, PKeywordStmt, PReserved}
 
 /** Keyword used to define `try` statement. */
-case object PTryKeyword extends PKw("try", TODOTryDoc) with PKeywordStmt
-case object TODOTryDoc extends BuiltinFeature(
-  """TODO""".stripMargin.replaceAll("\n", " ")
-)
+case object PTryKeyword extends PKw("try") with PKeywordStmt
 
 final case class PTryBlock(kw: PReserved[PTryKeyword.type], body: PStmt)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PExtender with PStmt {
-  override val getSubnodes: Seq[PNode] = Seq(body)
 
   override def translateStmt(translator: Translator): Stmt = {
     TryBlock(translator.stmt(body))(translator.liftPos(this))

@@ -13,7 +13,7 @@ import viper.silicon.interfaces.SiliconMappedCounterexample
 import viper.silicon.reporting.{ExtractedModel, ExtractedModelEntry, LitIntEntry, LitPermEntry, NullRefEntry, RecursiveRefEntry, RefEntry, SeqEntry}
 import viper.silicon.state.terms.Rational
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIntLit, PLookup, POperatorSymbol, PUnExp}
+import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIntLit, PLookup, PUnExp, PSymOp}
 import viper.silver.verifier.{FailureContext, VerificationError}
 
 import java.nio.file.Path
@@ -112,7 +112,7 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
   def meetsExpectations(model1: ExpectedCounterexample, model2: ExtractedModel): Boolean = {
     model1.exprs.forall {
       case accPred: PAccPred => containsAccessPredicate(accPred, model2)
-      case PBinExp(lhs, POperatorSymbol("=="), rhs) => containsEquality(lhs, rhs, model2)
+      case PBinExp(lhs, r, rhs) if r.rs == PSymOp.EqEq => containsEquality(lhs, rhs, model2)
     }
   }
 
@@ -130,13 +130,13 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
   /** resolves `expr` to a model entry in the given model. In case it's a field access, the corresponding permissions are returned as well */
   def resolve(expr: PExp, model: ExtractedModel): Option[(ExtractedModelEntry, Option[Rational])] = expr match {
     case PIntLit(value) => Some(LitIntEntry(value), None)
-    case PUnExp(POperatorSymbol("-"), PIntLit(value)) => Some(LitIntEntry(-value), None)
-    case PBinExp(PIntLit(n), POperatorSymbol("/"), PIntLit(d)) => Some(LitPermEntry(Rational(n, d)), None)
-    case PIdnUse(name) => model.entries.get(name).map((_, None))
-    case PFieldAccess(rcv, idnuse) => resolveWoPerm(rcv, model).flatMap {
+    case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some(LitIntEntry(-value), None)
+    case PBinExp(PIntLit(n), r, PIntLit(d)) if r.rs == PSymOp.Div => Some(LitPermEntry(Rational(n, d)), None)
+    case idnuse: PIdnUse => model.entries.get(idnuse.name).map((_, None))
+    case PFieldAccess(rcv, _, idnuse) => resolveWoPerm(rcv, model).flatMap {
       case RefEntry(_, fields) => fields.get(idnuse.name)
     }
-    case PLookup(base, idx) => resolveWoPerm(Vector(base, idx), model).flatMap {
+    case PLookup(base, _, idx, _) => resolveWoPerm(Vector(base, idx), model).flatMap {
       case Vector(SeqEntry(_, values), LitIntEntry(evaluatedIdx)) if values.size > evaluatedIdx => Some(values(evaluatedIdx.toInt), None)
     }
   }
@@ -184,7 +184,7 @@ class CounterexampleParser(fp: FastParser) {
 case class ExpectedCounterexample(exprs: Seq[PExp]) {
   assert(exprs.forall {
     case _: PAccPred => true
-    case PBinExp(_, POperatorSymbol("=="), _) => true
+    case PBinExp(_, r, _) if r.rs == PSymOp.EqEq => true
     case _ => false
   })
 }
