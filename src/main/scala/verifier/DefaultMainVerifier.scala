@@ -288,10 +288,10 @@ class DefaultMainVerifier(config: Config,
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
-    methodVerificationResults.map {
+    methodVerificationResults.foreach {
       case res@Failure(error, _) => error.failureContexts.head match {
-        case SiliconFailureContext(_, _, _, Some(abductionQuestion: SiliconAbductionQuestion)) =>
-          AbductionSolver.solve(abductionQuestion, res)
+        case SiliconFailureContext(_, _, _, Some(abductionResult: String)) =>
+          println(abductionResult)
       }
       case _ =>
     }

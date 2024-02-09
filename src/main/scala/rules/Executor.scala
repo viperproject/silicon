@@ -540,7 +540,7 @@ object executor extends ExecutionRules {
             case ce => ce
           })
           val abductionTrafo = AbductionQuestionTransformer({
-            case a: SiliconAbductionQuestion => a.withState(s1, v1)
+            case a: SiliconAbductionQuestion => a.copy(s = s1, v = v1)
             case a => a
           })
           val pvePre = ErrorWrapperWithTransformers(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo, abductionTrafo)

@@ -3,31 +3,104 @@ package viper.silicon.biabduction
 
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.NonQuantifiedChunk
+import viper.silicon.resources.FieldID
 import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.rules.evaluator.{eval, evalLocationAccess, evals}
 import viper.silicon.rules.producer.produce
 import viper.silicon.rules.{consumer, permissionSupporter, predicateSupporter}
-import viper.silicon.state.{ChunkIdentifier, State}
+import viper.silicon.state.terms.Term
+import viper.silicon.state._
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
-import viper.silver.verifier.{AbductionQuestion, PartialVerificationError}
 import viper.silver.verifier.errors.Internal
+import viper.silver.verifier.{AbductionQuestion, PartialVerificationError}
 
 
-case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], result: Seq[Exp]) extends AbductionQuestion {
+case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], foundPrecons: Seq[Exp] = Seq(), foundStmts: Seq[Stmt] = Seq()) extends AbductionQuestion {
 
-  def withState(newS: State, newV: Verifier): SiliconAbductionQuestion = {
-    SiliconAbductionQuestion(newS, newV, goal, result)
+  // TODO This should not live here, but in abstractions or abductions
+  // Also this is super inefficient
+  // Also there are cases where we have to transform not to inputs, but to other variables
+
+  // TODO the original work introduces logical vars representing the original input values. They attempt (I think) to transform
+  // to these vars. See the "Rename" algorithm in the original paper.
+  // At the end, they can be re-replaced by the input parameters. Do we have to do this?
+  def transformToInputs(e: Exp): Option[Exp] = {
+    val inputs: Map[Term, LocalVar] = s.currentMember match {
+      case Some(m: Method) => m.formalArgs.view.map(argDec => s.g.get(argDec.localVar).get -> argDec.localVar).toMap
+      case _ => Map()
+    }
+
+    // Find the Vars in the Store which point to the same symbolic value as each input
+    val aliases = inputs.keys.flatMap { t: Term => getVars(t, s.g).map(_ -> inputs(t)) }.toMap
+    //s.g.values.collect({ case (v: LocalVar, t: Term) if inputs.contains(t) && !inputs.values.toSeq.contains(v) => v -> inputs(t) })
+
+    // Find field chunks where the something points to an input var
+    val pointers = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID && inputs.contains(c.snap) =>
+      getVars(c.args.head, s.g).map(FieldAccess(_, getField(c.id))() -> inputs(c.snap))
+    }.flatten.toMap
+
+    //&& c.args.head.isInstanceOf[Var] => c.args.head -> inputs(c.snap)  }
+
+    e match {
+      case lc: LocalVar => aliases.get(lc)
+
+      case Not(e1) => transformToInputs(e1).map(Not(_)())
+
+      case And(e1, e2) =>
+        val tra1 = transformToInputs(e1)
+        val tra2 = transformToInputs(e2)
+        if (tra1.isEmpty || tra2.isEmpty) None else Some(And(tra1.get, tra2.get)())
+
+      case NeCmp(e1, e2) =>
+        val tra1 = transformToInputs(e1)
+        val tra2 = transformToInputs(e2)
+        if (tra1.isEmpty || tra2.isEmpty) None else Some(NeCmp(tra1.get, tra2.get)())
+
+
+      case EqCmp(e1, e2) =>
+        val tra1 = transformToInputs(e1)
+        val tra2 = transformToInputs(e2)
+        if (tra1.isEmpty || tra2.isEmpty) None else Some(EqCmp(tra1.get, tra2.get)())
+
+
+      case nl: NullLit => Some(nl)
+
+      case fa: FieldAccess =>
+        if(pointers.contains(fa)){
+          Some(pointers(fa))
+        } else {
+          transformToInputs(fa.rcv).map{rcv1: Exp => fa.copy(rcv = rcv1)(fa.pos, fa.info, fa.errT)}
+      }
+
+      case fap: FieldAccessPredicate => transformToInputs(fap.loc).collect{case e1: FieldAccess => fap.copy(loc = e1)(fap.pos, fap.info, fap.errT)}
+
+      case pa: PredicateAccess => val traArgs =pa.args.map(transformToInputs)
+        if(traArgs.contains(None)) None else Some(pa.copy(args = traArgs.map(_.get))(pa.pos, pa.info, pa.errT))
+
+      case pap: PredicateAccessPredicate => transformToInputs(pap.loc).collect{case e1: PredicateAccess => pap.copy(loc = e1)(pap.pos, pap.info, pap.errT) }
+
+
+    }
   }
 
-  def withGoal(newGoal: Seq[Exp]): SiliconAbductionQuestion = {
-    SiliconAbductionQuestion(s, v, newGoal, result)
+  /*
+  def convertTerm(t: Term): Exp = {
+    t match {
+      case v: Var => LocalVar(v.id.name)
+    }
+  }*/
+
+
+  private def getVars(t: Term, g: Store): Seq[AbstractLocalVar] = {
+    g.values.collect({ case (v, t1) if t1 == t => v }).toSeq
   }
 
-  def withResult(newResult: Seq[Exp]): SiliconAbductionQuestion = {
-    SiliconAbductionQuestion(s, v, goal, newResult)
+  private def getField(name: BasicChunkIdentifier) = {
+    s.program.fields.find(_.name == name.name).get
   }
+
 }
 
 /**
@@ -138,7 +211,7 @@ object AccessPredicateRemove extends AbductionRule[Seq[AccessPredicate]] {
       Q
     } else {
       f: Option[Seq[AccessPredicate]] =>
-        check(q.withGoal(accs.tail)) { fs =>
+        check(q.copy(goal = accs.tail)) { fs =>
           (f, fs) match {
             case (None, None) => Q(None)
             case (Some(f1), None) => Q(Some(f1))
@@ -161,7 +234,7 @@ object AccessPredicateRemove extends AbductionRule[Seq[AccessPredicate]] {
 
   override def apply(q: SiliconAbductionQuestion, inst: Seq[AccessPredicate])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     val g1 = q.goal.filterNot(inst.contains)
-    consumer.consumes(q.s, inst, _ => pve, q.v)((s1, _, v1) => Q(q.copy().withGoal(g1).withState(s1, v1)))
+    consumer.consumes(q.s, inst, _ => pve, q.v)((s1, _, v1) => Q(q.copy(s = s1, v = v1, goal = g1)))
   }
 }
 
@@ -182,7 +255,7 @@ object Match extends AbductionRule[FieldAccessPredicate] {
   * Covers the rule fold-base, which removes a predicate instance from the goal if its base case is met
   * Currently, the base case has to be a null Ref
   */
-object FoldBase extends AbductionRule[PredicateAccessPredicate] {
+object ListFoldBase extends AbductionRule[PredicateAccessPredicate] {
 
   private def baseCondition(p: PredicateAccessPredicate): Exp = {
     EqCmp(p.loc.args.head, NullLit()())()
@@ -196,18 +269,19 @@ object FoldBase extends AbductionRule[PredicateAccessPredicate] {
           case true =>
             checkPathCondition(q.s, q.v, baseCondition(a)) {
               case true => Q(Some(a))
-              case false => check(q.withGoal(as))(Q)
+              case false => check(q.copy(goal = as))(Q)
             }
-          case false => check(q.withGoal(as))(Q)
-      }
-      case _ => check(q.withGoal(q.goal.tail))(Q)
+          case false => check(q.copy(goal = as))(Q)
+        }
+      case _ => check(q.copy(goal = q.goal.tail))(Q)
     }
   }
 
   override protected def apply(q: SiliconAbductionQuestion, inst: PredicateAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     val g1 = q.goal.filterNot(_ == inst)
+    val fold = Fold(inst)()
     // TODO Do we have to remove the path condition? How do we do this? Havoc/exhale?
-    Q(q.copy().withGoal(g1))
+    Q(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold))
   }
 }
 
@@ -217,7 +291,7 @@ object FoldBase extends AbductionRule[PredicateAccessPredicate] {
 // this breaks is if this information somehow appears in the state later. This seem unlikely, so we should be fine.
 // It would be better to be sure however.
 
-object Fold extends AbductionRule[PredicateAccessPredicate] {
+object ListFold extends AbductionRule[PredicateAccessPredicate] {
 
   override protected def check(q: SiliconAbductionQuestion)(Q: Option[PredicateAccessPredicate] => VerificationResult): VerificationResult = {
     q.goal match {
@@ -226,9 +300,9 @@ object Fold extends AbductionRule[PredicateAccessPredicate] {
         val next = getNextAccess(q, a.loc.args.head, a.perm)
         checkChunk(next.loc, next.perm, q.s, q.v) {
           case true => Q(Some(a))
-          case false => check(q.withGoal(as))(Q)
+          case false => check(q.copy(goal = as))(Q)
         }
-      case _ => check(q.withGoal(q.goal.tail))(Q)
+      case _ => check(q.copy(goal = q.goal.tail))(Q)
     }
   }
 
@@ -236,10 +310,66 @@ object Fold extends AbductionRule[PredicateAccessPredicate] {
     val headNext = getNextAccess(q, inst.loc.args.head, inst.perm)
     val nextList = getPredicate(q, headNext.loc, inst.perm)
     val g1: Seq[Exp] = q.goal.filterNot(_ == inst) :+ nextList
-    consumer.consume(q.s, headNext, pve, q.v)((s1, _, v1) => Q(q.copy().withGoal(g1).withState(s1, v1)))
+    val fold = Fold(inst)()
+    consumer.consume(q.s, headNext, pve, q.v)((s1, _, v1) => Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ fold)))
   }
 
 }
+
+
+object ListUnfold extends AbductionRule[FieldAccessPredicate] {
+
+  override protected def check(q: SiliconAbductionQuestion)(Q: Option[FieldAccessPredicate] => VerificationResult): VerificationResult = {
+
+    q.goal match {
+      case Seq() => Q(None)
+      case (a: FieldAccessPredicate) :: as =>
+        val pred = getPredicate(q, a.loc.rcv, a.perm)
+        checkChunk(pred.loc, pred.perm, q.s, q.v) {
+          case true => Q(Some(a))
+          case false => check(q.copy(goal = as))(Q)
+        }
+      case _ => check(q.copy(goal = q.goal.tail))(Q)
+    }
+  }
+
+
+  override protected def apply(q: SiliconAbductionQuestion, inst: FieldAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
+
+    // Remove access from goal
+    val g1 = q.goal.filterNot(_ == inst)
+
+    // Add x != null to result
+    val nNl = NeCmp(inst.loc.rcv, NullLit()())()
+    val r1 = q.foundPrecons :+ nNl
+
+    val unfold = Unfold(getPredicate(q, inst.loc.rcv, inst.perm))()
+
+
+    // Exchange list(x) with list(x.next) in the state
+
+
+    // Unfold
+    unfoldPredicate(q, inst.loc.rcv, inst.perm) { (s1, v1) =>
+
+      // Add x != null to path condition TODO maybe do this first?
+      produce(s1, freshSnap, nNl, pve, v1)((s2, v2) => {
+        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+
+        // Remove the access chunk
+        consumer.consume(s2, inst, pve, v2)((s3, _, v3) => {
+          Q(q.copy(s = s1, v = v1, goal = g1, foundPrecons = r1, foundStmts = q.foundStmts :+ unfold))
+        })
+      })
+    }
+  }
+}
+
+
+// TODO this is hard: we have to match the right hand side of a magic wand chunk with an expression
+//object Apply extends AbductionRule
+
+// For Package, we can just produce the left hand side and add the right hand side. Should be no problem
 
 /**
   * Covers the rules pred-missing and acc-missing
@@ -258,53 +388,6 @@ object AccessPredicateMissing extends AbductionRule[Seq[AccessPredicate]] {
 
   override protected def apply(q: SiliconAbductionQuestion, inst: Seq[AccessPredicate])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     val g1 = q.goal.filterNot(inst.contains)
-    Q(q.copy().withGoal(g1).withResult(q.result ++ inst))
-  }
-}
-
-
-object Unfold extends AbductionRule[FieldAccessPredicate] {
-
-  override protected def check(q: SiliconAbductionQuestion)(Q: Option[FieldAccessPredicate] => VerificationResult): VerificationResult = {
-
-    q.goal match {
-      case Seq() => Q(None)
-      case (a: FieldAccessPredicate) :: as =>
-        val pred = getPredicate(q, a.loc.rcv, a.perm)
-        checkChunk(pred.loc, pred.perm, q.s, q.v) {
-          case true => Q(Some(a))
-          case false => check(q.withGoal(as))(Q)
-        }
-      case _ => check(q.withGoal(q.goal.tail))(Q)
-    }
-  }
-
-
-  override protected def apply(q: SiliconAbductionQuestion, inst: FieldAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-
-    // Remove access from goal
-    val g1 = q.goal.filterNot(_ == inst)
-
-    // Add x != null to result
-    val nNl = NeCmp(inst.loc.rcv, NullLit()())()
-    val r1 = q.result :+ nNl
-
-
-    // Exchange list(x) with list(x.next) in the state
-
-
-    // Unfold
-    unfoldPredicate(q, inst.loc.rcv, inst.perm) { (s1, v1) =>
-
-      // Add x != null to path condition TODO maybe do this first?
-      produce(s1, freshSnap, nNl, pve, v1)((s2, v2) => {
-        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-
-        // Remove the access chunk
-        consumer.consume(s2, inst, pve, v2)((s3, _, v3) => {
-          Q(q.copy().withGoal(g1).withResult(r1).withState(s3, v3))
-        })
-      })
-    }
+    Q(q.copy(goal = g1, foundPrecons = q.foundPrecons ++ inst))
   }
 }

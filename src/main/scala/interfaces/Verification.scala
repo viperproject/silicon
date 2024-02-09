@@ -105,7 +105,7 @@ case class Failure/*[ST <: Store[ST],
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
                                  reasonUnknown: Option[String],
-                                 abductionQuestion: Option[AbductionQuestion]) extends FailureContext {
+                                 abductionResult: Option[String]) extends FailureContext {
 
   lazy val branchConditionString: String = {
     if(branchConditions.nonEmpty) {

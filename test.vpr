@@ -4,15 +4,34 @@ predicate list(x: Ref){
     x != null ==> acc(x.next) && list(x.next)
 }
 
-method test(x: Ref)
+method test()
 {
+    var x: Ref
     var y: Ref
+    var z: Ref 
+
+    x := new(*)
     y := new(*)
-    y.next := x
-    reverse(y)
+    z := new(*)
+
+    z.next := null
+    y.next := z
+    x.next := y
+
+    
+    fold list(z.next)
+    fold list(z)
+    fold list(y)
+
+    package list(y) --* list(x) {
+        fold list(x)
+    }
+        
+    reverse(x)
 }
 
 
 method reverse(x: Ref)
 requires list(x)
 ensures list(x)
+

@@ -745,7 +745,7 @@ object evaluator extends EvaluationRules {
               case ce => ce
             })
             val abductionTrafo = AbductionQuestionTransformer({
-              case a: SiliconAbductionQuestion => a.withState(s2, v2)
+              case a: SiliconAbductionQuestion => a.copy(s = s2, v = v1)
               case a => a
             })
             val pvePre =
