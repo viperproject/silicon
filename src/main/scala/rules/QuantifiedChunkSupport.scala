@@ -440,7 +440,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           codomainQVar,
-          Implies(effectiveCondition, lookupSummary === lookupChunk),
+          Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
           isGlobal = true)
@@ -526,7 +526,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           qvar,
-          Implies(effectiveCondition, And(snapshotNotUnit, lookupSummary === lookupChunk)),
+          Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.psmValDef${v.counter(this).next()}",
           isGlobal = true)
@@ -644,7 +644,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val additionalSmArgs = s.relevantQuantifiedVariables(arguments)
     val sm = freshSnapshotMap(s, resource, additionalSmArgs, v)
-    val smValueDef = ResourceLookup(resource, sm, arguments, s.program) === value
+    val smValueDef = BuiltinEquals(ResourceLookup(resource, sm, arguments, s.program), value)
 
     (sm, smValueDef)
   }
@@ -967,7 +967,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
     v.decider.prover.comment("Definitional axioms for singleton-SM's value")
     val definitionalAxiomMark = v.decider.setPathConditionMark()
-    v.decider.assume(smValueDef)
+    v.decider.assumeDefinition(smValueDef)
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
@@ -1071,7 +1071,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
-          quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
         val loss = PermTimes(tPerm, s.permissionScalingFactor)
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
@@ -1124,8 +1124,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             if (s.exhaleExt) {
               magicWandSupporter.transfer[QuantifiedBasicChunk](
                                           s.copy(smCache = smCache1),
-                                          loss,
+                                          lossOfInvOfLoc,
                                           createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s),
+                                          formalQVars,
                                           v)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
@@ -1231,8 +1232,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case Some(heuristics) =>
         heuristics
       case None =>
-        quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(
-          quantifiedChunkSupporter.extractHints(None, arguments))
+        quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(arguments,
+          quantifiedChunkSupporter.extractHints(None, arguments), v)
     }
 
     if (s.exhaleExt) {
@@ -1241,7 +1242,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
         case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
       }
-      magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
+      magicWandSupporter.transfer(s, permissions, failure, Seq(), v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
         val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
@@ -1737,6 +1738,80 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       matchingChunks ++ otherChunks
     }
 
+  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier)
+                               : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
+    // Heuristics that looks for quantified chunks that have the same shape (as in, the same number and types of
+    // quantified variables) and identical receiver terms.
+    // E.g., if the QP we're looking to find or remove has a quantified variable i: Int and receiver term f(a, i), and
+    // an existing chunk with quantified variable x has receiver term f(g(), x), where a == g(), then that chunk
+    // would be selected first.
+    // If no such chunk exists, the standard hint based heuristics are used.
+    val fallback = hintBasedChunkOrderHeuristic(hints)
+    (chunks: Seq[QuantifiedBasicChunk]) => {
+      val (matches, others) = chunks.partition(c => {
+        // We extract the receiver terms, i.e., the invertibles
+        val chunkInfo = c match {
+          case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
+            Some(qfc.invs.get.invertibles, qfc.invs.get.qvarsToInverses.keys.toSeq)
+          case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
+            Some(qpc.invs.get.invertibles, qpc.invs.get.qvarsToInverses.keys.toSeq)
+          case qwc: QuantifiedMagicWandChunk if qwc.invs.isDefined =>
+            Some(qwc.invs.get.invertibles, qwc.invs.get.qvarsToInverses.keys.toSeq)
+          case _ => None
+        }
+        chunkInfo match {
+          case Some((cInvertibles, cQvars)) =>
+            receiverTerms.zip(cInvertibles).forall(p => {
+              if (cQvars.length == quantVars.length && cQvars.zip(quantVars).forall(vars => vars._1.sort == vars._2.sort)) {
+                val secondReplaced = p._2.replace(cQvars, quantVars)
+                v.decider.check(SimplifyingForall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout())
+              } else {
+                false
+              }
+            })
+          case _ => false
+        }
+      })
+      if (matches.nonEmpty) {
+        matches ++ fallback(others)
+      } else {
+        fallback(chunks)
+      }
+    }
+  }
+
+  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier)
+                                       : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
+    // Heuristic that emulates greedy Silicon behavior for consuming single-receiver permissions.
+    // First:  Find singleton chunks that have the same receiver syntactically.
+    //         If so, consider those first, then all others.
+    // Second: If nothing matches syntactically, try to find a chunk that matches the receiver using the decider.
+    //         If that's the case, consider that chunk first, then all others.
+    // Third:  As a fallback, use the standard hint based heuristics.
+    val fallback = hintBasedChunkOrderHeuristic(hints)
+
+    (chunks: Seq[QuantifiedBasicChunk]) => {
+      val (syntacticMatches, others) = chunks.partition(c => c.singletonArguments.contains(receiver))
+      if (syntacticMatches.nonEmpty) {
+        syntacticMatches ++ others
+      } else {
+        val greedyMatch = chunks.find(c => c.singletonArguments match {
+          case Some(args) if args.length == receiver.length =>
+            args.zip(receiver).forall(ts => v.decider.check(ts._1 === ts._2, Verifier.config.checkTimeout()))
+          case _ =>
+            false
+        }).toSeq
+        if (greedyMatch.nonEmpty) {
+          greedyMatch ++ chunks.diff(greedyMatch)
+        } else {
+          // It doesn't seem to be any of the singletons. Use the fallback on the non-singletons.
+          val (qpChunks, singletons) = chunks.partition(_.singletonArguments.isEmpty)
+          fallback(qpChunks) ++ singletons
+        }
+      }
+    }
+  }
+
   def extractHints(cond: Option[Term], arguments: Seq[Term]): Seq[Term] = {
     var hints =
       arguments.flatMap {
@@ -1752,6 +1827,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       // TODO: Take all seq/set/fun inside cond, not only those on the top level
       cond.flatMap(_.find {
         case SeqIn(seq, _) => seq
+        case SeqInTrigger(seq, _) => seq
         case SetIn(_, set) => set
         // TODO: Add a case for function applications
       }).toSeq

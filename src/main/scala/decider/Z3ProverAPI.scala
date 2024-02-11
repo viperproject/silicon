@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.state.IdentifierFactory
-import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Not, Quantification, Sort, SortDecl, SortWrapperDecl, Term, TriggerGenerator, sorts}
+import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Not, Quantification, Sort, SortDecl, SortWrapperDecl, Term, TriggerGenerator, Var, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
@@ -20,7 +20,7 @@ import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
-import viper.silicon.reporting.ExternalToolError
+import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
@@ -135,6 +135,9 @@ class Z3ProverAPI(uniqueId: String,
       case (k, v) =>
         params.add(removeSmtPrefix(k), v)
     }
+    if (Verifier.config.disableNL.getOrElse(false)) {
+      params.add("arith.nl", false)
+    }
     val userProvidedArgs = Verifier.config.proverConfigArgs
     prover = ctx.mkSolver()
     val descrs = prover.getParameterDescriptions
@@ -236,6 +239,10 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
+  override def setOption(name: String, value: String): String = {
+    throw new ProverInteractionFailed(uniqueId, "Dynamically setting prover options via Z3 API is currently not supported.")
+  }
+
   def assume(term: Term): Unit = {
     try {
       if (preamblePhaseOver)
@@ -258,11 +265,12 @@ class Z3ProverAPI(uniqueId: String,
     triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
     val cleanTerm = term.transform {
       case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
-        val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect {
+        val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn =>
+          ptrn.isInstanceOf[Var] || ptrn.shallowCollect {
           case t => triggerGenerator.isForbiddenInTrigger(t)
         }.nonEmpty))
         q.copy(triggers = goodTriggers)
-    }()
+    }(_ => true)
     cleanTerm
   }
 

@@ -22,6 +22,7 @@ trait ProverLike {
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
+  def setOption(name: String, value: String): String
   def assume(term: Term): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit

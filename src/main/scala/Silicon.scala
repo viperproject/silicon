@@ -14,7 +14,7 @@ import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silver.ast
-import viper.silver.frontend.{DefaultStates, SilFrontend}
+import viper.silver.frontend.{DefaultStates, MinimalViperFrontendAPI, SilFrontend, ViperFrontendAPI}
 import viper.silver.reporter._
 import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
@@ -24,6 +24,7 @@ import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
+import viper.silver.utility.{FileProgramSubmitter}
 
 import scala.util.chaining._
 
@@ -377,6 +378,23 @@ class SiliconFrontend(override val reporter: Reporter,
   }
 }
 
+/**
+  * Silicon "frontend" for use by actual Viper frontends.
+  * Performs consistency check and verification.
+  * See [[viper.silver.frontend.ViperFrontendAPI]] for usage information.
+  */
+class SiliconFrontendAPI(override val reporter: Reporter)
+  extends SiliconFrontend(reporter) with ViperFrontendAPI
+
+/**
+  * Silicon "frontend" for use by actual Viper frontends.
+  * Performs only verification (no consistency check).
+  * See [[viper.silver.frontend.ViperFrontendAPI]] for usage information.
+  */
+class MinimalSiliconFrontendAPI(override val reporter: Reporter)
+  extends SiliconFrontend(reporter) with MinimalViperFrontendAPI
+
+
 object SiliconRunner extends SiliconRunnerInstance {
   def main(args: Array[String]): Unit = {
     runMain(args)
@@ -386,6 +404,9 @@ object SiliconRunner extends SiliconRunnerInstance {
 class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
   def runMain(args: Array[String]): Unit = {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
+
+    val submitter = new FileProgramSubmitter(this)
+    submitter.setArgs(args)
 
     try {
       execute(ArraySeq.unsafeWrapArray(args))
@@ -435,6 +456,7 @@ class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
          *       the process to kill has no input/output data left in the
          *       corresponding streams.
          */
+      submitter.submit()
     }
 
     sys.exit(exitCode)

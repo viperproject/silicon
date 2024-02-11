@@ -172,10 +172,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
+          emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
           if (function.body.isEmpty) {
-            emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -186,7 +186,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
                 emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
-                emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
+                emitAndRecordFunctionAxioms(data.bodyPreconditionPropagationAxiom: _*)
             }
 
             result1 && result2
@@ -249,7 +249,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
             decider.assume(pcsPre)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {
-              decider.assume(data.formalResult === tBody)
+              decider.assume(BuiltinEquals(data.formalResult, tBody))
               consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}

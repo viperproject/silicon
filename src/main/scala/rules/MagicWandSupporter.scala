@@ -129,12 +129,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                hs: Stack[Heap],
                                pLoss: Term,
                                failure: Failure,
+                               qvars: Seq[Var],
                                v: Verifier)
                               (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
                               (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
-    val initialConsumptionResult = ConsumptionResult(pLoss, v, Verifier.config.checkTimeout())
+    val initialConsumptionResult = ConsumptionResult(pLoss, qvars, v, Verifier.config.checkTimeout())
       /* TODO: Introduce a dedicated timeout for the permission check performed by ConsumptionResult,
        *       instead of using checkTimeout. Reason: checkTimeout is intended for checks that are
        *       optimisations, e.g. detecting if a chunk provided no permissions or if a branch is
@@ -261,27 +262,18 @@ object magicWandSupporter extends SymbolicExecutionRules {
         var conservedPcs: Vector[RecordedPathConditions] = Vector.empty
         var conservedPcsStack: Stack[Vector[RecordedPathConditions]] = s5.conservedPcs
 
-        // Do not record further path conditions if the current state is inconsistent.
-        // This is an ad-hoc workaround to mitigate the following problem: producing a wand's LHS
-        // and executing the packaging proof code can introduce definitional path conditions, e.g.
+        // Producing a wand's LHS and executing the packaging proof code can introduce definitional path conditions, e.g.
         // new permission and snapshot maps, which are in general necessary to proceed after the
         // package statement, e.g. to know which permissions have been consumed.
-        // Since the current implementation doesn't properly differentiate between definitional
-        // and arbitrary path conditions, all path conditions are recorded — which is unsound.
-        // To somewhat improve the situation, such that "non-malevolent" usage of wands works
-        // as expected, we simply check if the current state is known to be inconsistent, and if
-        // it is, we don't record (any further) path conditions.
-        // TODO: Fix this. Might require a substantial redesign of Silicon's path conditions, though.
+        // Here, we want to keep *only* the definitions, but no other path conditions.
 
-        if (!v4.decider.checkSmoke()) {
-          conservedPcs = s5.conservedPcs.head :+ pcs
+        conservedPcs = s5.conservedPcs.head :+ pcs.definitionsOnly
 
-          conservedPcsStack =
-            s5.conservedPcs.tail match {
-              case empty @ Seq() => empty
-              case head +: tail => (head ++ conservedPcs) +: tail
-            }
-        }
+        conservedPcsStack =
+          s5.conservedPcs.tail match {
+            case empty @ Seq() => empty
+            case head +: tail => (head ++ conservedPcs) +: tail
+          }
 
         val s6 = s5.copy(conservedPcs = conservedPcsStack, recordPcs = s.recordPcs)
 
@@ -296,7 +288,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
           v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          v4.decider.assume(smValueDef)
+          v4.decider.assumeDefinition(smValueDef)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
           Success()
@@ -406,6 +398,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               (s: State,
                perms: Term,
                failure: Failure,
+               qvars: Seq[Var],
                v: Verifier)
               (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
               (Q: (State, Option[CH], Verifier) => VerificationResult)
@@ -423,7 +416,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
      */
     val preMark = v.decider.setPathConditionMark()
     executionFlowController.tryOrFail2[Stack[Heap], Stack[Option[CH]]](s, v)((s1, v1, QS) =>
-      magicWandSupporter.consumeFromMultipleHeaps(s1, s1.reserveHeaps.tail, perms, failure, v1)(consumeFunction)(QS)
+      magicWandSupporter.consumeFromMultipleHeaps(s1, s1.reserveHeaps.tail, perms, failure, qvars, v1)(consumeFunction)(QS)
     )((s2, hs2, chs2, v2) => {
       val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark)
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)

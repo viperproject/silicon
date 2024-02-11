@@ -230,6 +230,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableNL: ScallopOption[Boolean] = opt[Boolean]("disableNL",
+    descr = "Disable non-linear integer arithmetic when using Z3",
+    default = Some(false),
+    noshort = true
+  )
+
   private val rawProverSaturationTimeout = opt[Int]("proverSaturationTimeout",
     descr = (  "Timeout (in ms) used for the prover's state saturation calls (default: 100). "
              + "A timeout of 0 disables all saturation checks."
@@ -656,6 +662,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val moreJoins: ScallopOption[Boolean] = opt[Boolean]("moreJoins",
+    descr = "Enable more joins using a more complete implementation of state merging.",
+    default = Some(false),
+    noshort = true
+  )
+
   val exhaleModeOption: ScallopOption[ExhaleMode] = opt[ExhaleMode]("exhaleMode",
     descr = "Exhale mode. Options are 0 (greedy, default), 1 (more complete exhale), 2 (more complete exhale on demand).",
     default = None,
@@ -684,8 +696,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )(singleArgConverter(mode => StateConsolidationMode(mode.toInt)))
 
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
-    descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
-             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()})"),
+    descr = ( "Number of verifiers (and therefore also prover instances) run in parallel for method verification." +
+              "A value of 1 leads to sequential method verification. " +
+              "Functions and predicates are always verified sequentially on a separate prover instance. " +
+             s"Default: ${Runtime.getRuntime.availableProcessors()}"),
     default = Some(Runtime.getRuntime.availableProcessors()),
     noshort = true
   )
@@ -751,6 +765,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val useOldAxiomatization: ScallopOption[Boolean] = opt[Boolean]("useOldAxiomatization",
+    descr = s"Use Silicon's old axiomatization for sequences, sets, and multisets, " +
+            s"instead of the newer one shared with Carbon.",
+    default = Some(false),
+    noshort = true
+  )
+
   val disableHavocHack407: ScallopOption[Boolean] = opt[Boolean]("disableHavocHack407",
     descr = "A Viper method call to " +
             viper.silicon.rules.executor.hack407_havoc_all_resources_method_name("R") +
@@ -805,15 +826,25 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateOpt(disableNL, prover) {
+    case (Some(true), n) if (n != Some(Z3ProverStdIO.name) && n != Some(Z3ProverAPI.name)) =>
+        Left(s"Option ${disableNL.name} is only supported with Z3")
+    case _ => Right(())
+  }
+
   validateOpt(counterexample, moreCompleteExhale, exhaleModeOption) {
     case (Some(_), Some(false), None) |
-         (Some(_), Some(_), Some(ExhaleMode.Greedy)) |
-         (Some(_), Some(_), Some(ExhaleMode.MoreCompleteOnDemand)) =>
+         (Some(_), Some(_), Some(ExhaleMode.Greedy)) =>
       Left(s"Option ${counterexample.name} requires setting "
         + s"${exhaleModeOption.name} to 1 (more complete exhale)")
     case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
       Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
     case _ => Right(())
+  }
+
+  validateOpt(numberOfParallelVerifiers) {
+    case Some(n) if n <= 0 => Left(s"Number of parallel verifiers must be positive, but $n was provided")
+    case _ => Right()
   }
 
   validateFileOpt(logConfig)

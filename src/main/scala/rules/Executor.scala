@@ -22,7 +22,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.cfg.ConditionalEdge
+import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -45,33 +45,41 @@ object executor extends ExecutionRules {
   import evaluator._
   import producer._
 
-  private def follow(s: State, edge: SilverEdge, v: Verifier)
+  private def follow(s: State, edge: SilverEdge, v: Verifier, joinPoint: Option[SilverBlock])
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
-    edge match {
-      case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
-        val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
-        val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-        val s1 = handleOutEdge(s, edge, v)
-        eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
-          /* Using branch(...) here ensures that the edge condition is recorded
-           * as a branch condition on the pathcondition stack.
-           */
-          brancher.branch(s2, tCond, Some(ce.condition), v1)(
-            (s3, v3) =>
-              exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
-                v4.symbExLog.closeScope(sepIdentifier)
-                Q(s4, v4)
-              }),
-            (_, v3)  => {
-              v3.symbExLog.closeScope(sepIdentifier)
-              Success()
-            }))
 
-      case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
+    joinPoint match {
+      case Some(jp) if jp == edge.target =>
+        // Join point reached, stop following edges.
         val s1 = handleOutEdge(s, edge, v)
-        exec(s1, ue.target, ue.kind, v)(Q)
+        Q(s1, v)
+
+      case _ => edge match {
+        case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
+          val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
+          val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
+          val s1 = handleOutEdge(s, edge, v)
+          eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
+            /* Using branch(...) here ensures that the edge condition is recorded
+             * as a branch condition on the pathcondition stack.
+             */
+            brancher.branch(s2.copy(parallelizeBranches = false), tCond, Some(ce.condition), v1)(
+              (s3, v3) =>
+                exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
+                  v4.symbExLog.closeScope(sepIdentifier)
+                  Q(s4, v4)
+                }),
+              (_, v3) => {
+                v3.symbExLog.closeScope(sepIdentifier)
+                Success()
+              }))
+
+        case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
+          val s1 = handleOutEdge(s, edge, v)
+          exec(s1, ue.target, ue.kind, v, joinPoint)(Q)
+      }
     }
   }
 
@@ -91,51 +99,95 @@ object executor extends ExecutionRules {
   private def follows(s: State,
                       edges: Seq[SilverEdge],
                       @unused pvef: ast.Exp => PartialVerificationError,
-                      v: Verifier)
+                      v: Verifier,
+                      joinPoint: Option[SilverBlock])
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
 
-    if (edges.isEmpty) {
-      Q(s, v)
-    } else if (edges.length == 1) {
-      follow(s, edges.head, v)(Q)
-    } else {
-      edges match {
-        case Seq(thenEdge@ConditionalEdge(cond1, _, _, _), elseEdge@ConditionalEdge(cond2, _, _, _))
-            if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)()  =>
-          val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
-          val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-          val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
-            brancher.branch(s2, tCond, Some(thenEdge.condition), v1)(
-              (s3, v3) => {
-                val s3p = handleOutEdge(s3, thenEdge, v3)
-                exec(s3p, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
-                  v4.symbExLog.closeScope(sepIdentifier)
-                  val branchRes = Q(s4, v4)
-                  branchRes
-                })
-              },
-              (s3, v3) => {
-                val s3p = handleOutEdge(s3, elseEdge, v3)
-                exec(s3p, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
-                  v4.symbExLog.closeScope(sepIdentifier)
-                  Q(s4, v4)
-                })
-              }))
-          res
-        case _ =>
-          val uidBranchPoint = v.symbExLog.insertBranchPoint(edges.length)
-          val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
-            case (result: VerificationResult, (edge, edgeIndex)) =>
-              if (edgeIndex != 0) {
-                v.symbExLog.switchToNextBranch(uidBranchPoint)
-              }
-              v.symbExLog.markReachable(uidBranchPoint)
-              result combine follow(s, edge, v)(Q)
+    // Find join point if it exists.
+    val jp: Option[SilverBlock] = edges.headOption.flatMap(edge => s.methodCfg.joinPoints.get(edge.source))
+
+    (edges, jp) match {
+      case (Seq(), _) => Q(s, v)
+      case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
+      case (Seq(edge1, edge2), Some(newJoinPoint)) if
+          s.moreJoins &&
+          // Can't directly match type because of type erasure ...
+          edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+          edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+          // We only join branches that originate from if statements
+          // this is the case if the source is a statement block,
+          // as opposed to a loop head block.
+          edge1.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] &&
+          edge2.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] =>
+
+        assert(edge1.source == edge2.source)
+
+        val cedge1 = edge1.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
+        val cedge2 = edge2.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
+
+        // Here we assume that edge1.condition is the negation of edge2.condition.
+        assert((cedge1.condition, cedge2.condition) match {
+          case (exp1, ast.Not(exp2)) => exp1 == exp2
+          case (ast.Not(exp1), exp2) => exp1 == exp2
+          case _ => false
+        })
+
+        eval(s, cedge1.condition, pvef(cedge1.condition), v)((s1, t0, v1) =>
+          // The type arguments here are Null because there is no need to pass any join data.
+          joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
+            brancher.branch(s2, t0, Some(cedge1.condition), v2)(
+              // Follow only until join point.
+              (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
+              (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
+            )
+          })(entries => {
+            val s2 = entries match {
+              case Seq(entry) => // One branch is dead
+                entry.s
+              case Seq(entry1, entry2) => // Both branches are alive
+                entry1.pathConditionAwareMerge(entry2, v1)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")
+            }
+            (s2, null)
+          })((s4, _, v4) => {
+            if (joinPoint.contains(newJoinPoint)) {
+              Q(s4, v4)
+            } else {
+              // Continue after merging at join point.
+              exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint)(Q)
+            }
+          })
+        )
+
+      case (Seq(thenEdge@ConditionalEdge(cond1, _, _, _), elseEdge@ConditionalEdge(cond2, _, _, _)), _)
+        if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)() =>
+        val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
+        val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
+        val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
+          brancher.branch(s2, tCond, Some(thenEdge.condition), v1)(
+            (s3, v3) => {
+              follow(s3, thenEdge, v3, joinPoint)(Q)
+            },
+            (s3, v3) => {
+              follow(s3, elseEdge, v3, joinPoint)(Q)
+            }))
+        res
+
+      case _ =>
+        val uidBranchPoint = v.symbExLog.insertBranchPoint(edges.length)
+        val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
+          case (result: VerificationResult, (edge, edgeIndex)) => {
+            if (edgeIndex != 0) {
+              v.symbExLog.switchToNextBranch(uidBranchPoint)
+            }
+            v.symbExLog.markReachable(uidBranchPoint)
+            result combine follow(s, edge, v, joinPoint)(Q)
           }
-          v.symbExLog.endBranchPoint(uidBranchPoint)
-          res
-      }
+        }
+        v.symbExLog.endBranchPoint(uidBranchPoint)
+        res
     }
   }
 
@@ -143,17 +195,17 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    exec(s, graph.entry, cfg.Kind.Normal, v)(Q)
+    exec(s, graph.entry, cfg.Kind.Normal, v, None)(Q)
   }
 
-  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier)
+  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock])
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
     block match {
       case cfg.StatementBlock(stmt) =>
         execs(s, stmt, v)((s1, v1) =>
-          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1)(Q))
+          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint)(Q))
 
       case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
            | _: cfg.PostconditionBlock[ast.Stmt, ast.Exp] =>
@@ -201,31 +253,37 @@ object executor extends ExecutionRules {
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
                                               v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */)
-                  v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
-                  edgeConditions.foldLeft(Success(): VerificationResult) {
-                    case (fatalResult: FatalResult, _) => fatalResult
-                    case (intermediateResult, eCond) =>
-                      intermediateResult && executionFlowController.locally(s1, v1)((s2, v2) => {
-                        eval(s2, eCond, WhileFailed(eCond), v2)((_, _, _) =>
-                          Success())})}})})
-            && executionFlowController.locally(s, v)((s0, v0) => {
+                  Success()
+                })})
+            combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
                 consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
-                    case (fatalResult: FatalResult, _) => fatalResult
+                    case (result, _) if !result.continueVerification => result
                     case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
-                      intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
-                        v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
+                      intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
+                        v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions, true) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
+                            val edgeCondWelldefinedness = {
+                              v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
+                              edgeConditions.foldLeft(Success(): VerificationResult) {
+                                case (result, _) if !result.continueVerification => result
+                                case (intermediateResult, eCond) =>
+                                  intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
+                                    eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _) =>
+                                      Success())
+                                  })
+                              }
+                            }
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
+                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -313,7 +371,7 @@ object executor extends ExecutionRules {
             val (relevantChunks, otherChunks) =
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v2)
             val s2p = if (s2.heapDependentTriggers.contains(field)){
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -339,7 +397,7 @@ object executor extends ExecutionRules {
                 val h3 = Heap(remainingChunks ++ otherChunks)
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-                v1.decider.assume(smValueDef)
+                v1.decider.assumeDefinition(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
                 if (s3.heapDependentTriggers.contains(field))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
@@ -374,7 +432,7 @@ object executor extends ExecutionRules {
           if (s.qpFields.contains(field)) {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-            v.decider.assume(smValueDef)
+            v.decider.assumeDefinition(smValueDef)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm, s.program)
           } else {
             BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
@@ -507,7 +565,7 @@ object executor extends ExecutionRules {
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
-            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predicate, tArgs, tPerm, wildcards, pve, v3)(Q)})))
 
@@ -529,7 +587,7 @@ object executor extends ExecutionRules {
               s2.smCache
             }
 
-            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v3, pa)(Q)
             })
@@ -627,7 +685,7 @@ object executor extends ExecutionRules {
           *   reported by Silicon issue #328.
           */
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
-         v.decider.assume(t === rhs)
+         v.decider.assumeDefinition(BuiltinEquals(t, rhs))
 
          t
      }

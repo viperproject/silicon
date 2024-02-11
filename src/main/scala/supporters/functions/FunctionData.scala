@@ -73,7 +73,7 @@ class FunctionData(val programFunction: ast.Function,
 
   val limitedAxiom =
     Forall(arguments,
-           limitedFunctionApplication === functionApplication,
+           BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication))
 
   val triggerAxiom =
@@ -258,25 +258,34 @@ class FunctionData(val programFunction: ast.Function,
     optBody.map(translatedBody => {
       val pre = preconditionFunctionApplication
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
-      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
+      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(BuiltinEquals(functionApplication, translatedBody)))))
+      val funcAnn = programFunction.info.getUniqueInfo[ast.AnnotationInfo]
+      val actualPredicateTriggers = funcAnn match {
+        case Some(a) if a.values.contains("opaque") => Seq()
+        case _ => predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt)))
+      }
       val allTriggers = (
-           Seq(Trigger(functionApplication))
-        ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
+           Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
       Forall(arguments, body, allTriggers)})
   }
 
-  lazy val preconditionPropagationAxiom: Seq[Term] = {
+  lazy val bodyPreconditionPropagationAxiom: Seq[Term] = {
     val pre = preconditionFunctionApplication
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
       Forall(arguments, body, Seq(Trigger(functionApplication)))
     }) else None
+    bodyPreconditions.toSeq
+  }
+
+  lazy val postPreconditionPropagationAxiom: Seq[Term] = {
+    val pre = preconditionFunctionApplication
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
       bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
     } else Seq()
-    bodyPreconditions.toSeq ++ postPreconditions
+    postPreconditions
   }
 }
