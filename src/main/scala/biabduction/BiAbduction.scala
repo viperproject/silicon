@@ -9,6 +9,13 @@ import viper.silver.ast._
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.{DummyReason, PartialVerificationError}
 
+// TODO we want to continue execution if we abduce successfully. Idea:
+// - Hook into the "Try or Fail" methods
+// - Instead of actually failing, do bi-abduction
+// - track the results somewhere
+// - produce the precondition, execute the statements, and continue execution
+// - At the end, do abstraction on all the found preconditions. Find the necessary statements for the abstractions
+
 object BiAbductionSolver {
 
   def solve(q: SiliconAbductionQuestion): String = {
@@ -27,12 +34,12 @@ object BiAbductionSolver {
       val pres = AbstractionApplier.apply(AbstractionQuestion(q1.foundPrecons, q1.s)).exps
 
       // TODO if some path conditions already contain Ands, then we might reject clauses that we could actually handle
-      val bcs = BigAnd(q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformToInputs(e).isDefined => varTrans.transformToInputs(e).get })
+      val bcs = BigAnd(q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformVars(e).isDefined => varTrans.transformVars(e).get })
 
       // TODO Weak transformation of statements to original variables
 
       val rt = pres.map { (e: Exp) =>
-        (varTrans.transformToInputs(e), bcs) match {
+        (varTrans.transformVars(e), bcs) match {
           case (Some(e1), TrueLit()) => e1.toString()
           case (Some(e1), bcs) => Implies(bcs, e1)().toString()
           case _ => "Could not be transformed to inputs: " + e.toString()
@@ -68,6 +75,24 @@ trait RuleApplier[S] {
   }
 }
 
+object utils {
+  // TODO We currently assume that there is only one predicate and one field
+  def getPredicate(p: Program, rec: Exp, e: Exp): PredicateAccessPredicate = {
+    PredicateAccessPredicate(PredicateAccess(Seq(rec), p.predicates.head.name)(), e)()
+  }
+
+  def getNextAccess(p: Program, rec: Exp, perm: Exp): FieldAccessPredicate = {
+    FieldAccessPredicate(FieldAccess(rec, p.fields.head)(), perm)()
+  }
+
+  def getVars(t: Term, g: Store): Seq[AbstractLocalVar] = {
+    g.values.collect({ case (v, t1) if t1 == t => v }).toSeq
+  }
+
+  def getField(name: BasicChunkIdentifier, p: Program) = {
+    p.fields.find(_.name == name.name).get
+  }
+}
 
 
 trait BiAbductionRule[S, T] {
@@ -85,85 +110,68 @@ trait BiAbductionRule[S, T] {
 
   protected def apply(q: S, inst: T)(Q: S => VerificationResult): VerificationResult
 
-  // TODO We currently assume that there is only one predicate and one field
-  protected def getPredicate(p: Program, rec: Exp, e: Exp): PredicateAccessPredicate = {
-    PredicateAccessPredicate(PredicateAccess(Seq(rec), p.predicates.head.name)(), e)()
-  }
-
-  protected def getNextAccess(p: Program, rec: Exp, e: Exp): FieldAccessPredicate = {
-    FieldAccessPredicate(FieldAccess(rec, p.fields.head)(), e)()
-  }
 }
 
 case class varTransformer(s: State, targets: Seq[LocalVar], strict: Boolean = true) {
 
-  private def getVars(t: Term, g: Store): Seq[AbstractLocalVar] = {
-    g.values.collect({ case (v, t1) if t1 == t => v }).toSeq
-  }
-
-  private def getField(name: BasicChunkIdentifier) = {
-    s.program.fields.find(_.name == name.name).get
-  }
-
-
   // TODO the original work introduces logical vars representing the original input values. They attempt (I think) to transform
   // to these vars. See the "Rename" algorithm in the original paper.
   // At the end, they can be re-replaced by the input parameters. Do we have to do this?
-  def transformToInputs(e: Exp): Option[Exp] = {
+  def transformVars(e: Exp): Option[Exp] = {
 
     val targetMap: Map[Term, LocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
 
     // Find the Vars in the Store which point to the same symbolic value as each input
-    val aliases = targetMap.keys.flatMap { t: Term => getVars(t, s.g).map(_ -> targetMap(t)) }.toMap
+    val aliases = targetMap.keys.flatMap { t: Term => utils.getVars(t, s.g).map(_ -> targetMap(t)) }.toMap
     //s.g.values.collect({ case (v: LocalVar, t: Term) if inputs.contains(t) && !inputs.values.toSeq.contains(v) => v -> inputs(t) })
 
     // Find field chunks where the something points to an input var
     val pointers = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID && targetMap.contains(c.snap) =>
-      getVars(c.args.head, s.g).map(FieldAccess(_, getField(c.id))() -> targetMap(c.snap))
+      utils.getVars(c.args.head, s.g).map(FieldAccess(_, utils.getField(c.id, s.program))() -> targetMap(c.snap))
     }.flatten.toMap
 
     e match {
       case lc: LocalVar =>
         val lcTra = aliases.get(lc)
-        if(lcTra.isEmpty && !strict) Some(lc) else lcTra
+        if (lcTra.isEmpty && !strict) Some(lc) else lcTra
 
-      case Not(e1) => transformToInputs(e1).map(Not(_)())
+      case Not(e1) => transformVars(e1).map(Not(_)())
 
       case And(e1, e2) =>
-        val tra1 = transformToInputs(e1)
-        val tra2 = transformToInputs(e2)
+        val tra1 = transformVars(e1)
+        val tra2 = transformVars(e2)
         if (tra1.isEmpty || tra2.isEmpty) None else Some(And(tra1.get, tra2.get)())
 
       case NeCmp(e1, e2) =>
-        val tra1 = transformToInputs(e1)
-        val tra2 = transformToInputs(e2)
+        val tra1 = transformVars(e1)
+        val tra2 = transformVars(e2)
         if (tra1.isEmpty || tra2.isEmpty) None else Some(NeCmp(tra1.get, tra2.get)())
 
 
       case EqCmp(e1, e2) =>
-        val tra1 = transformToInputs(e1)
-        val tra2 = transformToInputs(e2)
+        val tra1 = transformVars(e1)
+        val tra2 = transformVars(e2)
         if (tra1.isEmpty || tra2.isEmpty) None else Some(EqCmp(tra1.get, tra2.get)())
 
 
       case nl: NullLit => Some(nl)
 
       case fa: FieldAccess =>
-        if(pointers.contains(fa)){
+        if (pointers.contains(fa)) {
           Some(pointers(fa))
         } else {
-          transformToInputs(fa.rcv).map{rcv1: Exp => fa.copy(rcv = rcv1)(fa.pos, fa.info, fa.errT)}
+          transformVars(fa.rcv).map { rcv1: Exp => fa.copy(rcv = rcv1)(fa.pos, fa.info, fa.errT) }
         }
 
-      case fap: FieldAccessPredicate => transformToInputs(fap.loc).collect{case e1: FieldAccess => fap.copy(loc = e1)(fap.pos, fap.info, fap.errT)}
+      case fap: FieldAccessPredicate => transformVars(fap.loc).collect { case e1: FieldAccess => fap.copy(loc = e1)(fap.pos, fap.info, fap.errT) }
 
-      case pa: PredicateAccess => val traArgs = pa.args.map(transformToInputs)
-        if(traArgs.contains(None)) None else Some(pa.copy(args = traArgs.map(_.get))(pa.pos, pa.info, pa.errT))
+      case pa: PredicateAccess => val traArgs = pa.args.map(transformVars)
+        if (traArgs.contains(None)) None else Some(pa.copy(args = traArgs.map(_.get))(pa.pos, pa.info, pa.errT))
 
-      case pap: PredicateAccessPredicate => transformToInputs(pap.loc).collect{case e1: PredicateAccess => pap.copy(loc = e1)(pap.pos, pap.info, pap.errT) }
+      case pap: PredicateAccessPredicate => transformVars(pap.loc).collect { case e1: PredicateAccess => pap.copy(loc = e1)(pap.pos, pap.info, pap.errT) }
 
-      case MagicWand(e1, e2) => val tra1 = transformToInputs(e1)
-        val tra2 = transformToInputs(e2)
+      case MagicWand(e1, e2) => val tra1 = transformVars(e1)
+        val tra2 = transformVars(e2)
         if (tra1.isEmpty || tra2.isEmpty) None else Some(MagicWand(tra1.get, tra2.get)())
     }
   }

@@ -112,6 +112,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) =>
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
+                      // TODO nklose This is where we should hook in to infer postconditions
                       Success()))}) }  )})})
 
       v.decider.resetProverOptions()
