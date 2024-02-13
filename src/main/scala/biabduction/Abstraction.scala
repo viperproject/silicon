@@ -5,16 +5,12 @@ import viper.silicon.state.State
 import viper.silver.ast._
 
 object AbstractionApplier extends RuleApplier[AbstractionQuestion] {
-  override val rules = Seq(AbstractionListFold, AbstractionListPackage, AbstractionJoin, AbstractionApply)
+  override val rules: Seq[AbstractionRule[_]] = Seq(AbstractionListFold, AbstractionListPackage, AbstractionJoin, AbstractionApply)
 }
 
-case class AbstractionQuestion(exps: Seq[Exp], s: State) {
+case class AbstractionQuestion(exps: Seq[Exp], s: State)
 
-}
-
-trait AbstractionRule[T] extends BiAbductionRule[AbstractionQuestion, T] {
-
-}
+trait AbstractionRule[T] extends BiAbductionRule[AbstractionQuestion, T]
 
 object AbstractionListFold extends AbstractionRule[Map[Exp, Seq[Exp]]] {
   override protected def check(q: AbstractionQuestion)(Q: Option[Map[Exp, Seq[Exp]]] => VerificationResult): VerificationResult = {

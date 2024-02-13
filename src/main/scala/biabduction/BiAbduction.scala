@@ -11,21 +11,25 @@ import viper.silver.verifier.{DummyReason, PartialVerificationError}
 
 object BiAbductionSolver {
 
-
   def solve(q: SiliconAbductionQuestion): String = {
 
     val q1 = AbductionApplier.apply(q)
 
     if (q1.goal.isEmpty) {
 
-      val varTrans = varTransformer(q1.s)
+      val ins = q1.s.currentMember match {
+        case Some(m: Method) => m.formalArgs.map(_.localVar)
+        case _ => Seq()
+      }
+      val varTrans = varTransformer(q1.s, ins)
 
       // TODO it is possible that we want to transform variable in a non-strict way before abstraction
       val pres = AbstractionApplier.apply(AbstractionQuestion(q1.foundPrecons, q1.s)).exps
 
-
       // TODO if some path conditions already contain Ands, then we might reject clauses that we could actually handle
       val bcs = BigAnd(q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformToInputs(e).isDefined => varTrans.transformToInputs(e).get })
+
+      // TODO Weak transformation of statements to original variables
 
       val rt = pres.map { (e: Exp) =>
         (varTrans.transformToInputs(e), bcs) match {
@@ -43,7 +47,7 @@ object BiAbductionSolver {
 
 trait RuleApplier[S] {
 
-  val rules: Seq[BiAbductionRule[S, _]]
+  protected val rules: Seq[BiAbductionRule[S, _]]
 
   /**
     * Recursively applies the rules until we reach the end of the rules list.
@@ -91,7 +95,7 @@ trait BiAbductionRule[S, T] {
   }
 }
 
-case class varTransformer(s: State) {
+case class varTransformer(s: State, targets: Seq[LocalVar], strict: Boolean = true) {
 
   private def getVars(t: Term, g: Store): Seq[AbstractLocalVar] = {
     g.values.collect({ case (v, t1) if t1 == t => v }).toSeq
@@ -101,33 +105,27 @@ case class varTransformer(s: State) {
     s.program.fields.find(_.name == name.name).get
   }
 
-  // TODO
-  // This is super inefficient
-  // There are cases where we have to transform not to inputs, but to other variables
-  // We also want a non-strict transformation, which does not fail
 
   // TODO the original work introduces logical vars representing the original input values. They attempt (I think) to transform
   // to these vars. See the "Rename" algorithm in the original paper.
   // At the end, they can be re-replaced by the input parameters. Do we have to do this?
   def transformToInputs(e: Exp): Option[Exp] = {
-    val inputs: Map[Term, LocalVar] = s.currentMember match {
-      case Some(m: Method) => m.formalArgs.view.map(argDec => s.g.get(argDec.localVar).get -> argDec.localVar).toMap
-      case _ => Map()
-    }
+
+    val targetMap: Map[Term, LocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
 
     // Find the Vars in the Store which point to the same symbolic value as each input
-    val aliases = inputs.keys.flatMap { t: Term => getVars(t, s.g).map(_ -> inputs(t)) }.toMap
+    val aliases = targetMap.keys.flatMap { t: Term => getVars(t, s.g).map(_ -> targetMap(t)) }.toMap
     //s.g.values.collect({ case (v: LocalVar, t: Term) if inputs.contains(t) && !inputs.values.toSeq.contains(v) => v -> inputs(t) })
 
     // Find field chunks where the something points to an input var
-    val pointers = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID && inputs.contains(c.snap) =>
-      getVars(c.args.head, s.g).map(FieldAccess(_, getField(c.id))() -> inputs(c.snap))
+    val pointers = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID && targetMap.contains(c.snap) =>
+      getVars(c.args.head, s.g).map(FieldAccess(_, getField(c.id))() -> targetMap(c.snap))
     }.flatten.toMap
 
-    //&& c.args.head.isInstanceOf[Var] => c.args.head -> inputs(c.snap)  }
-
     e match {
-      case lc: LocalVar => aliases.get(lc)
+      case lc: LocalVar =>
+        val lcTra = aliases.get(lc)
+        if(lcTra.isEmpty && !strict) Some(lc) else lcTra
 
       case Not(e1) => transformToInputs(e1).map(Not(_)())
 
@@ -159,7 +157,7 @@ case class varTransformer(s: State) {
 
       case fap: FieldAccessPredicate => transformToInputs(fap.loc).collect{case e1: FieldAccess => fap.copy(loc = e1)(fap.pos, fap.info, fap.errT)}
 
-      case pa: PredicateAccess => val traArgs =pa.args.map(transformToInputs)
+      case pa: PredicateAccess => val traArgs = pa.args.map(transformToInputs)
         if(traArgs.contains(None)) None else Some(pa.copy(args = traArgs.map(_.get))(pa.pos, pa.info, pa.errT))
 
       case pap: PredicateAccessPredicate => transformToInputs(pap.loc).collect{case e1: PredicateAccess => pap.copy(loc = e1)(pap.pos, pap.info, pap.errT) }
@@ -167,7 +165,6 @@ case class varTransformer(s: State) {
       case MagicWand(e1, e2) => val tra1 = transformToInputs(e1)
         val tra2 = transformToInputs(e2)
         if (tra1.isEmpty || tra2.isEmpty) None else Some(MagicWand(tra1.get, tra2.get)())
-
     }
   }
 }

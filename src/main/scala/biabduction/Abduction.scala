@@ -14,7 +14,7 @@ import viper.silver.ast._
 import viper.silver.verifier.BiAbductionQuestion
 
 object AbductionApplier extends RuleApplier[SiliconAbductionQuestion] {
-  override val rules = Seq(AbductionRemove, AbductionMatch, AbductionListFoldBase, AbductionListFold, AbductionListUnfold, AbductionMissing)
+  override val rules: Seq[AbductionRule[_]] = Seq(AbductionRemove, AbductionMatch, AbductionListFoldBase, AbductionListFold, AbductionListUnfold, AbductionMissing)
 }
 
 case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], foundPrecons: Seq[Exp] = Seq(), foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
