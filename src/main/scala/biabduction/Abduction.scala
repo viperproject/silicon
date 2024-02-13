@@ -11,6 +11,13 @@ import viper.silicon.state._
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
+import viper.silver.verifier.BiAbductionQuestion
+
+object AbductionApplier extends RuleApplier[SiliconAbductionQuestion] {
+  override val rules = Seq(AbductionRemove, AbductionMatch, AbductionListFoldBase, AbductionListFold, AbductionListUnfold, AbductionMissing)
+}
+
+case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], foundPrecons: Seq[Exp] = Seq(), foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
 
 
 /**
@@ -19,7 +26,7 @@ import viper.silver.ast._
   * to. The apply method applies the rule to the given expression and returns a new goal.
   * If the rule was applied, then we have to return to the start of the rule list, otherwise we increment the rule index.
   */
-trait AbductionRule[T] extends BiAbductionRule[T] {
+trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
 
   /**
     * For a seq of expressions, check whether each location access in the seq exist in the heap with the given
@@ -67,7 +74,7 @@ trait AbductionRule[T] extends BiAbductionRule[T] {
 
   protected def unfoldPredicate(q: SiliconAbductionQuestion, rec: Exp, p: Exp)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
     val predicate = q.s.program.predicates.head
-    val pa = getPredicate(q, rec, p)
+    val pa = getPredicate(q.s.program, rec, p)
     evals(q.s, Seq(rec), _ => pve, q.v)((s1, tArgs, v1) =>
       eval(s1, p, pve, v1)((s2, tPerm, v2) => {
         permissionSupporter.assertPositive(s2, tPerm, p, pve, v2)((s3, v3) => {
@@ -185,7 +192,7 @@ object AbductionListFold extends AbductionRule[PredicateAccessPredicate] {
     q.goal match {
       case Seq() => Q(None)
       case (a: PredicateAccessPredicate) :: as =>
-        val next = getNextAccess(q, a.loc.args.head, a.perm)
+        val next = getNextAccess(q.s.program, a.loc.args.head, a.perm)
         checkChunk(next.loc, next.perm, q.s, q.v) {
           case true => Q(Some(a))
           case false => check(q.copy(goal = as))(Q)
@@ -195,8 +202,8 @@ object AbductionListFold extends AbductionRule[PredicateAccessPredicate] {
   }
 
   override protected def apply(q: SiliconAbductionQuestion, inst: PredicateAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    val headNext = getNextAccess(q, inst.loc.args.head, inst.perm)
-    val nextList = getPredicate(q, headNext.loc, inst.perm)
+    val headNext = getNextAccess(q.s.program, inst.loc.args.head, inst.perm)
+    val nextList = getPredicate(q.s.program, headNext.loc, inst.perm)
     val g1: Seq[Exp] = q.goal.filterNot(_ == inst) :+ nextList
     val fold = Fold(inst)()
     consumer.consume(q.s, headNext, pve, q.v)((s1, _, v1) => Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ fold)))
@@ -212,7 +219,7 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
     q.goal match {
       case Seq() => Q(None)
       case (a: FieldAccessPredicate) :: as =>
-        val pred = getPredicate(q, a.loc.rcv, a.perm)
+        val pred = getPredicate(q.s.program, a.loc.rcv, a.perm)
         checkChunk(pred.loc, pred.perm, q.s, q.v) {
           case true => Q(Some(a))
           case false => check(q.copy(goal = as))(Q)
@@ -231,7 +238,7 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
     val nNl = NeCmp(inst.loc.rcv, NullLit()())()
     val r1 = q.foundPrecons :+ nNl
 
-    val unfold = Unfold(getPredicate(q, inst.loc.rcv, inst.perm))()
+    val unfold = Unfold(getPredicate(q.s.program, inst.loc.rcv, inst.perm))()
 
 
     // Exchange list(x) with list(x.next) in the state

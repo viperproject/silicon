@@ -16,7 +16,7 @@ import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
-import viper.silicon.biabduction.{AbductionSolver, SiliconAbductionQuestion}
+import viper.silicon.biabduction.{BiAbductionSolver, SiliconAbductionQuestion}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter

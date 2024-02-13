@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.{AbductionSolver, SiliconAbductionQuestion}
+import viper.silicon.biabduction.{BiAbductionSolver, SiliconAbductionQuestion}
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
@@ -81,7 +81,7 @@ trait SymbolicExecutionRules {
           case Some(trafo) => trafo.f(q)
           case _ => q
         }
-        Some(AbductionSolver.solve(q1.asInstanceOf[SiliconAbductionQuestion]))
+        Some(BiAbductionSolver.solve(q1.asInstanceOf[SiliconAbductionQuestion]))
       case _ => None
     }
 
