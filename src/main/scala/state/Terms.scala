@@ -1330,6 +1330,12 @@ object WildcardSimplifyingPermTimes extends ((Term, Term) => Term) {
     case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
     case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
     case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
+    case (Ite(c, t1, t2), t3) => Ite(c, WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
     case _ => PermTimes(t0, t1)
   }
 }
