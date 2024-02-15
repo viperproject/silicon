@@ -7,6 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
+import viper.silicon.biabduction.Framing
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
@@ -25,11 +26,14 @@ import viper.silicon.{Map, toMap}
 
 trait MethodVerificationUnit extends VerificationUnit[ast.Method]
 
-trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verifier =>
+trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
+  v: Verifier =>
   def logger: Logger
+
   def decider: Decider
 
   object methodSupporter extends MethodVerificationUnit with StatefulComponent {
+
     import executor._
     import producer._
     import consumer._
@@ -70,21 +74,21 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val posts = method.posts
 
       val body = method.bodyOrAssumeFalse.toCfg()
-        /* TODO: Might be worth special-casing on methods with empty bodies */
+      /* TODO: Might be worth special-casing on methods with empty bodies */
 
       val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
 
       val ins = method.formalArgs.map(_.localVar)
       val outs = method.formalReturns.map(_.localVar)
 
-      val g = Store(   ins.map(x => (x, decider.fresh(x)))
-                    ++ outs.map(x => (x, decider.fresh(x)))
-                    ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
+      val g = Store(ins.map(x => (x, decider.fresh(x)))
+        ++ outs.map(x => (x, decider.fresh(x)))
+        ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
       val s = sInit.copy(g = g,
-                         h = Heap(),
-                         oldHeaps = OldHeaps(),
-                         methodCfg = body)
+        h = Heap(),
+        oldHeaps = OldHeaps(),
+        methodCfg = body)
 
       if (Verifier.config.printMethodCFGs()) {
         viper.silicon.common.io.toFile(
@@ -101,19 +105,23 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
-            (  executionFlowController.locally(s2a, v2)((s3, v3) => {
-                  val s4 = s3.copy(h = Heap())
-                  val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
-                  val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
-                    symbExLog.closeScope(sepIdentifier)
-                    Success()})})
-            && {
-               executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>
-                    consumes(s4, posts, postViolated, v4)((_, _, _) =>
-                      // TODO nklose This is where we should hook in to infer postconditions
-                      Success()))}) }  )})})
+            (executionFlowController.locally(s2a, v2)((s3, v3) => {
+              val s4 = s3.copy(h = Heap())
+              val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
+              val sepIdentifier = symbExLog.openScope(impLog)
+              produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                symbExLog.closeScope(sepIdentifier)
+                Success()
+              })
+            })
+              && {
+              executionFlowController.locally(s2a, v2)((s3, v3) => {
+                exec(s3, body, v3)((s4, v4) =>
+                  consumes(s4, posts, postViolated, v4)((s5, _, v5) => {
+                    // TODO nklose This is where we should hook in to infer postconditions
+                    println(Framing.generatePostconditions(s5, v5))
+                    Success()
+                  }))})})})})
 
       v.decider.resetProverOptions()
 

@@ -74,7 +74,7 @@ trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
 
   protected def unfoldPredicate(q: SiliconAbductionQuestion, rec: Exp, p: Exp)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
     val predicate = q.s.program.predicates.head
-    val pa = utils.getPredicate(q.s.program, rec, p)
+    val pa = abductionUtils.getPredicate(q.s.program, rec, p)
     evals(q.s, Seq(rec), _ => pve, q.v)((s1, tArgs, v1) =>
       eval(s1, p, pve, v1)((s2, tPerm, v2) => {
         permissionSupporter.assertPositive(s2, tPerm, p, pve, v2)((s3, v3) => {
@@ -192,7 +192,7 @@ object AbductionListFold extends AbductionRule[PredicateAccessPredicate] {
     q.goal match {
       case Seq() => Q(None)
       case (a: PredicateAccessPredicate) :: as =>
-        val next = utils.getNextAccess(q.s.program, a.loc.args.head, a.perm)
+        val next = abductionUtils.getNextAccess(q.s.program, a.loc.args.head, a.perm)
         checkChunk(next.loc, next.perm, q.s, q.v) {
           case true => Q(Some(a))
           case false => check(q.copy(goal = as))(Q)
@@ -202,8 +202,8 @@ object AbductionListFold extends AbductionRule[PredicateAccessPredicate] {
   }
 
   override protected def apply(q: SiliconAbductionQuestion, inst: PredicateAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    val headNext = utils.getNextAccess(q.s.program, inst.loc.args.head, inst.perm)
-    val nextList = utils.getPredicate(q.s.program, headNext.loc, inst.perm)
+    val headNext = abductionUtils.getNextAccess(q.s.program, inst.loc.args.head, inst.perm)
+    val nextList = abductionUtils.getPredicate(q.s.program, headNext.loc, inst.perm)
     val g1: Seq[Exp] = q.goal.filterNot(_ == inst) :+ nextList
     val fold = Fold(inst)()
     consumer.consume(q.s, headNext, pve, q.v)((s1, _, v1) => Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ fold)))
@@ -219,7 +219,7 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
     q.goal match {
       case Seq() => Q(None)
       case (a: FieldAccessPredicate) :: as =>
-        val pred = utils.getPredicate(q.s.program, a.loc.rcv, a.perm)
+        val pred = abductionUtils.getPredicate(q.s.program, a.loc.rcv, a.perm)
         checkChunk(pred.loc, pred.perm, q.s, q.v) {
           case true => Q(Some(a))
           case false => check(q.copy(goal = as))(Q)
@@ -238,7 +238,7 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
     val nNl = NeCmp(inst.loc.rcv, NullLit()())()
     val r1 = q.foundPrecons :+ nNl
 
-    val unfold = Unfold(utils.getPredicate(q.s.program, inst.loc.rcv, inst.perm))()
+    val unfold = Unfold(abductionUtils.getPredicate(q.s.program, inst.loc.rcv, inst.perm))()
 
 
     // Exchange list(x) with list(x.next) in the state

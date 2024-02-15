@@ -30,7 +30,7 @@ object AbstractionListFold extends AbstractionRule[Map[Exp, Seq[Exp]]] {
 
   override protected def apply(q: AbstractionQuestion, inst: Map[Exp, Seq[Exp]])(Q: AbstractionQuestion => VerificationResult): VerificationResult = {
     val all = inst.values.flatten.toSeq
-    val exps1 = q.exps.filterNot(all.contains) ++ inst.keys.map { head => utils.getPredicate(q.s.program, head, FullPerm()()) }
+    val exps1 = q.exps.filterNot(all.contains) ++ inst.keys.map { head => abductionUtils.getPredicate(q.s.program, head, FullPerm()()) }
     Q(q.copy(exps = exps1))
   }
 }
