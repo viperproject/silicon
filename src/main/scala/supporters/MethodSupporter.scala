@@ -7,20 +7,20 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.biabduction.Framing
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.errors._
-import viper.silicon.interfaces._
+import viper.silicon.biabduction.BiAbductionSolver
 import viper.silicon.decider.Decider
+import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.AnnotationWarning
+import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.{Map, toMap}
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silver.reporter.AnnotationWarning
+import viper.silver.verifier.errors._
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -34,9 +34,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
 
   object methodSupporter extends MethodVerificationUnit with StatefulComponent {
 
+    import consumer._
     import executor._
     import producer._
-    import consumer._
 
     private var _units: Seq[ast.Method] = _
 
@@ -119,7 +119,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                 exec(s3, body, v3)((s4, v4) =>
                   consumes(s4, posts, postViolated, v4)((s5, _, v5) => {
                     // TODO nklose This is where we should hook in to infer postconditions
-                    println(Framing.generatePostconditions(s5, v5))
+                    println(BiAbductionSolver.generatePostconditions(s5, v5))
                     Success()
                   }))})})})})
 
