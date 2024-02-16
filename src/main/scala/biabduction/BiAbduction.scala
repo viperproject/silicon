@@ -2,11 +2,9 @@ package viper.silicon.biabduction
 
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State, Store}
-import viper.silicon.state.terms
 import viper.silicon.state.terms.Term
+import viper.silicon.state._
 import viper.silicon.utils.ast.BigAnd
-import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.{DummyReason, PartialVerificationError}
@@ -76,6 +74,22 @@ trait RuleApplier[S] {
     result
   }
 }
+trait BiAbductionRule[S, T] {
+
+  val pve: PartialVerificationError = Internal()
+
+  def checkAndApply(q: S, rule: Int)(Q: (S, Int) => VerificationResult): VerificationResult = {
+    check(q) {
+      case Some(e) => apply(q, e)(Q(_, 0))
+      case None => Q(q, rule + 1)
+    }
+  }
+
+  protected def check(q: S)(Q: Option[T] => VerificationResult): VerificationResult
+
+  protected def apply(q: S, inst: T)(Q: S => VerificationResult): VerificationResult
+
+}
 
 object abductionUtils {
   // TODO We currently assume that there is only one predicate and one field
@@ -94,24 +108,6 @@ object abductionUtils {
   def getField(name: BasicChunkIdentifier, p: Program) = {
     p.fields.find(_.name == name.name).get
   }
-}
-
-
-trait BiAbductionRule[S, T] {
-
-  val pve: PartialVerificationError = Internal()
-
-  def checkAndApply(q: S, rule: Int)(Q: (S, Int) => VerificationResult): VerificationResult = {
-    check(q) {
-      case Some(e) => apply(q, e)(Q(_, 0))
-      case None => Q(q, rule + 1)
-    }
-  }
-
-  protected def check(q: S)(Q: Option[T] => VerificationResult): VerificationResult
-
-  protected def apply(q: S, inst: T)(Q: S => VerificationResult): VerificationResult
-
 }
 
 case class varTransformer(s: State, targets: Seq[LocalVar], strict: Boolean = true) {

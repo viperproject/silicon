@@ -14,7 +14,7 @@ import viper.silver.ast._
 import viper.silver.verifier.BiAbductionQuestion
 
 object AbductionApplier extends RuleApplier[SiliconAbductionQuestion] {
-  override val rules: Seq[AbductionRule[_]] = Seq(AbductionRemove, AbductionMatch, AbductionListFoldBase, AbductionListFold, AbductionListUnfold, AbductionMissing)
+  override val rules: Seq[AbductionRule[_]] = Seq(AbductionRemove, AbductionMatch, AbductionListFoldBase, AbductionListFold, AbductionListUnfold, AbductionApply, AbductionPackage, AbductionMissing)
 }
 
 case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], foundPrecons: Seq[Exp] = Seq(), foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
@@ -258,11 +258,24 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
   }
 }
 
+// TODO Using ghostFreeWand is probably wrong in some (or all) cases. Need to be more careful here
+object AbductionApply extends AbductionRule[(MagicWandChunk, Exp)] {
+  override protected def check(q: SiliconAbductionQuestion)(Q: Option[(MagicWandChunk, Exp)] => VerificationResult): VerificationResult = {
+    Q(q.s.h.values.collectFirst { case c: MagicWandChunk if q.goal.contains(c.id.ghostFreeWand.right) => (c, c.id.ghostFreeWand.right) })
+  }
 
-// TODO this is hard: we have to match the right hand side of a magic wand chunk with an expression
-//object Apply extends AbductionRule
+  override protected def apply(q: SiliconAbductionQuestion, inst: (MagicWandChunk, Exp))(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
+    inst match {
+      case (wand, rhs) =>
+        val g1 = q.goal.filterNot(_ == rhs) :+ wand.id.ghostFreeWand.left
+        consumer.consume(q.s, wand.id.ghostFreeWand, pve, q.v)((s1, _, v1) => {
+          Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ Apply(wand.id.ghostFreeWand)()))
+        })
+    }
+  }
+}
 
-object PackageRule extends AbductionRule[MagicWand] {
+object AbductionPackage extends AbductionRule[MagicWand] {
 
   override protected def check(q: SiliconAbductionQuestion)(Q: Option[MagicWand] => VerificationResult): VerificationResult = {
     q.goal match {
