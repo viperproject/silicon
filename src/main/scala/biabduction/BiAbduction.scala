@@ -28,20 +28,20 @@ object BiAbductionSolver {
         case Some(m: Method) => m.formalArgs.map(_.localVar)
         case _ => Seq()
       }
-      val varTrans = VarTransformer(q1.s, ins)
+      val varTrans = VarTransformer(q1.s, q1. v, ins)
 
       // TODO it is possible that we want to transform variable in a non-strict way before abstraction
       val pres = AbstractionApplier.apply(AbstractionQuestion(q1.foundPrecons, q1.s)).exps
 
       // TODO if some path conditions already contain Ands, then we might reject clauses that we could actually handle
-      val bcs = BigAnd(q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined => varTrans.transformExp(e).get })
+      val bcs = q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined => varTrans.transformExp(e).get }
 
       // TODO Weak transformation of statements to original variables
 
       val rt = pres.map { (e: Exp) =>
         (varTrans.transformExp(e), bcs) match {
-          case (Some(e1), TrueLit()) => e1.toString()
-          case (Some(e1), bcs) => Implies(bcs, e1)().toString()
+          case (Some(e1), Seq()) => e1.toString()
+          case (Some(e1), bcs) => Implies(BigAnd(bcs), e1)().toString()
           case _ => "Could not be transformed to inputs: " + e.toString()
         }
       }.mkString("\n")
@@ -57,7 +57,7 @@ object BiAbductionSolver {
       case Some(m: Method) => m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
       case _ => Seq()
     }
-    val tra = VarTransformer(s, formals)
+    val tra = VarTransformer(s, v, formals)
     val res = s.h.values.collect { case c: BasicChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
 
     val absRes = AbstractionApplier.apply(AbstractionQuestion(res, s)).exps
@@ -108,11 +108,11 @@ trait BiAbductionRule[S, T] {
 
 object abductionUtils {
   // TODO We currently assume that there is only one predicate and one field
-  def getPredicate(p: Program, rec: Exp, e: Exp): PredicateAccessPredicate = {
-    PredicateAccessPredicate(PredicateAccess(Seq(rec), p.predicates.head.name)(), e)()
+  def getPredicate(p: Program, rec: Exp, perm: Exp = FullPerm()()): PredicateAccessPredicate = {
+    PredicateAccessPredicate(PredicateAccess(Seq(rec), p.predicates.head.name)(), perm)()
   }
 
-  def getNextAccess(p: Program, rec: Exp, perm: Exp): FieldAccessPredicate = {
+  def getNextAccess(p: Program, rec: Exp, perm: Exp = FullPerm()()): FieldAccessPredicate = {
     FieldAccessPredicate(FieldAccess(rec, p.fields.head)(), perm)()
   }
 

@@ -1,22 +1,50 @@
 package viper.silicon.biabduction
 
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{BuiltinEquals, Term, Var}
 import viper.silicon.state.{BasicChunk, State, terms}
+import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 
-case class VarTransformer(s: State, targets: Seq[LocalVar], strict: Boolean = true) {
+case class VarTransformer(s: State, v: Verifier, targets: Seq[LocalVar], strict: Boolean = true) {
 
-  // A map of symbolic term to the local var in the target set
+  // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
   val targetMap: Map[Term, LocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
 
-  // Field Chunks where the snap is equal to the symbolic value of a target
-  val snaps: Seq[BasicChunk] = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID && targetMap.contains(c.snap) => c }.toSeq
+  // Fields chunks as a map
+  val points: Map[Term, Term] = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => c.args.head -> c.snap }.toMap
 
-  // Chunks where the args are equal to the symbolic value of a target
-  val args: Seq[BasicChunk] = s.h.values.collect { case c: BasicChunk if targetMap.contains(c.args.head) => c }.toSeq
+  // All other terms that might be interesting. Currently everything in the store and everything in field chunks
+  val allTerms: Seq[Term] = (s.g.values.values ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten).collect {case t: Var => t}.toSeq
 
-  // We should look at the path conditions of a verifier as well
+  // Ask the decider whether any of the terms are equal to a target.
+  val aliases: Map[Term, LocalVar] = allTerms.map { t =>
+    t -> targetMap.collectFirst { case (t1, e) if v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
+  }.collect { case (t2, Some(e)) => t2 -> e }.toMap
+
+  // Field Chunks where the snap is equal to a known alias. This is only relevant for expression, not for chunks I think.
+  val snaps: Seq[BasicChunk] = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID && aliases.contains(c.snap) => c }.toSeq
+
+  def transformTerm(t: Term): Option[Exp] = {
+
+    t match {
+      case terms.FullPerm => Some(FullPerm()())
+      case _ =>
+        // Check for direct aliases
+        val direct = aliases.get(t)
+        if (direct.isDefined) {
+          direct
+        } else {
+          // Check for field accesses pointing to the term
+          points.collectFirst { case (f, v) if v == t && aliases.contains(f) => FieldAccess(aliases(f), s.program.fields.head)() }
+        }
+    }
+  }
+
+  def onlyTargets(e: Exp): Boolean = {
+    val vars = e.collect { case lv: LocalVar => lv }.toSeq
+    vars.forall(targets.contains(_))
+  }
 
   def transformChunk(b: BasicChunk): Option[Exp] = {
 
@@ -28,89 +56,27 @@ case class VarTransformer(s: State, targets: Seq[LocalVar], strict: Boolean = tr
     }
   }
 
-  def transformTerm(t: Term): Option[Exp] = {
-
-    t match {
-      case terms.FullPerm => Some(FullPerm()())
-      case terms.Var(_, _) =>
-
-        // Check for direct aliases
-        val direct = targetMap.get(t)
-        if (direct.isDefined) {
-          return direct
-        }
-
-        // Check for field accesses pointing to the term
-        val parents = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID && c.snap == t => c }
-        val matches = parents.map { c => c -> transformTerm(c.args.head) }.collect { case (c, Some(e)) => c -> e }
-        if (matches.nonEmpty) {
-          val res = matches.head
-          return Some(FieldAccess(res._2, abductionUtils.getField(res._1.id, s.program))())
-        }
-        // TODO we should check the path conditions for equalities that allow us to search further
-        None
-
-    }
-  }
-
   // TODO the original work introduces logical vars representing the original input values. They attempt (I think) to transform
   // to these vars. See the "Rename" algorithm in the original paper.
   // At the end, they can be re-replaced by the input parameters. Do we have to do this?
   def transformExp(e: Exp): Option[Exp] = {
 
-    // Get direct aliases by matching each target var to other vars that have the same symbolic term
-    // If x is the target, this will find x = y
-    val aliases = targetMap.keys.flatMap { t: Term => abductionUtils.getVars(t, s.g).map(_ -> targetMap(t)) }.toMap
+    val varMap = e.collect { case lc: LocalVar => lc -> transformTerm(s.g(lc)) }.collect { case (k, Some(v)) => k -> v }.toMap
 
-    // Field accesses where the snapshot is equal to the symbolic value of a target
-    // If x is the target, this will find y.next = x
-    val pointers = snaps.flatMap { c =>
-      abductionUtils.getVars(c.args.head, s.g).map(FieldAccess(_, abductionUtils.getField(c.id, s.program))() -> targetMap(c.snap))
-    }.toMap
+    val onlyVars = e.transform {
+      case lc: LocalVar if !targets.contains(lc) => varMap.getOrElse(lc, lc)
+    }
 
-    e match {
-      case lc: LocalVar =>
-        val lcTra = aliases.get(lc)
-        if (lcTra.isEmpty && !strict) Some(lc) else lcTra
+    val accesses = onlyVars.transform {
+      // TODO this will not catch z.next.next -> x
+      case fa@FieldAccess(rcv: LocalVar, _) if !onlyTargets(fa) =>
+        snaps.collectFirst { case c: BasicChunk if c.args.head == s.g(rcv) => aliases(c.snap) }.getOrElse(fa)
+    }
 
-      case Not(e1) => transformExp(e1).map(Not(_)())
-
-      case And(e1, e2) =>
-        val tra1 = transformExp(e1)
-        val tra2 = transformExp(e2)
-        if (tra1.isEmpty || tra2.isEmpty) None else Some(And(tra1.get, tra2.get)())
-
-      case NeCmp(e1, e2) =>
-        val tra1 = transformExp(e1)
-        val tra2 = transformExp(e2)
-        if (tra1.isEmpty || tra2.isEmpty) None else Some(NeCmp(tra1.get, tra2.get)())
-
-
-      case EqCmp(e1, e2) =>
-        val tra1 = transformExp(e1)
-        val tra2 = transformExp(e2)
-        if (tra1.isEmpty || tra2.isEmpty) None else Some(EqCmp(tra1.get, tra2.get)())
-
-
-      case nl: NullLit => Some(nl)
-
-      case fa: FieldAccess =>
-        if (pointers.contains(fa)) {
-          Some(pointers(fa))
-        } else {
-          transformExp(fa.rcv).map { rcv1: Exp => fa.copy(rcv = rcv1)(fa.pos, fa.info, fa.errT) }
-        }
-
-      case fap: FieldAccessPredicate => transformExp(fap.loc).collect { case e1: FieldAccess => fap.copy(loc = e1)(fap.pos, fap.info, fap.errT) }
-
-      case pa: PredicateAccess => val traArgs = pa.args.map(transformExp)
-        if (traArgs.contains(None)) None else Some(pa.copy(args = traArgs.map(_.get))(pa.pos, pa.info, pa.errT))
-
-      case pap: PredicateAccessPredicate => transformExp(pap.loc).collect { case e1: PredicateAccess => pap.copy(loc = e1)(pap.pos, pap.info, pap.errT) }
-
-      case MagicWand(e1, e2) => val tra1 = transformExp(e1)
-        val tra2 = transformExp(e2)
-        if (tra1.isEmpty || tra2.isEmpty) None else Some(MagicWand(tra1.get, tra2.get)())
+    if (strict && !onlyTargets(accesses)) {
+      None
+    } else {
+      Some(accesses)
     }
   }
 }
