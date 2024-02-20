@@ -324,12 +324,44 @@ class DefaultMainVerifier(config: Config,
     }
     val moreJoins = Verifier.config.moreJoins() && member.isInstanceOf[ast.Method]
 
+    val methodPermCache = mutable.HashMap[String, InsertionOrderedSet[ast.Location]]()
+    val permResources: InsertionOrderedSet[ast.Location] = member match {
+      case m: ast.Method if m.body.isDefined =>
+        val bodyResources: Iterable[InsertionOrderedSet[ast.Location]] = m.body.get.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => InsertionOrderedSet(la.loc(program))
+          case ast.MethodCall(name, _, _) =>
+            if (methodPermCache.contains(name))
+              methodPermCache(name)
+            else {
+              val calledMethod = program.findMethod(name)
+              val preResources: Seq[ast.Location] = calledMethod.pres.flatMap(pre => pre.whenExhaling.collect {
+                case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+              })
+              val postResources: Seq[ast.Location] = calledMethod.posts.flatMap(post => post.whenInhaling.collect {
+                case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+              })
+              val all = InsertionOrderedSet(preResources ++ postResources)
+              methodPermCache.update(name, all)
+              all
+            }
+        }
+        val preResources: Seq[ast.Location] = m.pres.flatMap(pre => pre.whenInhaling.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+        })
+        val postResources: Seq[ast.Location] = m.posts.flatMap(post => post.whenExhaling.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+        })
+        InsertionOrderedSet(bodyResources.flatten ++ preResources ++ postResources)
+      case _ => InsertionOrderedSet.empty
+    }
+
     State(program = program,
           functionData = functionData,
           predicateData = predicateData,
           qpFields = quantifiedFields,
           qpPredicates = quantifiedPredicates,
           qpMagicWands = quantifiedMagicWands,
+          permLocations = permResources,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           currentMember = Some(member),

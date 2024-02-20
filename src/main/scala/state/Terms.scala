@@ -1325,15 +1325,27 @@ class PermTimes private[terms] (val p0: Term, val p1: Term)
   override val op = "*"
 }
 
+object WildcardSimplifyingPermTimes extends ((Term, Term) => Term) {
+  override def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
+    case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
+    case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
+    case (Ite(c, t1, t2), t3) => Ite(c, WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case _ => PermTimes(t0, t1)
+  }
+}
+
 object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (FullPerm, t) => t
     case (t, FullPerm) => t
     case (NoPerm, _) => NoPerm
     case (_, NoPerm) => NoPerm
-    case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
-    case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
-    case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
     case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
     case (PermPlus(t1, t2), t3) => PermPlus(PermTimes(t1, t3), PermTimes(t2, t3))
