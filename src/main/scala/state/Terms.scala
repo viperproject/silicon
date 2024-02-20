@@ -677,6 +677,22 @@ case object Forall extends Quantifier {
   override lazy val toString = "QA"
 }
 
+object SimplifyingForall {
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Term = tBody match {
+    case True => True
+    case False if qvars.nonEmpty =>
+      // This assumes that every sort is non-empty, which should be a safe assumption, since otherwise, declaring a
+      // variable of that sort would also already be unsound.
+      False
+    case _ =>
+      if (qvars.isEmpty) {
+        tBody
+      } else {
+        Forall(qvars, tBody, triggers)
+      }
+  }
+}
+
 object Exists extends Quantifier {
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Exists, qvar :: Nil, tBody, triggers)

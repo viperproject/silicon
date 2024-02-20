@@ -30,6 +30,10 @@ import scala.collection.mutable
 
 trait Decider {
   def prover: Prover
+  def setProverOptions(options: Map[String, String]): Unit
+  def getProverOptions(): Map[String, String]
+  def resetProverOptions(): Unit
+
   def pcs: PathConditionStack
 
   def pushScope(): Unit
@@ -106,6 +110,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _freshFunctionStack: Stack[mutable.HashSet[FunctionDecl]] = _
     private var _freshMacroStack: Stack[mutable.ListBuffer[MacroDecl]] = _
 
+    private var _proverOptions: Map[String, String] = Map.empty
+    private var _proverResetOptions: Map[String, String] = Map.empty
+
     def prover: Prover = _prover
 
     def pcs: PathConditionStack = pathConditions
@@ -163,6 +170,20 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       None
+    }
+
+    override def setProverOptions(options: Map[String, String]): Unit = {
+      _proverOptions = _proverOptions ++ options
+      val resetOptions = _proverOptions.map { case (k, v) => (k, _prover.setOption(k, v)) }
+      _proverResetOptions = resetOptions ++ _proverResetOptions
+    }
+
+    override def getProverOptions(): Map[String, String] = _proverOptions
+
+    override def resetProverOptions(): Unit = {
+      _proverResetOptions.foreach { case (k, v) => _prover.setOption(k, v) }
+      _proverResetOptions = Map.empty
+      _proverOptions = Map.empty
     }
 
     /* Life cycle */

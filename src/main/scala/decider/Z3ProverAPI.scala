@@ -20,7 +20,7 @@ import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
-import viper.silicon.reporting.ExternalToolError
+import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
@@ -237,6 +237,10 @@ class Z3ProverAPI(uniqueId: String,
       Z3ProverAPI.randomizeSeedsOptions.foreach(o => params.add(o, Random.nextInt(10000)))
       prover.setParameters(params)
     }
+  }
+
+  override def setOption(name: String, value: String): String = {
+    throw new ProverInteractionFailed(uniqueId, "Dynamically setting prover options via Z3 API is currently not supported.")
   }
 
   def assume(term: Term): Unit = {
