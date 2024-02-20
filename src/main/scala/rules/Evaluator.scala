@@ -678,8 +678,21 @@ object evaluator extends EvaluationRules {
 
         val body = eQuant.exp
         // Remove whitespace in identifiers to avoid parsing problems for the axiom profiler.
-        val posString = viper.silicon.utils.ast.sourceLine(sourceQuant).replaceAll(" ", "")
-        val name = s"prog.l$posString"
+        // TODO: add flag to enable old behavior for AxiomProfiler
+        val fallbackName = "l" + viper.silicon.utils.ast.sourceLine(sourceQuant).replaceAll(" ", "")
+        val posString = if (!sourceQuant.pos.isInstanceOf[ast.AbstractSourcePosition]) {
+          fallbackName
+        } else {
+          val pos = sourceQuant.pos.asInstanceOf[ast.AbstractSourcePosition]
+          if (pos.end.isEmpty) {
+            fallbackName
+          } else {
+            val file = pos.file.toString()
+            val end = pos.end.get
+            s"$file@${pos.start.line}@${pos.start.column}@${end.line}@${end.column}"
+          }
+        }
+        val name = s"prog.$posString"
         evalQuantified(s, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
           case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
             val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
@@ -1619,7 +1632,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, fromShortCircuitingAnd = true) _ tupled swapIfAnd(
+            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(exps.head), v2, fromShortCircuitingAnd = true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>
