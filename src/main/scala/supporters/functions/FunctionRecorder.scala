@@ -114,7 +114,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
           snaps.head._2
         } else {
           val firstBranch = snaps.head._1.head
-          val grouped = snaps.groupBy((sn => if (sn._1.head == firstBranch) 1 else if (sn._1.head == Not(firstBranch)) 2 else 3))
+          val grouped = snaps.groupBy((sn => if (sn._1.nonEmpty && sn._1.head == firstBranch) 1 else if (sn._1.nonEmpty && sn._1.head == Not(firstBranch)) 2 else 3))
 
           def dropFirst(part: InsertionOrderedSet[(Stack[Term], Term)]): InsertionOrderedSet[(Stack[Term], Term)] = {
             part.map(sn => (sn._1.tail, sn._2))
