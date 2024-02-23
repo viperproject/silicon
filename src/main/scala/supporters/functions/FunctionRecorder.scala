@@ -94,15 +94,54 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                         : Map[E, Term] = {
 
     recordings.map { case (expr, guardsToSnap) =>
-      /* We (arbitrarily) make the snap of the head pair (guards -> snap) of
-       * guardsToSnap the inner-most else-clause, i.e. we drop the guards.
-       */
-      val conditionalSnap =
-        guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
-          Ite(And(guards.toSet), snap, tailSnap)
+      expr -> toTerm(guardsToSnap, None)
+    }
+  }
+
+  private def toTerm(snaps: InsertionOrderedSet[(Stack[Term], Term)], alternative: Option[Term]): Term = {
+    assert(snaps.nonEmpty)
+    if (snaps.size == 1) {
+      alternative match {
+        case Some(alt) => Ite(And(snaps.head._1.toSet), snaps.head._2, alt)
+        case None => snaps.head._2
+      }
+    } else {
+      if (snaps.head._1.isEmpty) {
+        snaps.head._2
+      } else {
+        val firstBranch = snaps.head._1.head
+        val grouped = snaps.groupBy(sn => {
+          if (sn._1.nonEmpty && sn._1.head == firstBranch)
+            1 // starting with firstBranch
+          else if (sn._1.nonEmpty && sn._1.head == Not(firstBranch))
+            2 // starting with Not(firstBranch)
+          else
+            3 // starting with other condition
+        })
+
+        def dropFirst(part: InsertionOrderedSet[(Stack[Term], Term)]): InsertionOrderedSet[(Stack[Term], Term)] = {
+          part.map(sn => (sn._1.tail, sn._2))
         }
 
-      expr -> conditionalSnap
+        val newAlt = if (grouped.contains(3)) Some(toTerm(grouped(3), alternative)) else alternative
+        if (grouped.contains(1) && grouped.contains(2)) {
+          val left = toTerm(dropFirst(grouped(1)), newAlt)
+          val right = toTerm(dropFirst(grouped(2)), newAlt)
+          Ite(firstBranch, left, right)
+        } else {
+          if (grouped.contains(1)) {
+            newAlt match {
+              case Some(actAlt) => Ite(firstBranch, toTerm(dropFirst(grouped(1)), newAlt), actAlt)
+              case None => toTerm(dropFirst(grouped(1)), newAlt)
+            }
+          } else {
+            newAlt match {
+              case Some(actAlt) => Ite(Not(firstBranch), toTerm(dropFirst(grouped(2)), newAlt), actAlt)
+              case None => toTerm(dropFirst(grouped(2)), newAlt)
+            }
+          }
+        }
+      }
     }
   }
 
