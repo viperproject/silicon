@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition}
+import viper.silicon.state.IdentifierFactory
 import viper.silicon.{Map, Stack}
 import viper.silicon.state.terms._
 
@@ -42,6 +43,7 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
 }
 
 case class ActualFunctionRecorder(private val _data: FunctionData,
+                                  private val identifierFactory: IdentifierFactory,
                                   private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet(),
@@ -94,20 +96,63 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                         : Map[E, Term] = {
 
     recordings.map { case (expr, guardsToSnap) =>
-      /* We (arbitrarily) make the snap of the head pair (guards -> snap) of
-       * guardsToSnap the inner-most else-clause, i.e. we drop the guards.
-       */
-      val conditionalSnap =
-        guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
-          Ite(And(guards.toSet), snap, tailSnap)
-        }
+      expr -> makeTree(guardsToSnap, None)
+    }
+  }
 
-      expr -> conditionalSnap
+  private def makeTree(snaps: InsertionOrderedSet[(Stack[Term], Term)], alternative: Option[Term]): Term = {
+    if (snaps.isEmpty) {
+      ???
+    } else {
+      if (snaps.size == 1) {
+        alternative match {
+          case Some(alt) => Ite(And(snaps.head._1.toSet), snaps.head._2, alt)
+          case None => snaps.head._2
+        }
+      } else {
+        if (snaps.head._1.isEmpty) {
+          snaps.head._2
+        } else {
+          val firstBranch = snaps.head._1.head
+          val grouped = snaps.groupBy((sn => if (sn._1.head == firstBranch) 1 else if (sn._1.head == Not(firstBranch)) 2 else 3))
+
+          def dropFirst(part: InsertionOrderedSet[(Stack[Term], Term)]): InsertionOrderedSet[(Stack[Term], Term)] = {
+            part.map(sn => (sn._1.tail, sn._2))
+          }
+
+          val newAlt = if (grouped.contains(3)) Some(makeTree(grouped(3), alternative)) else alternative
+          //val newAlt = if (grouped.contains(3)) Some(Var(identifierFactory.fresh("t"), snaps.head._2.sort, false)) else alternative
+          val res = if (grouped.contains(1) && grouped.contains(2)) {
+            val left = makeTree(dropFirst(grouped(1)), newAlt)
+            val right = makeTree(dropFirst(grouped(2)), newAlt)
+            Ite(firstBranch, left, right)
+          } else {
+            if (grouped.contains(1)) {
+              newAlt match {
+                case Some(actAlt) => Ite(firstBranch, makeTree(dropFirst(grouped(1)), newAlt), actAlt)
+                case None => makeTree(dropFirst(grouped(1)), newAlt)
+              }
+            } else {
+              newAlt match {
+                case Some(actAlt) => Ite(Not(firstBranch), makeTree(dropFirst(grouped(2)), newAlt), actAlt)
+                case None => makeTree(dropFirst(grouped(2)), newAlt)
+              }
+            }
+          }
+          if (false && grouped.contains(3)) {
+            Let(newAlt.get.asInstanceOf[Var], makeTree(grouped(3), alternative), res)
+          } else {
+            res
+          }
+        }
+      }
     }
   }
 
   def locToSnap: Map[ast.LocationAccess, Term] = exprToSnap(locToSnaps)
-  def fappToSnap: Map[ast.FuncApp, Term] = exprToSnap(fappToSnaps)
+  def fappToSnap: Map[ast.FuncApp, Term] = {
+    exprToSnap(fappToSnaps)
+  }
 
   private def recordExpressionSnapshot[E <: ast.Exp]
                                       (loc: E,
