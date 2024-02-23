@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
@@ -15,7 +17,7 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.reporter.{BranchFailureMessage}
+import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
 trait BranchingRules extends SymbolicExecutionRules {
@@ -84,12 +86,12 @@ object brancher extends BranchingRules {
 
     val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), conditionExp)
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
-    var macrosOfCurrentDecider: Vector[MacroDecl] = null
+    var macrosOfCurrentDecider: InsertionOrderedSet[MacroDecl] = null
     var proverArgsOfCurrentDecider: viper.silicon.Map[String, String] = null
     var wasElseExecutedOnDifferentVerifier = false
     var functionsOfElseBranchDecider: Set[FunctionDecl] = null
     var proverArgsOfElseBranchDecider: viper.silicon.Map[String, String] = null
-    var macrosOfElseBranchDecider: Seq[MacroDecl] = null
+    var macrosOfElseBranchDecider: InsertionOrderedSet[MacroDecl] = null
     var pcsForElseBranch: PathConditionStack = null
     var noOfErrors = 0
 
