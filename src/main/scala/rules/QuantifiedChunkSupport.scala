@@ -794,7 +794,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    val gain = if (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location]))
+    val gain = if (!Verifier.config.unsafeWildcardOptimization() ||
+        (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
       PermTimes(tPerm, s.permissionScalingFactor)
     else
       WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)
@@ -1075,7 +1076,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
           qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
-        val loss = if (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location]))
+        val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
+            (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
           PermTimes(tPerm, s.permissionScalingFactor)
         else
           WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)

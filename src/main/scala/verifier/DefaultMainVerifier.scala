@@ -325,7 +325,7 @@ class DefaultMainVerifier(config: Config,
     val moreJoins = Verifier.config.moreJoins() && member.isInstanceOf[ast.Method]
 
     val methodPermCache = mutable.HashMap[String, InsertionOrderedSet[ast.Location]]()
-    val permResources: InsertionOrderedSet[ast.Location] = member match {
+    val permResources: InsertionOrderedSet[ast.Location] = if (Verifier.config.unsafeWildcardOptimization()) member match {
       case m: ast.Method if m.body.isDefined =>
         val bodyResources: Iterable[InsertionOrderedSet[ast.Location]] = m.body.get.collect {
           case ast.CurrentPerm(la: ast.LocationAccess) => InsertionOrderedSet(la.loc(program))
@@ -353,7 +353,7 @@ class DefaultMainVerifier(config: Config,
         })
         InsertionOrderedSet(bodyResources.flatten ++ preResources ++ postResources)
       case _ => InsertionOrderedSet.empty
-    }
+    } else InsertionOrderedSet.empty
 
     State(program = program,
           functionData = functionData,

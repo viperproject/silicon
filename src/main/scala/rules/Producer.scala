@@ -319,7 +319,7 @@ object producer extends ProductionRules {
           eval(s1, perm, pve, v1)((s2, tPerm, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
               val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
-              val gain = if (s2.permLocations.contains(field))
+              val gain = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(field))
                 PermTimes(tPerm, s3.permissionScalingFactor)
               else
                 WildcardSimplifyingPermTimes(tPerm, s3.permissionScalingFactor)
@@ -340,7 +340,7 @@ object producer extends ProductionRules {
               val snap = sf(
                 predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
                               .getOrElse(sorts.Snap), v2)
-              val gain = if (s2.permLocations.contains(predicate))
+              val gain = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(predicate))
                 PermTimes(tPerm, s2.permissionScalingFactor)
               else
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)

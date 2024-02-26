@@ -683,6 +683,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       ExhaleMode.Greedy
   }
 
+  val unsafeWildcardOptimization: ScallopOption[Boolean] = opt[Boolean]("unsafeWildcardOptimization",
+    descr = "Simplify wildcard terms in a way that is very very rarely unsafe",
+    default = Some(false),
+    noshort = true
+  )
+
   val numberOfErrorsToReport: ScallopOption[Int] = opt[Int]("numberOfErrorsToReport",
     descr = "Number of errors per member before the verifier stops. If this number is set to 0, all errors are reported.",
     default = Some(1),
