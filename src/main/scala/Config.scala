@@ -684,7 +684,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   }
 
   val unsafeWildcardOptimization: ScallopOption[Boolean] = opt[Boolean]("unsafeWildcardOptimization",
-    descr = "Simplify wildcard terms in a way that is very very rarely unsafe",
+    descr = "Simplify wildcard terms in a way that is very very rarely unsafe. See Silicon PR #756 for details.",
     default = Some(false),
     noshort = true
   )
