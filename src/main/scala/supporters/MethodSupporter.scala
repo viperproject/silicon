@@ -118,7 +118,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               executionFlowController.locally(s2a, v2)((s3, v3) => {
                 exec(s3, body, v3)((s4, v4) =>
                   consumes(s4, posts, postViolated, v4)((s5, _, v5) => {
-                    // TODO nklose This is where we should hook in to infer postconditions
                     println(BiAbductionSolver.generatePostconditions(s5, v5))
                     Success()
                   }))})})})})

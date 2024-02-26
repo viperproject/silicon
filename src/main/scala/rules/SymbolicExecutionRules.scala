@@ -76,15 +76,9 @@ trait SymbolicExecutionRules {
           case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()
           case n: PredicateAccess => PredicateAccessPredicate(n, FullPerm()())()
         }
-        val q = SiliconAbductionQuestion(s, v, Seq(goal))
-        val q1 = aqTrafo match {
-          case Some(trafo) => trafo.f(q)
-          case _ => q
-        }
-        Some(BiAbductionSolver.solve(q1.asInstanceOf[SiliconAbductionQuestion]))
+        Some(BiAbductionSolver.solve(s, v, Seq(goal), aqTrafo))
       case _ => None
     }
-
 
     res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionResult))
     Failure(res, v.reportFurtherErrors())

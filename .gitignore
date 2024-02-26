@@ -24,3 +24,5 @@ viper_tutorial_examples
 .bsp/
 .bloop/
 .metals/
+
+biab-tests/

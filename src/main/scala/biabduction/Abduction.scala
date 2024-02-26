@@ -2,22 +2,27 @@ package viper.silicon.biabduction
 
 
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state.NonQuantifiedChunk
+import viper.silicon.interfaces.state.Chunk
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.rules.evaluator.{eval, evalLocationAccess, evals}
 import viper.silicon.rules.producer.produce
-import viper.silicon.rules.{consumer, permissionSupporter, predicateSupporter, producer}
+import viper.silicon.rules._
 import viper.silicon.state._
+import viper.silicon.state.terms.{SortWrapper, Term, sorts}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 import viper.silver.verifier.BiAbductionQuestion
 
 object AbductionApplier extends RuleApplier[SiliconAbductionQuestion] {
-  override val rules: Seq[AbductionRule[_]] = Seq(AbductionRemove, AbductionMatch, AbductionListFoldBase, AbductionListFold, AbductionListUnfold, AbductionApply, AbductionPackage, AbductionMissing)
+  override val rules: Seq[AbductionRule[_]] = Seq(AbductionRemove, AbductionMatch, AbductionListFoldBase,
+    AbductionListFold, AbductionListUnfold, AbductionApply, AbductionPackage, AbductionMissing)
 }
 
-case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], foundPrecons: Seq[Exp] = Seq(), foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
+case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], varTra: VarTransformer,
+                                    lostAccesses: Map[Exp, Term] = Map(), foundPrecons: Seq[Exp] = Seq(),
+                                    foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
 
 
 /**
@@ -29,48 +34,47 @@ case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp], found
 trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
 
   /**
-    * For a seq of expressions, check whether each location access in the seq exist in the heap with the given
-    * permission. True means that every access location in locs exists (which also holds for a sequence containing no
-    * access locations).
+    * Does a couple of things to ensure evalution works properly:
     *
-    * If this returns true, then evaluating the access location in the given state and verifier should not fail.
+    * Check the lost accesses to see if the access is there
+    * Evaluate sub-expressions safely to ensure that a missing chunk will not cause the evaluation to silently abort
     */
-  protected def checkChunks(locs: Seq[Exp], perm: Exp, s: State, v: Verifier)(Q: Boolean => VerificationResult): VerificationResult = {
+  protected def safeArgEval(loc: LocationAccess, q: SiliconAbductionQuestion)(Q: (State, Option[Seq[Term]], Verifier) => VerificationResult): VerificationResult = {
 
-    locs.collect({ case v: LocationAccess => v }) match {
-      case Seq() => Q(true)
-      case loc :: locs1 => checkChunk(loc, perm, s, v) {
-        case true => checkChunks(locs1, perm, s, v)(Q)
-        case false => Q(false)
+    // TODO Currently we assume only one arg, which may be wrong for arbitraty predicates
+    val arg = loc match {
+      case FieldAccess(rcv, _) => rcv
+      case PredicateAccess(args, _) => args.head
+    }
+
+    // If the arg was lost, we have it in the map
+    if (q.lostAccesses.contains(arg)) {
+      Q(q.s, Some(Seq(q.lostAccesses(arg))), q.v)
+    } else {
+      arg match {
+        // If the arg is a location access, we have to recursively check it
+        case loc2: LocationAccess => checkChunk(loc2, q) {
+          case Some(c) => Q(q.s, Some(c.args), q.v)
+          case None => Q(q.s, None, q.v)
+        }
+        case _ => evalLocationAccess(q.s, loc, pve, q.v) { (s2, _, tArgs, v2) => Q(s2, Some(tArgs), v2) }
       }
     }
   }
 
-  protected def checkChunk(loc: LocationAccess, perm: Exp, s: State, v: Verifier)(Q: Boolean => VerificationResult): VerificationResult = {
-
-    eval(s, perm, pve, v)((s1, tPerm, v1) => {
-
-      // We have to check whether the receiver/arguments exist manually. Otherwise the continuation will not be called
-      // evalLocationAccess, as the evaluation will fail.
-      val toCheck = {
-        loc match {
-          case FieldAccess(rcv, _) => Seq(rcv)
-          case PredicateAccess(args, _) => args
-        }
+  protected def checkChunk(loc: LocationAccess, q: SiliconAbductionQuestion)(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
+    safeArgEval(loc, q) { (s2, args, v2) =>
+      args match {
+        case Some(arg) =>
+          val resource = loc.res(s2.program)
+          val id = ChunkIdentifier(resource, s2.program)
+          val chunk = findChunk[BasicChunk](s2.h.values, id, arg, v2)
+          Q(chunk)
+        case None => Q(None)
       }
-
-      checkChunks(toCheck, perm, s1, v1) {
-        case false => Q(false)
-        case true => evalLocationAccess(s1, loc, pve, v1)((s2, _, tArgs, v2) =>
-          permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
-            val resource = loc.res(s3.program)
-            val id = ChunkIdentifier(resource, s3.program)
-            val chunk = findChunk[NonQuantifiedChunk](s3.h.values, id, tArgs, v3)
-            Q(chunk.isDefined)
-          }))
-      }
-    })
+    }
   }
+
 
   protected def unfoldPredicate(q: SiliconAbductionQuestion, rec: Exp, p: Exp)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
     val predicate = q.s.program.predicates.head
@@ -89,46 +93,52 @@ trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
   * Covers the rules pred-remove and acc-remove
   * Remove predicate and fields accesses which are both in the goal and in the current state
   */
-object AbductionRemove extends AbductionRule[Seq[AccessPredicate]] {
+object AbductionRemove extends AbductionRule[Map[Exp, BasicChunk]] {
 
-  override def check(q: SiliconAbductionQuestion)(Q: Option[Seq[AccessPredicate]] => VerificationResult): VerificationResult = {
+  override def check(q: SiliconAbductionQuestion)(Q: Option[Map[Exp, BasicChunk]] => VerificationResult): VerificationResult = {
 
     val accs = q.goal.collect { case e: AccessPredicate => e }
-    if (accs.isEmpty) return Q(None)
 
-    val R: Option[Seq[AccessPredicate]] => VerificationResult = if (accs.tail.isEmpty) {
-      Q
-    } else {
-      f: Option[Seq[AccessPredicate]] =>
-        check(q.copy(goal = accs.tail)) { fs =>
-          (f, fs) match {
-            case (None, None) => Q(None)
-            case (Some(f1), None) => Q(Some(f1))
-            case (None, Some(fs1)) => Q(Some(fs1))
-            case (Some(f1), Some(fs1)) => Q(Some(f1 ++ fs1))
-          }
-        }
-    }
-
-    val acc = accs.head
-    acc match {
-      case AccessPredicate(loc: LocationAccess, perm) =>
-        checkChunk(loc, perm, q.s, q.v) {
-          case true => R(Some(Seq(acc)))
-          case false => R(None)
+    accs match {
+      case Seq() => Q(None)
+      case acc@AccessPredicate(loc: LocationAccess, _) :: accs2 =>
+        checkChunk(loc, q) {
+          case Some(c) => Q(Some(Map(accs.head -> c)))
+          case None => check(q.copy(goal = accs2))(Q)
         }
     }
   }
 
+  /**
+    * This will crash if the chunks do not exist. This is by design. Only call this if you are sure that the chunks exist.
+    */
+  private def consumeChunks(chunks: Seq[BasicChunk], q: SiliconAbductionQuestion)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
+    chunks match {
+      case Seq() => Q(q)
+      case c :: cs => {
+        val c1 = findChunk[BasicChunk](q.s.h.values, c.id, c.args, q.v).get
+        val resource: Resource = c.resourceID match {
+          case PredicateID => q.s.program.predicates.head
+          case FieldID => q.s.program.fields.head
+        }
+        // TODO this is failing to consume a chunk
+        chunkSupporter.consume(q.s, q.s.h, resource, c1.args, c1.perm, ve, q.v, "")((s1, _, _, v1) => consumeChunks(cs, q.copy(s = s1, v = v1))(Q))
+      }
+    }
+  }
 
-  override def apply(q: SiliconAbductionQuestion, inst: Seq[AccessPredicate])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
+
+  override def apply(q: SiliconAbductionQuestion, inst: Map[Exp, BasicChunk])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     val g1 = q.goal.filterNot(inst.contains)
-    consumer.consumes(q.s, inst, _ => pve, q.v)((s1, _, v1) => Q(q.copy(s = s1, v = v1, goal = g1)))
+    consumeChunks(inst.values.toSeq, q.copy(goal = g1))(Q)
   }
 }
 
 // TODO this rule is hard: x.next = y is a path condition with a symbolic value for x.next, x.next = z is an expression in the goal
 // After acc-remove, we have lost the info about the symbolic value, so we cannot match this anymore.
+// Plan: Make this part of remove. When we remove, we check if there are path conditions that we need to consider.
+
+// The expression we want to add is probably actually x.next = z
 object AbductionMatch extends AbductionRule[FieldAccessPredicate] {
 
   override protected def check(q: SiliconAbductionQuestion)(Q: Option[FieldAccessPredicate] => VerificationResult): VerificationResult = {
@@ -144,29 +154,22 @@ object AbductionMatch extends AbductionRule[FieldAccessPredicate] {
   * Covers the rule fold-base, which removes a predicate instance from the goal if its base case is met
   * Currently, the base case has to be a null Ref
   */
+
+// TODO this does not work yet...
 object AbductionListFoldBase extends AbductionRule[PredicateAccessPredicate] {
-
-  private def baseCondition(p: PredicateAccessPredicate): Exp = {
-    EqCmp(p.loc.args.head, NullLit()())()
-  }
-
-  protected def checkPathCondition(s: State, v: Verifier, e: Exp)(Q: Boolean => VerificationResult): VerificationResult = {
-    eval(s, e, pve, v)((_, t, v1) => {
-      v1.decider.assert(t)(Q)
-    })
-  }
 
   override protected def check(q: SiliconAbductionQuestion)(Q: Option[PredicateAccessPredicate] => VerificationResult): VerificationResult = {
     q.goal match {
       case Seq() => Q(None)
       case (a: PredicateAccessPredicate) :: as =>
-        checkChunks(Seq(a.loc.args.head), a.perm, q.s, q.v) {
-          case true =>
-            checkPathCondition(q.s, q.v, baseCondition(a)) {
-              case true => Q(Some(a))
-              case false => check(q.copy(goal = as))(Q)
+        safeArgEval(a.loc, q) {
+          case (s1, Some(args), v1) =>
+            if (v1.decider.check(terms.BuiltinEquals(args.head, terms.Null), Verifier.config.checkTimeout())) {
+              Q(Some(a))
+            } else {
+              check(q.copy(v = v1, s = s1, goal = as))(Q)
             }
-          case false => check(q.copy(goal = as))(Q)
+          case (s1, None, v1) => check(q.copy(v = v1, s = s1, goal = as))(Q)
         }
       case _ => check(q.copy(goal = q.goal.tail))(Q)
     }
@@ -193,9 +196,9 @@ object AbductionListFold extends AbductionRule[PredicateAccessPredicate] {
       case Seq() => Q(None)
       case (a: PredicateAccessPredicate) :: as =>
         val next = abductionUtils.getNextAccess(q.s.program, a.loc.args.head, a.perm)
-        checkChunk(next.loc, next.perm, q.s, q.v) {
-          case true => Q(Some(a))
-          case false => check(q.copy(goal = as))(Q)
+        checkChunk(next.loc, q) {
+          case Some(_) => Q(Some(a))
+          case None => check(q.copy(goal = as))(Q)
         }
       case _ => check(q.copy(goal = q.goal.tail))(Q)
     }
@@ -205,10 +208,13 @@ object AbductionListFold extends AbductionRule[PredicateAccessPredicate] {
     val headNext = abductionUtils.getNextAccess(q.s.program, inst.loc.args.head, inst.perm)
     val nextList = abductionUtils.getPredicate(q.s.program, headNext.loc, inst.perm)
     val g1: Seq[Exp] = q.goal.filterNot(_ == inst) :+ nextList
-    val fold = Fold(inst)()
-    consumer.consume(q.s, headNext, pve, q.v)((s1, _, v1) => Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ fold)))
-  }
 
+    val fold = Fold(inst)()
+    consumer.consume(q.s, headNext, pve, q.v) { (s1, snap, v1) =>
+      val lost = q.lostAccesses + (headNext.loc -> SortWrapper(snap, sorts.Ref))
+      Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost))
+    }
+  }
 }
 
 
@@ -220,9 +226,9 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
       case Seq() => Q(None)
       case (a: FieldAccessPredicate) :: as =>
         val pred = abductionUtils.getPredicate(q.s.program, a.loc.rcv, a.perm)
-        checkChunk(pred.loc, pred.perm, q.s, q.v) {
-          case true => Q(Some(a))
-          case false => check(q.copy(goal = as))(Q)
+        checkChunk(pred.loc, q) {
+          case Some(_) => Q(Some(a))
+          case None => check(q.copy(goal = as))(Q)
         }
       case _ => check(q.copy(goal = q.goal.tail))(Q)
     }
@@ -250,8 +256,9 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
 
         // Remove the access chunk
-        consumer.consume(s2, inst, pve, v2)((s3, _, v3) => {
-          Q(q.copy(s = s1, v = v1, goal = g1, foundPrecons = r1, foundStmts = q.foundStmts :+ unfold))
+        consumer.consume(s2, inst, pve, v2)((s3, snap, v3) => {
+          val lost = q.lostAccesses + (inst.loc -> SortWrapper(snap, sorts.Ref))
+          Q(q.copy(s = s3, v = v3, goal = g1, foundPrecons = r1, foundStmts = q.foundStmts :+ unfold, lostAccesses = lost))
         })
       })
     }
@@ -303,6 +310,8 @@ object AbductionPackage extends AbductionRule[MagicWand] {
   * Covers the rules pred-missing and acc-missing
   * Adds predicate and fields accesses which are in the goal but not in the current state to the result
   */
+
+// TODO We have to add the values of points-tos as well
 object AbductionMissing extends AbductionRule[Seq[AccessPredicate]] {
 
   override def check(q: SiliconAbductionQuestion)(Q: Option[Seq[AccessPredicate]] => VerificationResult): VerificationResult = {

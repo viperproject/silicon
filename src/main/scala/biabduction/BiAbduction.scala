@@ -7,7 +7,7 @@ import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 import viper.silver.verifier.errors.Internal
-import viper.silver.verifier.{DummyReason, PartialVerificationError}
+import viper.silver.verifier.{AbductionQuestionTransformer, DummyReason, PartialVerificationError, VerificationError}
 
 // TODO we want to continue execution if we abduce successfully. Idea:
 // - Hook into the "Try or Fail" methods
@@ -18,17 +18,24 @@ import viper.silver.verifier.{DummyReason, PartialVerificationError}
 
 object BiAbductionSolver {
 
-  def solve(q: SiliconAbductionQuestion): String = {
+  def solve(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer]): String = {
+
+    val ins = s.currentMember match {
+      case Some(m: Method) => m.formalArgs.map(_.localVar)
+      case _ => Seq()
+    }
+    val varTrans = VarTransformer(s, v, ins)
+
+    val qPre = SiliconAbductionQuestion(s, v, goal, varTrans)
+
+    val q = tra match {
+      case Some(trafo) => trafo.f(qPre).asInstanceOf[SiliconAbductionQuestion]
+      case _ => qPre
+    }
 
     val q1 = AbductionApplier.apply(q)
 
     if (q1.goal.isEmpty) {
-
-      val ins = q1.s.currentMember match {
-        case Some(m: Method) => m.formalArgs.map(_.localVar)
-        case _ => Seq()
-      }
-      val varTrans = VarTransformer(q1.s, q1. v, ins)
 
       // TODO it is possible that we want to transform variable in a non-strict way before abstraction
       val pres = AbstractionApplier.apply(AbstractionQuestion(q1.foundPrecons, q1.s)).exps
@@ -36,7 +43,7 @@ object BiAbductionSolver {
       // TODO if some path conditions already contain Ands, then we might reject clauses that we could actually handle
       val bcs = q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined => varTrans.transformExp(e).get }
 
-      // TODO Weak transformation of statements to original variables
+      // TODO Weak transformation of statements to original variables (Viper encoding can introduce new variables)
 
       val rt = pres.map { (e: Exp) =>
         (varTrans.transformExp(e), bcs) match {
@@ -92,6 +99,7 @@ trait RuleApplier[S] {
 trait BiAbductionRule[S, T] {
 
   val pve: PartialVerificationError = Internal()
+  val ve: VerificationError = pve.dueTo(DummyReason)
 
   def checkAndApply(q: S, rule: Int)(Q: (S, Int) => VerificationResult): VerificationResult = {
     check(q) {
