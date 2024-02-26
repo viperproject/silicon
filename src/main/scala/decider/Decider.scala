@@ -410,9 +410,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toSymbolStack: Boolean): Unit = {
       if (!toSymbolStack) {
-        functions foreach prover.declare
+        for (f <- functions) {
+          if (!_declaredFreshFunctions.contains(f))
+            prover.declare(f)
 
-        _declaredFreshFunctions = _declaredFreshFunctions ++ functions
+          _declaredFreshFunctions = _declaredFreshFunctions + f
+        }
       } else {
         for (f <- functions) {
           if (!_declaredFreshFunctions.contains(f))
