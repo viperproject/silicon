@@ -1100,6 +1100,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
@@ -1588,11 +1589,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           argsEqual),
         varsEqual)
 
-    val functionPres = FunctionPreconditionTransformer.transform(implies, program)
-
     Forall(
       qvars1 ++ qvars2,
-      Implies(functionPres, implies),
+      implies,
       triggers,
       s"$qidPrefix-rcvrInj")
   }
