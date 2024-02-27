@@ -1621,10 +1621,7 @@ object evaluator extends EvaluationRules {
 
     type brFun = (State, Verifier) => VerificationResult
 
-    // TODO: Find out and document why swapIfAnd is needed
-    val (stop, swapIfAnd) =
-      if(constructor == Or) (True, (a: brFun, b: brFun) => (a, b))
-      else (False, (a: brFun, b: brFun) => (b, a))
+    val stop = if (constructor == Or) True else False
 
     eval(s, exps.head, pve, v)((s1, t0, v1) => {
       t0 match {
@@ -1632,7 +1629,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(exps.head), v2, fromShortCircuitingAnd = true) _ tupled swapIfAnd(
+            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(exps.head), v2, fromShortCircuitingAnd = true)(
               (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>

@@ -1588,11 +1588,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           argsEqual),
         varsEqual)
 
-    val functionPres = FunctionPreconditionTransformer.transform(implies, program)
-
     Forall(
       qvars1 ++ qvars2,
-      Implies(functionPres, implies),
+      implies,
       triggers,
       s"$qidPrefix-rcvrInj")
   }
