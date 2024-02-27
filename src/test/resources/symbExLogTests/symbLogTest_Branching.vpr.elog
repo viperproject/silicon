@@ -12,14 +12,14 @@ method m1
       Branch !(b1@2@01):
         comment: Reachable
         Join
-          Branch b1@2@01:
-            comment: Reachable
           Branch !(b1@2@01):
             comment: Reachable
+          Branch b1@2@01:
+            comment: Reachable
         Join
-          Branch b2@3@01 && b1@2@01:
+          Branch b1@2@01 && b2@3@01:
             comment: Unreachable
-          Branch !(b2@3@01 && b1@2@01):
+          Branch !(b1@2@01 && b2@3@01):
             comment: Reachable
   execute a := 1 + (b1 ? 1 : 2) + 2
     Join
