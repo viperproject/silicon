@@ -20,18 +20,18 @@ object BiAbductionSolver {
 
   def solve(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer]): String = {
 
-    val ins = s.currentMember match {
-      case Some(m: Method) => m.formalArgs.map(_.localVar)
-      case _ => Seq()
-    }
-    val varTrans = VarTransformer(s, v, ins)
-
-    val qPre = SiliconAbductionQuestion(s, v, goal, varTrans)
+    val qPre = SiliconAbductionQuestion(s, v, goal)
 
     val q = tra match {
       case Some(trafo) => trafo.f(qPre).asInstanceOf[SiliconAbductionQuestion]
       case _ => qPre
     }
+
+    val ins = s.currentMember match {
+      case Some(m: Method) => m.formalArgs.map(_.localVar)
+      case _ => Seq()
+    }
+    val varTrans = VarTransformer(q.s, q.v, ins)
 
     val q1 = AbductionApplier.apply(q)
 
