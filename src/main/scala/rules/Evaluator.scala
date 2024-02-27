@@ -1619,8 +1619,6 @@ object evaluator extends EvaluationRules {
 
     assert(exps.nonEmpty, "Empty sequence of expressions not allowed")
 
-    type brFun = (State, Verifier) => VerificationResult
-
     val stop = if (constructor == Or) True else False
 
     eval(s, exps.head, pve, v)((s1, t0, v1) => {
@@ -1629,7 +1627,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(exps.head), v2, fromShortCircuitingAnd = true)(
+            brancher.branch(s2.copy(parallelizeBranches = false), if (constructor == Or) t0 else Not(t0), Some(exps.head), v2, fromShortCircuitingAnd = true)(
               (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>
