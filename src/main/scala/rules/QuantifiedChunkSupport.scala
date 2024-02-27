@@ -794,7 +794,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    val gain = PermTimes(tPerm, s.permissionScalingFactor)
+    val gain = if (!Verifier.config.unsafeWildcardOptimization() ||
+        (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
+      PermTimes(tPerm, s.permissionScalingFactor)
+    else
+      WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)
     val (ch: QuantifiedBasicChunk, inverseFunctions) =
       quantifiedChunkSupporter.createQuantifiedChunk(
         qvars                = qvars,
@@ -925,7 +929,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   case p: ast.Predicate => s.predicateFormalVarMap(p)
                   case w: ast.MagicWand =>
                     val bodyVars = w.subexpressionsToEvaluate(s.program)
-                    bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+                    bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
                 }
 
               val (relevantChunks, _) =
@@ -1072,7 +1076,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
           qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
-        val loss = PermTimes(tPerm, s.permissionScalingFactor)
+        val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
+            (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
+          PermTimes(tPerm, s.permissionScalingFactor)
+        else
+          WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
             h, ChunkIdentifier(resource, s.program))

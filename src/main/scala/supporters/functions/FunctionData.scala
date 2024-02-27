@@ -59,10 +59,10 @@ class FunctionData(val programFunction: ast.Function,
          x = arg.localVar)
     yield
       x -> Var(identifierFactory.fresh(x.name),
-               symbolConverter.toSort(x.typ)))
+               symbolConverter.toSort(x.typ), false))
 
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
-                         symbolConverter.toSort(programFunction.result.typ))
+                         symbolConverter.toSort(programFunction.result.typ), false)
 
   val arguments = Seq(`?s`) ++ formalArgs.values
 

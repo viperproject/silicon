@@ -70,12 +70,12 @@ private[tests] object DSL {
     def ==>(t2: Term) = Implies(t1, t2)
   }
 
-  val x = Var(Identifier("x"), sorts.Int)
-  val y = Var(Identifier("y"), sorts.Int)
-  val z = Var(Identifier("z"), sorts.Int)
-  val n = Var(Identifier("n"), sorts.Int)
-  val m = Var(Identifier("m"), sorts.Int)
-  val b = Var(Identifier("b"), sorts.Int)
+  val x = Var(Identifier("x"), sorts.Int, false)
+  val y = Var(Identifier("y"), sorts.Int, false)
+  val z = Var(Identifier("z"), sorts.Int, false)
+  val n = Var(Identifier("n"), sorts.Int, false)
+  val m = Var(Identifier("m"), sorts.Int, false)
+  val b = Var(Identifier("b"), sorts.Int, false)
 
   val `0` = IntLiteral(0)
   val `1` = IntLiteral(1)

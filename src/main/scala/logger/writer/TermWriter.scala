@@ -6,7 +6,7 @@
 
 package viper.silicon.logger.writer
 
-import spray.json.{JsArray, JsNull, JsObject, JsString, JsValue}
+import spray.json.{JsArray, JsBoolean, JsNull, JsObject, JsString, JsValue}
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
 
@@ -30,11 +30,12 @@ object TermWriter {
       "p" -> p
     )
 
-  private def variable(id: Identifier, sort: Sort) =
+  private def variable(id: Identifier, sort: Sort, isWildcard: Boolean) =
     JsObject(
       "type" -> JsString("variable"),
       "id" -> JsString(id.name),
-      "sort" -> toJSON(sort)
+      "sort" -> toJSON(sort),
+      "isWildcard" -> JsBoolean(isWildcard)
     )
 
   def toJSON(sort: Sort): JsValue = {
@@ -112,7 +113,7 @@ object TermWriter {
         "elseBranch" -> toJSON(elseBranch)
       )
 
-    case Var(id, sort) => variable(id, sort)
+    case Var(id, sort, arp) => variable(id, sort, arp)
     case SortWrapper(t, sort) =>
       JsObject(
         "type" -> JsString("sortWrapper"),

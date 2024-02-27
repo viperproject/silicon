@@ -96,7 +96,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {
           case Some(t) => t
-          case None => Var(Identifier(v.name), toSort(v.typ))
+          case None => Var(Identifier(v.name), toSort(v.typ), false)
         }
 
       case eQuant: ast.QuantifiedExp =>
@@ -117,7 +117,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         tQuant.transform({ case v: Var =>
           v.id match {
             case sid: SuffixedIdentifier if names.contains(sid.prefix.name) =>
-              Var(SimpleIdentifier(sid.prefix.name), v.sort)
+              Var(SimpleIdentifier(sid.prefix.name), v.sort, false)
             case _ => v
           }
         })()

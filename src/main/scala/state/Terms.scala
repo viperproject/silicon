@@ -247,8 +247,8 @@ object Macro extends CondFlyweightFactory[(Identifier, Seq[Sort], Sort), Macro, 
   override def actualCreate(args: (Identifier, Stack[Sort], Sort)): Macro = new Macro(args._1, args._2, args._3)
 }
 
-class Var private[terms] (val id: Identifier, val sort: Sort) extends Function with Application[Var] with ConditionalFlyweight[(Identifier, Sort), Var] {
-  override val equalityDefiningMembers: (Identifier, Sort) = (id, sort)
+class Var private[terms] (val id: Identifier, val sort: Sort, val isWildcard: Boolean) extends Function with Application[Var] with ConditionalFlyweight[(Identifier, Sort, Boolean), Var] {
+  override val equalityDefiningMembers: (Identifier, Sort, Boolean) = (id, sort, isWildcard)
   val applicable: Var = this
   val args: Seq[Term] = Seq.empty
   val argSorts: Seq[Sort] = Seq(sorts.Unit)
@@ -256,11 +256,11 @@ class Var private[terms] (val id: Identifier, val sort: Sort) extends Function w
 
   override lazy val toString = id.toString
 
-  def copy(id: Identifier = id, sort: Sort = sort) = Var(id, sort)
+  def copy(id: Identifier = id, sort: Sort = sort, isWildcard: Boolean = isWildcard) = Var(id, sort, isWildcard)
 }
 
-object Var extends CondFlyweightFactory[(Identifier, Sort), Var, Var] {
-  override def actualCreate(args: (Identifier, Sort)): Var = new Var(args._1, args._2)
+object Var extends CondFlyweightFactory[(Identifier, Sort, Boolean), Var, Var] {
+  override def actualCreate(args: (Identifier, Sort, Boolean)): Var = new Var(args._1, args._2, args._3)
 }
 
 class App private[terms] (val applicable: Applicable, val args: Seq[Term])
@@ -1325,6 +1325,21 @@ class PermTimes private[terms] (val p0: Term, val p1: Term)
   override val op = "*"
 }
 
+object WildcardSimplifyingPermTimes extends ((Term, Term) => Term) {
+  override def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
+    case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
+    case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
+    case (Ite(c, t1, t2), t3) => Ite(c, WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case _ => PermTimes(t0, t1)
+  }
+}
+
 object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (FullPerm, t) => t
@@ -1332,6 +1347,12 @@ object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
     case (NoPerm, _) => NoPerm
     case (_, NoPerm) => NoPerm
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
+    case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(PermTimes(t1, t2), PermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(PermTimes(t1, t2), PermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, PermTimes(t1, t2), PermTimes(t1, t3))
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -2507,8 +2528,8 @@ object Let extends CondFlyweightTermFactory[(Map[Var, Term], Term), Let] {
 /* Predefined terms */
 
 object predef {
-  val `?s` = Var(Identifier("s@$"), sorts.Snap) // with SnapshotTerm
-  val `?r` = Var(Identifier("r"), sorts.Ref)
+  val `?s` = Var(Identifier("s@$"), sorts.Snap, false) // with SnapshotTerm
+  val `?r` = Var(Identifier("r"), sorts.Ref, false)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)
@@ -2551,6 +2572,8 @@ object utils {
     case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
     case PermPermDiv(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case Ite(_, t0, NoPerm) => consumeExactRead(t0, constrainableARPs)
+    case Ite(_, NoPerm, t1) => consumeExactRead(t1, constrainableARPs)
     case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case _ => true
   }
