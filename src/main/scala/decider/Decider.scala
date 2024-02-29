@@ -429,15 +429,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def declareAndRecordAsFreshMacros(macros: Seq[MacroDecl], toStack: Boolean): Unit = {
       if (!toStack) {
-        macros foreach prover.declare
-
-        _declaredFreshMacros = _declaredFreshMacros ++ macros
+        for (m <- macros) {
+          if (!_declaredFreshMacros.contains(m)) {
+            prover.declare(m)
+            _declaredFreshMacros = _declaredFreshMacros.appended(m)
+          }
+        }
       } else {
         for (m <- macros) {
-          if (!_declaredFreshMacros.contains(m))
+          if (!_declaredFreshMacros.contains(m)) {
             prover.declare(m)
-
-          _declaredFreshMacros = _declaredFreshMacros.appended(m)
+            _declaredFreshMacros = _declaredFreshMacros.appended(m)
+          }
           _freshMacroStack.foreach(l => l.append(m))
         }
       }
