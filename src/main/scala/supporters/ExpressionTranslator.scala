@@ -119,7 +119,7 @@ trait ExpressionTranslator {
         }
 
         Quantification(qantOp,
-                       vars map (v => Var(Identifier(v.name), toSort(v.typ))),
+                       vars map (v => Var(Identifier(v.name), toSort(v.typ), false)),
                        f(body),
                        translatedTriggers,
                        "",
@@ -152,7 +152,7 @@ trait ExpressionTranslator {
 
       case _: ast.NullLit => Null
 
-      case v: ast.AbstractLocalVar => Var(Identifier(v.name), toSort(v.typ))
+      case v: ast.AbstractLocalVar => Var(Identifier(v.name), toSort(v.typ), false)
 
       case ast.DomainFuncApp(funcName, args, _) =>
         val tArgs = args map f
