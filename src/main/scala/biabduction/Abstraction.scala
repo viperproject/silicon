@@ -1,63 +1,73 @@
 package viper.silicon.biabduction
 
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.state.State
 import viper.silver.ast._
 
 object AbstractionApplier extends RuleApplier[AbstractionQuestion] {
   override val rules: Seq[AbstractionRule[_]] = Seq(AbstractionListFold, AbstractionListPackage, AbstractionJoin, AbstractionApply)
 }
 
-case class AbstractionQuestion(exps: Seq[Exp], s: State)
+case class AbstractionQuestion(exps: Seq[Exp], p: Program)
 
 trait AbstractionRule[T] extends BiAbductionRule[AbstractionQuestion, T]
 
-object AbstractionListFold extends AbstractionRule[Map[Exp, Seq[Exp]]] {
-  override protected def check(q: AbstractionQuestion)(Q: Option[Map[Exp, Seq[Exp]]] => VerificationResult): VerificationResult = {
-    val accs = q.exps.collect { case acc: FieldAccessPredicate => acc.loc -> acc }.toMap
-    val nexts = q.exps.collect { case eq@EqCmp(a: FieldAccess, _) => a -> eq }.toMap
-    val lists = q.exps.collect({ case pa: PredicateAccess => pa.args.head -> pa }).toMap
+object AbstractionListFold extends AbstractionRule[(FieldAccessPredicate, PredicateAccessPredicate)] {
+  override protected def check(q: AbstractionQuestion)(Q: Option[(FieldAccessPredicate, PredicateAccessPredicate)] => VerificationResult): VerificationResult = {
+    val accs = q.exps.collect { case acc: FieldAccessPredicate => acc }
+    val lists = q.exps.collect({ case pa: PredicateAccessPredicate => pa.loc.args.head -> pa }).toMap
 
-    val matches = accs.keys.filter { head => nexts.contains(head) && lists.contains(nexts(head)) }.map { head => head -> Seq(accs(head), nexts(head), lists(nexts(head))) }
-
-    if (matches.isEmpty) {
-      Q(None)
-    } else {
-      Q(Some(matches.toMap))
-    }
-
+    val trigger = accs.collectFirst { case acc if lists.contains(acc.loc) => (acc, lists(acc.loc)) }
+    Q(trigger)
   }
 
-  override protected def apply(q: AbstractionQuestion, inst: Map[Exp, Seq[Exp]])(Q: AbstractionQuestion => VerificationResult): VerificationResult = {
-    val all = inst.values.flatten.toSeq
-    val exps1 = q.exps.filterNot(all.contains) ++ inst.keys.map { head => abductionUtils.getPredicate(q.s.program, head, FullPerm()()) }
-    Q(q.copy(exps = exps1))
+  override protected def apply(q: AbstractionQuestion, inst: (FieldAccessPredicate, PredicateAccessPredicate))(Q: AbstractionQuestion => VerificationResult): VerificationResult = {
+    inst match {
+      case (acc, pa) =>
+        val exps1 = q.exps.filterNot(exp => exp == acc || exp == pa) :+ abductionUtils.getPredicate(q.p, acc.loc.rcv)
+        Q(q.copy(exps = exps1))
+    }
   }
 }
 
 
-object AbstractionListPackage extends AbstractionRule[Seq[Exp]] {
+// This should trigger on:
+// - Two connected nexts
+// - TODO A wand and a next on the rhs of the wand
+object AbstractionListPackage extends AbstractionRule[(FieldAccess, Exp)] {
 
-  override protected def check(q: AbstractionQuestion)(Q: Option[Seq[Exp]] => VerificationResult): VerificationResult = {
-
-    val accs = q.exps.collect { case acc: FieldAccessPredicate => acc.loc -> acc }.toMap
-    val nexts = q.exps.collect { case eq@EqCmp(a: FieldAccess, _) => a -> eq }.toMap
-
-    val matches: Seq[Exp] = accs.keys.filter {
-      nexts.contains
-    }.flatMap { k => Seq(accs(k), nexts(k)) }.toSeq
-
-    if (matches.isEmpty) {
-      Q(None)
-    } else {
-      Q(Some(matches))
+  /*
+  def findRhs(q: AbstractionQuestion, locs: Seq[Exp])(Q: Option[(FieldAccess, Exp)] => VerificationResult ): VerificationResult ={
+    locs match {
+      case Seq() => Q(None)
+      case (loc: FieldAccess) :: rest =>
+        val next = FieldAccess(loc, loc.field)()
+        evalLocationAccess(q.s, next, pve, q.v) { (s2, _, tArgs, v2) =>
+          val rec = next.res(s2.program)
+          val id = ChunkIdentifier(rec, s2.program)
+          val chunk = chunkSupporter.findChunk[NonQuantifiedChunk](s2.h.values, id, tArgs, v2)
+          chunk match {
+            case Some(_) => Q(Some((next, loc)))
+            case None => findRhs(q.copy(s = s2, v = v2), rest)(Q)
+          }
+        }
+      case (wand: MagicWand) :: rest => ??? // TODO
     }
+  }*/
+
+  override protected def check(q: AbstractionQuestion)(Q: Option[(FieldAccess, Exp)] => VerificationResult): VerificationResult = {
+    val lhsFields = q.exps.collect { case acc: FieldAccessPredicate => acc.loc }
+    val trigger = lhsFields.collectFirst { case loc: FieldAccess if q.exps.contains(FieldAccess(loc, loc.field)()) => (FieldAccess(loc, loc.field)(), loc) }
+    Q(trigger)
   }
 
-  override protected def apply(q: AbstractionQuestion, inst: Seq[Exp])(Q: AbstractionQuestion => VerificationResult): VerificationResult = {
-
-    val exps1 = q.exps.filterNot(inst.contains) ++ inst.map { case EqCmp(acc: FieldAccess, b) => MagicWand(b, acc.rcv)() }
-    Q(q.copy(exps = exps1))
+  override protected def apply(q: AbstractionQuestion, inst: (FieldAccess, Exp))(Q: AbstractionQuestion => VerificationResult): VerificationResult = {
+    inst match {
+      case (lhs, seg: FieldAccess) =>
+        val newWand = MagicWand(abductionUtils.getPredicate(q.p, lhs), abductionUtils.getPredicate(q.p, seg.rcv))()
+        val exp1: Seq[Exp] = q.exps.filterNot(exp => exp == lhs || exp == seg) :+ newWand
+        Q(q.copy(exps = exp1))
+      case (lhs, wand: MagicWand) => ??? // TODO
+    }
   }
 }
 

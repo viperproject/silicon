@@ -45,7 +45,7 @@ package object reporting {
 
   def convertToViperResult(result: VerificationResult): VprVerificationResult = {
     result match {
-      case Success() | Unreachable() => VprSuccess
+      case Success(_) | Unreachable() => VprSuccess
       case Failure(message, _) => VprFailure(Seq(message))
     }
   }

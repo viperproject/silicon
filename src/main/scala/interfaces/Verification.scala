@@ -6,11 +6,11 @@
 
 package viper.silicon.interfaces
 
-import viper.silicon.biabduction.SiliconAbductionQuestion
+import viper.silicon.biabduction.{AbductionResult, SiliconAbductionQuestion}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{BiAbductionQuestion, ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
+import viper.silver.verifier.{ApplicationEntry, BiAbductionQuestion, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 import viper.silver.ast.Program
@@ -85,7 +85,7 @@ sealed abstract class NonFatalResult extends VerificationResult {
   }
 }
 
-case class Success() extends NonFatalResult {
+case class Success(newPosts: Option[AbductionResult] = None) extends NonFatalResult {
   override val toString = "Success"
 }
 
@@ -105,7 +105,7 @@ case class Failure/*[ST <: Store[ST],
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
                                  reasonUnknown: Option[String],
-                                 abductionResult: Option[String]) extends FailureContext {
+                                 abductionResult: Option[AbductionResult]) extends FailureContext {
 
   lazy val branchConditionString: String = {
     if(branchConditions.nonEmpty) {

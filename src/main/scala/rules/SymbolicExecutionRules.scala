@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.{BiAbductionSolver, SiliconAbductionQuestion}
+import viper.silicon.biabduction.{AbductionResult, BiAbductionSolver, SiliconAbductionQuestion}
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
@@ -70,7 +70,7 @@ trait SymbolicExecutionRules {
         })
     } else Seq()
 
-    val abductionResult: Option[String] = ve.reason match {
+    val abductionResult: Option[AbductionResult] = ve.reason match {
       case reason: InsufficientPermission =>
         val goal = reason.offendingNode match {
           case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()

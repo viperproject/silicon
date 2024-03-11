@@ -182,7 +182,7 @@ object AbductionListFoldBase extends AbductionRule[PredicateAccessPredicate] {
 // find a precondition for the original value of x.next, not for the assigned value.
 
 // We need to add the "old" chunks to the var matching?
-// Or do var matching in the context of the current state vs the old state?
+// Or do var matching in the context of the current state vs the old state? If so then maybe we do want goals/results as chunks?
 object AbductionListFold extends AbductionRule[PredicateAccessPredicate] {
 
   override protected def check(q: SiliconAbductionQuestion)(Q: Option[PredicateAccessPredicate] => VerificationResult): VerificationResult = {

@@ -1389,7 +1389,7 @@ object evaluator extends EvaluationRules {
     v.decider.pcs.popUntilMark(preMark)
 
     (r, optRemainingTriggerTerms) match {
-      case (Success(), Some(remainingTriggerTerms)) =>
+      case (Success(_), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta)
         Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>

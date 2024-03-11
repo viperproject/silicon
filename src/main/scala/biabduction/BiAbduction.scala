@@ -16,9 +16,23 @@ import viper.silver.verifier.{AbductionQuestionTransformer, DummyReason, Partial
 // - produce the precondition, execute the statements, and continue execution
 // - At the end, do abstraction on all the found preconditions. Find the necessary statements for the abstractions
 
+trait AbductionResult
+
+case class AbductionSuccess(pre: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), posts: Seq[Exp] = Seq(), invs: Seq[Exp] = Seq()) extends AbductionResult {
+  override def toString: String = {
+    "Abduced preconditions\n" + pre.map(_.toString()).mkString("\n") + "\nAbduced statements\n" + stmts.map(_.toString()).mkString("\n")
+  }
+}
+
+case class AbductionFailure() extends AbductionResult {
+  override def toString: String = "Abduction failed"
+
+}
+
+
 object BiAbductionSolver {
 
-  def solve(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer]): String = {
+  def solve(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer]): AbductionResult = {
 
     val qPre = SiliconAbductionQuestion(s, v, goal)
 
@@ -38,27 +52,32 @@ object BiAbductionSolver {
     if (q1.goal.isEmpty) {
 
       // TODO it is possible that we want to transform variable in a non-strict way before abstraction
-      val pres = AbstractionApplier.apply(AbstractionQuestion(q1.foundPrecons, q1.s)).exps
+      val pres = AbstractionApplier.apply(AbstractionQuestion(q1.foundPrecons, q1.s.program)).exps
 
       // TODO if some path conditions already contain Ands, then we might reject clauses that we could actually handle
       val bcs = q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined => varTrans.transformExp(e).get }
 
       // TODO Weak transformation of statements to original variables (Viper encoding can introduce new variables)
 
-      val rt = pres.map { (e: Exp) =>
-        (varTrans.transformExp(e), bcs) match {
-          case (Some(e1), Seq()) => e1.toString()
-          case (Some(e1), bcs) => Implies(BigAnd(bcs), e1)().toString()
-          case _ => "Could not be transformed to inputs: " + e.toString()
+      val presTransformed = pres.map { (e: Exp) =>
+        varTrans.transformExp(e) match {
+          case Some(e1) => e1
+          case _ => e
         }
-      }.mkString("\n")
-      "Abduction successful.\nAbduced preconditions:\n" + rt + "\nAbduced statements:\n" + q1.foundStmts.map(_.toString()).mkString("\n")
+      }.map { e =>
+        bcs match {
+          case Seq() => e
+          case _ => Implies(BigAnd(bcs), e)()
+        }
+      }
+      AbductionSuccess(presTransformed, q1.foundStmts)
+
     } else {
-      "Abduction failed."
+      AbductionFailure()
     }
   }
 
-  def generatePostconditions(s: State, v: Verifier): String = {
+  def generatePostconditions(s: State, v: Verifier): AbductionSuccess = {
 
     val formals = s.currentMember match {
       case Some(m: Method) => m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
@@ -67,10 +86,9 @@ object BiAbductionSolver {
     val tra = VarTransformer(s, v, formals)
     val res = s.h.values.collect { case c: BasicChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
 
-    val absRes = AbstractionApplier.apply(AbstractionQuestion(res, s)).exps
-
-    "Abduced postconditions\n" + absRes.map(_.toString()).mkString("\n")
-
+    val absRes = AbstractionApplier.apply(AbstractionQuestion(res, s.program)).exps
+    AbductionSuccess(posts = absRes)
+    //"Abduced postconditions\n" + absRes.map(_.toString()).mkString("\n")
   }
 }
 
@@ -96,6 +114,7 @@ trait RuleApplier[S] {
     result
   }
 }
+
 trait BiAbductionRule[S, T] {
 
   val pve: PartialVerificationError = Internal()
