@@ -200,7 +200,7 @@ object evaluator extends EvaluationRules {
 
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, eRcvr, v1) => {
-          val debugOldLabel = getDebugOldLabel(fa)
+          val debugOldLabel = v1.getDebugOldLabel(s1)
           val newFa = if (s1.isEvalInOld) ast.FieldAccess(eRcvr, fa.field)(fa.pos, fa.info, fa.errT)
                       else ast.DebugLabelledOld(ast.FieldAccess(eRcvr, fa.field)(), debugOldLabel)(fa.pos, fa.info, fa.errT)
           val (relevantChunks, _) =
@@ -283,7 +283,7 @@ object evaluator extends EvaluationRules {
           chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
-            val debugOldLabel = getDebugOldLabel(fa)
+            val debugOldLabel = v2.getDebugOldLabel(s3)
             val newFa = if(s3.isEvalInOld) ast.FieldAccess(eArgs.head, fa.field)(e.pos, e.info, e.errT)
                         else ast.DebugLabelledOld(ast.FieldAccess(eArgs.head, fa.field)(), debugOldLabel)(e.pos, e.info, e.errT)
             val s4 = if(Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
@@ -1731,14 +1731,6 @@ object evaluator extends EvaluationRules {
                 sys.error(s"Unexpected join data entries $entries")
             }(Q)
       }})
-  }
-
-  private def getDebugOldLabel(exp: ast.Exp): String = {
-    exp.pos match {
-      case NoPosition => "line@unknown"
-      case column: HasLineColumn => s"line@${column.line}"
-      case VirtualPosition(identifier) => s"line@$identifier"
-    }
   }
 
   private[silicon] case object FromShortCircuitingAnd extends ast.Info {

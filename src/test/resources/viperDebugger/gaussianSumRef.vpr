@@ -1,13 +1,12 @@
 field val : Int
 
-method gaussian_sum_ref(n : Ref)
-    requires acc(n.val) && n.val >= 0
+method gaussian_sum(n : Ref)
+    requires ge0(n)
 {
-    var i : Int
-    var r : Int
+    unfold ge0(n)
 
-    i := 0
-    r := 0
+    var i : Int := 0
+    var r : Int := 0
 
     while(i < n.val)
         invariant acc(n.val)
@@ -20,4 +19,19 @@ method gaussian_sum_ref(n : Ref)
     }
 
     assert r == n.val * (n.val+1) / 2
+}
+
+predicate ge0(n : Ref)
+{
+    acc(n.val) &&  n.val >= 0
+}
+
+method testRef()
+{
+    var x : Ref
+    x := new() // missing permission
+    var y : Int
+    x.val := 2
+    y := x.val + y
+    assert y >= x.val
 }

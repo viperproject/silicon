@@ -11,7 +11,7 @@ import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.rules.StateConsolidationRules
-import viper.silicon.state.{IdentifierFactory, SymbolConverter}
+import viper.silicon.state.{IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silicon.Config
@@ -44,8 +44,20 @@ trait Verifier {
 
   val errorsReportedSoFar = new AtomicInteger(0);
 
+  var debugHeapCounter = new AtomicInteger(0);
+
   def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > errorsReportedSoFar.get()
     || Verifier.config.numberOfErrorsToReport() == 0);
+
+  def getDebugOldLabel(s: State): String = {
+    val equalHeaps = s.oldHeaps.filter(h => h._1.startsWith("debug@") && h._2.equals(s.h)).keys
+    if(equalHeaps.nonEmpty){
+      equalHeaps.head
+    }else{
+      val counter = debugHeapCounter.getAndIncrement()
+      s"debug@$counter"
+    }
+  }
 }
 
 object Verifier {

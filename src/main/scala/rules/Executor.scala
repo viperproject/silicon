@@ -360,11 +360,7 @@ object executor extends ExecutionRules {
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
                 }
                 val s4 = s3.copy(h = h3 + ch)
-                val debugOldLabel: String = ass.pos match {
-                  case column: HasLineColumn => s"line@${column.line + 1}"
-                  case _ => s"line@unknown"
-                }
-                val s5 = if(Verifier.config.enableDebugging()) s4.copy(oldHeaps = s4.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s4))) else s4
+                val s5 = if(Verifier.config.enableDebugging()) s4.copy(oldHeaps = s4.oldHeaps + (v.getDebugOldLabel(s4) -> magicWandSupporter.getEvalHeap(s4))) else s4
                 Q(s5, v2)
               case (Incomplete(_, _), s3, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3, None)}}))
@@ -383,11 +379,7 @@ object executor extends ExecutionRules {
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), Seq(eRcvrNew), tSnap, FullPerm, ast.FullPerm()(ass.pos, ass.info, ass.errT))
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                 val s5 = s4.copy(h = h4)
-                val debugOldLabel: String = ass.pos match {
-                  case column: HasLineColumn => s"line@${column.line + 1}"
-                  case _ => s"line@unknown"
-                }
-                val s6 = if(Verifier.config.enableDebugging()) s5.copy(oldHeaps = s5.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s5))) else s5
+                val s6 = if(Verifier.config.enableDebugging()) s5.copy(oldHeaps = s5.oldHeaps + (v4.getDebugOldLabel(s5) -> magicWandSupporter.getEvalHeap(s5))) else s5
                 Q(s6, v4)
               })
             })
