@@ -25,7 +25,7 @@ abstract class PropertyInterpreter {
     // Boolean operators
     case Not(expr) => {
       val r = buildPathCondition(expr, info)
-      new Pair(terms.Not(r.getFirst), ast.Not(r.getSecond)())
+      new Pair(terms.Not(r.getFirst), ast.Not(r.getSecond)(r.getSecond.pos, r.getSecond.info, r.getSecond.errT))
     }
     case And(left, right) => buildAnd(left, right, info)
     case Or(left, right) => buildOr(left, right, info)
@@ -35,15 +35,15 @@ abstract class PropertyInterpreter {
     case Equals(left, right) => buildEquals(left, right, info)
 
     // Permission operators
-    case Plus(left, right) => buildBinary(terms.PermPlus, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermAdd(e0, e1)(), left, right, info)
-    case Minus(left, right) => buildBinary(terms.PermMinus, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermSub(e0, e1)(), left, right, info)
-    case Times(left, right) => buildBinary(terms.PermTimes, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermMul(e0, e1)(), left, right, info)
-    case Div(left, right) => buildBinary(terms.PermDiv, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermDiv(e0, e1)(), left, right, info)
+    case Plus(left, right) => buildBinary(terms.PermPlus, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermAdd(e0, e1)(e0.pos, e0.info, e0.errT), left, right, info)
+    case Minus(left, right) => buildBinary(terms.PermMinus, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermSub(e0, e1)(e0.pos, e0.info, e0.errT), left, right, info)
+    case Times(left, right) => buildBinary(terms.PermTimes, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermMul(e0, e1)(e0.pos, e0.info, e0.errT), left, right, info)
+    case Div(left, right) => buildBinary(terms.PermDiv, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermDiv(e0, e1)(e0.pos, e0.info, e0.errT), left, right, info)
 
-    case GreaterThanEquals(left, right) => buildBinary(terms.PermAtMost, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermLeCmp(e0, e1)(), right, left, info)
-    case GreaterThan(left, right) => buildBinary(terms.PermLess, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermLtCmp(e0, e1)(), right, left, info)
-    case LessThanEquals(left, right) => buildBinary(terms.PermAtMost, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermLeCmp(e0, e1)(), left, right, info)
-    case LessThan(left, right) => buildBinary(terms.PermLess, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermLtCmp(e0, e1)(), left, right, info)
+    case GreaterThanEquals(left, right) => buildBinary(terms.PermAtMost, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermLeCmp(e0, e1)(e0.pos, e0.info, e0.errT), right, left, info)
+    case GreaterThan(left, right) => buildBinary(terms.PermLess, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermLtCmp(e0, e1)(e0.pos, e0.info, e0.errT), right, left, info)
+    case LessThanEquals(left, right) => buildBinary(terms.PermAtMost, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermLeCmp(e0, e1)(e0.pos, e0.info, e0.errT), left, right, info)
+    case LessThan(left, right) => buildBinary(terms.PermLess, (e0 : ast.Exp, e1 : ast.Exp) => ast.PermLtCmp(e0, e1)(e0.pos, e0.info, e0.errT), left, right, info)
 
     // Chunk accessors
     case PermissionAccess(cv) => buildPermissionAccess(cv, info)
@@ -72,7 +72,7 @@ abstract class PropertyInterpreter {
       case terms.False => leftCond
       case leftTerm =>
         val rightCond = buildPathCondition(right, info)
-        new Pair(terms.And(leftTerm, rightCond.getFirst), ast.And(leftCond.getSecond, rightCond.getSecond)())
+        new Pair(terms.And(leftTerm, rightCond.getFirst), ast.And(leftCond.getSecond, rightCond.getSecond)(leftCond.getSecond.pos, leftCond.getSecond.info, leftCond.getSecond.errT))
      }
   }
 
@@ -84,7 +84,7 @@ abstract class PropertyInterpreter {
       case terms.True => leftCond
       case leftTerm =>
         val rightCond = buildPathCondition(right, info)
-        new Pair(terms.Or(leftTerm, rightCond.getFirst), ast.Or(leftCond.getSecond, rightCond.getSecond)())
+        new Pair(terms.Or(leftTerm, rightCond.getFirst), ast.Or(leftCond.getSecond, rightCond.getSecond)(leftCond.getSecond.pos, leftCond.getSecond.info, leftCond.getSecond.errT))
     }
   }
 
@@ -96,7 +96,7 @@ abstract class PropertyInterpreter {
       case terms.False => new Pair(terms.True, ast.TrueLit()())
       case leftTerm =>
         val rightCond = buildPathCondition(right, info)
-        new Pair(terms.Implies(leftTerm, rightCond.getFirst), ast.Implies(leftCond.getSecond, rightCond.getSecond)())
+        new Pair(terms.Implies(leftTerm, rightCond.getFirst), ast.Implies(leftCond.getSecond, rightCond.getSecond)(leftCond.getSecond.pos, leftCond.getSecond.info, leftCond.getSecond.errT))
     }
   }
 
@@ -112,7 +112,7 @@ abstract class PropertyInterpreter {
         } else {
           // else return argument-wise equal
           new Pair(terms.And(args1.getFirst.zip(args2.getFirst).map{ case (t1, t2) => t1 === t2 }),
-            BigAnd(args1.getSecond.zip(args2.getSecond).map{ case (e1, e2) => ast.EqCmp(e1, e2)() }))
+            BigAnd(args1.getSecond.zip(args2.getSecond).map{ case (e1, e2) => ast.EqCmp(e1, e2)(e1.pos, e1.info, e1.errT) }))
         }
       case (ArgumentAccess(cv), Null()) =>
         val args = extractArguments(cv, info)
@@ -123,7 +123,7 @@ abstract class PropertyInterpreter {
       case _ =>
         val leftCond = buildPathCondition(left, info)
         val rightCond =  buildPathCondition(right, info)
-        new Pair(terms.Equals(leftCond.getFirst, rightCond.getFirst), ast.EqCmp(leftCond.getSecond, rightCond.getSecond)())
+        new Pair(terms.Equals(leftCond.getFirst, rightCond.getFirst), ast.EqCmp(leftCond.getSecond, rightCond.getSecond)(leftCond.getSecond.pos, leftCond.getSecond.info, leftCond.getSecond.errT))
     }
   }
 

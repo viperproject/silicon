@@ -1,13 +1,29 @@
+field val: Int
 
-predicate greater0(i : Int)
+predicate greater0(i : Int, n : Ref)
 {
-    i >= 0
+    acc(n.val) && (i >= 0? n.val == 4 : n.val == 5)
 }
 
-method my_unfold(n : Int)
-    requires greater0(n + 1)
-    ensures n >= 0
+predicate impl(n: Ref, i: Int)
 {
-    unfold greater0(n + 1)
-    assert n >= 4
+    n != null ==> i >= 0
+}
+
+method my_unfold(i: Int, n : Ref)
+    requires greater0(i, n)
+    ensures acc(n.val)
+    ensures n.val >= 4 && n.val <= 5
+{
+    unfold greater0(i, n)
+    assert n.val <= 3
+}
+
+
+method unfold_impl(i: Int, n : Ref)
+    requires impl(n, i)
+    requires n != null
+{
+    unfold impl(n, i)
+    assert i >= 0
 }

@@ -17,7 +17,6 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
-import viper.silicon.utils.ast.convertTermVarToExpVarDecl
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.parser.PUnknown
@@ -102,7 +101,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
-          pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, s.substituteVarsInExp(p.getSecond))))
+          pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
@@ -138,13 +137,13 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
 
-    v.decider.assume(snapEqs, DebugExp.createInstance("Snapshot", true))
+    v.decider.assume(snapEqs, DebugExp.createInstance("Snapshot", isInternal_ = true), enforceAssumption = false)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
     newlyAddedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
-      pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, s.substituteVarsInExp(p.getSecond))))
+      pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
     }
 
     v.symbExLog.closeScope(sepIdentifier)
@@ -196,7 +195,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     case (BasicChunk(rid1, id1, args1, args1Exp, snap1, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, perm2, perm2Exp)) =>
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, v)
 
-      Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, PermPlus(perm1, perm2), ast.PermAdd(perm1Exp, perm2Exp)()), snapEq) // FIXME ake: pos/info/errT
+      Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, PermPlus(perm1, perm2), ast.PermAdd(perm1Exp, perm2Exp)()), snapEq)
     case (_, _) =>
       None
   }
@@ -236,6 +235,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         heap.values.collect({ case ch: QuantifiedFieldChunk => ch }).to(Seq)
 
       val receiver = `?r`
+      val receiverExp = ast.LocalVarDecl(receiver.id.name, ast.Ref)()
       val args = Seq(receiver)
       val chunksPerField: Map[String, Seq[QuantifiedFieldChunk]] = chunks.groupBy(_.id.name)
 
@@ -251,11 +251,10 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val trigger = FieldTrigger(field.name, smDef.sm, receiver)
           val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
-          val receiverExp = convertTermVarToExpVarDecl(receiver)
           val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(ast.FuncApp("permOf",
             Seq(ast.FieldAccess(receiverExp.localVar, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos), ast.FullPerm()())())()
           v.decider.assume(
-            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"), DebugExp.createInstance(exp, s.substituteVarsInExp(exp)))
+            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"), DebugExp.createInstance(exp, exp))
         } else {
           /*
           If we don't use heap-dependent triggers, the trigger x.f does not work. Instead, we assume the permission
@@ -265,18 +264,18 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
            */
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
-              val exp = ast.FuncApp("permOf", Seq(ast.FieldAccess(chunk.singletonRcvrExp.get, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos) // TODO ake: permof
-              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), DebugExp.createInstance(exp, s.substituteVarsInExp(exp)))
+              val exp = ast.FuncApp("permOf", Seq(ast.FieldAccess(chunk.singletonRcvrExp.get, field)()))(ast.NoPosition, ast.NoInfo, ast.Perm, ast.NoTrafos)
+              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), DebugExp.createInstance(exp, exp))
             } else {
               val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
               val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
-              val firstVar = convertTermVarToExpVarDecl(chunk.quantifiedVars.head).localVar
-              val exp = ast.Forall(chunk.quantifiedVars.map(convertTermVarToExpVarDecl), Seq(), ast.PermLeCmp(ast.FuncApp("permOf",
-                Seq(ast.FieldAccess(firstVar, field)()))(firstVar.pos, firstVar.info, ast.Perm, firstVar.errT), ast.FullPerm()())())()
+              val chunkReceiverExp = chunk.quantifiedVarExps.head.localVar
+              val exp = ast.Forall(chunk.quantifiedVarExps, Seq(), ast.PermLeCmp(ast.FuncApp("permOf",
+                Seq(ast.FieldAccess(chunkReceiverExp, field)()))(chunkReceiverExp.pos, chunkReceiverExp.info, ast.Perm, chunkReceiverExp.errT), ast.FullPerm()())())()
               v.decider.assume(
-                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"), DebugExp.createInstance(exp, s.substituteVarsInExp(exp))) // TODO ake: substitution, e.g. quantifiedpermissions -> assignments.vpr -> test04
+                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"), DebugExp.createInstance(exp, exp))
             }
 
           }

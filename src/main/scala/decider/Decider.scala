@@ -15,10 +15,11 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
-import viper.silicon.state.terms._
-import viper.silicon.utils.ast.extractPTypeFromExp
+import viper.silicon.state.terms.{Term, _}
+import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
+import viper.silver.ast.LocalVarWithVersion
 import viper.silver.components.StatefulComponent
 import viper.silver.parser.{PPrimitiv, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
@@ -52,10 +53,12 @@ trait Decider {
 
   def startDebugSubExp(): Unit
 
-  def assume(t: Term, e: ast.Exp, substitutedE: ast.Exp): Unit
+  def assume(t: Term, e: ast.Exp, finalExp: ast.Exp): Unit
   def assume(t: Term, debugExp: DebugExp): Unit
-  def assume(ts: InsertionOrderedSet[Term], e: DebugExp, enforceAssumption: Boolean = false): Unit
-  def assume(ts: Iterable[Term], e: DebugExp): Unit
+  def assume(assumptions: Iterable[(Term, DebugExp)]): Unit
+  def assume(assumptions: InsertionOrderedSet[(Term, DebugExp)], enforceAssumption: Boolean = false): Unit
+  def assume(terms: Iterable[Term], debugExp: DebugExp, enforceAssumption: Boolean): Unit
+  def assume(terms: Iterable[Term], debugExp: DebugExp, enforceAssumption: Boolean, overwriteTerm: Boolean): Unit
 
   def check(t: Term, timeout: Int): Boolean
 
@@ -70,7 +73,7 @@ trait Decider {
   def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl
 
   def fresh(sort: Sort, pType: PType): Var
-  def fresh(v: ast.AbstractLocalVar): Var
+  def fresh(v: ast.AbstractLocalVar): (Var, ast.LocalVarWithVersion)
   def freshARP(id: String = "$k"): (Var, Term)
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
@@ -119,8 +122,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def prover: Prover = _prover
 
     def pcs: PathConditionStack = pathConditions
-
-    var debugExpStack : Stack[InsertionOrderedSet[DebugExp]] = Stack.empty
 
     var debugVariableTypes : Map[String, PType] = Map.empty
 
@@ -227,81 +228,69 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Assuming facts */
 
     def startDebugSubExp(): Unit = {
-      if (Verifier.config.enableDebugging()) {
-        debugExpStack = InsertionOrderedSet[DebugExp]().empty +: debugExpStack
+      if(Verifier.config.enableDebugging()) {
+        pathConditions.startDebugSubExp()
       }
     }
 
-    private def popDebugSubExp(): InsertionOrderedSet[DebugExp] = {
-      if (!Verifier.config.enableDebugging()) return InsertionOrderedSet.empty
-
-      if (debugExpStack.isEmpty) {
-        InsertionOrderedSet.empty // TODO ake: this should not happen
-      } else {
-        val res = debugExpStack.head
-        debugExpStack = debugExpStack.tail
-        res
+    def finishDebugSubExp(description: String): Unit = {
+      if(Verifier.config.enableDebugging()) {
+        pathConditions.finishDebugSubExp(description)
       }
     }
 
-    def finishDebugSubExp(description : String): Unit ={
-      if (!Verifier.config.enableDebugging()) return
-
-      val debugExp = DebugExp.createInstance(description = description, children = popDebugSubExp())
-      addDebugExp(debugExp)
-    }
-
-    private def addDebugExp(e: DebugExp): Unit = {
-      if (!Verifier.config.enableDebugging()) return
-
-      if(e.getTerms.nonEmpty && e.getTerms.forall(t => PathConditions.isGlobal(t))){
-        pathConditions.addGlobalDebugExp(e)
-      }else{
-        if (e.getTerms.exists(t => PathConditions.isGlobal(t)) && !e.isInternal) {
-          // this should not happen
-          pathConditions.addGlobalDebugExp(DebugExp.createInstance("failed to distinguish global and non-global terms"))
-        }
-
-        if (debugExpStack.isEmpty) {
-          pathConditions.addNonGlobalDebugExp(e)
-        } else {
-          // DebugSubExp -> will be attached to another DebugExp later on
-          val d = debugExpStack.head + e
-          debugExpStack = d +: debugExpStack.tail
-        }
+    def addDebugExp(e: DebugExp): Unit = {
+      if(Verifier.config.enableDebugging()) {
+        pathConditions.addDebugExp(e)
       }
     }
 
-    def assume(t: Term, e : ast.Exp, substitutedE : ast.Exp): Unit = {
-      assume(InsertionOrderedSet(Seq(t)), DebugExp.createInstance(e, substitutedE), false)
+    def assume(t: Term, e : ast.Exp, finalExp : ast.Exp): Unit = {
+      assume(InsertionOrderedSet(Seq((t, DebugExp.createInstance(e, finalExp)))), false)
     }
 
     def assume(t: Term, debugExp: DebugExp): Unit = {
-      assume(InsertionOrderedSet(Seq(t)), debugExp, false)
+      assume(InsertionOrderedSet(Seq((t, debugExp))), false)
     }
 
-    def assume(terms: Iterable[Term], e: DebugExp): Unit =
-      assume(InsertionOrderedSet(terms), e, false)
+    def assume(assumptions: Iterable[(Term, DebugExp)]): Unit =
+      assume(InsertionOrderedSet(assumptions), false)
 
-    def assume(terms: InsertionOrderedSet[Term], e : DebugExp, enforceAssumption: Boolean = false): Unit = {
+    def assume(assumptions: InsertionOrderedSet[(Term, DebugExp)], enforceAssumption: Boolean = false): Unit = {
+      val filteredAssumptions =
+        if (enforceAssumption) assumptions
+        else assumptions filterNot (a => isKnownToBeTrue(a._1))
+
+
+      if (Verifier.config.enableDebugging()) {
+        filteredAssumptions foreach (a => addDebugExp(a._2.withTerm(a._1)))
+      }
+
+      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(filteredAssumptions map (_._1))
+    }
+
+    def assume(terms: Iterable[Term], debugExp: DebugExp, enforceAssumption: Boolean): Unit = {
+      assume(terms, debugExp, enforceAssumption, overwriteTerm = true)
+    }
+
+    def assume(terms: Iterable[Term], debugExp: DebugExp, enforceAssumption: Boolean, overwriteTerm: Boolean): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms, e)
+      if (Verifier.config.enableDebugging() && filteredTerms.nonEmpty) {
+        addDebugExp(if(overwriteTerm) debugExp.withTerm(And(filteredTerms)) else debugExp)
+      }
+
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms))
     }
 
-    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], e: DebugExp) = {
+    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]): Unit = {
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
 
       /* Add terms to Silicon-managed path conditions */
       terms foreach pathConditions.add
-
-      if(Verifier.config.enableDebugging()){
-        val debugExp = e.withTerms(terms)
-        addDebugExp(debugExp)
-      }
 
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume
@@ -388,10 +377,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       term
     }
 
-    def fresh(v: ast.AbstractLocalVar): Var = {
-      val term = prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
-      if(Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> extractPTypeFromExp(v))
-      term
+    def fresh(v: ast.AbstractLocalVar): (Var, ast.LocalVarWithVersion) = {
+      val term = fresh(v.name, symbolConverter.toSort(v.typ), extractPTypeFromExp(v))
+      (term, LocalVarWithVersion(simplifyVariableName(term.id.name), v.typ)(v.pos, v.info, v.errT))
     }
 
     def freshARP(id: String = "$k"): (Var, Term) = {

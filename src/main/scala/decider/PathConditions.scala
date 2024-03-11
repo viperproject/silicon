@@ -8,13 +8,13 @@ package viper.silicon.decider
 
 import debugger.DebugExp
 import org.jgrapht.alg.util.Pair
-import viper.silicon.{Stack, decider}
+import viper.silicon.Stack
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.state.State
 import viper.silicon.state.terms._
 import viper.silicon.utils.Counter
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.{LocalVar, TrueLit}
+import viper.silver.ast.TrueLit
 /*
  * Interfaces
  */
@@ -64,6 +64,11 @@ trait PathConditionStack extends RecordedPathConditions {
   def mark(): Mark
   def popUntilMark(mark: Mark): Unit
 
+  def startDebugSubExp(): Unit
+  def finishDebugSubExp(description : String): Unit
+
+  def addDebugExp(e: DebugExp): Unit
+
   def addNonGlobalDebugExp(assumptionDebugExp: DebugExp) : Unit
   def addGlobalDebugExp(assumptionDebugExp: DebugExp) : Unit
   def after(mark: Mark): RecordedPathConditions
@@ -92,13 +97,15 @@ private class PathConditionStackLayer
   def globalAssumptions: InsertionOrderedSet[Term] = _globalAssumptions
   def nonGlobalAssumptions: InsertionOrderedSet[Term] = _nonGlobalAssumptions
   def globalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _globalAssumptionDebugExps
-  def nonGlobalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _nonGlobalAssumptionDebugExps
+  def nonGlobalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _nonGlobalAssumptionDebugExps ++ debugExpStack.flatten
   def declarations: InsertionOrderedSet[Decl] = _declarations
 
   def assumptions: InsertionOrderedSet[Term] = globalAssumptions ++ nonGlobalAssumptions
   def assumptionDebugExps:  InsertionOrderedSet[DebugExp] = globalAssumptionDebugExps ++ nonGlobalAssumptionDebugExps
 
   def pathConditions: InsertionOrderedSet[Term] = assumptions ++ branchCondition
+
+  var debugExpStack : Stack[InsertionOrderedSet[DebugExp]] = Stack.empty
 
   def branchCondition_=(condition: Term): Unit = {
     assert(_branchCondition.isEmpty,
@@ -135,6 +142,43 @@ private class PathConditionStackLayer
 
   def addGlobalDebugExp(debugExp: DebugExp): Unit = {
     _globalAssumptionDebugExps += debugExp
+  }
+
+  def startDebugSubExp(): Unit = {
+    debugExpStack = InsertionOrderedSet[DebugExp]().empty +: debugExpStack
+  }
+
+  private def popDebugSubExp(): InsertionOrderedSet[DebugExp] = {
+    val res = debugExpStack.head
+    debugExpStack = debugExpStack.tail
+    res
+  }
+
+  def finishDebugSubExp(description: String): Unit = {
+    val children = popDebugSubExp()
+    if(children.nonEmpty) {
+      val debugExp = DebugExp.createInstance(description = description, children = children)
+      addDebugExp(debugExp)
+    }
+  }
+
+  def addDebugExp(e: DebugExp): Unit = {
+    if (e.getAllTerms.nonEmpty && e.getAllTerms.forall(t => PathConditions.isGlobal(t))) {
+      addGlobalDebugExp(e)
+    } else {
+      if (e.getAllTerms.exists(t => PathConditions.isGlobal(t)) && !e.isInternal) {
+        // this should not happen
+        addGlobalDebugExp(DebugExp.createInstance("failed to distinguish global and non-global terms"))
+      }
+
+      if (debugExpStack.isEmpty) {
+        addNonGlobalDebugExp(e)
+      } else {
+        // DebugSubExp -> will be attached to another DebugExp later on
+        val d = debugExpStack.head + e
+        debugExpStack = d +: debugExpStack.tail
+      }
+    }
   }
 
   def add(declaration: Decl): Unit = _declarations += declaration
@@ -217,11 +261,11 @@ private trait LayeredPathConditionStackLike {
         case None =>
       }
 
-      if(layer.nonGlobalAssumptionDebugExps.nonEmpty){
-        conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew), InsertionOrderedSet(implicationLHS),
-          false, layer.nonGlobalAssumptionDebugExps)
+      if(layer.nonGlobalAssumptionDebugExps.nonEmpty && !implicationLHSExp.equals(TrueLit()())) {
+        conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew), Some(implicationLHS),
+          false, layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten)
       }else{
-        conditionalTerms ++= layer.nonGlobalAssumptionDebugExps
+        conditionalTerms ++= layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten
       }
     }
 
@@ -261,7 +305,6 @@ private trait LayeredPathConditionStackLike {
   def quantifiedExp(layers: Stack[PathConditionStackLayer],
                     quantifier: Quantifier,
                     qvars: Seq[ast.Exp],
-                    /* TODO ake: do I need these args? */
                     triggers: Seq[ast.Trigger],
                     name: String,
                     isGlobal: Boolean,
@@ -275,9 +318,16 @@ private trait LayeredPathConditionStackLike {
 
       val branchConditionExp = layer.branchConditionExp
         if(branchConditionExp.isDefined){
-          val quantBody = DebugExp.createImplicationInstance(description=None, originalExp=Some(branchConditionExp.get.getFirst), substitutedExp=Some(branchConditionExp.get.getSecond), terms=InsertionOrderedSet(layer.branchCondition.get), isInternal_ = false,
-            children=layer.nonGlobalAssumptionDebugExps)
-          val quantDebugExp = DebugExp.createQuantifiedInstance(description=None, originalExp=None, substitutedExp = None, terms = InsertionOrderedSet.empty, isInternal_ = false,
+          var quantBody: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
+          if(branchConditionExp.get.getFirst.equals(ast.TrueLit()())) {
+            quantBody = layer.nonGlobalAssumptionDebugExps
+          }
+          else{
+            quantBody = InsertionOrderedSet(DebugExp.createImplicationInstance(description = None, originalExp = Some(branchConditionExp.get.getFirst), finalExp = Some(branchConditionExp.get.getSecond), term = layer.branchCondition, isInternal_ = false,
+              children = layer.nonGlobalAssumptionDebugExps))
+          }
+
+          val quantDebugExp = DebugExp.createQuantifiedInstance(description=None, originalExp=None, finalExp = None, term = None, isInternal_ = false,
             children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars, triggers = triggers)
           nonGlobals += quantDebugExp
         }else{
@@ -349,6 +399,18 @@ private[decider] class LayeredPathConditionStack
     layers.head.branchConditionExp = conditionExp
   }
 
+  def startDebugSubExp(): Unit = {
+    layers.head.startDebugSubExp()
+  }
+
+  def finishDebugSubExp(description: String): Unit = {
+    layers.head.finishDebugSubExp(description)
+  }
+
+  def addDebugExp(e: DebugExp): Unit = {
+    layers.head.addDebugExp(e)
+  }
+
   def addNonGlobalDebugExp(assumptionDebugExp: DebugExp) : Unit = {
     layers.head.addNonGlobalDebugExp(assumptionDebugExp)
   }
@@ -386,8 +448,12 @@ private[decider] class LayeredPathConditionStack
     val mark = markCounter.next()
 
     markToLength += (mark -> layers.length)
+
+    val debugExpStackTmp = if(layers.nonEmpty && Verifier.config.enableDebugging()) layers.head.debugExpStack else Stack.empty
+
     layers = new PathConditionStackLayer() +: layers
 
+    layers.head.debugExpStack = debugExpStackTmp
     mark
   }
 

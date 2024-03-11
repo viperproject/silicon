@@ -7,32 +7,27 @@
 package debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.Mark
 import viper.silicon.state.terms.Term
 import viper.silver.ast
-import viper.silver.ast.Exp
-
-import scala.annotation.unused
-import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 
 object DebugExp {
   private var idCounter: Int = 0
 
   def createInstance(description: Option[String],
                      originalExp: Option[ast.Exp],
-                     substitutedExp: Option[ast.Exp],
-                     terms: InsertionOrderedSet[Term],
+                     finalExp: Option[ast.Exp],
+                     term: Option[Term],
                      isInternal_ : Boolean,
                      children: InsertionOrderedSet[DebugExp]
                     ): DebugExp = {
-    val debugExp = new DebugExp(idCounter, description, originalExp, substitutedExp, terms, isInternal_, children)
+    val debugExp = new DebugExp(idCounter, description, originalExp, finalExp, term, isInternal_, children)
     idCounter += 1
     debugExp
   }
 
-  def createInstance(description: Option[String], originalExp: Option[ast.Exp], substitutedExp: Option[ast.Exp],
+  def createInstance(description: Option[String], originalExp: Option[ast.Exp], finalExp: Option[ast.Exp],
                      children: InsertionOrderedSet[DebugExp]): DebugExp = {
-    createInstance(description, originalExp, substitutedExp, InsertionOrderedSet.empty, false, children)
+    createInstance(description, originalExp, finalExp, None, isInternal_ = false, children)
   }
 
   def createInstance(description: String, children: InsertionOrderedSet[DebugExp]): DebugExp = {
@@ -44,36 +39,36 @@ object DebugExp {
   }
 
   def createInstance(description: String, isInternal_ : Boolean): DebugExp = {
-    createInstance(Some(description), None, None, InsertionOrderedSet.empty, isInternal_, InsertionOrderedSet.empty)
+    createInstance(Some(description), None, None, None, isInternal_, InsertionOrderedSet.empty)
   }
 
-  def createInstance(originalExp: ast.Exp, substitutedExp: ast.Exp): DebugExp = {
-    createInstance(None, Some(originalExp), Some(substitutedExp), InsertionOrderedSet.empty)
+  def createInstance(originalExp: ast.Exp, finalExp: ast.Exp): DebugExp = {
+    createInstance(None, Some(originalExp), Some(finalExp), InsertionOrderedSet.empty)
   }
 
   def createImplicationInstance(description: Option[String],
                                 originalExp: Option[ast.Exp],
-                                substitutedExp: Option[ast.Exp],
-                                terms: InsertionOrderedSet[Term],
+                                finalExp: Option[ast.Exp],
+                                term: Option[Term],
                                 isInternal_ : Boolean,
                                 children: InsertionOrderedSet[DebugExp]
                                ): ImplicationDebugExp = {
-    val debugExp = new ImplicationDebugExp(idCounter, description, originalExp, substitutedExp, terms, isInternal_, children)
+    val debugExp = new ImplicationDebugExp(idCounter, description, originalExp, finalExp, term, isInternal_, children)
     idCounter += 1
     debugExp
   }
 
   def createQuantifiedInstance(description: Option[String],
                                originalExp: Option[ast.Exp],
-                               substitutedExp: Option[ast.Exp],
-                               terms: InsertionOrderedSet[Term],
+                               finalExp: Option[ast.Exp],
+                               term: Option[Term],
                                isInternal_ : Boolean,
                                children: InsertionOrderedSet[DebugExp],
                                quantifier: String,
                                qvars: Seq[ast.Exp],
                                triggers: Seq[ast.Trigger]
                               ): QuantifiedDebugExp ={
-    val debugExp = new QuantifiedDebugExp(idCounter, description, originalExp, substitutedExp, terms, isInternal_, children, quantifier, qvars, triggers)
+    val debugExp = new QuantifiedDebugExp(idCounter, description, originalExp, finalExp, term, isInternal_, children, quantifier, qvars, triggers)
     idCounter += 1
     debugExp
   }
@@ -81,20 +76,20 @@ object DebugExp {
 class DebugExp(val id: Int,
                val description : Option[String],
                val originalExp : Option[ast.Exp],
-               val formattedExp : Option[ast.Exp],
-               val terms : InsertionOrderedSet[Term],
+               val finalExp : Option[ast.Exp],
+               val term : Option[Term],
                val isInternal_ : Boolean,
                val children : InsertionOrderedSet[DebugExp]) {
 
-  def withTerms(newTerms : InsertionOrderedSet[Term]): DebugExp = {
-    new DebugExp(id, description, originalExp, formattedExp, newTerms, isInternal_, children)
+  def withTerm(newTerm: Term): DebugExp = {
+    new DebugExp(id, description, originalExp, finalExp, Some(newTerm), isInternal_, children)
   }
 
-  def getTerms: InsertionOrderedSet[Term] ={
-    if(terms.isEmpty){
-      children.flatMap(_.getTerms)
-    }else{
-      terms
+  def getAllTerms: InsertionOrderedSet[Term] = {
+    if (term.isEmpty) {
+      children.flatMap(_.getAllTerms)
+    } else {
+      children.flatMap(_.getAllTerms) + term.get
     }
   }
 
@@ -102,45 +97,37 @@ class DebugExp(val id: Int,
 
   def removeChildrenById(ids: Seq[Int]): DebugExp ={
     val newChildren = children.filter(i => !ids.contains(i.id)).map(c => c.removeChildrenById(ids))
-    new DebugExp(id, description, originalExp, formattedExp, terms, isInternal_, newChildren)
-  }
-
-  @unused
-  def termsToString: String = {
-    terms.map(t => t.toString.replaceAll("@.. ", " ")).mkString(" && ")
+    new DebugExp(id, description, originalExp, finalExp, term, isInternal_, newChildren)
   }
 
   override def toString: String = {
-    toString(5, new DebugExpPrintConfiguration)
+    toString(0, 6, new DebugExpPrintConfiguration)
   }
 
-  def childrenToString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
+  def childrenToString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     val nonInternalChildren = children.filter(de => config.isPrintInternalEnabled || !de.isInternal)
     if (nonInternalChildren.isEmpty) ""
-    else if(printChildrenDepth <= 0) ": [...]"
+    else if(maxDepth <= currDepth) "[...]"
     else {
-      ": (" + nonInternalChildren.tail.foldLeft[String](nonInternalChildren.head.toString(printChildrenDepth-1, config))((s, de) => s + " && " + de.toString(printChildrenDepth-1, config)) + ")"
+      nonInternalChildren.tail.foldLeft[String](nonInternalChildren.head.toString(currDepth+1, maxDepth, config))((s, de) => s + de.toString(currDepth+1, maxDepth, config))
     }
   }
 
-  def getTopLevelString: String = {
-    if (description.isDefined) {
-      "[" + id + "] " + description.get + (if (formattedExp.isDefined) " (" + formattedExp.get.toString() + ")" else "")
-    } else {
-      "[" + id + "] " + formattedExp.get.toString()
-    }
+  def getTopLevelString(currDepth: Int): String = {
+    val delimiter = if(finalExp.isDefined && description.isDefined) ": " else ""
+    "\n\t" + ("\t"*currDepth) + "[" + id + "] " + description.getOrElse("") + delimiter + finalExp.getOrElse("")
   }
 
 
-  def toString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
+  def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     if(isInternal_ && !config.isPrintInternalEnabled){
       return ""
     }
-    getTopLevelString + childrenToString(math.max(printChildrenDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
+    getTopLevelString(currDepth) + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
   }
 
   def toString(config: DebugExpPrintConfiguration): String = {
-    toString(config.printHierarchyLevel, config)
+    toString(0, config.printHierarchyLevel, config)
   }
 
 }
@@ -149,31 +136,22 @@ class DebugExp(val id: Int,
 class ImplicationDebugExp(id: Int,
                           description : Option[String],
                           originalExp : Option[ast.Exp],
-                          formattedExp : Option[ast.Exp],
-                          terms : InsertionOrderedSet[Term],
+                          finalExp : Option[ast.Exp],
+                          term : Option[Term],
                           isInternal_ : Boolean,
-                          children : InsertionOrderedSet[DebugExp]) extends DebugExp(id, description, originalExp, formattedExp, terms, isInternal_, children) {
+                          children : InsertionOrderedSet[DebugExp]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
 
-  override def getTerms: InsertionOrderedSet[Term] = terms
+  override def getAllTerms: InsertionOrderedSet[Term] = if(term.isDefined) InsertionOrderedSet(term.get) else InsertionOrderedSet.empty
 
-  override def childrenToString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
-    val nonInternalChildren = children.filter(de => config.isPrintInternalEnabled || !de.isInternal)
-    if (nonInternalChildren.isEmpty) ""
-    else if (printChildrenDepth <= 0) " [...]"
-    else {
-      " (" + nonInternalChildren.tail.foldLeft[String](nonInternalChildren.head.toString(printChildrenDepth - 1, config))((s, de) => s + " && " + de.toString(printChildrenDepth - 1, config)) + ")"
-    }
-  }
-
-  override def toString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
+  override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
       if (isInternal_ && !config.isPrintInternalEnabled) {
         return ""
       }
 
       if (children.nonEmpty) {
-        "(" + getTopLevelString + " ==> " + childrenToString(math.max(1, math.max(printChildrenDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0))), config) + ")"
+        getTopLevelString(currDepth) + " ==> " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
       }else{
-        getTopLevelString
+        getTopLevelString(currDepth)
       }
   }
 }
@@ -182,25 +160,25 @@ class ImplicationDebugExp(id: Int,
 class QuantifiedDebugExp(id: Int,
                          description : Option[String],
                          originalExp : Option[ast.Exp],
-                         formattedExp : Option[ast.Exp],
-                         terms : InsertionOrderedSet[Term],
+                         finalExp : Option[ast.Exp],
+                         term : Option[Term],
                          isInternal_ : Boolean,
                          children : InsertionOrderedSet[DebugExp],
                          val quantifier: String,
                          val qvars : Seq[ast.Exp],
-                         val triggers: Seq[ast.Trigger]) extends DebugExp(id, description, originalExp, formattedExp, terms, isInternal_, children) {
+                         val triggers: Seq[ast.Trigger]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
 
-  override def getTerms: InsertionOrderedSet[Term] = terms
+  override def getAllTerms: InsertionOrderedSet[Term] = if(term.isDefined) InsertionOrderedSet(term.get) else InsertionOrderedSet.empty
 
-  override def toString(printChildrenDepth: Int, config: DebugExpPrintConfiguration): String = {
+  override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     if (isInternal_ && !config.isPrintInternalEnabled) {
       return ""
     }
 
     if (qvars.nonEmpty) {
-      "([" + id + "] " + quantifier + " " + qvars.mkString(", ") + " :: (" + childrenToString(math.max(1, math.max(printChildrenDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0))), config) + "))"
+      "\n\t" + ("\t"*currDepth) + "[" + id + "] " + quantifier.replace("QA", "forall") + " " + qvars.mkString(", ") + " :: " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
     }else{
-      getTopLevelString
+      getTopLevelString(currDepth)
     }
   }
 }
@@ -208,7 +186,7 @@ class QuantifiedDebugExp(id: Int,
 
 class DebugExpPrintConfiguration {
   var isPrintInternalEnabled: Boolean = true
-  var printHierarchyLevel: Int = 100
+  var printHierarchyLevel: Int = 5
   var nodeToHierarchyLevelMap: Map[Int, Int] = Map.empty
   var isPrintAxiomsEnabled: Boolean = false
 
@@ -250,7 +228,7 @@ class DebugExpPrintConfiguration {
 
 class DebugAxiom(val description: String, val terms: InsertionOrderedSet[Term]){
 
-  override def toString(): String = {
-    s"$description: $terms\n"
+  override def toString: String = {
+    s"$description:\n\t\t${terms.mkString("\n\t\t")}\n"
   }
 }

@@ -7,19 +7,10 @@
 package viper.silicon.verifier
 
 import debugger.SiliconDebugger
-import geny.Generator.from
 import viper.silicon.Config.ExhaleMode
-
-import java.text.SimpleDateFormat
-import java.util.concurrent._
-import scala.annotation.unused
-import scala.collection.mutable
-import scala.util.Random
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.{Cvc5ProverStdIO, SMTLib2PreambleReader, TermToSMTLib2Converter, Z3ProverStdIO}
+import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -31,15 +22,20 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.{BackendType, Member}
+import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
+import viper.silver.components.StatefulComponent
 import viper.silver.frontend.FrontendStateCache
-import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
+import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
 
-import scala.collection.IterableOnce.iterableOnceExtensionMethods
-import scala.io.StdIn.readLine
+import java.text.SimpleDateFormat
+import java.util.concurrent._
+import scala.annotation.unused
+import scala.collection.mutable
+import scala.util.Random
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)

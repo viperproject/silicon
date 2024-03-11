@@ -53,7 +53,7 @@ object brancher extends BranchingRules {
     val skipPathFeasibilityCheck = (
          fromShortCircuitingAnd
       || (   s.quantifiedVariables.nonEmpty
-          && s.quantifiedVariables.exists(condition.freeVariables.contains))
+          && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
     /* True if the then-branch is to be explored */

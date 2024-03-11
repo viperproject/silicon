@@ -1,8 +1,8 @@
 package debugger
 
+import org.jgrapht.alg.util.Pair
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider._
-import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, Success, VerificationResult}
+import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.rules.evaluator
 import viper.silicon.state.terms.{False, Term}
 import viper.silicon.state.{IdentifierFactory, State}
@@ -21,7 +21,8 @@ import scala.language.postfixOps
 case class ProofObligation(s: State,
                            v: Verifier,
                            proverEmits: Seq[String],
-                           branchConditions: Seq[ast.Exp],
+                           preambleAssumptions: Seq[DebugAxiom],
+                           branchConditions: Seq[Pair[ast.Exp, ast.Exp]],
                            assumptionsExp: InsertionOrderedSet[DebugExp],
                            assertion: Term,
                            eAssertion: ast.Exp,
@@ -32,7 +33,8 @@ case class ProofObligation(s: State,
                           ){
 
   def removeAssumptions(ids: Seq[Int]): ProofObligation = {
-    this.copy(assumptionsExp = assumptionsExp.filter(a => !ids.contains(a.id)).map(c => c.removeChildrenById(ids)))
+    val newAssumptionsExp = assumptionsExp.filter(a => !ids.contains(a.id)).map(c => c.removeChildrenById(ids))
+    this.copy(assumptionsExp = newAssumptionsExp)
   }
 
   private lazy val originalErrorInfo: String =
@@ -43,24 +45,32 @@ case class ProofObligation(s: State,
         }else{
           ""
         }) +
-      "\n\t\t" + originalErrorReason.readableMessage
+      s"\n\t\t${originalErrorReason.readableMessage}\n\n"
 
-  private lazy val stateString: String = s"Store:\n\t\t${s.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.mkString("\n\t\t")}"
+  private lazy val stateString: String = s"Store:\n\t\t${s.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.mkString("\n\t\t")}\n\n"
 
-  private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.mkString(", ")}"
+  private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.map(_.getSecond).mkString(", ")}\n\n"
 
   private def assumptionString: String = {
     val filteredAssumptions = assumptionsExp.filter(d => !d.isInternal || printConfig.isPrintInternalEnabled)
     if (filteredAssumptions.nonEmpty) {
-      s"assumptions: ${filteredAssumptions.foldLeft[String]("")((s, de) => s + "\n\t" + de.toString(printConfig))}"
+      s"Assumptions: ${filteredAssumptions.foldLeft[String]("")((s, de) => s + de.toString(printConfig))}\n\n"
+    } else {
+      ""
+    }
+  }
+
+  private def declarationsString: String = {
+    if (printConfig.isPrintAxiomsEnabled && proverEmits.nonEmpty) {
+      s"Declarations: ${proverEmits.foldLeft[String]("")((s, d) => s + s"\n\t" + d)}\n\n"
     } else {
       ""
     }
   }
 
   private def axiomsString: String = {
-    if(printConfig.isPrintAxiomsEnabled){
-      s"axioms: ${v.decider.prover.preambleAssumptions.foldLeft[String]("")((s, de) => s + "\n\t" + de.toString)}"
+    if(printConfig.isPrintAxiomsEnabled && preambleAssumptions.nonEmpty){
+      s"Axioms: ${preambleAssumptions.zipWithIndex.foldLeft[String]("")((s, d) => s + s"\n\t[A${d._2}] " + d._1.toString)}\n\n"
     }else{
       ""
     }
@@ -68,14 +78,14 @@ case class ProofObligation(s: State,
 
   private def assertionString: String = {
     if(eAssertion.nonEmpty){
-      s"assertion:\n\t$eAssertion"
+      s"Assertion:\n\t$eAssertion\n\n"
     }else{
       ""
     }
   }
 
-  override def toString(): String = {
-    "\n" + originalErrorInfo + "\n\n" + branchConditionString + "\n\n" + stateString + "\n\n" + axiomsString +  "\n\n" + assumptionString + "\n\n" + assertionString + "\n"
+  override def toString: String = {
+    "\n" + originalErrorInfo + branchConditionString + stateString + axiomsString + declarationsString + assumptionString + assertionString
   }
 }
 
@@ -100,9 +110,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       return
     }
 
-    failures.zipWithIndex.foreach{case (f, idx) => println(s"[$idx]: ${f.message.reason.readableMessage} (${f.message.reason.pos})\n")}
-
     while (true) {
+      failures.zipWithIndex.foreach{case (f, idx) => println(s"[$idx]: ${f.message.reason.readableMessage} (${f.message.reason.pos})\n")}
       if(failures.size == 1){
         val obl = getObligationByIndex(0)
         initializeAndDebugObligation(obl)
@@ -135,7 +144,6 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     if (0 <= idx && idx < failures.size) {
       println(s"\nVerification result $idx:")
       val currResult: Failure = failures(idx)
-      println(s"$currResult")
       val failureContexts = (currResult.message.failureContexts filter (_.isInstanceOf[SiliconDebuggingFailureContext])) map (_.asInstanceOf[SiliconDebuggingFailureContext])
 
       if (failureContexts.isEmpty) {
@@ -148,11 +156,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         return None
       }
 
-      Some(ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls,
+      val obl = Some(ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls, failureContext.preambleAssumptions,
         failureContext.branchConditions, failureContext.assumptions,
         False /* TODO */ , failureContext.failedAssertion.getOrElse(ast.TrueLit()()),
         new DebugExpPrintConfiguration, currResult.message.reason,
         new DebugResolver(this.pprogram, this.resolver.names), new DebugTranslator(this.pprogram, translator.getMembers())))
+      println(s"Current obligation:\n$obl")
+      obl
     }else{
       None
     }
@@ -181,14 +191,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   private def initVerifier(obl: ProofObligation): ProofObligation = {
     val v = new WorkerVerifier(this.mainVerifier, obl.v.uniqueId, NoopReporter)
     counter += 1
-//    v.decider.prover = getNewProver(chooseProver()) // TODO ake: choose prover
+//    v.decider.prover = getNewProver(chooseProver()) // TODO: choose SMT solver and initialize prover
     v.start()
     v.decider.prover.emit(obl.proverEmits)
 
-    obl.v.decider.prover.preambleAssumptions foreach (a => v.decider.prover.assumeAxioms(a.terms, a.description))
+    obl.preambleAssumptions foreach (a => v.decider.prover.assumeAxioms(a.terms, a.description))
 
-    obl.assumptionsExp foreach (debugExp =>
-      v.decider.assume(debugExp.getTerms, debugExp))
+    obl.assumptionsExp foreach (debugExp => v.decider.assume(debugExp.getAllTerms, debugExp, enforceAssumption = false, overwriteTerm = false))
     obl.copy(v = v)
   }
 
@@ -233,7 +242,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     println(s"Enter the assumptions you want to remove:")
     val userInput = readLine()
     val indices = userInput.split(",").map(s => s.trim.toIntOption).filter(o => o.isDefined).map(i => i.get).toSeq
-    println(s"Removing assumptions with ids $indices")
+    println(s"Removing assumptions with IDs ${indices.mkString(",")}")
     val oblTmp = obl.removeAssumptions(indices)
     initVerifier(oblTmp)
   }
@@ -256,12 +265,12 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
-      val assumptionE = translateStringToExp(userInput, obl)
+      val assertionE = translateStringToExp(userInput, obl)
       var resT: Term = null
       var resE: ast.Exp = null
       var resV: Verifier = null
-      val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assumptionE, r))
-      val verificationResult = evaluator.eval3(obl.s, assumptionE, pve, obl.v)((_, t, newE, newV) => {
+      val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assertionE, r))
+      val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v)((_, t, newE, newV) => {
         resT = t
         resE = newE
         resV = newV
@@ -269,11 +278,11 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       })
       verificationResult match {
         case Success() =>
+          obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, assertion = resT, eAssertion = resE, v = resV)
         case _ =>
           println("Error evaluating expression: " + verificationResult.toString)
+          obl
       }
-
-      obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, assertion = resT, eAssertion = resE, v = resV)
     }
   }
 
@@ -292,6 +301,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     def typecheckPExp(pexp: PExp): Unit = {
       try {
+        obl.resolver.typechecker.names.check(pexp, None, obl.resolver.typechecker.curMember)
         obl.resolver.typechecker.check(pexp, PPrimitiv("Bool")())
       } catch {
         case e: Throwable => println(s"Error while typechecking $str: ${e.getMessage}")
@@ -378,63 +388,35 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     println(s"Enter the id of the assumption that should be printed:")
     val userInput = readLine()
     userInput.toIntOption match {
-      case Some(value) => obl.assumptionsExp.filter(d => d.id == value).foreach(d => println(d.toString(obl.printConfig))) // TODO ake: children
+      case Some(value) => obl.assumptionsExp.filter(d => d.id == value).foreach(d => println(d.toString(obl.printConfig)))
       case None =>
     }
   }
 
-  private def chooseProver(): Int = {
-    0 // TODO
-  }
-
-  private def getNewProver(proverId: Int): ProverStdIO = {
-    val termConverter = new TermToSMTLib2Converter()
-    termConverter.start()
-    if (proverId == 0) {
-      val z3Prover = new Z3ProverStdIO("Z3", termConverter, identifierFactory, reporter)
-      z3Prover.start()
-      new SMTLib2PreambleReader().emitPreamble(Z3ProverStdIO.staticPreamble, z3Prover, isOptions = true)
-      z3Prover
-    } else { // else if (proverId == 1)
-      val cvcProver = new Cvc5ProverStdIO("CVC5", termConverter, identifierFactory, reporter)
-      cvcProver.start()
-      new SMTLib2PreambleReader().emitPreamble(Cvc5ProverStdIO.staticPreamble, cvcProver, isOptions = true)
-      cvcProver
-    }
-    //    else {
-    //      val z3Prover = new TraceGeneratingZ3ProverStdIO("Z3", termConverter, identifierFactory, reporter)
-    //      z3Prover.start()
-    //      new SMTLib2PreambleReader().emitPreamble(Z3ProverStdIO.staticPreamble, z3Prover, true)
-    //      z3Prover
-    //    }
-  }
-
-  private def typeToPType(t: Type): PType = {
-    t match {
-      case viper.silver.ast.Int => PPrimitiv("Int")()
-      case Bool => PPrimitiv("Bool")()
-      case Perm => PPrimitiv("Perm")()
-      case Ref => PPrimitiv("Ref")()
-      case Wand => PWandType()(NoPosition, NoPosition)
-
-      case SeqType(eType) => PSeqType(typeToPType(eType))()
-      case SetType(eType) => PSetType(typeToPType(eType))()
-      case MultisetType(eType) => PMultisetType(typeToPType(eType))()
-
-      case MapType(keyType, valueType) => PMapType(typeToPType(keyType), typeToPType(valueType))()
-//      case AdtType(adt, partialTypVarsMap) => PDomainType(adt., partialTypVarsMap.values.map(typeToPType).toSeq)
-      // TODO ake
-      //      case extensionType: ExtensionType => extensionType match {
-      //        case ast.ViperEmbedding(embeddedSort) => ???
-      //        case _ => ???
-      //      }
-      //      case genericType: GenericType => genericType match {
-      //        case collectionType: CollectionType => ???
-      //        case DomainType(domainName, partialTypVarsMap) => ???
-      //      }
-//      case TypeVar(name) => PDomainType(name, Seq())()
-      case _ => PUnknown()()
-    }
-  }
-
+  // TODO: add interaction option to choose SMT solver on-the-fly
+//  private def chooseProver(): Int = {
+//    0
+//  }
+//
+//  private def getNewProver(proverId: Int): ProverStdIO = {
+//    val termConverter = new TermToSMTLib2Converter()
+//    termConverter.start()
+//    if (proverId == 0) {
+//      val z3Prover = new Z3ProverStdIO("Z3", termConverter, identifierFactory, reporter)
+//      z3Prover.start()
+//      new SMTLib2PreambleReader().emitPreamble(Z3ProverStdIO.staticPreamble, z3Prover, isOptions = true)
+//      z3Prover
+//    } else { // else if (proverId == 1)
+//      val cvcProver = new Cvc5ProverStdIO("CVC5", termConverter, identifierFactory, reporter)
+//      cvcProver.start()
+//      new SMTLib2PreambleReader().emitPreamble(Cvc5ProverStdIO.staticPreamble, cvcProver, isOptions = true)
+//      cvcProver
+//    }
+//    //    else {
+//    //      val z3Prover = new TraceGeneratingZ3ProverStdIO("Z3", termConverter, identifierFactory, reporter)
+//    //      z3Prover.start()
+//    //      new SMTLib2PreambleReader().emitPreamble(Z3ProverStdIO.staticPreamble, z3Prover, true)
+//    //      z3Prover
+//    //    }
+//  }
 }

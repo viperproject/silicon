@@ -24,9 +24,10 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.supporters.PredicateData
-import viper.silicon.utils.ast.BigAnd
+import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
+import viper.silver.ast.LocalVarWithVersion
 import viper.silver.parser.PType
 
 import scala.annotation.unused
@@ -208,7 +209,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val data = functionData(function)
       val pres = function.pres
       val posts = function.posts
-      val g = Store(data.formalArgs + (function.result -> data.formalResult))
+      val argsStore = data.formalArgs map {case (localVar, t) => localVar -> (t, LocalVarWithVersion(simplifyVariableName(t.id.name), localVar.typ)(localVar.pos, localVar.info, localVar.errT))}
+      val g = Store(argsStore + (function.result -> (data.formalResult, data.valFormalResultExp)))
       val s = sInit.copy(g = g, h = Heap(), oldHeaps = OldHeaps())
 
       var phase1Data: Seq[Phase1Data] = Vector.empty
@@ -250,8 +252,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre), new Pair(BigAnd(bcsPreExp.map(_.getFirst)), BigAnd(bcsPreExp.map(_.getSecond))))
-            val argsName = function.formalArgs.map(d => d.name).mkString(", ")
-            decider.assume(pcsPre, DebugExp.createInstance(s"precondition ${function.name}($argsName)", pcsPreExp))
+            decider.assume(pcsPre, DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp), enforceAssumption = false)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
               val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)

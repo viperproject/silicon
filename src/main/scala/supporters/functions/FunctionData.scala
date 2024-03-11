@@ -18,7 +18,9 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
 import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
+import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.{Config, Map, toMap}
+import viper.silver.ast.LocalVarWithVersion
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
 
@@ -65,7 +67,10 @@ class FunctionData(val programFunction: ast.Function,
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
                          symbolConverter.toSort(programFunction.result.typ))
 
+  val valFormalResultExp = LocalVarWithVersion(simplifyVariableName(formalResult.id.name), programFunction.result.typ)()
+
   val arguments = Seq(`?s`) ++ formalArgs.values
+  val argumentExps = Seq(ast.LocalVar(`?s`.id.name, ast.InternalType)()) ++ formalArgs.keys
 
   val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)

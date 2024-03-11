@@ -11,7 +11,7 @@ import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{QuantifiedBasicChunk, terms}
-import viper.silicon.utils.ast.BigAnd
+import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
@@ -77,7 +77,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk => new Pair(c.perm, c.permExp)
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => new Pair(c.perm.replace(c.quantifiedVars, c.singletonArguments.get), c.permExp)
+      case c: QuantifiedBasicChunk => new Pair(c.perm.replace(c.quantifiedVars, c.singletonArguments.get), replaceVarsInExp(c.permExp, c.quantifiedVarExps.map(_.name), c.singletonArgumentExps.get))
     }
   }
 

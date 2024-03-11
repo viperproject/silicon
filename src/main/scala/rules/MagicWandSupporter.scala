@@ -109,7 +109,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1) =>
-      Q(s1, MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, wand.subexpressionsToEvaluate(s.program), snap, FullPerm, ast.FullPerm()(wand.pos, wand.info, wand.errT)), v1)
+      Q(s1, MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm, ast.FullPerm()(wand.pos, wand.info, wand.errT)), v1)
     )
   }
 
@@ -296,13 +296,14 @@ object magicWandSupporter extends SymbolicExecutionRules {
       if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVarExps = bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)())
         evals(s4, bodyVars, _ => pve, v3)((s5, args, _, v4) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
           v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val debugExp = DebugExp.createInstance("Definitional axioms for singleton-SM's value", true)
           v4.decider.assume(smValueDef, debugExp)
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, bodyVars, wand, args, bodyVars, FullPerm, ast.FullPerm()(), sm, s.program)
+          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args, bodyVars, FullPerm, ast.FullPerm()(), sm, s.program)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
           Success()
         })
@@ -386,7 +387,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val expNew = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_.getSecond))
           v1.decider.setCurrentBranchCondition(And(branchConditions), new Pair(exp, expNew))
           conservedPcs.foreach(pcs => {
-            v1.decider.assume(pcs.conditionalized, DebugExp.createInstance("conditionalized", InsertionOrderedSet(pcs.conditionalizedExp)))
+            v1.decider.assume(pcs.conditionalized, DebugExp.createInstance("conditionalized", InsertionOrderedSet(pcs.conditionalizedExp)), enforceAssumption = false)
           })
           Q(s2, magicWandChunk, v1)})}})
   }

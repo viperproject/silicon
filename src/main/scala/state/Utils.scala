@@ -31,7 +31,7 @@ package object utils {
     }
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
-    s.g.values.values foreach collect
+    s.g.termValues.values foreach collect
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
     s.h.values.foreach {
@@ -77,7 +77,7 @@ package object utils {
     }
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
-    s.g.values.keys foreach collect
+    s.g.values.values foreach (p => collect(p._2))
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
     s.h.values.foreach {

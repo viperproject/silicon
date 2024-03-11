@@ -181,7 +181,7 @@ object chunkSupporter extends ChunkSupportRules {
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             val exp = ast.PermLtCmp(permsExp, ch.permExp)(permsExp.pos, permsExp.info, permsExp.errT)
-            v.decider.assume(PermLess(perms, ch.perm), DebugExp.createInstance(exp, s.substituteVarsInExp(exp)))
+            v.decider.assume(PermLess(perms, ch.perm), DebugExp.createInstance(exp, exp))
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms), ast.PermSub(ch.permExp, permsExp)(permsExp.pos, permsExp.info, permsExp.errT))
             val takenChunk = ch.withPerm(perms, permsExp)
             val newHeap = h - ch + newChunk

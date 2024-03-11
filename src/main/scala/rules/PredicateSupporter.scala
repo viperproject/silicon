@@ -62,7 +62,7 @@ object predicateSupporter extends PredicateSupportRules {
           : VerificationResult = {
 
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-    val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
+    val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip (tArgs zip eArgs))
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
@@ -84,7 +84,7 @@ object predicateSupporter extends PredicateSupportRules {
         v1.decider.assume(smValueDef, debugExp)
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            formalArgs, predicate.formalArgs.map(_.localVar), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program)
+            formalArgs, predicate.formalArgs, predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program)
         val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
         val smCache = if (s2.heapDependentTriggers.contains(predicate)) {
@@ -132,7 +132,7 @@ object predicateSupporter extends PredicateSupportRules {
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
+    val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip (tArgs zip eArgs))
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm, ePerm)
     if (s1.qpPredicates.contains(predicate)) {
@@ -141,7 +141,7 @@ object predicateSupporter extends PredicateSupportRules {
         s1,
         s1.h,
         formalVars,
-        predicate.formalArgs.map(_.localVar),
+        predicate.formalArgs,
         tArgs,
         eArgs,
         pa,

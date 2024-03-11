@@ -17,7 +17,6 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.LocalVar
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
@@ -266,7 +265,7 @@ object producer extends ProductionRules {
               val gainExp = ast.PermMul(ePermNew, s3.permissionScalingFactorExp)(ePermNew.pos, ePermNew.info, ePermNew.errT)
               if (s3.qpFields.contains(field)) {
                 val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
-                quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(LocalVar("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)), Seq(tRcvr), Seq(eRcvr), snap, gain, gainExp, trigger, v3)(Q)
+                quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)), Seq(tRcvr), Seq(eRcvr), snap, gain, gainExp, trigger, v3)(Q)
               } else {
                 val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Seq(eRcvrNew), snap, gain, gainExp)
                 chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) =>
@@ -287,7 +286,7 @@ object producer extends ProductionRules {
                 val formalArgs = s2.predicateFormalVarMap(predicate)
                 val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
                 quantifiedChunkSupporter.produceSingleLocation(
-                  s2, predicate, formalArgs, predicate.formalArgs.map(_.localVar), tArgs, eArgs, snap, gain, gainExp, trigger, v2)(Q)
+                  s2, predicate, formalArgs, predicate.formalArgs, tArgs, eArgs, snap, gain, gainExp, trigger, v2)(Q)
               } else {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgsNew, snap1, gain, gainExp)
@@ -304,6 +303,7 @@ object producer extends ProductionRules {
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVarExps = bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)())
         evals(s, bodyVars, _ => pve, v)((s1, args, bodyVarsNew, v1) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
@@ -315,7 +315,7 @@ object producer extends ProductionRules {
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs
           val ch =
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, bodyVars, wand, args, bodyVars, FullPerm, ast.FullPerm()(wand.pos, wand.info, wand.errT), sm, s.program)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args, bodyVars, FullPerm, ast.FullPerm()(wand.pos, wand.info, wand.errT), sm, s.program)
           val h2 = s1.h + ch
           val smCache1 = if(s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))){
             val (relevantChunks, _) =
@@ -353,14 +353,14 @@ object producer extends ProductionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(eCondNew), Seq(tRcvr, tPerm), Seq(eRcvrNew, ePermNew), tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) => // TODO ake: expNew?
+          case (s1, qvars, qvarExps, Seq(tCond), Seq(eCondNew), Seq(tRcvr, tPerm), Seq(eRcvrNew, ePermNew), tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) =>
             val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ), acc.loc.field.name), v1)
 //            v.decider.assume(PermAtMost(tPerm, FullPerm()))
             quantifiedChunkSupporter.produce(
               s1,
               forall,
               acc.loc.field,
-              qvars, Seq(`?r`),
+              qvars, qvarExps, Seq(`?r`), Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)()),
               qid, optTrigger,
               tTriggers,
               auxGlobals,
@@ -368,9 +368,12 @@ object producer extends ProductionRules {
               auxGlobalsExp,
               auxNonGlobalsExp,
               tCond,
+              eCondNew,
               Seq(tRcvr),
+              Seq(eRcvrNew),
               tSnap,
               tPerm,
+              ePermNew,
               pve,
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
@@ -381,19 +384,22 @@ object producer extends ProductionRules {
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
         val predicate = s.program.findPredicate(acc.loc.predicateName)
         val formalVars = s.predicateFormalVarMap(predicate)
+        val formalVarExps = predicate.formalArgs
         val qid = acc.loc.predicateName
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(eCondNew), Seq(tPerm, tArgs @ _*), Seq(ePermNew, eArgsNew @ _*), tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) => // TODO ake: expNew?
+          case (s1, qvars, qvarExps, Seq(tCond), Seq(eCondNew), Seq(tPerm, tArgs @ _*), Seq(ePermNew, eArgsNew @ _*), tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate), predicate.name), v1)
             quantifiedChunkSupporter.produce(
               s1,
               forall,
               predicate,
               qvars,
+              qvarExps,
               formalVars,
+              formalVarExps,
               qid,
               optTrigger,
               tTriggers,
@@ -402,9 +408,12 @@ object producer extends ProductionRules {
               auxGlobalsExp,
               auxNonGlobalsExp,
               tCond,
+              eCondNew,
               tArgs,
+              eArgsNew,
               tSnap,
               tPerm,
+              ePermNew,
               pve,
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
@@ -415,19 +424,22 @@ object producer extends ProductionRules {
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVarExps = bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)())
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         val qid = MagicWandIdentifier(wand, s.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(eCondNew), tArgs, eArgsNew, tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) => // TODO ake: expNew
+          case (s1, qvars, qvarExps, Seq(tCond), Seq(eCondNew), tArgs, eArgsNew, tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v1)
             quantifiedChunkSupporter.produce(
               s1,
               forall,
               wand,
               qvars,
+              qvarExps,
               formalVars,
+              formalVarExps,
               qid,
               optTrigger,
               tTriggers,
@@ -436,9 +448,12 @@ object producer extends ProductionRules {
               auxGlobalsExp,
               auxNonGlobalsExp,
               tCond,
+              eCondNew,
               tArgs,
+              eArgsNew,
               tSnap,
               FullPerm,
+              ast.FullPerm()(),
               pve,
               NegativePermission(ast.FullPerm()()),
               QPAssertionNotInjective(wand),

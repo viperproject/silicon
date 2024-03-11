@@ -1,3 +1,5 @@
+field val: Int
+
 function add(a : Int, b : Int) : Int
     requires a >= 0
     requires b >= 0
@@ -6,7 +8,7 @@ function add(a : Int, b : Int) : Int
     a + b
 }
 
-method main()
+method test1()
 {
     var x : Int
     var y : Int

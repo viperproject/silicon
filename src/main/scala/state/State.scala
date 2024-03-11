@@ -11,13 +11,14 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{Term, Var}
+import viper.silicon.state.terms.{BooleanLiteral, False, IntLiteral, Term, True, Var}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.{Map, Stack}
-import viper.silver.ast.{LocalVar, LocalVarWithVersion}
+import viper.silver.ast.{LocalVar, LocalVarWithVersion, TrueLit}
 import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),
@@ -37,7 +38,7 @@ final case class State(g: Store = Store(),
                        invariantContexts: Stack[Heap] = Stack.empty,
 
                        constrainableARPs: InsertionOrderedSet[Var] = InsertionOrderedSet.empty,
-                       quantifiedVariables: Stack[Var] = Nil,
+                       quantifiedVariables: Stack[(Var, ast.AbstractLocalVar)] = Nil,
                        retrying: Boolean = false,
                        underJoin: Boolean = false,
                        functionRecorder: FunctionRecorder = NoopFunctionRecorder,
@@ -117,30 +118,24 @@ final case class State(g: Store = Store(),
   def preserveAfterLocalEvaluation(post: State): State =
     State.preserveAfterLocalEvaluation(this, post)
 
-  def functionRecorderQuantifiedVariables(): Seq[Var] =
-    functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+  def functionRecorderQuantifiedVariables(): Seq[(Var, ast.AbstractLocalVar)] =
+    functionRecorder.data.fold(Seq.empty[(Var, ast.AbstractLocalVar)])(d => d.arguments.zip(d.argumentExps))
 
-  def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[Var] = (
+  def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[(Var, ast.AbstractLocalVar)] = (
        functionRecorderQuantifiedVariables()
-    ++ quantifiedVariables.filter(filterPredicate)
+    ++ quantifiedVariables.filter(x => filterPredicate(x._1))
   )
 
-  def relevantQuantifiedVariables(occurringIn: Seq[Term]): Seq[Var] =
+  def relevantQuantifiedVariables(occurringIn: Seq[Term]): Seq[(Var, ast.AbstractLocalVar)] =
     relevantQuantifiedVariables(x => occurringIn.exists(_.contains(x)))
 
 
   def substituteVarsInExp(e : ast.Exp): ast.Exp = {
-    val varMapping = g.values.map { case (localVar, term) => {
-      val newName = term match {
-        case Var(n, _) => simplifyVariableName(n.name)
-        case _ => term.toString.replaceAll("@.. ", " ")
-      }
-      localVar.name -> LocalVarWithVersion(newName, localVar.typ)(localVar.pos, localVar.info, localVar.errT)
-    } }
+    val varMapping = g.expValues.map { case (localVar, finalExp) => localVar.name -> finalExp}
     Sanitizer.replaceFreeVariablesInExpression(e, varMapping, Set())
   }
 
-  lazy val relevantQuantifiedVariables: Seq[Var] =
+  lazy val relevantQuantifiedVariables: Seq[(Var, ast.AbstractLocalVar)] =
     relevantQuantifiedVariables(_ => true)
 
   override val toString = s"${this.getClass.getSimpleName}(...)"

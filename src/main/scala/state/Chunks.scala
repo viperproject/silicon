@@ -42,7 +42,6 @@ case class BasicChunk(resourceID: BaseID,
     case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
   }
 
-  override def withPerm(newPerm: Term) = BasicChunk(resourceID, id, args, argsExp, snap, newPerm, null)
   override def withPerm(newPerm: Term, newPermExp: ast.Exp) = BasicChunk(resourceID, id, args, argsExp, snap, newPerm, newPermExp)
   override def withSnap(newSnap: Term) = BasicChunk(resourceID, id, args, argsExp, newSnap, perm, permExp)
 
@@ -54,7 +53,6 @@ case class BasicChunk(resourceID: BaseID,
 
 sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
   override val id: ChunkIdentifer
-  override def withPerm(perm: Term): QuantifiedBasicChunk
   override def withPerm(perm: Term, permExp: ast.Exp): QuantifiedBasicChunk
   override def withSnapshotMap(snap: Term): QuantifiedBasicChunk
   def singletonArguments: Option[Seq[Term]]
@@ -84,6 +82,8 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
 
   override val resourceID = FieldID
   override val quantifiedVars = Seq(`?r`)
+  override val quantifiedVarExps = Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())
+
 
   override def snapshotMap: Term = fvf
   override def singletonArguments: Option[Seq[Term]] = singletonRcvr.map(Seq(_))
@@ -98,7 +98,6 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
     Lookup(id.name, fvf, arguments.head)
   }
 
-  override def withPerm(newPerm: Term) = QuantifiedFieldChunk(id, fvf, newPerm, null, invs, initialCond, singletonRcvr, singletonRcvrExp, hints)
   override def withPerm(newPerm: Term, newPermExp: ast.Exp) = QuantifiedFieldChunk(id, fvf, newPerm, newPermExp, invs, initialCond, singletonRcvr, singletonRcvrExp, hints)
   override def withSnapshotMap(newFvf: Term) = QuantifiedFieldChunk(id, newFvf, perm, permExp, invs, initialCond, singletonRcvr, singletonRcvrExp, hints)
 
@@ -107,6 +106,7 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
 
 case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     quantifiedVars: Seq[Var],
+                                    quantifiedVarExps: Seq[ast.LocalVarDecl],
                                     psf: Term,
                                     perm: Term,
                                     permExp: ast.Exp,
@@ -128,15 +128,15 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
 
   override def valueAt(args: Seq[Term]) = PredicateLookup(id.name, psf, args)
 
-  override def withPerm(newPerm: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, newPerm, null, invs, initialCond, singletonArgs, singletonArgExps, hints)
-  override def withPerm(newPerm: Term, newPermExp: ast.Exp) = QuantifiedPredicateChunk(id, quantifiedVars, psf, newPerm, newPermExp, invs, initialCond, singletonArgs, singletonArgExps, hints)
-  override def withSnapshotMap(newPsf: Term) = QuantifiedPredicateChunk(id, quantifiedVars, newPsf, perm, permExp, invs, initialCond, singletonArgs, singletonArgExps, hints)
+  override def withPerm(newPerm: Term, newPermExp: ast.Exp) = QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, newPerm, newPermExp, invs, initialCond, singletonArgs, singletonArgExps, hints)
+  override def withSnapshotMap(newPsf: Term) = QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, newPsf, perm, permExp, invs, initialCond, singletonArgs, singletonArgExps, hints)
 
   override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm"
 }
 
 case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     quantifiedVars: Seq[Var],
+                                    quantifiedVarExps: Seq[ast.LocalVarDecl],
                                     wsf: Term,
                                     perm: Term,
                                     permExp: ast.Exp,
@@ -158,9 +158,8 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
 
   override def valueAt(args: Seq[Term]) = PredicateLookup(id.toString, wsf, args)
 
-  override def withPerm(newPerm: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, wsf, newPerm, null, invs, initialCond, singletonArgs, singletonArgExps, hints)
-  override def withPerm(newPerm: Term, newPermExp: ast.Exp) = QuantifiedMagicWandChunk(id, quantifiedVars, wsf, newPerm, newPermExp, invs, initialCond, singletonArgs, singletonArgExps, hints)
-  override def withSnapshotMap(newWsf: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, newWsf, perm, permExp, invs, initialCond, singletonArgs, singletonArgExps, hints)
+  override def withPerm(newPerm: Term, newPermExp: ast.Exp) = QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, newPerm, newPermExp, invs, initialCond, singletonArgs, singletonArgExps, hints)
+  override def withSnapshotMap(newWsf: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, newWsf, perm, permExp, invs, initialCond, singletonArgs, singletonArgExps, hints)
 
   override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $wsf # $perm"
 }
@@ -183,7 +182,7 @@ object MagicWandIdentifier {
 }
 
 case class MagicWandChunk(id: MagicWandIdentifier,
-                          bindings: Map[ast.AbstractLocalVar, Term],
+                          bindings: Map[ast.AbstractLocalVar, (Term, ast.Exp)],
                           args: Seq[Term],
                           argsExp: Seq[ast.Exp],
                           snap: MagicWandSnapshot,
@@ -195,7 +194,6 @@ case class MagicWandChunk(id: MagicWandIdentifier,
 
   override val resourceID = MagicWandID
 
-  override def withPerm(newPerm: Term) = MagicWandChunk(id, bindings, args, argsExp, snap, newPerm, null)
   override def withPerm(newPerm: Term, newPermExp: ast.Exp) = MagicWandChunk(id, bindings, args, argsExp, snap, newPerm, newPermExp)
   override def withSnap(newSnap: Term) = MagicWandChunk(id, bindings, args, argsExp, MagicWandSnapshot(newSnap), perm, permExp)
 

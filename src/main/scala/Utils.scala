@@ -13,7 +13,7 @@ import viper.silver.ast.utility.Triggers.TriggerGenerationWithAddAndSubtract
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{NoInfo, NoPosition, NoTrafos, SourcePNodeInfo}
 import viper.silver.components.StatefulComponent
-import viper.silver.parser.{PExp, PNode, PStmt, PType, PUnknown, PUnnamedTypedDeclaration}
+import viper.silver.parser.{PExp, PType, PUnknown, PUnnamedTypedDeclaration}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
 import viper.silver.verifier.{VerificationError, errors}
@@ -142,6 +142,10 @@ package object utils {
       str.substring(0, str.lastIndexOf("@"))
     }
 
+    def replaceVarsInExp(e: silver.ast.Exp, varNames: Seq[String], replacements: Seq[silver.ast.Exp]): silver.ast.Exp = {
+      silver.utility.Sanitizer.replaceFreeVariablesInExpression(e, varNames.zip(replacements).toMap, Set())
+    }
+
     def extractPTypeFromStmt(stmt: silver.ast.Stmt): PType = {
       stmt.info.getUniqueInfo[SourcePNodeInfo] match {
         case Some(info) =>
@@ -171,37 +175,13 @@ package object utils {
       silver.ast.FuncApp("min", exps)(NoPosition, NoInfo, typ, NoTrafos)
     }
 
-    def buildQuantExp(quantifier: Quantifier, vars: Seq[Var], eBody: silver.ast.Exp, eTrigger: Seq[silver.ast.Trigger]): silver.ast.Exp = {
+    def buildQuantExp(quantifier: Quantifier, vars: Seq[silver.ast.LocalVarDecl], eBody: silver.ast.Exp, eTrigger: Seq[silver.ast.Trigger]): silver.ast.Exp = {
       quantifier match {
-        case Forall => silver.ast.Forall(vars.map(convertTermVarToExpVarDecl), eTrigger, eBody)(eBody.pos, eBody.info, eBody.errT)
-        case Exists => silver.ast.Exists(vars.map(convertTermVarToExpVarDecl), eTrigger, eBody)(eBody.pos, eBody.info, eBody.errT)
+        case Forall => silver.ast.Forall(vars, eTrigger, eBody)(eBody.pos, eBody.info, eBody.errT)
+        case Exists => silver.ast.Exists(vars, eTrigger, eBody)(eBody.pos, eBody.info, eBody.errT)
       }
     }
 
-    def convertSortToAstType(s : Sort): silver.ast.Type ={
-      s match {
-        case sorts.Snap => silver.ast.InternalType
-        case sorts.Int => silver.ast.Int
-        case sorts.Bool => silver.ast.Bool
-        case sorts.Ref => silver.ast.Ref
-        case sorts.Perm => silver.ast.Perm
-        case sorts.Unit => silver.ast.InternalType
-        case sorts.Seq(elementsSort) => silver.ast.SeqType(convertSortToAstType(elementsSort))
-        case sorts.Set(elementsSort) => silver.ast.SetType(convertSortToAstType(elementsSort))
-        case sorts.Multiset(elementsSort) => silver.ast.MultisetType(convertSortToAstType(elementsSort))
-        case sorts.Map(keySort, valueSort) => silver.ast.MapType(convertSortToAstType(keySort), convertSortToAstType(valueSort))
-        case sorts.UserSort(id) => silver.ast.DomainType(id.name, Map.empty)(Nil)
-        case sorts.SMTSort(id) => ???
-        case sorts.FieldValueFunction(codomainSort, fieldName) => ???
-        case sorts.PredicateSnapFunction(codomainSort, predName) => ???
-        case sorts.FieldPermFunction() => ???
-        case sorts.PredicatePermFunction() => ???
-      }
-    }
-
-    def convertTermVarToExpVarDecl(tVar : Var): silver.ast.LocalVarDecl ={
-      silver.ast.LocalVarDecl(tVar.id.name, convertSortToAstType(tVar.sort))()
-    }
 
     /** Note: be aware of Silver issue #95!*/
     def rewriteRangeContains(program: silver.ast.Program): silver.ast.Program =

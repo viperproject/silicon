@@ -6,16 +6,17 @@
 
 package viper.silicon.interfaces
 
-import debugger.{DebugExp, DebugExpPrintConfiguration}
+import debugger.{DebugAxiom, DebugExp, DebugExpPrintConfiguration}
+import org.jgrapht.alg.util.Pair
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
+import viper.silicon.reporting._
+import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Term}
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
-import viper.silicon.state.terms.{Decl, FunctionDecl, MacroDecl, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Program
+import viper.silver.verifier._
 
 /*
  * Results
@@ -135,12 +136,13 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
   override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
 }
 
-case class SiliconDebuggingFailureContext(branchConditions: Seq[ast.Exp],
+case class SiliconDebuggingFailureContext(branchConditions: Seq[Pair[ast.Exp, ast.Exp]],
                                  counterExample: Option[Counterexample],
                                  reasonUnknown: Option[String],
                                  state: Option[State],
                                  verifier: Option[Verifier],
                                  proverDecls: Seq[String],
+                                 preambleAssumptions: Seq[DebugAxiom] ,
                                  macroDecls: Vector[MacroDecl],
                                  functionDecls: Set[FunctionDecl],
                                  assumptions: InsertionOrderedSet[DebugExp],
@@ -149,6 +151,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[ast.Exp],
     if (branchConditions.nonEmpty) {
       val branchConditionsString =
         branchConditions
+          .map(_.getSecond)
           .map(bc => s"$bc [ ${bc.pos} ] ")
           .mkString("\t\t", " ~~> ", "")
 
@@ -182,7 +185,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[ast.Exp],
     if (assumptions.nonEmpty) {
       val config = new DebugExpPrintConfiguration
       config.isPrintInternalEnabled = true
-      s"\n\nassumptions:\n\t${assumptions.tail.foldLeft[String](assumptions.head.toString(config))((s, de) => de.toString(config) + "\n\t" + s)}"
+      s"\n\nassumptions:\n\t${assumptions.tail.foldLeft[String](assumptions.head.toString(config))((s, de) => de.toString(config) + s)}"
     } else {
       ""
     }
@@ -201,7 +204,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[ast.Exp],
 
 trait SiliconCounterexample extends Counterexample {
   val internalStore: Store
-  lazy val store: Map[String, Term] = internalStore.values.map{case (k, v) => k.name -> v}
+  lazy val store: Map[String, (Term, ast.Exp)] = internalStore.values.map{case (k, v) => k.name -> v}
   def withStore(s: Store) : SiliconCounterexample
 }
 

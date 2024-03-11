@@ -105,12 +105,12 @@ object havocSupporter extends SymbolicExecutionRules {
       pve   = pve,
       v     = v)
     {
-      case (s1, tVars, Seq(tCond), Seq(eCondNew), tArgs, eArgsNew, Seq(), _, _, v1) => // TODO ake: newExp?
+      case (s1, tVars, _, Seq(tCond), _, tArgs, _, Seq(), _, _, v1) =>
         // Seq() represents an empty list of Triggers
         // TODO: unnamed arguments are (tAuxGlobal, tAux) and (auxGlobalsExp, auxNonGlobalsExp). How should these be handled?
 
         val resource = eRsc.res(s1.program)
-        val codomainQVars = getCodomainQVars(s1, resource, v1)
+        val (codomainQVars, codomainQVarsExp) = getCodomainQVars(s1, resource, v1)
 
         // Verify that the function z --> (e1(z), ..., en(z)) is injective
         val receiverInjectivityCheck =
@@ -131,20 +131,21 @@ object havocSupporter extends SymbolicExecutionRules {
           case true =>
             // Generate the inverse axioms
             // TODO: Second return value (imagesOfCodomain) currently not used — OK?
-            val (inverseFunctions, _) = quantifiedChunkSupporter.getFreshInverseFunctions(
+            val (inverseFunctions, _, _) = quantifiedChunkSupporter.getFreshInverseFunctions(
               qvars = tVars,
               condition = tCond,
               invertibles = tArgs,
               codomainQVars = codomainQVars,
+              codomainQVarExps = codomainQVarsExp,
               additionalInvArgs = Seq(), // There are no additional quantified vars
+              additionalInvArgExps = Seq(),
               userProvidedTriggers = None,
               qidPrefix = qid,
               v = v1
             )
             val comment = "Definitional axioms for havocall inverse functions"
             v.decider.prover.comment(comment)
-            val debugExp = DebugExp.createInstance(comment, true)
-            v.decider.assume(inverseFunctions.definitionalAxioms, debugExp)
+            v.decider.assume(inverseFunctions.definitionalAxioms, DebugExp.createInstance(comment, isInternal_ = true), enforceAssumption = false)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
             // which may be havocked. Since we are executing a Havocall statement, we wrap
@@ -230,7 +231,7 @@ object havocSupporter extends SymbolicExecutionRules {
 
     // Get the sequence of quantified variables (r1, ..., rn). For fields, this is the same
     // as aggregateQVar.
-    val codomainQVars = getCodomainQVars(s, resource, v)
+    val (codomainQVars, _) = getCodomainQVars(s, resource, v)
 
     val cond = replacementCond(lhs, codomainQVars, condInfo)
 
@@ -317,15 +318,18 @@ object havocSupporter extends SymbolicExecutionRules {
   }
 
   // Get the variables that we must quantify over for each resource type
-  private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): Seq[Var] = {
+  private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): (Seq[Var], Seq[ast.LocalVarDecl]) = {
       eRsc match {
-        case _: ast.Field => Seq(`?r`)
+        case _: ast.Field => (Seq(`?r`), Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)()))
         case p: ast.Predicate =>
-          s.predicateFormalVarMap(s.program.findPredicate(p.name))
+          val predicate = s.program.findPredicate(p.name)
+          (s.predicateFormalVarMap(s.program.findPredicate(p.name)), predicate.formalArgs)
         case w: ast.MagicWand =>
           val bodyVars = w.subexpressionsToEvaluate(s.program)
-          bodyVars.indices.toList.map(i =>
-              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+          (bodyVars.indices.toList.map(i =>
+              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ))),
+            bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)())
+            )
     }
   }
 

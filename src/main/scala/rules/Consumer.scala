@@ -15,7 +15,6 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.LocalVar
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
@@ -227,13 +226,15 @@ object consumer extends ConsumptionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(condNew), Seq(tPerm, tRcvr), Seq(ePermNew, eRcvrNew), tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) => // TODO ake: newExps?
+          case (s1, qvars, qvarExps, Seq(tCond), Seq(condNew), Seq(tPerm, tRcvr), Seq(ePermNew, eRcvrNew), tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
               resource = field,
               qvars = qvars,
+              qVarExps = qvarExps,
               formalQVars = Seq(`?r`),
+              formalQVarsExp = Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)()),
               qid = qid.name,
               optTrigger = optTrigger,
               tTriggers = tTriggers,
@@ -242,9 +243,10 @@ object consumer extends ConsumptionRules {
               auxGlobalsExp = auxGlobalsExp,
               auxNonGlobalsExp = auxNonGlobalsExp,
               tCond = tCond,
-              tArgs = Seq(tRcvr),
-              tPerm = tPerm,
               eCond = condNew,
+              tArgs = Seq(tRcvr),
+              eArgs = Seq(eRcvrNew),
+              tPerm = tPerm,
               ePerm = ePermNew,
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
@@ -268,13 +270,15 @@ object consumer extends ConsumptionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(eCondNew), Seq(tPerm, tArgs @ _*), Seq(ePermNew, eArgsNew @ _*), tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) => // TODO ake: ExpNew?
+          case (s1, qvars, qvarExps, Seq(tCond), Seq(eCondNew), Seq(tPerm, tArgs @ _*), Seq(ePermNew, eArgsNew @ _*), tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
               resource = predicate,
               qvars = qvars,
+              qVarExps = qvarExps,
               formalQVars = formalVars,
+              formalQVarsExp = predicate.formalArgs,
               qid = qid.name,
               optTrigger = optTrigger,
               tTriggers = tTriggers,
@@ -283,9 +287,10 @@ object consumer extends ConsumptionRules {
               auxGlobalsExp = auxGlobalsExp,
               auxNonGlobalsExp = auxNonGlobalsExp,
               tCond = tCond,
-              tArgs = tArgs,
-              tPerm = tPerm,
               eCond = eCondNew,
+              tArgs = tArgs,
+              eArgs = eArgsNew,
+              tPerm = tPerm,
               ePerm = ePermNew,
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
@@ -297,6 +302,7 @@ object consumer extends ConsumptionRules {
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVarExps = bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)())
         val qid = MagicWandIdentifier(wand, s.program).toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
@@ -304,13 +310,15 @@ object consumer extends ConsumptionRules {
         val ePerm = ast.FullPerm()()
         val tPerm = FullPerm
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(eCondNew), tArgs, bodyVarsNew, tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) => // TODO ake: ExpNew?
+          case (s1, qvars, qvarExps, Seq(tCond), Seq(eCondNew), tArgs, bodyVarsNew, tTriggers, (auxGlobals, auxNonGlobals), (auxGlobalsExp, auxNonGlobalsExp), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
               resource = wand,
               qvars = qvars,
+              qVarExps = qvarExps,
               formalQVars = formalVars,
+              formalQVarsExp = formalVarExps,
               qid = qid,
               optTrigger = optTrigger,
               tTriggers = tTriggers,
@@ -319,9 +327,10 @@ object consumer extends ConsumptionRules {
               auxGlobalsExp = auxGlobalsExp,
               auxNonGlobalsExp = auxNonGlobalsExp,
               tCond = tCond,
-              tArgs = tArgs,
-              tPerm = tPerm,
               eCond = eCondNew,
+              tArgs = tArgs,
+              eArgs = bodyVarsNew,
+              tPerm = tPerm,
               ePerm = ePerm,
               pve = pve,
               negativePermissionReason = NegativePermission(ePerm),
@@ -354,7 +363,7 @@ object consumer extends ConsumptionRules {
               s2p,
               h,
               Seq(`?r`),
-              Seq(LocalVar("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)),
+              Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)),
               Seq(tRcvr),
               Seq(eRcvr),
               loc,
@@ -396,7 +405,7 @@ object consumer extends ConsumptionRules {
               s2p,
               h,
               formalVars,
-              predicate.formalArgs.map(_.localVar),
+              predicate.formalArgs,
               tArgs,
               eArgs,
               loc,
@@ -458,7 +467,7 @@ object consumer extends ConsumptionRules {
             s1p,
             h,
             formalVars,
-            bodyVars,
+            wand.formalArgs,
             tArgs,
             bodyVars,
             wand,
@@ -473,7 +482,7 @@ object consumer extends ConsumptionRules {
             Q(s4, h3, snap, v3)})})
 
       case wand: ast.MagicWand =>
-        magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, _, v1) => { // TODO ake: argsNew?
+        magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, _, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
           chunkSupporter.consume(s1, h, wand, tArgs, wand.subexpressionsToEvaluate(s.program), FullPerm, ast.FullPerm()(wand.pos, wand.info, wand.errT), ve, v1, description)(Q)

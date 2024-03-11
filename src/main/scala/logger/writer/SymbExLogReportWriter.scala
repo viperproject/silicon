@@ -70,7 +70,7 @@ object SymbExLogReportWriter {
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedPredicateChunk(id, vars, psf, perm, _, invs, cond, singletonArgs, _, hints) =>
+    case QuantifiedPredicateChunk(id, vars, _, psf, perm, _, invs, cond, singletonArgs, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_predicate_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
@@ -83,7 +83,7 @@ object SymbExLogReportWriter {
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedMagicWandChunk(id, vars, wsf, perm, _, invs, cond, singletonArgs, _, hints) =>
+    case QuantifiedMagicWandChunk(id, vars, _, wsf, perm, _, invs, cond, singletonArgs, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_magic_wand_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
@@ -221,7 +221,7 @@ object SymbExLogReportWriter {
   }
 
   def toJSON(store: Store): JsArray = {
-    JsArray(store.values.map({
+    JsArray(store.termValues.map({
       case (AbstractLocalVar(name), value) =>
         JsObject(
           "name" -> JsString(name),

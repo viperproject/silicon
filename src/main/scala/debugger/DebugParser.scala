@@ -27,7 +27,7 @@ class DebugParser extends FastParser {
     case (pos, (a, b)) => PDebugLabelledOld(a, b)(pos)
   })
 
-  override def atom(implicit ctx: P[_]): P[PExp] = // TODO ake:
+  override def atom(implicit ctx: P[_]): P[PExp] =
     P(ParserExtension.newExpAtStart(ctx) | versionedidnuse
     | debugOld
     | annotatedAtom

@@ -580,7 +580,7 @@ object Converter {
                     ): ExtractedModel = {
     var map: Map[String, ExtractedModelEntry] = Map()
     val nullRefName: String = model.entries.getOrElse("$Ref.null","Ref!val!0").toString
-    for ((variable: ast.AbstractLocalVar, term: Term) <- store.values) {
+    for ((variable: ast.AbstractLocalVar, term: Term) <- store.termValues) {
       var localSort: Option[Sort] = None
       val name = variable match {
         case ast.LocalVar(n, typ) =>

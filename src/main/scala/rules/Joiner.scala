@@ -16,7 +16,7 @@ import viper.silicon.state.terms.{And, Or, Term}
 import viper.silicon.utils.ast
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{Bool, Exp, LocalVar}
+import viper.silver.ast.Exp
 
 case class JoinDataEntry[D](s: State, data: D, dataExp: Exp, pathConditions: RecordedPathConditions)
 
@@ -78,7 +78,7 @@ object joiner extends JoiningRules {
           val pcsExp = entry.pathConditions.conditionalizedExp
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          v.decider.assume(pcs, DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp)))
+          v.decider.assume(pcs, DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp)), enforceAssumption = false)
           feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
           feasibleBranchesExp = BigAnd(entry.pathConditions.branchConditionExps.map(_.getFirst)) :: feasibleBranchesExp
           feasibleBranchesExpNew = BigAnd(entry.pathConditions.branchConditionExps.map(_.getSecond)) :: feasibleBranchesExpNew

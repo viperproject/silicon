@@ -49,7 +49,7 @@ object letSupporter extends LetSupportRules {
 
   private def handle[E <: ast.Exp]
                     (s: State,
-                     bindings: Seq[(ast.AbstractLocalVar, Term)],
+                     bindings: Seq[(ast.AbstractLocalVar, (Term, ast.Exp))],
                      let: ast.Let,
                      pve: PartialVerificationError,
                      v: Verifier)
@@ -58,9 +58,9 @@ object letSupporter extends LetSupportRules {
 
     val ast.Let(x, exp, body) = let
 
-    eval(s, exp, pve, v)((s1, t, _, v1) => {
-      val bindings1 = bindings :+ (x.localVar, t)
-      val s2 = s1.copy(s1.g + (x.localVar, t))
+    eval(s, exp, pve, v)((s1, t, expNew, v1) => {
+      val bindings1 = bindings :+ (x.localVar, (t, expNew))
+      val s2 = s1.copy(s1.g + (x.localVar, (t, expNew)))
       body match {
         case nestedLet: ast.Let => handle(s2, bindings1, nestedLet, pve, v1)(Q)
         case _ => Q(s2, Store(bindings1), body.asInstanceOf[E], v1)}})
