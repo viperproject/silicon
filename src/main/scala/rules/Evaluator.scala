@@ -539,7 +539,7 @@ object evaluator extends EvaluationRules {
                   if (s2.heapDependentTriggers.contains(predicate)){
                     val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
                     val argsString = eArgsNew.mkString(", ")
-                    v1.decider.assume(trigger, DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))"))
+                    v1.decider.assume(trigger, DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
                   }
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
               }
@@ -898,7 +898,7 @@ object evaluator extends EvaluationRules {
                          */
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
-                        val debugExp = DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")
+                        val debugExp = DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true)
                         v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs), debugExp)
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */

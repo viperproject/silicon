@@ -392,7 +392,7 @@ object consumer extends ConsumptionRules {
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
               val argsString = eArgsNew.mkString(", ")
-              val debugExp = DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))")
+              val debugExp = DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true)
               v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
               s2.copy(smCache = smCache1)
             } else {
@@ -455,7 +455,7 @@ object consumer extends ConsumptionRules {
                 s1, wand, formalVars, relevantChunks, v1)
             val argsString = bodyVarsNew.mkString(", ")
             val predName = MagicWandIdentifier(wand, s.program).toString
-            val debugExp = DebugExp.createInstance(s"PredicateTrigger($predName($argsString))")
+            val debugExp = DebugExp.createInstance(s"PredicateTrigger($predName($argsString))", isInternal_ = true)
             v1.decider.assume(PredicateTrigger(predName, smDef1.sm, tArgs), debugExp)
             s1.copy(smCache = smCache1)
           } else {

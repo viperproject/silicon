@@ -556,7 +556,7 @@ object executor extends ExecutionRules {
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
               val eArgsStr = eArgsNew.mkString(", ")
-              val debugExp = DebugExp.createInstance(Some(s"PredicateTrigger(${predicate.name}($eArgsStr))"), Some(pa), Some(ast.PredicateAccess(eArgsNew, predicateName)(pa.pos, pa.info, pa.errT)), InsertionOrderedSet.empty)
+              val debugExp = DebugExp.createInstance(Some(s"PredicateTrigger(${predicate.name}($eArgsStr))"), Some(pa), Some(ast.PredicateAccess(eArgsNew, predicateName)(pa.pos, pa.info, pa.errT)), None, isInternal_ = true, InsertionOrderedSet.empty)
               v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
               smCache1
             } else {
@@ -608,7 +608,7 @@ object executor extends ExecutionRules {
                 val (smDef, smCache) =
                   quantifiedChunkSupporter.summarisingSnapshotMap(
                     s2, wand, formalVars, relevantChunks, v1)
-                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get), DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}(${ch.singletonArgExps.get}))"))
+                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get), DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}(${ch.singletonArgExps.get}))", isInternal_ = true))
                 smCache
               case _ => s2.smCache
             }
