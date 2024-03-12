@@ -387,6 +387,7 @@ object executor extends ExecutionRules {
               relevantChunks,
               Seq(`?r`),
               `?r` === tRcvr,
+              Some(Seq(tRcvr)),
               field,
               FullPerm,
               chunkOrderHeuristics,
