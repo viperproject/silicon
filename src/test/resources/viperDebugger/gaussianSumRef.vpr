@@ -29,7 +29,7 @@ predicate ge0(n : Ref)
 method testRef()
 {
     var x : Ref
-    x := new() // missing permission
+    x := new(val)
     var y : Int
     x.val := 2
     y := x.val + y

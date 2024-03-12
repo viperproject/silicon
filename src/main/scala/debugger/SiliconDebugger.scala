@@ -15,6 +15,7 @@ import viper.silver.reporter.{NoopReporter, Reporter}
 import viper.silver.verifier.errors.ContractNotWellformed
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
+import java.nio.file.Paths
 import scala.io.StdIn.readLine
 import scala.language.postfixOps
 
@@ -233,7 +234,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           case _ => println("Invalid input!")
         }
       }catch {
-        case e: Throwable => println(s"Unexpected error: ${e.getMessage}. Try again")
+        case e: Throwable => println(s"Unexpected error: ${e.getMessage}. \nTry again")
       }
     }
   }
@@ -280,8 +281,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         case Success() =>
           obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, assertion = resT, eAssertion = resE, v = resV)
         case _ =>
-          println("Error evaluating expression: " + verificationResult.toString)
-          obl
+          throw new UnknownError("Error while evaluating expression: " + verificationResult.toString)
       }
     }
   }
@@ -291,6 +291,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       try {
         val fp = new DebugParser()
         fp._line_offset = Seq(0, str.length + 1).toArray
+        fp._file = Paths.get("userInput")
         val parsedExp = fastparse.parse(str, fp.exp(_))
         parsedExp.get.value
       } catch {
@@ -306,6 +307,12 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       } catch {
         case e: Throwable => println(s"Error while typechecking $str: ${e.getMessage}")
           throw e
+      }
+      if (obl.resolver.messages.nonEmpty) {
+        val msg = obl.resolver.messages.mkString("\n\t")
+        obl.resolver.names.messages = Seq()
+        obl.resolver.typechecker.messages = Seq()
+        throw new UnknownError(s"Error while typechecking:\n\t $msg")
       }
     }
 
