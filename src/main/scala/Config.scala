@@ -451,19 +451,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val z3Exe: String = {
     val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
 
-    rawZ3Exe.toOption match {
-      case Some(exe) => exe
-      case None =>
-        Option(System getenv Z3ProverStdIO.exeEnvironmentalVariable) match {
-          case Some(exe) => exe
-          case None =>
-            val filename = "z3" + (if (isWindows) ".exe" else "")
-            System.getenv("PATH").split(if (isWindows) ";" else ":").find(dirname => Files.exists(Paths.get(dirname, filename))) match {
-              case Some(dirname) => Paths.get(dirname, filename).toString
-              case None => filename
-            }
+    rawZ3Exe.toOption.getOrElse({
+      Option(System getenv Z3ProverStdIO.exeEnvironmentalVariable).getOrElse({
+        val filename = "z3" + (if (isWindows) ".exe" else "")
+        System.getenv("PATH").split(if (isWindows) ";" else ":").find(dirname => Files.exists(Paths.get(dirname, filename))) match {
+          case Some(dirname) => Paths.get(dirname, filename).toString
+          case None => filename
         }
-    }
+      })
+    })
   }
 
   private val rawCvc5Exe = opt[String]("cvc5Exe",
