@@ -117,7 +117,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     lifetimeState = LifetimeState.Configured
 
     _config = new Config(args)
-    if (config.error.isEmpty && !config.exit) {
+    if (!config.exit) {
       _symbExLog = SymbExLogger.ofConfig(_config)
     }
   }
