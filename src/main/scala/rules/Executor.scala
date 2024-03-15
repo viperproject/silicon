@@ -15,6 +15,7 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors._
+import viper.silver.reporter.{BlockProcessedMessage, BlockReachedMessage}
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
@@ -211,7 +212,22 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    block match {
+    var blockLabel = "None"
+    block.elements
+      .iterator
+      .takeWhile(_ => blockLabel == "None")
+      .foreach( element => 
+        element match {
+          case Left(stmt) => stmt match {
+            case ast.Label(name, _) => 
+              blockLabel = name
+            case _ =>
+            }
+          case Right(_) =>
+        }
+      )
+    
+    val executed = block match {
       case cfg.StatementBlock(stmt) =>
         execs(s, stmt, v)((s1, v1) =>
           follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint)(Q))
@@ -306,16 +322,24 @@ object executor extends ExecutionRules {
               Success())
         }
     }
+    /* TODO: coarse. might want more intermedeate results. this waits until all
+     * following blocks have resolved.
+     * maybe move to `exec(State, ast.Stmt, Verifier)` or `execs` function
+     * in the else.
+     */
+    if(blockLabel != "None")
+      v.reporter.report(BlockProcessedMessage(blockLabel, executed.toString()))
+    executed
   }
 
-  def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)
+    def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)
            (Q: (State, Verifier) => VerificationResult)
            : VerificationResult =
 
     if (stmts.nonEmpty)
       exec(s, stmts.head, v)((s1, v1) =>
         execs(s1, stmts.tail, v1)(Q))
-    else
+    else 
       Q(s, v)
 
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
@@ -353,6 +377,7 @@ object executor extends ExecutionRules {
 
       case ast.Label(name, _) =>
         val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
+        v.reporter.report(BlockReachedMessage(name))
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>
