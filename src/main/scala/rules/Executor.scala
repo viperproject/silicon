@@ -303,11 +303,11 @@ object executor extends ExecutionRules {
                             case Success(_) =>
 
                               // Try to find invariants
-                              LoopInvariantSolver.solve(s4, v3, outEdges, joinPoint) {
-                                case AbductionFailure() =>
+                              LoopInvariantSolver.solve(s4, v3, otherEdges, joinPoint) {
+                                case AbductionFailure(_, _) =>
                                   println("Failed to find loop invariants")
                                   Success()
-                                case AbductionSuccess(pre, stmts, posts, invs) =>
+                                case AbductionSuccess(_, _, _, _, _, invs) =>
                                   println("Found loop invariants:")
                                   invs.foreach(inv => println(inv.toString()))
                                   Success()

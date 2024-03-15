@@ -18,13 +18,13 @@ import viper.silver.verifier.{AbductionQuestionTransformer, DummyReason, Partial
 
 trait AbductionResult
 
-case class AbductionSuccess(pre: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), posts: Seq[Exp] = Seq(), invs: Seq[Exp] = Seq()) extends AbductionResult {
+case class AbductionSuccess(s: State, v: Verifier, pre: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), posts: Seq[Exp] = Seq(), invs: Seq[Exp] = Seq()) extends AbductionResult {
   override def toString: String = {
     "Abduced preconditions\n" + pre.map(_.toString()).mkString("\n") + "\nAbduced statements\n" + stmts.map(_.toString()).mkString("\n")
   }
 }
 
-case class AbductionFailure() extends AbductionResult {
+case class AbductionFailure(s: State, v: Verifier) extends AbductionResult {
   override def toString: String = "Abduction failed"
 
 }
@@ -70,10 +70,10 @@ object BiAbductionSolver {
           case _ => Implies(BigAnd(bcs), e)()
         }
       }
-      AbductionSuccess(presTransformed, q1.foundStmts)
+      AbductionSuccess(q1.s, q1.v, presTransformed, q1.foundStmts)
 
     } else {
-      AbductionFailure()
+      AbductionFailure(q1.s, q1.v)
     }
   }
 
@@ -87,7 +87,7 @@ object BiAbductionSolver {
     val res = s.h.values.collect { case c: BasicChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
 
     val absRes = AbstractionApplier.apply(AbstractionQuestion(res, s.program)).exps
-    AbductionSuccess(posts = absRes)
+    AbductionSuccess(s, v, posts = absRes)
     //"Abduced postconditions\n" + absRes.map(_.toString()).mkString("\n")
   }
 }
