@@ -117,7 +117,9 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     lifetimeState = LifetimeState.Configured
 
     _config = new Config(args)
-    _symbExLog = SymbExLogger.ofConfig(_config)
+    if (!config.exit) {
+      _symbExLog = SymbExLogger.ofConfig(_config)
+    }
   }
 
   def debugInfo(debugInfo: Seq[(String, Any)]): Unit = { this.debugInfo = debugInfo }
@@ -434,7 +436,6 @@ class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
          *       the process to kill has no input/output data left in the
          *       corresponding streams.
          */
-      submitter.submit()
     }
 
     sys.exit(exitCode)
