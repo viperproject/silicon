@@ -322,7 +322,11 @@ class DefaultMainVerifier(config: Config,
         }
       case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
-    val moreJoins = Verifier.config.moreJoins() && member.isInstanceOf[ast.Method]
+    val moreJoinsAnnotated = member.info.getUniqueInfo[ast.AnnotationInfo] match {
+      case Some(ai) => ai.values.contains("moreJoins")
+      case _ => false
+    }
+    val moreJoins = (Verifier.config.moreJoins() || moreJoinsAnnotated) && member.isInstanceOf[ast.Method]
 
     val methodPermCache = mutable.HashMap[String, InsertionOrderedSet[ast.Location]]()
     val permResources: InsertionOrderedSet[ast.Location] = if (Verifier.config.unsafeWildcardOptimization()) member match {
