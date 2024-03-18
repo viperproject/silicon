@@ -58,7 +58,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         case _: ast.MagicWand => sorts.Snap
       }
 
-    val `?s` = Var(Identifier("?s"), sort)
+    val `?s` = Var(Identifier("?s"), sort, false)
     var summarisingSnapshotDefinitions: Seq[Term] = Vector.empty
     var permissionSum: Term = NoPerm
 
@@ -386,7 +386,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
   }
 
 
-  private val freeReceiver = Var(Identifier("?rcvr"), sorts.Ref)
+  private val freeReceiver = Var(Identifier("?rcvr"), sorts.Ref, false)
 
   def assumeFieldPermissionUpperBounds(h: Heap, v: Verifier): Unit = {
     // TODO: Instead of "manually" assuming such upper bounds, appropriate PropertyInterpreters

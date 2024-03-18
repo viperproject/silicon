@@ -337,17 +337,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Fresh symbols */
 
     def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function =
-      prover_fresh[Fun](id, argSorts, resultSort)
+      prover_fresh[Fun](id, argSorts, resultSort, false)
 
-    def fresh(id: String, sort: Sort): Var = prover_fresh[Var](id, Nil, sort)
+    def fresh(id: String, sort: Sort): Var = prover_fresh[Var](id, Nil, sort, false)
 
-    def fresh(s: Sort): Var = prover_fresh[Var]("$t", Nil, s)
+    def fresh(s: Sort): Var = prover_fresh[Var]("$t", Nil, s, false)
 
     def fresh(v: ast.AbstractLocalVar): Var =
-      prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
+      prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ), false)
 
     def freshARP(id: String = "$k"): (Var, Term) = {
-      val permVar = prover_fresh[Var](id, Nil, sorts.Perm)
+      val permVar = prover_fresh[Var](id, Nil, sorts.Perm, true)
       val permVarConstraints = IsReadPermVar(permVar)
 
       (permVar, permVarConstraints)
@@ -373,7 +373,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def prover_fresh[F <: Function : ClassTag]
-                            (id: String, argSorts: Seq[Sort], resultSort: Sort)
+                            (id: String, argSorts: Seq[Sort], resultSort: Sort, isARP: Boolean)
                             : F = {
 //      context.bookkeeper.freshSymbols += 1
 
@@ -388,7 +388,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
           destClass match {
             case c if c == classOf[Var] =>
               Predef.assert(proverFun.argSorts.isEmpty)
-              Var(proverFun.id, proverFun.resultSort).asInstanceOf[F]
+              Var(proverFun.id, proverFun.resultSort, isARP).asInstanceOf[F]
             case c if c == classOf[Fun] => proverFun.asInstanceOf[F]
             case c if c == classOf[DomainFun] =>
               DomainFun(proverFun.id, proverFun.argSorts, proverFun.resultSort).asInstanceOf[F]
@@ -410,9 +410,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toSymbolStack: Boolean): Unit = {
       if (!toSymbolStack) {
-        functions foreach prover.declare
+        for (f <- functions) {
+          if (!_declaredFreshFunctions.contains(f))
+            prover.declare(f)
 
-        _declaredFreshFunctions = _declaredFreshFunctions ++ functions
+          _declaredFreshFunctions = _declaredFreshFunctions + f
+        }
       } else {
         for (f <- functions) {
           if (!_declaredFreshFunctions.contains(f))
@@ -426,15 +429,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def declareAndRecordAsFreshMacros(macros: Seq[MacroDecl], toStack: Boolean): Unit = {
       if (!toStack) {
-        macros foreach prover.declare
-
-        _declaredFreshMacros = _declaredFreshMacros ++ macros
+        for (m <- macros) {
+          if (!_declaredFreshMacros.contains(m)) {
+            prover.declare(m)
+            _declaredFreshMacros = _declaredFreshMacros.appended(m)
+          }
+        }
       } else {
         for (m <- macros) {
-          if (!_declaredFreshMacros.contains(m))
+          if (!_declaredFreshMacros.contains(m)) {
             prover.declare(m)
-
-          _declaredFreshMacros = _declaredFreshMacros.appended(m)
+            _declaredFreshMacros = _declaredFreshMacros.appended(m)
+          }
           _freshMacroStack.foreach(l => l.append(m))
         }
       }

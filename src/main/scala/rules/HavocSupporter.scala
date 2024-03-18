@@ -125,6 +125,7 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
         v.decider.assert(receiverInjectivityCheck) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1)
           case true =>
@@ -321,7 +322,7 @@ object havocSupporter extends SymbolicExecutionRules {
         case w: ast.MagicWand =>
           val bodyVars = w.subexpressionsToEvaluate(s.program)
           bodyVars.indices.toList.map(i =>
-              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
     }
   }
 

@@ -8,10 +8,12 @@ package viper.silicon.extensions
 
 import viper.silver.ast._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.parser.{NameAnalyser, PExtender, PNode, PStmt, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PExtender, PStmt, Translator, TypeChecker, PKw, PKeywordStmt, PReserved}
 
-final case class PTryBlock(body: PStmt)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PExtender with PStmt {
-  override val getSubnodes: Seq[PNode] = Seq(body)
+/** Keyword used to define `try` statement. */
+case object PTryKeyword extends PKw("try") with PKeywordStmt
+
+final case class PTryBlock(kw: PReserved[PTryKeyword.type], body: PStmt)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PExtender with PStmt {
 
   override def translateStmt(translator: Translator): Stmt = {
     TryBlock(translator.stmt(body))(translator.liftPos(this))
