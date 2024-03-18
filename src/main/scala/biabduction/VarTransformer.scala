@@ -6,10 +6,10 @@ import viper.silicon.state.{BasicChunk, State, terms}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 
-case class VarTransformer(s: State, v: Verifier, targets: Seq[LocalVar], strict: Boolean = true) {
+case class VarTransformer(s: State, v: Verifier, targets: Seq[AbstractLocalVar], strict: Boolean = true) {
 
   // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
-  val targetMap: Map[Term, LocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
+  val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
 
   // Fields chunks as a map
   val points: Map[Term, Term] = s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => c.args.head -> c.snap }.toMap
@@ -18,7 +18,7 @@ case class VarTransformer(s: State, v: Verifier, targets: Seq[LocalVar], strict:
   val allTerms: Seq[Term] = (s.g.values.values ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten).collect {case t: Var => t}.toSeq
 
   // Ask the decider whether any of the terms are equal to a target.
-  val aliases: Map[Term, LocalVar] = allTerms.map { t =>
+  val aliases: Map[Term, AbstractLocalVar] = allTerms.map { t =>
     t -> targetMap.collectFirst { case (t1, e) if v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
   }.collect { case (t2, Some(e)) => t2 -> e }.toMap
 

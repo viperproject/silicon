@@ -1,11 +1,11 @@
 package viper.silicon.biabduction
 
-import viper.silicon.interfaces.{Failure, SiliconFailureContext, Success, Unreachable, VerificationResult}
+import viper.silicon.interfaces._
 import viper.silicon.rules.{executor, producer}
 import viper.silicon.state.State
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{Exp, LocalVar, Stmt}
+import viper.silver.ast.{Exp, LocalVar, MagicWand, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
 import viper.silver.verifier.PartialVerificationError
@@ -19,6 +19,11 @@ case class InvariantAbductionQuestion(abstractions: Seq[Seq[Exp]], assignments: 
 object LoopInvariantSolver {
   val pve: PartialVerificationError = Internal()
 
+  private def getInvariant(e: Exp): Seq[Exp] = {
+    case m:MagicWand => Seq(m.left, m.right)
+    case _ => Seq(e)
+  }
+
   def solve(s: State,
             v: Verifier,
             loopEdges: Seq[Edge[Stmt, Exp]],
@@ -30,6 +35,8 @@ object LoopInvariantSolver {
 
     // Assumme that we have the things in nextState
     producer.produces(s, freshSnap, q.nextState, pveLam, v) { (s2, v2) =>
+
+      val varTrans = VarTransformer(s, v, s.g.values.keys.toSeq, strict = false)
 
       // Run the loop
       // This continuation should never be called, we are only following the inner loop edges, which either
@@ -57,7 +64,8 @@ object LoopInvariantSolver {
 
               // Find the new assignments
               // Idea for now: take all variables in store that have changed and can be reduced to beginning
-              // TODO
+              val assigns = s2.g.values.collect { case (v, t) => (v, varTrans.transformTerm(t)) }
+                .collect { case (v, e) if e.isDefined && e.get != v => (v, e.get) }
 
               // Perform abstraction on the found state for that loop iteration
               val prevAbst = q.abstractions.lastOption match {
@@ -69,10 +77,16 @@ object LoopInvariantSolver {
               // Check if we are done
               // This means that the abstraction is the same if we replace via the found assignment
               // Then we want to find the actual invariants!
-              // TODO
-
-              // Else continue with next iteration, using the state from the end of the loop
-              solve(a.s, a.v, loopEdges, joinPoint, q.copy(abstractions = q.abstractions :+ nextAbst, nextState = Seq()))(Q)
+              val prevAbstTrans = prevAbst.map(_.transform {
+                case lv: LocalVar if assigns.contains(lv) => assigns(lv)
+              })
+              if (prevAbstTrans.intersect(nextAbst).isEmpty) {
+                val a = nextAbst.flatMap(getInvariant)
+                Q(AbductionSuccess(s2, v2, invs = a))
+              } else {
+                // Else continue with next iteration, using the state from the end of the loop
+                solve(a.s, a.v, loopEdges, joinPoint, q.copy(abstractions = q.abstractions :+ nextAbst, nextState = Seq()))(Q)
+              }
           }
       }
     }
