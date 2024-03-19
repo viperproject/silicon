@@ -278,6 +278,7 @@ class DefaultMainVerifier(config: Config,
     val functionVerificationResults = allResults.flatten.toList
 
     _verificationPoolManager.pooledVerifiers.pop()
+    allEmittedFunctionAxioms foreach _verificationPoolManager.pooledVerifiers.assume
     _verificationPoolManager.pooledVerifiers.push()
 
     val predicateVerificationFutures = predicateSupporter.units.toList map (predicate => {
@@ -305,7 +306,7 @@ class DefaultMainVerifier(config: Config,
     //predicateSupporter.declareSymbolsAfterVerification(_verificationPoolManager.pooledVerifiers)
     //functionsSupporter.declareSymbolsAfterVerification(_verificationPoolManager.pooledVerifiers)
     //predicateSupporter.emitAxiomsAfterVerification(_verificationPoolManager.pooledVerifiers)
-    allEmittedFunctionAxioms foreach _verificationPoolManager.pooledVerifiers.assume
+    //allEmittedFunctionAxioms foreach _verificationPoolManager.pooledVerifiers.assume
     _verificationPoolManager.pooledVerifiers.comment("End function- and predicate-related preamble")
     _verificationPoolManager.pooledVerifiers.comment("-" * 60)
 
