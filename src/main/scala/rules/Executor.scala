@@ -29,6 +29,7 @@ import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableNam
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
+import java.util.concurrent.atomic.AtomicInteger
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -50,8 +51,13 @@ object executor extends ExecutionRules {
   import consumer._
   import evaluator._
   import producer._
+  private val pathIdGenerator = new AtomicInteger(0)
 
-  private def follow(s: State, edge: SilverEdge, v: Verifier, joinPoint: Option[SilverBlock])
+  def nextPathId(): Int = {
+    pathIdGenerator.incrementAndGet()
+  }
+
+  private def follow(s: State, edge: SilverEdge, v: Verifier, joinPoint: Option[SilverBlock], pathId: Int)
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
@@ -73,7 +79,7 @@ object executor extends ExecutionRules {
              */
             brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1)(
               (s3, v3) =>
-                exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
+                exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint, pathId)((s4, v4) => {
                   v4.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
                 }),
@@ -84,7 +90,7 @@ object executor extends ExecutionRules {
 
         case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
           val s1 = handleOutEdge(s, edge, v)
-          exec(s1, ue.target, ue.kind, v, joinPoint)(Q)
+          exec(s1, ue.target, ue.kind, v, joinPoint, pathId)(Q)
       }
     }
   }
@@ -106,7 +112,8 @@ object executor extends ExecutionRules {
                       edges: Seq[SilverEdge],
                       @unused pvef: ast.Exp => PartialVerificationError,
                       v: Verifier,
-                      joinPoint: Option[SilverBlock])
+                      joinPoint: Option[SilverBlock],
+                      pathId: Int)
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
 
@@ -119,7 +126,7 @@ object executor extends ExecutionRules {
 
     (edges, jp) match {
       case (Seq(), _) => Q(s, v)
-      case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
+      case (Seq(edge), _) => follow(s, edge, v, joinPoint, pathId)(Q)
       case (Seq(edge1, edge2), Some(newJoinPoint)) if
           s.moreJoins.id >= JoinMode.All.id &&
           // Can't directly match type because of type erasure ...
@@ -148,8 +155,8 @@ object executor extends ExecutionRules {
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
             brancher.branch(s2, t0, (cedge1.condition, condNew), v2)(
               // Follow only until join point.
-              (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
-              (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
+              (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint), pathId)((s, v) => QB(s, null, v)),
+              (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint), nextPathId())((s, v) => QB(s, null, v))
             )
           })(entries => {
             val s2 = entries match {
@@ -166,7 +173,9 @@ object executor extends ExecutionRules {
               Q(s4, v4)
             } else {
               // Continue after merging at join point.
-              exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint)(Q)
+              // Guessing this means that everything after a merge will have the path id of
+              // the first branch (don't know yet if that's ok)
+              exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint, pathId)(Q)
             }
           })
         )
@@ -178,10 +187,10 @@ object executor extends ExecutionRules {
         val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, eCondNew, v1) =>
           brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1)(
             (s3, v3) => {
-              follow(s3, thenEdge, v3, joinPoint)(Q)
+              follow(s3, thenEdge, v3, joinPoint, pathId)(Q)
             },
             (s3, v3) => {
-              follow(s3, elseEdge, v3, joinPoint)(Q)
+              follow(s3, elseEdge, v3, joinPoint, nextPathId())(Q)
             }))
         res
 
@@ -193,7 +202,7 @@ object executor extends ExecutionRules {
               v.symbExLog.switchToNextBranch(uidBranchPoint)
             }
             v.symbExLog.markReachable(uidBranchPoint)
-            result combine follow(s, edge, v, joinPoint)(Q)
+            result combine follow(s, edge, v, joinPoint, pathId)(Q)
           }
         }
         v.symbExLog.endBranchPoint(uidBranchPoint)
@@ -205,32 +214,45 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    exec(s, graph.entry, cfg.Kind.Normal, v, None)(Q)
+    exec(s, graph.entry, cfg.Kind.Normal, v, None, nextPathId())(Q)
   }
 
-  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock])
+  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock], pathId: Int)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
+    // Get the label of the block for messages used by Prusti Assistant
+    // Can simplify this if labels are always the first statement in the block
     var blockLabel = "None"
     block.elements
-      .iterator
-      .takeWhile(_ => blockLabel == "None")
-      .foreach( element => 
-        element match {
-          case Left(stmt) => stmt match {
-            case ast.Label(name, _) => 
-              blockLabel = name
+    .iterator
+    .takeWhile(_ => blockLabel == "None")
+    .foreach( element => 
+      element match {
+        case Left(stmt) => stmt match {
+          case ast.Label(name, _) => 
+            blockLabel = name
             case _ =>
             }
-          case Right(_) =>
-        }
-      )
+            case Right(_) =>
+            }
+          )
+    var methodName = "None"
+    if(s.isMethodVerification){
+      methodName = s.currentMember.get.asInstanceOf[ast.Method].name
+      // if(methodName.startsWith("builtin")){
+      //   methodName = "None"
+      // }
+    }
+    if(blockLabel != "None"){
+
+      v.reporter.report(BlockReachedMessage(methodName, blockLabel, pathId))
+    }
     
     val executed = block match {
       case cfg.StatementBlock(stmt) =>
         execs(s, stmt, v)((s1, v1) =>
-          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint)(Q))
+          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint, pathId)(Q))
 
       case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
            | _: cfg.PostconditionBlock[ast.Stmt, ast.Exp] =>
@@ -310,7 +332,7 @@ object executor extends ExecutionRules {
                               }
                             }
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
+                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint, pathId)(Q)})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -328,7 +350,7 @@ object executor extends ExecutionRules {
      * in the else.
      */
     if(blockLabel != "None")
-      v.reporter.report(BlockProcessedMessage(blockLabel, executed.toString()))
+      v.reporter.report(BlockProcessedMessage(methodName, blockLabel, pathId, executed.toString()))
     executed
   }
 
@@ -377,7 +399,6 @@ object executor extends ExecutionRules {
 
       case ast.Label(name, _) =>
         val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
-        v.reporter.report(BlockReachedMessage(name))
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>
