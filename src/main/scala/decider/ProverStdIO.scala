@@ -19,7 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter, QuantifierInstantiationsMessage}
 import viper.silver.verifier.Model
 
 import scala.collection.mutable
@@ -40,6 +40,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected var output: PrintWriter = _
 
   var proverPath: Path = _
+  var lastReasonUnknown : String = _
   var lastModel : String = _
 
   def exeEnvironmentalVariable: String
@@ -82,7 +83,7 @@ abstract class ProverStdIO(uniqueId: String,
     }
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
+    logfileWriter = if (!Verifier.config.outputProverLog) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     proverPath = getProverPath
     prover = createProverInstance()
     input = new BufferedReader(new InputStreamReader(prover.getInputStream))
@@ -174,7 +175,8 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
-  def push(n: Int = 1): Unit = {
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
+    setTimeout(timeout)
     pushPopScopeDepth += n
     val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
     writeLine(cmd)
@@ -191,6 +193,15 @@ abstract class ProverStdIO(uniqueId: String,
   def emit(content: String): Unit = {
     writeLine(content)
     readSuccess()
+  }
+
+  override def setOption(name: String, value: String): String = {
+    writeLine(s"(get-option :${name})")
+    val oldVal = readLine()
+    if (oldVal == "unsupported")
+      throw ProverInteractionFailed(uniqueId, s"Prover does not support option $name")
+    emit(s"(set-option :$name $value)")
+    oldVal
   }
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
@@ -226,11 +237,9 @@ abstract class ProverStdIO(uniqueId: String,
   def assert(goal: String, timeout: Option[Int]): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
-    setTimeout(timeout)
-
     val (result, duration) = Verifier.config.assertionMode() match {
-      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
-      case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
     }
 
     comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")
@@ -239,8 +248,9 @@ abstract class ProverStdIO(uniqueId: String,
     result
   }
 
-  protected def assertUsingPushPop(goal: String): (Boolean, Long) = {
+  protected def assertUsingPushPop(goal: String, timeout: Option[Int]): (Boolean, Long) = {
     push()
+    setTimeout(timeout)
 
     writeLine("(assert (not " + goal + "))")
     readSuccess()
@@ -252,6 +262,7 @@ abstract class ProverStdIO(uniqueId: String,
 
     if (!result) {
       retrieveAndSaveModel()
+      retrieveReasonUnknown()
     }
 
     pop()
@@ -285,6 +296,16 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
+  protected def retrieveReasonUnknown(): Unit = {
+    if (Verifier.config.reportReasonUnknown()) {
+      writeLine("(get-info :reason-unknown)")
+      var result = readLine()
+      if (result.startsWith("(:reason-unknown \""))
+        result = result.substring(18, result.length - 2)
+      lastReasonUnknown = result
+    }
+  }
+
   override def hasModel(): Boolean = {
     lastModel != null
   }
@@ -293,14 +314,17 @@ abstract class ProverStdIO(uniqueId: String,
     lastModel != null && !lastModel.contains("model is not available")
   }
 
-  protected def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
-    val guard = fresh("grd", Nil, sorts.Bool)
+  protected def assertUsingSoftConstraints(goal: String, timeout: Option[Int]): (Boolean, Long) = {
+    setTimeout(timeout)
 
-    writeLine(s"(assert (=> $guard (not $goal)))")
+    val guard = fresh("grd", Nil, sorts.Bool)
+    val guardApp = App(guard, Nil)
+
+    writeLine(s"(assert (=> $guardApp (not $goal)))")
     readSuccess()
 
     val startTime = System.currentTimeMillis()
-    writeLine(s"(check-sat $guard)")
+    writeLine(s"(check-sat $guardApp)")
     val result = readUnsat()
     val endTime = System.currentTimeMillis()
 
@@ -441,7 +465,15 @@ abstract class ProverStdIO(uniqueId: String,
       // See: https://github.com/Z3Prover/z3/issues/4522
       val qiProfile = result.startsWith("[quantifier_instances]")
       if (qiProfile) {
-        logger info result
+        val qi_info = result.stripPrefix("[quantifier_instances]").split(":").map(_.trim)
+        if (qi_info.length != 4) {
+          val msg = s"Invalid quantifier instances line from prover: $result"
+          reporter report InternalWarningMessage(msg)
+          logger warn msg
+        } else {
+          reporter report QuantifierInstantiationsMessage(qi_info(0), qi_info(1).toInt, qi_info(2).toInt, qi_info(3).toInt)
+          logger info result
+        }
       }
 
       repeat = warning || qiProfile
@@ -463,5 +495,10 @@ abstract class ProverStdIO(uniqueId: String,
 
   override def getModel(): Model = Model(lastModel)
 
-  override def clearLastModel(): Unit = lastModel = null
+  override def getReasonUnknown(): String = lastReasonUnknown
+
+  override def clearLastAssert(): Unit = {
+    lastReasonUnknown = null
+    lastModel = null
+  }
 }

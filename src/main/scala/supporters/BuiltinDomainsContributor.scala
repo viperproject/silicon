@@ -17,7 +17,6 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
-import viper.silver.ast.LineCol
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
@@ -114,7 +113,8 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   protected def collectFunctions(domains: Set[ast.Domain], program: ast.Program): Unit = {
     domains foreach (
       _.functions foreach (df =>
-        collectedFunctions += symbolConverter.toFunction(df, program)))
+        if (df.interpretation.isEmpty)
+          collectedFunctions += symbolConverter.toFunction(df, program).asInstanceOf[DomainFun]))
   }
 
   protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]): Unit = {
@@ -130,7 +130,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
      */
     val domainName = f"${d.domainName}[${d.typVarsMap.values.map(t => symbolConverter.toSort(t)).mkString(",")}]"
     domainTranslator.translateAxiom(ax, symbolConverter.toSort, true).transform {
-      case q@Quantification(_,_,_,_,name,_) if name != "" =>
+      case q@Quantification(_,_,_,_,name,_,_) if name != "" =>
         q.copy(name = f"${domainName}_${name}")
       case Equals(t1, t2) => BuiltinEquals(t1, t2)
     }(recursive = _ => true)
@@ -193,23 +193,14 @@ private object utils {
       }
 
     val fp = new viper.silver.parser.FastParser()
-    val lc = new LineCol(fp)
-    fp.parse(content, fromPath) match {
-      case fastparse.Parsed.Success(parsedProgram: viper.silver.parser.PProgram, _) =>
-        assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
+    val parsedProgram = fp.parse(content, fromPath)
+    assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
 
-        val resolver = viper.silver.parser.Resolver(parsedProgram)
-        val resolved = resolver.run.get
-        val translator = viper.silver.parser.Translator(resolved)
-        val program = translator.translate.get
+    val resolver = viper.silver.parser.Resolver(parsedProgram)
+    val resolved = resolver.run.get
+    val translator = viper.silver.parser.Translator(resolved)
+    val program = translator.translate.get
 
-        program
-
-      case fastparse.Parsed.Failure(msg, index, _) =>
-        val (line, col) = lc.getPos(index)
-        sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, line, col)}")
-        //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
-        //? sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, pos(0), pos(1))}")
-    }
+    program
   }
 }

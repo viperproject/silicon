@@ -10,7 +10,6 @@ import scala.annotation.unused
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
@@ -19,6 +18,7 @@ import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
@@ -56,7 +56,7 @@ class MinimalStateConsolidator extends StateConsolidationRules {
 class DefaultStateConsolidator(protected val config: Config) extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
+    val sepIdentifier = v.symbExLog.openScope(comLog)
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration)
 
@@ -76,7 +76,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         var fixedPointRound: Int = 0
         do {
           val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
-          val roundSepIdentifier = SymbExLogger.currentLog().openScope(roundLog)
+          val roundSepIdentifier = v.symbExLog.openScope(roundLog)
 
           val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
 
@@ -88,7 +88,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           newChunks = mergedChunks
           continue = snapEqs.nonEmpty
 
-          SymbExLogger.currentLog().closeScope(roundSepIdentifier)
+          v.symbExLog.closeScope(roundSepIdentifier)
           fixedPointRound = fixedPointRound + 1
         } while (continue)
 
@@ -104,7 +104,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
         }
 
-        SymbExLogger.currentLog().closeScope(sepIdentifier)
+        v.symbExLog.closeScope(sepIdentifier)
         (functionRecorder, hs :+ Heap(allChunks))
       }
 
@@ -127,7 +127,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
   def merge(fr1: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
+    val sepIdentifier = v.symbExLog.openScope(mergeLog)
     val (nonQuantifiedChunks, otherChunks) = partition(h)
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
@@ -140,7 +140,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
     }
 
-    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    v.symbExLog.closeScope(sepIdentifier)
     (fr2, Heap(mergedChunks ++ otherChunks ++ newOtherChunk))
   }
 
@@ -154,7 +154,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                             InsertionOrderedSet[Term]) = {
 
     val mergeLog = new SingleMergeRecord(destChunks, newChunks, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
+    val sepIdentifier = v.symbExLog.openScope(mergeLog)
     // bookkeeper.heapMergeIterations += 1
 
     val initial = (fr, destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
@@ -179,7 +179,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           (fr1, nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
       }
     }
-    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    v.symbExLog.closeScope(sepIdentifier)
     result
   }
 
@@ -207,8 +207,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     */
   private def combineSnapshots(fr: FunctionRecorder, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
     (IsPositive(p1), IsPositive(p2)) match {
-      case (True(), b2) => (fr, t1, Implies(b2, t1 === t2))
-      case (b1, True()) => (fr, t2, Implies(b1, t2 === t1))
+      case (True, b2) => (fr, t1, Implies(b2, t1 === t2))
+      case (b1, True) => (fr, t2, Implies(b1, t2 === t1))
       case (b1, b2) =>
         /*
          * Since it is not definitely known whether p1 and p2 are positive,
@@ -239,11 +239,34 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         val field = s.program.findField(fieldName)
         val (sn, smDef, pmDef) =
           quantifiedChunkSupporter.heapSummarisingMaps(si, field, args, fieldChunks, v)
-        val trigger = FieldTrigger(field.name, smDef.sm, receiver)
-        val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
-        v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
-        v.decider.assume(
-          Forall(receiver, PermAtMost(currentPermAmount, FullPerm()), Trigger(trigger), "qp-fld-prm-bnd"))
+
+        if (sn.heapDependentTriggers.exists(r => r.isInstanceOf[ast.Field] && r.asInstanceOf[ast.Field].name == fieldName)) {
+          val trigger = FieldTrigger(field.name, smDef.sm, receiver)
+          val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
+          v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
+          v.decider.assume(
+            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"))
+        } else {
+          /*
+          If we don't use heap-dependent triggers, the trigger x.f does not work. Instead, we assume the permission
+          bound explicitly for each singleton chunk receiver, and for each chunk, triggering on its inverse functions.
+          That is, we assume
+          forall r: Ref :: {inv(r)} perm(x.f) <= write
+           */
+          for (chunk <- fieldChunks) {
+            if (chunk.singletonRcvr.isDefined){
+              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm))
+            } else {
+              val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
+              val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
+              val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
+              v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
+              v.decider.assume(
+                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"))
+            }
+
+          }
+        }
 
         sn
       }

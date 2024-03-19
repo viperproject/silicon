@@ -56,8 +56,8 @@ class TermToSMTLib2Converter
        */
       ""
 
-    case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> doRender(codomainSort, true) <> ">"
-    case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> doRender(codomainSort, true) <> ">"
+    case sorts.FieldValueFunction(_, fieldName) => text("$FVF<") <> text(fieldName) <> ">"
+    case sorts.PredicateSnapFunction(_, predName) => text("$PSF<") <> text(predName) <> ">"
 
     case sorts.FieldPermFunction() => text("$FPM")
     case sorts.PredicatePermFunction() => text("$PPM")
@@ -118,7 +118,7 @@ class TermToSMTLib2Converter
 
 
     /* Handle quantifiers that have at most one trigger set */
-    case Quantification(quant, vars, body, triggers, name, _) =>
+    case Quantification(quant, vars, body, triggers, name, _, weight) =>
       val docBody = render(body)
 
       if (vars.nonEmpty) {
@@ -141,12 +141,17 @@ class TermToSMTLib2Converter
           if (name.isEmpty) nil
           else s":qid |$name|"
 
+        val docWeight = weight match {
+          case Some(value) => line <> text(":weight") <+> value.toString
+          case None => nil
+        }
+
         // Omit annotation for empty name and triggers since cvc5 fails
         // for annotations containing zero attributes (Z3 simply ignores it).
         if (name.isEmpty && triggers.isEmpty)
-          parens(docQuant <+> parens(docVars) <+> nest(defaultIndent, line <> docBody))
+          parens(docQuant <+> parens(docVars) <+> nest(defaultIndent, line <> docBody <> docWeight))
         else
-          parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid)))
+          parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid <> docWeight)))
       } else {
         // TODO: This seems like a hack.
         //       It would be better to avoid creating quantifications with no variables in the first place.
@@ -192,8 +197,8 @@ class TermToSMTLib2Converter
 
     /* Permissions */
 
-    case FullPerm() => "$Perm.Write"
-    case NoPerm() => "$Perm.No"
+    case FullPerm => "$Perm.Write"
+    case NoPerm => "$Perm.No"
     case FractionPermLiteral(r) => renderBinaryOp("/", renderAsReal(IntLiteral(r.numerator)), renderAsReal(IntLiteral(r.denominator)))
     case FractionPerm(n, d) => renderBinaryOp("/", renderAsReal(n), renderAsReal(d))
     case PermLess(t0, t1) => renderBinaryOp("<", render(t0), render(t1))
@@ -218,6 +223,7 @@ class TermToSMTLib2Converter
     case bop: SeqTake => renderBinaryOp("Seq_take", bop)
     case bop: SeqDrop => renderBinaryOp("Seq_drop", bop)
     case bop: SeqIn => renderBinaryOp("Seq_contains", bop)
+    case bop: SeqInTrigger => renderBinaryOp("Seq_contains_trigger", bop)
     case SeqUpdate(t0, t1, t2) => renderNAryOp("Seq_update", t0, t1, t2)
 
     /* Sets */
@@ -266,7 +272,7 @@ class TermToSMTLib2Converter
 //    }
 
     case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> (fvf.sort match {
-      case sorts.FieldValueFunction(_) => render(Lookup(field, fvf, at)) <+> render(at)
+      case sorts.FieldValueFunction(_, _) => render(Lookup(field, fvf, at)) <+> render(at)
       case _ => render(fvf) <+> render(at)
     }))
 
@@ -351,7 +357,7 @@ class TermToSMTLib2Converter
     if (args.nonEmpty)
       parens(docAppNoParens)
     else
-      parens(text("as") <+> docAppNoParens <+> render(outSort))
+      docAppNoParens
   }
 
   protected def render(q: Quantifier): Cont = q match {
@@ -365,9 +371,9 @@ class TermToSMTLib2Converter
       else parens(text("- 0") <+> value(-n))
 
     case Unit => "$Snap.unit"
-    case True() => "true"
-    case False() => "false"
-    case Null() => "$Ref.null"
+    case True => "true"
+    case False => "false"
+    case Null => "$Ref.null"
     case _: SeqNil => renderApp("Seq_empty", Seq(), literal.sort)
     case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
     case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)

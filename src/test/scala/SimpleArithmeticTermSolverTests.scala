@@ -9,11 +9,18 @@ package viper.silicon.tests
 import org.scalatest.matchers.should.Matchers
 import viper.silicon.state.Identifier
 import DSL._
+import org.scalatest.BeforeAndAfter
 import org.scalatest.funsuite.AnyFunSuite
+import viper.silicon.Config
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
-class SimpleArithmeticTermSolverTests extends AnyFunSuite with Matchers {
+class SimpleArithmeticTermSolverTests extends AnyFunSuite with Matchers with BeforeAndAfter {
   import SimpleArithmeticSolver.{solve, SolverResult, SolvingSuccess, SolvingFailure}
+
+  before {
+    Verifier.config = new Config(Seq())
+  }
 
   test("Pre-solving errors") {
     assert(solve(b, y, y).isInstanceOf[SolverResult])
@@ -63,12 +70,12 @@ private[tests] object DSL {
     def ==>(t2: Term) = Implies(t1, t2)
   }
 
-  val x = Var(Identifier("x"), sorts.Int)
-  val y = Var(Identifier("y"), sorts.Int)
-  val z = Var(Identifier("z"), sorts.Int)
-  val n = Var(Identifier("n"), sorts.Int)
-  val m = Var(Identifier("m"), sorts.Int)
-  val b = Var(Identifier("b"), sorts.Int)
+  val x = Var(Identifier("x"), sorts.Int, false)
+  val y = Var(Identifier("y"), sorts.Int, false)
+  val z = Var(Identifier("z"), sorts.Int, false)
+  val n = Var(Identifier("n"), sorts.Int, false)
+  val m = Var(Identifier("m"), sorts.Int, false)
+  val b = Var(Identifier("b"), sorts.Int, false)
 
   val `0` = IntLiteral(0)
   val `1` = IntLiteral(1)

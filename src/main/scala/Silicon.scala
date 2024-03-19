@@ -6,26 +6,25 @@
 
 package viper.silicon
 
-import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
-
 import scala.collection.immutable.ArraySeq
 import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silver.ast
-import viper.silver.frontend.{DefaultStates, SilFrontend}
+import viper.silver.frontend.{DefaultStates, MinimalViperFrontendAPI, SilFrontend, ViperFrontendAPI}
 import viper.silver.reporter._
 import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
-import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
+import viper.silver.utility.{FileProgramSubmitter}
 
 import scala.util.chaining._
 
@@ -94,6 +93,10 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   private var _config: Config = _
   final def config = _config
 
+  private var _symbExLog: SymbExLogger[_ <: MemberSymbExLogger] = _
+  final def symbExLog = _symbExLog
+  final def symbExLog_=(log: SymbExLogger[_ <: MemberSymbExLogger]) = { _symbExLog = log }
+
   private sealed trait LifetimeState
 
   private object LifetimeState {
@@ -104,7 +107,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: DefaultMasterVerifier = _
+  private var verifier: DefaultMainVerifier = _
 
   private var startTime: Long = _
   private var elapsedMillis: Long = _
@@ -114,6 +117,9 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     lifetimeState = LifetimeState.Configured
 
     _config = new Config(args)
+    if (!config.exit) {
+      _symbExLog = SymbExLogger.ofConfig(_config)
+    }
   }
 
   def debugInfo(debugInfo: Seq[(String, Any)]): Unit = { this.debugInfo = debugInfo }
@@ -130,7 +136,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     setLogLevelsFromConfig()
 
-    verifier = new DefaultMasterVerifier(config, reporter)
+    verifier = new DefaultMainVerifier(config, reporter, symbExLog)
     verifier.start()
   }
 
@@ -203,10 +209,9 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         result = Some(condenseToViperResult(failures))
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
-          // verification was interrupted, therefore close the current member's scope:
-          SymbExLogger.currentLog().closeMemberScope()
           if (config.ideModeAdvanced()) {
-            reporter report ExecutionTraceReport(SymbExLogger.memberList, List(), List())
+            symbExLog.close()
+            reporter report ExecutionTraceReport(symbExLog.logs.toSeq, List(), List())
           }
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
         case exception: Exception if !config.disableCatchingExceptions() =>
@@ -241,21 +246,11 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
-    val failures =
-      results.flatMap(r => r :: r.previous.toList)
-        .collect{ case f: Failure => f } /* Ignore successes */
-        .pipe(allResults => {
-          /* If branchconditions are to be reported we collect the different failure contexts
-          *  of all failures that report the same error (but on different branches, with different CounterExample)
-          *  and put those into one failure */
-          if (config.enableBranchconditionReporting())
-            allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
-              fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
-              Failure(fs.head.message)
-            }.toList
-             else allResults.distinctBy(failureFilterAndGroupingCriterion)
-        })
-        .sortBy(failureSortingCriterion)
+    val failures = results
+      // note that we do not extract 'previous' verification errors from VerificationResult's `previous` field
+      // because this is expected to have already been done in `verifier.verify` (for each member).
+      .collect{ case f: Failure => f } /* Ignore successes */
+      .sortBy(failureSortingCriterion)
 
 //    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
@@ -284,16 +279,6 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         failures.length))
 
     failures
-  }
-
-  private def failureFilterAndGroupingCriterion(f: Failure): String = {
-    // apply transformers if available:
-    val transformedError = f.message match {
-      case e: SilAbstractVerificationError => e.transformedError()
-      case e => e
-    }
-    // create a string that identifies the given failure:
-    transformedError.readableMessage(withId = true, withPosition = true)
   }
 
   private def failureSortingCriterion(f: Failure): (Int, Int) = {
@@ -336,6 +321,8 @@ class SiliconFrontend(override val reporter: Reporter,
 
   protected var siliconInstance: Silicon = _
 
+  override def backendTypeFormat: Option[String] = Some("SMTLIB")
+
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))
 
@@ -345,7 +332,7 @@ class SiliconFrontend(override val reporter: Reporter,
   def configureVerifier(args: Seq[String]) = {
     siliconInstance.parseCommandLine(args)
 
-    if (siliconInstance.config.error.isEmpty) {
+    if (siliconInstance.config.error.isEmpty && !siliconInstance.config.exit) {
       /** Parsing the provided command-line options might fail, in which the resulting error
         * is recorded in `siliconInstance.config.error`
         * (see also [[viper.silver.frontend.SilFrontendConfig.onError]]).
@@ -371,6 +358,23 @@ class SiliconFrontend(override val reporter: Reporter,
   }
 }
 
+/**
+  * Silicon "frontend" for use by actual Viper frontends.
+  * Performs consistency check and verification.
+  * See [[viper.silver.frontend.ViperFrontendAPI]] for usage information.
+  */
+class SiliconFrontendAPI(override val reporter: Reporter)
+  extends SiliconFrontend(reporter) with ViperFrontendAPI
+
+/**
+  * Silicon "frontend" for use by actual Viper frontends.
+  * Performs only verification (no consistency check).
+  * See [[viper.silver.frontend.ViperFrontendAPI]] for usage information.
+  */
+class MinimalSiliconFrontendAPI(override val reporter: Reporter)
+  extends SiliconFrontend(reporter) with MinimalViperFrontendAPI
+
+
 object SiliconRunner extends SiliconRunnerInstance {
   def main(args: Array[String]): Unit = {
     runMain(args)
@@ -380,6 +384,9 @@ object SiliconRunner extends SiliconRunnerInstance {
 class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
   def runMain(args: Array[String]): Unit = {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
+
+    val submitter = new FileProgramSubmitter(this)
+    submitter.setArgs(args)
 
     try {
       execute(ArraySeq.unsafeWrapArray(args))

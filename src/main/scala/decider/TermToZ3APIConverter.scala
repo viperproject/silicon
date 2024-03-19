@@ -30,6 +30,8 @@ class TermToZ3APIConverter
 
   val sortCache = mutable.HashMap[Sort, Z3Sort]()
   val funcDeclCache = mutable.HashMap[(String, Seq[Sort], Sort), Z3FuncDecl]()
+  val smtFuncDeclCache = mutable.HashMap[(String, Seq[Sort]), (Z3FuncDecl, Seq[Z3Expr])]()
+  val termCache = mutable.HashMap[Term, Z3Expr]()
 
   def convert(s: Sort): Z3Sort = convertSort(s)
 
@@ -119,11 +121,10 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => {
-        val name = convertSortName(codomainSort)
-        ctx.mkUninterpretedSort("$FVF<" + name + ">")
+      case sorts.FieldValueFunction(_, fieldName) => {
+        ctx.mkUninterpretedSort("$FVF<" + fieldName + ">")
       }
-      case sorts.PredicateSnapFunction(codomainSort) => ctx.mkUninterpretedSort("$PSF<" + convertSortName(codomainSort) + ">")
+      case sorts.PredicateSnapFunction(_, predName) => ctx.mkUninterpretedSort("$PSF<" + predName + ">")
 
       case sorts.FieldPermFunction() => ctx.mkUninterpretedSort("$FPM") // text("$FPM")
       case sorts.PredicatePermFunction() => ctx.mkUninterpretedSort("$PPM") // text("$PPM")
@@ -153,8 +154,8 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => Some(ctx.mkSymbol("$FVF<" + convertSortName(codomainSort) + ">")) //
-      case sorts.PredicateSnapFunction(codomainSort) => Some(ctx.mkSymbol("$PSF<" + convertSortName(codomainSort) + ">"))
+      case sorts.FieldValueFunction(_, fieldName) => Some(ctx.mkSymbol("$FVF<" + fieldName + ">")) //
+      case sorts.PredicateSnapFunction(_, predName) => Some(ctx.mkSymbol("$PSF<" + predName + ">"))
 
       case sorts.FieldPermFunction() => Some(ctx.mkSymbol("$FPM")) // text("$FPM")
       case sorts.PredicatePermFunction() => Some(ctx.mkSymbol("$PPM")) // text("$PPM")
@@ -204,6 +205,9 @@ class TermToZ3APIConverter
 
 
   def convertTerm(term: Term): Z3Expr = {
+    val cached = termCache.get(term)
+    if (cached.isDefined)
+      return cached.get
     val res = term match {
       case l: Literal => {
         l match {
@@ -213,9 +217,9 @@ class TermToZ3APIConverter
             else
               ctx.mkUnaryMinus(ctx.mkInt((-n).toString()))
           }
-          case True() => ctx.mkTrue()
-          case False() => ctx.mkFalse()
-          case Null() => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
+          case True => ctx.mkTrue()
+          case False => ctx.mkFalse()
+          case Null => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
           case Unit => ctx.mkConst(getUnitConstructor)
           case _: SeqNil => createApp("Seq_empty", Seq(), l.sort)
           case _: EmptySet => createApp("Set_empty", Seq(), l.sort)
@@ -232,7 +236,7 @@ class TermToZ3APIConverter
 
       case fapp: Application[_] =>
         fapp.applicable match {
-          case _: SMTFun => createSMTApp(convertId(fapp.applicable.id, false), fapp.args, fapp.sort)
+          case _: SMTFun => createSMTApp(convertId(fapp.applicable.id, false), fapp.args)
           case _ => {
             if (macros.contains(fapp.applicable.id.name)) {
               val (vars, body) = macros(fapp.applicable.id.name)
@@ -249,17 +253,24 @@ class TermToZ3APIConverter
 
 
       /* Handle quantifiers that have at most one trigger set */
-      case Quantification(quant, vars, body, triggers, name, _) => {
+      case Quantification(quant, vars, body, triggers, name, _, weight) => {
         if (vars.isEmpty) {
           convertTerm(body)
         } else{
           val qvarExprs = vars.map(v => convert(v)).toArray
           val nonEmptyTriggers = triggers.filter(_.p.nonEmpty)
-          val patterns = if (nonEmptyTriggers.nonEmpty) nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(convertTerm): _*)).toArray else null
+          val patterns = if (nonEmptyTriggers.nonEmpty) {
+              // ME: Maybe we should simplify trigger terms here? There is some evidence that Z3 does this
+              // automatically when used via stdio, and it sometimes makes triggers valid that would otherwise be
+              // rejected. On the other hand, it's not at all obvious that simplification does not change the shape
+              // of a trigger term, which would not be what we want.
+              nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm)): _*)).toArray
+          } else null
+          val weightValue = weight.getOrElse(1)
           if (quant == Forall) {
-            ctx.mkForall(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+            ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }else{
-            ctx.mkExists(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+            ctx.mkExists(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }
         }
       }
@@ -306,8 +317,8 @@ class TermToZ3APIConverter
       /* Permissions */
 
 
-      case FullPerm() => ctx.mkReal(1)
-      case NoPerm() => ctx.mkReal(0)
+      case FullPerm => ctx.mkReal(1)
+      case NoPerm => ctx.mkReal(0)
       case FractionPermLiteral(r) => ctx.mkDiv(convertToReal(IntLiteral(r.numerator)), convertToReal(IntLiteral(r.denominator)))
       case FractionPerm(n, d) => ctx.mkDiv(convertToReal(n), convertToReal(d))
       case PermLess(t0, t1) => ctx.mkLt(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
@@ -355,6 +366,7 @@ class TermToZ3APIConverter
       case bop: SeqTake => createApp("Seq_take", Seq(bop.p0, bop.p1), term.sort)
       case bop: SeqDrop => createApp("Seq_drop", Seq(bop.p0, bop.p1), term.sort)
       case bop: SeqIn => createApp("Seq_contains", Seq(bop.p0, bop.p1), term.sort)
+      case bop: SeqInTrigger => createApp("Seq_contains_trigger", Seq(bop.p0, bop.p1), term.sort)
       case SeqUpdate(t0, t1, t2) => createApp("Seq_update", Seq(t0, t1, t2), term.sort)
 
       /* Sets */
@@ -396,7 +408,7 @@ class TermToZ3APIConverter
         createApp("$FVF.lookup_" + field, Seq(fvf, at), term.sort)
 
       case FieldTrigger(field, fvf, at) => createApp("$FVF.loc_" + field, (fvf.sort match {
-        case sorts.FieldValueFunction(_) => Seq(Lookup(field, fvf, at), at)
+        case sorts.FieldValueFunction(_, _) => Seq(Lookup(field, fvf, at), at)
         case _ => Seq(fvf, at)
       }), term.sort)
 
@@ -437,6 +449,7 @@ class TermToZ3APIConverter
          | _: Quantification =>
         sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
     }
+    termCache.put(term, res)
     res
   }
 
@@ -456,23 +469,41 @@ class TermToZ3APIConverter
 
 
   @inline
-  protected def createSMTApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr = {
+  protected def createSMTApp(functionName: String, args: Seq[Term]): Z3Expr = {
     // workaround: since we cannot create a function application with just the name, we let Z3 parse
     // a string that uses the function, take the AST, and get the func decl from there, so that we can
     // programmatically create a func app.
-    val decls = args.zipWithIndex.map{case (a, i) => s"(declare-const workaround${i} ${smtlibConverter.convert(a.sort)})"}.mkString(" ")
-    val funcAppString = s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
-    val assertion = decls + s" (assert (= ${funcAppString} ${funcAppString}))"
-    val workaround = ctx.parseSMTLIB2String(assertion, null, null, null, null)
-    val app = workaround(0).getArgs()(0)
-    val decl = app.getFuncDecl
-    val actualArgs =  if (decl.getArity > args.length){
-      // the function name we got wasn't just a function name but also contained a first argument.
-      // this happens with float operations where functionName contains a rounding mode.
-      app.getArgs.toSeq.slice(0, decl.getArity - args.length) ++ args.map(convertTerm(_))
-    }else {
-      args.map(convertTerm(_))
+
+    val cacheKey = (functionName, args.map(_.sort))
+    val (decl, additionalArgs: Seq[Z3Expr]) = if (smtFuncDeclCache.contains(cacheKey)) {
+      smtFuncDeclCache(cacheKey)
+    } else {
+      val declPreamble = "(define-sort $Perm () Real) " // ME: Re-declare the Perm sort.
+      // ME: The parsing happens in a fresh context that doesn't know any of our current declarations.
+      // In principle, it might be necessary to re-declare all sorts we're using anywhere. However, I don't see how there
+      // could be any Z3 internal functions that exist for those custom sorts. For the Real (i.e., Perm) sort, however,
+      // such functions exist. So we re-declare *only* this sort.
+      val decls = declPreamble + args.zipWithIndex.map { case (a, i) => s"(declare-const workaround${i} ${smtlibConverter.convert(a.sort)})" }.mkString(" ")
+      val funcAppString = if (args.nonEmpty)
+        s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
+      else
+        functionName
+      val assertion = decls + s" (assert (= ${funcAppString} ${funcAppString}))"
+      val workaround = ctx.parseSMTLIB2String(assertion, null, null, null, null)
+      val app = workaround(0).getArgs()(0)
+      val decl = app.getFuncDecl
+      val additionalArgs = if (decl.getArity > args.length) {
+        // the function name we got wasn't just a function name but also contained a first argument.
+        // this happens with float operations where functionName contains a rounding mode.
+        app.getArgs.toSeq.slice(0, decl.getArity - args.length)
+      } else {
+        Seq()
+      }
+      smtFuncDeclCache.put(cacheKey, (decl, additionalArgs))
+      (decl, additionalArgs)
     }
+
+    val actualArgs = additionalArgs ++ args.map(convertTerm(_))
     ctx.mkApp(decl, actualArgs.toArray : _*)
   }
 
@@ -511,7 +542,9 @@ class TermToZ3APIConverter
     sanitizedNamesCache.clear()
     macros.clear()
     funcDeclCache.clear()
+    smtFuncDeclCache.clear()
     sortCache.clear()
+    termCache.clear()
     unitConstructor = null
     combineConstructor = null
     firstFunc = null

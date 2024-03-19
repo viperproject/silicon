@@ -6,9 +6,10 @@
 
 package viper.silicon.verifier
 
+import viper.silicon.Config.ExhaleMode
+
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.util.Random
@@ -20,7 +21,7 @@ import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{ConstDecl, Decl, Sort, Term, sorts}
@@ -31,22 +32,25 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, WarningsDuringTypechecking}
-import viper.silver.verifier.TypecheckerWarning
+import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
+import viper.silver.verifier.VerifierWarning
 
-/* TODO: Extract a suitable MasterVerifier interface, probably including
+/* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
  *         - def uniqueIdCounter: String)
  */
 
-trait MasterVerifier extends Verifier {
+trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
+  def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
 }
 
-class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
+class DefaultMainVerifier(config: Config,
+                          override val reporter: Reporter,
+                          override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
     extends BaseVerifier(config, "00")
-       with MasterVerifier
+       with MainVerifier
        with DefaultFunctionVerificationUnitProvider
        with DefaultPredicateVerificationUnitProvider{
 
@@ -54,6 +58,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
+
+  override def openSymbExLogger(member: Member): Unit = {
+    symbExLog = rootSymbExLogger.openMemberScope(member, decider.pcs)
+  }
 
   protected val preambleReader = new SMTLib2PreambleReader
 
@@ -142,6 +150,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       decider.prover.emitSettings(contents)
       _verificationPoolManager.pooledVerifiers.emitSettings(contents)
     }
+
+    override def setOption(name: String, value: String): String = {
+      decider.prover.setOption(name, value)
+      _verificationPoolManager.pooledVerifiers.setOption(name, value)
+    }
   }
 
   /* Program verification */
@@ -155,19 +168,18 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       */
     var program: ast.Program =
       originalProgram.transform({
-        case forall: ast.Forall if forall.isPure => {
+        case forall: ast.Forall if forall.isPure =>
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
-            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+            reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers, forall.triggers)
           res
-        }
         case exists: ast.Exists =>
-        {
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
-            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+            reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers, exists.triggers)
           res
-        }
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
@@ -200,12 +212,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
 
-
-    SymbExLogger.resetMemberList()
-    SymbExLogger.setConfig(config)
-
     _verificationPoolManager.pooledVerifiers.push()
-    val supporters = _verificationPoolManager.slaveVerifiers.map(_.functionsSupporter)
+    val supporters = _verificationPoolManager.workerVerifiers.map(_.functionsSupporter)
     var allEmittedFunctionAxioms: Vector[Term] = Vector.empty
     // NOTE: same functionData map for all
     supporters.foreach(s => s.functionData = functionsSupporter.functionData)
@@ -220,7 +228,6 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           reporter report VerificationResultMessage(s"silicon", f, elapsed, condenseToViperResult(results))
           val msg = s"Silicon finished verification of function `${f.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
           logger debug msg
-          println(msg)
           (setErrorScope(results, f), v.functionsSupporter.functionData(f), f, v)
         })
       })
@@ -229,19 +236,19 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       // NOTE: some functionsupporters have been used (some possibly more than once)
 
       val formalArgs = levelResults.map(r => (r._4, r._2.formalArgs.values.map(ConstDecl(_)).toSeq :+ ConstDecl(r._2.formalResult)))
-      val axioms = levelResults.map(r => (r._4, Seq(r._2.limitedAxiom, r._2.triggerAxiom) ++ r._2.postAxiom ++
-        (if (r._3.body.isDefined && r._2.verificationFailures.isEmpty) r._2.definitionalAxiom else None)))
+      val axioms = levelResults.map(r => (r._4, Seq(r._2.limitedAxiom, r._2.triggerAxiom) ++ r._2.postAxiom ++ r._2.postPreconditionPropagationAxiom ++
+        (if (r._3.body.isDefined && r._2.verificationFailures.isEmpty) r._2.definitionalAxiom ++ r._2.bodyPreconditionPropagationAxiom else Seq())))
       allEmittedFunctionAxioms ++= axioms.unzip._2.flatten
 
-      val freshFunctions = _verificationPoolManager.slaveVerifiers.map(v => (v, v.decider.getAndDeleteFreshFunctions()))
-      val freshMacros = _verificationPoolManager.slaveVerifiers.map(v => (v, v.decider.getAndDeleteFreshMacros()))
+      val freshFunctions = _verificationPoolManager.workerVerifiers.map(v => (v, v.decider.getAndDeleteFreshFunctions()))
+      val freshMacros = _verificationPoolManager.workerVerifiers.map(v => (v, v.decider.getAndDeleteFreshMacros()))
 
       // NOTE: update functionData field with new/updated functon data objects
       val newData = levelResults.map(t => t._3 -> t._2)
       functionsSupporter.functionData ++= newData
 
 
-      _verificationPoolManager.slaveVerifiers.foreach(s => {
+      _verificationPoolManager.workerVerifiers.foreach(s => {
         s.functionsSupporter.functionData ++= newData
         formalArgs.foreach{case (v, decls) => {
           if (v != s){
@@ -281,7 +288,6 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
         reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
         val msg = s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
         logger debug msg
-        println(msg)
         setErrorScope(results, predicate)
       })
     })
@@ -312,6 +318,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
           val results = v.methodSupporter.verify(s, method)
+            .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -325,6 +332,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
           val results = v.cfgSupporter.verify(s, cfg)
+            .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
@@ -338,10 +346,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(
-        SymbExLogger.memberList,
+        rootSymbExLogger.logs.toIndexedSeq,
         this.axiomsAfterAnalysis().toList,
         this.postConditionAxioms().toList)
     }
+    reporter report VerificationTerminationMessage()
 
     (   functionVerificationResults
      ++ predicateVerificationResults
@@ -355,6 +364,61 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
+    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
+      case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
+      case r => r
+    }
+
+    val mce = member.info.getUniqueInfo[ast.AnnotationInfo] match {
+      case Some(ai) if ai.values.contains("exhaleMode") =>
+        ai.values("exhaleMode") match {
+          case Seq("0") | Seq("greedy") | Seq("2") | Seq("mceOnDemand") =>
+            if (Verifier.config.counterexample.isSupplied)
+              reporter report AnnotationWarning(s"Member ${member.name} has exhaleMode annotation that may interfere with counterexample generation.")
+            false
+          case Seq("1") | Seq("mce") | Seq("moreCompleteExhale") => true
+          case v =>
+            reporter report AnnotationWarning(s"Member ${member.name} has invalid exhaleMode annotation value $v. Annotation will be ignored.")
+            Verifier.config.exhaleMode == ExhaleMode.MoreComplete
+        }
+      case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
+    }
+    val moreJoinsAnnotated = member.info.getUniqueInfo[ast.AnnotationInfo] match {
+      case Some(ai) => ai.values.contains("moreJoins")
+      case _ => false
+    }
+    val moreJoins = (Verifier.config.moreJoins() || moreJoinsAnnotated) && member.isInstanceOf[ast.Method]
+
+    val methodPermCache = mutable.HashMap[String, InsertionOrderedSet[ast.Location]]()
+    val permResources: InsertionOrderedSet[ast.Location] = if (Verifier.config.unsafeWildcardOptimization()) member match {
+      case m: ast.Method if m.body.isDefined =>
+        val bodyResources: Iterable[InsertionOrderedSet[ast.Location]] = m.body.get.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => InsertionOrderedSet(la.loc(program))
+          case ast.MethodCall(name, _, _) =>
+            if (methodPermCache.contains(name))
+              methodPermCache(name)
+            else {
+              val calledMethod = program.findMethod(name)
+              val preResources: Seq[ast.Location] = calledMethod.pres.flatMap(pre => pre.whenExhaling.collect {
+                case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+              })
+              val postResources: Seq[ast.Location] = calledMethod.posts.flatMap(post => post.whenInhaling.collect {
+                case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+              })
+              val all = InsertionOrderedSet(preResources ++ postResources)
+              methodPermCache.update(name, all)
+              all
+            }
+        }
+        val preResources: Seq[ast.Location] = m.pres.flatMap(pre => pre.whenInhaling.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+        })
+        val postResources: Seq[ast.Location] = m.posts.flatMap(post => post.whenExhaling.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+        })
+        InsertionOrderedSet(bodyResources.flatten ++ preResources ++ postResources)
+      case _ => InsertionOrderedSet.empty
+    } else InsertionOrderedSet.empty
 
     State(program = program,
           functionData = functionData,
@@ -362,9 +426,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           qpFields = quantifiedFields,
           qpPredicates = quantifiedPredicates,
           qpMagicWands = quantifiedMagicWands,
+          permLocations = permResources,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          isMethodVerification = member.isInstanceOf[ast.Member])
+          currentMember = Some(member),
+          heapDependentTriggers = resourceTriggers,
+          moreCompleteExhale = mce,
+          moreJoins = moreJoins)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -377,13 +445,16 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     State(
       program = program,
+      currentMember = None,
       functionData = functionData,
       predicateData = predicateData,
       qpFields = quantifiedFields,
       qpPredicates = quantifiedPredicates,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
-      predicateFormalVarMap = predSnapGenerator.formalVarMap)
+      predicateFormalVarMap = predSnapGenerator.formalVarMap,
+      moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete,
+      moreJoins = Verifier.config.moreJoins())
   }
 
   private def excludeMethod(method: ast.Method) = (
@@ -574,4 +645,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     }
     results
   }
+
+  /**
+    * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
+    * config.numberOfErrorsToReport() have been encountered (per member)).
+    * This function combines the verification result with verification results stored in its `previous` field.
+    */
+  private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
+    res :: res.previous.toList
 }

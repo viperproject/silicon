@@ -9,6 +9,7 @@ package viper.silicon.logger.records.data
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.logger.records.RecordData
 import viper.silicon.Map
+import viper.silicon.logger.LogConfig
 import viper.silicon.state.State
 import viper.silicon.state.terms.Term
 import viper.silver.ast
@@ -26,8 +27,8 @@ class ProverAssertRecord(val term: Term, val timeout: Option[Int]) extends DataR
     else "null"
   }
 
-  override lazy val getData: RecordData = {
-    val data = super.getData
+  override def getData(config: LogConfig): RecordData = {
+    val data = super.getData(config)
     data.isSmtQuery = true
     data.smtStatistics = statistics
     data

@@ -22,6 +22,7 @@ trait ProverLike {
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
+  def setOption(name: String, value: String): String
   def assume(term: Term): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
@@ -37,8 +38,8 @@ trait Prover extends ProverLike with StatefulComponent {
   def hasModel(): Boolean
   def isModelValid(): Boolean
   def getModel(): Model
-  def clearLastModel(): Unit
-
+  def getReasonUnknown(): String
+  def clearLastAssert(): Unit
   def name: String
   def minVersion: Version
   def maxVersion: Option[Version]
@@ -48,7 +49,7 @@ trait Prover extends ProverLike with StatefulComponent {
 
   def pushPopScopeDepth: Int
 
-  def push(n: Int = 1): Unit
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit
 
   def pop(n: Int = 1): Unit
 }

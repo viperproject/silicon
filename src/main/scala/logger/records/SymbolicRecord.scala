@@ -6,6 +6,10 @@
 
 package viper.silicon.logger.records
 
+import viper.silicon.logger.LogConfig
+
+import scala.annotation.unused
+
 trait SymbolicRecord {
   var id: Int = -1
 
@@ -17,7 +21,7 @@ trait SymbolicRecord {
 
   def toSimpleString: String
 
-  def getData: RecordData = {
+  def getData(@unused config: LogConfig): RecordData = {
     new RecordData()
   }
 }

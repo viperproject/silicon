@@ -24,7 +24,10 @@ trait RecordedPathConditions {
   def branchConditions: Stack[Term]
   def branchConditionExps: Stack[Option[ast.Exp]]
   def assumptions: InsertionOrderedSet[Term]
+  def definingAssumptions: InsertionOrderedSet[Term]
   def declarations: InsertionOrderedSet[Decl]
+
+  def definitionsOnly: RecordedPathConditions
 
   def contains(assumption: Term): Boolean
 
@@ -42,10 +45,12 @@ trait RecordedPathConditions {
 trait PathConditionStack extends RecordedPathConditions {
   def setCurrentBranchCondition(condition: Term, conditionExp: Option[ast.Exp]): Unit
   def add(assumption: Term): Unit
+  def addDefinition(assumption: Term): Unit
   def add(declaration: Decl): Unit
   def pushScope(): Unit
   def popScope(): Unit
   def mark(): Mark
+  def popUntilMark(mark: Mark): Unit
   def after(mark: Mark): RecordedPathConditions
   def isEmpty: Boolean
   def duplicate(): PathConditionStack
@@ -63,16 +68,30 @@ private class PathConditionStackLayer
   private var _branchConditionExp: Option[Option[ast.Exp]] = None
   private var _globalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _nonGlobalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  private var _globalDefiningAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  private var _nonGlobalDefiningAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
 
   def branchCondition: Option[Term] = _branchCondition
   def branchConditionExp: Option[Option[ast.Exp]] = _branchConditionExp
   def globalAssumptions: InsertionOrderedSet[Term] = _globalAssumptions
+  def globalDefiningAssumptions: InsertionOrderedSet[Term] = _globalDefiningAssumptions
+  def nonGlobalDefiningAssumptions: InsertionOrderedSet[Term] = _nonGlobalDefiningAssumptions
   def nonGlobalAssumptions: InsertionOrderedSet[Term] = _nonGlobalAssumptions
   def declarations: InsertionOrderedSet[Decl] = _declarations
 
   def assumptions: InsertionOrderedSet[Term] = globalAssumptions ++ nonGlobalAssumptions
   def pathConditions: InsertionOrderedSet[Term] = assumptions ++ branchCondition
+
+  def definitionsOnly(): PathConditionStackLayer = {
+    val result = new PathConditionStackLayer
+    result._globalAssumptions = _globalDefiningAssumptions
+    result._globalDefiningAssumptions = _globalDefiningAssumptions
+    result._nonGlobalAssumptions = _nonGlobalDefiningAssumptions
+    result._nonGlobalDefiningAssumptions = _nonGlobalDefiningAssumptions
+    result._declarations = _declarations
+    result
+  }
 
   def branchCondition_=(condition: Term): Unit = {
     assert(_branchCondition.isEmpty,
@@ -101,6 +120,20 @@ private class PathConditionStackLayer
       _globalAssumptions += assumption
     else
       _nonGlobalAssumptions += assumption
+  }
+
+  def addDefinition(assumption: Term): Unit = {
+    assert(
+      !assumption.isInstanceOf[And],
+      s"Unexpectedly found a conjunction (should have been split): $assumption")
+
+    if (PathConditions.isGlobal(assumption)) {
+      _globalAssumptions += assumption
+      _globalDefiningAssumptions += assumption
+    } else {
+      _nonGlobalAssumptions += assumption
+      _nonGlobalDefiningAssumptions += assumption
+    }
   }
 
   def add(declaration: Decl): Unit = _declarations += declaration
@@ -133,6 +166,9 @@ private trait LayeredPathConditionStackLike {
   protected def assumptions(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.assumptions)) // Note: Performance?
 
+  protected def definingAssumptions(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
+    InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++ layers.flatMap(_.nonGlobalDefiningAssumptions)) // Note: Performance?
+
   protected def declarations(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Decl] =
     InsertionOrderedSet(layers.flatMap(_.declarations)) // Note: Performance?
 
@@ -142,7 +178,7 @@ private trait LayeredPathConditionStackLike {
   protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
     var unconditionalTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
-    var implicationLHS: Term = True()
+    var implicationLHS: Term = True
 
     for (layer <- layers.reverseIterator) {
       unconditionalTerms ++= layer.globalAssumptions
@@ -175,13 +211,24 @@ private trait LayeredPathConditionStackLike {
     val ignores = ignore.topLevelConjuncts
 
     for (layer <- layers) {
-      globals ++= layer.globalAssumptions
+      val actualBranchCondition = layer.branchCondition.getOrElse(True)
+      val relevantNonGlobals = layer.nonGlobalAssumptions -- ignores
+      val (trueNonGlobals, additionalGlobals) = if (!actualBranchCondition.existsDefined{ case t if qvars.contains(t) => }) {
+        // The branch condition is independent of all quantified variables
+        // Any assumptions that are also independent of all quantified variables can be treated as global assumptions.
+        val (trueNonGlobals, unconditionalGlobals) = relevantNonGlobals.partition(a => a.existsDefined{ case t if qvars.contains(t) => })
+        (trueNonGlobals, unconditionalGlobals.map(Implies(actualBranchCondition, _)))
+      } else {
+        (relevantNonGlobals, Seq())
+      }
+
+      globals ++= layer.globalAssumptions ++ additionalGlobals
 
       nonGlobals :+=
         Quantification(
           quantifier,
           qvars,
-          And(layer.nonGlobalAssumptions -- ignores),
+          Implies(actualBranchCondition, And(trueNonGlobals)),
           triggers,
           name,
           isGlobal)
@@ -198,11 +245,16 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val branchConditions: Stack[Term] = branchConditions(from)
   val branchConditionExps: Stack[Option[ast.Exp]] = branchConditionExps(from)
   val assumptions: InsertionOrderedSet[Term] = assumptions(from)
+  val definingAssumptions: InsertionOrderedSet[Term] = definingAssumptions(from)
   val declarations: InsertionOrderedSet[Decl] = declarations(from)
 
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
   val conditionalized: Seq[Term] = conditionalized(from)
+
+  def definitionsOnly(): RecordedPathConditions = {
+    new DefaultRecordedPathConditions(from.map(_.definitionsOnly))
+  }
 
   def quantified(quantifier: Quantifier,
                  qvars: Seq[Var],
@@ -247,6 +299,15 @@ private[decider] class LayeredPathConditionStack
     allAssumptions ++= tlcs
   }
 
+  def addDefinition(assumption: Term): Unit = {
+    /* TODO: Would be cleaner to not add assumptions that are already set as branch conditions */
+
+    val tlcs = assumption.topLevelConjuncts
+
+    tlcs foreach layers.head.addDefinition
+    allAssumptions ++= tlcs
+  }
+
   def add(declaration: Decl): Unit = {
     layers.head.add(declaration)
   }
@@ -270,6 +331,11 @@ private[decider] class LayeredPathConditionStack
     layers = new PathConditionStackLayer() +: layers
 
     mark
+  }
+
+  def popUntilMark(mark: Mark): Unit = {
+    assert(markToLength.contains(mark), "Cannot pop unknown mark")
+    popLayersAndRemoveMark(mark)
   }
 
   private def popLayersAndRemoveMark(mark: Mark): Unit = {
@@ -304,6 +370,9 @@ private[decider] class LayeredPathConditionStack
 
   def declarations: InsertionOrderedSet[Decl] =
     InsertionOrderedSet(layers.flatMap(_.declarations)) // Note: Performance?
+
+  def definingAssumptions: InsertionOrderedSet[Term] =
+    InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++ layers.flatMap(_.nonGlobalDefiningAssumptions)) // Note: Performance?
 
   def contains(assumption: Term): Boolean = allAssumptions.contains(assumption)
 
@@ -349,6 +418,14 @@ private[decider] class LayeredPathConditionStack
     clonedStack.layers = layers map (_.clone().asInstanceOf[PathConditionStackLayer])
 
     clonedStack
+  }
+
+  override def definitionsOnly: RecordedPathConditions = {
+    val result = duplicate()
+    result.layers = layers map (_.definitionsOnly())
+    result.allAssumptions = InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++
+      layers.flatMap(_.nonGlobalDefiningAssumptions))
+    result
   }
 
   override def toString: String =  {

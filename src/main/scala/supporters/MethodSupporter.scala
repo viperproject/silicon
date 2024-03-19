@@ -12,13 +12,14 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
+import viper.silver.reporter.AnnotationWarning
+import viper.silicon.{Map, toMap}
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -45,7 +46,25 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      SymbExLogger.openMemberScope(method, null, v.decider.pcs)
+      val proverOptions: Map[String, String] = method.info.getUniqueInfo[ast.AnnotationInfo] match {
+        case Some(ai) if ai.values.contains("proverArgs") =>
+          toMap(ai.values("proverArgs").flatMap(o => {
+            val index = o.indexOf("=")
+            if (index == -1) {
+              reporter report AnnotationWarning(s"Invalid proverArgs annotation ${o} on method ${method.name}. " +
+                s"Required format for each option is optionName=value.")
+              None
+            } else {
+              val (name, value) = (o.take(index), o.drop(index + 1))
+              Some((name, value))
+            }
+          }))
+        case _ =>
+          Map.empty
+      }
+      v.decider.setProverOptions(proverOptions)
+
+      openSymbExLogger(method)
 
       val pres = method.pres
       val posts = method.posts
@@ -73,6 +92,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
+      errorsReportedSoFar.set(0)
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
@@ -84,9 +104,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
-                  val sepIdentifier = SymbExLogger.currentLog().openScope(impLog)
+                  val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
-                    SymbExLogger.currentLog().closeScope(sepIdentifier)
+                    symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
@@ -94,7 +114,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})
 
-      SymbExLogger.closeMemberScope()
+      v.decider.resetProverOptions()
+
+      symbExLog.closeMemberScope()
       Seq(result)
     }
 

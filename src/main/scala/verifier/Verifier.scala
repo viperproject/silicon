@@ -6,24 +6,26 @@
 
 package viper.silicon.verifier
 
-import java.nio.file.Path
 import com.typesafe.scalalogging.Logger
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.rules.StateConsolidationRules
 import viper.silicon.state.{IdentifierFactory, SymbolConverter}
-import viper.silicon.supporters.functions.FunctionData
-import viper.silicon.supporters.{PredicateData, QuantifierSupporter, SnapshotSupporter}
+import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
-import viper.silicon.{Config, Map}
+import viper.silicon.Config
+import viper.silicon.logger.MemberSymbExLogger
 import viper.silver.ast
 import viper.silver.reporter.Reporter
+
 import java.util.concurrent.atomic.AtomicInteger
 
 trait Verifier {
   def uniqueId: String
 
+  def symbExLog: MemberSymbExLogger
+  def openSymbExLogger(member: ast.Member): Unit
   def logger: Logger
   def reporter: Reporter
   def counter(id: AnyRef): Counter

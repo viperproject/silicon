@@ -14,8 +14,8 @@ package object silicon {
 
   /* Immutable collections with a deterministic iteration order */
 
-  type Map[K, +V] = scala.collection.immutable.ListMap[K, V]
-  val Map = scala.collection.immutable.ListMap
+  type Map[K, +V] = scala.collection.immutable.TreeSeqMap[K, V]
+  val Map = scala.collection.immutable.TreeSeqMap
 
   @inline
   def toMap[K, V](it: Iterable[(K, V)]): Map[K, V] = Map.empty ++ it

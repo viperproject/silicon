@@ -11,6 +11,7 @@ import viper.silicon.Config
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, sorts}
+import viper.silicon.verifier.Verifier
 
 class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
@@ -18,7 +19,12 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
   type BuiltinDomainType = ast.SetType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SetType]
 
-  val defaultSourceResource: String = "/dafny_axioms/sets.vpr"
+  lazy val defaultSourceResource: String = {
+    if (Verifier.config.useOldAxiomatization())
+      "/dafny_axioms/sets_old.vpr"
+    else
+      "/dafny_axioms/sets.vpr"
+  }
   val userProvidedSourceFilepath: Option[String] = config.setAxiomatizationFile.toOption
   val sourceDomainName: String = "$Set"
 
@@ -34,8 +40,11 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
      *       However, it is currently not (easily) possible for the latter to contribute instances
      *       of set axioms.
      */
-    if (program.existsDefined { case f: ast.Forall if (f.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
-      case q: ast.QuantifiedExp if !q.isPure => }) {
+    if (program.existsDefined {
+      case f: ast.Forall if (f.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
+      case q: ast.Exists if (q.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
+      case q: ast.QuantifiedExp if !q.isPure =>
+    }) {
       program.fields foreach {f => setTypeInstances += ast.SetType(f.typ)}
 
       setTypeInstances += ast.SetType(ast.Ref) /* $FVF.domain_f is of type Set[Ref] */

@@ -7,14 +7,16 @@
 package viper.silicon.tests
 
 import java.io.{PrintWriter, StringWriter}
-
 import org.scalatest.matchers.should.Matchers
 import viper.silicon.state.Identifier
 import DSL._
+import org.scalatest.BeforeAndAfter
 import org.scalatest.funsuite.AnyFunSuite
+import viper.silicon.Config
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
-class TriggerRewriterTests extends AnyFunSuite with Matchers {
+class TriggerRewriterTests extends AnyFunSuite with Matchers with BeforeAndAfter {
   val dummySink = new PrintWriter(new StringWriter())
 //  val dummyLogger = new MultiRunLogger(dummySink, () => None)
   val counter = new viper.silicon.utils.Counter()
@@ -28,19 +30,24 @@ class TriggerRewriterTests extends AnyFunSuite with Matchers {
     }
 
     override protected def fresh(id: String, s: Sort): Var = {
-      Var(Identifier(s"$id${counter.next()}"), s)
+      Var(Identifier(s"$id${counter.next()}"), s, false)
     }
   }
 
-  val x0 = Var(Identifier("x0"), sorts.Int)
-  val x1 = Var(Identifier("x1"), sorts.Int)
-  val y0 = Var(Identifier("y0"), sorts.Int)
-  val z0 = Var(Identifier("z0"), sorts.Int)
+  lazy val x0 = Var(Identifier("x0"), sorts.Int, false)
+  lazy val x1 = Var(Identifier("x1"), sorts.Int, false)
+  lazy val y0 = Var(Identifier("y0"), sorts.Int, false)
+  lazy val z0 = Var(Identifier("z0"), sorts.Int, false)
 
   import rewriter.rewrite
 
+  before {
+    Verifier.config = new Config(Seq())
+  }
+
+
   test("No-ops") {
-    val forall1 = Forall(x, True(), Trigger(f(x)), "forall1")
+    val forall1 = Forall(x, True, Trigger(f(x)), "forall1")
     val forall2 = Forall(x, f(x), Trigger(f(x)), "forall2")
     val forall3 = Forall(Seq(x, y, b), f(x), Trigger(f(x)), "forall3")
 
@@ -51,50 +58,50 @@ class TriggerRewriterTests extends AnyFunSuite with Matchers {
 
   test("Successes") {
     rewrite(
-      Forall(x, x > `0`, Trigger(f(x + n)))
+      Forall(x, x > `0`, Trigger(f(x + n)), "")
     ) should be (Some(
-      Forall(x0, x0 - n > `0`, Trigger(f(x0)))
+      Forall(x0, x0 - n > `0`, Trigger(f(x0)), "")
     ))
 
     rewrite(
-      Forall(x, f(x, x + `1`) > x, Trigger(f(x, x + `1`)))
+      Forall(x, f(x, x + `1`) > x, Trigger(f(x, x + `1`)), "")
     ) should be (Some(
       Forall(Seq(x, x0), /* TODO: Make order of variables predictable (or use an ordered set) */
              (x === x0 - `1`) ==> (f(x, x0) > x),
-             Trigger(f(x, x0)))
+             Trigger(f(x, x0)), "")
     ))
 
     rewrite(
-      Forall(x, f(x + `1`) === g(x - `2`) + f(x), Trigger(Seq(f(x + `1`), g(x - `2`))))
+      Forall(x, f(x + `1`) === g(x - `2`) + f(x), Trigger(Seq(f(x + `1`), g(x - `2`))), "")
     ) should contain oneOf (
       // TODO: Can we make the result deterministic?
       Forall(Seq(x0, x1),
              (x0 - `1` === x1 + `2`) ==> (f(x0) === g(x1) + f(x0 - `1`)),
-             Trigger(Seq(f(x0), g(x1))))
+             Trigger(Seq(f(x0), g(x1))), "")
     ,
       Forall(Seq(x0, x1),
              (x0 - `1` === x1 + `2`) ==> (f(x0) === g(x1) + f(x1 + `2`)),
-             Trigger(Seq(f(x0), g(x1))))
+             Trigger(Seq(f(x0), g(x1))), "")
     )
 
     rewrite(
-      Forall(Seq(x, y, z), f(x, y + `1`) > z, Trigger(g(x, y + `1`, z)))
+      Forall(Seq(x, y, z), f(x, y + `1`) > z, Trigger(g(x, y + `1`, z)), "")
     ) should be (Some(
-      Forall(Seq(x, z, y0), f(x, y0) > z, Trigger(g(x, y0, z)))
+      Forall(Seq(x, z, y0), f(x, y0) > z, Trigger(g(x, y0, z)), "")
     ))
   }
 
   test("Failures") {
     rewrite(
-      Forall(x, True(), Trigger(f(x * n)))
+      Forall(x, True, Trigger(f(x * n)), "")
     ) should be (None) /* Multiplication is currently not handled */
 
     rewrite(
-      Forall(x, True(), Trigger(f(x / n)))
+      Forall(x, True, Trigger(f(x / n)), "")
     ) should be (None) /* Division is currently not handled */
 
     rewrite(
-      Forall(Seq(x, y), True(), Trigger(f(x + y)))
+      Forall(Seq(x, y), True, Trigger(f(x + y)), "")
     ) should be (None) /* Invalid triggers that mention more than one quantified variable are currently not handled */
   }
 }
