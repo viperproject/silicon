@@ -233,13 +233,9 @@ object executor extends ExecutionRules {
              *   - Follow the outgoing edges
              */
 
-            // TODO nklose This is where a loop starts. We need to run from here, collect the abduced conditions as possible
-            //  invariant candidates if we fail and then restart with the abduced conditions.
-            //  We also have to make sure that we finish handling the loop before we continue with the rest of the method.
-            //  Not quite sure how that works yet
-
             /* Havoc local variables that are assigned to in the loop body */
             val wvs = s.methodCfg.writtenVars(block)
+            val nwvs = s.g.values.keys.filterNot(wvs.contains).toSeq
             /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
@@ -294,16 +290,12 @@ object executor extends ExecutionRules {
                           v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
                           edgeCondWelldefinedness match {
 
-                            // TODO nklose: think about how this approach (just keep running with new invariant)
-                            //  is different from original (restart with state from first iteration)
-                            //  also how it works to find post condition invariants
-
                             // This failure would lead to normal abduction on the loop condition
                             case Failure(_, _) => edgeCondWelldefinedness
                             case Success(_) =>
 
                               // Try to find invariants
-                              LoopInvariantSolver.solve(s4, v3, otherEdges, joinPoint) {
+                              LoopInvariantSolver.solve(s4, v3, otherEdges, joinPoint, VarTransformer(s, v, nwvs, strict = false)) {
                                 case AbductionFailure(_, _) =>
                                   println("Failed to find loop invariants")
                                   Success()

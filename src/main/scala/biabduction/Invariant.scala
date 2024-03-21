@@ -5,38 +5,48 @@ import viper.silicon.rules.{executor, producer}
 import viper.silicon.state.State
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{Exp, LocalVar, MagicWand, Stmt}
-import viper.silver.cfg.Edge
-import viper.silver.cfg.silver.SilverCfg.SilverBlock
+import viper.silver.ast.{AbstractLocalVar, Exp, LocalVar, MagicWand, Method, Stmt}
+import viper.silver.cfg.{Edge, LoopHeadBlock}
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverLoopHeadBlock}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.Internal
 
+// Many things are either in relation to the current loop iteration (which we call relative) or the total state/the state
+// before the loop (which we call absolute).
+
+
 // abstractions contains the abstractions after each loop iteration
 // assignments contains the value (as an expression at the beginning of the loop!) of the iterated variables after each loop iteration
-// nextState contains the things we abduce during the current iteration
-case class InvariantAbductionQuestion(abstractions: Seq[Seq[Exp]], assignments: Map[LocalVar, Exp], nextState: Seq[Exp])
+// newRelState contains the things we abduce during the current iteration
+case class InvariantAbductionQuestion(abstraction: Seq[Exp], absValues: Map[AbstractLocalVar, Exp], newRelState: Seq[Exp])
 
 object LoopInvariantSolver {
-  val pve: PartialVerificationError = Internal()
+
+  private val pve: PartialVerificationError = Internal()
+  private def pveLam(a: Exp) = pve
 
   private def getInvariant(e: Exp): Seq[Exp] = {
-    case m:MagicWand => Seq(m.left, m.right)
-    case _ => Seq(e)
+    e match {
+      case m: MagicWand => Seq(m.left, m)
+      case _ => Seq(e)
+    }
   }
 
   def solve(s: State,
             v: Verifier,
             loopEdges: Seq[Edge[Stmt, Exp]],
             joinPoint: Option[SilverBlock],
+            absVarTran: VarTransformer,
             q: InvariantAbductionQuestion = InvariantAbductionQuestion(Seq(), Map(), Seq()))
            (Q: AbductionResult => VerificationResult): VerificationResult = {
 
-    def pveLam(a: Exp) = pve
+    val writtenVars = s.methodCfg.writtenVars(loopEdges.head.source.asInstanceOf[SilverLoopHeadBlock])
 
     // Assumme that we have the things in nextState
-    producer.produces(s, freshSnap, q.nextState, pveLam, v) { (s2, v2) =>
+    producer.produces(s, freshSnap, q.newRelState, pveLam, v) { (s2, v2) =>
 
-      val varTrans = VarTransformer(s, v, s.g.values.keys.toSeq, strict = false)
+      // TODO this is not the way to find the vars, it should be the vars not assigned to in the loop
+      val relVarTrans = VarTransformer(s2, v2, s2.g.values.keys.toSeq, strict = false)
 
       // Run the loop
       // This continuation should never be called, we are only following the inner loop edges, which either
@@ -48,8 +58,8 @@ object LoopInvariantSolver {
         case Failure(res, _) =>
           res.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
             case Some(a: AbductionSuccess) =>
-              val newState = q.nextState ++ a.pre
-              solve(s, v, loopEdges, joinPoint, q.copy(nextState = newState))(Q)
+              val newState = q.newRelState ++ a.pre
+              solve(s, v, loopEdges, joinPoint, absVarTran, q.copy(newRelState = newState))(Q)
             case _ => Q(AbductionFailure(s2, v2))
           }
 
@@ -62,30 +72,51 @@ object LoopInvariantSolver {
           res.previous.head match {
             case Success(Some(a: AbductionSuccess)) =>
 
-              // Find the new assignments
-              // Idea for now: take all variables in store that have changed and can be reduced to beginning
-              val assigns = s2.g.values.collect { case (v, t) => (v, varTrans.transformTerm(t)) }
+              // Values of the variables in terms of the beginning of the loop
+              val relValues = a.s.g.values.collect { case (v, t) => (v, relVarTrans.transformTerm(t)) }
                 .collect { case (v, e) if e.isDefined && e.get != v => (v, e.get) }
 
-              // Perform abstraction on the found state for that loop iteration
-              val prevAbst = q.abstractions.lastOption match {
-                case Some(abst) => abst
-                case _ => Seq()
-              }
-              val nextAbst = AbstractionApplier.apply(AbstractionQuestion(prevAbst ++ q.nextState, s.program)).exps
-
-              // Check if we are done
-              // This means that the abstraction is the same if we replace via the found assignment
-              // Then we want to find the actual invariants!
-              val prevAbstTrans = prevAbst.map(_.transform {
-                case lv: LocalVar if assigns.contains(lv) => assigns(lv)
+              // The absolute values at the end of the loop, by combining the values before the iteration with the absolute
+              // values from the last iteration
+              val newAbsValues: Map[AbstractLocalVar, Exp] = relValues.collect { case (v: AbstractLocalVar, e: Exp) => (v, e.transform {
+                case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
               })
-              if (prevAbstTrans.intersect(nextAbst).isEmpty) {
-                val a = nextAbst.flatMap(getInvariant)
-                Q(AbductionSuccess(s2, v2, invs = a))
+              }.collect{ case (v, e) => (v, absVarTran.transformExp(e).get)}
+
+              // The values at the end of loop in terms of values before the loop
+              //val newAbsValues = a.s.g.values.collect{ case (v, t) => (v, absVarTran.transformTerm(t)) }
+              //  .collect { case (v, e) if e.isDefined && e.get != v => (v, e.get) }
+
+              // Perform abstraction on the found state for that loop iteration
+              // TODO there is an assumption here that the re-assignment happens at the end of the loop
+              val newAbsState = q.newRelState.map(e => e.transform {
+                case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
+              }).map(absVarTran.transformExp(_).get)
+              //val newAbsState = q.newRelState.map(absVarTran.transformExp(_).get)
+              val newAbstraction = AbstractionApplier.apply(AbstractionQuestion(q.abstraction ++ newAbsState, s.program)).exps
+              //val newAbsAbs = newAbstraction.map(absVarTran.transformExp(_).get) // Ah yes my naming scheme is flawless
+
+              val relAssigns: Map[Exp, Exp] = {
+                q.absValues.collect {
+                  case (v, e) if newAbsValues.contains(v) => (e, newAbsValues(v))
+                }
+              }
+              // This the previous abstraction "pushed forward" by a loop iteration, so replacing vars with their values
+              // after the iteration. If this is the same as the new abstraction, we are done.
+              val prevAbstTrans = q.abstraction.map(_.transform {
+                case exp: Exp if relAssigns.contains(exp) => relAssigns(exp)
+              })
+              if (newAbsAbs.diff(prevAbstTrans).isEmpty) {
+                val newAbsSwapped = newAbsValues.map(_.swap)
+                val relAbstraction = newAbstraction.map(_.transform {
+                  case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
+                })
+                Q(AbductionSuccess(a.s, a.v, invs = relAbstraction.flatMap(getInvariant)))
               } else {
                 // Else continue with next iteration, using the state from the end of the loop
-                solve(a.s, a.v, loopEdges, joinPoint, q.copy(abstractions = q.abstractions :+ nextAbst, nextState = Seq()))(Q)
+                solve(a.s, a.v, loopEdges, joinPoint, absVarTran, q.copy(abstraction = newAbstraction,
+                  absValues = newAbsValues,
+                  newRelState = Seq()))(Q)
               }
           }
       }

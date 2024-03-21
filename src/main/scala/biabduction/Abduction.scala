@@ -23,7 +23,6 @@ case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
                                     lostAccesses: Map[Exp, Term] = Map(), foundPrecons: Seq[Exp] = Seq(),
                                     foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
 
-
 /**
   * A rule for abduction. A rule is a pair of a check method and an apply method. The check method checks whether the
   * rule can be applied to the current goal and returns an optional expression from the goal that we can apply the rule
@@ -73,7 +72,6 @@ trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
       }
     }
   }
-
 
   protected def unfoldPredicate(q: SiliconAbductionQuestion, rec: Exp, p: Exp)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
 
@@ -125,13 +123,11 @@ object AbductionRemove extends AbductionRule[Map[Exp, BasicChunk]] {
     }
   }
 
-
   override def apply(q: SiliconAbductionQuestion, inst: Map[Exp, BasicChunk])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     val g1 = q.goal.filterNot(inst.contains)
     consumeChunks(inst.values.toSeq, q.copy(goal = g1))(Q)
   }
 }
-
 
 // At first glance, it looks like maybe we do not need this rule, we can just add x.next = z to the result
 // However, if x.next is assigned to in the method, then we actually want this condition to hold for the assignment,
