@@ -323,14 +323,25 @@ class DefaultMainVerifier(config: Config,
       case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
     val moreJoinsAnnotated = member.info.getUniqueInfo[ast.AnnotationInfo] match {
-      case Some(ai) => ai.values.contains("moreJoins")
-      case _ => false
+      case Some(ai) if ai.values.contains("moreJoins") =>
+        ai.values("moreJoins") match {
+          case Seq() => Some(2)
+          case Seq(vl) =>
+            try {
+              Some(vl.toInt)
+            } catch {
+              case _: NumberFormatException =>
+                reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $vl. Annotation will be ignored.")
+                None
+            }
+          case v =>
+            reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $v. Annotation will be ignored.")
+            None
+        }
+      case _ => None
     }
     val moreJoins = if (member.isInstanceOf[ast.Method]) {
-      if (moreJoinsAnnotated)
-        2
-      else
-        Verifier.config.moreJoins.getOrElse(0)
+      moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(0))
     } else {
       0
     }
