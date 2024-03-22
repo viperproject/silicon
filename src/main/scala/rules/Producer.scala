@@ -214,7 +214,7 @@ object producer extends ProductionRules {
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
     val produced = a match {
-      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins =>
+      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins > 0 =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
@@ -240,7 +240,7 @@ object producer extends ProductionRules {
               case Seq(entry) => // One branch is dead
                 entry.s
               case Seq(entry1, entry2) => // Both branches are alive
-                entry1.pathConditionAwareMerge(entry2, v1)
+                entry1.pathConditionAwareMergeWithoutConsolidation(entry2, v1)
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, null)
@@ -267,7 +267,7 @@ object producer extends ProductionRules {
                 Q(s2, v2)
             }))
 
-      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins =>
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins > 0=>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 

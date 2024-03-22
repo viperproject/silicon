@@ -668,9 +668,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val moreJoins: ScallopOption[Boolean] = opt[Boolean]("moreJoins",
-    descr = "Enable more joins using a more complete implementation of state merging.",
-    default = Some(false),
+  val moreJoins: ScallopOption[Int] = opt[Int]("moreJoins",
+    descr = "Enable more joins using a more complete implementation of state merging. " +
+      "0 = off, 1 = don't branch on impure conditionals, 2 = join all branches when possible.",
+    default = Some(0),
     noshort = true
   )
 

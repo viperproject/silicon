@@ -244,7 +244,7 @@ object brancher extends BranchingRules {
       v.decider.prover.comment(s"Bulk-declaring functions")
       v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider, true)
       v.decider.prover.comment(s"Bulk-declaring macros")
-      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider, true)
+      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider.reverse.distinct.reverse, true)
     }
     res
   }
