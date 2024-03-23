@@ -71,7 +71,7 @@ final case class State(g: Store = Store(),
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false,
-                       moreJoins: Boolean = false)
+                       moreJoins: Int = 0)
     extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {

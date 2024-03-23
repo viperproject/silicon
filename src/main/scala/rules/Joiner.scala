@@ -21,6 +21,10 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
     val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
     v.stateConsolidator.consolidate(res, v)
   }
+
+  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+  }
 }
 
 trait JoiningRules extends SymbolicExecutionRules {

@@ -785,7 +785,7 @@ object evaluator extends EvaluationRules {
                                  * incomplete).
                                  */
                              smDomainNeeded = true,
-                             moreJoins = false)
+                             moreJoins = 0)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)

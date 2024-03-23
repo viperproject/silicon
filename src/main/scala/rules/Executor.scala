@@ -111,7 +111,7 @@ object executor extends ExecutionRules {
       case (Seq(), _) => Q(s, v)
       case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
       case (Seq(edge1, edge2), Some(newJoinPoint)) if
-          s.moreJoins &&
+          s.moreJoins > 1 &&
           // Can't directly match type because of type erasure ...
           edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
           edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
