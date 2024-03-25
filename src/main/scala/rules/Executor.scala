@@ -15,7 +15,7 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors._
-import viper.silver.reporter.{BlockProcessedMessage, BlockReachedMessage}
+import viper.silver.reporter.{PathProcessedMessage, BlockReachedMessage}
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
@@ -52,6 +52,7 @@ object executor extends ExecutionRules {
   import evaluator._
   import producer._
   private val pathIdGenerator = new AtomicInteger(0)
+  private val pathComplete = collection.mutable.HashMap[Int, Boolean]();
 
   def nextPathId(): Int = {
     pathIdGenerator.incrementAndGet()
@@ -222,21 +223,22 @@ object executor extends ExecutionRules {
           : VerificationResult = {
 
     // Get the label of the block for messages used by Prusti Assistant
-    // Can simplify this if labels are always the first statement in the block
     var blockLabel = "None"
-    block.elements
-    .iterator
-    .takeWhile(_ => blockLabel == "None")
-    .foreach( element => 
-      element match {
-        case Left(stmt) => stmt match {
-          case ast.Label(name, _) => 
-            blockLabel = name
-            case _ =>
-            }
-            case Right(_) =>
-            }
-          )
+
+    // block.elements
+    // .iterator
+    // .takeWhile(_ => blockLabel == "None")
+    // .foreach( element => 
+    //   element match {
+    //     case Left(ast.Label(name, _)) => blockLabel = name
+    //     case _ =>
+    //   }
+    // )
+    // Can simplify the above if labels are _always_ the first statement in the block
+    block.elements.head match {
+      case Left(ast.Label(name, _)) => blockLabel = name
+      case _ =>
+    }
     var methodName = "None"
     if(s.isMethodVerification){
       methodName = s.currentMember.get.asInstanceOf[ast.Method].name
@@ -245,8 +247,8 @@ object executor extends ExecutionRules {
       // }
     }
     if(blockLabel != "None"){
-
       v.reporter.report(BlockReachedMessage(methodName, blockLabel, pathId))
+      pathComplete.addOne((pathId, false))
     }
     
     val executed = block match {
@@ -344,13 +346,12 @@ object executor extends ExecutionRules {
               Success())
         }
     }
-    /* TODO: coarse. might want more intermedeate results. this waits until all
-     * following blocks have resolved.
-     * maybe move to `exec(State, ast.Stmt, Verifier)` or `execs` function
-     * in the else.
-     */
-    if(blockLabel != "None")
-      v.reporter.report(BlockProcessedMessage(methodName, blockLabel, pathId, executed.toString()))
+
+    if(blockLabel != "None" && !pathComplete.get(pathId).get){
+      v.reporter.report(PathProcessedMessage(methodName, blockLabel, pathId, executed.getClass().getSimpleName()))
+      pathComplete.update(pathId, true)
+    }
+
     executed
   }
 
