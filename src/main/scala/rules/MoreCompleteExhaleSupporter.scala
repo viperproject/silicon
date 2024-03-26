@@ -369,12 +369,15 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         ch.withPerm(PermMinus(ch.perm, permTaken))
       })
 
-    v.decider.assume(
+    val totalTakenBounds =
       Implies(
         totalPermSum !== NoPerm,
         And(
           PermLess(NoPerm, totalPermTaken),
-          PermLess(totalPermTaken, totalPermSum))))
+          PermLess(totalPermTaken, totalPermSum)))
+    v.decider.assume(totalTakenBounds)
+
+    newFr = newFr.recordConstraint(totalTakenBounds)
 
     val s1 = s.copy(functionRecorder = newFr)
 

@@ -94,6 +94,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  private[this] var freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private[this] var freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
@@ -117,6 +118,7 @@ class FunctionData(val programFunction: ast.Function,
     freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
     freshArps = mergedFunctionRecorder.freshArps
+    freshConstraints = mergedFunctionRecorder.freshConstraints
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
     freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
     freshMacros = mergedFunctionRecorder.freshMacros
@@ -143,7 +145,8 @@ class FunctionData(val programFunction: ast.Function,
     val nested = (
          freshFieldInvs.flatMap(_.definitionalAxioms)
       ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
-      ++ freshArps.map(_._2))
+      ++ freshArps.map(_._2)
+      ++ freshConstraints)
 
     // Filter out nested definitions that contain free variables.
     // This should not happen, but currently can, due to bugs in the function axiomatisation code.
