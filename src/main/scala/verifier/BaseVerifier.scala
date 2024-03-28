@@ -78,6 +78,14 @@ abstract class BaseVerifier(val config: Config,
             val modeAnnotation = ai.values("stateConsolidationMode")
             try {
               modeAnnotation match {
+                case Seq("minimal") => Minimal
+                case Seq("default") => Default
+                case Seq("retrying") => Retrying
+                case Seq("minimalRetrying") => MinimalRetrying
+                case Seq("moreCompleteExhale") => MoreCompleteExhale
+                case Seq("lastRetry") => LastRetry
+                case Seq("retryingFailOnly") => RetryingFailOnly
+                case Seq("lastRetryFailOnly") => LastRetryFailOnly
                 case Seq(v) => StateConsolidationMode(v.toInt)
               }
             } catch {
