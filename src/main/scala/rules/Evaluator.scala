@@ -861,7 +861,7 @@ object evaluator extends EvaluationRules {
                                          recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
-                        val s10 = v5.stateConsolidator.consolidateOptionally(s9, v5)
+                        val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
                         eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
@@ -1149,7 +1149,7 @@ object evaluator extends EvaluationRules {
 
     val h = s.oldHeaps(label)
     val s1 = s.copy(h = h, partiallyConsumedHeap = None)
-    val s2 = v.stateConsolidator.consolidateOptionally(s1, v)
+    val s2 = v.stateConsolidator(s1).consolidateOptionally(s1, v)
     val possibleTriggersBefore: Map[ast.Exp, Term] = if (s.recordPossibleTriggers) s.possibleTriggers else Map.empty
 
     eval(s2, e, pve, v)((s3, t, v1) => {

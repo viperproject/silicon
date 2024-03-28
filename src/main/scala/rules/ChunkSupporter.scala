@@ -190,7 +190,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
-    val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, h, ch, v)
+    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, h, ch, v)
     Q(s.copy(functionRecorder = fr1), h1, v)
   }
 

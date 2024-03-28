@@ -11,7 +11,7 @@ import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.rules.StateConsolidationRules
-import viper.silicon.state.{IdentifierFactory, SymbolConverter}
+import viper.silicon.state.{IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silicon.Config
@@ -38,7 +38,7 @@ trait Verifier {
   def axiomRewriter: AxiomRewriter
   def quantifierSupporter: QuantifierSupporter
   def snapshotSupporter: SnapshotSupporter
-  def stateConsolidator: StateConsolidationRules
+  def stateConsolidator(s: State): StateConsolidationRules
 
   def verificationPoolManager: VerificationPoolManager
 
