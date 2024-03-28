@@ -22,7 +22,7 @@ import viper.silver.ast
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
-  def consolidateIfRetrying(s: State, v: Verifier): State
+  def consolidateOptionally(s: State, v: Verifier): State
   def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
   def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap)
 
@@ -37,7 +37,7 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
   */
 class MinimalStateConsolidator extends StateConsolidationRules {
   def consolidate(s: State, @unused v: Verifier): State = s
-  def consolidateIfRetrying(s: State, @unused v: Verifier): State = s
+  def consolidateOptionally(s: State, @unused v: Verifier): State = s
 
   def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
@@ -117,7 +117,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     s2
   }
 
-  def consolidateIfRetrying(s: State, v: Verifier): State =
+  def consolidateOptionally(s: State, v: Verifier): State =
     if (s.retrying) consolidate(s, v)
     else s
 
@@ -298,7 +298,35 @@ class RetryingStateConsolidator(config: Config) extends DefaultStateConsolidator
     else s
   }
 
-  override def consolidateIfRetrying(s: State, v: Verifier): State = consolidate(s, v)
+  override def consolidateOptionally(s: State, v: Verifier): State = consolidate(s, v)
+}
+
+/** A variant of [[RetryingStateConsolidator]] that differs only in that optional state consolidations (i.e.,
+  * ones not triggered by a verification failure) are not performed at all.
+  */
+class RetryingFailOnlyStateConsolidator(config: Config) extends RetryingStateConsolidator(config) {
+  override def consolidateOptionally(s: State, v: Verifier): State = s
+}
+
+/** A variant of [[DefaultStateConsolidator]]:
+  *   - Merging heaps and assuming QP permission bounds is equally complete
+  *   - State consolidation is equally complete, but only performed when Silicon is retrying
+  *     an assertion/operation for the last time.
+  */
+class LastRetryStateConsolidator(config: Config) extends DefaultStateConsolidator(config) {
+  override def consolidate(s: State, v: Verifier): State = {
+    if (s.isLastRetry) super.consolidate(s, v)
+    else s
+  }
+
+  override def consolidateOptionally(s: State, v: Verifier): State = consolidate(s, v)
+}
+
+/** A variant of [[LastRetryStateConsolidator]] that differs only in that optional state consolidations (i.e.,
+  * ones not triggered by a verification failure) are not performed at all.
+  */
+class LastRetryFailOnlyStateConsolidator(config: Config) extends LastRetryStateConsolidator(config) {
+  override def consolidateOptionally(s: State, v: Verifier): State = s
 }
 
 /** A variant of [[RetryingStateConsolidator]] and [[MinimalStateConsolidator]]:

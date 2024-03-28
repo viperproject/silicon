@@ -906,14 +906,17 @@ object Config {
 
   object StateConsolidationMode extends Enumeration {
     type StateConsolidationMode = Value
-    val Minimal, Default, Retrying, MinimalRetrying, MoreCompleteExhale = Value
+    val Minimal, Default, Retrying, MinimalRetrying, MoreCompleteExhale, LastRetry, RetryingFailOnly, LastRetryFailOnly = Value
 
     private[Config] final def helpText: String = {
       s"""  ${Minimal.id}: Minimal work, many incompletenesses
          |  ${Default.id}: Most work, fewest incompletenesses
-         |  ${Retrying.id}: Similar to ${Default.id}, but less eager
+         |  ${Retrying.id}: Similar to ${Default.id}, but less eager (optional and failure-driven consolidation only on retry)
          |  ${MinimalRetrying.id}: Less eager and less complete than ${Default.id}
          |  ${MoreCompleteExhale.id}: Intended for use with --moreCompleteExhale
+         |  ${LastRetry.id}: Similar to ${Retrying.id}, but only on last retry
+         |  ${RetryingFailOnly.id}: Similar to ${Retrying.id}, but performs no optional consolidation at all.
+         |  ${LastRetryFailOnly.id}: Similar to ${LastRetry.id}, but performs no optional consolidation at all.
          |""".stripMargin
     }
 
