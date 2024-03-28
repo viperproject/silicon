@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.Config.ExhaleMode
+import viper.silicon.Config.{ExhaleMode, JoinMode}
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
@@ -325,10 +325,12 @@ class DefaultMainVerifier(config: Config,
     val moreJoinsAnnotated = member.info.getUniqueInfo[ast.AnnotationInfo] match {
       case Some(ai) if ai.values.contains("moreJoins") =>
         ai.values("moreJoins") match {
-          case Seq() => Some(2)
+          case Seq() | Seq("all") => Some(JoinMode.All)
+          case Seq("off") => Some(JoinMode.Off)
+          case Seq("impure") => Some(JoinMode.Impure)
           case Seq(vl) =>
             try {
-              Some(vl.toInt)
+              Some(JoinMode(vl.toInt))
             } catch {
               case _: NumberFormatException =>
                 reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $vl. Annotation will be ignored.")
@@ -341,9 +343,9 @@ class DefaultMainVerifier(config: Config,
       case _ => None
     }
     val moreJoins = if (member.isInstanceOf[ast.Method]) {
-      moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(0))
+      moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(JoinMode.Off))
     } else {
-      0
+      JoinMode.Off
     }
 
     val methodPermCache = mutable.HashMap[String, InsertionOrderedSet[ast.Location]]()
