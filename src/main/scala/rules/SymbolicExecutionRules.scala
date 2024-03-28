@@ -10,10 +10,10 @@ import viper.silicon.biabduction.{AbductionResult, BiAbductionSolver, SiliconAbd
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{FieldAccess, FieldAccessPredicate, FullPerm, PredicateAccess, PredicateAccessPredicate}
+import viper.silver.ast.{AccessPredicate, FieldAccess, FieldAccessPredicate, FullPerm, PredicateAccess, PredicateAccessPredicate}
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithTransformers
-import viper.silver.verifier.reasons.InsufficientPermission
+import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{AbductionQuestionTransformer, Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
@@ -70,15 +70,17 @@ trait SymbolicExecutionRules {
         })
     } else Seq()
 
-    val abductionResult: Option[AbductionResult] = ve.reason match {
+    val abdGoal: Option[AccessPredicate] = ve.reason match {
       case reason: InsufficientPermission =>
-        val goal = reason.offendingNode match {
+        val acc = reason.offendingNode match {
           case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()
           case n: PredicateAccess => PredicateAccessPredicate(n, FullPerm()())()
         }
-        Some(BiAbductionSolver.solve(s, v, Seq(goal), aqTrafo))
+        Some(acc)
+      case reason: MagicWandChunkNotFound => Some(reason.offendingNode)
       case _ => None
     }
+    val abductionResult = abdGoal.map{acc => BiAbductionSolver.solve(s, v, Seq(acc), aqTrafo)}
 
     res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionResult))
     Failure(res, v.reportFurtherErrors())

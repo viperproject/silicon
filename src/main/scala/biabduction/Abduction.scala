@@ -15,7 +15,7 @@ import viper.silver.ast._
 import viper.silver.verifier.BiAbductionQuestion
 
 object AbductionApplier extends RuleApplier[SiliconAbductionQuestion] {
-  override val rules: Seq[AbductionRule[_]] = Seq(AbductionRemove, AbductionMatch, AbductionListFoldBase,
+  override val rules: Seq[AbductionRule[_]] = Seq(AbductionRemove, AbductionListFoldBase,
     AbductionListFold, AbductionListUnfold, AbductionApply, AbductionPackage, AbductionMissing)
 }
 
@@ -104,6 +104,7 @@ object AbductionRemove extends AbductionRule[Map[Exp, BasicChunk]] {
           case Some(c) => Q(Some(Map(accs.head -> c)))
           case None => check(q.copy(goal = accs2))(Q)
         }
+      case _ => check(q.copy(goal = accs.tail))(Q)
     }
   }
 
@@ -126,20 +127,6 @@ object AbductionRemove extends AbductionRule[Map[Exp, BasicChunk]] {
   override def apply(q: SiliconAbductionQuestion, inst: Map[Exp, BasicChunk])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     val g1 = q.goal.filterNot(inst.contains)
     consumeChunks(inst.values.toSeq, q.copy(goal = g1))(Q)
-  }
-}
-
-// At first glance, it looks like maybe we do not need this rule, we can just add x.next = z to the result
-// However, if x.next is assigned to in the method, then we actually want this condition to hold for the assignment,
-// not for x.next. So we have to try to resolve this if we can.
-object AbductionMatch extends AbductionRule[FieldAccessPredicate] {
-
-  override protected def check(q: SiliconAbductionQuestion)(Q: Option[FieldAccessPredicate] => VerificationResult): VerificationResult = {
-    Q(None)
-  }
-
-  override protected def apply(q: SiliconAbductionQuestion, inst: FieldAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    Q(q)
   }
 }
 
@@ -230,27 +217,31 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
     // Remove access from goal
     val g1 = q.goal.filterNot(_ == inst)
 
-    // Add x != null to result
-    val nNl = NeCmp(inst.loc.rcv, NullLit()())()
-    val r1 = q.foundPrecons :+ nNl
-
     val unfold = Unfold(abductionUtils.getPredicate(q.s.program, inst.loc.rcv, inst.perm))()
 
 
-    // Exchange list(x) with list(x.next) in the state
-    // Unfold
-    unfoldPredicate(q, inst.loc.rcv, inst.perm) { (s1, v1) =>
+    val nNl = NeCmp(inst.loc.rcv, NullLit()())()
+    eval(q.s, nNl, pve, q.v) { case (s1, arg, v1) => {
+      val isNl = q.v.decider.check(arg, Verifier.config.checkTimeout())
+      // Add x != null to result if it does not hold
+      val r1 = if (isNl) q.foundPrecons else q.foundPrecons :+ nNl
 
-      // Add x != null to path condition TODO maybe do this first?
-      produce(s1, freshSnap, nNl, pve, v1)((s2, v2) => {
-        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+      // Exchange list(x) with list(x.next) in the state
+      // Unfold
+      unfoldPredicate(q, inst.loc.rcv, inst.perm) { (s1, v1) =>
 
-        // Remove the access chunk
-        consumer.consume(s2, inst, pve, v2)((s3, snap, v3) => {
-          val lost = q.lostAccesses + (inst.loc -> SortWrapper(snap, sorts.Ref))
-          Q(q.copy(s = s3, v = v3, goal = g1, foundPrecons = r1, foundStmts = q.foundStmts :+ unfold, lostAccesses = lost))
+        // Add x != null to path condition TODO maybe do this first?
+        produce(s1, freshSnap, nNl, pve, v1)((s2, v2) => {
+          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+
+          // Remove the access chunk
+          consumer.consume(s2, inst, pve, v2)((s3, snap, v3) => {
+            val lost = q.lostAccesses + (inst.loc -> SortWrapper(snap, sorts.Ref))
+            Q(q.copy(s = s3, v = v3, goal = g1, foundPrecons = r1, foundStmts = q.foundStmts :+ unfold, lostAccesses = lost))
+          })
         })
-      })
+      }
+    }
     }
   }
 }
@@ -258,7 +249,8 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
 // TODO Using ghostFreeWand is probably wrong in some (or all) cases. Need to be more careful here
 object AbductionApply extends AbductionRule[(MagicWandChunk, Exp)] {
   override protected def check(q: SiliconAbductionQuestion)(Q: Option[(MagicWandChunk, Exp)] => VerificationResult): VerificationResult = {
-    Q(q.s.h.values.collectFirst { case c: MagicWandChunk if q.goal.contains(c.id.ghostFreeWand.right) => (c, c.id.ghostFreeWand.right) })
+    val trigger = q.s.h.values.collectFirst { case c: MagicWandChunk if q.goal.contains(c.id.ghostFreeWand.right) => (c, c.id.ghostFreeWand.right) }
+    Q(trigger)
   }
 
   override protected def apply(q: SiliconAbductionQuestion, inst: (MagicWandChunk, Exp))(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {

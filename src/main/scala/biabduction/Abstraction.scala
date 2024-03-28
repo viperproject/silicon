@@ -38,6 +38,7 @@ object AbstractionListPackage extends AbstractionRule[(AccessPredicate, FieldAcc
   override protected def check(q: AbstractionQuestion)(Q: Option[(AccessPredicate, FieldAccessPredicate)] => VerificationResult): VerificationResult = {
 
     // TODO there must be a better way to do this
+    // TODO There also may be a level of .nexts that we can remove in the wand case
     val found = q.exps.combinations(2).collectFirst {
       case Seq(wand@MagicWand(left: PredicateAccessPredicate, right: PredicateAccessPredicate), next: FieldAccessPredicate)
         if left.loc.args.head == next.loc.rcv => (wand, next)

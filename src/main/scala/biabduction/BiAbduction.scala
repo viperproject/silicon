@@ -55,7 +55,7 @@ object BiAbductionSolver {
       val pres = AbstractionApplier.apply(AbstractionQuestion(q1.foundPrecons, q1.s.program)).exps
 
       // TODO if some path conditions already contain Ands, then we might reject clauses that we could actually handle
-      val bcs = q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined => varTrans.transformExp(e).get }
+      val bcs = q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined && e != TrueLit()() => varTrans.transformExp(e).get }
 
       // TODO Weak transformation of statements to original variables (Viper encoding can introduce new variables)
 
@@ -122,7 +122,9 @@ trait BiAbductionRule[S, T] {
 
   def checkAndApply(q: S, rule: Int)(Q: (S, Int) => VerificationResult): VerificationResult = {
     check(q) {
-      case Some(e) => apply(q, e)(Q(_, 0))
+      case Some(e) =>
+        println("Applied rule " + this.getClass.getSimpleName)
+        apply(q, e)(Q(_, 0))
       case None => Q(q, rule + 1)
     }
   }

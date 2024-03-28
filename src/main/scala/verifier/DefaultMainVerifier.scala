@@ -292,6 +292,8 @@ class DefaultMainVerifier(config: Config,
       case res@Failure(error, _) => error.failureContexts.head match {
         case SiliconFailureContext(_, _, _, Some(abductionResult: AbductionResult)) =>
           println(abductionResult)
+
+        case _ =>
       }
       case _ =>
     }
