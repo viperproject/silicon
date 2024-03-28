@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.Config.JoinMode
 import viper.silver.ast
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
@@ -785,7 +786,7 @@ object evaluator extends EvaluationRules {
                                  * incomplete).
                                  */
                              smDomainNeeded = true,
-                             moreJoins = 0)
+                             moreJoins = JoinMode.Off)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)

@@ -183,7 +183,7 @@ object consumer extends ConsumptionRules {
       v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
 
     val consumed = a match {
-      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins > 0 =>
+      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id > 0 =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
         consumeConditionalTlcMoreJoins(s, h, e0, a0, None, uidImplies, pve, v)(Q)
@@ -203,7 +203,7 @@ object consumer extends ConsumptionRules {
               Q(s2, h, Unit, v2)
             }))
 
-      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins > 0 =>
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id > 0 =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
         consumeConditionalTlcMoreJoins(s, h, e0, a1, Some(a2), uidCondExp, pve, v)(Q)
