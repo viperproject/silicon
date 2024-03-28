@@ -146,7 +146,7 @@ object brancher extends BranchingRules {
             if (v.uniqueId != v0.uniqueId)
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
 
-            val result = fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            val result = fElse(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
             if (wasElseExecutedOnDifferentVerifier) {
               v1.decider.resetProverOptions()
               v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
@@ -186,7 +186,7 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
-            fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })
         } else {
           Unreachable()

@@ -86,7 +86,7 @@ object executor extends ExecutionRules {
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
       case cfg.Kind.Out =>
-        val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+        val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
           invariantContexts = s.invariantContexts.tail)
         s1
@@ -518,7 +518,7 @@ object executor extends ExecutionRules {
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
-        val s1 = v.stateConsolidator.consolidate(s, v)
+        val s1 = v.stateConsolidator(s).consolidate(s, v)
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
