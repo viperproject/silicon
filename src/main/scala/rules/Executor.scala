@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.Config.JoinMode
+
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
@@ -111,7 +113,7 @@ object executor extends ExecutionRules {
       case (Seq(), _) => Q(s, v)
       case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
       case (Seq(edge1, edge2), Some(newJoinPoint)) if
-          s.moreJoins.id > 1 &&
+          s.moreJoins.id >= JoinMode.All.id &&
           // Can't directly match type because of type erasure ...
           edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
           edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&

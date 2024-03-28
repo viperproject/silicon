@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.Config.JoinMode
+
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -214,7 +216,7 @@ object producer extends ProductionRules {
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
     val produced = a match {
-      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id > 0 =>
+      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
@@ -267,7 +269,7 @@ object producer extends ProductionRules {
                 Q(s2, v2)
             }))
 
-      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id > 0 =>
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
