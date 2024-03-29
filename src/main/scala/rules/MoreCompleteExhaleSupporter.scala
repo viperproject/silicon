@@ -360,7 +360,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val constraint = And(IsValidPermVar(permTaken),
           PermAtMost(permTaken, ch.perm),
-          Implies(Not(eq), permTaken === NoPerm)
+          Implies(Not(eq), permTaken === NoPerm),
+          Implies(And(eq, IsPositive(ch.perm)), PermLess(permTaken, ch.perm))
         )
 
         v.decider.assume(constraint)
