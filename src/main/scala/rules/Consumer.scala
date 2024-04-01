@@ -74,7 +74,7 @@ object consumer extends ConsumptionRules {
              : VerificationResult = {
 
     consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, cHeap, snap, v1) => {
-      val s2 = s1.copy(h = if (isAssert) h1 + cHeap else h1,
+      val s2 = s1.copy(h = if (isAssert) s1.h else h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap,
                        consumedHeapParts = s.consumedHeapParts)
       Q(s2, snap, v1)})
@@ -100,7 +100,7 @@ object consumer extends ConsumptionRules {
     })
 
     consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, cHeap, snap1, v1) => {
-      val s2 = s1.copy(h = if (isAssert) h1 + cHeap else h1,
+      val s2 = s1.copy(h = if (isAssert) s1.h else h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap,
                        consumedHeapParts = Some(cHeap))
       Q(s2, snap1, v1)

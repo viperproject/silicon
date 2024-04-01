@@ -220,8 +220,26 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, v)(consumeSingle)((s1, hs1, cHeap1, optChunks, v1) => {
           val newTopHeap = hs1.head + cHeap1
-          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap)
-          Q(s1p, hs1.head, cHeap1, optChunks.filter(_.isDefined).head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
+          val totalConsumedAmount = cHeap1.values.foldLeft(NoPerm: Term)((q, ch) => PermPlus(q, ch.asInstanceOf[GeneralChunk].perm))
+          val totalConsumedFromFirst = if (optChunks.length > 0 && optChunks.head.nonEmpty) {
+            PermMin(optChunks.head.get.asInstanceOf[NonQuantifiedChunk].perm, totalConsumedAmount)
+          } else {
+            NoPerm
+          }
+          val totalConsumedFromAllButFirst = PermMinus(totalConsumedAmount, totalConsumedFromFirst)
+
+
+          val nonEmptyChunks = optChunks.filter(_.isDefined)
+          val cHeap2 = if (nonEmptyChunks.isEmpty) Heap() else Heap(Seq(nonEmptyChunks.head.get.asInstanceOf[NonQuantifiedChunk].withPerm(totalConsumedFromAllButFirst)))
+          val newTopHeap2 = if (nonEmptyChunks.isEmpty) s.h else s.h + cHeap2
+
+          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2)
+          if (nonEmptyChunks.isEmpty){
+            assert(v1.decider.checkSmoke(true))
+            Success()
+          } else {
+            Q(s1p, hs1.head, cHeap2, nonEmptyChunks.head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
+          }
         })
       } else {
         // TODO: Try actual consume complete
@@ -246,7 +264,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         }
         val snap = v.decider.fresh(snapSort)
         val ch = BasicChunk(FieldID, identifier, args, snap, gain)
-        chunkSupporter.produce(s, s.partiallyConsumedHeap.getOrElse(s.h), ch, v)((s2, h2, v2) => {
+        chunkSupporter.produce(s, h, ch, v)((s2, h2, v2) => {
           doActualConsumeComplete(s2.copy(h = s2.h + ch), h2, resource, args, perms, ve, v2)(Q)
         })
       }
@@ -311,7 +329,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (moreNeeded) {
             val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
-            val pTaken = if (s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
+            val pTaken = if (true || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
               // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
               // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
               // that already exists.

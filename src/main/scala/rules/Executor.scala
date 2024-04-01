@@ -323,7 +323,6 @@ object executor extends ExecutionRules {
             val edges = s.methodCfg.outEdges(block)
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v, true)((sp, _, v) => {
               val shuh = s
-              println("??")
               phase match {
                 case LoopPhases.Transferring =>
                   if (kRemaining > 1) {

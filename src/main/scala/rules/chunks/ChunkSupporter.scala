@@ -103,11 +103,11 @@ object chunkSupporter extends ChunkSupportRules {
       //  Q(s1, h, cHeap, optCh.flatMap(ch => Some(ch.snap)), v1))
       ???
     } else {
-      executionFlowController.tryOrFail2[(Heap, Heap), Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
+      executionFlowController.tryOrFail2[(Heap, Heap), Option[Term]](s, v)((s1, v1, QS) =>
         // 2022-05-07 MHS: MoreCompleteExhale isn't yet integrated into function verification, hence the limitation to method verification
         if (s1.moreCompleteExhale) {
-          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, perms, ve, v1)((s2, h2, hConsumed, snap2, v2) => {
-            QS(s2.copy(h = s.h), (h2, hConsumed), snap2, v2)
+          moreCompleteExhaleSupporter.consumeComplete(s1, h, resource, args, perms, ve, v1)((s2, h2, hConsumed, snap2, v2) => {
+            QS(s2, (h2, hConsumed), snap2, v2)
           })
         } else {
           consumeGreedy(s1, s1.h, id, args, perms, v1) match {

@@ -163,7 +163,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               //case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
               case _ => True
             }
-            v.decider.assume(tEq)
+            //v.decider.assume(tEq)
 
             /* In the future it might be worth to recheck whether the permissions needed, in the case of
              * success being an instance of Incomplete, are zero.
@@ -189,7 +189,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
         assert(heaps.length == hs.length)
         assert(consumedChunks.length == hs.length)
         Q(s1, heaps.reverse, actualConsumedChunks, consumedChunks.reverse, v)
-      case Incomplete(_) => failure
+      case Incomplete(_) =>
+        failure
     }
   }
 
