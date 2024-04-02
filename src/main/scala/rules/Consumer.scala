@@ -75,8 +75,7 @@ object consumer extends ConsumptionRules {
 
     consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, cHeap, snap, v1) => {
       val s2 = s1.copy(h = if (isAssert) s1.h else h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap,
-                       consumedHeapParts = s.consumedHeapParts)
+                       partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap, v1)})
   }
 
@@ -101,8 +100,7 @@ object consumer extends ConsumptionRules {
 
     consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, cHeap, snap1, v1) => {
       val s2 = s1.copy(h = if (isAssert) s1.h else h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap,
-                       consumedHeapParts = Some(cHeap))
+                       partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
     })
   }
@@ -127,7 +125,7 @@ object consumer extends ConsumptionRules {
         wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, cHeap, snap1, v1) =>
           consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, cHeap2, snap2, v2) => {
             val combined = cHeap + cHeap2
-            Q(s2.copy(consumedHeapParts = Some(combined)), h2, combined, Combine(snap1, snap2), v2)}))
+            Q(s2, h2, combined, Combine(snap1, snap2), v2)}))
     }
   }
 
@@ -361,8 +359,7 @@ object consumer extends ConsumptionRules {
               v2
             )((s3, h3, cHeap, snap, v3) => {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                               partiallyConsumedHeap = Some(h3),
-                               consumedHeapParts = Some(cHeap))
+                               partiallyConsumedHeap = Some(h3))
               Q(s4, h3, cHeap, snap, v3)})}))
 
       case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
@@ -398,8 +395,7 @@ object consumer extends ConsumptionRules {
               v2
             )((s3, h3, cHeap, snap, v3) => {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                               partiallyConsumedHeap = Some(h3),
-                               consumedHeapParts = Some(cHeap))
+                               partiallyConsumedHeap = Some(h3))
               Q(s4, h3, cHeap, snap, v3)})}))
 
       case let: ast.Let if !let.isPure =>
@@ -417,7 +413,6 @@ object consumer extends ConsumptionRules {
               val description = s"consume ${a.pos}: $a"
               chunkSupporter.consume(s3, h, resource, tArgs, loss, ve, v3, description)((s4, h1, cHeap, snap1, v4) => {
                 val s5 = s4.copy(partiallyConsumedHeap = Some(h1),
-                                 consumedHeapParts = Some(cHeap),
                                  constrainableARPs = s.constrainableARPs)
                 Q(s5, h1, cHeap, snap1, v4)})})))
 
@@ -454,8 +449,7 @@ object consumer extends ConsumptionRules {
             v1
           )((s3, h3, cHeap, snap, v3) => {
             val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                             partiallyConsumedHeap = Some(h3),
-                             consumedHeapParts = Some(cHeap))
+                             partiallyConsumedHeap = Some(h3))
             Q(s4, h3, cHeap, snap, v3)})})
 
       case wand: ast.MagicWand =>
@@ -467,7 +461,6 @@ object consumer extends ConsumptionRules {
 
       case _ =>
         evalAndAssert(s, a, pve, v)((s1, t, v1) => {
-          val old = s.consumedHeapParts
           Q(s1, h, Heap(), t, v1)
         })
     }

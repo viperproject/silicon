@@ -251,9 +251,10 @@ object executor extends ExecutionRules {
               loopReadVarStack = s.loopReadVarStack.prepended((readPerm, true)))
             val edges = s.methodCfg.outEdges(block)
 
-            execs(sFirstPhase, stmts, v)((s4, v3) => {
-              v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-              follows(s4, edges, WhileFailed, v3, None)(Q)
+            consumes(sFirstPhase, invs, LoopInvariantNotEstablished, v, true)((s2, _, v2) => {
+              execs(s2, stmts, v2)((s3, v3) => {
+                follows(s3, edges, WhileFailed, v3, joinPoint)(Q)
+              })
             })
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:

@@ -53,7 +53,6 @@ final case class State(g: Store = Store(),
                        triggerExp: Boolean = false,
 
                        partiallyConsumedHeap: Option[Heap] = None,
-                       consumedHeapParts: Option[Heap] = None,
                        permissionScalingFactor: Term = terms.FullPerm,
 
                        reserveHeaps: Stack[Heap] = Nil,
@@ -166,7 +165,6 @@ object State {
                  recordPossibleTriggers1, possibleTriggers1,
                  triggerExp1,
                  partiallyConsumedHeap1,
-                 consumedHeapParts1,
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
@@ -192,7 +190,6 @@ object State {
                      `recordPossibleTriggers1`, possibleTriggers2,
                      triggerExp2,
                      `partiallyConsumedHeap1`,
-                     consumedHeapParts2,
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
@@ -324,7 +321,6 @@ object State {
       recordPossibleTriggers1, possibleTriggers1,
       triggerExp1,
       partiallyConsumedHeap1,
-      consumedHeapParts1,
       permissionScalingFactor1,
       reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
       ssCache1, hackIssue387DisablePermissionConsumption1,
@@ -349,7 +345,6 @@ object State {
           `recordPossibleTriggers1`, possibleTriggers2,
           triggerExp2,
           partiallyConsumedHeap2,
-          consumedHeapParts2,
           `permissionScalingFactor1`,
           reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
           ssCache2, `hackIssue387DisablePermissionConsumption1`,
@@ -392,16 +387,6 @@ object State {
               case (Some(pch1), Some(pch2)) => Some(mergeHeap(
                 pch1, conditions1,
                 pch2, conditions2
-              ))
-            }
-
-            val consumedHeapParts3 = (consumedHeapParts1, consumedHeapParts2) match {
-              case (None, None) => None
-              case (Some(chp1), None) => Some(conditionalizeHeap(chp1, conditions1))
-              case (None, Some(chp2)) => Some(conditionalizeHeap(chp2, conditions2))
-              case (Some(chp1), Some(chp2)) => Some(mergeHeap(
-                chp1, conditions1,
-                chp2, conditions2
               ))
             }
 
@@ -449,7 +434,6 @@ object State {
                              h = h3,
                              oldHeaps = oldHeaps3,
                              partiallyConsumedHeap = partiallyConsumedHeap3,
-                             consumedHeapParts = consumedHeapParts3,
                              loopHeapStack = loopHeapStack3,
                              smDomainNeeded = smDomainNeeded3,
                              invariantContexts = invariantContexts3,

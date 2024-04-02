@@ -200,10 +200,12 @@ object chunkSupporter extends ChunkSupportRules {
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
+    executionFlowController.tryOrFail2[Heap, Term](s, v)((s1, v1, QS) => {
       {
         if (s1.loopPhaseStack.nonEmpty && (s1.loopPhaseStack.head._1 == LoopPhases.Transferring || s1.loopPhaseStack.head._1 == LoopPhases.Assuming)) {
           assert(s1.moreCompleteExhale)
+          if (s1.quantifiedVariables.nonEmpty)
+            println("111")
 
           val identifier = resource match {
             case f: ast.Field => BasicChunkIdentifier(f.name)
@@ -217,22 +219,31 @@ object chunkSupporter extends ChunkSupportRules {
               PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm))
             })
           val havePerm = IsPositive(currentPermAmount)
-          brancher.branch(s1, havePerm, None, v1)((s2, v2) => {
-            moreCompleteExhaleSupporter.lookupComplete(s2, h, resource, args, ve, v2)((s3, tSnap, v3) =>
-              QS(s3, s3.h, tSnap, v3))
-          },
-            (s2, v2) => {
-              val perms = s2.loopReadVarStack.head._1 // FractionPermLiteral(Rational(1, 100))
+          joiner.join[(Heap, Term), (Heap, Term)](s1, v1, false)((s1p, v1p, QM) => {
+            brancher.branch(s1p, havePerm, None, v1p)((s2, v2) => {
+              moreCompleteExhaleSupporter.lookupComplete(s2, h, resource, args, ve, v2)((s3, tSnap, v3) =>
+                QM(s3, (s3.h, tSnap), v3))
+            },
+              (s2, v2) => {
+                val perms = s2.loopReadVarStack.head._1 // FractionPermLiteral(Rational(1, 100))
 
-              def fn(s: State, h: Heap, resource: ast.Resource, args: Seq[Term], ve: VerificationError, v: Verifier)(QP: (State, Term, Verifier) => VerificationResult): VerificationResult = {
-                moreCompleteExhaleSupporter.consumeComplete(s, h, resource, args, perms, ve, v)((s2, h2, hConsumed, snap2, v2) => {
-                  QP(s2, snap2.get, v2)
-                })
-              }
+                def fn(s: State, h: Heap, resource: ast.Resource, args: Seq[Term], ve: VerificationError, v: Verifier)(QP: (State, Term, Verifier) => VerificationResult): VerificationResult = {
+                  moreCompleteExhaleSupporter.consumeComplete(s, h, resource, args, perms, ve, v)((s2, h2, hConsumed, snap2, v2) => {
+                    QP(s2, snap2.get, v2)
+                  })
+                }
 
-              fn(s2, s2.h, resource, args, ve, v2)((s3, tSnap, v3) =>
-                QS(s3, s3.h, tSnap, v3))
-            })
+                fn(s2, s2.h, resource, args, ve, v2)((s3, tSnap, v3) =>
+                  QM(s3, (s3.h, tSnap), v3))
+              })
+          }) {
+            case Seq(e) => (e.s, e.data)
+            case Seq(e1, e2) =>
+              val mergedState = State.merge(e1.s, e1.pathConditions, e2.s, e2.pathConditions)
+              (mergedState, (mergedState.h, e1.data._2))
+          }((s7, hs7, v7) => {
+            QS(s7, hs7._1, hs7._2, v7)
+          })
         } else {
           if (s1.moreCompleteExhale) {
             moreCompleteExhaleSupporter.lookupComplete(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>

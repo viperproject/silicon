@@ -124,8 +124,7 @@ object evaluator extends EvaluationRules {
      * evaluation to perform involves consuming or producing permissions, e.g. because of
      * an unfolding expression, these should not be recorded.
      */
-    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
-                    reserveHeaps = Nil,
+    val s1 = s.copy(reserveHeaps = Nil,
                     exhaleExt = false)
 
     eval2(s1, e, pve, v)((s2, t, v1) => {
@@ -329,7 +328,7 @@ object evaluator extends EvaluationRules {
         val condExpRecord = new CondExpRecord(condExp, s, v.decider.pcs, "CondExp")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
+          joiner.join[Term, Term](s1, v1, false)((s2, v2, QB) =>
             brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(e0), v2)(
               (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e1, pve, v3)(QB),
               (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e2, pve, v3)(QB))
@@ -340,7 +339,7 @@ object evaluator extends EvaluationRules {
               case Seq(entry) => // One branch is dead
                 (entry.s, entry.data)
               case Seq(entry1, entry2) => // Both branches are alive
-                (entry1.s.merge(entry2.s), Ite(t0, entry1.data, entry2.data))
+                (State.merge(entry1.s, entry1.pathConditions, entry2.s, entry2.pathConditions), Ite(t0, entry1.data, entry2.data))
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, result)
@@ -1185,14 +1184,19 @@ object evaluator extends EvaluationRules {
                          (Q: (State, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    joiner.join[Term, Term](s, v)((s1, v1, QB) =>
+    joiner.join[Term, Term](s, v, false)((s1, v1, QB) =>
       brancher.branch(s1.copy(parallelizeBranches = false), tLhs, eLhs, v1, fromShortCircuitingAnd = fromShortCircuitingAnd)(
         (s2, v2) => eval(s2.copy(parallelizeBranches = s1.parallelizeBranches), eRhs, pve, v2)(QB),
         (s2, v2) => QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), True, v2))
     )(entries => {
-      assert(entries.length <= 2)
-      val s1 = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
       val t = Implies(tLhs, entries.headOption.map(_.data).getOrElse(True))
+      val s1 = entries match {
+        case Seq(e) => e.s
+        case Seq(e1, e2) => State.merge(e1.s, e1.pathConditions, e2.s, e2.pathConditions)
+      }
+      //assert(entries.length <= 2)
+      //val s1 = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
+
       (s1, t)
     })(Q)
   }
@@ -1726,14 +1730,14 @@ object evaluator extends EvaluationRules {
         case _ if exps.tail.isEmpty => Q(s1, t0, v1) // Done, if no expressions left (necessary)
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
-          joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
+          joiner.join[Term, Term](s1, v1, false)((s2, v2, QB) =>
             brancher.branch(s2.copy(parallelizeBranches = false), t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, fromShortCircuitingAnd = true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>
                 (ent.s, ent.data)
               case Seq(ent1, ent2) =>
-                (ent1.s.merge(ent2.s), constructor(Seq(ent1.data, ent2.data)))
+                (State.merge(ent1.s, ent1.pathConditions, ent2.s, ent2.pathConditions), constructor(Seq(ent1.data, ent2.data)))
               case entries =>
                 sys.error(s"Unexpected join data entries $entries")
             }(Q)

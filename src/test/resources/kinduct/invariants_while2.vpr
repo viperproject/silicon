@@ -1,0 +1,53 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method test00(x: Ref) returns (b: Bool)
+  requires acc(x.f)
+{
+  while (b)
+    invariant b ==> acc(x.f, 1/2)
+  {
+    b := !b
+  }
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test03(x: Ref) returns (b: Bool)
+  requires acc(x.f)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures  acc(x.f)
+{
+  while (b)
+    invariant b ==> acc(x.f, 1/2)
+  {
+    exhale acc(x.f, 1/2)
+    b := !b
+  }
+}
+
+method test01(x: Ref) returns (b: Bool)
+  requires acc(x.f, 1/2) && x.f > 0
+{
+  while (b)
+    invariant x.f > 0
+  {
+    inhale acc(x.f, 1/2)
+    b := !b
+  }
+}
+
+method test02(x: Ref) returns (b: Bool)
+  requires acc(x.f)
+{
+  x.f := 1
+
+  while (x.f > 0)
+    invariant true
+  {
+    b := !b
+  }
+}
