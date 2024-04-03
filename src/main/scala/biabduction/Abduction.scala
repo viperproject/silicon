@@ -246,12 +246,34 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
   }
 }
 
-// TODO Using ghostFreeWand is probably wrong in some (or all) cases. Need to be more careful here
 object AbductionApply extends AbductionRule[(MagicWandChunk, Exp)] {
+
   override protected def check(q: SiliconAbductionQuestion)(Q: Option[(MagicWandChunk, Exp)] => VerificationResult): VerificationResult = {
-    val trigger = q.s.h.values.collectFirst { case c: MagicWandChunk if q.goal.contains(c.id.ghostFreeWand.right) => (c, c.id.ghostFreeWand.right) }
-    Q(trigger)
+
+    q.goal match {
+      case Seq() => Q(None)
+      case g :: gs =>
+        val goalWand = MagicWand(TrueLit()(), g)()
+        val goalStructure = goalWand.structure(q.s.program)
+        // We drop the first element, because it is the true lit of the lhs
+        val subexps = goalWand.subexpressionsToEvaluate(q.s.program).tail
+        // If the args of the magic wand chunk match the evaluated subexpressions, then the right hand of the magic wand
+        // chunk is our goal, so the rule can be applieed
+        evals(q.s, subexps, _ => pve, q.v)((s1, args, v1) => {
+          val matchingWand = q.s.h.values.collectFirst {
+            case m: MagicWandChunk if m.id.ghostFreeWand.structure(q.s.program).right == goalStructure.right
+              && m.args.takeRight(args.length) == args => m }
+          matchingWand match {
+            case Some(m) => Q(Some(m, g))
+            case None => check(q.copy(goal = gs))(Q)
+          }
+        })
+    }
+    //val trigger2 = q.s.h.values.collectFirst { case c: MagicWandChunk if q.goal.contains(c.id.ghostFreeWand.right) => (c, c.id.ghostFreeWand.right) }
+    //Q(trigger2)
   }
+
+  // TODO ghostFreeWand is wrong here, we have to be careful to actually transform the lhs.
 
   override protected def apply(q: SiliconAbductionQuestion, inst: (MagicWandChunk, Exp))(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     inst match {
