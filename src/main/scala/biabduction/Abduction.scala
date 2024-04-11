@@ -246,9 +246,9 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
   }
 }
 
-object AbductionApply extends AbductionRule[(MagicWandChunk, Exp)] {
+object AbductionApply extends AbductionRule[MagicWand] {
 
-  override protected def check(q: SiliconAbductionQuestion)(Q: Option[(MagicWandChunk, Exp)] => VerificationResult): VerificationResult = {
+  override protected def check(q: SiliconAbductionQuestion)(Q: Option[MagicWand] => VerificationResult): VerificationResult = {
 
     q.goal match {
       case Seq() => Q(None)
@@ -260,27 +260,36 @@ object AbductionApply extends AbductionRule[(MagicWandChunk, Exp)] {
         // If the args of the magic wand chunk match the evaluated subexpressions, then the right hand of the magic wand
         // chunk is our goal, so the rule can be applieed
         evals(q.s, subexps, _ => pve, q.v)((s1, args, v1) => {
-          val matchingWand = q.s.h.values.collectFirst {
-            case m: MagicWandChunk if m.id.ghostFreeWand.structure(q.s.program).right == goalStructure.right
-              && m.args.takeRight(args.length) == args => m }
+          val matchingWand = q.s.h.values.collect {
+            case m: MagicWandChunk if m.id.ghostFreeWand.structure(q.s.program).right == goalStructure.right && m.args.takeRight(args.length) == args =>
+              // If we find a matching wand, we have to find an expression representing the left hand side of the wand
+              val lhsTerms = m.args.dropRight(args.length)
+              val varTransformer = VarTransformer(q.s, q.v, q.s.g.values.keys.toSeq, strict = false)
+              val lhsArgs = lhsTerms.map(t => varTransformer.transformTerm(t))
+              if (lhsArgs.contains(None)) {
+                None
+              } else {
+                val formalLhsArgs = m.id.ghostFreeWand.subexpressionsToEvaluate(q.s.program).dropRight(args.length)
+                val lhs = m.id.ghostFreeWand.left.transform {
+                  case n if formalLhsArgs.contains(n) => lhsArgs(formalLhsArgs.indexOf(n)).get // I am assuming that the subexpressions are unique, which should hold
+                }
+                Some(MagicWand(lhs, g)())
+              }
+          }.collectFirst { case c if c.isDefined => c.get }
           matchingWand match {
-            case Some(m) => Q(Some(m, g))
+            case Some(wand) => Q(Some(wand))
             case None => check(q.copy(goal = gs))(Q)
           }
         })
     }
-    //val trigger2 = q.s.h.values.collectFirst { case c: MagicWandChunk if q.goal.contains(c.id.ghostFreeWand.right) => (c, c.id.ghostFreeWand.right) }
-    //Q(trigger2)
   }
 
-  // TODO ghostFreeWand is wrong here, we have to be careful to actually transform the lhs.
-
-  override protected def apply(q: SiliconAbductionQuestion, inst: (MagicWandChunk, Exp))(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
+  override protected def apply(q: SiliconAbductionQuestion, inst: (MagicWand))(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     inst match {
-      case (wand, rhs) =>
-        val g1 = q.goal.filterNot(_ == rhs) :+ wand.id.ghostFreeWand.left
-        consumer.consume(q.s, wand.id.ghostFreeWand, pve, q.v)((s1, _, v1) => {
-          Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ Apply(wand.id.ghostFreeWand)()))
+      case wand =>
+        val g1 = q.goal.filterNot(_ == wand.right) :+ wand.left
+        consumer.consume(q.s, wand, pve, q.v)((s1, _, v1) => {
+          Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ Apply(wand)()))
         })
     }
   }

@@ -18,6 +18,9 @@ import viper.silver.verifier.{AbductionQuestionTransformer, Counterexample, Coun
 
 trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
+
+    // TODO nklose: to restart in the middle, we have to go to the call sites of this
+
     if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
     var aqTrafo: Option[AbductionQuestionTransformer] = None
@@ -70,6 +73,7 @@ trait SymbolicExecutionRules {
         })
     } else Seq()
 
+
     val abdGoal: Option[AccessPredicate] = ve.reason match {
       case reason: InsufficientPermission =>
         val acc = reason.offendingNode match {
@@ -84,6 +88,5 @@ trait SymbolicExecutionRules {
 
     res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionResult))
     Failure(res, v.reportFurtherErrors())
-
   }
 }

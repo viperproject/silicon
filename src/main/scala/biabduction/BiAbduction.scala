@@ -20,7 +20,7 @@ trait AbductionResult
 
 case class AbductionSuccess(s: State, v: Verifier, pre: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), posts: Seq[Exp] = Seq(), invs: Seq[Exp] = Seq()) extends AbductionResult {
   override def toString: String = {
-    "Abduced preconditions\n" + pre.map(_.toString()).mkString("\n") + "\nAbduced statements\n" + stmts.map(_.toString()).mkString("\n")
+    "Abduced preconditions\n" + pre.map(_.toString()).mkString("\n") + "\nAbduced statements\n" + stmts.reverse.map(_.toString()).mkString("\n")
   }
 }
 

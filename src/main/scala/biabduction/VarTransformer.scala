@@ -19,7 +19,7 @@ case class VarTransformer(s: State, v: Verifier, targets: Seq[AbstractLocalVar],
 
   // Ask the decider whether any of the terms are equal to a target.
   val aliases: Map[Term, AbstractLocalVar] = allTerms.map { t =>
-    t -> targetMap.collectFirst { case (t1, e) if v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
+    t -> targetMap.collectFirst { case (t1, e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
   }.collect { case (t2, Some(e)) => t2 -> e }.toMap
 
   // Field Chunks where the snap is equal to a known alias. This is only relevant for expression, not for chunks I think.

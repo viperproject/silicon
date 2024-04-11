@@ -715,7 +715,31 @@ object executor extends ExecutionRules {
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 
-    executed
+
+    // This triggers for errors which occur due to the postcondition (which is not executed)
+    executed match {
+      case Failure(pc: PostconditionViolated, _) => executed // Postconditions are handled later
+      case Failure(ve, _) =>
+        ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
+          case Some(as@AbductionSuccess(_, _, pre, stmts, _, _)) =>
+            // TODO nklose this also breaks if we allow re-assigning to input fields, we consume in the current state
+            // instead of the original state.
+            val line = stmt.pos match {
+              case sp: ast.SourcePosition => sp.start.line
+              case lc: ast.HasLineColumn => lc.line
+            }
+            println("Successful abduction at line " + line.toString + ":")
+            println(as.toString())
+            println("Continuing verification with abduction results added")
+            producer.produces(s, freshSnap, pre, ContractNotWellformed, v) { (s1, v1) =>
+              executor.execs(s1, stmts.reverse, v1) { (s2, v2) =>
+                exec(s2, stmt, v2)(Q)
+              }
+            }
+          case _ => executed
+        }
+      case _ => executed
+    }
   }
 
   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {

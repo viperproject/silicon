@@ -61,57 +61,53 @@ object LoopInvariantSolver {
             case _ => Q(AbductionFailure(s2, v2))
           }
 
-        // We successfully reached the end of the loop, so we can proceed
-        // Loop bodies are executed using branching with a meaningless else branch. This else branch returns Unreachable
-        // and the result we are actually interested in is in the previous field of this Unreachable.
-        // This is brittle and terrifying, a constant reminder of the horrors of the reality.
-        case Unreachable() =>
+        // A Non-FatalResult will be a chain of Successes and Unreachables. We assume that one of them is the one
+        // from reaching the end of the loop, and this one will contain an AbductionSuccess
+        case nonf: NonFatalResult =>
 
-          res.previous.head match {
-            case Success(Some(a: AbductionSuccess)) =>
+          val a = (nonf +: nonf.previous).collectFirst{ case Success(Some(abd: AbductionSuccess)) => abd}.get
 
-              // Values of the variables in terms of the beginning of the loop
-              val relValues = a.s.g.values.collect { case (v, t) => (v, relVarTrans.transformTerm(t)) }
-                .collect { case (v, e) if e.isDefined && e.get != v => (v, e.get) }
+          // Values of the variables in terms of the beginning of the loop
+          val relValues = a.s.g.values.collect { case (v, t) => (v, relVarTrans.transformTerm(t)) }
+            .collect { case (v, e) if e.isDefined && e.get != v => (v, e.get) }
 
-              // The absolute values at the end of the loop, by combining the values before the iteration with the absolute
-              // values from the last iteration
-              val newAbsValues: Map[AbstractLocalVar, Exp] = relValues.collect { case (v: AbstractLocalVar, e: Exp) => (v, e.transform {
-                case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
-              })
-              }.collect{ case (v, e) => (v, absVarTran.transformExp(e).get)}
+          // The absolute values at the end of the loop, by combining the values before the iteration with the absolute
+          // values from the last iteration
+          val newAbsValues: Map[AbstractLocalVar, Exp] = relValues.collect { case (v: AbstractLocalVar, e: Exp) => (v, e.transform {
+            case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
+          })
+          }.collect { case (v, e) => (v, absVarTran.transformExp(e).get) }
 
-              // Perform abstraction on the found state for that loop iteration
-              // TODO there is an assumption here that the re-assignment happens at the end of the loop
-              val newAbsState = q.newRelState.map(e => e.transform {
-                case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
-              }).map(absVarTran.transformExp(_).get)
+          // Perform abstraction on the found state for that loop iteration
+          // TODO there is an assumption here that the re-assignment happens at the end of the loop
+          val newAbsState = q.newRelState.map(e => e.transform {
+            case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
+          }).map(absVarTran.transformExp(_).get)
 
-              val newAbstraction = AbstractionApplier.apply(AbstractionQuestion(q.abstraction ++ newAbsState, s.program)).exps
+          val newAbstraction = AbstractionApplier.apply(AbstractionQuestion(q.abstraction ++ newAbsState, s.program)).exps
 
-              // The re-assignments of this iteration in terms of the absolute values
-              // This is a meaningful sentence that makes perfect sense.
-              val relAssigns: Map[Exp, Exp] = {
-                q.absValues.collect {
-                  case (v, e) if newAbsValues.contains(v) => (e, newAbsValues(v))
-                }
-              }
-              // The previous abstraction "pushed forward" by a loop iteration. If this is the same as the new abstraction, we are done.
-              val prevAbstTrans = q.abstraction.map(_.transform {
-                case exp: Exp if relAssigns.contains(exp) => relAssigns(exp)
-              })
-              if (newAbstraction.diff(prevAbstTrans).isEmpty) {
-                val newAbsSwapped = newAbsValues.map(_.swap)
-                val relAbstraction = newAbstraction.map(_.transform {
-                  case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
-                })
-                Q(AbductionSuccess(a.s, a.v, invs = relAbstraction.flatMap(getInvariant)))
-              } else {
-                // Else continue with next iteration, using the state from the end of the loop
-                solve(a.s, a.v, loopEdges, joinPoint, absVarTran, q.copy(abstraction = newAbstraction,
-                  absValues = newAbsValues,
-                  newRelState = Seq()))(Q)
-              }
+          // The re-assignments of this iteration in terms of the absolute values
+          // This is a meaningful sentence that makes perfect sense.
+          val relAssigns: Map[Exp, Exp] = {
+            q.absValues.collect {
+              case (v, e) if newAbsValues.contains(v) => (e, newAbsValues(v))
+            }
+          }
+          // The previous abstraction "pushed forward" by a loop iteration. If this is the same as the new abstraction, we are done.
+          val prevAbstTrans = q.abstraction.map(_.transform {
+            case exp: Exp if relAssigns.contains(exp) => relAssigns(exp)
+          })
+          if (newAbstraction.diff(prevAbstTrans).isEmpty) {
+            val newAbsSwapped = newAbsValues.map(_.swap)
+            val relAbstraction = newAbstraction.map(_.transform {
+              case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
+            })
+            Q(AbductionSuccess(a.s, a.v, invs = relAbstraction.flatMap(getInvariant)))
+          } else {
+            // Else continue with next iteration, using the state from the end of the loop
+            solve(a.s, a.v, loopEdges, joinPoint, absVarTran, q.copy(abstraction = newAbstraction,
+              absValues = newAbsValues,
+              newRelState = Seq()))(Q)
           }
       }
     }
