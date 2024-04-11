@@ -2295,48 +2295,51 @@ object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[T
 
 /* Magic wands */
 
-class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
-  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
-  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
+/**
+ * Represents a snapshot of a magic wand, which is a map from Snap to Snap.
+ *
+ * @param wandMap The map that represents the snapshot of the magic wand. It is a variable of sort Map(Snap, Snap).
+ */
+class MagicWandSnapshot(val wandMap: Term) extends SnapshotTerm with ConditionalFlyweight[Term, MagicWandSnapshot] {
+  utils.assertSort(wandMap, "wand map", sorts.Map(sorts.Snap, sorts.Snap))
 
-  override lazy val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
+  override lazy val toString = s"wandSnap(wandMap = $wandMap)"
 
-  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
-    assert(this.abstractLhs == other.abstractLhs)
-    val condition = And(branchConditions)
-    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
-      this.rhsSnapshot
-    else
-      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
-  }
+  override val equalityDefiningMembers: Term = wandMap
 }
 
 object MagicWandSnapshot  {
-  def apply(snapshot: Term): MagicWandSnapshot = {
-    assert(snapshot.sort == sorts.Snap)
-    snapshot match {
-      case snap: MagicWandSnapshot => snap
-      case _ =>
-        MagicWandSnapshot(First(snapshot), Second(snapshot))
-    }
-  }
-
-  // Since MagicWandSnapshot subclasses Combine, we apparently cannot inherit the normal subclass, so we
-  // have to copy paste the code here.
+  /**
+   * Since MagicWandSnapshot subclasses Combine, we cannot inherit the usual subclass
+   * [[viper.silicon.state.terms.GeneralCondFlyweightFactory]], so we have to copy&paste the code here.
+   */
   var pool = new TrieMap[(Term, Term), MagicWandSnapshot]()
 
-  def createIfNonExistent(args: (Term, Term)): MagicWandSnapshot = {
-    if (Verifier.config.useFlyweight) {
-      pool.getOrElseUpdate(args, actualCreate(args))
-    } else {
-      actualCreate(args)
+  /**
+   * Create a new MagicWandSnapshot instance.
+   *
+   * See helper method [[viper.silicon.rules.magicWandSupporter.createMagicWandSnapshot]]
+   * for more information on how to create a MagicWandSnapshot.
+   *
+   * @param snapshot A MagicWandSnapshot instance or a variable to a Map(Snap, Snap).
+   * @return The resulting MagicWandSnapshot instance.
+   */
+  def apply(snapshot: Term): MagicWandSnapshot = {
+    snapshot match {
+      case snap: MagicWandSnapshot => {
+        assert(snapshot.sort == sorts.Snap, s"Expected snapshot to be of sort Snap, but got ${snapshot.sort}")
+        snap
+      }
+      case wandMap: Var => {
+        utils.assertSort(wandMap, "wandMap", sorts.Map(sorts.Snap, sorts.Snap))
+        new MagicWandSnapshot(wandMap)
+      }
+      // TODO: Create a new MagicWandSnapshot instance from a pure Snapshot, i.e. when inhaling a magic wand.
+      //       This map should take First(snapshot) as key and merge them with Second(snapshot)
     }
   }
 
-  def actualCreate(tuple: (Term, Term)) = new MagicWandSnapshot(tuple._1, tuple._2)
-  def apply(fst: Term, snd: Term): MagicWandSnapshot = createIfNonExistent((fst, snd))
-
-  def unapply(mws: MagicWandSnapshot) = Some((mws.abstractLhs, mws.rhsSnapshot))
+  def unapply(wandSnapshot: MagicWandSnapshot): Option[Term] = Some(wandSnapshot.wandMap)
 }
 
 class MagicWandChunkTerm(val chunk: MagicWandChunk) extends Term with ConditionalFlyweight[MagicWandChunk, MagicWandChunkTerm] {

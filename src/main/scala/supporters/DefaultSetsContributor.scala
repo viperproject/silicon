@@ -12,6 +12,7 @@ import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, sorts}
 import viper.silicon.verifier.Verifier
+import viper.silicon.utils.ast.ViperEmbedding
 
 class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
@@ -65,6 +66,11 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
     setTypeInstances ++= program.groundTypeInstances.collect {
       case ast.MapType(keyType, valueType) => Set(ast.SetType(keyType), ast.SetType(valueType))
     }.flatten
+
+    // Packaging and applying magic wands depends on Sets of type [[viper.silicon.state.terms.sorts.Snap]]
+    if (program.existsDefined { case ast.MagicWand(_, _) => true }) {
+      setTypeInstances ++= InsertionOrderedSet(Set(ast.SetType(ViperEmbedding(sorts.Snap))))
+    }
 
     setTypeInstances
   }

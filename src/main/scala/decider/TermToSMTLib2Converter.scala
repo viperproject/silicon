@@ -261,15 +261,16 @@ class TermToSMTLib2Converter
 
     case Domain(id, fvf) => parens(text("$FVF.domain_") <> id <+> render(fvf))
 
-    case Lookup(field, fvf, at) => //fvf.sort match {
-//      case _: sorts.PartialFieldValueFunction =>
-        parens(text("$FVF.lookup_") <> field <+> render(fvf) <+> render(at))
-//      case _: sorts.TotalFieldValueFunction =>
-//        render(Apply(fvf, Seq(at)))
-//        parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
-//      case _ =>
-//        sys.error(s"Unexpected sort '${fvf.sort}' of field value function '$fvf' in lookup term '$term'")
-//    }
+    case Lookup(field, fvf, at) =>
+    // fvf.sort match {
+    //   case _: sorts.PartialFieldValueFunction =>
+      parens(text("$FVF.lookup_") <> field <+> render(fvf) <+> render(at))
+    //   case _: sorts.TotalFieldValueFunction =>
+    //     render(Apply(fvf, Seq(at)))
+    //     parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
+    //   case _ =>
+    //     sys.error(s"Unexpected sort '${fvf.sort}' of field value function '$fvf' in lookup term '$term'")
+    // }
 
     case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> (fvf.sort match {
       case sorts.FieldValueFunction(_, _) => render(Lookup(field, fvf, at)) <+> render(at)
@@ -312,6 +313,9 @@ class TermToSMTLib2Converter
     case Let(bindings, body) =>
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)
       parens(text("let") <+> parens(docBindings) <+> render(body))
+
+    case MagicWandSnapshot(wandMap) =>
+      render(wandMap)
 
     case _: MagicWandChunkTerm
        | _: Quantification =>

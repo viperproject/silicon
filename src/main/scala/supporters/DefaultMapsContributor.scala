@@ -8,8 +8,10 @@ package viper.silicon.supporters
 
 import scala.reflect.{ClassTag, classTag}
 import viper.silicon.Config
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, Term, sorts}
+import viper.silicon.utils.ast.ViperEmbedding
 
 class DefaultMapsContributor(val domainTranslator: DomainsTranslator[Term], config: Config) extends BuiltinDomainsContributor {
 
@@ -26,5 +28,16 @@ class DefaultMapsContributor(val domainTranslator: DomainsTranslator[Term], conf
   override def targetSortFactory(argumentSorts: Iterable[Sort]): Sort = {
     assert(argumentSorts.size == 2)
     sorts.Map(argumentSorts.head, argumentSorts.tail.head)
+  }
+
+  override def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[BuiltinDomainType] = {
+    var setTypeInstances = super.computeGroundTypeInstances(program)
+
+    // Packaging and applying magic wands depends on Maps of type [[viper.silicon.state.terms.sorts.Snap]]
+    if (program.existsDefined { case ast.MagicWand(_, _) => true }) {
+      setTypeInstances ++= InsertionOrderedSet(Set(ast.MapType(ViperEmbedding(sorts.Snap), ViperEmbedding(sorts.Snap))))
+    }
+
+    setTypeInstances
   }
 }
