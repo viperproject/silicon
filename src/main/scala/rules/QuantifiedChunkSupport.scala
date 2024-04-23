@@ -271,9 +271,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val qvarsToInversesOfCodomain = inverseFunctions.qvarsToInversesOf(codomainQVars)
 
+    val receiverMatches =
+      And(
+        codomainQVars
+          .zip(arguments)
+          .map { case (x, a) => x === a }).replace(qvarsToInversesOfCodomain)
+
     val conditionalizedPermissions =
       Ite(
-        And(And(imagesOfCodomain), condition.replace(qvarsToInversesOfCodomain)),
+        And(And(imagesOfCodomain), receiverMatches, condition.replace(qvarsToInversesOfCodomain)),
         permissions.replace(qvarsToInversesOfCodomain),
         NoPerm)
 
