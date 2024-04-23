@@ -1167,7 +1167,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   case Complete() => rPerm
                   case Incomplete(remaining) => PermMinus(rPerm, remaining)
                 }
-                val (consumedChunk, _) = quantifiedChunkSupporter.createQuantifiedChunk(
+                val (consumedChunk, inverseFunctions) = quantifiedChunkSupporter.createQuantifiedChunk(
                   qvars,
                   condOfInvOfLoc,
                   resource,
@@ -1181,6 +1181,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   v2,
                   s.program
                 )
+                v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program))
+                v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses)
                 val h2 = Heap(remainingChunks ++ otherChunks)
                 val s4 = s3.copy(smCache = smCache2,
                                  constrainableARPs = s.constrainableARPs)
@@ -1390,7 +1392,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       // converting to a Z3 term.
       // During function verification, we should not define macros, since they could contain resullt, which is not
       // defined elsewhere.
-      val declareMacro = s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
+      val declareMacro = false && s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
 
       val permsProvided = ch.perm
       val permsTaken = if (declareMacro) {
