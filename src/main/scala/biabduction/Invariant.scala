@@ -23,7 +23,8 @@ case class InvariantAbductionQuestion(abstraction: Seq[Exp], absValues: Map[Abst
 object LoopInvariantSolver {
 
   private val pve: PartialVerificationError = Internal()
-  private def pveLam(a: Exp) = pve
+
+  private def pveLam(exp: Exp) = pve
 
   private def getInvariant(e: Exp): Seq[Exp] = {
     e match {
@@ -32,13 +33,13 @@ object LoopInvariantSolver {
     }
   }
 
-  def solve(s: State,
-            v: Verifier,
-            loopEdges: Seq[Edge[Stmt, Exp]],
-            joinPoint: Option[SilverBlock],
-            absVarTran: VarTransformer,
-            q: InvariantAbductionQuestion = InvariantAbductionQuestion(Seq(), Map(), Seq()))
-           (Q: AbductionResult => VerificationResult): VerificationResult = {
+  def solveLoopInvariants(s: State,
+                          v: Verifier,
+                          loopEdges: Seq[Edge[Stmt, Exp]],
+                          joinPoint: Option[SilverBlock],
+                          absVarTran: VarTransformer,
+                          q: InvariantAbductionQuestion = InvariantAbductionQuestion(Seq(), Map(), Seq()))
+                         (Q: BiAbductionResult => VerificationResult): VerificationResult = {
 
     // Assumme that we have the things in nextState
     producer.produces(s, freshSnap, q.newRelState, pveLam, v) { (s2, v2) =>
@@ -48,27 +49,36 @@ object LoopInvariantSolver {
 
       // Run the loop
       // This continuation should never be called, we are only following the inner loop edges, which either
-      // fails, or returns a Success with the found postconditions. So the match below should always succeed.
+      // fails, or returns a Success with the found postconditions. So the match (and the collectFirst) below should always succeed.
       val res = executor.follows(s2, loopEdges, pveLam, v2, joinPoint)((_, _) => Success())
 
       res match {
         // If we find a new precondition, add it to next state and restart
         case Failure(res, _) =>
           res.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-            case Some(a: AbductionSuccess) =>
-              val newState = q.newRelState ++ a.pre
-              solve(s, v, loopEdges, joinPoint, absVarTran, q.copy(newRelState = newState))(Q)
-            case _ => Q(AbductionFailure(s2, v2))
+            // Success should never occur here, they should be wrapped into a Success in the Executor
+            case None | Some(_: BiAbductionFailure) => Q(BiAbductionFailure(s2, v2))
+
+            //case Some(a: AbductionSuccess) =>
+            //  val newState = q.newRelState ++ a.pre
+            //  solve(s, v, loopEdges, joinPoint, absVarTran, q.copy(newRelState = newState))(Q)
           }
 
-        // A Non-FatalResult will be a chain of Successes and Unreachables. We assume that one of them is the one
-        // from reaching the end of the loop, and this one will contain an AbductionSuccess
+        // A NonFatalResult will be a chain of Successes and Unreachables. Each Success can contain an AbductionSucess
+        // There should exactly one FramingSuccess in the chain
         case nonf: NonFatalResult =>
 
-          val a = (nonf +: nonf.previous).collectFirst{ case Success(Some(abd: AbductionSuccess)) => abd}.get
+          val abdReses = (nonf +: nonf.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
+          val newState = q.newRelState ++ abdReses.flatMap(_.pre)
+
+          // The framing result contains the state at the end of the loop
+          // TODO we should also track the framed stuff to generate invariants for loops with changing heaps
+          val framingRes = (nonf +: nonf.previous).collect { case Success(Some(framing: FramingSuccess)) => framing } match {
+            case Seq(res) => res
+          }
 
           // Values of the variables in terms of the beginning of the loop
-          val relValues = a.s.g.values.collect { case (v, t) => (v, relVarTrans.transformTerm(t)) }
+          val relValues = framingRes.s.g.values.collect { case (v, t) => (v, relVarTrans.transformTerm(t)) }
             .collect { case (v, e) if e.isDefined && e.get != v => (v, e.get) }
 
           // The absolute values at the end of the loop, by combining the values before the iteration with the absolute
@@ -80,7 +90,7 @@ object LoopInvariantSolver {
 
           // Perform abstraction on the found state for that loop iteration
           // TODO there is an assumption here that the re-assignment happens at the end of the loop
-          val newAbsState = q.newRelState.map(e => e.transform {
+          val newAbsState = newState.map(e => e.transform {
             case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
           }).map(absVarTran.transformExp(_).get)
 
@@ -102,10 +112,10 @@ object LoopInvariantSolver {
             val relAbstraction = newAbstraction.map(_.transform {
               case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
             })
-            Q(AbductionSuccess(a.s, a.v, invs = relAbstraction.flatMap(getInvariant)))
+            Q(LoopInvariantSuccess(framingRes.s, framingRes.v, invs = relAbstraction.flatMap(getInvariant)))
           } else {
             // Else continue with next iteration, using the state from the end of the loop
-            solve(a.s, a.v, loopEdges, joinPoint, absVarTran, q.copy(abstraction = newAbstraction,
+            solveLoopInvariants(framingRes.s, framingRes.v, loopEdges, joinPoint, absVarTran, q.copy(abstraction = newAbstraction,
               absValues = newAbsValues,
               newRelState = Seq()))(Q)
           }
@@ -113,8 +123,3 @@ object LoopInvariantSolver {
     }
   }
 }
-
-
-// TODO stop ignoring this case
-// We reached the end of the loop and found posts that we want to add to the invariant
-//case Success(Some(AbductionSuccess(post :: ps, _))) => ???

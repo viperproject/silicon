@@ -19,6 +19,8 @@ object AbductionApplier extends RuleApplier[SiliconAbductionQuestion] {
     AbductionListFold, AbductionListUnfold, AbductionApply, AbductionPackage, AbductionMissing)
 }
 
+// TODO nklose: cant we just join the check and apply and return either None or Some(AbductionQuestion)?
+
 case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
                                     lostAccesses: Map[Exp, Term] = Map(), foundPrecons: Seq[Exp] = Seq(),
                                     foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
@@ -302,15 +304,27 @@ object AbductionPackage extends AbductionRule[MagicWand] {
   }
 
   override protected def apply(q: SiliconAbductionQuestion, inst: MagicWand)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    val g1 = q.goal.filterNot(_ == inst) :+ inst.right
+
 
     // We find the proof script later on, so we leave it empty here
     // TODO we have to separate proof script statements from normal statements
     // Can we solve a separate abduction question with only the rhs in the goal but the otherwise the same state?
-    val stmts = q.foundStmts :+ Package(inst, Seqn(Seq(), Seq())())()
+
 
     producer.produce(q.s, freshSnap, inst.left, pve, q.v)((s1, v1) => {
-      Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = stmts))
+
+      val packQ = q.copy(s = s1, v = v1, goal = Seq(inst.right))
+      val packRes = AbductionApplier.apply(packQ)
+
+      // TODO nklose we should instead not trigger
+      if(packRes.goal.nonEmpty){
+        throw new Exception("Could not find proof script for package")
+      }
+
+      val g1 = q.goal.filterNot(_ == inst)
+      val stmts = q.foundStmts :+ Package(inst, Seqn(packRes.foundStmts.reverse, Seq())())()
+      val pres = q.foundPrecons ++ packRes.foundPrecons
+      Q(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts))
     })
   }
 }

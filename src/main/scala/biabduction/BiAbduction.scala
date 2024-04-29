@@ -5,6 +5,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.Term
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.{AbductionQuestionTransformer, DummyReason, PartialVerificationError, VerificationError}
@@ -16,23 +17,39 @@ import viper.silver.verifier.{AbductionQuestionTransformer, DummyReason, Partial
 // - produce the precondition, execute the statements, and continue execution
 // - At the end, do abstraction on all the found preconditions. Find the necessary statements for the abstractions
 
-trait AbductionResult
+trait BiAbductionResult {
+  def s: State
 
-case class AbductionSuccess(s: State, v: Verifier, pre: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), posts: Seq[Exp] = Seq(), invs: Seq[Exp] = Seq()) extends AbductionResult {
+  def v: Verifier
+}
+
+trait BiAbductionSuccess extends BiAbductionResult
+
+case class AbductionSuccess(s: State, v: Verifier, pre: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), loc: Position) extends BiAbductionSuccess {
   override def toString: String = {
-    "Abduced preconditions\n" + pre.map(_.toString()).mkString("\n") + "\nAbduced statements\n" + stmts.reverse.map(_.toString()).mkString("\n")
+
+    val line = loc match {
+      case sp: ast.SourcePosition => sp.start.line
+      case lc: ast.HasLineColumn => lc.line
+    }
+    "Successful abduction at line " + line.toString + ":\n" + "Abduced preconditions\n" + pre.map(_.toString()).mkString("\n") + "\nAbduced statements\n" + stmts.reverse.map(_.toString()).mkString("\n")
   }
 }
 
-case class AbductionFailure(s: State, v: Verifier) extends AbductionResult {
-  override def toString: String = "Abduction failed"
+case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq()) extends BiAbductionSuccess {
+  override def toString: String = "Successful loop invariant abduction"
+}
 
+case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp]) extends BiAbductionSuccess
+
+case class BiAbductionFailure(s: State, v: Verifier) extends BiAbductionResult {
+  override def toString: String = "Abduction failed"
 }
 
 
 object BiAbductionSolver {
 
-  def solve(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer]): AbductionResult = {
+  def solveAbduction(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer], loc: Position): BiAbductionResult = {
 
     val qPre = SiliconAbductionQuestion(s, v, goal)
 
@@ -70,14 +87,14 @@ object BiAbductionSolver {
           case _ => Implies(BigAnd(bcs), e)()
         }
       }
-      AbductionSuccess(q1.s, q1.v, presTransformed, q1.foundStmts)
+      AbductionSuccess(q1.s, q1.v, presTransformed, q1.foundStmts, loc = loc)
 
     } else {
-      AbductionFailure(q1.s, q1.v)
+      BiAbductionFailure(q1.s, q1.v)
     }
   }
 
-  def generatePostconditions(s: State, v: Verifier): AbductionSuccess = {
+  def solveFraming(s: State, v: Verifier): FramingSuccess = {
 
     val formals = s.currentMember match {
       case Some(m: Method) => m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
@@ -87,7 +104,7 @@ object BiAbductionSolver {
     val res = s.h.values.collect { case c: BasicChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
 
     val absRes = AbstractionApplier.apply(AbstractionQuestion(res, s.program)).exps
-    AbductionSuccess(s, v, posts = absRes)
+    FramingSuccess(s, v, posts = absRes)
     //"Abduced postconditions\n" + absRes.map(_.toString()).mkString("\n")
   }
 }

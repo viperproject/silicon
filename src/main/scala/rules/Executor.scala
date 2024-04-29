@@ -295,18 +295,22 @@ object executor extends ExecutionRules {
                             case Success(_) =>
 
                               // Try to find invariants
-                              LoopInvariantSolver.solve(s4, v3, otherEdges, joinPoint, VarTransformer(s, v, nwvs, strict = false)) {
-                                case AbductionFailure(_, _) =>
+                              LoopInvariantSolver.solveLoopInvariants(s4, v3, otherEdges, joinPoint, VarTransformer(s, v, nwvs, strict = false)) {
+                                case BiAbductionFailure(_, _) =>
                                   println("Failed to find loop invariants")
-                                  Success()
-                                case AbductionSuccess(_, _, _, _, _, invs) =>
-                                  println("Found loop invariants:")
-                                  invs.foreach(inv => println(inv.toString()))
-                                  Success()
+                                  follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)
+                                case suc@LoopInvariantSuccess(_, _, invs, stmts) =>
+                                  (invs, stmts) match {
+                                    case (Seq(), Seq()) =>
+                                      println("No new loop invariants necessary")
+                                      follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)
+                                    case _ =>
+                                      println("Found loop invariants:")
+                                      invs.foreach(inv => println(inv.toString()))
+                                      // TODO nklose We have to actually add the invariants and stmts before following
+                                      follows(s4, sortedEdges, WhileFailed, v3, joinPoint)((s5, v5) => Q(s5, v5) && Success(Some(suc)))
+                                  }
                               }
-
-                              // Continue verification normally
-                              follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)
                           }
                         })
                       }
@@ -323,7 +327,8 @@ object executor extends ExecutionRules {
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((s1, _, v1) => {
               // TODO nklose we may want to limit what kind of posts we can generate here
-              val posts = BiAbductionSolver.generatePostconditions(s1, v1)
+              // TODO loc is very questionable here
+              val posts = BiAbductionSolver.solveFraming(s1, v1)
               Success(Some(posts))
             })
         }
@@ -716,24 +721,21 @@ object executor extends ExecutionRules {
     }
 
 
-    // This triggers for errors which occur due to the postcondition (which is not executed)
     executed match {
-      case Failure(pc: PostconditionViolated, _) => executed // Postconditions are handled later
+      case Failure(pc: PostconditionViolated, _) => executed // Postconditions are handled later, we do not want to restart for them
       case Failure(ve, _) =>
         ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-          case Some(as@AbductionSuccess(_, _, pre, stmts, _, _)) =>
+          case Some(as@AbductionSuccess(_, _, pre, stmts, _)) =>
             // TODO nklose this also breaks if we allow re-assigning to input fields, we consume in the current state
             // instead of the original state.
-            val line = stmt.pos match {
-              case sp: ast.SourcePosition => sp.start.line
-              case lc: ast.HasLineColumn => lc.line
-            }
-            println("Successful abduction at line " + line.toString + ":")
             println(as.toString())
             println("Continuing verification with abduction results added")
             producer.produces(s, freshSnap, pre, ContractNotWellformed, v) { (s1, v1) =>
               executor.execs(s1, stmts.reverse, v1) { (s2, v2) =>
-                exec(s2, stmt, v2)(Q)
+                exec(s2, stmt, v2)((s3, v3) => Q(s3, v3) match {
+                  case f: Failure => f
+                  case s: NonFatalResult => s && Success(Some(as))
+                })
               }
             }
           case _ => executed

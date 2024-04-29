@@ -118,32 +118,25 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               executionFlowController.locally(s2a, v2)((s3, v3) => {
                 exec(s3, body, v3) { (s4, v4) =>
                   consumes(s4, posts, postViolated, v4)((s5, _, v5) => {
-                    val newPosts = BiAbductionSolver.generatePostconditions(s5, v5)
+                    val newPosts = BiAbductionSolver.solveFraming(s5, v5)
                     println("New postconditions for method " + method.name + ":\n" + newPosts.posts.map(_.toString()).mkString("\n"))
-                    Success()
+                    Success(Some(newPosts))
                   })}})})})})
 
       val abdResult = result match {
         case f: Failure =>
           f.message.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-            case Some(as@AbductionSuccess(s, v, pre, stmts, posts, invs)) =>
+            case Some(as: AbductionSuccess) =>
               println("Successful abduction to fulfil postcondition:")
               println(as.toString())
-              Success() // This is little scary, just returning a success here claiming that we can fulfill the postcondition
+              Success(Some(as)) // This is little scary, just returning a success here claiming that we can fulfill the postcondition
             case _ => result
           }
         case _ => result
       }
 
-
       v.decider.resetProverOptions()
-
       symbExLog.closeMemberScope()
-
-      // TODO nklose: we should be able to restart here if we want to restart at a high level. It would be better to
-      // go at a lower lever though (or both? We probably have to something here as this is where we check posts,
-      // but we want something lower for loops and for performance)
-
       Seq(abdResult)
     }
 

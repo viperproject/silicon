@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.{AbductionResult, BiAbductionSolver, SiliconAbductionQuestion}
+import viper.silicon.biabduction.{BiAbductionResult, BiAbductionSolver, SiliconAbductionQuestion}
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
@@ -84,7 +84,7 @@ trait SymbolicExecutionRules {
       case reason: MagicWandChunkNotFound => Some(reason.offendingNode)
       case _ => None
     }
-    val abductionResult = abdGoal.map{acc => BiAbductionSolver.solve(s, v, Seq(acc), aqTrafo)}
+    val abductionResult = abdGoal.map{acc => BiAbductionSolver.solve(s, v, Seq(acc), aqTrafo, ve.pos)}
 
     res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionResult))
     Failure(res, v.reportFurtherErrors())
