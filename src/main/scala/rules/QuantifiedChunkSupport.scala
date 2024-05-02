@@ -902,7 +902,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val interpreter = new QuantifiedPropertyInterpreter
             resourceDescription.instanceProperties.foreach (property => {
               v.decider.prover.comment(property.description)
-              v.decider.assume(interpreter.buildPathConditionForChunk(
+              val pcsForChunk = interpreter.buildPathConditionForChunk(
                 chunk = ch,
                 property = property,
                 qvars = effectiveTriggersQVars,
@@ -910,11 +910,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 perms = gain,
                 condition = tCond,
                 triggers = effectiveTriggers,
-                qidPrefix = qid)
+                qidPrefix = qid
               )
+              v.decider.assume(pcsForChunk)
             })
-
-            val h1 = s.h + ch
+            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, Heap(Seq(ch)), v)
 
             val resourceIdentifier = resource match {
               case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
@@ -946,7 +946,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             }
             val s1 =
               s.copy(h = h1,
-                     functionRecorder = s.functionRecorder.recordFieldInv(inv),
+                     functionRecorder = fr1.recordFieldInv(inv),
                      conservedPcs = conservedPcs,
                      smCache = smCache1)
             Q(s1, v)
@@ -975,7 +975,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, resource, tArgs, tPerm, sm, s.program)
-    val h1 = s.h + ch
+    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, Heap(Seq(ch)), v)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
@@ -1002,7 +1002,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val s1 = s.copy(h = h1,
                     conservedPcs = conservedPcs,
-                    functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2),
+                    functionRecorder = fr1.recordFvfAndDomain(smDef2),
                     smCache = smCache1)
     Q(s1, v)
   }
@@ -1428,8 +1428,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
 
           if (!chunkDepleted) {
-            remainingChunks =
-              remainingChunks :+ ithChunk.withPerm(PermMinus(ithChunk.perm, ithPTaken))
+            val unusedCheck = Forall(codomainQVars, ithPTaken === NoPerm, Nil)
+            val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout())
+            if (chunkUnused) {
+              remainingChunks = remainingChunks :+ ithChunk
+            } else {
+              remainingChunks =
+                remainingChunks :+ ithChunk.withPerm(PermMinus(ithChunk.perm, ithPTaken))
+            }
           }
         }
 
