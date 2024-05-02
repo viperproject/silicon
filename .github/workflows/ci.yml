@@ -11,6 +11,11 @@ on: [push, pull_request, workflow_dispatch]
 env:
   RELEASE_DIR: tmp_release
 
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
 jobs:
   test-and-assemble:
     runs-on: ubuntu-latest
@@ -24,7 +29,7 @@ jobs:
 
       # Checkout Silicon (note: all checkouts delete the contents of their working directory)
       - name: Checkout Silicon
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -45,7 +50,7 @@ jobs:
         # Cache path is relative to the directory in which sbt is invoked
         run: echo "SBT_OPTS=-Dsbt.global.base=sbt-cache/.sbtboot -Dsbt.boot.directory=sbt-cache/.boot -Dsbt.ivy.home=sbt-cache/.ivy" >> $GITHUB_ENV
       - name: Cache sbt
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             sbt-cache/.sbtboot
@@ -68,7 +73,7 @@ jobs:
           cp target/scala-2.13/silicon.jar .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: test-and-assemble
           path: |
@@ -76,6 +81,26 @@ jobs:
             buildinfo.log
           retention-days: 14
           if-no-files-found: error
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: test reports
+          path: |
+            target/test-reports/*.xml
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Test Report
+        uses: phoenix-actions/test-reporting@v8
+        if: ${{ !cancelled() }}
+        with:
+          name: "Silicon Test Report"
+          path: "target/test-reports/*.xml"
+          reporter: java-junit
+          list-suites: failed
+          list-tests: failed
 
   release-snapshot:
     needs: test-and-assemble
@@ -85,12 +110,12 @@ jobs:
     steps:
       # Checkout Silicon (deletes content of working directory)
       - name: Checkout Silicon
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
       - name: Download artifacts from job test-and-assemble
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: test-and-assemble
 
