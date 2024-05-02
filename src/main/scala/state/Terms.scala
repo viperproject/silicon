@@ -321,39 +321,39 @@ sealed trait Term extends Node {
 
   lazy val subterms: Seq[Term] = state.utils.subterms(this)
 
-  /** @see [[ast.utility.Visitor.visit()]] */
+  /** @see [[ast.utility.Visitor.visit]] */
   def visit(f: PartialFunction[Term, Any]): Unit =
     ast.utility.Visitor.visit(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.visitOpt()]] */
+  /** @see [[ast.utility.Visitor.visitOpt]] */
   def visitOpt(f: Term => Boolean): Unit =
     ast.utility.Visitor.visitOpt(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.reduceTree()]] */
+  /** @see [[ast.utility.Visitor.reduceTree]] */
   def reduceTree[R](f: (Term, Seq[R]) => R): R =
     ast.utility.Visitor.reduceTree(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.existsDefined()]] */
+  /** @see [[ast.utility.Visitor.existsDefined]] */
   def existsDefined(f: PartialFunction[Term, Any]): Boolean =
     ast.utility.Visitor.existsDefined(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.hasSubnode()]] */
+  /** @see [[ast.utility.Visitor.hasSubnode]] */
   def hasSubterm(subterm: Term): Boolean =
     ast.utility.Visitor.hasSubnode(this, subterm, state.utils.subterms)
 
-  /** @see [[ast.utility.Visitor.deepCollect()]] */
+  /** @see [[ast.utility.Visitor.deepCollect]] */
   def deepCollect[R](f: PartialFunction[Term, R]) : Seq[R] =
     ast.utility.Visitor.deepCollect(Seq(this), state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.shallowCollect()]] */
+  /** @see [[ast.utility.Visitor.shallowCollect]] */
   def shallowCollect[R](f: PartialFunction[Term, R]): Seq[R] =
     ast.utility.Visitor.shallowCollect(Seq(this), state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.find()]] */
+  /** @see [[ast.utility.Visitor.find]] */
   def find[R](f: PartialFunction[Term, R]): Option[R] =
     ast.utility.Visitor.find(this, state.utils.subterms)(f)
 
-  /** @see [[state.utils.transform()]] */
+  /** @see [[state.utils.transform]] */
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
                (recursive: Term => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[Term, Term] = PartialFunction.empty)
@@ -2470,7 +2470,7 @@ object PsfTop extends (String => Identifier) {
  */
 
 /* Note: Sort wrappers should probably not be used as (outermost) triggers
- * because they are optimised away if wrappee `t` already has sort `to`.
+ * because they are optimised away if wrapped `t` already has sort `to`.
  */
 class SortWrapper(val t: Term, val to: Sort)
     extends Term

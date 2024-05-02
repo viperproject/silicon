@@ -94,7 +94,7 @@ package object utils {
 
   }
 
-  /** @see [[viper.silver.ast.utility.Transformer.simplify()]] */
+  /** @see [[viper.silver.ast.utility.Simplifier.simplify]] */
   def transform[T <: Term](term: T,
                            pre: PartialFunction[Term, Term] = PartialFunction.empty)
                           (recursive: Term => Boolean = !pre.isDefinedAt(_),
