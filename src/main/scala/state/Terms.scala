@@ -2298,48 +2298,54 @@ object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[T
 /**
  * Represents a snapshot of a magic wand, which is a map from Snap to Snap.
  *
+ * @param abstractLhs The term that represent the snapshot of the consumed left-hand side of the magic wand.
+ *                    It is used as a bound variable in a forall quantifier.
+ * @param rhsSnapshot The term that integrates the left-hand side in the snapshot that is produced after applying the magic wand.
  * @param wandMap The map that represents the snapshot of the magic wand. It is a variable of sort Map(Snap, Snap).
+ *                In the symbolic execution this represents a function that when we apply a magic wand
+ *                it consumes the left-hand side and uses the resulting snapshot to look up which right-hand side should be produced.
  */
-class MagicWandSnapshot(val wandMap: Term) extends SnapshotTerm with ConditionalFlyweight[Term, MagicWandSnapshot] {
+class MagicWandSnapshot(val abstractLhs: Var, val rhsSnapshot: Term, val wandMap: Term) extends Term with ConditionalFlyweight[Term, MagicWandSnapshot] {
+  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
+  utils.assertSort(rhsSnapshot, "rhs snapshot", sorts.Snap)
   utils.assertSort(wandMap, "wand map", sorts.Map(sorts.Snap, sorts.Snap))
+
+  override val sort: Sort = sorts.Map(sorts.Snap, sorts.Snap)
 
   override lazy val toString = s"wandSnap(wandMap = $wandMap)"
 
   override val equalityDefiningMembers: Term = wandMap
+
+  /**
+   * Creates a term that can be used to define a `wandMap`.
+   *
+   * @return Expression which says that the map applied to an arbitrary lhs equals to the snapshot of the rhs.
+   */
+  def definition: Term = Forall(
+    abstractLhs,
+    MapLookup(wandMap, abstractLhs) === rhsSnapshot,
+    Trigger(MapLookup(wandMap, abstractLhs))
+  )
+
+  /**
+   * Apply the given snapshot of the left-hand side to the magic wand map to get the snapshot of the right-hand side
+   * which includes the values of the left-hand side.
+   *
+   * @param snapLhs The snapshot of the left-hand side that should be applied to the magic wand map.
+   * @return The snapshot of the right-hand side that preserves the values of the left-hand side.
+   */
+  def applyToWandMap(snapLhs: Term): Term = MapLookup(wandMap, snapLhs)
 }
 
 object MagicWandSnapshot  {
   /**
-   * Since MagicWandSnapshot subclasses Combine, we cannot inherit the usual subclass
-   * [[viper.silicon.state.terms.GeneralCondFlyweightFactory]], so we have to copy&paste the code here.
-   */
-  var pool = new TrieMap[(Term, Term), MagicWandSnapshot]()
-
-  /**
-   * Create a new MagicWandSnapshot instance.
+   * Create a new instance of `MagicWandSnapshot`.
    *
-   * See helper method [[viper.silicon.rules.magicWandSupporter.createMagicWandSnapshot]]
-   * for more information on how to create a MagicWandSnapshot.
-   *
-   * @param snapshot A MagicWandSnapshot instance or a variable to a Map(Snap, Snap).
-   * @return The resulting MagicWandSnapshot instance.
+   * @see [[viper.silicon.state.terms.MagicWandSnapshot]]
    */
-  def apply(snapshot: Term): MagicWandSnapshot = {
-    snapshot match {
-      case snap: MagicWandSnapshot => {
-        assert(snapshot.sort == sorts.Snap, s"Expected snapshot to be of sort Snap, but got ${snapshot.sort}")
-        snap
-      }
-      case wandMap: Var => {
-        utils.assertSort(wandMap, "wandMap", sorts.Map(sorts.Snap, sorts.Snap))
-        new MagicWandSnapshot(wandMap)
-      }
-      // TODO: Create a new MagicWandSnapshot instance from a pure Snapshot, i.e. when inhaling a magic wand.
-      //       This map should take First(snapshot) as key and merge them with Second(snapshot)
-    }
-  }
+  def apply(abstractLhs: Var, rhsSnapshot: Term, wandMap: Term): MagicWandSnapshot = new MagicWandSnapshot(abstractLhs, rhsSnapshot, wandMap)
 
-  def unapply(wandSnapshot: MagicWandSnapshot): Option[Term] = Some(wandSnapshot.wandMap)
+  def unapply(snap: MagicWandSnapshot): Option[(Var, Term, Term)] = Some(snap.abstractLhs, snap.rhsSnapshot, snap.wandMap)
 }
 
 class MagicWandChunkTerm(val chunk: MagicWandChunk) extends Term with ConditionalFlyweight[MagicWandChunk, MagicWandChunkTerm] {

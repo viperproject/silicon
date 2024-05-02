@@ -196,7 +196,7 @@ package object utils {
       case MapUpdate(t0, t1, t2) => MapUpdate(go(t0), go(t1), go(t2))
       case MapDomain(t) => MapDomain(go(t))
       case MapRange(t) => MapRange(go(t))
-      case MagicWandSnapshot(t) => MagicWandSnapshot(go(t))
+      case MagicWandSnapshot(t0, t1, t2) => MagicWandSnapshot(go(t0), go(t1), go(t2))
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))
       case Second(t) => Second(go(t))
