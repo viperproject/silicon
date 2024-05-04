@@ -271,15 +271,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val qvarsToInversesOfCodomain = inverseFunctions.qvarsToInversesOf(codomainQVars)
 
-    val receiverMatches =
-      And(
-        codomainQVars
-          .zip(arguments)
-          .map { case (x, a) => x === a }).replace(qvarsToInversesOfCodomain)
-
     val conditionalizedPermissions =
       Ite(
-        And(And(imagesOfCodomain), receiverMatches, condition.replace(qvarsToInversesOfCodomain)),
+        And(And(imagesOfCodomain), condition.replace(qvarsToInversesOfCodomain)),
         permissions.replace(qvarsToInversesOfCodomain),
         NoPerm)
 
@@ -1666,19 +1660,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       inversesOfFcts(idx) = inv(invertibles)
       inversesOfCodomains(idx) = inv(codomainQVars)
 
-      if (true) {
-        // Types known to be infinite, thus there is no need to constrain the domain using image functions.
-        val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
-        val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
+      // Types known to be infinite, thus there is no need to constrain the domain using image functions.
+      val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
+      val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
 
-        imageFunctions(idx) = imgFun
-        imagesOfFcts(idx) = img(invertibles)
-        imagesOfCodomains(idx) = img(codomainQVars)
-      } else {
-        // imageFunctions(idx) remains null, will be filtered out later.
-        imagesOfFcts(idx) = True
-        imagesOfCodomains(idx) = True
-      }
+      imageFunctions(idx) = imgFun
+      imagesOfFcts(idx) = img(invertibles)
+      imagesOfCodomains(idx) = img(codomainQVars)
     }
 
     /* f_1(inv_1(rs), ..., inv_n(rs)), ...,  f_m(inv_1(rs), ..., inv_n(rs)) */
