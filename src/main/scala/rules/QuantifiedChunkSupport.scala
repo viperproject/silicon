@@ -421,6 +421,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                               optSmDomainDefinitionCondition: Option[Term], /* c(r) */
                               v: Verifier)
                              : (Term, Seq[Quantification], Option[Quantification]) = {
+    val relevantQvars = s.quantifiedVariables.filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
 
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, field, additionalFvfArgs, v)
@@ -443,7 +444,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
-          isGlobal = true)
+          isGlobal = relevantQvars.isEmpty)
       })
 
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
@@ -453,7 +454,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
           Trigger(Lookup(field.name, sm, codomainQVar)),
           s"qp.fvfResTrgDef${v.counter(this).next()}",
-          isGlobal = true)
+          isGlobal = relevantQvars.isEmpty)
       valueDefinitions :+ resourceTriggerDefinition
     } else {
       valueDefinitions
@@ -486,6 +487,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
            s"Expected resource to be a predicate or a wand, but got $resource (${resource.getClass.getSimpleName})")
 
     // TODO: Consider if axioms can be simplified in case codomainQVars is empty
+
+    val relevantQvars = s.quantifiedVariables.filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
 
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
@@ -529,7 +532,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.psmValDef${v.counter(this).next()}",
-          isGlobal = true)
+          isGlobal = relevantQvars.isEmpty)
       })
 
     val resourceIdentifier = resource match {
@@ -543,7 +546,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program))),
           Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)),
           s"qp.psmResTrgDef${v.counter(this).next()}",
-          isGlobal = true)
+          isGlobal = relevantQvars.isEmpty)
       valueDefinitions :+ resourceTriggerDefinition
     } else {
       valueDefinitions
