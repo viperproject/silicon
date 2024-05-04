@@ -1114,6 +1114,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+            val argsOfInvOfLoc = tArgs.map(a => a.replace(qvarsToInvOfLoc))
+            // ME: We include the following condition to make sure the arguments are contained in the condition (and
+            // can trigger other quantifiers) even if neither tCond not loss term mention the arguments.
+            val argumentsMatch = And(formalQVars.zip(argsOfInvOfLoc).map(va => va._1 === va._2))
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
             v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
@@ -1145,7 +1149,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     s2,
                     relevantChunks,
                     formalQVars,
-                    And(condOfInvOfLoc, And(imagesOfFormalQVars)),
+                    And(condOfInvOfLoc, And(imagesOfFormalQVars), argumentsMatch),
                     None,
                     resource,
                     rPerm,
@@ -1177,6 +1181,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 )
                 v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program))
                 v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses)
+                val substitutedAxiomInversesOfInvertibles = inverseFunctions.axiomInversesOfInvertibles.replace(formalQVars, tArgs)
+                v.decider.assume(FunctionPreconditionTransformer.transform(substitutedAxiomInversesOfInvertibles, s3.program))
+                v.decider.assume(substitutedAxiomInversesOfInvertibles)
                 val h2 = Heap(remainingChunks ++ otherChunks)
                 val s4 = s3.copy(smCache = smCache2,
                                  constrainableARPs = s.constrainableARPs)
@@ -1194,7 +1201,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   s.copy(smCache = smCache1),
                   relevantChunks,
                   formalQVars,
-                  And(condOfInvOfLoc, And(imagesOfFormalQVars)),
+                  And(condOfInvOfLoc, And(imagesOfFormalQVars), argumentsMatch),
                   None,
                   resource,
                   lossOfInvOfLoc,
