@@ -230,6 +230,10 @@ object evaluator extends EvaluationRules {
             case _ =>
               if (relevantChunks.size == 1) {
                 // No need to create a summary since there is only one chunk to look at.
+                if (s1.heapDependentTriggers.contains(fa.field)) {
+                  val trigger = FieldTrigger(fa.field.name, relevantChunks.head.fvf, tRcvr)
+                  v1.decider.assume(trigger)
+                }
                 val permCheck =
                   if (s1.triggerExp) {
                     True
