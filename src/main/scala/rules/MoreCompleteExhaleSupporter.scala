@@ -87,7 +87,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                 case None =>
                   // We have not yet checked for a definite alias
                   val id = ChunkIdentifier(resource, s.program)
-                  chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v).map(_.snap)
+                  val potentialAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
+                  potentialAlias.filter(c => v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout())).map(_.snap)
                 case Some(v) =>
                   // We have checked for a definite alias and may or may not have found one.
                   v
@@ -253,7 +254,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val newChunks = ListBuffer[NonQuantifiedChunk]()
         var moreNeeded = true
 
-        val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
+        val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v).filter(c =>
+          v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout())
+        )
 
         val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
           // The definitive alias and syntactic aliases should get priority, since it is always
@@ -357,7 +360,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val constraint = And(IsValidPermVar(permTaken),
           PermAtMost(permTaken, ch.perm),
-          Implies(Not(eq), permTaken === NoPerm)
+          Implies(Not(eq), permTaken === NoPerm),
+          Implies(And(eq, IsPositive(ch.perm)), PermLess(permTaken, ch.perm))
         )
 
         v.decider.assume(constraint)
@@ -366,12 +370,15 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         ch.withPerm(PermMinus(ch.perm, permTaken))
       })
 
-    v.decider.assume(
+    val totalTakenBounds =
       Implies(
         totalPermSum !== NoPerm,
         And(
           PermLess(NoPerm, totalPermTaken),
-          PermLess(totalPermTaken, totalPermSum))))
+          PermLess(totalPermTaken, totalPermSum)))
+    v.decider.assume(totalTakenBounds)
+
+    newFr = newFr.recordConstraint(totalTakenBounds)
 
     val s1 = s.copy(functionRecorder = newFr)
 

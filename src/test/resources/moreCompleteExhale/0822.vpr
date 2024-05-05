@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val : Int
+
+method test(x: Ref, y: Ref) {
+    inhale acc(x.val) && acc(y.val, x != y ? write : none)
+    x.val := 4
+    y.val := 3
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.val == 4
+}

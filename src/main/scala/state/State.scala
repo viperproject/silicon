@@ -6,6 +6,8 @@
 
 package viper.silicon.state
 
+import viper.silicon.Config.JoinMode
+import viper.silicon.Config.JoinMode.JoinMode
 import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
@@ -71,7 +73,7 @@ final case class State(g: Store = Store(),
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false,
-                       moreJoins: Boolean = false)
+                       moreJoins: JoinMode = JoinMode.Off)
     extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {

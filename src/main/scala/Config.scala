@@ -6,11 +6,12 @@
 
 package viper.silicon
 
-import java.nio.file.{Path, Paths}
+import java.nio.file.{Files, Path, Paths}
 import scala.collection.immutable.ArraySeq
 import scala.util.matching.Regex
 import scala.util.Properties._
 import org.rogach.scallop._
+import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
 import viper.silver.frontend.SilFrontendConfig
@@ -451,9 +452,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val z3Exe: String = {
     val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
 
-    rawZ3Exe.toOption.getOrElse(
-      envOrNone(Z3ProverStdIO.exeEnvironmentalVariable)
-        .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+    rawZ3Exe.toOption.getOrElse({
+      Option(System getenv Z3ProverStdIO.exeEnvironmentalVariable).getOrElse({
+        val filename = "z3" + (if (isWindows) ".exe" else "")
+        System.getenv("PATH").split(if (isWindows) ";" else ":").find(dirname => Files.exists(Paths.get(dirname, filename))) match {
+          case Some(dirname) => Paths.get(dirname, filename).toString
+          case None => filename
+        }
+      })
+    })
   }
 
   private val rawCvc5Exe = opt[String]("cvc5Exe",
@@ -662,11 +669,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val moreJoins: ScallopOption[Boolean] = opt[Boolean]("moreJoins",
-    descr = "Enable more joins using a more complete implementation of state merging.",
-    default = Some(false),
+  val moreJoins: ScallopOption[JoinMode] = opt[JoinMode]("moreJoins",
+    descr = s"Decides when to join branches. Options are:\n${JoinMode.helpText}",
+    default = Some(JoinMode.Off),
     noshort = true
-  )
+  )(singleArgConverter(mode => JoinMode(mode.toInt)))
 
   val exhaleModeOption: ScallopOption[ExhaleMode] = opt[ExhaleMode]("exhaleMode",
     descr = "Exhale mode. Options are 0 (greedy, default), 1 (more complete exhale), 2 (more complete exhale on demand).",
@@ -895,18 +902,33 @@ object Config {
     case object MoreCompleteOnDemand extends ExhaleMode
   }
 
+  object JoinMode extends Enumeration {
+    type JoinMode = Value
+    val Off, Impure, All = Value
+
+    private[Config] final def helpText: String = {
+      s"""  ${Off.id} (off): No additional joins
+         |  ${Impure.id} (impure): Immediately join all branch on impure conditionals
+         |  ${All.id} (all): Join all branches when possible
+         |""".stripMargin
+    }
+  }
+
   case class ProverStateSaturationTimeout(timeout: Int, comment: String)
 
   object StateConsolidationMode extends Enumeration {
     type StateConsolidationMode = Value
-    val Minimal, Default, Retrying, MinimalRetrying, MoreCompleteExhale = Value
+    val Minimal, Default, Retrying, MinimalRetrying, MoreCompleteExhale, LastRetry, RetryingFailOnly, LastRetryFailOnly = Value
 
     private[Config] final def helpText: String = {
-      s"""  ${Minimal.id}: Minimal work, many incompletenesses
-         |  ${Default.id}: Most work, fewest incompletenesses
-         |  ${Retrying.id}: Similar to ${Default.id}, but less eager
-         |  ${MinimalRetrying.id}: Less eager and less complete than ${Default.id}
-         |  ${MoreCompleteExhale.id}: Intended for use with --moreCompleteExhale
+      s"""  ${Minimal.id} (minimal): Minimal work, many incompletenesses
+         |  ${Default.id} (default): Most work, fewest incompletenesses
+         |  ${Retrying.id} (retrying): Similar to ${Default.id}, but less eager (optional and failure-driven consolidation only on retry)
+         |  ${MinimalRetrying.id} (minimalRetrying): Less eager and less complete than ${Default.id}
+         |  ${MoreCompleteExhale.id} (moreCompleteExhale): Intended for use with --moreCompleteExhale / --exhaleMode=1
+         |  ${LastRetry.id} (lastRetry): Similar to ${Retrying.id}, but only on last retry
+         |  ${RetryingFailOnly.id} (retryingFailOnly): Similar to ${Retrying.id}, but performs no optional consolidation at all.
+         |  ${LastRetryFailOnly.id} (lastRetryFailOnly): Similar to ${LastRetry.id}, but performs no optional consolidation at all.
          |""".stripMargin
     }
 
