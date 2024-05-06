@@ -1124,11 +1124,11 @@ object evaluator extends EvaluationRules {
                     (Q: (State,
                          Seq[Var], /* Variables from vars */
                          Seq[Term], /* Terms from es1 */
-                         Option[ /* None if es2 or trigger evaluation did not result in a term because es1 is unsatisfiable */
-                           (Seq[Term], /* Terms from es2 */
+                         Option[( /* None if es2 or trigger evaluation did not result in a term because es1 is unsatisfiable */
+                            Seq[Term], /* Terms from es2 */
                             Seq[Trigger], /* Triggers from optTriggers */
-                            (Seq[Term], Seq[Quantification])) /* Global and non-global auxiliary assumptions */
-                         ],
+                            (Seq[Term], Seq[Quantification]) /* Global and non-global auxiliary assumptions */
+                         )],
                          Verifier) => VerificationResult)
                     : VerificationResult = {
 
@@ -1158,7 +1158,7 @@ object evaluator extends EvaluationRules {
               v3.decider.pcs.after(preMark).quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc)
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()
-            es2AndTriggerTerms = Some((ts2, tTriggers, (auxGlobals, auxNonGlobalQuants), additionalPossibleTriggers)) // QB((s5, ts1, Some((ts2, tTriggers, (auxGlobals, auxNonGlobalQuants), additionalPossibleTriggers))))
+            es2AndTriggerTerms = Some((ts2, tTriggers, (auxGlobals, auxNonGlobalQuants), additionalPossibleTriggers))
             finalState = s5
             Success()
           })})
