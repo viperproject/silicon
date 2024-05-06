@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.Config.JoinMode
 import viper.silver.ast
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
-import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
+import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, Internal, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -57,7 +57,7 @@ trait EvaluationRules extends SymbolicExecutionRules {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Verifier) => VerificationResult)
+                    (Q: (State, Seq[Var], Seq[Term], Option[(Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]))], Verifier) => VerificationResult)
                     : VerificationResult
 }
 
@@ -722,7 +722,7 @@ object evaluator extends EvaluationRules {
         }
         val name = s"prog.$posString"
         evalQuantified(s, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
-          case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
+          case (s1, tVars, _, Some((Seq(tBody), tTriggers, (tAuxGlobal, tAux))), v1) =>
             val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
 
             v1.decider.prover.comment("Nested auxiliary terms: globals (aux)")
@@ -742,6 +742,13 @@ object evaluator extends EvaluationRules {
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name, quantWeight)
             Q(s1, tQuant, v1)
+          case (s1, _, _, None, v1) =>
+            // This should not happen unless the current path is dead.
+            if (v1.decider.checkSmoke(true)) {
+              Unreachable()
+            } else {
+              createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1)
+            }
         }
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
@@ -1114,7 +1121,15 @@ object evaluator extends EvaluationRules {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Verifier) => VerificationResult)
+                    (Q: (State,
+                         Seq[Var], /* Variables from vars */
+                         Seq[Term], /* Terms from es1 */
+                         Option[ /* None if es2 or trigger evaluation did not result in a term because es1 is unsatisfiable */
+                           (Seq[Term], /* Terms from es2 */
+                            Seq[Trigger], /* Triggers from optTriggers */
+                            (Seq[Term], Seq[Quantification])) /* Global and non-global auxiliary assumptions */
+                         ],
+                         Verifier) => VerificationResult)
                     : VerificationResult = {
 
     val localVars = vars map (_.localVar)
@@ -1125,23 +1140,37 @@ object evaluator extends EvaluationRules {
                     quantifiedVariables = tVars ++ s.quantifiedVariables,
                     recordPossibleTriggers = true,
                     possibleTriggers = Map.empty) // TODO: Why reset possibleTriggers if they are merged with s.possibleTriggers later anyway?
-    type R = (State, Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Map[ast.Exp, Term])
+    type R = (State, Seq[Term], Option[(Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Map[ast.Exp, Term])])
     executionFlowController.locallyWithResult[R](s1, v)((s2, v1, QB) => {
        val preMark = v1.decider.setPathConditionMark()
       evals(s2, es1, _ => pve, v1)((s3, ts1, v2) => {
         val bc = And(ts1)
+        // ME: If bc is unsatisfiable, we are assuming false here. In that case, evaluating es2 and the triggers
+        // may not return any value (e.g. if es2 contains a field read for which we don't have permission, a smoke
+        // check succeeds, then the continuation for evals(es2) is never invoked). This caused issue #842.
+        // In this case, we return None.
         v2.decider.setCurrentBranchCondition(bc, Some(viper.silicon.utils.ast.BigAnd(es1)))
-        evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
+        var es2AndTriggerTerms: Option[(Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Map[ast.Exp, Term])] = None
+        var finalState = s3
+        val es2AndTriggerResult = evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
           evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, _) => { // TODO: v4 isn't forward - problem?
             val (auxGlobals, auxNonGlobalQuants) =
               v3.decider.pcs.after(preMark).quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc)
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()
-            QB((s5, ts1, ts2, tTriggers, (auxGlobals, auxNonGlobalQuants), additionalPossibleTriggers))})})})
-    }){case (s2, ts1, ts2, tTriggers, (tAuxGlobal, tAux), additionalPossibleTriggers) =>
-      val s3 = s.copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
+            es2AndTriggerTerms = Some((ts2, tTriggers, (auxGlobals, auxNonGlobalQuants), additionalPossibleTriggers)) // QB((s5, ts1, Some((ts2, tTriggers, (auxGlobals, auxNonGlobalQuants), additionalPossibleTriggers))))
+            finalState = s5
+            Success()
+          })})
+        es2AndTriggerResult combine QB((finalState, ts1, es2AndTriggerTerms))
+      })
+    }){
+      case (s2, ts1, Some((ts2, tTriggers, (tAuxGlobal, tAux), additionalPossibleTriggers))) =>
+        val s3 = s.copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
                 .preserveAfterLocalEvaluation(s2)
-      Q(s3, tVars, ts1, ts2, tTriggers, (tAuxGlobal, tAux), v)
+        Q(s3, tVars, ts1, Some((ts2, tTriggers, (tAuxGlobal, tAux))), v)
+      case (s2, ts1, None) =>
+        Q(s2, tVars, ts1, None, v)
     }
   }
 
