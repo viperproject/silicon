@@ -260,7 +260,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val preMark = v3.decider.setPathConditionMark()
 
       v3.decider.prover.comment(s"Create WandMap for wand $wand")
-      val wandSnapshot = MagicWandSnapshot(freshSnapRoot, snapRhs, v3.decider.fresh("$wm", sorts.Map(sorts.Snap, sorts.Snap)))
+      val wandSnapshot = MagicWandSnapshot(freshSnapRoot, snapRhs, v3.decider.fresh("mwsf", sorts.MagicWandSnapFunction))
       v3.decider.assumeDefinition(wandSnapshot.definition)
 
       // If the wand is part of a quantified expression
@@ -292,7 +292,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               case Quantification(Forall, wandSnapshot.abstractLhs :: Nil, body: Term, _, _, _, _) => body
               case p => p
             }),
-            Trigger(MapLookup(wandSnapshot.wandMap, wandSnapshot.abstractLhs)),
+            Trigger(MWSFLookup(wandSnapshot.wandMap, wandSnapshot.abstractLhs)),
           )
 
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), pcsQuantified +: pcsWithoutAbstractLhs, v4)

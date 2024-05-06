@@ -6,6 +6,7 @@
 
 package viper.silicon.verifier
 
+import viper.silicion.supporters.MagicWandSnapFunctionsContributor
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 
 import java.text.SimpleDateFormat
@@ -73,6 +74,7 @@ class DefaultMainVerifier(config: Config,
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
+  protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
@@ -82,6 +84,7 @@ class DefaultMainVerifier(config: Config,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
@@ -459,6 +462,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -471,6 +475,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -483,6 +488,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -500,6 +506,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -512,6 +519,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )

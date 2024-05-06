@@ -397,14 +397,14 @@ object producer extends ProductionRules {
           Q(s2, v1)})
 
       case wand: ast.MagicWand =>
-        val snapRhs = sf(sorts.Map(sorts.Snap, sorts.Snap), v)
+        val snapRhs = sf(sorts.MagicWandSnapFunction, v)
 
         // Create Map that takes a snapshot, which represent the values of the consumed LHS of the wand,
         // and relates it to the snapshot of the RHS. We use this to preserve values of the LHS in the RHS snapshot.
         v.decider.prover.comment(s"Produce new magic wand snapshot map for wand $wand")
         val abstractLhs = v.decider.fresh(sorts.Snap)
-        val wandMap = v.decider.fresh("$wm", sorts.Map(sorts.Snap, sorts.Snap))
-        val magicWandSnapshot = MagicWandSnapshot(abstractLhs, MapLookup(snapRhs, abstractLhs), wandMap)
+        val wandMap = v.decider.fresh("$mwsf", sorts.MagicWandSnapFunction)
+        val magicWandSnapshot = MagicWandSnapshot(abstractLhs, MWSFLookup(snapRhs, abstractLhs), wandMap)
 
         // We assume that the wandMap that we get from `snapRhs`, which potentially is nested in a binary tree,
         // is the same as our newly created wandMap.
