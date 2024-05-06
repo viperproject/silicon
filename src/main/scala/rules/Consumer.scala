@@ -544,24 +544,38 @@ object consumer extends ConsumptionRules {
                     exhaleExt = false)
 
     executionFlowController.tryOrFail0(s1, v)((s2, v1, QS) => {
-      eval(s2, e, pve, v1)((s3, t, v2) => {
-        val termToAssert = t match {
+      eval(s2, e, pve, v1)((s3a, t, v2) => {
+        val termToCheck = t match {
           case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
-            val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
-            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight))
+            val transformed = FunctionPreconditionTransformer.transform(body, s3a.program)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name + "_precondition", isGlob, weight))
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
+        val (s3, termToAssert, termToAssume) = if (t == termToCheck) {
+          // ME: This setup is to avoid that quantifier instantiations triggered by t happen twice, once in the assert
+          // and once in the assume. See Silicon issue #702.
+          val newVar = v2.decider.fresh(sorts.Bool)
+          val equality = termToCheck === newVar
+          v2.decider.assume(equality)
+          val fr = s3a.functionRecorder.recordArp(newVar, equality)
+          val s3 = s3a.copy(functionRecorder = fr)
+          (s3, newVar, newVar)
+        } else {
+          (s3a, termToCheck, t)
+        }
         v2.decider.assert(termToAssert) {
           case true =>
-            v2.decider.assume(t)
+            v2.decider.assume(termToAssume)
             QS(s3, v2)
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3)
-            if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
-              v2.decider.assume(t)
+            if (s3.retryLevel == 0 && v2.reportFurtherErrors()) {
+              v2.decider.assume(termToAssume)
               failure combine QS(s3, v2)
-            } else failure}})
+            } else failure
+        }
+      })
     })((s4, v4) => {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
