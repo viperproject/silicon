@@ -104,7 +104,7 @@ object havocSupporter extends SymbolicExecutionRules {
       pve   = pve,
       v     = v)
     {
-      case (s1, tVars, Seq(tCond), tArgs, Seq(), _, v1) =>
+      case (s1, tVars, Seq(tCond), Some((tArgs, Seq(), _)), v1) =>
         // Seq() represents an empty list of Triggers
         // TODO: unnamed argument is (tAuxGlobal, tAux). How should these be handled?
 
@@ -154,6 +154,7 @@ object havocSupporter extends SymbolicExecutionRules {
 
             Q(s1.copy(h = Heap(newChunks)), v1)
         }
+      case (s1, _, _, None, v1) => Q(s1, v1)
     }
   }
 
