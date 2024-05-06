@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.ast.{Exp, Stmt}
+import viper.silver.ast.{Applying, Exp, Program, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
 import viper.silver.verifier.PartialVerificationError
@@ -16,7 +16,7 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
-import viper.silicon.state.terms.{MagicWandSnapshot, _}
+import viper.silicon.state.terms.{MagicWandSnapshot, MagicWandSnapSingleton, MagicWandSnapFunction, _}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 
@@ -212,10 +212,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
     val s = if (state.exhaleExt) state else
       state.copy(reserveHeaps = Heap() :: state.h :: Nil)
 
-    // v.logger.debug(s"wand = $wand")
-    // v.logger.debug("c.reserveHeaps:")
-    // s.reserveHeaps.map(v.stateFormatter.format).foreach(str => v.logger.debug(str, 2))
-
     val stackSize = 3 + s.reserveHeaps.tail.size
     // IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below
     var recordedBranches: Seq[(State, Stack[Term], Stack[Option[Exp]], Vector[Term], Chunk)] = Nil
@@ -260,8 +256,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val preMark = v3.decider.setPathConditionMark()
 
       v3.decider.prover.comment(s"Create WandMap for wand $wand")
-      val wandSnapshot = MagicWandSnapshot(freshSnapRoot, snapRhs, v3.decider.fresh("mwsf", sorts.MagicWandSnapFunction))
-      v3.decider.assumeDefinition(wandSnapshot.definition)
+      val wandSnapshot: MagicWandSnapshot = if (useMWSF(s4.program)) {
+        val fct = MagicWandSnapFunction(freshSnapRoot, snapRhs, v3.decider.fresh("mwsf", sorts.MagicWandSnapFunction))
+        v3.decider.assumeDefinition(fct.definition)
+        fct
+      } else {
+        MagicWandSnapSingleton(freshSnapRoot, snapRhs)
+      }
 
       // If the wand is part of a quantified expression
       if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
@@ -285,16 +286,18 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // Partition path conditions into a set which include the abstractLhs and those which do not
           val (pcsWithAbstractLhs, pcsWithoutAbstractLhs) = conservedPcs.flatMap(_.conditionalized).partition(pcs => pcs.contains(wandSnapshot.abstractLhs))
           // For all path conditions which include the abstractLhs, add those as part of the definition of the wandMap in the same forall quantifier
-          val pcsQuantified = Forall(
-            wandSnapshot.abstractLhs,
-            And(pcsWithAbstractLhs.map {
-              // Remove redundant forall quantifiers with the same quantified variable
-              case Quantification(Forall, wandSnapshot.abstractLhs :: Nil, body: Term, _, _, _, _) => body
-              case p => p
-            }),
-            Trigger(MWSFLookup(wandSnapshot.wandMap, wandSnapshot.abstractLhs)),
-          )
-
+          val pcsQuantified = wandSnapshot match {
+            case _: MagicWandSnapSingleton => And(pcsWithAbstractLhs)
+            case wandSnapshot: MagicWandSnapFunction => Forall(
+              wandSnapshot.abstractLhs,
+              And(pcsWithAbstractLhs.map {
+                // Remove redundant forall quantifiers with the same quantified variable
+                case Quantification(Forall, wandSnapshot.abstractLhs :: Nil, body: Term, _, _, _, _) => body
+                case p => p
+              }),
+              Trigger(MWSFLookup(wandSnapshot.wandMap, wandSnapshot.abstractLhs)),
+            )
+          }
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), pcsQuantified +: pcsWithoutAbstractLhs, v4)
           Success()
         })
@@ -418,8 +421,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // If the snapWand is a (wrapped) MagicWandSnapshot then lookup the snapshot of the right-hand side by applying snapLhs.
         val magicWandSnapshotLookup = snapWand match {
-          case snapshot: MagicWandSnapshot => snapshot.applyToWandMap(snapLhs)
-          case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToWandMap(snapLhs)
+          case snapshot: MagicWandSnapSingleton =>
+            v2.decider.assume(snapLhs === snapshot.abstractLhs)
+            snapshot.rhsSnapshot
+          case snapshot: MagicWandSnapFunction => snapshot.applyToWandMap(snapLhs)
+          case SortWrapper(snapshot: MagicWandSnapFunction, _) => snapshot.applyToWandMap(snapLhs)
           // Fallback solution for quantified magic wands
           case predicateLookup: PredicateLookup =>
             v2.decider.assume(snapLhs === First(snapWand))
@@ -524,4 +530,15 @@ object magicWandSupporter extends SymbolicExecutionRules {
       s.reserveCfgs.head.outEdges(b)
     else
       s.methodCfg.outEdges(b)
+
+  /**
+   * Determine, whether to use MWSF or MagicWandSnapshot.
+   * MWSF have the advantage over MagicWandSnapshot that they can be applied multiple times.
+   * However, they are slower than MagicWandSnapshots.
+   *
+   * @param program AST program which is verified.
+   * @return Boolean indicating whether to use MWSF instead of MagicWandSnapshot.
+   */
+  def useMWSF(program: Program): Boolean =
+    program.existsDefined { case Applying(_, _) => true }
 }

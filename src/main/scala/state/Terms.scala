@@ -2300,6 +2300,68 @@ object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[T
 
 /* Magic wands */
 
+abstract class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) extends Term {
+  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
+  utils.assertSort(rhsSnapshot, "rhs snapshot", sorts.Snap)
+}
+
+/**
+ * Snapshot for a magic wand. It represents a function which can be used only once
+ * by equating a snapshot from consuming the wand's LHS with `abstractLhs`.
+ *
+ * For a snapshot which can be applied multiple times see [[MagicWandSnapFunction]].
+ *
+ * @param abstractLhs The abstract snapshot which acts as a placeholder in the
+ *                    `rhsSnapshot` for the values when applying the magic wand.
+ * @param rhsSnapshot Snapshot which can be used when producing the wand's RHS.
+ */
+class MagicWandSnapSingleton(override val abstractLhs: Term, override val rhsSnapshot: Term)
+  extends MagicWandSnapshot(abstractLhs, rhsSnapshot)
+    with ConditionalFlyweightBinaryOp[MagicWandSnapSingleton] {
+
+  override lazy val toString: String = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
+
+  /* ConditionalFlyweightBinaryOp members */
+
+  override def sort: Sort = sorts.Snap
+
+  override def p0: Term = abstractLhs
+
+  override def p1: Term = rhsSnapshot
+}
+
+object MagicWandSnapSingleton {
+  var pool = new TrieMap[(Term, Term), MagicWandSnapSingleton]()
+
+  /** Craete a new [[MagicWandSnapSingleton]] from a single snapshot term. */
+  def apply(snapshot: Term): MagicWandSnapshot = {
+    assert(snapshot.sort == sorts.Snap, s"MagicWandSnapshot.apply expects sorts Snap but got ${snapshot.sort}")
+
+    snapshot match {
+      case snap: MagicWandSnapSingleton => snap
+      case _ => MagicWandSnapSingleton(First(snapshot), Second(snapshot))
+    }
+  }
+
+  /** Create a new [[MagicWandSnapSingleton]] from two snapshot terms. */
+  def apply(abstractLhs: Term, rhsSnapshot: Term): MagicWandSnapSingleton =
+    createIfNonExistent((abstractLhs, rhsSnapshot))
+
+  /** Destruct a [[MagicWandSnapSingleton]] instance. Used in [[viper.silicon.state.utils.transform]] */
+  def unapply(mws: MagicWandSnapSingleton): Some[(Term, Term)] =
+    Some((mws.abstractLhs, mws.rhsSnapshot))
+
+  private def createIfNonExistent(args: (Term, Term)): MagicWandSnapSingleton = {
+    if (Verifier.config.useFlyweight) {
+      pool.getOrElseUpdate(args, actualCreate(args))
+    } else {
+      actualCreate(args)
+    }
+  }
+
+  private def actualCreate(tuple: (Term, Term)) = new MagicWandSnapSingleton(tuple._1, tuple._2)
+}
+
 /**
  * Represents a snapshot of a magic wand, which is a map from Snap to Snap.
  *
@@ -2310,7 +2372,10 @@ object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[T
  *                In the symbolic execution this represents a function that when we apply a magic wand
  *                it consumes the left-hand side and uses the resulting snapshot to look up which right-hand side should be produced.
  */
-class MagicWandSnapshot(val abstractLhs: Var, val rhsSnapshot: Term, val wandMap: Term) extends Term with ConditionalFlyweight[Term, MagicWandSnapshot] {
+class MagicWandSnapFunction(override val abstractLhs: Var, override val rhsSnapshot: Term, val wandMap: Term)
+  extends MagicWandSnapshot(abstractLhs, rhsSnapshot)
+    with ConditionalFlyweight[Term, MagicWandSnapFunction] {
+
   utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
   utils.assertSort(rhsSnapshot, "rhs snapshot", sorts.Snap)
   utils.assertSort(wandMap, "wand map", sorts.MagicWandSnapFunction)
@@ -2342,15 +2407,14 @@ class MagicWandSnapshot(val abstractLhs: Var, val rhsSnapshot: Term, val wandMap
   def applyToWandMap(snapLhs: Term): Term = MWSFLookup(wandMap, snapLhs)
 }
 
-object MagicWandSnapshot  {
-  /**
-   * Create a new instance of `MagicWandSnapshot`.
-   *
-   * @see [[viper.silicon.state.terms.MagicWandSnapshot]]
-   */
-  def apply(abstractLhs: Var, rhsSnapshot: Term, wandMap: Term): MagicWandSnapshot = new MagicWandSnapshot(abstractLhs, rhsSnapshot, wandMap)
+object MagicWandSnapFunction  {
+  /** Create a new instance of [[viper.silicon.state.terms.MagicWandSnapFunction]]. */
+  def apply(abstractLhs: Var, rhsSnapshot: Term, wandMap: Term): MagicWandSnapFunction =
+    new MagicWandSnapFunction(abstractLhs, rhsSnapshot, wandMap)
 
-  def unapply(snap: MagicWandSnapshot): Option[(Var, Term, Term)] = Some(snap.abstractLhs, snap.rhsSnapshot, snap.wandMap)
+  /** Destructs an instance of [[viper.silicon.state.terms.MagicWandSnapFunction]]. */
+  def unapply(snap: MagicWandSnapFunction): Option[(Var, Term, Term)] =
+    Some(snap.abstractLhs, snap.rhsSnapshot, snap.wandMap)
 }
 
 class MWSFLookup(val mwsf: Term, val snap: Term) extends Term with ConditionalFlyweightBinaryOp[MWSFLookup] {
@@ -2361,7 +2425,7 @@ class MWSFLookup(val mwsf: Term, val snap: Term) extends Term with ConditionalFl
 }
 
 object MWSFLookup extends PreciseCondFlyweightFactory[(Term, Term), MWSFLookup] {
-  override def apply(pair: (Term, Term)) = {
+  override def apply(pair: (Term, Term)): MWSFLookup = {
     val (mwsf, snap) = pair
     utils.assertSort(mwsf, "mwsf", sorts.MagicWandSnapFunction)
     utils.assertSort(snap, "snap", sorts.Snap)
