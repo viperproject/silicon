@@ -58,11 +58,12 @@ object BiAbductionSolver {
       case _ => qPre
     }
 
-    val ins = s.currentMember match {
+    val ins = q.s.currentMember match {
       case Some(m: Method) => m.formalArgs.map(_.localVar)
       case _ => Seq()
     }
-    val varTrans = VarTransformer(q.s, q.v, ins)
+
+    val varTrans = VarTransformer(q.s, q.v, q.s.g.values.collect { case (v: AbstractLocalVar, t: Term) if ins.contains(v) => (v, t)}, q.s.oldHeaps.head._2)
 
     val q1 = AbductionApplier.apply(q)
 
@@ -71,24 +72,24 @@ object BiAbductionSolver {
       // TODO it is possible that we want to transform variable in a non-strict way before abstraction
       val pres = AbstractionApplier.apply(AbstractionQuestion(q1.foundPrecons, q1.s.program)).exps
 
-      // TODO if some path conditions already contain Ands, then we might reject clauses that we could actually handle
-      val bcs = q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined && e != TrueLit()() => varTrans.transformExp(e).get }
+      // TODO There is a common case where we add x != null because we know acc(x.next). We want to remove this bc
+      val bcs = q1.v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined && e != TrueLit()() => varTrans.transformExp(e).get }.toSet
 
       // TODO Weak transformation of statements to original variables (Viper encoding can introduce new variables)
+      val presTransformed = pres.map { varTrans.transformExp }
 
-      val presTransformed = pres.map { (e: Exp) =>
-        varTrans.transformExp(e) match {
-          case Some(e1) => e1
-          case _ => e
+      if (presTransformed.contains(None)) {
+        BiAbductionFailure(q1.s, q1.v)
+      } else {
+        val presFinal = presTransformed.map { e =>
+          if(bcs.isEmpty){
+            e.get
+          } else {
+            Implies(BigAnd(bcs), e.get)()
+          }
         }
-      }.map { e =>
-        bcs match {
-          case Seq() => e
-          case _ => Implies(BigAnd(bcs), e)()
-        }
+        AbductionSuccess(q1.s, q1.v, presFinal, q1.foundStmts, loc = loc)
       }
-      AbductionSuccess(q1.s, q1.v, presTransformed, q1.foundStmts, loc = loc)
-
     } else {
       BiAbductionFailure(q1.s, q1.v)
     }
@@ -100,7 +101,7 @@ object BiAbductionSolver {
       case Some(m: Method) => m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
       case _ => Seq()
     }
-    val tra = VarTransformer(s, v, formals)
+    val tra = VarTransformer(s, v, s.g.values.filter(formals.contains), s.h)
     val res = s.h.values.collect { case c: BasicChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
 
     val absRes = AbstractionApplier.apply(AbstractionQuestion(res, s.program)).exps

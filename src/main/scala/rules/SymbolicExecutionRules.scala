@@ -84,7 +84,7 @@ trait SymbolicExecutionRules {
       case reason: MagicWandChunkNotFound => Some(reason.offendingNode)
       case _ => None
     }
-    val abductionResult = abdGoal.map{acc => BiAbductionSolver.solve(s, v, Seq(acc), aqTrafo, ve.pos)}
+    val abductionResult = abdGoal.map{acc => BiAbductionSolver.solveAbduction(s, v, Seq(acc), aqTrafo, ve.pos)}
 
     res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionResult))
     Failure(res, v.reportFurtherErrors())

@@ -18,7 +18,7 @@ import viper.silver.verifier.errors.Internal
 // abstractions contains the abstractions after each loop iteration
 // assignments contains the value (as an expression at the beginning of the loop!) of the iterated variables after each loop iteration
 // newRelState contains the things we abduce during the current iteration
-case class InvariantAbductionQuestion(abstraction: Seq[Exp], absValues: Map[AbstractLocalVar, Exp], newRelState: Seq[Exp])
+case class InvariantAbductionQuestion(abstraction: Seq[Exp], absValues: Map[AbstractLocalVar, Exp])
 
 object LoopInvariantSolver {
 
@@ -33,43 +33,48 @@ object LoopInvariantSolver {
     }
   }
 
-  def solveLoopInvariants(s: State,
-                          v: Verifier,
+  def solveLoopInvariants(sPre: State,
+                          vPre: Verifier,
                           loopEdges: Seq[Edge[Stmt, Exp]],
                           joinPoint: Option[SilverBlock],
-                          absVarTran: VarTransformer,
-                          q: InvariantAbductionQuestion = InvariantAbductionQuestion(Seq(), Map(), Seq()))
+                          origState: State,
+                          origVer: Verifier,
+                          q: InvariantAbductionQuestion = InvariantAbductionQuestion(Seq(), Map()))
                          (Q: BiAbductionResult => VerificationResult): VerificationResult = {
 
-    // Assumme that we have the things in nextState
-    producer.produces(s, freshSnap, q.newRelState, pveLam, v) { (s2, v2) =>
+    // Assumme that we have the previous abstraction
+    //producer.produces(s, freshSnap, q.abstraction, pveLam, v) { (s2, v2) =>
 
-      // TODO this is not the way to find the vars, it should be the vars not assigned to in the loop
-      val relVarTrans = VarTransformer(s2, v2, s2.g.values.keys.toSeq, strict = false)
 
-      // Run the loop
-      // This continuation should never be called, we are only following the inner loop edges, which either
-      // fails, or returns a Success with the found postconditions. So the match (and the collectFirst) below should always succeed.
-      val res = executor.follows(s2, loopEdges, pveLam, v2, joinPoint)((_, _) => Success())
+    // Run the loop
+    // This continuation should never be called, we are only following the inner loop edges, which either
+    // fails, or returns a Success with the found postconditions. So the match (and the collectFirst) below should always succeed.
+    executor.follows(sPre, loopEdges, pveLam, vPre, joinPoint)((_, _) => Success()) match {
 
-      res match {
-        // If we find a new precondition, add it to next state and restart
-        case Failure(res, _) =>
-          res.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-            // Success should never occur here, they should be wrapped into a Success in the Executor
-            case None | Some(_: BiAbductionFailure) => Q(BiAbductionFailure(s2, v2))
+      // Abduction has Failed
+      case Failure(res, _) =>
+        res.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
+          // Success should never occur here, they should be wrapped into a Success in the Executor
+          case None | Some(_: BiAbductionFailure) => Q(BiAbductionFailure(sPre, vPre))
 
-            //case Some(a: AbductionSuccess) =>
-            //  val newState = q.newRelState ++ a.pre
-            //  solve(s, v, loopEdges, joinPoint, absVarTran, q.copy(newRelState = newState))(Q)
-          }
+          //case Some(a: AbductionSuccess) =>
+          //  val newState = q.newRelState ++ a.pre
+          //  solve(s, v, loopEdges, joinPoint, absVarTran, q.copy(newRelState = newState))(Q)
+        }
 
-        // A NonFatalResult will be a chain of Successes and Unreachables. Each Success can contain an AbductionSucess
-        // There should exactly one FramingSuccess in the chain
-        case nonf: NonFatalResult =>
+      // A NonFatalResult will be a chain of Successes and Unreachables. Each Success can contain an AbductionSucess
+      // There should exactly one FramingSuccess in the chain
+      case nonf: NonFatalResult =>
 
-          val abdReses = (nonf +: nonf.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
-          val newState = q.newRelState ++ abdReses.flatMap(_.pre)
+        val abdReses = (nonf +: nonf.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
+        val newState = abdReses.flatMap(_.pre)
+
+        // Get the state at the beginning of the loop with with the abduced things added
+        producer.produces(sPre, freshSnap, abdReses.flatMap(_.pre), pveLam, vPre) { (sPreAbd, vPreAbd) =>
+
+          // TODO this is not the way to find the vars, it should be the vars not assigned to in the loop
+          // TODO nklose this is nonsense now. Think about what should really happen here!
+          val relVarTrans = VarTransformer(sPreAbd, vPreAbd, sPre.g.values, sPre.h, strict = false)
 
           // The framing result contains the state at the end of the loop
           // TODO we should also track the framed stuff to generate invariants for loops with changing heaps
@@ -80,6 +85,8 @@ object LoopInvariantSolver {
           // Values of the variables in terms of the beginning of the loop
           val relValues = framingRes.s.g.values.collect { case (v, t) => (v, relVarTrans.transformTerm(t)) }
             .collect { case (v, e) if e.isDefined && e.get != v => (v, e.get) }
+
+          val absVarTran = VarTransformer(framingRes.s, framingRes.v, origState.g.values, origState.h)
 
           // The absolute values at the end of the loop, by combining the values before the iteration with the absolute
           // values from the last iteration
@@ -94,7 +101,7 @@ object LoopInvariantSolver {
             case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
           }).map(absVarTran.transformExp(_).get)
 
-          val newAbstraction = AbstractionApplier.apply(AbstractionQuestion(q.abstraction ++ newAbsState, s.program)).exps
+          val newAbstraction = AbstractionApplier.apply(AbstractionQuestion(q.abstraction ++ newAbsState, sPre.program)).exps
 
           // The re-assignments of this iteration in terms of the absolute values
           // This is a meaningful sentence that makes perfect sense.
@@ -115,11 +122,10 @@ object LoopInvariantSolver {
             Q(LoopInvariantSuccess(framingRes.s, framingRes.v, invs = relAbstraction.flatMap(getInvariant)))
           } else {
             // Else continue with next iteration, using the state from the end of the loop
-            solveLoopInvariants(framingRes.s, framingRes.v, loopEdges, joinPoint, absVarTran, q.copy(abstraction = newAbstraction,
-              absValues = newAbsValues,
-              newRelState = Seq()))(Q)
+            solveLoopInvariants(framingRes.s, framingRes.v, loopEdges, joinPoint, origState, origVer, q.copy(abstraction = newAbstraction,
+              absValues = newAbsValues))(Q)
           }
-      }
+        }
     }
   }
 }

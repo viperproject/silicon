@@ -294,8 +294,10 @@ object executor extends ExecutionRules {
                             case Failure(_, _) => edgeCondWelldefinedness
                             case Success(_) =>
 
+                              val varTra = VarTransformer(s, v, s.g.values, s.h)
+
                               // Try to find invariants
-                              LoopInvariantSolver.solveLoopInvariants(s4, v3, otherEdges, joinPoint, VarTransformer(s, v, nwvs, strict = false)) {
+                              LoopInvariantSolver.solveLoopInvariants(s4, v3, otherEdges, joinPoint, s, v) {
                                 case BiAbductionFailure(_, _) =>
                                   println("Failed to find loop invariants")
                                   follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)
@@ -738,7 +740,9 @@ object executor extends ExecutionRules {
                 })
               }
             }
-          case _ => executed
+          case Some(_: BiAbductionFailure) =>
+            println("Abduction failed")
+            executed
         }
       case _ => executed
     }
