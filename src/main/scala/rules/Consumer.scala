@@ -552,7 +552,7 @@ object consumer extends ConsumptionRules {
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
-        val (s3, termToAssert, termToAssume) = if (t == termToCheck) {
+        val (s3, termToAssert, termToAssume) = if (t == termToCheck && !t.isInstanceOf[Var]) {
           // ME: This setup is to avoid that quantifier instantiations triggered by t happen twice, once in the assert
           // and once in the assume. See Silicon issue #702.
           val newVar = v2.decider.fresh(sorts.Bool)
