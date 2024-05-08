@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2024 ETH Zurich.
 
-package viper.silicion.supporters
+package viper.silicon.supporters
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}

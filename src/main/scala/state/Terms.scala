@@ -2310,7 +2310,7 @@ object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[T
  *                In the symbolic execution this represents a function that when we apply a magic wand
  *                it consumes the left-hand side and uses the resulting snapshot to look up which right-hand side should be produced.
  */
-class MagicWandSnapshot(val abstractLhs: Var, val rhsSnapshot: Term, val wandMap: Term) extends Term with ConditionalFlyweight[Term, MagicWandSnapshot] {
+class MagicWandSnapshot(val abstractLhs: Var, val rhsSnapshot: Term, val wandMap: Term) extends Term with ConditionalFlyweight[(Var, Term, Term), MagicWandSnapshot] {
   utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
   utils.assertSort(rhsSnapshot, "rhs snapshot", sorts.Snap)
   utils.assertSort(wandMap, "wand map", sorts.MagicWandSnapFunction)
@@ -2319,7 +2319,7 @@ class MagicWandSnapshot(val abstractLhs: Var, val rhsSnapshot: Term, val wandMap
 
   override lazy val toString = s"wandSnap($wandMap)"
 
-  override val equalityDefiningMembers: Term = wandMap
+  override val equalityDefiningMembers: (Var, Term, Term) = (abstractLhs, rhsSnapshot, wandMap)
 
   /**
    * Creates a term that can be used to define a `wandMap`.
@@ -2342,15 +2342,10 @@ class MagicWandSnapshot(val abstractLhs: Var, val rhsSnapshot: Term, val wandMap
   def applyToWandMap(snapLhs: Term): Term = MWSFLookup(wandMap, snapLhs)
 }
 
-object MagicWandSnapshot  {
-  /**
-   * Create a new instance of `MagicWandSnapshot`.
-   *
-   * @see [[viper.silicon.state.terms.MagicWandSnapshot]]
-   */
-  def apply(abstractLhs: Var, rhsSnapshot: Term, wandMap: Term): MagicWandSnapshot = new MagicWandSnapshot(abstractLhs, rhsSnapshot, wandMap)
-
-  def unapply(snap: MagicWandSnapshot): Option[(Var, Term, Term)] = Some(snap.abstractLhs, snap.rhsSnapshot, snap.wandMap)
+object MagicWandSnapshot extends PreciseCondFlyweightFactory[(Var, Term, Term), MagicWandSnapshot]  {
+  /** Create an instance of [[viper.silicon.state.terms.MagicWandSnapshot]]. */
+  override def actualCreate(args: (Var, Term, Term)): MagicWandSnapshot =
+    new MagicWandSnapshot(args._1, args._2, args._3)
 }
 
 class MWSFLookup(val mwsf: Term, val snap: Term) extends Term with ConditionalFlyweightBinaryOp[MWSFLookup] {
@@ -2361,7 +2356,7 @@ class MWSFLookup(val mwsf: Term, val snap: Term) extends Term with ConditionalFl
 }
 
 object MWSFLookup extends PreciseCondFlyweightFactory[(Term, Term), MWSFLookup] {
-  override def apply(pair: (Term, Term)) = {
+  override def apply(pair: (Term, Term)): MWSFLookup = {
     val (mwsf, snap) = pair
     utils.assertSort(mwsf, "mwsf", sorts.MagicWandSnapFunction)
     utils.assertSort(snap, "snap", sorts.Snap)

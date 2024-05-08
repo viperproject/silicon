@@ -263,7 +263,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val wandSnapshot = MagicWandSnapshot(freshSnapRoot, snapRhs, v3.decider.fresh("mwsf", sorts.MagicWandSnapFunction))
       v3.decider.assumeDefinition(wandSnapshot.definition)
 
-      // If the wand is part of a quantified expression
+      // If the wand is used as a quantified resource anywhere in the program
       if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))

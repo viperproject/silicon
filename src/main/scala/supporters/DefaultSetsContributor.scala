@@ -12,7 +12,6 @@ import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, sorts}
 import viper.silicon.verifier.Verifier
-import viper.silicon.utils.ast.ViperEmbedding
 
 class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {

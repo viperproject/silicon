@@ -8,10 +8,8 @@ package viper.silicon.supporters
 
 import scala.reflect.{ClassTag, classTag}
 import viper.silicon.Config
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, Term, sorts}
-import viper.silicon.utils.ast.ViperEmbedding
 
 class DefaultMapsContributor(val domainTranslator: DomainsTranslator[Term], config: Config) extends BuiltinDomainsContributor {
 

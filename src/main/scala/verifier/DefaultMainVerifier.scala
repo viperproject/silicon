@@ -6,7 +6,6 @@
 
 package viper.silicon.verifier
 
-import viper.silicion.supporters.MagicWandSnapFunctionsContributor
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 
 import java.text.SimpleDateFormat
