@@ -435,8 +435,6 @@ class TermToZ3APIConverter
 
       case bop: Combine =>
         ctx.mkApp(combineConstructor, convertTerm(bop.p0), convertTerm(bop.p1))
-      case MagicWandSnapSingleton(abstractLhs, rhsSnapshot) =>
-        ctx.mkApp(combineConstructor, convertTerm(abstractLhs), convertTerm(rhsSnapshot))
 
       case SortWrapper(t, to) =>
         createApp(convertId(SortWrapperId(t.sort, to)), Seq(t), to)
