@@ -611,7 +611,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableValueMapCaching: ScallopOption[Boolean] = opt[Boolean]("disableValueMapCaching",
     descr = "Disable caching of value maps (context: iterated separating conjunctions).",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
@@ -625,7 +625,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val disableChunkOrderHeuristics: ScallopOption[Boolean] = opt[Boolean]("disableChunkOrderHeuristics",
     descr = (  "Disable heuristic ordering of quantified chunks "
              + "(context: iterated separating conjunctions)."),
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
@@ -638,7 +638,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
     descr = "Disables various caches in Silicon's state.",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 

@@ -240,7 +240,8 @@ object chunkSupporter extends ChunkSupportRules {
                 v: Verifier)
                : Option[CH] = {
     val relevantChunks = findChunksWithID[CH](chunks, id)
-    findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v)
+    //findChunkLiterally(relevantChunks, args) orElse 
+    findChunkWithProver(relevantChunks, args, v)
   }
 
   def findMatchingChunk[CH <: NonQuantifiedChunk: ClassTag]
