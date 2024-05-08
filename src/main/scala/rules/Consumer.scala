@@ -122,9 +122,9 @@ object consumer extends ConsumptionRules {
       if (tlcs.tail.isEmpty)
         wrappedConsumeTlc(s, h, a, pve, v)(Q)
       else
-        wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
+        wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) => {
           consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) =>
-            Q(s2, h2, Combine(snap1, snap2), v2)))
+            Q(s2, h2, Combine(snap1, snap2), v2))})
     }
   }
 
@@ -234,8 +234,9 @@ object consumer extends ConsumptionRules {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
+
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
@@ -255,6 +256,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
+          case (s1, _, _, None, v1) => Q(s1, h, True, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -272,7 +274,7 @@ object consumer extends ConsumptionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
@@ -292,6 +294,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
+          case (s1, _, _, None, v1) => Q(s1, h, True, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
@@ -304,7 +307,7 @@ object consumer extends ConsumptionRules {
         val ePerm = ast.FullPerm()()
         val tPerm = FullPerm
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((tArgs, tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
@@ -324,6 +327,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
               insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
               v1)(Q)
+          case (s1, _, _, None, v1) => Q(s1, h, True, v1)
         }
 
       case ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
