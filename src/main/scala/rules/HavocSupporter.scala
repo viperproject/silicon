@@ -181,10 +181,22 @@ object havocSupporter extends SymbolicExecutionRules {
     val id = ChunkIdentifier(resource, s.program)
     val (relevantChunks, otherChunks) = chunkSupporter.splitHeap[NonQuantifiedChunk](s.h, id)
 
-    val newChunks = relevantChunks.map { ch =>
-      val havockedSnap = freshSnap(ch.snap.sort, v)
-      val cond = replacementCond(lhs, ch.args, condInfo)
-      ch.withSnap(Ite(cond, havockedSnap, ch.snap))
+    val newChunks = relevantChunks.map {
+      case ch: MagicWandChunk =>
+        val havockedSnap = freshSnap(sorts.Snap, v)
+        val abstractLhs = freshSnap(sorts.Snap, v)
+        val freshWandMap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction)
+        val cond = replacementCond(lhs, ch.args, condInfo)
+
+        // Define a new `MagicWandSnapshot` that checks the havoc condition when being applied
+        val magicWandSnapshot = MagicWandSnapshot(abstractLhs, Ite(cond, havockedSnap, MWSFLookup(ch.snap.wandMap, abstractLhs)), freshWandMap)
+        v.decider.assumeDefinition(magicWandSnapshot.definition)
+        ch.withSnap(magicWandSnapshot)
+
+      case ch =>
+        val havockedSnap = freshSnap(ch.snap.sort, v)
+        val cond = replacementCond(lhs, ch.args, condInfo)
+        ch.withSnap(Ite(cond, havockedSnap, ch.snap))
     }
     otherChunks ++ newChunks
   }
