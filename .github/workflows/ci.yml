@@ -93,7 +93,7 @@ jobs:
           if-no-files-found: error
 
       - name: Test Report
-        uses: phoenix-actions/test-reporting@v8
+        uses: phoenix-actions/test-reporting@v15
         if: ${{ !cancelled() }}
         with:
           name: "Silicon Test Report"
