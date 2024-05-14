@@ -405,7 +405,12 @@ class FunctionData(val programFunction: ast.Function,
 
   val condFrameFunc = Fun(Identifier("internalCondFrame"), Seq(sorts.Bool, sorts.Snap, sorts.Snap), sorts.Snap)
   private def condFrame(cond: Term, thenTerm: Term, elsTerm: Term): Term = {
-    App(condFrameFunc, Seq(cond, thenTerm, elsTerm))
+    cond match {
+      case True => thenTerm
+      case False => elsTerm
+      case _ if thenTerm == elsTerm => thenTerm
+      case _ => App(condFrameFunc, Seq(cond, thenTerm, elsTerm))
+    }
   }
 
   private def computeFrameHelper(assertion: ast.Exp, name: String, resources: Seq[Any]): Term = {
@@ -474,9 +479,9 @@ class FunctionData(val programFunction: ast.Function,
     assert(Verifier.config.heapFunctionEncoding())
 
     val frameFuncApp = App(frameFunction, funcFrame +: formalArgs.values.toSeq)
-    val body = BuiltinEquals(functionApplication, frameFuncApp)
+    val body = BuiltinEquals(limitedFunctionApplication, frameFuncApp)
 
-    val res = Forall(arguments, body, Trigger(functionApplication))
+    val res = Forall(arguments, body, Trigger(limitedFunctionApplication))
     res
   }
 

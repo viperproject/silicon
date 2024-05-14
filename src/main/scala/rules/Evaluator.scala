@@ -832,7 +832,7 @@ object evaluator extends EvaluationRules {
               val (snapArgs, snapToRecord) = if (Verifier.config.heapFunctionEncoding()) {
                 val resources = maskHeapSupporter.getResourceSeq(func.pres, s4.program)
                 val args = resources.map(r => {
-                  maskHeapSupporter.findMaskHeapChunk(s4.h, r).heap
+                  maskHeapSupporter.findMaskHeapChunk(s3.h, r).heap
                 })
                 (args, FakeMaskMapTerm(ListMap(resources.zip(args): _*)))
               } else {

@@ -2313,7 +2313,6 @@ object HeapToSnap extends CondFlyweightTermFactory[(Term, Term, Any), HeapToSnap
   def apply(heap: Term, mask: Term, r: Any, s: State, d: Decider): Term = {
     val result = HeapToSnap(heap, mask, r)
     if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[HeapToSnap]) {
-      val newVar = d.fresh(result.sort)
       val md = d.freshMacro("tmpTerm", Seq(), result)
       val mcr = Macro(md.id, Seq(), md.body.sort)
       result.asInstanceOf[HeapToSnap].varRepr = Some(App(mcr, Seq()))
@@ -2332,7 +2331,6 @@ object SnapToHeap extends CondFlyweightTermFactory[(Term, Any, Sort), SnapToHeap
   def apply(snap: Term, r: Any, sort: Sort, s: State, d: Decider): Term = {
     val result = SnapToHeap(snap, r, sort)
     if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[SnapToHeap]) {
-      val newVar = d.fresh(result.sort)
       val md = d.freshMacro("tmpTerm", Seq(), result)
       val mcr = Macro(md.id, Seq(), md.body.sort)
       result.asInstanceOf[SnapToHeap].varRepr = Some(App(mcr, Seq()))
@@ -2364,7 +2362,6 @@ object HeapUpdate extends CondFlyweightTermFactory[(Term, Term, Term), HeapUpdat
   def apply(heap: Term, at: Term, value: Term, s: State, d: Decider): Term = {
     val result = HeapUpdate(heap, at, value)
     if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[HeapUpdate]) {
-      val newVar = d.fresh(result.sort)
       val md = d.freshMacro("tmpTerm", Seq(), result)
       val mcr = Macro(md.id, Seq(), md.body.sort)
       result.asInstanceOf[HeapUpdate].varRepr = Some(App(mcr, Seq()))
@@ -2389,7 +2386,6 @@ object MaskAdd extends CondFlyweightTermFactory[(Term, Term, Term), MaskAdd] {
   def apply(mask: Term, at: Term, addition: Term, s: State, d: Decider): Term = {
     val result = MaskAdd(mask, at, addition)
     if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[MaskAdd]) {
-      val newVar = d.fresh(result.sort)
       val md = d.freshMacro("tmpTerm", Seq(), result)
       val mcr = Macro(md.id, Seq(), md.body.sort)
       result.asInstanceOf[MaskAdd].varRepr = Some(App(mcr, Seq()))
@@ -2500,7 +2496,6 @@ object MergeSingle extends CondFlyweightTermFactory[(Term, Term, Term, Term), Me
   def apply(heap: Term, mask: Term, location: Term, value: Term, s: State, d: Decider): Term = {
     val result = MergeSingle(heap, mask, location, value)
     if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[MergeSingle]) {
-      val newVar = d.fresh(result.sort)
       val md = d.freshMacro("tmpTerm", Seq(), result)
       val mcr = Macro(md.id, Seq(), md.body.sort)
       result.asInstanceOf[MergeSingle].varRepr = Some(App(mcr, Seq()))
@@ -2530,7 +2525,6 @@ object MergeHeaps extends CondFlyweightTermFactory[(Term, Term, Term, Term), Mer
   def apply(h1: Term, m1: Term, h2: Term, m2: Term, s: State, d: Decider): Term = {
     val result = MergeHeaps(h1, m1, h2, m2)
     if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[MergeHeaps]) {
-      val newVar = d.fresh(result.sort)
       val md = d.freshMacro("tmpTerm", Seq(), result)
       val mcr = Macro(md.id, Seq(), md.body.sort)
       result.asInstanceOf[MergeHeaps].varRepr = Some(App(mcr, Seq()))
