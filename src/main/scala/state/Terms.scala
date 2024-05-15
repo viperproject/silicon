@@ -951,7 +951,7 @@ object Or extends GeneralCondFlyweightFactory[Iterable[Term], Seq[Term], Term, O
     ts match {
       case Seq() => False
       case Seq(t) => t
-      case _ if ts.contains(True) => True
+      //case _ if ts.contains(True) => True
       case _ => createIfNonExistent(ts)
     }
   }
@@ -982,7 +982,7 @@ object And extends GeneralCondFlyweightFactory[Iterable[Term], Seq[Term], Term, 
     ts match {
       case Seq() => True
       case Seq(t) => t
-      case _ if ts.contains(False) => False
+      //case _ if ts.contains(False) => False
       case _ => createIfNonExistent(ts)
     }
   }
@@ -997,13 +997,13 @@ class Implies(val p0: Term, val p1: Term) extends BooleanTerm
 }
 
 object Implies extends CondFlyweightTermFactory[(Term, Term), Implies] {
-  @tailrec
+
   override def apply(v0: (Term, Term)): Term = v0 match {
-    case (True, e1) => e1
-    case (False, _) => True
-    case (_, True) => True
-    case (e0, Implies(e10, e11)) => Implies(And(e0, e10), e11)
-    case (e0, e1) if e0 == e1 => True
+    //case (True, e1) => e1
+    //case (False, _) => True
+    //case (_, True) => True
+    //case (e0, Implies(e10, e11)) => Implies(And(e0, e10), e11)
+    //case (e0, e1) if e0 == e1 => True
     case (e0, e1) => createIfNonExistent(e0, e1)
   }
 
@@ -1018,9 +1018,9 @@ class Iff(val p0: Term, val p1: Term) extends BooleanTerm
 
 object Iff extends CondFlyweightTermFactory[(Term, Term), Iff] {
   override def apply(v0: (Term, Term)) = v0 match {
-    case (True, e1) => e1
-    case (e0, True) => e0
-    case (e0, e1) if e0 == e1 => True
+    //case (True, e1) => e1
+    //case (e0, True) => e0
+    //case (e0, e1) if e0 == e1 => True
     case (e0, e1) => createIfNonExistent(e0, e1)
   }
 
@@ -1040,11 +1040,11 @@ class Ite private[terms] (val t0: Term, val t1: Term, val t2: Term)
 
 object Ite extends CondFlyweightTermFactory[(Term, Term, Term), Ite] {
   override def apply(v0: (Term, Term, Term)) = v0 match {
-    case (_, e1, e2) if e1 == e2 => e1
-    case (True, e1, _) => e1
-    case (False, _, e2) => e2
-    case (e0, True, False) => e0
-    case (e0, False, True) => Not(e0)
+    //case (_, e1, e2) if e1 == e2 => e1
+    //case (True, e1, _) => e1
+    //case (False, _, e2) => e2
+    //case (e0, True, False) => e0
+    //case (e0, False, True) => Not(e0)
     case _ => createIfNonExistent(v0)
   }
 
@@ -1065,8 +1065,8 @@ object Equals extends ((Term, Term) => BooleanTerm) {
     // Note that the syntactic simplifications (first two cases) can interfere with triggering
     // if they eliminate potential trigger terms.
     (e0, e1) match {
-      case (`e0`, `e0`) => True
-      case (l1: Literal, l2: Literal) => BooleanLiteral(l1 == l2)
+      //case (`e0`, `e0`) => True
+      //case (l1: Literal, l2: Literal) => BooleanLiteral(l1 == l2)
       case _ =>
         e0.sort match {
           case sorts.Snap =>
