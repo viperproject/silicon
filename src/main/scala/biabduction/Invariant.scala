@@ -42,7 +42,7 @@ object LoopInvariantSolver {
                           q: InvariantAbductionQuestion = InvariantAbductionQuestion(Seq(), Map()))
                          (Q: BiAbductionResult => VerificationResult): VerificationResult = {
 
-    // Assumme that we have the previous abstraction
+    // Assume that we have the previous abstraction
     //producer.produces(s, freshSnap, q.abstraction, pveLam, v) { (s2, v2) =>
 
 
@@ -67,22 +67,24 @@ object LoopInvariantSolver {
       case nonf: NonFatalResult =>
 
         val abdReses = (nonf +: nonf.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
-        val newState = abdReses.flatMap(_.pre)
+        val newStateOpt = abdReses.map { abd => abd.toPrecondition(sPre.g.values, sPre.h)}
+        if(newStateOpt.contains(None)){
+          return Q(BiAbductionFailure(sPre, vPre))
+        }
+        val newState = newStateOpt.flatMap(_.get)
 
         // Get the state at the beginning of the loop with with the abduced things added
-        producer.produces(sPre, freshSnap, abdReses.flatMap(_.pre), pveLam, vPre) { (sPreAbd, vPreAbd) =>
-
-          // TODO this is not the way to find the vars, it should be the vars not assigned to in the loop
-          // TODO nklose this is nonsense now. Think about what should really happen here!
-          val relVarTrans = VarTransformer(sPreAbd, vPreAbd, sPre.g.values, sPre.h, strict = false)
+        producer.produces(sPre, freshSnap, abdReses.flatMap(_.state), pveLam, vPre) { (sPreAbd, vPreAbd) =>
 
           // The framing result contains the state at the end of the loop
           // TODO we should also track the framed stuff to generate invariants for loops with changing heaps
+          // TODO branching will lead to multiple of these occuring
           val framingRes = (nonf +: nonf.previous).collect { case Success(Some(framing: FramingSuccess)) => framing } match {
             case Seq(res) => res
           }
 
-          // Values of the variables in terms of the beginning of the loop
+          // Values of the variables at the end of loop in terms of the beginning of the loop
+          val relVarTrans = VarTransformer(sPre, vPre, sPre.g.values, sPre.h, strict = false)
           val relValues = framingRes.s.g.values.collect { case (v, t) => (v, relVarTrans.transformTerm(t)) }
             .collect { case (v, e) if e.isDefined && e.get != v => (v, e.get) }
 
@@ -90,17 +92,17 @@ object LoopInvariantSolver {
 
           // The absolute values at the end of the loop, by combining the values before the iteration with the absolute
           // values from the last iteration
-          val newAbsValues: Map[AbstractLocalVar, Exp] = relValues.collect { case (v: AbstractLocalVar, e: Exp) => (v, e.transform {
+          val newAbsValues: Map[AbstractLocalVar, Exp] = relValues.collect { case (v, e) => (v, e.transform {
             case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
           })
           }.collect { case (v, e) => (v, absVarTran.transformExp(e).get) }
 
           // Perform abstraction on the found state for that loop iteration
+          // TODO nklose this is not working?
           // TODO there is an assumption here that the re-assignment happens at the end of the loop
           val newAbsState = newState.map(e => e.transform {
             case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
           }).map(absVarTran.transformExp(_).get)
-
           val newAbstraction = AbstractionApplier.apply(AbstractionQuestion(q.abstraction ++ newAbsState, sPre.program)).exps
 
           // The re-assignments of this iteration in terms of the absolute values

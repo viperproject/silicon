@@ -16,6 +16,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.Method
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
@@ -329,8 +330,7 @@ object executor extends ExecutionRules {
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((s1, _, v1) => {
               // TODO nklose we may want to limit what kind of posts we can generate here
-              // TODO loc is very questionable here
-              val posts = BiAbductionSolver.solveFraming(s1, v1)
+              val posts = BiAbductionSolver.solveFraming(s1, v1, s1.g.values)
               Success(Some(posts))
             })
         }
@@ -722,24 +722,24 @@ object executor extends ExecutionRules {
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 
-
+    // TODO this is still wrong: if we are in a loop, then we do not want to go to precondition
+    // We should just consume locally and return the results in verification successes.
+    // Then we can collect everything in the methodsupporter to actually translate stuff.
     executed match {
-      case Failure(pc: PostconditionViolated, _) => executed // Postconditions are handled later, we do not want to restart for them
+      case Failure(_: PostconditionViolated, _) => executed // Postconditions are handled elsewhere, we do not want to restart for them
       case Failure(ve, _) =>
         ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-          case Some(as@AbductionSuccess(_, _, pre, stmts, _)) =>
+          case Some(as: AbductionSuccess) =>
             // TODO nklose this also breaks if we allow re-assigning to input fields, we consume in the current state
             // instead of the original state.
-            println(as.toString())
-            println("Continuing verification with abduction results added")
-            producer.produces(s, freshSnap, pre, ContractNotWellformed, v) { (s1, v1) =>
-              executor.execs(s1, stmts.reverse, v1) { (s2, v2) =>
-                exec(s2, stmt, v2)((s3, v3) => Q(s3, v3) match {
-                  case f: Failure => f
-                  case s: NonFatalResult => s && Success(Some(as))
-                })
+            //println(as.toString())
+            //println("Continuing execution with abduced state and statements added")
+            producer.produces(s, freshSnap, as.state, ContractNotWellformed, v) { (s1, v1) =>
+              executor.execs(s1, as.stmts.reverse, v1) { (s2, v2) =>
+                exec(s2, stmt, v2)((s3, v3) => Q(s3, v3) && Success(Some(as)))
               }
             }
+
           case Some(_: BiAbductionFailure) =>
             println("Abduction failed")
             executed

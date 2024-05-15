@@ -22,7 +22,7 @@ object AbductionApplier extends RuleApplier[SiliconAbductionQuestion] {
 // TODO nklose: cant we just join the check and apply and return either None or Some(AbductionQuestion)?
 
 case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
-                                    lostAccesses: Map[Exp, Term] = Map(), foundPrecons: Seq[Exp] = Seq(),
+                                    lostAccesses: Map[Exp, Term] = Map(), foundState: Seq[Exp] = Seq(),
                                     foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
 
 /**
@@ -226,7 +226,7 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
     eval(q.s, nNl, pve, q.v) { case (s1, arg, v1) => {
       val isNl = q.v.decider.check(arg, Verifier.config.checkTimeout())
       // Add x != null to result if it does not hold
-      val r1 = if (isNl) q.foundPrecons else q.foundPrecons :+ nNl
+      val r1 = if (isNl) q.foundState else q.foundState :+ nNl
 
       // Exchange list(x) with list(x.next) in the state
       // Unfold
@@ -239,7 +239,7 @@ object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
           // Remove the access chunk
           consumer.consume(s2, inst, pve, v2)((s3, snap, v3) => {
             val lost = q.lostAccesses + (inst.loc -> SortWrapper(snap, sorts.Ref))
-            Q(q.copy(s = s3, v = v3, goal = g1, foundPrecons = r1, foundStmts = q.foundStmts :+ unfold, lostAccesses = lost))
+            Q(q.copy(s = s3, v = v3, goal = g1, foundState = r1, foundStmts = q.foundStmts :+ unfold, lostAccesses = lost))
           })
         })
       }
@@ -323,7 +323,7 @@ object AbductionPackage extends AbductionRule[MagicWand] {
 
       val g1 = q.goal.filterNot(_ == inst)
       val stmts = q.foundStmts :+ Package(inst, Seqn(packRes.foundStmts.reverse, Seq())())()
-      val pres = q.foundPrecons ++ packRes.foundPrecons
+      val pres = q.foundState ++ packRes.foundState
       Q(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts))
     })
   }
@@ -348,6 +348,8 @@ object AbductionMissing extends AbductionRule[Seq[AccessPredicate]] {
 
   override protected def apply(q: SiliconAbductionQuestion, inst: Seq[AccessPredicate])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
     val g1 = q.goal.filterNot(inst.contains)
-    Q(q.copy(goal = g1, foundPrecons = q.foundPrecons ++ inst))
+    Q(q.copy(goal = g1, foundState = q.foundState ++ inst))
   }
+
+  override protected def instanceString(inst: Seq[AccessPredicate]): String = inst.mkString(" && ")
 }

@@ -7,20 +7,24 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.biabduction.{AbductionSuccess, BiAbductionSolver}
+import viper.silicon.biabduction.{AbductionSuccess, BiAbductionSolver, FramingSuccess}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.terms.Term
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.{Map, toMap}
 import viper.silver.ast
+import viper.silver.ast.Method
 import viper.silver.components.StatefulComponent
 import viper.silver.reporter.AnnotationWarning
+import viper.silver.verifier.DummyNode
 import viper.silver.verifier.errors._
+import viper.silver.verifier.reasons.InternalReason
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -117,20 +121,61 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               && {
               executionFlowController.locally(s2a, v2)((s3, v3) => {
                 exec(s3, body, v3) { (s4, v4) =>
-                  consumes(s4, posts, postViolated, v4)((s5, _, v5) => {
-                    val newPosts = BiAbductionSolver.solveFraming(s5, v5)
-                    println("New postconditions for method " + method.name + ":\n" + newPosts.posts.map(_.toString()).mkString("\n"))
+                  // P finds postconditions from the state after consuming existing postconditions
+                  val P = (s: State, _: Term, v: Verifier) => {
+                    val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
+                    val vars = s.g.values.collect { case (v, t) if formals.contains(v) => (v, t) }
+                    val newPosts = BiAbductionSolver.solveFraming(s, v, vars)
+                    //println("New postconditions for method " + method.name + ":\n" + newPosts.posts.map(_.toString()).mkString("\n"))
                     Success(Some(newPosts))
-                  })}})})})})
+                  }
+                  // Attempt to consume postconditions
+                  consumes(s4, posts, postViolated, v4)(P) match {
+                    // We failed to consume all postconditions
+                    case f@Failure(pcv: PostconditionViolated, _) =>
+                      pcv.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
+                        // We managed to abduce preconditions so that the post conditions would be fulfilled. So we attempt
+                        // to consume the postconditions and frame again
+                        case Some(as: AbductionSuccess) =>
+                          //println("Successful abduction to fulfil postcondition:")
+                          //println(as.toString())
+                          producer.produces(s4, freshSnap, as.state, ContractNotWellformed, v) { (s6, v6) =>
+                            executor.execs(s6, as.stmts.reverse, v6) { (s7, v7) =>
+                              consumes(s7, posts, postViolated, v7)(P) && Success(Some(as))
+                            }
+                          }
+                        // We failed to abduce so that we can fulfil the postconditions
+                        case _ => f
+                      }
+                    // We successfully consumed all postconditions (and then did framing)
+                    case otherRes => otherRes
+                  }
+                }
+              })
+            })
+          })
+        })
 
-      val abdResult = result match {
-        case f: Failure =>
-          f.message.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-            case Some(as: AbductionSuccess) =>
-              println("Successful abduction to fulfil postcondition:")
-              println(as.toString())
-              Success(Some(as)) // This is little scary, just returning a success here claiming that we can fulfill the postcondition
-            case _ => result
+      val abdResult: VerificationResult = result match {
+        case suc: NonFatalResult =>
+          // Collect all the abductions and try to generate preconditions
+          val ins = method.formalArgs.map(_.localVar)
+          val inVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
+          val abds = (suc +: suc.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
+          val pres = abds.map {abd => abd.toPrecondition(inVars, abd.s.oldHeaps.head._2)}
+          // If we fail to generate preconditions somewhere, then we actually fail
+          if(pres.contains(None)){
+            Failure(Internal(reason = InternalReason(DummyNode, "Failed to generate preconditions from abduction results")))
+          } else {
+            // Otherwise we succeed
+            println("Generated preconditions from abductions: " + pres.flatMap(_.get).mkString(" && "))
+            println("Abduced the following statements:\n" + abds.flatMap {abd => abd.stmts.map {stmt => "  Line " + abd.line + ": " + stmt.toString() }}.reverse.mkString("\n") )
+            // TODO branching can lead to multiple framing results! We need to look at the branching conditions here as well
+            (suc +: suc.previous).collect { case Success(Some(framing: FramingSuccess)) => framing } match {
+              case Seq(frame) => println("Generated postconditions: " + frame.posts.mkString(" && "))
+              case Seq() => println("No framing result found")
+            }
+            result
           }
         case _ => result
       }
