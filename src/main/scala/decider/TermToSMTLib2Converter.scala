@@ -316,7 +316,7 @@ class TermToSMTLib2Converter
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)
       parens(text("let") <+> parens(docBindings) <+> render(body))
 
-    case MagicWandSnapshot(_, _, wandMap) => render(wandMap)
+    case MagicWandSnapshot(mwsf) => render(mwsf)
     case MWSFLookup(mwsf, snap) => renderApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
 
     case _: MagicWandChunkTerm

@@ -16,7 +16,6 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
-import viper.silver.ast.DomainType
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
@@ -82,7 +81,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   /**
    * For each necessary domain type, instantiate the corresponding domain
    */
-  private def instantiateWithDomain(sourceProgram: ast.Program, sourceDomain: ast.Domain, sourceDomainTypeInstances: InsertionOrderedSet[DomainType]): Set[(ast.DomainType, ast.Domain)] = {
+  private def instantiateWithDomain(sourceProgram: ast.Program, sourceDomain: ast.Domain, sourceDomainTypeInstances: InsertionOrderedSet[ast.DomainType]): Set[(ast.DomainType, ast.Domain)] = {
     sourceDomainTypeInstances map (domainType => {
       /* TODO: Copied from DomainInstances.getInstanceMembers.
        *       Cannot directly use that because it filters according to which domain instances
