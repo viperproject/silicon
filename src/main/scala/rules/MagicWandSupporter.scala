@@ -301,7 +301,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), conservedPcs, v4)
           Success()
         })
-
       } else {
         this.createChunk(s4, wand, wandSnapshot, pve, v3)((s5, ch, v4) => {
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
