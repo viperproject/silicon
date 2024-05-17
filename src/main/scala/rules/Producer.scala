@@ -398,17 +398,7 @@ object producer extends ProductionRules {
 
       case wand: ast.MagicWand =>
         val snapRhs = sf(sorts.MagicWandSnapFunction, v)
-
-        // Create MWSF that takes a snapshot, which represent the values of the consumed LHS of the wand,
-        // and relates it to the snapshot of the RHS. We use this to preserve values of the LHS in the RHS snapshot.
-        v.decider.prover.comment(s"Produce MagicWandSnapFunction for wand $wand")
-        val abstractLhs = v.decider.fresh(sorts.Snap)
-
-        // We assume that the MWSF that we get from `snapRhs` is the same as our newly created MWSF.
-        // `snapRhs` is an expression that potentially returns a nested element of a binary tree.
-        val magicWandSnapshot = magicWandSupporter.createMagicWandSnapshot(abstractLhs, MWSFLookup(snapRhs, abstractLhs), v)
-
-        magicWandSupporter.createChunk(s, wand, magicWandSnapshot, pve, v)((s1, chWand, v1) =>
+        magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snapRhs), pve, v)((s1, chWand, v1) =>
           chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
             Q(s2.copy(h = h2), v2)))
 
