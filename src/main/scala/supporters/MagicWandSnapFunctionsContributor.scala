@@ -42,7 +42,7 @@ class MagicWandSnapFunctionsContributor(preambleReader: PreambleReader[String, S
     // If there are not magic wands, do not add any definitions or axioms
     if (!program.existsDefined { case ast.MagicWand(_, _) => true }) return
 
-    collectedSorts = InsertionOrderedSet(sorts.MagicWandSnapFunction)
+    collectedSorts = InsertionOrderedSet(sorts.MagicWandSnapFunction())
     collectedFunctionDecls = preambleReader.readPreamble(FILE_DECLARATIONS)
   }
 

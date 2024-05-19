@@ -640,6 +640,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   def singletonSnapshotMap(s: State,
                            resource: ast.Resource,
                            arguments: Seq[Term],
+                           // freshSnapRoot: Term,
                            value: Term,
                            v: Verifier)
                           : (Term, Term) = {
@@ -647,6 +648,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val additionalSmArgs = s.relevantQuantifiedVariables(arguments)
     val sm = freshSnapshotMap(s, resource, additionalSmArgs, v)
     val smValueDef = BuiltinEquals(ResourceLookup(resource, sm, arguments, s.program), value)
+    // val smValueDef = Forall(
+    //   freshSnapRoot,
+    //   MWSFLookup(ResourceLookup(resource, sm, arguments, s.program), freshSnapRoot) === snapRhs,
+    //   Trigger(MWSFLookup(ResourceLookup(resource, sm, arguments, s.program), freshSnapRoot))
+    // )
 
     (sm, smValueDef)
   }
@@ -1560,7 +1566,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           // TODO: Reconsider use of and general design behind s.predicateSnapMap
           sorts.PredicateSnapFunction(s.predicateSnapMap(predicate), predicate.name)
         case w: ast.MagicWand =>
-          sorts.PredicateSnapFunction(sorts.Snap, MagicWandIdentifier(w, s.program).toString)
+          sorts.PredicateSnapFunction(sorts.MagicWandSnapFunction(), MagicWandIdentifier(w, s.program).toString)
         case _ =>
           sys.error(s"Found yet unsupported resource $resource (${resource.getClass.getSimpleName})")
       }

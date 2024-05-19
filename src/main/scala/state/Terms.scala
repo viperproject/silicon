@@ -76,7 +76,7 @@ object sorts {
     override lazy val toString = id.toString
   }
 
-  object MagicWandSnapFunction extends Sort {
+  case class MagicWandSnapFunction() extends Sort {
     val id: Identifier = Identifier("MWSF")
     override lazy val toString: String = id.toString
   }
@@ -2308,9 +2308,9 @@ object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[T
  *             and uses this function and the resulting snapshot to look up which right-hand side to produce.
  */
 class MagicWandSnapshot(val mwsf: Term) extends Term with ConditionalFlyweight[Term, MagicWandSnapshot] {
-  utils.assertSort(mwsf, "magic wand snap function", sorts.MagicWandSnapFunction)
+  utils.assertSort(mwsf, "magic wand snap function", "MagicWandSnapFunction", _.isInstanceOf[sorts.MagicWandSnapFunction])
 
-  override val sort: Sort = sorts.MagicWandSnapFunction
+  override val sort: Sort = sorts.MagicWandSnapFunction()
 
   override lazy val toString = s"wandSnap($mwsf)"
 
@@ -2349,7 +2349,7 @@ class MWSFLookup(val mwsf: Term, val snap: Term) extends Term with ConditionalFl
 object MWSFLookup extends PreciseCondFlyweightFactory[(Term, Term), MWSFLookup] {
   override def apply(pair: (Term, Term)): MWSFLookup = {
     val (mwsf, snap) = pair
-    utils.assertSort(mwsf, "mwsf", sorts.MagicWandSnapFunction)
+    utils.assertSort(mwsf, "mwsf", "MagicWandSnapFunction", _.isInstanceOf[sorts.MagicWandSnapFunction])
     utils.assertSort(snap, "snap", sorts.Snap)
     createIfNonExistent(pair)
   }

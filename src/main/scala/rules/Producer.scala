@@ -367,7 +367,7 @@ object producer extends ProductionRules {
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
         evals(s, bodyVars, _ => pve, v)((s1, args,v1) => {
           val (sm, smValueDef) =
-            quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
+            quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.MagicWandSnapFunction(), v1), v1)
           v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val definitionalAxiomMark = v1.decider.setPathConditionMark()
           v1.decider.assumeDefinition(smValueDef)
@@ -397,7 +397,7 @@ object producer extends ProductionRules {
           Q(s2, v1)})
 
       case wand: ast.MagicWand =>
-        val snap = sf(sorts.MagicWandSnapFunction, v)
+        val snap = sf(sorts.MagicWandSnapFunction(), v)
         magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snap), pve, v)((s1, chWand, v1) =>
           chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
             Q(s2.copy(h = h2), v2)))
@@ -477,7 +477,7 @@ object producer extends ProductionRules {
         val qid = MagicWandIdentifier(wand, s.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Some((tArgs, tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
-            val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v1)
+            val tSnap = sf(sorts.PredicateSnapFunction(sorts.MagicWandSnapFunction(), qid), v1)
             quantifiedChunkSupporter.produce(
               s1,
               forall,

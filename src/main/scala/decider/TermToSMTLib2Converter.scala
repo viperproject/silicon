@@ -62,7 +62,7 @@ class TermToSMTLib2Converter
     case sorts.FieldPermFunction() => text("$FPM")
     case sorts.PredicatePermFunction() => text("$PPM")
 
-    case sorts.MagicWandSnapFunction => text("$MWSF")
+    case sorts.MagicWandSnapFunction() => text("$MWSF")
   }
 
   def convert(d: Decl): String = {
