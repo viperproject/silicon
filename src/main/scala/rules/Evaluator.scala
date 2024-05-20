@@ -912,11 +912,15 @@ object evaluator extends EvaluationRules {
             eval(s2, eIn, pve, v2)(QB)
         }))(join(v.symbolConverter.toSort(eIn.typ), "joined_applying", s.relevantQuantifiedVariables, v))(Q)
 
-      case ast.Inhaling(exp, body) =>
-        produce(s, freshSnap, exp, pve, v)((s2, v2) => {
-          eval(s2, body, pve, v2)((_, tBody, _) => {
-            Q(s, tBody, v)
-          })})
+      case ast.Inhaling(a, body) =>
+        executionFlowController.locallyWithResult[Term](s, v)((s1, v1, QL) => {
+          produce(s1, freshSnap, a, pve, v1)((s2, v2) => {
+            v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+            eval(s2, body, pve, v2)((_, tBody, _) => {
+              QL(tBody)
+            })
+          })
+        })(t => Q(s, t, v))
 
       /* Sequences */
 

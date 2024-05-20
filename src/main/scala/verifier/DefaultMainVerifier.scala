@@ -189,8 +189,7 @@ class DefaultMainVerifier(config: Config,
     }
 
     if (config.printTranslatedProgram()) {
-      val str = program.toString()
-      println(str)
+      println(program)
     }
 
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
