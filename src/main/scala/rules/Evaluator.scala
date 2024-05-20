@@ -18,7 +18,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.toSf
+import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
@@ -911,6 +911,12 @@ object evaluator extends EvaluationRules {
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)(QB)
         }))(join(v.symbolConverter.toSort(eIn.typ), "joined_applying", s.relevantQuantifiedVariables, v))(Q)
+
+      case ast.Inhaling(exp, body) =>
+        produce(s, freshSnap, exp, pve, v)((s2, v2) => {
+          eval(s2, body, pve, v2)((_, tBody, _) => {
+            Q(s, tBody, v)
+          })})
 
       /* Sequences */
 
