@@ -20,7 +20,7 @@ class SiliconTests extends SilSuite {
   private val silTestDirectories =
     Seq("all",
         "quantifiedpermissions", "quantifiedpredicates", "quantifiedcombinations",
-        "wands", "termination", "refute",
+        "wands", "termination", "refute", "inhaling",
         "examples")
 
   val testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
