@@ -6,6 +6,8 @@
 
 package viper.silicon.state
 
+import viper.silicon.Config.JoinMode
+import viper.silicon.Config.JoinMode.JoinMode
 import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
@@ -14,7 +16,7 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.state.LoopPhases.LoopPhase
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{And, Ite, NoPerm, SeqAppend, Term, Var}
+import viper.silicon.state.terms.{And, Ite, NoPerm, PermLiteral, SeqAppend, Term, Var}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.{Map, Stack}
@@ -67,6 +69,7 @@ final case class State(g: Store = Store(),
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
                        qpMagicWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty,
+                       permLocations: InsertionOrderedSet[ast.Location] = InsertionOrderedSet.empty,
                        smCache: SnapshotMapCache = SnapshotMapCache.empty,
                        pmCache: PmCache = Map.empty,
                        smDomainNeeded: Boolean = false,
@@ -77,7 +80,7 @@ final case class State(g: Store = Store(),
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false,
-                       moreJoins: Boolean = false,
+                       moreJoins: JoinMode = JoinMode.Off,
                        loopPhaseStack: Stack[(LoopPhase, Int, SilverLoopHeadBlock)] = Stack(),
                        loopHeapStack: Stack[Heap] = Stack(),
                        loopReadVarStack: Stack[(Var, Boolean)] = Stack())
@@ -116,8 +119,9 @@ final case class State(g: Store = Store(),
     copy(constrainableARPs = newConstrainableARPs)
   }
 
-  def scalePermissionFactor(p: Term) =
+  def scalePermissionFactor(p: Term) = {
     copy(permissionScalingFactor = terms.PermTimes(p, permissionScalingFactor))
+  }
 
   def merge(other: State): State =
     State.merge(this, other)
@@ -168,7 +172,7 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
-                 qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
+                 qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
                  moreCompleteExhale, moreJoins, loopPhase, loopHeaps, loopReadVars) =>
 
@@ -193,7 +197,7 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
-                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
+                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
                      moreCompleteExhale2, `moreJoins`, `loopPhase`, loopHeaps2, loopReadVars2) =>
 
@@ -324,7 +328,7 @@ object State {
       permissionScalingFactor1,
       reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
       ssCache1, hackIssue387DisablePermissionConsumption1,
-      qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
+      qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
       moreCompleteExhale, moreJoins, loopPhaseStack, loopHeapStack1, loopReadVarStack) =>
 
@@ -348,7 +352,7 @@ object State {
           `permissionScalingFactor1`,
           reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
           ssCache2, `hackIssue387DisablePermissionConsumption1`,
-          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, smDomainNeeded2,
+          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
           moreCompleteExhale2, `moreJoins`, `loopPhaseStack`, loopHeapStack2, `loopReadVarStack`) =>
 

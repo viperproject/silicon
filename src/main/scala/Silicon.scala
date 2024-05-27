@@ -24,6 +24,7 @@ import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
+import viper.silver.utility.{FileProgramSubmitter}
 
 import scala.util.chaining._
 
@@ -116,7 +117,9 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     lifetimeState = LifetimeState.Configured
 
     _config = new Config(args)
-    _symbExLog = SymbExLogger.ofConfig(_config)
+    if (!config.exit) {
+      _symbExLog = SymbExLogger.ofConfig(_config)
+    }
   }
 
   def debugInfo(debugInfo: Seq[(String, Any)]): Unit = { this.debugInfo = debugInfo }
@@ -247,18 +250,6 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       // note that we do not extract 'previous' verification errors from VerificationResult's `previous` field
       // because this is expected to have already been done in `verifier.verify` (for each member).
       .collect{ case f: Failure => f } /* Ignore successes */
-      .pipe(allResults => {
-        /* If branchconditions are to be reported we collect the different failure contexts
-         *  of all failures that report the same error (but on different branches, with different CounterExample)
-         *  and put those into one failure
-         */
-        if (config.enableBranchconditionReporting())
-          allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
-            fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
-            Failure(fs.head.message)
-          }.toList
-        else allResults.distinctBy(failureFilterAndGroupingCriterion)
-      })
       .sortBy(failureSortingCriterion)
 
 //    if (config.showStatistics.isDefined) {
@@ -288,16 +279,6 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         failures.length))
 
     failures
-  }
-
-  private def failureFilterAndGroupingCriterion(f: Failure): String = {
-    // apply transformers if available:
-    val transformedError = f.message match {
-      case e: SilAbstractVerificationError => e.transformedError()
-      case e => e
-    }
-    // create a string that identifies the given failure:
-    transformedError.readableMessage(withId = true, withPosition = true)
   }
 
   private def failureSortingCriterion(f: Failure): (Int, Int) = {
@@ -403,6 +384,9 @@ object SiliconRunner extends SiliconRunnerInstance {
 class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
   def runMain(args: Array[String]): Unit = {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
+
+    val submitter = new FileProgramSubmitter(this)
+    submitter.setArgs(args)
 
     try {
       execute(ArraySeq.unsafeWrapArray(args))

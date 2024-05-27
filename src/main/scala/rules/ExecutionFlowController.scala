@@ -126,7 +126,7 @@ object executionFlowController extends ExecutionFlowRules {
                                           * current branch turned out to be infeasible) */
         firstActionResult
       else {
-        val s0 = v.stateConsolidator.consolidate(s, v)
+        val s0 = v.stateConsolidator(s).consolidate(s, v)
 
         val comLog = new CommentRecord("Retry", s0, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(comLog)

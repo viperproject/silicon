@@ -247,8 +247,8 @@ object Macro extends CondFlyweightFactory[(Identifier, Seq[Sort], Sort), Macro, 
   override def actualCreate(args: (Identifier, Stack[Sort], Sort)): Macro = new Macro(args._1, args._2, args._3)
 }
 
-class Var private[terms] (val id: Identifier, val sort: Sort) extends Function with Application[Var] with ConditionalFlyweight[(Identifier, Sort), Var] {
-  override val equalityDefiningMembers: (Identifier, Sort) = (id, sort)
+class Var private[terms] (val id: Identifier, val sort: Sort, val isWildcard: Boolean) extends Function with Application[Var] with ConditionalFlyweight[(Identifier, Sort, Boolean), Var] {
+  override val equalityDefiningMembers: (Identifier, Sort, Boolean) = (id, sort, isWildcard)
   val applicable: Var = this
   val args: Seq[Term] = Seq.empty
   val argSorts: Seq[Sort] = Seq(sorts.Unit)
@@ -256,11 +256,11 @@ class Var private[terms] (val id: Identifier, val sort: Sort) extends Function w
 
   override lazy val toString = id.toString
 
-  def copy(id: Identifier = id, sort: Sort = sort) = Var(id, sort)
+  def copy(id: Identifier = id, sort: Sort = sort, isWildcard: Boolean = isWildcard) = Var(id, sort, isWildcard)
 }
 
-object Var extends CondFlyweightFactory[(Identifier, Sort), Var, Var] {
-  override def actualCreate(args: (Identifier, Sort)): Var = new Var(args._1, args._2)
+object Var extends CondFlyweightFactory[(Identifier, Sort, Boolean), Var, Var] {
+  override def actualCreate(args: (Identifier, Sort, Boolean)): Var = new Var(args._1, args._2, args._3)
 }
 
 class App private[terms] (val applicable: Applicable, val args: Seq[Term])
@@ -677,6 +677,22 @@ case object Forall extends Quantifier {
   override lazy val toString = "QA"
 }
 
+object SimplifyingForall {
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Term = tBody match {
+    case True => True
+    case False if qvars.nonEmpty =>
+      // This assumes that every sort is non-empty, which should be a safe assumption, since otherwise, declaring a
+      // variable of that sort would also already be unsound.
+      False
+    case _ =>
+      if (qvars.isEmpty) {
+        tBody
+      } else {
+        Forall(qvars, tBody, triggers)
+      }
+  }
+}
+
 object Exists extends Quantifier {
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Exists, qvar :: Nil, tBody, triggers)
@@ -735,6 +751,16 @@ object Quantification
 
   private val qidCounter = new AtomicInteger()
 
+  def transformSeqTerms(t: Trigger): Seq[Trigger] = {
+    val transformed = Trigger(t.p.map(_.transform{
+      case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
+    }()))
+    if (transformed != t)
+      Seq(t, transformed)
+    else
+      Seq(t)
+  }
+
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}")
 
@@ -769,6 +795,8 @@ object Quantification
             weight: Option[Int])
            : Quantification = {
 
+    val rewrittenTriggers = if (Verifier.config.useOldAxiomatization()) triggers else triggers.flatMap(transformSeqTerms(_))
+
 //    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
@@ -776,7 +804,7 @@ object Quantification
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    createIfNonExistent(q, vars, tBody, triggers, name, isGlobal, weight)
+    createIfNonExistent(q, vars, tBody, rewrittenTriggers, name, isGlobal, weight)
 //    tBody match {
 //    case True | False => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
@@ -1297,6 +1325,21 @@ class PermTimes private[terms] (val p0: Term, val p1: Term)
   override val op = "*"
 }
 
+object WildcardSimplifyingPermTimes extends ((Term, Term) => Term) {
+  override def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
+    case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
+    case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
+    case (Ite(c, t1, t2), t3) => Ite(c, WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case _ => PermTimes(t0, t1)
+  }
+}
+
 object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (FullPerm, t) => t
@@ -1304,6 +1347,12 @@ object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
     case (NoPerm, _) => NoPerm
     case (_, NoPerm) => NoPerm
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
+    case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(PermTimes(t1, t2), PermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(PermTimes(t1, t2), PermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, PermTimes(t1, t2), PermTimes(t1, t3))
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -1666,6 +1715,23 @@ object SeqIn extends CondFlyweightTermFactory[(Term, Term), SeqIn] {
   override def actualCreate(args: (Term, Term)): SeqIn = new SeqIn(args._1, args._2)
 }
 
+class SeqInTrigger private[terms] (val p0: Term, val p1: Term) extends BooleanTerm
+  with ConditionalFlyweightBinaryOp[SeqInTrigger] {
+
+  override lazy val toString = s"$p1 in $p0"
+}
+
+object SeqInTrigger extends CondFlyweightTermFactory[(Term, Term), SeqInTrigger] {
+  override def apply(v0: (Term, Term)) = {
+    val (t0, t1) = v0
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+    utils.assertSort(t1, "second operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
+    createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term)): SeqInTrigger = new SeqInTrigger(args._1, args._2)
+}
+
 class SeqUpdate private[terms] (val t0: Term, val t1: Term, val t2: Term)
     extends SeqTerm
        with ConditionalFlyweight[(Term, Term, Term), SeqUpdate] {
@@ -1683,7 +1749,10 @@ object SeqUpdate extends CondFlyweightTermFactory[(Term, Term, Term), SeqUpdate]
     utils.assertSort(t1, "second operand", sorts.Int)
     utils.assertSort(t2, "third operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
 
-    createIfNonExistent(v0)
+    if (Verifier.config.useOldAxiomatization())
+      createIfNonExistent(v0)
+    else
+      SeqAppend(SeqTake(t0,t1),SeqAppend(SeqSingleton(t2),SeqDrop(t0,Plus(t1,IntLiteral(1)))))
   }
 
   override def actualCreate(args: (Term, Term, Term)): SeqUpdate = new SeqUpdate(args._1, args._2, args._3)
@@ -2479,8 +2548,8 @@ object Let extends CondFlyweightTermFactory[(Map[Var, Term], Term), Let] {
 /* Predefined terms */
 
 object predef {
-  val `?s` = Var(Identifier("s@$"), sorts.Snap) // with SnapshotTerm
-  val `?r` = Var(Identifier("r"), sorts.Ref)
+  val `?s` = Var(Identifier("s@$"), sorts.Snap, false) // with SnapshotTerm
+  val `?r` = Var(Identifier("r"), sorts.Ref, false)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)
@@ -2523,6 +2592,8 @@ object utils {
     case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
     case PermPermDiv(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case Ite(_, t0, NoPerm) => consumeExactRead(t0, constrainableARPs)
+    case Ite(_, NoPerm, t1) => consumeExactRead(t1, constrainableARPs)
     case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case _ => true
   }

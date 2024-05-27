@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.rules.chunks.chunkSupporter
+import viper.silicon.Config.JoinMode
 
 import scala.collection.mutable
 import viper.silver.ast
@@ -216,7 +217,7 @@ object producer extends ProductionRules {
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
     val produced = a match {
-      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins =>
+      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
@@ -242,7 +243,7 @@ object producer extends ProductionRules {
               case Seq(entry) => // One branch is dead
                 entry.s
               case Seq(entry1, entry2) => // Both branches are alive
-                entry1.pathConditionAwareMerge(entry2, v1)
+                entry1.pathConditionAwareMergeWithoutConsolidation(entry2, v1)
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, null)
@@ -269,7 +270,7 @@ object producer extends ProductionRules {
                 Q(s2, v2)
             }))
 
-      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins =>
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
@@ -321,7 +322,10 @@ object producer extends ProductionRules {
           eval(s1, perm, pve, v1)((s2, tPerm, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
               val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
-              val gain = PermTimes(tPerm, s3.permissionScalingFactor)
+              val gain = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(field))
+                PermTimes(tPerm, s3.permissionScalingFactor)
+              else
+                WildcardSimplifyingPermTimes(tPerm, s3.permissionScalingFactor)
               if (s3.qpFields.contains(field)) {
                 val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
                 quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v3)(Q)
@@ -339,7 +343,10 @@ object producer extends ProductionRules {
               val snap = sf(
                 predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
                               .getOrElse(sorts.Snap), v2)
-              val gain = PermTimes(tPerm, s2.permissionScalingFactor)
+              val gain = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(predicate))
+                PermTimes(tPerm, s2.permissionScalingFactor)
+              else
+                WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               if (s2.qpPredicates.contains(predicate)) {
                 val formalArgs = s2.predicateFormalVarMap(predicate)
                 val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
@@ -358,7 +365,7 @@ object producer extends ProductionRules {
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
         evals(s, bodyVars, _ => pve, v)((s1, args,v1) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
@@ -405,7 +412,7 @@ object producer extends ProductionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ), acc.loc.field.name), v1)
 //            v.decider.assume(PermAtMost(tPerm, FullPerm()))
             quantifiedChunkSupporter.produce(
@@ -426,6 +433,7 @@ object producer extends ProductionRules {
               QPAssertionNotInjective(acc.loc),
               v1
             )(Q)
+          case (s1, _, _, None, v1) => Q(s1, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -436,7 +444,7 @@ object producer extends ProductionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate), predicate.name), v1)
             quantifiedChunkSupporter.produce(
               s1,
@@ -458,17 +466,18 @@ object producer extends ProductionRules {
               QPAssertionNotInjective(acc.loc),
               v1
             )(Q)
+          case (s1, _, _, None, v1) => Q(s1, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         val qid = MagicWandIdentifier(wand, s.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((tArgs, tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v1)
             quantifiedChunkSupporter.produce(
               s1,
@@ -490,6 +499,7 @@ object producer extends ProductionRules {
               QPAssertionNotInjective(wand),
               v1
             )(Q)
+          case (s1, _, _, None, v1) => Q(s1, v1)
         }
 
       case _: ast.InhaleExhaleExp =>

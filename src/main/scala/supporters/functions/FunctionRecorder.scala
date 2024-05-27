@@ -26,6 +26,7 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition]
   def freshFieldInvs: InsertionOrderedSet[InverseFunctions]
   def freshArps: InsertionOrderedSet[(Var, Term)]
+  def freshConstraints: InsertionOrderedSet[Term]
   def freshSnapshots: InsertionOrderedSet[Function]
   def freshPathSymbols: InsertionOrderedSet[Function]
   def freshMacros: InsertionOrderedSet[MacroDecl]
@@ -34,6 +35,7 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder
   def recordFieldInv(inv: InverseFunctions): FunctionRecorder
   def recordArp(arp: Var, constraint: Term): FunctionRecorder
+  def recordConstraint(constraint: Term): FunctionRecorder
   def recordFreshSnapshot(snap: Function): FunctionRecorder
   def recordPathSymbol(symbol: Function): FunctionRecorder
   def recordFreshMacro(decl: MacroDecl): FunctionRecorder
@@ -47,6 +49,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                                   freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet(),
                                   freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet(),
                                   freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
+                                  freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet(),
                                   freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet(),
                                   freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet(),
                                   freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet(),
@@ -94,15 +97,54 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                         : Map[E, Term] = {
 
     recordings.map { case (expr, guardsToSnap) =>
-      /* We (arbitrarily) make the snap of the head pair (guards -> snap) of
-       * guardsToSnap the inner-most else-clause, i.e. we drop the guards.
-       */
-      val conditionalSnap =
-        guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
-          Ite(And(guards.toSet), snap, tailSnap)
+      expr -> toTerm(guardsToSnap, None)
+    }
+  }
+
+  private def toTerm(snaps: InsertionOrderedSet[(Stack[Term], Term)], alternative: Option[Term]): Term = {
+    assert(snaps.nonEmpty)
+    if (snaps.size == 1) {
+      alternative match {
+        case Some(alt) => Ite(And(snaps.head._1.toSet), snaps.head._2, alt)
+        case None => snaps.head._2
+      }
+    } else {
+      if (snaps.head._1.isEmpty) {
+        snaps.head._2
+      } else {
+        val firstBranch = snaps.head._1.head
+        val grouped = snaps.groupBy(sn => {
+          if (sn._1.nonEmpty && sn._1.head == firstBranch)
+            1 // starting with firstBranch
+          else if (sn._1.nonEmpty && sn._1.head == Not(firstBranch))
+            2 // starting with Not(firstBranch)
+          else
+            3 // starting with other condition
+        })
+
+        def dropFirst(part: InsertionOrderedSet[(Stack[Term], Term)]): InsertionOrderedSet[(Stack[Term], Term)] = {
+          part.map(sn => (sn._1.tail, sn._2))
         }
 
-      expr -> conditionalSnap
+        val newAlt = if (grouped.contains(3)) Some(toTerm(grouped(3), alternative)) else alternative
+        if (grouped.contains(1) && grouped.contains(2)) {
+          val left = toTerm(dropFirst(grouped(1)), newAlt)
+          val right = toTerm(dropFirst(grouped(2)), newAlt)
+          Ite(firstBranch, left, right)
+        } else {
+          if (grouped.contains(1)) {
+            newAlt match {
+              case Some(actAlt) => Ite(firstBranch, toTerm(dropFirst(grouped(1)), newAlt), actAlt)
+              case None => toTerm(dropFirst(grouped(1)), newAlt)
+            }
+          } else {
+            newAlt match {
+              case Some(actAlt) => Ite(Not(firstBranch), toTerm(dropFirst(grouped(2)), newAlt), actAlt)
+              case None => toTerm(dropFirst(grouped(2)), newAlt)
+            }
+          }
+        }
+      }
     }
   }
 
@@ -151,6 +193,10 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     if (depth <= 2) copy(freshArps = freshArps + ((arp, constraint)))
     else this
 
+  def recordConstraint(constraint: Term): ActualFunctionRecorder =
+    if (depth <= 2) copy(freshConstraints = freshConstraints + constraint)
+    else this
+
   def recordFreshSnapshot(snap: Function): ActualFunctionRecorder =
     if (depth <= 1) copy(freshSnapshots = freshSnapshots + snap)
     else this
@@ -192,6 +238,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     val fvfs = freshFvfsAndDomains ++ other.freshFvfsAndDomains
     val fieldInvs = freshFieldInvs ++ other.freshFieldInvs
     val arps = freshArps ++ other.freshArps
+    val constraints = freshConstraints ++ other.freshConstraints
     val snaps = freshSnapshots ++ other.freshSnapshots
     val symbols = freshPathSymbols ++ other.freshPathSymbols
     val macros = freshMacros ++ other.freshMacros
@@ -201,6 +248,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
          freshFvfsAndDomains = fvfs,
          freshFieldInvs = fieldInvs,
          freshArps = arps,
+         freshConstraints = constraints,
          freshSnapshots = snaps,
          freshPathSymbols = symbols,
          freshMacros = macros)
@@ -230,6 +278,7 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   val freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   val freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   val freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  val freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   val freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   val freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   val freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
@@ -246,6 +295,7 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   def recordFieldInv(inv: InverseFunctions): NoopFunctionRecorder.type = this
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): NoopFunctionRecorder.type = this
   def recordArp(arp: Var, constraint: Term): NoopFunctionRecorder.type = this
+  def recordConstraint(constraint: Term): NoopFunctionRecorder.type = this
   def recordFreshSnapshot(snap: Function): NoopFunctionRecorder.type = this
   def recordPathSymbol(symbol: Function): NoopFunctionRecorder.type = this
   def recordFreshMacro(decl: MacroDecl): NoopFunctionRecorder.type = this

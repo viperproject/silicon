@@ -27,7 +27,7 @@ object havocSupporter extends SymbolicExecutionRules {
   // should replace the snapshot. Different data is needed for `havoc` and `havocall`.
   // For more information, see `replacementCond`.
   sealed trait HavocHelperData
-  case class HavocallData(inverseFunctions: InverseFunctions) extends HavocHelperData
+  case class HavocallData(inverseFunctions: InverseFunctions, codomainQVars: Seq[Var], imagesOfCodomain: Seq[Term]) extends HavocHelperData
   case class HavocOneData(args: Seq[Term]) extends HavocHelperData
 
   /** Execute the statement `havoc c ==> R`, where c is a conditional expression and
@@ -105,7 +105,7 @@ object havocSupporter extends SymbolicExecutionRules {
       pve   = pve,
       v     = v)
     {
-      case (s1, tVars, Seq(tCond), tArgs, Seq(), _, v1) =>
+      case (s1, tVars, Seq(tCond), Some((tArgs, Seq(), _)), v1) =>
         // Seq() represents an empty list of Triggers
         // TODO: unnamed argument is (tAuxGlobal, tAux). How should these be handled?
 
@@ -126,12 +126,12 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
         v.decider.assert(receiverInjectivityCheck, s1) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1)
           case true =>
             // Generate the inverse axioms
-            // TODO: Second return value (imagesOfCodomain) currently not used — OK?
-            val (inverseFunctions, _) = quantifiedChunkSupporter.getFreshInverseFunctions(
+            val (inverseFunctions, imagesOfCodomain) = quantifiedChunkSupporter.getFreshInverseFunctions(
               qvars = tVars,
               condition = tCond,
               invertibles = tArgs,
@@ -149,12 +149,13 @@ object havocSupporter extends SymbolicExecutionRules {
             // the HavocHelperData inside of a HavocAllData case.
             val newChunks =
               if (usesQPChunks(s1, resource))
-                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions), v1)
+                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
               else
-                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions), v1)
+                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
 
             Q(s1.copy(h = Heap(newChunks)), v1)
         }
+      case (s1, _, _, None, v1) => Q(s1, v1)
     }
   }
 
@@ -291,9 +292,9 @@ object havocSupporter extends SymbolicExecutionRules {
       case HavocOneData(args) =>
         val eqs = And(chunkArgs.zip(args).map{ case (t1, t2) => t1 === t2 })
         And(lhs, eqs)
-      case HavocallData(inverseFunctions) =>
+      case HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain) =>
         val replaceMap = inverseFunctions.qvarsToInversesOf(chunkArgs)
-        lhs.replace(replaceMap)
+        And(lhs.replace(replaceMap), And(imagesOfCodomain.map(_.replace(codomainQVars, chunkArgs))))
     }
   }
 
@@ -322,7 +323,7 @@ object havocSupporter extends SymbolicExecutionRules {
         case w: ast.MagicWand =>
           val bodyVars = w.subexpressionsToEvaluate(s.program)
           bodyVars.indices.toList.map(i =>
-              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
     }
   }
 

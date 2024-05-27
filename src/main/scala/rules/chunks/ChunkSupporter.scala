@@ -99,8 +99,8 @@ object chunkSupporter extends ChunkSupportRules {
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s)
-      //magicWandSupporter.transfer(s, perms, failure, v)(moreCompleteExhaleSupporter.consumeComplete(_, _, id, args, _, _))((s1, optCh, cHeap, v1) =>
-      //  Q(s1, h, cHeap, optCh.flatMap(ch => Some(ch.snap)), v1))
+      //magicWandSupporter.transfer(s, perms, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
+      //        Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
       ???
     } else {
       executionFlowController.tryOrFail2[(Heap, Heap), Option[Term]](s, v)((s1, v1, QS) =>
@@ -159,7 +159,7 @@ object chunkSupporter extends ChunkSupportRules {
             newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
           }
-          (ConsumptionResult(PermMinus(perms, toTake), v, 0), s, newHeap, takenChunk)
+          (ConsumptionResult(PermMinus(perms, toTake), Seq(), v, 0), s, newHeap, takenChunk)
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             v.decider.assume(PermLess(perms, ch.perm))
@@ -187,7 +187,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
-    val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, h, ch, v)
+    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, h, ch, v)
     Q(s.copy(functionRecorder = fr1), h1, v)
   }
 
@@ -204,8 +204,6 @@ object chunkSupporter extends ChunkSupportRules {
       {
         if (s1.loopPhaseStack.nonEmpty && (s1.loopPhaseStack.head._1 == LoopPhases.Transferring || s1.loopPhaseStack.head._1 == LoopPhases.Assuming)) {
           assert(s1.moreCompleteExhale)
-          if (s1.quantifiedVariables.nonEmpty)
-            println("111")
 
           val identifier = resource match {
             case f: ast.Field => BasicChunkIdentifier(f.name)

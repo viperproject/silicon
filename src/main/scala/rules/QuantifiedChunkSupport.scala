@@ -421,6 +421,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                               optSmDomainDefinitionCondition: Option[Term], /* c(r) */
                               v: Verifier)
                              : (Term, Seq[Quantification], Option[Quantification]) = {
+    val relevantQvars = s.quantifiedVariables.filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
 
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, field, additionalFvfArgs, v)
@@ -440,10 +441,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           codomainQVar,
-          Implies(effectiveCondition, lookupSummary === lookupChunk),
+          Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
-          isGlobal = true)
+          isGlobal = relevantQvars.isEmpty)
       })
 
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
@@ -453,7 +454,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
           Trigger(Lookup(field.name, sm, codomainQVar)),
           s"qp.fvfResTrgDef${v.counter(this).next()}",
-          isGlobal = true)
+          isGlobal = relevantQvars.isEmpty)
       valueDefinitions :+ resourceTriggerDefinition
     } else {
       valueDefinitions
@@ -486,6 +487,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
            s"Expected resource to be a predicate or a wand, but got $resource (${resource.getClass.getSimpleName})")
 
     // TODO: Consider if axioms can be simplified in case codomainQVars is empty
+
+    val relevantQvars = s.quantifiedVariables.filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
 
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
@@ -526,10 +529,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           qvar,
-          Implies(effectiveCondition, And(snapshotNotUnit, lookupSummary === lookupChunk)),
+          Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.psmValDef${v.counter(this).next()}",
-          isGlobal = true)
+          isGlobal = relevantQvars.isEmpty)
       })
 
     val resourceIdentifier = resource match {
@@ -543,7 +546,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program))),
           Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)),
           s"qp.psmResTrgDef${v.counter(this).next()}",
-          isGlobal = true)
+          isGlobal = relevantQvars.isEmpty)
       valueDefinitions :+ resourceTriggerDefinition
     } else {
       valueDefinitions
@@ -644,7 +647,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val additionalSmArgs = s.relevantQuantifiedVariables(arguments)
     val sm = freshSnapshotMap(s, resource, additionalSmArgs, v)
-    val smValueDef = ResourceLookup(resource, sm, arguments, s.program) === value
+    val smValueDef = BuiltinEquals(ResourceLookup(resource, sm, arguments, s.program), value)
 
     (sm, smValueDef)
   }
@@ -794,7 +797,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    val gain = PermTimes(tPerm, s.permissionScalingFactor)
+    val gain = if (!Verifier.config.unsafeWildcardOptimization() ||
+        (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
+      PermTimes(tPerm, s.permissionScalingFactor)
+    else
+      WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)
     val (ch: QuantifiedBasicChunk, inverseFunctions) =
       quantifiedChunkSupporter.createQuantifiedChunk(
         qvars                = qvars,
@@ -899,7 +906,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val interpreter = new QuantifiedPropertyInterpreter
             resourceDescription.instanceProperties.foreach (property => {
               v.decider.prover.comment(property.description)
-              v.decider.assume(interpreter.buildPathConditionForChunk(
+              val pcsForChunk = interpreter.buildPathConditionForChunk(
                 chunk = ch,
                 property = property,
                 qvars = effectiveTriggersQVars,
@@ -907,11 +914,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 perms = gain,
                 condition = tCond,
                 triggers = effectiveTriggers,
-                qidPrefix = qid)
+                qidPrefix = qid
               )
+              v.decider.assume(pcsForChunk)
             })
-
-            val h1 = s.h + ch
+            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, Heap(Seq(ch)), v)
 
             val resourceIdentifier = resource match {
               case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
@@ -925,7 +932,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   case p: ast.Predicate => s.predicateFormalVarMap(p)
                   case w: ast.MagicWand =>
                     val bodyVars = w.subexpressionsToEvaluate(s.program)
-                    bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+                    bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
                 }
 
               val (relevantChunks, _) =
@@ -943,7 +950,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             }
             val s1 =
               s.copy(h = h1,
-                     functionRecorder = s.functionRecorder.recordFieldInv(inv),
+                     functionRecorder = fr1.recordFieldInv(inv),
                      conservedPcs = conservedPcs,
                      smCache = smCache1)
             Q(s1, v)
@@ -972,7 +979,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, resource, tArgs, tPerm, sm, s.program)
-    val h1 = s.h + ch
+    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, Heap(Seq(ch)), v)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
@@ -999,7 +1006,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val s1 = s.copy(h = h1,
                     conservedPcs = conservedPcs,
-                    functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2),
+                    functionRecorder = fr1.recordFvfAndDomain(smDef2),
                     smCache = smCache1)
     Q(s1, v)
   }
@@ -1071,8 +1078,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
-          quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-        val loss = PermTimes(tPerm, s.permissionScalingFactor)
+          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
+        val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
+            (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
+          PermTimes(tPerm, s.permissionScalingFactor)
+        else
+          WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
             h, ChunkIdentifier(resource, s.program))
@@ -1100,11 +1111,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
         v.decider.assert(receiverInjectivityCheck, s) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+            val argsOfInvOfLoc = tArgs.map(a => a.replace(qvarsToInvOfLoc))
+            // ME: We include the following condition to make sure the arguments are contained in the condition (and
+            // can trigger other quantifiers) even if neither tCond not loss term mention the arguments.
+            val argumentsMatch = And(formalQVars.zip(argsOfInvOfLoc).map(va => va._1 === va._2))
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
             v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
@@ -1124,8 +1140,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             if (s.exhaleExt) {
               magicWandSupporter.transfer[QuantifiedBasicChunk](
                                           s.copy(smCache = smCache1),
-                                          loss,
+                                          lossOfInvOfLoc,
                                           createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s),
+                                          formalQVars,
                                           v)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
@@ -1135,7 +1152,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     s2,
                     relevantChunks,
                     formalQVars,
-                    And(condOfInvOfLoc, And(imagesOfFormalQVars)),
+                    And(condOfInvOfLoc, And(imagesOfFormalQVars), argumentsMatch),
+                    None,
                     resource,
                     rPerm,
                     chunkOrderHeuristics,
@@ -1150,7 +1168,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   case Complete() => rPerm
                   case Incomplete(remaining) => PermMinus(rPerm, remaining)
                 }
-                val (consumedChunk, _) = quantifiedChunkSupporter.createQuantifiedChunk(
+                val (consumedChunk, inverseFunctions) = quantifiedChunkSupporter.createQuantifiedChunk(
                   qvars,
                   condOfInvOfLoc,
                   resource,
@@ -1164,6 +1182,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   v2,
                   s.program
                 )
+                v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program))
+                v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses)
+                val substitutedAxiomInversesOfInvertibles = inverseFunctions.axiomInversesOfInvertibles.replace(formalQVars, tArgs)
+                v.decider.assume(FunctionPreconditionTransformer.transform(substitutedAxiomInversesOfInvertibles, s3.program))
+                v.decider.assume(substitutedAxiomInversesOfInvertibles)
                 val h2 = Heap(remainingChunks ++ otherChunks)
                 val s4 = s3.copy(smCache = smCache2,
                                  constrainableARPs = s.constrainableARPs)
@@ -1181,7 +1204,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   s.copy(smCache = smCache1),
                   relevantChunks,
                   formalQVars,
-                  And(condOfInvOfLoc, And(imagesOfFormalQVars)),
+                  And(condOfInvOfLoc, And(imagesOfFormalQVars), argumentsMatch),
+                  None,
                   resource,
                   lossOfInvOfLoc,
                   chunkOrderHeuristics,
@@ -1241,7 +1265,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
         case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
       }
-      magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
+      magicWandSupporter.transfer(s, permissions, failure, Seq(), v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
         val (result, s2, remainingChunks, consumedChunks) = quantifiedChunkSupporter.removePermissions(
@@ -1249,6 +1273,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           relevantChunks,
           codomainQVars,
           And(codomainQVars.zip(arguments).map { case (r, e) => r === e }),
+          Some(arguments),
           resource,
           rPerm,
           chunkOrderHeuristics,
@@ -1292,6 +1317,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         relevantChunks,
         codomainQVars,
         And(codomainQVars.zip(arguments).map { case (r, e) => r === e }),
+        Some(arguments),
         resource,
         permissions,
         chunkOrderHeuristics,
@@ -1329,6 +1355,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         relevantChunks: Seq[QuantifiedBasicChunk],
                         codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                         condition: Term, // c(rs)
+                        optQVarValues: Option[Seq[Term]], /* optionally actual known values vs := v_1, ..., v_m for all codomainQVars
+                                                             (if we're consuming a single location), i.e., if condition is
+                                                             forall i :: r_i == v_i */
                         resource: ast.Resource, // field f: e_1(rs).f; or predicate P: P(es); or magic wand
                         perms: Term, // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
@@ -1399,7 +1428,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       else {
         val (permissionConstraint, depletedCheck) =
           createPermissionConstraintAndDepletedCheck(
-            codomainQVars, condition, perms,constrainPermissions, ithChunk, ithPTaken, v)
+            codomainQVars, condition, optQVarValues, perms, constrainPermissions, ithChunk, ithPTaken, v)
 
         if (constrainPermissions) {
           v.decider.prover.comment(s"Constrain original permissions $perms")
@@ -1412,8 +1441,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
 
           if (!chunkDepleted) {
-            remainingChunks =
-              remainingChunks :+ ithChunk.withPerm(PermMinus(ithChunk.perm, ithPTaken))
+            val unusedCheck = Forall(codomainQVars, ithPTaken === NoPerm, Nil)
+            val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout())
+            if (chunkUnused) {
+              remainingChunks = remainingChunks :+ ithChunk
+            } else {
+              remainingChunks =
+                remainingChunks :+ ithChunk.withPerm(PermMinus(ithChunk.perm, ithPTaken))
+            }
           }
         }
 
@@ -1449,6 +1484,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   private def createPermissionConstraintAndDepletedCheck(codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                                                          condition: Term, // c(rs)
+                                                         optQVarValues: Option[Seq[Term]], /* vs := v_1, ..., v_m  if c is r_1 == v_1 && ... */
                                                          perms: Term, // p(rs)
                                                          constrainPermissions: Boolean,
                                                          ithChunk: QuantifiedBasicChunk,
@@ -1489,8 +1525,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             (quantifiedPermissionConstraint.map(_.instantiate(args)),
              quantifiedDepletedCheck.instantiate(args))
           case None =>
-            (quantifiedPermissionConstraint,
-             quantifiedDepletedCheck)
+            optQVarValues match {
+              case Some(values) =>
+                (quantifiedPermissionConstraint.map(_.instantiate(values)),
+                 quantifiedDepletedCheck)
+              case _ =>
+                (quantifiedPermissionConstraint,
+                  quantifiedDepletedCheck)
+            }
         }
 
     (permissionConstraint.getOrElse(True), depletedCheck)
@@ -1587,11 +1629,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           argsEqual),
         varsEqual)
 
-    val functionPres = FunctionPreconditionTransformer.transform(implies, program)
-
     Forall(
       qvars1 ++ qvars2,
-      Implies(functionPres, implies),
+      implies,
       triggers,
       s"$qidPrefix-rcvrInj")
   }
@@ -1636,19 +1676,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       inversesOfFcts(idx) = inv(invertibles)
       inversesOfCodomains(idx) = inv(codomainQVars)
 
-      if (qvar.sort != sorts.Int && qvar.sort != sorts.Ref) {
-        // Types known to be infinite, thus there is no need to constrain the domain using image functions.
-        val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
-        val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
+      val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
+      val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
 
-        imageFunctions(idx) = imgFun
-        imagesOfFcts(idx) = img(invertibles)
-        imagesOfCodomains(idx) = img(codomainQVars)
-      } else {
-        // imageFunctions(idx) remains null, will be filtered out later.
-        imagesOfFcts(idx) = True
-        imagesOfCodomains(idx) = True
-      }
+      imageFunctions(idx) = imgFun
+      imagesOfFcts(idx) = img(invertibles)
+      imagesOfCodomains(idx) = img(codomainQVars)
     }
 
     /* f_1(inv_1(rs), ..., inv_n(rs)), ...,  f_m(inv_1(rs), ..., inv_n(rs)) */
@@ -1737,6 +1770,48 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       matchingChunks ++ otherChunks
     }
 
+  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier)
+                               : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
+    // Heuristics that looks for quantified chunks that have the same shape (as in, the same number and types of
+    // quantified variables) and identical receiver terms.
+    // E.g., if the QP we're looking to find or remove has a quantified variable i: Int and receiver term f(a, i), and
+    // an existing chunk with quantified variable x has receiver term f(g(), x), where a == g(), then that chunk
+    // would be selected first.
+    // If no such chunk exists, the standard hint based heuristics are used.
+    val fallback = hintBasedChunkOrderHeuristic(hints)
+    (chunks: Seq[QuantifiedBasicChunk]) => {
+      val (matches, others) = chunks.partition(c => {
+        // We extract the receiver terms, i.e., the invertibles
+        val chunkInfo = c match {
+          case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
+            Some(qfc.invs.get.invertibles, qfc.invs.get.qvarsToInverses.keys.toSeq)
+          case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
+            Some(qpc.invs.get.invertibles, qpc.invs.get.qvarsToInverses.keys.toSeq)
+          case qwc: QuantifiedMagicWandChunk if qwc.invs.isDefined =>
+            Some(qwc.invs.get.invertibles, qwc.invs.get.qvarsToInverses.keys.toSeq)
+          case _ => None
+        }
+        chunkInfo match {
+          case Some((cInvertibles, cQvars)) =>
+            receiverTerms.zip(cInvertibles).forall(p => {
+              if (cQvars.length == quantVars.length && cQvars.zip(quantVars).forall(vars => vars._1.sort == vars._2.sort)) {
+                val secondReplaced = p._2.replace(cQvars, quantVars)
+                v.decider.check(SimplifyingForall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout())
+              } else {
+                false
+              }
+            })
+          case _ => false
+        }
+      })
+      if (matches.nonEmpty) {
+        matches ++ fallback(others)
+      } else {
+        fallback(chunks)
+      }
+    }
+  }
+
   def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier)
                                        : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristic that emulates greedy Silicon behavior for consuming single-receiver permissions.
@@ -1784,6 +1859,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       // TODO: Take all seq/set/fun inside cond, not only those on the top level
       cond.flatMap(_.find {
         case SeqIn(seq, _) => seq
+        case SeqInTrigger(seq, _) => seq
         case SetIn(_, set) => set
         // TODO: Add a case for function applications
       }).toSeq

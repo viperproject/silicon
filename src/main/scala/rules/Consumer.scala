@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.rules.chunks.chunkSupporter
+import viper.silicon.Config.JoinMode
 
 import scala.collection.mutable
 import viper.silver.ast
@@ -188,7 +189,7 @@ object consumer extends ConsumptionRules {
       v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
 
     val consumed = a match {
-      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins =>
+      case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
         consumeConditionalTlcMoreJoins(s, h, e0, a0, None, uidImplies, pve, v)(Q)
@@ -208,7 +209,7 @@ object consumer extends ConsumptionRules {
               Q(s2, h, Heap(), Unit, v2)
             }))
 
-      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins =>
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
         consumeConditionalTlcMoreJoins(s, h, e0, a1, Some(a2), uidCondExp, pve, v)(Q)
@@ -237,8 +238,9 @@ object consumer extends ConsumptionRules {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
+
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
@@ -258,6 +260,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
+          case (s1, _, _, None, v1) => Q(s1, h, Heap(), True, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -275,7 +278,7 @@ object consumer extends ConsumptionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
@@ -295,11 +298,12 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
+          case (s1, _, _, None, v1) => Q(s1, h, Heap(), True, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
         val qid = MagicWandIdentifier(wand, s.program).toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
@@ -307,7 +311,7 @@ object consumer extends ConsumptionRules {
         val ePerm = ast.FullPerm()()
         val tPerm = FullPerm
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+          case (s1, qvars, Seq(tCond), Some((tArgs, tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
@@ -327,6 +331,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
               insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
               v1)(Q)
+          case (s1, _, _, None, v1) => Q(s1, h, Heap(), True, v1)
         }
 
       case ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
@@ -346,7 +351,10 @@ object consumer extends ConsumptionRules {
             } else {
               s2
             }
-            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
+            val loss = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(field))
+              PermTimes(tPerm, s2.permissionScalingFactor)
+            else
+              WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
               s2p,
               h,
@@ -382,7 +390,10 @@ object consumer extends ConsumptionRules {
               s2
             }
 
-            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
+            val loss = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(loc.loc(s2.program)))
+              PermTimes(tPerm, s2.permissionScalingFactor)
+            else
+              WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
               s2p,
               h,
@@ -408,7 +419,10 @@ object consumer extends ConsumptionRules {
           evalLocationAccess(s1, locacc, pve, v1)((s2, _, tArgs, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
               val resource = locacc.res(s.program)
-              val loss = PermTimes(tPerm, s3.permissionScalingFactor)
+              val loss = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(locacc.loc(s2.program)))
+                PermTimes(tPerm, s2.permissionScalingFactor)
+              else
+                WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val ve = pve dueTo InsufficientPermission(locacc)
               val description = s"consume ${a.pos}: $a"
               chunkSupporter.consume(s3, h, resource, tArgs, loss, ve, v3, description)((s4, h1, cHeap, snap1, v4) => {
@@ -422,7 +436,7 @@ object consumer extends ConsumptionRules {
       /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
 
         evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
           val s1p = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program))){
@@ -436,7 +450,7 @@ object consumer extends ConsumptionRules {
           } else {
             s1
           }
-          val loss = PermTimes(FullPerm, s1.permissionScalingFactor)
+          val loss = s1.permissionScalingFactor
           quantifiedChunkSupporter.consumeSingleLocation(
             s1p,
             h,
@@ -504,7 +518,7 @@ object consumer extends ConsumptionRules {
               // Asume that entry1.pcs is inverse of entry2.pcs
               Ite(And(entry1.pathConditions.branchConditions), entry1.data._3, entry2.data._3)
             )
-            (entry1.pathConditionAwareMerge(entry2, v1), mergedData)
+            (entry1.pathConditionAwareMergeWithoutConsolidation(entry2, v1), mergedData)
           case _ =>
             sys.error(s"Unexpected join data entries: $entries")
         }

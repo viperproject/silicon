@@ -59,10 +59,10 @@ class FunctionData(val programFunction: ast.Function,
          x = arg.localVar)
     yield
       x -> Var(identifierFactory.fresh(x.name),
-               symbolConverter.toSort(x.typ)))
+               symbolConverter.toSort(x.typ), false))
 
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
-                         symbolConverter.toSort(programFunction.result.typ))
+                         symbolConverter.toSort(programFunction.result.typ), false)
 
   val arguments = Seq(`?s`) ++ formalArgs.values
 
@@ -73,7 +73,7 @@ class FunctionData(val programFunction: ast.Function,
 
   val limitedAxiom =
     Forall(arguments,
-           limitedFunctionApplication === functionApplication,
+           BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication))
 
   val triggerAxiom =
@@ -94,6 +94,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  private[this] var freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private[this] var freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
@@ -117,6 +118,7 @@ class FunctionData(val programFunction: ast.Function,
     freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
     freshArps = mergedFunctionRecorder.freshArps
+    freshConstraints = mergedFunctionRecorder.freshConstraints
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
     freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
     freshMacros = mergedFunctionRecorder.freshMacros
@@ -143,7 +145,8 @@ class FunctionData(val programFunction: ast.Function,
     val nested = (
          freshFieldInvs.flatMap(_.definitionalAxioms)
       ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
-      ++ freshArps.map(_._2))
+      ++ freshArps.map(_._2)
+      ++ freshConstraints)
 
     // Filter out nested definitions that contain free variables.
     // This should not happen, but currently can, due to bugs in the function axiomatisation code.
@@ -258,10 +261,14 @@ class FunctionData(val programFunction: ast.Function,
     optBody.map(translatedBody => {
       val pre = preconditionFunctionApplication
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
-      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
+      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(BuiltinEquals(functionApplication, translatedBody)))))
+      val funcAnn = programFunction.info.getUniqueInfo[ast.AnnotationInfo]
+      val actualPredicateTriggers = funcAnn match {
+        case Some(a) if a.values.contains("opaque") => Seq()
+        case _ => predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt)))
+      }
       val allTriggers = (
-           Seq(Trigger(functionApplication))
-        ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
+           Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
       Forall(arguments, body, allTriggers)})
   }

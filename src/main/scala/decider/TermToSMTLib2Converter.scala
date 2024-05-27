@@ -224,6 +224,7 @@ class TermToSMTLib2Converter
     case bop: SeqTake => renderBinaryOp("Seq_take", bop)
     case bop: SeqDrop => renderBinaryOp("Seq_drop", bop)
     case bop: SeqIn => renderBinaryOp("Seq_contains", bop)
+    case bop: SeqInTrigger => renderBinaryOp("Seq_contains_trigger", bop)
     case SeqUpdate(t0, t1, t2) => renderNAryOp("Seq_update", t0, t1, t2)
 
     /* Sets */
