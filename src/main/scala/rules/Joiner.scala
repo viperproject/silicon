@@ -36,6 +36,25 @@ trait JoiningRules extends SymbolicExecutionRules {
 }
 
 object joiner extends JoiningRules {
+
+  /**
+   * This method is a higher-order function that handles the joining of different execution
+   * paths in a symbolic execution engine. It records the data collected from each execution path
+   * and merges it into a single data structure. The final data structure is then passed to a
+   * function that performs some final verification step.
+   *
+   * @param s          The current state of the symbolic execution.
+   * @param v          The current verifier.
+   * @param resetState A flag indicating whether the state should be reset after each execution path.
+   * @param block      A function that executes a block of code symbolically and collects data
+   *                   from each feasible execution path.
+   * @param merge      A function that merges the data collected from each feasible execution path.
+   * @param Q          A function that is called after all execution paths have been joined and the data has been merged.
+   *                   It is expected to perform some final verification step.
+   * @tparam D  The generic type parameter for the data collected from each execution path.
+   * @tparam JD The generic type parameter for the merged data.
+   * @return The final result of the join method, which is the result of the Q function.
+   */
   def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
