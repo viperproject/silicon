@@ -320,11 +320,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
           val pcsQuantified = Forall(
             freshSnapRoot,
-            And(pcsWithFreshSnapRoot.map {
+            And(pcsWithFreshSnapRoot.map(t => t.transform {
               // Remove forall quantifiers with the same quantified variable
               case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v == freshSnapRoot => body
-              case p => p
-            }),
+            }(_ => true))),
             Trigger(MWSFLookup(ResourceLookup(wand, sm, args, s5.program), freshSnapRoot)),
           )
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), pcsQuantified +: pcsWithoutFreshSnapRoot, v4)
@@ -338,11 +337,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
           val pcsQuantified = Forall(
             freshSnapRoot,
-            And(pcsWithFreshSnapRoot.map {
+            And(pcsWithFreshSnapRoot.map(t => t.transform {
               // Remove forall quantifiers with the same quantified variable
               case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v == freshSnapRoot => body
-              case p => p
-            }),
+            }(_ => true))),
             Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
           )
 
