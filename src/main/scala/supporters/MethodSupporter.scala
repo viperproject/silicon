@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.biabduction.{AbductionSuccess, BiAbductionSolver, FramingSuccess}
+import viper.silicon.biabduction.{AbductionSuccess, BiAbductionSolver, FramingSuccess, abductionUtils}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
@@ -125,7 +125,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                   val P = (s: State, _: Term, v: Verifier) => {
                     val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
                     val vars = s.g.values.collect { case (v, t) if formals.contains(v) => (v, t) }
-                    val newPosts = BiAbductionSolver.solveFraming(s, v, vars)
+                    val newPosts = BiAbductionSolver.solveFraming(s, v, vars, method.pos)
                     //println("New postconditions for method " + method.name + ":\n" + newPosts.posts.map(_.toString()).mkString("\n"))
                     Success(Some(newPosts))
                   }
@@ -149,31 +149,37 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                       }
                     // We successfully consumed all postconditions (and then did framing)
                     case otherRes => otherRes
-                  }
-                }
-              })
-            })
-          })
-        })
+                  }}})})})})
 
       val abdResult: VerificationResult = result match {
         case suc: NonFatalResult =>
           // Collect all the abductions and try to generate preconditions
           val ins = method.formalArgs.map(_.localVar)
           val inVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
-          val abds = (suc +: suc.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
+          val abds = abductionUtils.getAbductionSuccesses(suc)
           val pres = abds.map {abd => abd.toPrecondition(inVars, abd.s.oldHeaps.head._2)}
           // If we fail to generate preconditions somewhere, then we actually fail
           if(pres.contains(None)){
             Failure(Internal(reason = InternalReason(DummyNode, "Failed to generate preconditions from abduction results")))
           } else {
             // Otherwise we succeed
-            println("Generated preconditions from abductions: " + pres.flatMap(_.get).mkString(" && "))
-            println("Abduced the following statements:\n" + abds.flatMap {abd => abd.stmts.map {stmt => "  Line " + abd.line + ": " + stmt.toString() }}.reverse.mkString("\n") )
-            // TODO branching can lead to multiple framing results! We need to look at the branching conditions here as well
-            (suc +: suc.previous).collect { case Success(Some(framing: FramingSuccess)) => framing } match {
-              case Seq(frame) => println("Generated postconditions: " + frame.posts.mkString(" && "))
-              case Seq() => println("No framing result found")
+            val presTra = pres.flatMap(_.get)
+            if(presTra.nonEmpty){
+            println("Generated preconditions from abductions: " + presTra.mkString(" && "))
+            }
+            val stmtStrs = abds.flatMap {abd => abd.stmts.map {stmt => "  Line " + abd.line + ": " + stmt.toString() }}
+            if(stmtStrs.nonEmpty) {
+              println("Abduced the following statements:\n" + stmtStrs.reverse.mkString("\n"))
+            }
+            val invs = abductionUtils.getInvariantSuccesses(suc).flatMap(_.invs)
+            if(invs.nonEmpty){
+              println("Generated invariants: " + invs.mkString(" && "))
+            }
+            //
+            val posts = abductionUtils.getFramingSuccesses(suc).flatMap(_.posts)
+            // TODO nklose ignore posts without positions (these are artifacts of invariant inference)
+            if(posts.nonEmpty){
+              println("Generated postconditions: " + posts.mkString(" && "))
             }
             result
           }

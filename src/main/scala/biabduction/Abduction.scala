@@ -266,7 +266,7 @@ object AbductionApply extends AbductionRule[MagicWand] {
             case m: MagicWandChunk if m.id.ghostFreeWand.structure(q.s.program).right == goalStructure.right && m.args.takeRight(args.length) == args =>
               // If we find a matching wand, we have to find an expression representing the left hand side of the wand
               val lhsTerms = m.args.dropRight(args.length)
-              val varTransformer = VarTransformer(q.s, q.v, q.s.g.values, q.s.h, strict = false)
+              val varTransformer = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
               val lhsArgs = lhsTerms.map(t => varTransformer.transformTerm(t))
               if (lhsArgs.contains(None)) {
                 None
@@ -324,7 +324,7 @@ object AbductionPackage extends AbductionRule[MagicWand] {
       val g1 = q.goal.filterNot(_ == inst)
       val stmts = q.foundStmts :+ Package(inst, Seqn(packRes.foundStmts.reverse, Seq())())()
       val pres = q.foundState ++ packRes.foundState
-      Q(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts))
+      Q(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts, foundState = pres))
     })
   }
 }

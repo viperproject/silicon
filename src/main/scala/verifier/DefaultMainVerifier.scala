@@ -289,17 +289,6 @@ class DefaultMainVerifier(config: Config,
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
-    /* nklose remove this
-    methodVerificationResults.foreach {
-      case Failure(error, _) => error.failureContexts.head match {
-        case SiliconFailureContext(_, _, _, Some(abductionResult: AbductionResult)) =>
-          println(abductionResult)
-
-        case _ =>
-      }
-      case _ =>
-    }*/
-
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(
         rootSymbExLogger.logs.toIndexedSeq,

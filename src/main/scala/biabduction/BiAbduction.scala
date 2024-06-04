@@ -1,7 +1,7 @@
 package viper.silicon.biabduction
 
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.{Failure, NonFatalResult, Success, VerificationResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
 import viper.silicon.utils.ast.BigAnd
@@ -14,29 +14,34 @@ trait BiAbductionResult {
   def s: State
 
   def v: Verifier
+
 }
 
-trait BiAbductionSuccess extends BiAbductionResult
+trait BiAbductionSuccess extends BiAbductionResult {
+  def loc: Position
 
-case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), loc: Position) extends BiAbductionSuccess {
-
-  val line = loc match {
+  val line: String = loc match {
     case sp: SourcePosition => sp.start.line.toString
     case lc: HasLineColumn => lc.line.toString
     case _ => "No Position"
   }
+}
+
+case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), loc: Position) extends BiAbductionSuccess {
 
   override def toString: String = {
     "Successful abduction at line " + line + ":\n" + "Abduced state\n" + state.map(_.toString()).mkString("\n") + "\nAbduced statements\n" + stmts.reverse.map(_.toString()).mkString("\n")
   }
 
-  def toPrecondition(preVars: Map[AbstractLocalVar, Term], preHeap: Heap): Option[Seq[Exp]] = {
+  def toPrecondition(preVars: Map[AbstractLocalVar, Term], preHeap: Heap, ignoredBcs: Seq[Exp] = Seq()): Option[Seq[Exp]] = {
 
     // We have to use the pcs from the abduction point
     val prevPcs = v.decider.pcs
     v.decider.setPcs(pcs)
     val varTrans = VarTransformer(s, v, preVars, preHeap)
-    val presTransformed = state.map { varTrans.transformExp }
+    val presTransformed = state.map {
+      varTrans.transformExp
+    }
 
     if (presTransformed.contains(None)) { // We could not express the state as a precondition
       None
@@ -44,9 +49,10 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
       // TODO There is a common case where we add x != null because we know acc(x.next). We want to remove this bc
       // If performing the abduction somehow introduces branches, then this could cause problems here.
       // TODO for loops, we would like to remove the loop condition from conditions we find. How do we do that?
-      val bcs = v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined && e != TrueLit()() => varTrans.transformExp(e).get }.toSet
+      // Can we "subtract" the pathconditions from the original state somehow?
+      val bcs = v.decider.pcs.branchConditionExps.collect { case Some(e) if varTrans.transformExp(e).isDefined && e != TrueLit()() && !ignoredBcs.contains(e) && !ignoredBcs.contains(varTrans.transformExp(e).get) => varTrans.transformExp(e).get }.toSet
       val presFinal = presTransformed.map { e =>
-        if(bcs.isEmpty){
+        if (bcs.isEmpty) {
           e.get
         } else {
           Implies(BigAnd(bcs), e.get)()
@@ -58,11 +64,14 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
   }
 }
 
-case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq()) extends BiAbductionSuccess {
+case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), loc: Position) extends BiAbductionSuccess {
   override def toString: String = "Successful loop invariant abduction"
 }
 
-case class FramingSuccess(s: State, v: Verifier, pcs: PathConditionStack, posts: Seq[Exp]) extends BiAbductionSuccess
+case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Position) extends BiAbductionSuccess {
+  override def toString: String = "Successful framing"
+
+}
 
 case class BiAbductionFailure(s: State, v: Verifier) extends BiAbductionResult {
   override def toString: String = "Abduction failed"
@@ -90,13 +99,19 @@ object BiAbductionSolver {
     }
   }
 
-  def solveFraming(s: State, v: Verifier, postVars: Map[AbstractLocalVar, Term]): FramingSuccess = {
+  def solveFraming(s: State, v: Verifier, postVars: Map[AbstractLocalVar, Term], loc: Position = NoPosition): FramingSuccess = {
 
     val tra = VarTransformer(s, v, postVars, s.h)
     val res = s.h.values.collect { case c: BasicChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
-
-    val absRes = AbstractionApplier.apply(AbstractionQuestion(res, s.program)).exps
-    FramingSuccess(s, v, v.decider.pcs.duplicate(), posts = absRes)
+    val bcs = v.decider.pcs.branchConditionExps.collect { case Some(e) if tra.transformExp(e).isDefined && e != TrueLit()() => e }.toSet
+    val posts = res.map { e =>
+      if (bcs.isEmpty) {
+        e
+      } else {
+        Implies(BigAnd(bcs), e)()
+      }
+    }
+    FramingSuccess(s, v, posts = posts, loc)
   }
 }
 
@@ -161,6 +176,18 @@ object abductionUtils {
 
   def getField(name: BasicChunkIdentifier, p: Program) = {
     p.fields.find(_.name == name.name).get
+  }
+
+  def getAbductionSuccesses(vr: NonFatalResult): Seq[AbductionSuccess] = {
+    (vr +: vr.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
+  }
+
+  def getFramingSuccesses(vr: NonFatalResult): Seq[FramingSuccess] = {
+    (vr +: vr.previous).collect { case Success(Some(framing: FramingSuccess)) => framing }
+  }
+
+  def getInvariantSuccesses(vr: NonFatalResult): Seq[LoopInvariantSuccess] = {
+    (vr +: vr.previous).collect { case Success(Some(inv: LoopInvariantSuccess)) => inv }
   }
 }
 

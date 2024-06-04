@@ -101,11 +101,11 @@ object executor extends ExecutionRules {
   }
 
   def follows(s: State,
-                      edges: Seq[SilverEdge],
-                      @unused pvef: ast.Exp => PartialVerificationError,
-                      v: Verifier,
-                      joinPoint: Option[SilverBlock])
-                     (Q: (State, Verifier) => VerificationResult)
+              edges: Seq[SilverEdge],
+              @unused pvef: ast.Exp => PartialVerificationError,
+              v: Verifier,
+              joinPoint: Option[SilverBlock])
+             (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 
     // Find join point if it exists.
@@ -295,32 +295,17 @@ object executor extends ExecutionRules {
                             case Failure(_, _) => edgeCondWelldefinedness
                             case Success(_) =>
 
-                              val varTra = VarTransformer(s, v, s.g.values, s.h)
-
                               // Try to find invariants
-                              LoopInvariantSolver.solveLoopInvariants(s4, v3, otherEdges, joinPoint, s, v) {
+                              LoopInvariantSolver.solveLoopInvariants(s, v, s.g.values.keys.toSeq, block, otherEdges, joinPoint) {
                                 case BiAbductionFailure(_, _) =>
                                   println("Failed to find loop invariants")
                                   follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)
-                                case suc@LoopInvariantSuccess(_, _, invs, stmts) =>
-                                  (invs, stmts) match {
-                                    case (Seq(), Seq()) =>
-                                      println("No new loop invariants necessary")
-                                      follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)
-                                    case _ =>
-                                      println("Found loop invariants:")
-                                      invs.foreach(inv => println(inv.toString()))
-                                      // TODO nklose We have to actually add the invariants and stmts before following
-                                      follows(s4, sortedEdges, WhileFailed, v3, joinPoint)((s5, v5) => Q(s5, v5) && Success(Some(suc)))
-                                  }
-                              }
-                          }
-                        })
-                      }
-                    })
-                }
-              })
-            }))
+                                case suc@LoopInvariantSuccess(_, _, newInvs, _) =>
+                                  // TODO nklose We have to establish the new invariants before the loop and after the loop as well
+                                  // I guess maybe recursing would be better
+                                  produces(s4, freshSnap, newInvs, ContractNotWellformed, v3)((s5, v5) =>
+                                    follows(s5, sortedEdges, WhileFailed, v5, joinPoint)((s6, v6) => Q(s6, v6) && Success(Some(suc))))
+                              }}})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -329,7 +314,7 @@ object executor extends ExecutionRules {
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((s1, _, v1) => {
-              // TODO nklose we may want to limit what kind of posts we can generate here
+              // TODO nklose after finding invariants we should not do framing anymore
               val posts = BiAbductionSolver.solveFraming(s1, v1, s1.g.values)
               Success(Some(posts))
             })
@@ -681,7 +666,7 @@ object executor extends ExecutionRules {
               val (relevantChunks, _) =
                 quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
               val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
+              val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
               val (smDef, smCache) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, wand, formalVars, relevantChunks, v1)
@@ -722,16 +707,11 @@ object executor extends ExecutionRules {
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 
-    // TODO this is still wrong: if we are in a loop, then we do not want to go to precondition
-    // We should just consume locally and return the results in verification successes.
-    // Then we can collect everything in the methodsupporter to actually translate stuff.
     executed match {
       case Failure(_: PostconditionViolated, _) => executed // Postconditions are handled elsewhere, we do not want to restart for them
       case Failure(ve, _) =>
         ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
           case Some(as: AbductionSuccess) =>
-            // TODO nklose this also breaks if we allow re-assigning to input fields, we consume in the current state
-            // instead of the original state.
             //println(as.toString())
             //println("Continuing execution with abduced state and statements added")
             producer.produces(s, freshSnap, as.state, ContractNotWellformed, v) { (s1, v1) =>

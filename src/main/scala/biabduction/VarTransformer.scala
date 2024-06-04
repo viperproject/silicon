@@ -10,7 +10,7 @@ import viper.silver.ast._
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.Internal
 
-case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, Term], targetHeap: Heap, strict: Boolean = true) {
+case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, Term], targetHeap: Heap) {
 
   val pve: PartialVerificationError = Internal()
 
@@ -27,7 +27,6 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
   private val currentTerms: Seq[Term] = (s.g.values.values ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten).toSeq.distinct //.collect { case t: Var => t }
 
   // Ask the decider whether any of the terms are equal to a target.
-  // TODO the decider is an object which changes. So the path conditions go away. We need to do this earlier
   val matches: Map[Term, Exp] = currentTerms.map { t =>
     t -> targets.collectFirst { case (t1, e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
   }.collect { case (t2, Some(e)) => t2 -> e }.toMap
@@ -55,29 +54,66 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     }
   }
 
-  def transformExp(e: Exp): Option[Exp] = {
-
-    // TODO we need to be stricter here. If we can't find a match for a exp which uses
-    // input vars, then we need to fail (see hidden.vpr)
-    val transformed = e.transform {
-      case fa@FieldAccess(lv: LocalVar, _) =>
-        val args = List(s.g.get(lv).get)
-        val resource = fa.res(s.program)
-        val id = ChunkIdentifier(resource, s.program)
-        findChunk[NonQuantifiedChunk](s.h.values, id, args, v) match {
-          case Some(c) =>
-            transformTerm(c.snap).getOrElse(fa)
-          case None => fa
+  private def safeEval(e: Exp): Option[Term] = {
+    e match {
+      case lv: LocalVar => Some(s.g(lv))
+      case fa@FieldAccess(target, _) =>
+        safeEval(target) match {
+          case None => None
+          case Some(arg) =>
+            val args = List(arg)
+            val resource = fa.res(s.program)
+            val id = ChunkIdentifier(resource, s.program)
+            findChunk[NonQuantifiedChunk](s.h.values, id, args, v) match {
+              case Some(c) => Some(c.snap)
+              case None => None
+            }
         }
-      case fa@FieldAccess(rec, _) =>
-        val rcv = transformExp(rec).getOrElse(rec)
-        FieldAccess(rcv, fa.field)()
-      case lv: LocalVar => transformTerm(s.g(lv)).getOrElse(lv)
     }
-    if (strict && !onlyTargets(transformed)) {
-      None
-    } else {
-      Some(transformed)
+  }
+
+  // This is kinda tricky if the expression contains field accesses.
+  // We do not get the guarantee that the chunks exist in the current state, so we can not evaluate them
+  // directly
+  def transformExp(e: Exp): Option[Exp] = {
+    try {
+      val res = e.transform {
+        case fa@FieldAccess(target, field) =>
+          safeEval(fa) match {
+            // If the chunk exists in the current state, then we want to match the snap term
+            case Some(term) =>
+              transformTerm(term).get
+            // Else we want to recurse and try to match the target
+            case None => FieldAccess(transformExp(target).get, field)()
+          }
+        case lv: LocalVar => transformTerm(s.g(lv)).get
+      }
+      Some(res)
+    } catch {
+      case _: NoSuchElementException => None
     }
   }
 }
+
+
+//transformExp(target) match {
+//case Some(res) => FieldAccess(res, field)()
+//case None => safeEval(target) match {
+//  case Some(res) => transformTerm(res).getOrElse(DummyNode)
+//  case None => DummyNode
+//}
+//}
+
+//case fa@FieldAccess(lv: LocalVar, _) =>
+// Try to resolve the target
+//  val args = List(s.g.get(lv).get)
+//  val resource = fa.res(s.program)
+//  val id = ChunkIdentifier(resource, s.program)
+//  findChunk[NonQuantifiedChunk](s.h.values, id, args, v) match {
+//    case Some(c) =>
+//      transformTerm(c.snap).getOrElse(fa)
+//    case None => fa
+//  }
+//case fa@FieldAccess(rec, _) =>
+//  val rcv = transformExp(rec).getOrElse(rec)
+//  FieldAccess(rcv, fa.field)()
