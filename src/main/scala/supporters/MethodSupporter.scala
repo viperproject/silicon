@@ -121,16 +121,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               && {
               executionFlowController.locally(s2a, v2)((s3, v3) => {
                 exec(s3, body, v3) { (s4, v4) =>
-                  // P finds postconditions from the state after consuming existing postconditions
-                  val P = (s: State, _: Term, v: Verifier) => {
-                    val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
-                    val vars = s.g.values.collect { case (v, t) if formals.contains(v) => (v, t) }
-                    val newPosts = BiAbductionSolver.solveFraming(s, v, vars, method.pos)
-                    //println("New postconditions for method " + method.name + ":\n" + newPosts.posts.map(_.toString()).mkString("\n"))
-                    Success(Some(newPosts))
-                  }
                   // Attempt to consume postconditions
-                  consumes(s4, posts, postViolated, v4)(P) match {
+                  consumes(s4, posts, postViolated, v4) ((s5: State, _: Term, v5: Verifier) => {
+                    // Generate new postconditions from the state left over
+                    val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
+                    val vars = s5.g.values.collect { case (v5, t) if formals.contains(v5) => (v5, t) }
+                    val newPosts = BiAbductionSolver.solveFraming(s5, v5, vars, method.pos)
+                    Success(Some(newPosts))
+                  }) match {
                     // We failed to consume all postconditions
                     case f@Failure(pcv: PostconditionViolated, _) =>
                       pcv.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
@@ -141,7 +139,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                           //println(as.toString())
                           producer.produces(s4, freshSnap, as.state, ContractNotWellformed, v) { (s6, v6) =>
                             executor.execs(s6, as.stmts.reverse, v6) { (s7, v7) =>
-                              consumes(s7, posts, postViolated, v7)(P) && Success(Some(as))
+                              consumes(s7, posts, postViolated, v7)(((s8: State, _: Term, v8: Verifier) => {
+                                // Generate new postconditions from the state left over
+                                val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
+                                val vars = s8.g.values.collect { case (v8, t) if formals.contains(v8) => (v8, t) }
+                                val newPosts = BiAbductionSolver.solveFraming(s8, v8, vars, method.pos)
+                                Success(Some(newPosts))
+                              })) && Success(Some(as))
                             }
                           }
                         // We failed to abduce so that we can fulfil the postconditions
@@ -156,7 +160,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
           // Collect all the abductions and try to generate preconditions
           val ins = method.formalArgs.map(_.localVar)
           val inVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
-          val abds = abductionUtils.getAbductionSuccesses(suc)
+          val abds = abductionUtils.getAbductionResults(suc)
           val pres = abds.map {abd => abd.toPrecondition(inVars, abd.s.oldHeaps.head._2)}
           // If we fail to generate preconditions somewhere, then we actually fail
           if(pres.contains(None)){

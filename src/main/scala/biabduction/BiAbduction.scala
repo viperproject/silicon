@@ -178,7 +178,7 @@ object abductionUtils {
     p.fields.find(_.name == name.name).get
   }
 
-  def getAbductionSuccesses(vr: NonFatalResult): Seq[AbductionSuccess] = {
+  def getAbductionResults(vr: NonFatalResult): Seq[AbductionSuccess] = {
     (vr +: vr.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
   }
 

@@ -16,13 +16,13 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.Method
+import viper.silver.ast.{Exp, Method, NoPosition}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
-import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, PartialVerificationError}
+import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, DummyNode, PartialVerificationError}
 import viper.silver.{ast, cfg}
 
 import scala.annotation.unused
@@ -202,7 +202,9 @@ object executor extends ExecutionRules {
     exec(s, graph.entry, cfg.Kind.Normal, v, None)(Q)
   }
 
-  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock])
+  // TODO nklose I think we do want to recurse and just add an optional parameter with additional invariants that we can use in the recursion without having
+  // to entirely rebuild the program
+  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock], newInvs: Option[Seq[Exp]] = None)
           (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -220,7 +222,7 @@ object executor extends ExecutionRules {
          */
         sys.error(s"Unexpected block: $block")
 
-      case block@cfg.LoopHeadBlock(invs, stmts, _) =>
+      case block@cfg.LoopHeadBlock(oldInvs, stmts, _) =>
         incomingEdgeKind match {
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
@@ -233,6 +235,8 @@ object executor extends ExecutionRules {
              *   - Execute the statements in the loop head block
              *   - Follow the outgoing edges
              */
+
+            val invs = oldInvs ++ newInvs.getOrElse(Seq())
 
             /* Havoc local variables that are assigned to in the loop body */
             val wvs = s.methodCfg.writtenVars(block)
@@ -263,7 +267,7 @@ object executor extends ExecutionRules {
             })
               combine executionFlowController.locally(s, v)((s0, v0) => {
               v0.decider.prover.comment("Loop head block: Establish invariant")
-              consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
+              consumes(s0, invs, LoopInvariantNotEstablished, v0, withAbduction = true)((sLeftover, _, v1) => {
                 v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                 phase1data.foldLeft(Success(): VerificationResult) {
                   case (result, _) if !result.continueVerification => result
@@ -277,35 +281,55 @@ object executor extends ExecutionRules {
                         Success()
                       else {
                         execs(s3, stmts, v2)((s4, v3) => {
-                          val edgeCondWelldefinedness = {
-                            v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
-                            edgeConditions.foldLeft(Success(): VerificationResult) {
-                              case (result, _) if !result.continueVerification => result
-                              case (intermediateResult, eCond) =>
-                                intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
-                                  eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _) =>
-                                    Success())
+                          v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
+                          edgeConditions.foldLeft(Success(): VerificationResult) {
+                            case (result, _) if !result.continueVerification => result
+                            case (intermediateResult, eCond) =>
+                              intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
+                                eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _) => {
+
+                                  // Try to find invariants
+                                  executionFlowController.locally(s, v)((sNew, vNew) =>
+                                    LoopInvariantSolver.solveLoopInvariants(sNew, vNew, sNew.g.values.keys.toSeq, block, newInvs.getOrElse(Seq()), otherEdges, joinPoint) {
+                                      case BiAbductionFailure(_, _) =>
+                                        Failure(Internal(reason = InternalReason(DummyNode, "Failed to find loop invariants")))
+
+                                      // We found no new loop invariants, so we want to continue outside of this local context
+                                      case LoopInvariantSuccess(_, _, Seq(), _) => Success(None)
+                                      // We found new invariants, so we want to recurse outside of all the local contexts
+                                      case suc: LoopInvariantSuccess => Success(Some(suc))
+                                    }) match {
+
+                                    case Success(None) =>
+                                      v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
+                                      // Continue check the loop body with the invariants
+                                      // We have to check the inferred invariants after loop manually here instead of
+                                      // relying on the reentry of the loop head, as this will not have the additional invariants
+                                      executionFlowController.locally(s4, v3)((s5, v5) => {
+                                        follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) =>
+                                          consumes(s6, newInvs.getOrElse(Seq()), e => LoopInvariantNotPreserved(e), v6, withAbduction = true)((_, _, _) => Success())
+                                        )
+                                      }) &&
+                                        // Continue after the loop (with the new invariants)
+                                        executionFlowController.locally(s4, v3)((s5, v5) => {
+                                          follows(s5, outEdges, WhileFailed, v5, joinPoint)((s6, v6) => Q(s6, v6))
+                                        })
+                                    case rec => rec
+                                  }
                                 })
-                            }
+                              })
                           }
-                          v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                          edgeCondWelldefinedness match {
-
-                            // This failure would lead to normal abduction on the loop condition
-                            case Failure(_, _) => edgeCondWelldefinedness
-                            case Success(_) =>
-
-                              // Try to find invariants
-                              LoopInvariantSolver.solveLoopInvariants(s, v, s.g.values.keys.toSeq, block, otherEdges, joinPoint) {
-                                case BiAbductionFailure(_, _) =>
-                                  println("Failed to find loop invariants")
-                                  follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)
-                                case suc@LoopInvariantSuccess(_, _, newInvs, _) =>
-                                  // TODO nklose We have to establish the new invariants before the loop and after the loop as well
-                                  // I guess maybe recursing would be better
-                                  produces(s4, freshSnap, newInvs, ContractNotWellformed, v3)((s5, v5) =>
-                                    follows(s5, sortedEdges, WhileFailed, v5, joinPoint)((s6, v6) => Q(s6, v6) && Success(Some(suc))))
-                              }}})}})}})}))
+                        })
+                      }
+                    })
+                }
+              })
+            })) match {
+              case suc@Success(Some(in: LoopInvariantSuccess)) if in.invs.nonEmpty =>
+                // Now that we are outside of all the local contexts, we recurse if we found new invariants.
+                exec(s, block, incomingEdgeKind, v, joinPoint, Some(in.invs))(Q) && suc
+              case res => res // Otherwise just continue
+            }
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -313,10 +337,10 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((s1, _, v1) => {
+            consumes(s, oldInvs, e => LoopInvariantNotPreserved(e), v, withAbduction = true)((s1, _, v1) => {
+              Q(s1, v1) //&& Success(Some(FramingSuccess(s1, v1, Seq(), NoPosition)))
               // TODO nklose after finding invariants we should not do framing anymore
-              val posts = BiAbductionSolver.solveFraming(s1, v1, s1.g.values)
-              Success(Some(posts))
+              //val posts = BiAbductionSolver.solveFraming(s1, v1, s1.g.values)
             })
         }
     }
@@ -712,8 +736,6 @@ object executor extends ExecutionRules {
       case Failure(ve, _) =>
         ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
           case Some(as: AbductionSuccess) =>
-            //println(as.toString())
-            //println("Continuing execution with abduced state and statements added")
             producer.produces(s, freshSnap, as.state, ContractNotWellformed, v) { (s1, v1) =>
               executor.execs(s1, as.stmts.reverse, v1) { (s2, v2) =>
                 exec(s2, stmt, v2)((s3, v3) => Q(s3, v3) && Success(Some(as)))
