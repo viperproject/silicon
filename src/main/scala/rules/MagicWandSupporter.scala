@@ -342,7 +342,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 //        say(s"done: produced LHS ${wand.left}")
 //        say(s"next: consume RHS ${wand.right}")
         executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
-          consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail), wand.right, pve, proofScriptVerifier)((s3, snap, v3) => {
+          consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail), wand.right, true, pve, proofScriptVerifier)((s3, snap, v3) => {
 //            say(s"done: consumed RHS ${wand.right}")
             val s4 = s3.copy(//h = s.h, /* Temporarily */
                              exhaleExt = false,
@@ -380,9 +380,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
                 v: Verifier)
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
-        consume(s, wand, pve, v)((s1, snap, v1) => {
+        consume(s, wand, true, pve, v)((s1, snap, v1) => {
           val wandSnap = MagicWandSnapshot(snap)
-          consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
+          consume(s1, wand.left, true, pve, v1)((s2, snap, v2) => {
             /* It is assumed that snap and wandSnap.abstractLhs are structurally the same.
              * Since a wand can only be applied once, equating the two snapshots is sound.
              */

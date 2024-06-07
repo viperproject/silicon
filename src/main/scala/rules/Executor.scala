@@ -259,7 +259,7 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
+                consumes(s0, invs, LoopInvariantNotEstablished, false, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -293,7 +293,7 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
+            consumes(s, invs, e => LoopInvariantNotPreserved(e), false, v)((_, _, _) =>
               Success())
         }
     }
@@ -416,7 +416,7 @@ object executor extends ExecutionRules {
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm, ve, v2, description)((s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm, false, ve, v2, description)((s3, h3, _, v3) => {
               val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm)
@@ -458,7 +458,7 @@ object executor extends ExecutionRules {
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, pve, v)((s1, _, v1) =>
+        consume(s, a, false, pve, v)((s1, _, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) =>
@@ -472,7 +472,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, AssertFailed(assert), v)((_, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v)((_, _, _) =>
             Success())
 
         r combine Q(s, v)
@@ -488,11 +488,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, pve, v)((s2, _, v1) => {
+          consume(s, a, false, pve, v)((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, pve, v)((s1, _, v1) => {
+          consume(s, a, false, pve, v)((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -546,7 +546,7 @@ object executor extends ExecutionRules {
           val preCondId = v1.symbExLog.openScope(preCondLog)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
-          consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
+          consumes(s2, meth.pres, _ => pvePre, false, v1)((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)

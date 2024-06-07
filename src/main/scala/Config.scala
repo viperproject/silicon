@@ -622,6 +622,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val greedyQPEvals: ScallopOption[Boolean] = opt[Boolean]("greedyQPEvals",
+    descr = "Avoid summarizing QP chunks.",
+    default = Some(false),
+    noshort = true
+  )
+
   val disableISCTriggers: ScallopOption[Boolean] = opt[Boolean]("disableISCTriggers",
     descr = (  "Don't pick triggers for quantifiers, let the SMT solver do it "
              + "(context: iterated separating conjunctions)."),

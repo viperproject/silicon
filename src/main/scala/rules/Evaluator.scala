@@ -252,6 +252,33 @@ object evaluator extends EvaluationRules {
                     val s2 = s1.copy(functionRecorder = fr2)
                     Q(s2, smLookup, v1)
                 }
+              } else if (Verifier.config.greedyQPEvals()) {
+                val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
+                val chunkOrderHeuristics =
+                  quantifiedChunkSupporter.qpAppChunkOrderHeuristics(Seq(tRcvr), Seq(`?r`), hints, v)
+                val sortedChunks = chunkOrderHeuristics(relevantChunks)
+                for (ch <- sortedChunks) {
+                  val permCheck =
+                    if (s1.triggerExp) {
+                      True
+                    } else {
+                      val permVal = ch.perm
+                      val totalPermissions = permVal.replace(ch.quantifiedVars, Seq(tRcvr))
+                      IsPositive(totalPermissions)
+                    }
+                  if (v1.decider.check(permCheck, Verifier.config.checkTimeout())) {
+                    if (s1.heapDependentTriggers.contains(fa.field)) {
+                      val trigger = FieldTrigger(fa.field.name, ch.asInstanceOf[QuantifiedFieldChunk].fvf, tRcvr)
+                      v1.decider.assume(trigger)
+                    }
+                    val smLookup = Lookup(fa.field.name, ch.asInstanceOf[QuantifiedFieldChunk].fvf, tRcvr)
+                    val fr2 =
+                      s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
+                    val s2 = s1.copy(functionRecorder = fr2)
+                    return Q(s2, smLookup, v1)
+                  }
+                }
+                createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
               } else {
                 val (s2, smDef1, pmDef1) =
                   quantifiedChunkSupporter.heapSummarisingMaps(
@@ -821,7 +848,7 @@ object evaluator extends EvaluationRules {
                                  */
                              smDomainNeeded = true,
                              moreJoins = JoinMode.Off)
-            consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
+            consumes(s3, pres, _ => pvePre, true, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               v3.decider.assume(preFApp)
@@ -873,7 +900,7 @@ object evaluator extends EvaluationRules {
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(s4, acc, pve, v3)((s5, snap, v4) => {
+                    consume(s4, acc, true, pve, v3)((s5, snap, v4) => {
                       val fr6 =
                         s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap)
                                            .changeDepthBy(+1)

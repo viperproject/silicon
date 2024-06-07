@@ -188,13 +188,14 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       resource: ast.Resource,
                       args: Seq[Term],
                       perms: Term,
+                      snapNeeded: Boolean,
                       ve: VerificationError,
                       v: Verifier)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
     if (!s.hackIssue387DisablePermissionConsumption)
-      actualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
+      actualConsumeComplete(s, h, resource, args, perms, snapNeeded, ve, v)(Q)
     else
       summariseHeapAndAssertReadAccess(s, h, resource, args, ve, v)(Q)
   }
@@ -225,6 +226,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     resource: ast.Resource,
                                     args: Seq[Term],
                                     perms: Term,
+                                    snapNeeded: Boolean,
                                     ve: VerificationError,
                                     v: Verifier)
                                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
@@ -316,22 +318,36 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
-        summarise(s0, relevantChunks.toSeq, resource, args, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
-          val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
-            snap
-          } else {
-            Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
-          }
-          if (!moreNeeded) {
-            Q(s1, newHeap, Some(condSnap), v1)
-          } else {
-            v1.decider.assert(pNeeded === NoPerm) {
-              case true =>
-                Q(s1, newHeap, Some(condSnap), v1)
-              case false =>
-                createFailure(ve, v1, s1)
+        if (snapNeeded) {
+          summarise(s0, relevantChunks.toSeq, resource, args, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
+            val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
+              snap
+            } else {
+              Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
             }
-          }})
+            if (!moreNeeded) {
+              Q(s1, newHeap, Some(condSnap), v1)
+            } else {
+              v1.decider.assert(pNeeded === NoPerm) {
+                case true =>
+                  Q(s1, newHeap, Some(condSnap), v1)
+                case false =>
+                  createFailure(ve, v1, s1)
+              }
+            }
+          })
+        } else {
+          if (!moreNeeded) {
+            Q(s0, newHeap, Some(Unit), v)
+          } else {
+            v.decider.assert(pNeeded === NoPerm) {
+              case true =>
+                Q(s, newHeap, Some(Unit), v)
+              case false =>
+                createFailure(ve, v, s0)
+            }
+          }
+        }
       }
     }
   }

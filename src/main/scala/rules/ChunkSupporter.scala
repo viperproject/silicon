@@ -23,6 +23,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               resource: ast.Resource,
               args: Seq[Term],
               perms: Term,
+              snapNeeded: Boolean,
               ve: VerificationError,
               v: Verifier,
               description: String)
@@ -67,13 +68,14 @@ object chunkSupporter extends ChunkSupportRules {
               resource: ast.Resource,
               args: Seq[Term],
               perms: Term,
+              snapNeeded: Boolean,
               ve: VerificationError,
               v: Verifier,
               description: String)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consume2(s, h, resource, args, perms, ve, v)((s2, h2, optSnap, v2) =>
+    consume2(s, h, resource, args, perms, snapNeeded, ve, v)((s2, h2, optSnap, v2) =>
       optSnap match {
         case Some(snap) =>
           Q(s2, h2, snap.convert(sorts.Snap), v2)
@@ -96,6 +98,7 @@ object chunkSupporter extends ChunkSupportRules {
                        resource: ast.Resource,
                        args: Seq[Term],
                        perms: Term,
+                       snapNeeded: Boolean,
                        ve: VerificationError,
                        v: Verifier)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
@@ -109,7 +112,7 @@ object chunkSupporter extends ChunkSupportRules {
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
         if (s1.moreCompleteExhale) {
-          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, perms, ve, v1)((s2, h2, snap2, v2) => {
+          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, perms, snapNeeded, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
         } else {

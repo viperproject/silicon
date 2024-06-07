@@ -34,7 +34,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     *          consumed partial heap.
     * @return The result of the continuation.
     */
-  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  def consume(s: State, a: ast.Exp, snapNeeded: Boolean, pve: PartialVerificationError, v: Verifier)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -55,6 +55,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
   def consumes(s: State,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
+               snapNeeded: Boolean,
                v: Verifier)
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult
@@ -69,11 +70,11 @@ object consumer extends ConsumptionRules {
    */
 
   /** @inheritdoc */
-  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  def consume(s: State, a: ast.Exp, snapNeeded: Boolean, pve: PartialVerificationError, v: Verifier)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, snap, v1) => {
+    consumeR(s, s.h, a.whenExhaling, snapNeeded, pve, v)((s1, h1, snap, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap, v1)})
@@ -83,6 +84,7 @@ object consumer extends ConsumptionRules {
   def consumes(s: State,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
+               snapNeeded: Boolean,
                v: Verifier)
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult = {
@@ -98,7 +100,7 @@ object consumer extends ConsumptionRules {
       allPves ++= pves
     })
 
-    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, snap1, v1) => {
+    consumeTlcs(s, s.h, allTlcs.result(), snapNeeded, allPves.result(), v)((s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
@@ -108,6 +110,7 @@ object consumer extends ConsumptionRules {
   private def consumeTlcs(s: State,
                           h: Heap,
                           tlcs: Seq[ast.Exp],
+                          snapNeeded: Boolean,
                           pves: Seq[PartialVerificationError],
                           v: Verifier)
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -120,22 +123,22 @@ object consumer extends ConsumptionRules {
       val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, pve, v)(Q)
+        wrappedConsumeTlc(s, h, a, snapNeeded, pve, v)(Q)
       else
-        wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) => {
-          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) =>
+        wrappedConsumeTlc(s, h, a, snapNeeded, pve, v)((s1, h1, snap1, v1) => {
+          consumeTlcs(s1, h1, tlcs.tail, snapNeeded, pves.tail, v1)((s2, h2, snap2, v2) =>
             Q(s2, h2, Combine(snap1, snap2), v2))})
     }
   }
 
-  private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def consumeR(s: State, h: Heap, a: ast.Exp, snapNeeded: Boolean, pve: PartialVerificationError, v: Verifier)
                       (Q: (State, Heap, Term, Verifier) => VerificationResult)
                       : VerificationResult = {
 
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
 
-    consumeTlcs(s, h, tlcs, pves, v)(Q)
+    consumeTlcs(s, h, tlcs, snapNeeded, pves, v)(Q)
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -145,6 +148,7 @@ object consumer extends ConsumptionRules {
   protected def wrappedConsumeTlc(s: State,
                                   h: Heap,
                                   a: ast.Exp,
+                                  snapNeeded: Boolean,
                                   pve: PartialVerificationError,
                                   v: Verifier)
                                  (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -161,13 +165,13 @@ object consumer extends ConsumptionRules {
 
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
-      consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
+      consumeTlc(s1, h0, a, snapNeeded, pve, v1)((s2, h2, snap2, v2) => {
         v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
 
-  private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def consumeTlc(s: State, h: Heap, a: ast.Exp, snapNeeded: Boolean, pve: PartialVerificationError, v: Verifier)
                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
                         : VerificationResult = {
 
@@ -188,7 +192,7 @@ object consumer extends ConsumptionRules {
       case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
-        consumeConditionalTlcMoreJoins(s, h, e0, a0, None, uidImplies, pve, v)(Q)
+        consumeConditionalTlcMoreJoins(s, h, e0, a0, None, uidImplies, snapNeeded, pve, v)(Q)
 
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
@@ -196,7 +200,7 @@ object consumer extends ConsumptionRules {
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
-            (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a0, snapNeeded, pve, v2)((s3, h1, t1, v3) => {
               v3.symbExLog.closeScope(uidImplies)
               Q(s3, h1, t1, v3)
             }),
@@ -208,7 +212,7 @@ object consumer extends ConsumptionRules {
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
-        consumeConditionalTlcMoreJoins(s, h, e0, a1, Some(a2), uidCondExp, pve, v)(Q)
+        consumeConditionalTlcMoreJoins(s, h, e0, a1, Some(a2), uidCondExp, snapNeeded, pve, v)(Q)
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
@@ -216,11 +220,11 @@ object consumer extends ConsumptionRules {
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
-            (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a1, snapNeeded, pve, v2)((s3, h1, t1, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             }),
-            (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a2, snapNeeded, pve, v2)((s3, h1, t1, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             })))
@@ -251,6 +255,7 @@ object consumer extends ConsumptionRules {
               tCond = tCond,
               tArgs = Seq(tRcvr),
               tPerm = tPerm,
+              snapNeeded = snapNeeded,
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
@@ -289,6 +294,7 @@ object consumer extends ConsumptionRules {
               tCond = tCond,
               tArgs = tArgs,
               tPerm = tPerm,
+              snapNeeded = snapNeeded,
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
@@ -322,6 +328,7 @@ object consumer extends ConsumptionRules {
               tCond = tCond,
               tArgs = tArgs,
               tPerm = tPerm,
+              snapNeeded = snapNeeded,
               pve = pve,
               negativePermissionReason = NegativePermission(ePerm),
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
@@ -359,6 +366,7 @@ object consumer extends ConsumptionRules {
               loc,
               loss,
               None,
+              snapNeeded,
               pve,
               v2
             )((s3, h3, snap, v3) => {
@@ -398,6 +406,7 @@ object consumer extends ConsumptionRules {
               loc,
               loss,
               None,
+              snapNeeded,
               pve,
               v2
             )((s3, h3, snap, v3) => {
@@ -408,7 +417,7 @@ object consumer extends ConsumptionRules {
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
           val s2 = s1.copy(g = s1.g + g1)
-          consumeR(s2, h, body, pve, v1)(Q)})
+          consumeR(s2, h, body, snapNeeded, pve, v1)(Q)})
 
       case ast.AccessPredicate(locacc: ast.LocationAccess, perm) =>
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
@@ -421,7 +430,7 @@ object consumer extends ConsumptionRules {
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val ve = pve dueTo InsufficientPermission(locacc)
               val description = s"consume ${a.pos}: $a"
-              chunkSupporter.consume(s3, h, resource, tArgs, loss, ve, v3, description)((s4, h1, snap1, v4) => {
+              chunkSupporter.consume(s3, h, resource, tArgs, loss, snapNeeded, ve, v3, description)((s4, h1, snap1, v4) => {
                 val s5 = s4.copy(partiallyConsumedHeap = Some(h1),
                                  constrainableARPs = s.constrainableARPs)
                 Q(s5, h1, snap1, v4)})})))
@@ -455,6 +464,7 @@ object consumer extends ConsumptionRules {
             wand,
             loss,
             None,
+            snapNeeded,
             pve,
             v1
           )((s3, h3, snap, v3) => {
@@ -466,7 +476,7 @@ object consumer extends ConsumptionRules {
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
-          chunkSupporter.consume(s1, h, wand, tArgs, FullPerm, ve, v1, description)(Q)
+          chunkSupporter.consume(s1, h, wand, tArgs, FullPerm, snapNeeded, ve, v1, description)(Q)
         })
 
       case _ =>
@@ -479,6 +489,7 @@ object consumer extends ConsumptionRules {
   }
 
   private def consumeConditionalTlcMoreJoins(s: State, h: Heap, e0: ast.Exp, a1: ast.Exp, a2: Option[ast.Exp], scopeUid: Int,
+                                             snapNeeded: Boolean,
                                              pve: PartialVerificationError, v: Verifier)
                                             (Q: (State, Heap, Term, Verifier) => VerificationResult)
                                             : VerificationResult = {
@@ -486,13 +497,13 @@ object consumer extends ConsumptionRules {
       joiner.join[(Heap, Term), (Heap, Term)](s1, v1, resetState = false)((s1, v1, QB) => {
         branch(s1.copy(parallelizeBranches = false), t0, Some(e0), v1)(
           (s2, v2) =>
-            consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a1, pve, v2)((s3, h1, t1, v3) => {
+            consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a1, snapNeeded, pve, v2)((s3, h1, t1, v3) => {
             v3.symbExLog.closeScope(scopeUid)
             QB(s3, (h1, t1), v3)
           }),
           (s2, v2) =>
             a2 match {
-              case Some(a2) => consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a2, pve, v2)((s3, h1, t1, v3) => {
+              case Some(a2) => consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a2, snapNeeded, pve, v2)((s3, h1, t1, v3) => {
                 v3.symbExLog.closeScope(scopeUid)
                 QB(s3, (h1, t1), v3)
               })

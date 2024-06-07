@@ -250,7 +250,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {
               decider.assume(BuiltinEquals(data.formalResult, tBody))
-              consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {
+              consumes(s2, posts, postconditionViolated, false, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

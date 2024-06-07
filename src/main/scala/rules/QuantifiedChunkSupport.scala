@@ -1024,6 +1024,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               tCond: Term,
               tArgs: Seq[Term],
               tPerm: Term,
+              snapNeeded: Boolean,
               pve: PartialVerificationError,
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
@@ -1217,16 +1218,24 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   val optSmDomainDefinitionCondition2 =
                     if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
                     else None
-                  val (smDef2, smCache2) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
-                  val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
-                                               .recordFieldInv(inverseFunctions)
+
+                  val (fr3, smCache2, snap) = if (snapNeeded) {
+                    val (smDef2, smCache2) =
+                      quantifiedChunkSupporter.summarisingSnapshotMap(
+                        s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
+                    val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
+                      .recordFieldInv(inverseFunctions)
+                    (fr3, smCache2, smDef2.sm.convert(sorts.Snap))
+                  } else {
+                    val fr3 = s2.functionRecorder.recordFieldInv(inverseFunctions)
+                    (fr3, s2.smCache, Unit)
+                  }
+
                   val s3 = s2.copy(functionRecorder = fr3,
                                    partiallyConsumedHeap = Some(h3),
                                    constrainableARPs = s.constrainableARPs,
                                    smCache = smCache2)
-                  Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
+                  Q(s3, h3, snap, v)
                 case (Incomplete(_), s2, _) =>
                   createFailure(pve dueTo insufficientPermissionReason, v, s2)}
             }
@@ -1243,6 +1252,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             resourceAccess: ast.ResourceAccess,
                             permissions: Term, /* p */
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
+                            snapNeeded: Boolean,
                             pve: PartialVerificationError,
                             v: Verifier)
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -1326,18 +1336,23 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       result match {
         case (Complete(), s1, remainingChunks) =>
           val h1 = Heap(remainingChunks ++ otherChunks)
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s = s1,
-              resource = resource,
-              codomainQVars = codomainQVars,
-              relevantChunks = relevantChunks,
-              optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True) else None,
-              optQVarsInstantiations = Some(arguments),
-              v = v)
-          val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
+          val (fr2, smCache1, snap) = if (snapNeeded) {
+            val (smDef1, smCache1) =
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s = s1,
+                resource = resource,
+                codomainQVars = codomainQVars,
+                relevantChunks = relevantChunks,
+                optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True) else None,
+                optQVarsInstantiations = Some(arguments),
+                v = v)
+            (s1.functionRecorder.recordFvfAndDomain(smDef1), smCache1, ResourceLookup(resource, smDef1.sm, arguments, s1.program).convert(sorts.Snap))
+          } else {
+            (s1.functionRecorder, s1.smCache, Unit)
+          }
+
+          val s2 = s1.copy(functionRecorder = fr2,
                            smCache = smCache1)
-          val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
           Q(s2, h1, snap, v)
         case (Incomplete(_), _, _) =>
           resourceAccess match {
