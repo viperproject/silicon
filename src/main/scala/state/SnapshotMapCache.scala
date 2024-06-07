@@ -44,11 +44,12 @@ case class SnapshotMapCache private (
   def get(key: SnapshotMapCache.Key,
           optSmDomainDefinitionCondition: Option[Term] = None)
          : Option[SnapshotMapCache.Value] = {
-    val actualSmDomainDefinitionCondition = optSmDomainDefinitionCondition.getOrElse(terms.True)
 
     cache.get(key) match {
       case Some((smDef, totalPermissions, cachedSmDomainDefinitionCondition))
-          if cachedSmDomainDefinitionCondition.getOrElse(terms.True) == actualSmDomainDefinitionCondition =>
+          if cachedSmDomainDefinitionCondition == optSmDomainDefinitionCondition ||  // defined under the same condition
+            (cachedSmDomainDefinitionCondition.contains(terms.True) && optSmDomainDefinitionCondition.isEmpty) // cached is always defined and we don't need a domain
+            =>
         Some((smDef, totalPermissions))
 
       case _ =>
