@@ -47,7 +47,9 @@ case class SnapshotMapCache private (
 
     cache.get(key) match {
       case Some((smDef, totalPermissions, cachedSmDomainDefinitionCondition))
-          if !(cachedSmDomainDefinitionCondition.contains(false) && !optSmDomainDefinitionCondition.contains(false)) =>
+          if cachedSmDomainDefinitionCondition == optSmDomainDefinitionCondition ||
+             cachedSmDomainDefinitionCondition.isEmpty ||
+             cachedSmDomainDefinitionCondition.contains(terms.True) =>
         Some((smDef, totalPermissions))
 
       case _ =>
