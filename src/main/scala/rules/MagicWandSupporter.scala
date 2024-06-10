@@ -16,7 +16,7 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
-import viper.silicon.state.terms.{MagicWandSnapshot, _}
+import viper.silicon.state.terms._
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 
@@ -273,8 +273,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }
 
     /**
-     * Partition path conditions into a set which include the freshSnapRoot and those which do not
-     * and combine them with the path conditions which are not conditionalized.
+     * Partition path conditions into a set which include the freshSnapRoot and those which do not.
+     * Include the path conditions with the freshSnapRoot in the MWSF definition.
+     * It also takes care of special cases that include field value functions.
      *
      * @param conservedPcs Vector of path conditions which have been recorded during the execution of the proof script.
      * @param freshSnapRoot Fresh variable that represents the snapshot of the wand's LHS.
@@ -284,67 +285,88 @@ object magicWandSupporter extends SymbolicExecutionRules {
      * @param v1 Verifier instance.
      * @return Vector of conserved path conditions.
      */
-    def partitionAndCombineConservedPathConditions(conservedPcs: Vector[RecordedPathConditions],
-                                                   freshSnapRoot: Var,
-                                                   mwsf: Var,
-                                                   snapRhs: Term,
-                                                   functionsBeforePackaging: Set[FunctionDecl],
-                                                   v1: Verifier): Vector[Term] = {
-      // Find all snapshot maps that were defined during the packaging of the wand
-      val freshSnapshotMaps = (v1.decider.freshFunctions -- functionsBeforePackaging)
-        .filter(_.func.resultSort.isInstanceOf[sorts.FieldValueFunction])
-        .map(f => App(f.func, Seq.empty))
-        .toSeq
-      var quantifiedVars = freshSnapRoot +: freshSnapshotMaps
+    def summarizeDefinitions(conservedPcs: Vector[RecordedPathConditions],
+                             freshSnapRoot: Var,
+                             mwsf: Var,
+                             snapRhs: Term,
+                             functionsBeforePackaging: Set[FunctionDecl],
+                             v1: Verifier): Vector[Term] = {
+      // Map all path conditions to their conditionalized form and flatten the result
+      val conditionalizedPcs = conservedPcs.flatMap(_.conditionalized).flatMap {
+        case And(terms) => terms
+        case term => Vector(term)
+      }
 
-      // Partition path conditions into those which include the freshSnapRoot and those which do not
-      val (pcsWithQuantifiedVars, pcsWithoutQuantifiedVars) = conservedPcs
-        .flatMap(_.conditionalized)
-        .partition(pcs => quantifiedVars.exists(qv => pcs.contains(qv)))
+      // Rewrite path conditions which include the snapRhs when it is a field value function (FVF)
+      val (unchangedPcs, updatedPcs) = snapRhs match {
+        // Rewrite based on test11 in QPFields.vpr
+        case SortWrapper(app: App, _) if app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] =>
+          conditionalizedPcs.partitionMap {
+            case Quantification(Forall, Seq(r), Implies(cond, BuiltinEquals(Lookup(field, fvf, at), rhs)), _, _, _, _)
+              if r.sort == sorts.Ref && fvf == app && r == at =>
+
+              val newLookup = Lookup(field, SortWrapper(MWSFLookup(mwsf, freshSnapRoot), fvf.sort), at)
+              val quantification = Forall(
+                Seq(r, freshSnapRoot),
+                Implies(cond, BuiltinEquals(newLookup, rhs)),
+                Trigger(newLookup)
+              )
+              v1.decider.assumeDefinition(quantification)
+              Right(quantification)
+            case pcs => Left(pcs)
+          }
+
+        // // Rewrite for test9 in QPFields.vpr -> leads to unsoundness in snap_functions/test13.vpr
+        // case SortWrapper(Lookup(_, app: App, _), _)
+        //   if app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] =>
+        //
+        //   conditionalizedPcs.partitionMap {
+        //     case Implies(cond, BuiltinEquals(Lookup(_, fvf, _), rhs))
+        //       if fvf == app =>
+        //
+        //       val newLhs = SortWrapper(MWSFLookup(mwsf, freshSnapRoot), rhs.sort)
+        //       val quantification = Forall(
+        //         freshSnapRoot,
+        //         Implies(cond, BuiltinEquals(newLhs, rhs)),
+        //         Seq(Trigger(newLhs), Trigger(rhs))
+        //       )
+        //       v1.decider.assumeDefinition(quantification)
+        //       Right(quantification)
+        //     case pcs => Left(pcs)
+        //   }
+
+        case _ => (conservedPcs.flatMap(_.conditionalized), Vector.empty)
+      }
 
       // Remove forall quantifiers with the same quantified variable
-      var transformedPcs = pcsWithQuantifiedVars.map(_.transform {
-        case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if quantifiedVars.contains(v) => body
-      }(_ => true))
+      val pcsWithFreshSnapRoot = unchangedPcs
+        .filter(pcs => pcs.contains(freshSnapRoot))
+        .map(_.transform {
+          case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v.equals(freshSnapRoot) => body
+        }(_ => true))
 
-      // If there are more than one new snapshot maps, which are assumed to be the same, combine them into a single term
-      // if (freshSnapshotMaps.length == 2) {
-      //   if (pcsWithQuantifiedVars.exists({
-      //     _.existsDefined(t => t.isInstanceOf[BuiltinEquals] &&
-      //       t.asInstanceOf[BuiltinEquals].p0 == freshSnapshotMaps.head &&
-      //       t.asInstanceOf[BuiltinEquals].p1 == freshSnapshotMaps.last
-      //     )
-      //   })) {
-      //     quantifiedVars = Seq(freshSnapRoot, freshSnapshotMaps.last)
-      //     transformedPcs = transformedPcs.map(pcs => {
-      //       pcs.transform({
-      //         // case v: Var if (v.equals(freshSnapshotMaps.head)) => freshSnapshotMaps.last
-      //         case app: App if app.applicable.id == freshSnapshotMaps.head.applicable.id => {
-      //           freshSnapshotMaps.last
-      //         }
-      //         case t => t
-      //       })(_ => true)
-      //     })
-      //   }
-      // } else if (freshSnapshotMaps.length > 2) {
-      //   throw new Exception("Please let me know. There are more than two snapshot maps!")
-      // }
+      // Collect all path conditions which do not include the freshSnapRoot
+      val pcsWithoutFreshSnapRoot = conditionalizedPcs.filter(pcs => !pcs.contains(freshSnapRoot))
 
+      // Combine all path conditions which include the freshSnapRoot
       val pcsQuantified = Forall(
-        quantifiedVars.map(t => Var(t.applicable.id, t.applicable.resultSort, false)),
+        freshSnapRoot,
         Implies(
-          And(transformedPcs),
+          And(pcsWithFreshSnapRoot),
           MWSFLookup(mwsf, freshSnapRoot) === snapRhs,
         ),
         Trigger(MWSFLookup(mwsf, freshSnapRoot))
       )
 
+      // Add this definition to the path conditions for outer package operations
       v1.decider.assumeDefinition(Forall(
         freshSnapRoot,
         MWSFLookup(mwsf, freshSnapRoot) === snapRhs,
         Trigger(MWSFLookup(mwsf, freshSnapRoot))
       ))
-      pcsQuantified +: pcsWithoutQuantifiedVars
+
+      // Return the summarized path conditions
+      pcsWithoutFreshSnapRoot ++ updatedPcs :+ pcsQuantified
     }
 
     def createWandChunkAndRecordResults(s4: State,
@@ -368,7 +390,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, mwsf, v4)
           // v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
-          val conservedPcs = partitionAndCombineConservedPathConditions(
+
+          val conservedPcs = summarizeDefinitions(
             s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly,
             freshSnapRoot, mwsf, snapRhs, functionsBeforePackaging, v4)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), conservedPcs, v4)
@@ -377,10 +400,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
       } else {
         val wandSnapshot = MagicWandSnapshot(mwsf)
         this.createChunk(s4, wand, wandSnapshot, pve, v3)((s5, ch, v4) => {
-          val conservedPcs = partitionAndCombineConservedPathConditions(
+          val conservedPcs = summarizeDefinitions(
             s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly,
             freshSnapRoot, mwsf, snapRhs, functionsBeforePackaging, v4)
-
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), conservedPcs, v4)
           Success()
         })
