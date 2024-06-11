@@ -367,7 +367,7 @@ object producer extends ProductionRules {
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
         evals(s, bodyVars, _ => pve, v)((s1, args,v1) => {
           val (sm, smValueDef) =
-            quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.MagicWandSnapFunction(), v1), v1)
+            quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
           v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val definitionalAxiomMark = v1.decider.setPathConditionMark()
           v1.decider.assumeDefinition(smValueDef)

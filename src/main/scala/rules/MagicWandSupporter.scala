@@ -383,9 +383,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
 
         evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
-          // val snapshotTerm = Combine(freshSnapRoot, snapRhs)
-          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, mwsf, v4)
-          // v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, SortWrapper(mwsf, sorts.Snap), v4)
+          v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          v4.decider.assumeDefinition(smValueDef)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
 
           val conservedPcs = summarizeDefinitions(
