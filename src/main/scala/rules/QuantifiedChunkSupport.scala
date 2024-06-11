@@ -1566,7 +1566,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           // TODO: Reconsider use of and general design behind s.predicateSnapMap
           sorts.PredicateSnapFunction(s.predicateSnapMap(predicate), predicate.name)
         case w: ast.MagicWand =>
-          sorts.PredicateSnapFunction(sorts.MagicWandSnapFunction(), MagicWandIdentifier(w, s.program).toString)
+          sorts.PredicateSnapFunction(sorts.Snap, MagicWandIdentifier(w, s.program).toString)
         case _ =>
           sys.error(s"Found yet unsupported resource $resource (${resource.getClass.getSimpleName})")
       }

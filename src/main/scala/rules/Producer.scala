@@ -477,7 +477,7 @@ object producer extends ProductionRules {
         val qid = MagicWandIdentifier(wand, s.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Some((tArgs, tTriggers, (auxGlobals, auxNonGlobals))), v1) =>
-            val tSnap = sf(sorts.PredicateSnapFunction(sorts.MagicWandSnapFunction(), qid), v1)
+            val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v1)
             quantifiedChunkSupporter.produce(
               s1,
               forall,

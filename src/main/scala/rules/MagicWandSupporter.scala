@@ -335,7 +335,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               val quantification = Forall(
                 freshSnapRoot,
                 Implies(cond, BuiltinEquals(newLhs, SortWrapper(rhs, to))),
-                Seq(Trigger(newLhs), Trigger(rhs))
+                Trigger(newLhs)
               )
               v1.decider.assumeDefinition(quantification)
               Vector(quantification)
@@ -527,11 +527,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val magicWandSnapshotLookup = snapWand match {
           case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs)
           case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs)
-          // Fallback solution for quantified magic wands
           case predicateLookup: PredicateLookup =>
-            MWSFLookup(predicateLookup, snapLhs)
+            MWSFLookup(SortWrapper(predicateLookup, sorts.MagicWandSnapFunction()), snapLhs)
           case SortWrapper(predicateLookup: PredicateLookup, _) =>
-            MWSFLookup(predicateLookup, snapLhs)
+            MWSFLookup(SortWrapper(predicateLookup, sorts.MagicWandSnapFunction()), snapLhs)
           case _ => snapWand
         }
 
