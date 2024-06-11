@@ -297,11 +297,20 @@ object magicWandSupporter extends SymbolicExecutionRules {
         case term => Vector(term)
       }
 
+      // Partition path conditions into a set which include the freshSnapRoot and those which do not
+      var (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conditionalizedPcs.partition(pcs => pcs.contains(freshSnapRoot))
+
+      // Remove forall quantifiers with the same quantified variable
+      pcsWithFreshSnapRoot = pcsWithFreshSnapRoot
+        .map(_.transform {
+          case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v.equals(freshSnapRoot) => body
+        }(_ => true))
+
       // Rewrite path conditions which include the snapRhs when it is a field value function (FVF)
-      val (unchangedPcs, updatedPcs) = snapRhs match {
+      val updatedPcs = snapRhs match {
         // Rewrite based on test11 in QPFields.vpr
         case SortWrapper(app: App, _) if app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] =>
-          conditionalizedPcs.partitionMap {
+          conditionalizedPcs.flatMap {
             case Quantification(Forall, Seq(r), Implies(cond, BuiltinEquals(Lookup(field, fvf, at), rhs)), _, _, _, _)
               if r.sort == sorts.Ref && fvf == app && r == at =>
 
@@ -312,41 +321,29 @@ object magicWandSupporter extends SymbolicExecutionRules {
                 Trigger(newLookup)
               )
               v1.decider.assumeDefinition(quantification)
-              Right(quantification)
-            case pcs => Left(pcs)
+              Vector(quantification)
+            case _ => Vector.empty
           }
 
-        // // Rewrite for test9 in QPFields.vpr -> leads to unsoundness in snap_functions/test13.vpr
-        // case SortWrapper(Lookup(_, app: App, _), _)
-        //   if app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] =>
-        //
-        //   conditionalizedPcs.partitionMap {
-        //     case Implies(cond, BuiltinEquals(Lookup(_, fvf, _), rhs))
-        //       if fvf == app =>
-        //
-        //       val newLhs = SortWrapper(MWSFLookup(mwsf, freshSnapRoot), rhs.sort)
-        //       val quantification = Forall(
-        //         freshSnapRoot,
-        //         Implies(cond, BuiltinEquals(newLhs, rhs)),
-        //         Seq(Trigger(newLhs), Trigger(rhs))
-        //       )
-        //       v1.decider.assumeDefinition(quantification)
-        //       Right(quantification)
-        //     case pcs => Left(pcs)
-        //   }
+        // Rewrite for test9 in QPFields.vpr
+        case SortWrapper(Lookup(_, app: App, _), to)
+          if app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] =>
 
-        case _ => (conservedPcs.flatMap(_.conditionalized), Vector.empty)
+          conditionalizedPcs.flatMap {
+            case Implies(cond, BuiltinEquals(Lookup(_, fvf, _), rhs)) if fvf == app =>
+              val newLhs = MWSFLookup(mwsf, freshSnapRoot)
+              val quantification = Forall(
+                freshSnapRoot,
+                Implies(cond, BuiltinEquals(newLhs, SortWrapper(rhs, to))),
+                Seq(Trigger(newLhs), Trigger(rhs))
+              )
+              v1.decider.assumeDefinition(quantification)
+              Vector(quantification)
+            case _ => Vector.empty
+          }
+
+        case _ => Vector.empty
       }
-
-      // Remove forall quantifiers with the same quantified variable
-      val pcsWithFreshSnapRoot = unchangedPcs
-        .filter(pcs => pcs.contains(freshSnapRoot))
-        .map(_.transform {
-          case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v.equals(freshSnapRoot) => body
-        }(_ => true))
-
-      // Collect all path conditions which do not include the freshSnapRoot
-      val pcsWithoutFreshSnapRoot = conditionalizedPcs.filter(pcs => !pcs.contains(freshSnapRoot))
 
       // Combine all path conditions which include the freshSnapRoot
       val pcsQuantified = Forall(
