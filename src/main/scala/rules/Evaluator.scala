@@ -18,7 +18,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.toSf
+import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
@@ -910,7 +910,16 @@ object evaluator extends EvaluationRules {
         joiner.join[Term, Term](s, v)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)(QB)
-        }))(join(v.symbolConverter.toSort(eIn.typ), "joined_applying", s.relevantQuantifiedVariables, v))(Q)
+          })
+        )(join(v.symbolConverter.toSort(eIn.typ), "joined_applying", s.relevantQuantifiedVariables, v))(Q)
+
+      case ast.Inhaling(a, body) =>
+        joiner.join[Term, Term](s, v)((s1, v1, QB) =>
+          produce(s1, freshSnap, a, pve, v1)((s2, v2) => {
+            v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+            eval(s2, body, pve, v2)(QB)
+          })
+        )(join(v.symbolConverter.toSort(body.typ), "joined_inhaling", s.relevantQuantifiedVariables, v))(Q)
 
       /* Sequences */
 
@@ -1465,6 +1474,17 @@ object evaluator extends EvaluationRules {
     }
   }
 
+  /**
+   * Method that takes a list of [[viper.silicon.rules.JoinDataEntry]] from [[viper.silicon.rules.joiner.join]]
+   * and joins them using a symbolic join function with the given name and arguments.
+   *
+   * @param joinSort         The sort of the result of the join function.
+   * @param joinFunctionName The name of the join function.
+   * @param joinFunctionArgs The arguments of the join function.
+   * @param v                The current verifier.
+   * @param entries          The list of JoinDataEntry to join.
+   * @return A tuple containing the new state and the term resulting from the join.
+   */
   private def join(joinSort: Sort,
                    joinFunctionName: String,
                    joinFunctionArgs: Seq[Term],

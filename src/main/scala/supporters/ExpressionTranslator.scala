@@ -259,6 +259,7 @@ trait ExpressionTranslator {
              | _: ast.Result
              | _: ast.Unfolding
              | _: ast.Applying
+             | _: ast.Inhaling
              | _: ast.InhaleExhaleExp
              | _: ast.PredicateAccess
              | _: ast.FuncApp

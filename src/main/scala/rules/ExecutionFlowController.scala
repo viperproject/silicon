@@ -49,6 +49,29 @@ trait ExecutionFlowRules extends SymbolicExecutionRules {
 }
 
 object executionFlowController extends ExecutionFlowRules {
+  /**
+   * Execute a local block within its own scope. The continuation Q is invoked
+   * with the result of the local block if the local block succeeded. Changes
+   * to the state and verifier are not propagated outside of the local block.
+   *
+   * Usage example:
+   * {{{
+   * locallyWithResult[Term](s, v)((s1, v1, QL) => {
+   *   eval(s2, exp, pve, v2)((_, tExp, _) => {
+   *     QL(tExp)
+   *   })
+   * })(t => Q(s, t, v))
+   * }}}
+   *
+   * @param s     State to be used for the local block.
+   * @param v     Verifier to be used for the local block.
+   * @param block Local block to be executed. It accepts the current state, verifier, and a
+   *              continuation QL that is invoked with the result of the block.
+   * @param Q     Continuation that is invoked with the result of the local block if the local block
+   *              succeeded.
+   * @tparam R Type of the result of the local block.
+   * @return Verification result after executing the local block and the continuation Q.
+   */
   def locallyWithResult[R](s: State, v: Verifier)
                           (block: (State, Verifier, R => VerificationResult) => VerificationResult)
                           (Q: R => VerificationResult)
@@ -92,6 +115,14 @@ object executionFlowController extends ExecutionFlowRules {
     }
   }
 
+  /**
+   * Execute a local block that is executed within its own scope.
+   *
+   * @param s     State to be used for the local block.
+   * @param v     Verifier to be used for the local block.
+   * @param block Local block to be executed. It accepts a state and a verifier and returns a verification result.
+   * @return      Verification result of executing the local block.
+   */
   def locally(s: State, v: Verifier)
              (block: (State, Verifier) => VerificationResult)
              : VerificationResult =
