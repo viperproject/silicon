@@ -640,7 +640,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   def singletonSnapshotMap(s: State,
                            resource: ast.Resource,
                            arguments: Seq[Term],
-                           // freshSnapRoot: Term,
                            value: Term,
                            v: Verifier)
                           : (Term, Term) = {
@@ -648,11 +647,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val additionalSmArgs = s.relevantQuantifiedVariables(arguments)
     val sm = freshSnapshotMap(s, resource, additionalSmArgs, v)
     val smValueDef = BuiltinEquals(ResourceLookup(resource, sm, arguments, s.program), value)
-    // val smValueDef = Forall(
-    //   freshSnapRoot,
-    //   MWSFLookup(ResourceLookup(resource, sm, arguments, s.program), freshSnapRoot) === snapRhs,
-    //   Trigger(MWSFLookup(ResourceLookup(resource, sm, arguments, s.program), freshSnapRoot))
-    // )
 
     (sm, smValueDef)
   }
