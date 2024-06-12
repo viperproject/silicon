@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.{BiAbductionResult, BiAbductionSolver, SiliconAbductionQuestion}
+import viper.silicon.biabduction.{BiAbductionResult, BiAbductionSolver, AbductionQuestion}
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier

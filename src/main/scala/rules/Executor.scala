@@ -16,7 +16,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{Exp, Method, NoPosition}
+import viper.silver.ast.{Exp, Method, NoPosition, Stmt, VirtualPosition}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
@@ -252,84 +252,85 @@ object executor extends ExecutionRules {
             val edgeConditions = sortedEdges.collect { case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition }
               .distinct
 
-            type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
-            var phase1data: Vector[PhaseData] = Vector.empty
+            executionFlowController.locallyWithResult[BiAbductionResult](s, v)((sAbd, vAbd, R) =>
+              LoopInvariantSolver.solveLoopInvariants(sAbd, vAbd, sAbd.g.values.keys.toSeq, block, newInvs.getOrElse(Seq()), otherEdges, joinPoint)(R)) {
 
-            (executionFlowController.locally(sBody, v)((s0, v0) => {
-              v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
-              val mark = v0.decider.setPathConditionMark()
-              produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
-                phase1data = phase1data :+ (s1,
-                  v1.decider.pcs.after(mark),
-                  v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */ )
-                Success()
-              })
-            })
-              combine executionFlowController.locally(s, v)((s0, v0) => {
-              v0.decider.prover.comment("Loop head block: Establish invariant")
-              consumes(s0, invs, LoopInvariantNotEstablished, v0, withAbduction = true)((sLeftover, _, v1) => {
-                v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
-                phase1data.foldLeft(Success(): VerificationResult) {
-                  case (result, _) if !result.continueVerification => result
-                  case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
-                    val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
-                    intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
-                      v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions, true) /* [BRANCH-PARALLELISATION] */
-                      v2.decider.assume(pcs.assumptions)
-                      v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                      if (v2.decider.checkSmoke())
-                        Success()
-                      else {
-                        execs(s3, stmts, v2)((s4, v3) => {
-                          v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
-                          edgeConditions.foldLeft(Success(): VerificationResult) {
-                            case (result, _) if !result.continueVerification => result
-                            case (intermediateResult, eCond) =>
-                              intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
-                                eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _) => {
+              case BiAbductionFailure(_, _) =>
+                Failure(Internal(reason = InternalReason(DummyNode, "Failed to find loop invariants")))
 
-                                  // Try to find invariants
-                                  executionFlowController.locally(s, v)((sNew, vNew) =>
-                                    LoopInvariantSolver.solveLoopInvariants(sNew, vNew, sNew.g.values.keys.toSeq, block, newInvs.getOrElse(Seq()), otherEdges, joinPoint) {
-                                      case BiAbductionFailure(_, _) =>
-                                        Failure(Internal(reason = InternalReason(DummyNode, "Failed to find loop invariants")))
+              // We found new invariants, so we want to recurse
+              case LoopInvariantSuccess(_, _, invs, _) if invs.nonEmpty => {
+                val uniqueInvs = invs.distinct
+                exec(s, block, incomingEdgeKind, v, joinPoint, Some(uniqueInvs))(Q) &&
+                  Success(Some(LoopInvariantSuccess(s, v, uniqueInvs, otherEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition.pos)))
+              }
 
-                                      // We found no new loop invariants, so we want to continue outside of this local context
-                                      case LoopInvariantSuccess(_, _, Seq(), _) => Success(None)
-                                      // We found new invariants, so we want to recurse outside of all the local contexts
-                                      case suc: LoopInvariantSuccess => Success(Some(suc))
-                                    }) match {
+              // We found no new loop invariants, so we want to continue with the normal loop verification
+              case LoopInvariantSuccess(_, _, Seq(), _) => {
+                type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
+                var phase1data: Vector[PhaseData] = Vector.empty
 
-                                    case Success(None) =>
+                (executionFlowController.locally(sBody, v)((s0, v0) => {
+                  v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
+                  val mark = v0.decider.setPathConditionMark()
+                  produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
+                    phase1data = phase1data :+ (s1,
+                      v1.decider.pcs.after(mark),
+                      v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */ )
+                    Success()
+                  })
+                })
+                  combine executionFlowController.locally(s, v)((s0, v0) => {
+                  v0.decider.prover.comment("Loop head block: Establish invariant")
+                  val prePos = VirtualPosition("Before loop " + block.toString)
+                  consumes(s0, invs, LoopInvariantNotEstablished, v0, Some(prePos))((sLeftover, _, v1) => {
+                    v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
+                    phase1data.foldLeft(Success(): VerificationResult) {
+                      case (result, _) if !result.continueVerification => result
+                      case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
+                        val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
+                        intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
+                          v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions, true) /* [BRANCH-PARALLELISATION] */
+                          v2.decider.assume(pcs.assumptions)
+                          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+                          if (v2.decider.checkSmoke())
+                            Success()
+                          else {
+                            execs(s3, stmts, v2)((s4, v3) => {
+                              v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
+                              edgeConditions.foldLeft(Success(): VerificationResult) {
+                                case (result, _) if !result.continueVerification => result
+                                case (intermediateResult, eCond) =>
+                                  intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
+                                    eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _) => {
                                       v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                                      // Continue check the loop body with the invariants
+
                                       // We have to check the inferred invariants after loop manually here instead of
                                       // relying on the reentry of the loop head, as this will not have the additional invariants
                                       executionFlowController.locally(s4, v3)((s5, v5) => {
-                                        follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) =>
-                                          consumes(s6, newInvs.getOrElse(Seq()), e => LoopInvariantNotPreserved(e), v6, withAbduction = true)((_, _, _) => Success())
+                                        follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) => {
+                                          val endPos = VirtualPosition("End of loop " + block.toString)
+                                          // TODO nklose check that no new state is abduced, this would be incorrect
+                                          consumes(s6, newInvs.getOrElse(Seq()), e => LoopInvariantNotPreserved(e), v6, Some(endPos))((_, _, _) => Success())
+                                        }
                                         )
                                       }) &&
                                         // Continue after the loop (with the new invariants)
                                         executionFlowController.locally(s4, v3)((s5, v5) => {
                                           follows(s5, outEdges, WhileFailed, v5, joinPoint)((s6, v6) => Q(s6, v6))
                                         })
-                                    case rec => rec
-                                  }
-                                })
-                              })
+                                    })
+                                  })
+                              }
+                            })
                           }
                         })
-                      }
-                    })
-                }
-              })
-            })) match {
-              case suc@Success(Some(in: LoopInvariantSuccess)) if in.invs.nonEmpty =>
-                // Now that we are outside of all the local contexts, we recurse if we found new invariants.
-                exec(s, block, incomingEdgeKind, v, joinPoint, Some(in.invs))(Q) && suc
-              case res => res // Otherwise just continue
+                    }
+                  })
+                }))
+              }
             }
+
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -337,10 +338,10 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, oldInvs, e => LoopInvariantNotPreserved(e), v, withAbduction = true)((s1, _, v1) => {
-              Q(s1, v1) //&& Success(Some(FramingSuccess(s1, v1, Seq(), NoPosition)))
-              // TODO nklose after finding invariants we should not do framing anymore
-              //val posts = BiAbductionSolver.solveFraming(s1, v1, s1.g.values)
+            // TODO nklose check that no new state is abduced, this would be incorrect
+            val pos = VirtualPosition("End of loop " + block.toString)
+            consumes(s, oldInvs, e => LoopInvariantNotPreserved(e), v, Some(pos))((s1, _, v1) => {
+              Q(s1, v1)
             })
         }
     }
@@ -387,22 +388,22 @@ object executor extends ExecutionRules {
         v.decider.prover.comment(stmt.toString())
     }
 
-    val executed = stmt match {
+    val executed = executionFlowController.locally(s, v)((s0, v0) => stmt match {
       case ast.Seqn(stmts, _) =>
-        execs(s, stmts, v)(Q)
+        execs(s0, stmts, v0)(Q)
 
       case ast.Label(name, _) =>
-        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
-        Q(s1, v)
+        val s1 = s0.copy(oldHeaps = s0.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s0)))
+        Q(s1, v0)
 
       case ast.LocalVarDeclStmt(decl) =>
         val x = decl.localVar
-        val t = v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ))
-        Q(s.copy(g = s.g + (x -> t)), v)
+        val t = v0.decider.fresh(x.name, v0.symbolConverter.toSort(x.typ))
+        Q(s0.copy(g = s0.g + (x -> t)), v0)
 
       case ass@ast.LocalVarAssign(x, rhs) =>
-        eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, v1) => {
-          val t = ssaifyRhs(tRhs, x.name, x.typ, v)
+        eval(s0, rhs, AssignmentFailed(ass), v0)((s1, tRhs, v1) => {
+          val t = ssaifyRhs(tRhs, x.name, x.typ, v0)
           Q(s1.copy(g = s1.g + (x, t)), v1)
         })
 
@@ -414,11 +415,11 @@ object executor extends ExecutionRules {
 
       /* Assignment for a field that contains quantified chunks */
       case ass@ast.FieldAssign(fa@ast.FieldAccess(eRcvr, field), rhs)
-        if s.qpFields.contains(field) =>
+        if s0.qpFields.contains(field) =>
 
-        assert(!s.exhaleExt)
+        assert(!s0.exhaleExt)
         val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
+        eval(s0, eRcvr, pve, v0)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
             val (relevantChunks, otherChunks) =
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
@@ -451,7 +452,7 @@ object executor extends ExecutionRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assumeDefinition(smValueDef)
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s0.program)
                 if (s3.heapDependentTriggers.contains(field))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
@@ -461,11 +462,11 @@ object executor extends ExecutionRules {
           }))
 
       case ass@ast.FieldAssign(fa@ast.FieldAccess(eRcvr, field), rhs) =>
-        assert(!s.exhaleExt)
+        assert(!s0.exhaleExt)
         val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
+        eval(s0, eRcvr, pve, v0)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val resource = fa.res(s.program)
+            val resource = fa.res(s0.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
             chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm, ve, v2, description)((s3, h3, _, v3) => {
@@ -479,31 +480,31 @@ object executor extends ExecutionRules {
         )
 
       case ast.NewStmt(x, fields) =>
-        val tRcvr = v.decider.fresh(x)
-        v.decider.assume(tRcvr !== Null)
+        val tRcvr = v0.decider.fresh(x)
+        v0.decider.assume(tRcvr !== Null)
         val newChunks = fields map (field => {
           val p = FullPerm
-          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
-          if (s.qpFields.contains(field)) {
-            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
-            v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-            v.decider.assumeDefinition(smValueDef)
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm, s.program)
+          val snap = v0.decider.fresh(field.name, v0.symbolConverter.toSort(field.typ))
+          if (s0.qpFields.contains(field)) {
+            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s0, field, Seq(tRcvr), snap, v0)
+            v0.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+            v0.decider.assumeDefinition(smValueDef)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm, s0.program)
           } else {
             BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
           }
         })
-        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
-        val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
-        v.decider.assume(ts)
-        Q(s1, v)
+        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s0, tRcvr)
+        val s1 = s0.copy(g = s0.g + (x, tRcvr), h = s0.h + Heap(newChunks))
+        v0.decider.assume(ts)
+        Q(s1, v0)
 
       case inhale@ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
           /* We're done */
           Success()
         case _ =>
-          produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
+          produce(s0, freshSnap, a, InhaleFailed(inhale), v0)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
             Q(s1, v1)
           })
@@ -511,42 +512,42 @@ object executor extends ExecutionRules {
 
       case exhale@ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, pve, v)((s1, _, v1) =>
+        consume(s0, a, pve, v0)((s1, _, v1) =>
           Q(s1, v1))
 
       case assert@ast.Assert(a: ast.FalseLit) =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
-        executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
+        executionFlowController.tryOrFail0(s0.copy(h = magicWandSupporter.getEvalHeap(s0)), v0)((s1, v1, QS) => {
           if (v1.decider.checkSmoke(true))
-            QS(s1.copy(h = s.h), v1)
+            QS(s1.copy(h = s0.h), v1)
           else
             createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, true)
         })((_, _) => Success())
 
       case assert@ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, AssertFailed(assert), v)((_, _, _) =>
+          consume(s0, a, AssertFailed(assert), v0)((_, _, _) =>
             Success())
 
-        r combine Q(s, v)
+        r combine Q(s0, v0)
 
       case assert@ast.Assert(a) =>
         val pve = AssertFailed(assert)
 
-        if (s.exhaleExt) {
-          Predef.assert(s.h.values.isEmpty)
-          Predef.assert(s.reserveHeaps.head.values.isEmpty)
+        if (s0.exhaleExt) {
+          Predef.assert(s0.h.values.isEmpty)
+          Predef.assert(s0.reserveHeaps.head.values.isEmpty)
 
           /* When exhaleExt is set magicWandSupporter.transfer is used to transfer permissions to
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, pve, v)((s2, _, v1) => {
+          consume(s0, a, pve, v0)((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, pve, v)((s1, _, v1) => {
-            val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
+          consume(s0, a, pve, v0)((s1, _, v1) => {
+            val s2 = s1.copy(h = s0.h, reserveHeaps = s0.reserveHeaps)
             Q(s2, v1)
           })
 
@@ -556,47 +557,47 @@ object executor extends ExecutionRules {
         if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
-        val member = s.program.collectFirst {
+        val member = s0.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
           case m: ast.Predicate if m.name == resourceName => m
         }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
-        val h1 = Heap(s.h.values.map {
+        val h1 = Heap(s0.h.values.map {
           case bc: BasicChunk if bc.id.name == member.name =>
-            bc.withSnap(freshSnap(bc.snap.sort, v))
+            bc.withSnap(freshSnap(bc.snap.sort, v0))
           case qfc: QuantifiedFieldChunk if qfc.id.name == member.name =>
-            qfc.withSnapshotMap(freshSnap(qfc.fvf.sort, v))
+            qfc.withSnapshotMap(freshSnap(qfc.fvf.sort, v0))
           case qpc: QuantifiedPredicateChunk if qpc.id.name == member.name =>
-            qpc.withSnapshotMap(freshSnap(qpc.psf.sort, v))
+            qpc.withSnapshotMap(freshSnap(qpc.psf.sort, v0))
           case other =>
             other
         })
-        Q(s.copy(h = h1), v)
+        Q(s0.copy(h = h1), v0)
 
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
-        val s1 = v.stateConsolidator.consolidate(s, v)
-        Q(s1, v)
+        val s1 = v0.stateConsolidator.consolidate(s0, v0)
+        Q(s1, v0)
 
       case call@ast.MethodCall(methodName, eArgs, lhs) =>
-        val meth = s.program.findMethod(methodName)
+        val meth = s0.program.findMethod(methodName)
         val fargs = meth.formalArgs.map(_.localVar)
         val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
 
-        val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
-        val sepIdentifier = v.symbExLog.openScope(mcLog)
-        val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
-        val paramId = v.symbExLog.openScope(paramLog)
-        evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
+        val mcLog = new MethodCallRecord(call, s0, v0.decider.pcs)
+        val sepIdentifier = v0.symbExLog.openScope(mcLog)
+        val paramLog = new CommentRecord("Parameters", s0, v0.decider.pcs)
+        val paramId = v0.symbExLog.openScope(paramLog)
+        evals(s0, eArgs, _ => pveCall, v0)((s1, tArgs, v1) => {
           v1.symbExLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
             case ce => ce
           })
           val abductionTrafo = AbductionQuestionTransformer({
-            case a: SiliconAbductionQuestion => a.copy(s = s1, v = v1)
+            case a: AbductionQuestion => a.copy(s = s1, v = v1)
             case a => a
           })
           val pvePre = ErrorWrapperWithTransformers(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo, abductionTrafo)
@@ -626,9 +627,9 @@ object executor extends ExecutionRules {
         })
 
       case fold@ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
-        val predicate = s.program.findPredicate(predicateName)
+        val predicate = s0.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
+        evals(s0, eArgs, _ => pve, v0)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
@@ -636,9 +637,9 @@ object executor extends ExecutionRules {
             })))
 
       case unfold@ast.Unfold(ast.PredicateAccessPredicate(pa@ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
-        val predicate = s.program.findPredicate(predicateName)
+        val predicate = s0.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
+        evals(s0, eArgs, _ => pve, v0)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
 
             val smCache1 = if (s2.qpPredicates.contains(predicate) && s2.heapDependentTriggers.contains(predicate)) {
@@ -661,12 +662,12 @@ object executor extends ExecutionRules {
 
       case pckg@ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-        magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
+        magicWandSupporter.packageWand(s0, wand, proofScript, pve, v0)((s1, chWand, v1) => {
 
           val hOps = s1.reserveHeaps.head + chWand
-          assert(s.exhaleExt || s1.reserveHeaps.length == 1)
+          assert(s0.exhaleExt || s1.reserveHeaps.length == 1)
           val s2 =
-            if (s.exhaleExt) {
+            if (s0.exhaleExt) {
               s1.copy(h = Heap(),
                 exhaleExt = true,
                 /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
@@ -676,20 +677,20 @@ object executor extends ExecutionRules {
                  * execution. hUsed should therefore be empty unless the package statement
                  * was triggered by heuristics during a consume operation.
                  */
-                reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
+                reserveHeaps = s0.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
             } else {
               /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
               s1.copy(h = hOps,
                 exhaleExt = false,
                 reserveHeaps = Nil)
             }
-          assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+          assert(s2.reserveHeaps.length == s0.reserveHeaps.length)
 
           val smCache3 = chWand match {
             case ch: QuantifiedMagicWandChunk if s2.heapDependentTriggers.contains(MagicWandIdentifier(wand, s2.program)) =>
               val (relevantChunks, _) =
                 quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
-              val bodyVars = wand.subexpressionsToEvaluate(s.program)
+              val bodyVars = wand.subexpressionsToEvaluate(s0.program)
               val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
               val (smDef, smCache) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -704,22 +705,22 @@ object executor extends ExecutionRules {
 
       case apply@ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        magicWandSupporter.applyWand(s, e, pve, v)(Q)
+        magicWandSupporter.applyWand(s0, e, pve, v0)(Q)
 
       case havoc: ast.Quasihavoc =>
-        havocSupporter.execHavoc(havoc, v, s)(Q)
+        havocSupporter.execHavoc(havoc, v0, s0)(Q)
 
       case havocall: ast.Quasihavocall =>
-        havocSupporter.execHavocall(havocall, v, s)(Q)
+        havocSupporter.execHavocall(havocall, v0, s0)(Q)
 
       case viper.silicon.extensions.TryBlock(body) =>
         var bodySucceeded = false
-        val bodyResult = exec(s, body, v)((s1, v2) => {
+        val bodyResult = exec(s0, body, v0)((s1, v2) => {
           bodySucceeded = true
           Q(s1, v2)
         })
         if (bodySucceeded) bodyResult
-        else Q(s, v)
+        else Q(s0, v0)
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case _: ast.Goto
@@ -729,7 +730,7 @@ object executor extends ExecutionRules {
            | _: ast.Assume
            | _: ast.ExtensionStmt
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
-    }
+    })
 
     executed match {
       case Failure(_: PostconditionViolated, _) => executed // Postconditions are handled elsewhere, we do not want to restart for them

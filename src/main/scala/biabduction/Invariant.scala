@@ -16,7 +16,7 @@ import viper.silver.verifier.errors.{ContractNotWellformed, Internal, LoopInvari
 // Many things are either in relation to the current loop iteration (which we call relative) or the total state/the state
 // before the loop (which we call absolute).
 
-case class InvariantAbductionQuestion(abstraction: Seq[Exp], absValues: Map[AbstractLocalVar, Exp])
+case class InvariantAbductionQuestion(preAbstraction: Seq[Exp], postAbstraction: Seq[Exp], absValues: Map[AbstractLocalVar, Exp])
 
 object LoopInvariantSolver {
 
@@ -24,14 +24,15 @@ object LoopInvariantSolver {
 
   private def pveLam(exp: Exp) = pve
 
-  private def getInvariant(e: Exp): Seq[Exp] = {
+  // TODO this is oversimplified, we actually should solve a proper abduction question with the other invariant.
+  private def getPreInvariant(e: Exp): Seq[Exp] = {
     e match {
-      case m: MagicWand => Seq(m.left, m)
+      case m: MagicWand => Seq(m.left)
       case _ => Seq(e)
     }
   }
 
-  // TODO nklose we need to consume existing invariants if they exist, especially the ones that we found previously
+  // TODO do we need to well-definedness of the loop condition
   def solveLoopInvariants(sPre: State,
                           vPre: Verifier,
                           origVars: Seq[AbstractLocalVar],
@@ -39,21 +40,22 @@ object LoopInvariantSolver {
                           newInvs: Seq[Exp],
                           loopEdges: Seq[Edge[Stmt, Exp]],
                           joinPoint: Option[SilverBlock],
-                          q: InvariantAbductionQuestion = InvariantAbductionQuestion(Seq(), Map()),
+                          q: InvariantAbductionQuestion = InvariantAbductionQuestion(Seq(), Seq(), Map()),
                           iteration: Int = 1)
                          (Q: BiAbductionResult => VerificationResult): VerificationResult = {
 
-    // We need to remove the loop condition from many inferred expressions
+    // We want to remove the loop condition from many inferred expressions
+    // TODO we are assuming there is only one loop edge. Is this true for all loops we care about?
     val loopCondition = loopEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition
     val wvs = sPre.methodCfg.writtenVars(loopHead)
+    val nwvs = sPre.g.values.filter { case (v, _) => !wvs.contains(v) }
 
 
     // Produce the already known invariants. They are consumed at the end of the loop body, so we need to do this every iteration
     produces(sPre, freshSnap, loopHead.invs ++ newInvs, ContractNotWellformed, vPre)((sPreInv, vPreInv) =>
 
-
       // Run the loop the first time to check whether we abduce any new state
-      executionFlowController.locally(sPreInv, vPreInv)((sFP, vFP) =>
+      executionFlowController.locally(sPreInv, vPreInv) ((sFP, vFP) =>
         executor.follows(sFP, loopEdges, pveLam, vFP, joinPoint)((_, _) => Success())) match {
 
         // Abduction has failed so we fail
@@ -71,69 +73,105 @@ object LoopInvariantSolver {
           if (newStateOpt.contains(None)) {
             return Q(BiAbductionFailure(sPreInv, vPreInv))
           }
-          val newState = newStateOpt.flatMap(_.get)
+          val newPreState = newStateOpt.flatMap(_.get)
 
           // Do the second pass so that we can compare the state at the end of the loop with the state at the beginning
           // Get the state at the beginning of the loop with with the abduced things added
-          producer.produces(sPreInv, freshSnap, abdReses.flatMap(_.state), pveLam, vPreInv) { (sPreAbd, vPreAbd) =>
+          producer.produces(sPreInv, freshSnap, newPreState, pveLam, vPreInv) { (sPreAbd, vPreAbd) =>
 
+            // First iteration
+            val q1 = if (iteration == 1) {
+              // Transform things at the beginning of the loop to only use the variables not assigned to
+              // This is required to calculate 'absolute' values
+              val preVarTrans = VarTransformer(sPreAbd, vPreAbd, nwvs, sPreAbd.h)
+              val firstAbsValues: Map[AbstractLocalVar, Exp] = wvs.map(v => v -> preVarTrans.transformExp(v).get).toMap
+              q.copy(absValues = firstAbsValues)
+            } else {
+              q
+            }
 
-            val preVarTrans = VarTransformer(sPreAbd, vPreAbd, sPreAbd.g.values.filter { case (v, _) => !wvs.contains(v) }, sPreAbd.h)
+            val newAbsPreState = newPreState.map(e => e.transform {
+              case lv: LocalVar if q1.absValues.contains(lv) => q1.absValues(lv)
+            })
+            val newPreAbstraction = AbstractionApplier.apply(AbstractionQuestion(q1.preAbstraction ++ newAbsPreState, sPre.program)).exps
+
             executor.follows(sPreAbd, loopEdges, pveLam, vPreAbd, joinPoint)((sPost, vPost) => {
+
               // Values of the variables at the end of loop in terms of the beginning of the loop
               val relVarTrans = VarTransformer(sPost, vPost, sPreAbd.g.values, sPreAbd.h)
-              val relValues = sPost.g.values.collect { case (v, t) if wvs.contains(v) => (v, relVarTrans.transformTerm(t)) }
+              val relPreValues = sPost.g.values.collect { case (v, t) if wvs.contains(v) => (v, relVarTrans.transformTerm(t)) }
                 .collect { case (v, e) if e.isDefined => (v, e.get) }
 
-              if (iteration == 1) {
+              consumes(sPost, newInvs, e => LoopInvariantNotPreserved(e), vPost, Some(NoPosition))((framedS, _, framedV) => {
+
+                val postTran = VarTransformer(framedS, framedV, framedS.g.values.filter { case (v, _) => origVars.contains(v) }, framedS.h)
+                val postsRaw = BiAbductionSolver.solveFraming(framedS, framedV, framedS.g.values, NoPosition, Seq(loopCondition)).posts
+                val postsTran = postsRaw.map(postTran.transformExp(_).get)
+                //val firstAbsPosts = firstRelPosts.map(preVarTrans.transformExp(_).get)
+                val postAbstraction = AbstractionApplier.apply(AbstractionQuestion(postsTran, sPre.program)).exps
+
+                val newAbsPostValues: Map[AbstractLocalVar, Exp] = relPreValues.collect { case (v, e) => (v, e.transform {
+                  case lv: LocalVar if q1.absValues.contains(lv) => q1.absValues(lv)
+                })
+                }
+
+                //if (iteration == 1) {
                 // We establish the original loop values and then recurse directly, as there is nothing to compare to
-                val firstAbsValues: Map[AbstractLocalVar, Exp] = relValues.collect { case (v, e) => (v, preVarTrans.transformExp(e)) }
-                  .collect { case (v, Some(e)) => (v, e) }
-                val newAbsState = newState.map {
-                  preVarTrans.transformExp(_).get
-                }
-                val firstAbstraction = AbstractionApplier.apply(AbstractionQuestion(q.abstraction ++ newAbsState, sPre.program)).exps
-                consumes(sPost, newInvs, e => LoopInvariantNotPreserved(e), vPost, withAbduction = true)((framedS, _, framedV) => {
-                  solveLoopInvariants(framedS, framedV, origVars, loopHead, newInvs, loopEdges, joinPoint, q.copy(abstraction = firstAbstraction,
-                    absValues = firstAbsValues), iteration = iteration + 1)(Q)
-                })
-              } else {
+                //val firstAbsPostValues: Map[AbstractLocalVar, Exp] = relPreValues.collect { case (v, e) => (v, preVarTrans.transformExp(e)) }
+                //  .collect { case (v, Some(e)) => (v, e) }
+                //val newAbsPreState = newPreState.map {
+                //  preVarTrans.transformExp(_).get
+                // }
+                // val firstPreAbstraction = AbstractionApplier.apply(AbstractionQuestion(newAbsPreState, sPre.program)).exps
+               // solveLoopInvariants(framedS, framedV, origVars, loopHead, newInvs, loopEdges, joinPoint, q.copy(preAbstraction = firstPreAbstraction,
+               //   postAbstraction = postAbstraction, absValues = firstAbsPostValues), iteration = iteration + 1)(Q)
+                //} else {
+                // TODO This is a place where if we need to do unfolds to find the values (e.g. look into snapshots) we may lose
+                // values here.
 
-                val newAbsValues: Map[AbstractLocalVar, Exp] = relValues.collect { case (v, e) => (v, e.transform {
-                  case lv: LocalVar => q.absValues(lv)
-                })
-                }
-                val newAbsState = newState.map(e => e.transform {
-                  case lv: LocalVar if q.absValues.contains(lv) => q.absValues(lv)
-                })
-                val newAbstraction = AbstractionApplier.apply(AbstractionQuestion(q.abstraction ++ newAbsState, sPre.program)).exps
 
-                // To check whether we are done, we take the previous abstraction and "push it forward" an interation
-                val relAssigns: Map[Exp, Exp] = {
-                  q.absValues.collect {
-                    case (v, e) if newAbsValues.contains(v) => (e, newAbsValues(v))
+                // To check whether we are done, we take the previous abstractions and "push them forward" an iteration
+                val relPreAssigns: Map[Exp, Exp] = {
+                  q1.absValues.collect {
+                    case (v, e) if newAbsPostValues.contains(v) => (e, newAbsPostValues(v))
                   }
                 }
-                val prevAbstTrans = q.abstraction.map(_.transform {
-                  case exp: Exp if relAssigns.contains(exp) => relAssigns(exp)
+                val prevPreAbstTrans = q1.preAbstraction.map(_.transform {
+                  case exp: Exp if relPreAssigns.contains(exp) => relPreAssigns(exp)
+                })
+
+                val relPostAssings: Map[Exp, Exp] = {
+                  newAbsPostValues.collect {
+                    case (v, e) if q1.absValues.contains(v) => (q1.absValues(v), e)
+                  }
+                }
+                val prevPostAbstTrans = q1.postAbstraction.map(_.transform {
+                  case exp: Exp if relPostAssings.contains(exp) => relPostAssings(exp)
                 })
 
                 // If the pushed forward abstraction is the same as the previous one, we are done
-                if (newAbstraction.diff(prevAbstTrans).isEmpty) {
-                  val newAbsSwapped = newAbsValues.collect { case (v, e) if origVars.contains(v) => (e, v) }
-                  val relAbstraction = newAbstraction.map(_.transform {
+                if (newPreAbstraction.diff(prevPreAbstTrans).isEmpty && postAbstraction.diff(prevPostAbstTrans).isEmpty) {
+
+                  // Swap in the assigned to variables again instead of the absolute values
+                  val newAbsSwapped = newAbsPostValues.collect { case (v, e) if origVars.contains(v) => (e, v) }
+                  val relPreAbstraction = newPreAbstraction.map(_.transform {
                     case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
                   })
-                  val foundInvs = relAbstraction.flatMap(getInvariant)
-                  Q(LoopInvariantSuccess(sPost, vPost, invs = foundInvs, loopCondition.pos))
+                  val postInv = postAbstraction.map(_.transform {
+                    case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
+                  })
+
+                  val preInv = relPreAbstraction.flatMap(getPreInvariant)
+                  Q(LoopInvariantSuccess(sPost, vPost, invs = preInv ++ postInv, loopCondition.pos))
                 } else {
                   // Else continue with next iteration, using the state from the end of the loop
-                  consumes(sPost, newInvs, e => LoopInvariantNotPreserved(e), vPost, withAbduction = true)((framedS, _, framedV) => {
-                    solveLoopInvariants(framedS, framedV, origVars, loopHead, newInvs, loopEdges, joinPoint, q.copy(abstraction = newAbstraction,
-                      absValues = newAbsValues), iteration = iteration + 1)(Q)
-                  })
+                  //consumes(sPost, newInvs, e => LoopInvariantNotPreserved(e), vPost, Some(NoPosition))((framedS, _, framedV) => {
+                  solveLoopInvariants(framedS, framedV, origVars, loopHead, newInvs, loopEdges, joinPoint, q1.copy(preAbstraction = newPreAbstraction,
+                    postAbstraction = postAbstraction, absValues = newAbsPostValues), iteration = iteration + 1)(Q)
+                  //})
                 }
-              }
+                //}
+              })
             })
           }
       })

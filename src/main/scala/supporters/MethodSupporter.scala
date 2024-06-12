@@ -120,40 +120,15 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
             })
               && {
               executionFlowController.locally(s2a, v2)((s3, v3) => {
-                exec(s3, body, v3) { (s4, v4) =>
+                exec(s3, body, v3) { (s4, v4) => {
                   // Attempt to consume postconditions
-                  consumes(s4, posts, postViolated, v4) ((s5: State, _: Term, v5: Verifier) => {
+                  consumes(s4, posts, postViolated, v4, Some(method.pos)) ((s5: State, _: Term, v5: Verifier) => {
                     // Generate new postconditions from the state left over
                     val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
                     val vars = s5.g.values.collect { case (v5, t) if formals.contains(v5) => (v5, t) }
                     val newPosts = BiAbductionSolver.solveFraming(s5, v5, vars, method.pos)
                     Success(Some(newPosts))
-                  }) match {
-                    // We failed to consume all postconditions
-                    case f@Failure(pcv: PostconditionViolated, _) =>
-                      pcv.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-                        // We managed to abduce preconditions so that the post conditions would be fulfilled. So we attempt
-                        // to consume the postconditions and frame again
-                        case Some(as: AbductionSuccess) =>
-                          //println("Successful abduction to fulfil postcondition:")
-                          //println(as.toString())
-                          producer.produces(s4, freshSnap, as.state, ContractNotWellformed, v) { (s6, v6) =>
-                            executor.execs(s6, as.stmts.reverse, v6) { (s7, v7) =>
-                              consumes(s7, posts, postViolated, v7)(((s8: State, _: Term, v8: Verifier) => {
-                                // Generate new postconditions from the state left over
-                                val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
-                                val vars = s8.g.values.collect { case (v8, t) if formals.contains(v8) => (v8, t) }
-                                val newPosts = BiAbductionSolver.solveFraming(s8, v8, vars, method.pos)
-                                Success(Some(newPosts))
-                              })) && Success(Some(as))
-                            }
-                          }
-                        // We failed to abduce so that we can fulfil the postconditions
-                        case _ => f
-                      }
-                    // We successfully consumed all postconditions (and then did framing)
-                    case otherRes => otherRes
-                  }}})})})})
+                  })}}})})})})
 
       val abdResult: VerificationResult = result match {
         case suc: NonFatalResult =>
@@ -167,20 +142,20 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
             Failure(Internal(reason = InternalReason(DummyNode, "Failed to generate preconditions from abduction results")))
           } else {
             // Otherwise we succeed
-            val presTra = pres.flatMap(_.get)
+            val presTra = pres.flatMap(_.get).distinct
             if(presTra.nonEmpty){
             println("Generated preconditions from abductions: " + presTra.mkString(" && "))
             }
-            val stmtStrs = abds.flatMap {abd => abd.stmts.map {stmt => "  Line " + abd.line + ": " + stmt.toString() }}
+            val stmtStrs = abds.flatMap {abd => abd.stmts.map {stmt => "  Line " + abd.line + ": " + stmt.toString() }}.distinct
             if(stmtStrs.nonEmpty) {
               println("Abduced the following statements:\n" + stmtStrs.reverse.mkString("\n"))
             }
-            val invs = abductionUtils.getInvariantSuccesses(suc).flatMap(_.invs)
+            val invs = abductionUtils.getInvariantSuccesses(suc).map(invSuc => "  Line " + invSuc.line + ": " + invSuc.invs.mkString(" && ")).distinct
             if(invs.nonEmpty){
-              println("Generated invariants: " + invs.mkString(" && "))
+              println("Generated invariants::\n" + invs.mkString("\n"))
             }
             //
-            val posts = abductionUtils.getFramingSuccesses(suc).flatMap(_.posts)
+            val posts = abductionUtils.getFramingSuccesses(suc).flatMap(_.posts).distinct
             // TODO nklose ignore posts without positions (these are artifacts of invariant inference)
             if(posts.nonEmpty){
               println("Generated postconditions: " + posts.mkString(" && "))

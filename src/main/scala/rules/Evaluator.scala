@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.SiliconAbductionQuestion
+import viper.silicon.biabduction.AbductionQuestion
 import viper.silver.ast
 import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, PreconditionInAppFalse}
@@ -758,7 +758,7 @@ object evaluator extends EvaluationRules {
               case ce => ce
             })
             val abductionTrafo = AbductionQuestionTransformer({
-              case a: SiliconAbductionQuestion => a.copy(s = s2, v = v1)
+              case a: AbductionQuestion => a.copy(s = s2, v = v1)
               case a => a
             })
             val pvePre =

@@ -21,6 +21,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.Position
 import viper.silver.verifier.errors.ContractNotWellformed
 
 trait ConsumptionRules extends SymbolicExecutionRules {
@@ -59,7 +60,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               withAbduction: Boolean)
+               abductionLocation: Option[Position])
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult
 }
@@ -88,7 +89,7 @@ object consumer extends ConsumptionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               withAbduction: Boolean = false)
+               abductionLocation: Option[Position] = None)
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult = {
 
@@ -103,7 +104,7 @@ object consumer extends ConsumptionRules {
       allPves ++= pves
     })
 
-    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v, withAbduction)((s1, h1, snap1, v1) => {
+    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v, abductionLocation)((s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
@@ -115,7 +116,7 @@ object consumer extends ConsumptionRules {
                           tlcs: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
                           v: Verifier,
-                          withAbduction: Boolean)
+                          abductionLocation: Option[Position])
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
 
@@ -126,10 +127,10 @@ object consumer extends ConsumptionRules {
       val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, pve, v, withAbduction)(Q)
+        wrappedConsumeTlc(s, h, a, pve, v, abductionLocation)(Q)
       else
-        wrappedConsumeTlc(s, h, a, pve, v, withAbduction)((s1, h1, snap1, v1) =>
-          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, withAbduction)((s2, h2, snap2, v2) =>
+        wrappedConsumeTlc(s, h, a, pve, v, abductionLocation)((s1, h1, snap1, v1) =>
+          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, abductionLocation)((s2, h2, snap2, v2) =>
             Q(s2, h2, Combine(snap1, snap2), v2)))
     }
   }
@@ -141,7 +142,7 @@ object consumer extends ConsumptionRules {
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
 
-    consumeTlcs(s, h, tlcs, pves, v, false)(Q)
+    consumeTlcs(s, h, tlcs, pves, v, None)(Q)
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -153,7 +154,7 @@ object consumer extends ConsumptionRules {
                                   a: ast.Exp,
                                   pve: PartialVerificationError,
                                   v: Verifier,
-                                  withAbduction: Boolean = false)
+                                  abductionLocation: Option[Position])
                                  (Q: (State, Heap, Term, Verifier) => VerificationResult)
                                  : VerificationResult = {
 
@@ -162,7 +163,7 @@ object consumer extends ConsumptionRules {
      * consume.
      */
     val sInit = s.copy(h = h)
-    val res = executionFlowController.tryOrFail2[Heap, Term](sInit, v)((s0, v1, QS) => {
+    val res = executionFlowController.tryOrFail2[Heap, Term](sInit, v) ((s0, v1, QS) => {
       val h0 = s0.h /* h0 is h, but potentially consolidated */
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
@@ -173,15 +174,19 @@ object consumer extends ConsumptionRules {
         QS(s2, h2, snap2, v2)})
     })(Q)
 
+
+
     res match {
-      case f@Failure(ve, _) if withAbduction =>
+      case f@Failure(ve, _) if abductionLocation.isDefined =>
         ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-          case Some(as: AbductionSuccess) =>
+          case Some(as: AbductionSuccess) => {
             producer.produces(s, freshSnap, as.state, ContractNotWellformed, v) { (s1, v1) =>
               executor.execs(s1, as.stmts.reverse, v1) { (s2, v2) =>
-                wrappedConsumeTlc(s2, s2.h, a, pve, v2, withAbduction)(Q) && Success(Some(as))
+                // TODO nklose this is not working. The abduced heap chunk is not being consumed
+                wrappedConsumeTlc(s2, s2.h, a, pve, v2, abductionLocation)(Q) && Success(Some(as.copy(loc = abductionLocation.get)))
               }
             }
+          }
           case Some(_: BiAbductionFailure) =>
             println("Abduction failed")
             f
