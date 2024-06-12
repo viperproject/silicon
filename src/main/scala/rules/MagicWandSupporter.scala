@@ -281,7 +281,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
      * @param freshSnapRoot Fresh variable that represents the snapshot of the wand's LHS.
      * @param mwsf MagicWandSnapFunction that is used to lookup the snapshot of the wand's RHS.
      * @param snapRhs Snapshot of the wand's RHS.
-     * @param functionsBeforePackaging Set of functions that were defined during the packaging of the wand.
      * @param v1 Verifier instance.
      * @return Vector of conserved path conditions.
      */
@@ -289,7 +288,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
                              freshSnapRoot: Var,
                              mwsf: Var,
                              snapRhs: Term,
-                             functionsBeforePackaging: Set[FunctionDecl],
                              v1: Verifier): Vector[Term] = {
       // Map all path conditions to their conditionalized form and flatten the result
       val conditionalizedPcs = conservedPcs.flatMap(_.conditionalized).flatMap {
@@ -330,7 +328,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
           if app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] =>
 
           conditionalizedPcs.flatMap {
-            case Implies(cond, BuiltinEquals(Lookup(_, fvf, _), rhs)) if fvf == app =>
+            case Implies(cond, BuiltinEquals(Lookup(_, fvf, _), rhs))
+              if fvf == app && rhs.contains(freshSnapRoot) =>
+
               val newLhs = MWSFLookup(mwsf, freshSnapRoot)
               val quantification = Forall(
                 freshSnapRoot,
@@ -369,7 +369,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
     def createWandChunkAndRecordResults(s4: State,
                                         freshSnapRoot: Var,
                                         snapRhs: Term,
-                                        functionsBeforePackaging: Set[FunctionDecl],
                                         v3: Verifier)
                                        : VerificationResult = {
       val preMark = v3.decider.setPathConditionMark()
@@ -390,7 +389,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
           val conservedPcs = summarizeDefinitions(
             s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly,
-            freshSnapRoot, mwsf, snapRhs, functionsBeforePackaging, v4)
+            freshSnapRoot, mwsf, snapRhs, v4)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), conservedPcs, v4)
           Success()
         })
@@ -399,7 +398,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         this.createChunk(s4, wand, wandSnapshot, pve, v3)((s5, ch, v4) => {
           val conservedPcs = summarizeDefinitions(
             s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly,
-            freshSnapRoot, mwsf, snapRhs, functionsBeforePackaging, v4)
+            freshSnapRoot, mwsf, snapRhs, v4)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), conservedPcs, v4)
           Success()
         })
@@ -443,7 +442,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
          * or `unfoldingPredicate` below.
          */
         assert(stackSize == s2.reserveHeaps.length)
-        val functionsBeforePackaging = v2.decider.freshFunctions
 
         // Execute proof script, i.e. the part written after the magic wand wrapped by curly braces.
         // The proof script should transform the current state such that we can consume the wand's RHS.
@@ -455,7 +453,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             wand.right, pve, proofScriptVerifier
           )((s3, snapRhs, v3) => {
 
-            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs, functionsBeforePackaging, v3)
+            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs, v3)
           })
         })
       })
@@ -466,8 +464,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
       val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
-      val functionsBeforePackaging = v.decider.freshFunctions
-      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), functionsBeforePackaging, v)
+      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v)
     }
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
