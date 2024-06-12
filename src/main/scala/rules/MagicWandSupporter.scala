@@ -108,7 +108,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
    * @return Fresh instance of [[viper.silicon.state.terms.MagicWandSnapshot]]
    */
   def createMagicWandSnapshot(abstractLhs: Var, rhsSnapshot: Term, v: Verifier): MagicWandSnapshot = {
-    val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction())
+    val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction)
     val magicWandSnapshot = MagicWandSnapshot(mwsf)
     v.decider.assumeDefinition(Forall(
       abstractLhs,
@@ -411,7 +411,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val preMark = v3.decider.setPathConditionMark()
 
       v3.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
-      val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction())
+      val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction)
 
       // If the wand is used as a quantified resource anywhere in the program
       if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
@@ -562,9 +562,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
           case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs)
           case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs)
           case predicateLookup: PredicateLookup =>
-            MWSFLookup(SortWrapper(predicateLookup, sorts.MagicWandSnapFunction()), snapLhs)
+            MWSFLookup(SortWrapper(predicateLookup, sorts.MagicWandSnapFunction), snapLhs)
           case SortWrapper(predicateLookup: PredicateLookup, _) =>
-            MWSFLookup(SortWrapper(predicateLookup, sorts.MagicWandSnapFunction()), snapLhs)
+            MWSFLookup(SortWrapper(predicateLookup, sorts.MagicWandSnapFunction), snapLhs)
           case _ => snapWand
         }
 
