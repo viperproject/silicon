@@ -384,7 +384,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         case _ => Vector.empty
       }
 
-      // Combine all path conditions which include the freshSnapRoot
+      // Combine all path conditions which include the freshSnapRoot and add it to the verifier's list of definitions
       val pcsQuantified = Forall(
         freshSnapRoot,
         Implies(
@@ -393,13 +393,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         ),
         Trigger(mwsfLookup)
       )
-
-      // Add this definition to the path conditions for outer package operations
-      v1.decider.assumeDefinition(Forall(
-        freshSnapRoot,
-        BuiltinEquals(mwsfLookup, snapRhs),
-        Trigger(mwsfLookup)
-      ))
+      v1.decider.assumeDefinition(pcsQuantified)
 
       // Return the summarized path conditions
       pcsWithoutFreshSnapRoot ++ updatedPcs :+ pcsQuantified
