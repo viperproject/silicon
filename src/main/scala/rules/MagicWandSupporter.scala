@@ -236,6 +236,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
     val s = if (state.exhaleExt) state else
       state.copy(reserveHeaps = Heap() :: state.h :: Nil)
 
+    // v.logger.debug(s"wand = $wand")
+    // v.logger.debug("c.reserveHeaps:")
+    // s.reserveHeaps.map(v.stateFormatter.format).foreach(str => v.logger.debug(str, 2))
+
     val stackSize = 3 + s.reserveHeaps.tail.size
     // IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below
     var recordedBranches: Seq[(State, Stack[Term], Stack[Option[Exp]], Vector[Term], Chunk)] = Nil
