@@ -36,6 +36,7 @@ import java.util.concurrent._
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.util.Random
+import viper.silicon.axiomprofilerinfo.AxiomProfilerInfo
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -296,6 +297,8 @@ class DefaultMainVerifier(config: Config,
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
       debugger.startDebugger()
     }
+
+    AxiomProfilerInfo.exportToFile("/home/pcorrect/Desktop/shit.json")
 
     verificationResults
   }
