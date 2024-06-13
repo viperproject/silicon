@@ -55,7 +55,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       resource match {
         case f: ast.Field => v.symbolConverter.toSort(f.typ)
         case _: ast.Predicate => sorts.Snap
-        case _: ast.MagicWand => sorts.Snap
+        case _: ast.MagicWand => sorts.MagicWandSnapFunction
       }
 
     val `?s` = Var(Identifier("?s"), sort, false)

@@ -637,7 +637,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   /* Snapshots */
 
-  /** @inheritdoc */
   def singletonSnapshotMap(s: State,
                            resource: ast.Resource,
                            arguments: Seq[Term],
@@ -1287,7 +1286,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             codomainQVars,
             relevantChunks,
             v1,
-            optSmDomainDefinitionCondition = if (s2.smDomainNeeded) Some(True) else None,
+            optSmDomainDefinitionCondition = None,
             optQVarsInstantiations = Some(arguments))
         val permsTaken = result match {
           case Complete() => rPerm
@@ -1332,7 +1331,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               resource = resource,
               codomainQVars = codomainQVars,
               relevantChunks = relevantChunks,
-              optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True) else None,
+              optSmDomainDefinitionCondition = None,
               optQVarsInstantiations = Some(arguments),
               v = v)
           val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
