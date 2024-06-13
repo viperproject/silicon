@@ -93,7 +93,7 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
   private[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
-  private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  private[this] var freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   private[this] var freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private[this] var freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
@@ -101,7 +101,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
-  private[functions] def getFreshArps: InsertionOrderedSet[Var] = freshArps.map(_._1)
+  private[functions] def getFreshConstrainedVars: InsertionOrderedSet[Var] = freshConstrainedVars.map(_._1)
   private[functions] def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = freshSymbolsAcrossAllPhases
 
   private[functions] def advancePhase(recorders: Seq[FunctionRecorder]): Unit = {
@@ -117,14 +117,14 @@ class FunctionData(val programFunction: ast.Function,
     fappToSnap = mergedFunctionRecorder.fappToSnap
     freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
-    freshArps = mergedFunctionRecorder.freshArps
+    freshConstrainedVars = mergedFunctionRecorder.freshConstrainedVars
     freshConstraints = mergedFunctionRecorder.freshConstraints
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
     freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
     freshMacros = mergedFunctionRecorder.freshMacros
 
     freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
-    freshSymbolsAcrossAllPhases ++= freshArps.map(pair => FunctionDecl(pair._1))
+    freshSymbolsAcrossAllPhases ++= freshConstrainedVars.map(pair => FunctionDecl(pair._1))
     freshSymbolsAcrossAllPhases ++= freshSnapshots map FunctionDecl
     freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(i => (i.inverses ++ i.images) map FunctionDecl)
     freshSymbolsAcrossAllPhases ++= freshMacros
@@ -145,7 +145,7 @@ class FunctionData(val programFunction: ast.Function,
     val nested = (
          freshFieldInvs.flatMap(_.definitionalAxioms)
       ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
-      ++ freshArps.map(_._2)
+      ++ freshConstrainedVars.map(_._2)
       ++ freshConstraints)
 
     // Filter out nested definitions that contain free variables.

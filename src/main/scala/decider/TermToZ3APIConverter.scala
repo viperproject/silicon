@@ -445,6 +445,8 @@ class TermToZ3APIConverter
       case Let(bindings, body) =>
         convert(body.replace(bindings))
 
+      case MWSFLookup(mwsf, snap) => createApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
+
       case _: MagicWandChunkTerm
          | _: Quantification =>
         sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
