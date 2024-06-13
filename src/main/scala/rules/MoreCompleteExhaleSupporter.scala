@@ -365,7 +365,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         )
 
         v.decider.assume(constraint)
-        newFr = newFr.recordArp(permTaken, constraint)
+        newFr = newFr.recordConstrainedVar(permTaken, constraint)
 
         ch.withPerm(PermMinus(ch.perm, permTaken))
       })
