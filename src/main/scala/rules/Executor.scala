@@ -222,33 +222,39 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    // Get the label of the block for messages used by Prusti Assistant
     var blockLabel = "None"
-
-    // block.elements
-    // .iterator
-    // .takeWhile(_ => blockLabel == "None")
-    // .foreach( element => 
-    //   element match {
-    //     case Left(ast.Label(name, _)) => blockLabel = name
-    //     case _ =>
-    //   }
-    // )
-    // Can simplify the above if labels are _always_ the first statement in the block
-    block.elements.head match {
-      case Left(ast.Label(name, _)) => blockLabel = name
-      case _ =>
-    }
     var methodName = "None"
-    if(s.isMethodVerification){
-      methodName = s.currentMember.get.asInstanceOf[ast.Method].name
-      // if(methodName.startsWith("builtin")){
-      //   methodName = "None"
-      // }
-    }
-    if(blockLabel != "None"){
-      v.reporter.report(BlockReachedMessage(methodName, blockLabel, pathId))
-      pathComplete.addOne((pathId, false))
+    if(Verifier.config.generateBlockMessages()){
+      // // Get the label of the block for messages used by Prusti Assistant
+      // block.elements
+      // .iterator
+      // .takeWhile(_ => blockLabel == "None")
+      // .foreach( element =>
+      //   element match {
+      //     case Left(ast.Label(name, _)) => blockLabel = name
+      //     case _ =>
+      //   }
+      // )
+      // Can simplify the above if labels are _always_ the first statement in the block
+      if (block.elements.length > 0){
+        block.elements.head match {
+          case Left(ast.Label(name, _)) => blockLabel = name
+          case _ =>
+        }
+      }
+      if(s.isMethodVerification){
+        methodName = s.currentMember.get.asInstanceOf[ast.Method].name
+        // if(methodName.startsWith("builtin")){
+        //   methodName = "None"
+        // }
+      }
+      if(blockLabel != "None"){
+        v.reporter.report(BlockReachedMessage(methodName, blockLabel, pathId))
+        pathComplete.synchronized{
+          if(!pathComplete.contains(pathId))
+            pathComplete.addOne((pathId, false))
+        }
+      }
     }
     
     val executed = block match {
@@ -347,9 +353,18 @@ object executor extends ExecutionRules {
         }
     }
 
-    if(blockLabel != "None" && !pathComplete.get(pathId).get){
-      v.reporter.report(PathProcessedMessage(methodName, blockLabel, pathId, executed.getClass().getSimpleName()))
-      pathComplete.update(pathId, true)
+    if(Verifier.config.generateBlockMessages()){
+      if(blockLabel != "None"){
+        // Only send the message from the offending node
+        var incomplete = false
+        pathComplete.synchronized{
+          incomplete = !pathComplete.get(pathId).get
+          if (incomplete)
+            pathComplete.update(pathId, true)
+        }
+        if (incomplete)
+          v.reporter.report(PathProcessedMessage(methodName, blockLabel, pathId, executed.getClass().getSimpleName()))
+      }
     }
 
     executed
