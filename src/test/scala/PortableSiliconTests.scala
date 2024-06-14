@@ -82,9 +82,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     "--disableCatchingExceptions",
     "--numberOfParallelVerifiers=1",
     "--assumeInjectivityOnInhale",
-    "--proverSaturationTimeoutWeights=[1.0,0.5,0.0,0.0,0.02]",
     "--numberOfErrorsToReport=0",
-    "--useOldAxiomatization",
     "--timeout=600" /* timeout in seconds */
   ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--proverRandomizeSeeds") else Seq.empty)
 
