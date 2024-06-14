@@ -196,6 +196,15 @@ abstract class ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
+  override def setOption(name: String, value: String): String = {
+    writeLine(s"(get-option :${name})")
+    val oldVal = readLine()
+    if (oldVal == "unsupported")
+      throw ProverInteractionFailed(uniqueId, s"Prover does not support option $name")
+    emit(s"(set-option :$name $value)")
+    oldVal
+  }
+
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
   def assume(term: Term): Unit = {

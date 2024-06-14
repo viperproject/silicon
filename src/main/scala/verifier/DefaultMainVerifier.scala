@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.Config.ExhaleMode
+import viper.silicon.Config.{ExhaleMode, JoinMode}
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
@@ -74,6 +74,7 @@ class DefaultMainVerifier(config: Config,
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
+  protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
@@ -83,6 +84,7 @@ class DefaultMainVerifier(config: Config,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
@@ -151,6 +153,11 @@ class DefaultMainVerifier(config: Config,
       decider.prover.emitSettings(contents)
       _verificationPoolManager.pooledVerifiers.emitSettings(contents)
     }
+
+    override def setOption(name: String, value: String): String = {
+      decider.prover.setOption(name, value)
+      _verificationPoolManager.pooledVerifiers.setOption(name, value)
+    }
   }
 
   /* Program verification */
@@ -174,13 +181,13 @@ class DefaultMainVerifier(config: Config,
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
-          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers, forall.triggers)
           res
         case exists: ast.Exists =>
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
-          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers, exists.triggers)
           res
       }, Traverse.BottomUp)
 
@@ -324,7 +331,62 @@ class DefaultMainVerifier(config: Config,
         }
       case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
-    val moreJoins = Verifier.config.moreJoins() && member.isInstanceOf[ast.Method]
+    val moreJoinsAnnotated = member.info.getUniqueInfo[ast.AnnotationInfo] match {
+      case Some(ai) if ai.values.contains("moreJoins") =>
+        ai.values("moreJoins") match {
+          case Seq() | Seq("all") => Some(JoinMode.All)
+          case Seq("off") => Some(JoinMode.Off)
+          case Seq("impure") => Some(JoinMode.Impure)
+          case Seq(vl) =>
+            try {
+              Some(JoinMode(vl.toInt))
+            } catch {
+              case _: NumberFormatException =>
+                reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $vl. Annotation will be ignored.")
+                None
+            }
+          case v =>
+            reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $v. Annotation will be ignored.")
+            None
+        }
+      case _ => None
+    }
+    val moreJoins = if (member.isInstanceOf[ast.Method]) {
+      moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(JoinMode.Off))
+    } else {
+      JoinMode.Off
+    }
+
+    val methodPermCache = mutable.HashMap[String, InsertionOrderedSet[ast.Location]]()
+    val permResources: InsertionOrderedSet[ast.Location] = if (Verifier.config.unsafeWildcardOptimization()) member match {
+      case m: ast.Method if m.body.isDefined =>
+        val bodyResources: Iterable[InsertionOrderedSet[ast.Location]] = m.body.get.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => InsertionOrderedSet(la.loc(program))
+          case ast.MethodCall(name, _, _) =>
+            if (methodPermCache.contains(name))
+              methodPermCache(name)
+            else {
+              val calledMethod = program.findMethod(name)
+              val preResources: Seq[ast.Location] = calledMethod.pres.flatMap(pre => pre.whenExhaling.collect {
+                case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+              })
+              val postResources: Seq[ast.Location] = calledMethod.posts.flatMap(post => post.whenInhaling.collect {
+                case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+              })
+              val all = InsertionOrderedSet(preResources ++ postResources)
+              methodPermCache.update(name, all)
+              all
+            }
+        }
+        val preResources: Seq[ast.Location] = m.pres.flatMap(pre => pre.whenInhaling.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+        })
+        val postResources: Seq[ast.Location] = m.posts.flatMap(post => post.whenExhaling.collect {
+          case ast.CurrentPerm(la: ast.LocationAccess) => la.loc(program)
+        })
+        InsertionOrderedSet(bodyResources.flatten ++ preResources ++ postResources)
+      case _ => InsertionOrderedSet.empty
+    } else InsertionOrderedSet.empty
 
     State(program = program,
           functionData = functionData,
@@ -332,6 +394,7 @@ class DefaultMainVerifier(config: Config,
           qpFields = quantifiedFields,
           qpPredicates = quantifiedPredicates,
           qpMagicWands = quantifiedMagicWands,
+          permLocations = permResources,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           currentMember = Some(member),
@@ -411,6 +474,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -423,6 +487,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -435,6 +500,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -452,6 +518,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -464,6 +531,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )

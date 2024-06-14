@@ -25,7 +25,7 @@ class PredicateSnapGenerator(symbolConverter: SymbolConverter, snapshotSupporter
       case ast.PredicateAccess(_, predname) =>
         val predicate = program.findPredicate(predname)
         val sort = predicate -> predicate.body.map(snapshotSupporter.optimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap)
-        val formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
+        val formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ), false))
         formalVarMap += predicate -> formalArgs
         snapMap += sort
     }

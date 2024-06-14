@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.Config.JoinMode
+
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
@@ -86,7 +88,7 @@ object executor extends ExecutionRules {
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
       case cfg.Kind.Out =>
-        val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+        val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
           invariantContexts = s.invariantContexts.tail)
         s1
@@ -111,7 +113,7 @@ object executor extends ExecutionRules {
       case (Seq(), _) => Q(s, v)
       case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
       case (Seq(edge1, edge2), Some(newJoinPoint)) if
-          s.moreJoins &&
+          s.moreJoins.id >= JoinMode.All.id &&
           // Can't directly match type because of type erasure ...
           edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
           edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
@@ -253,13 +255,8 @@ object executor extends ExecutionRules {
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
                                               v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */)
-                  v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
-                  edgeConditions.foldLeft(Success(): VerificationResult) {
-                    case (result, _) if !result.continueVerification => result
-                    case (intermediateResult, eCond) =>
-                      intermediateResult combine executionFlowController.locally(s1, v1)((s2, v2) => {
-                        eval(s2, eCond, WhileFailed(eCond), v2)((_, _, _) =>
-                          Success())})}})})
+                  Success()
+                })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
                 consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
@@ -276,8 +273,19 @@ object executor extends ExecutionRules {
                           Success()
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
+                            val edgeCondWelldefinedness = {
+                              v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
+                              edgeConditions.foldLeft(Success(): VerificationResult) {
+                                case (result, _) if !result.continueVerification => result
+                                case (intermediateResult, eCond) =>
+                                  intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
+                                    eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _) =>
+                                      Success())
+                                  })
+                              }
+                            }
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
+                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -381,6 +389,7 @@ object executor extends ExecutionRules {
               relevantChunks,
               Seq(`?r`),
               `?r` === tRcvr,
+              Some(Seq(tRcvr)),
               field,
               FullPerm,
               chunkOrderHeuristics,
@@ -511,7 +520,7 @@ object executor extends ExecutionRules {
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
-        val s1 = v.stateConsolidator.consolidate(s, v)
+        val s1 = v.stateConsolidator(s).consolidate(s, v)
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
@@ -519,7 +528,8 @@ object executor extends ExecutionRules {
         val fargs = meth.formalArgs.map(_.localVar)
         val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
-        val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
+        val pveCall = CallFailed(call)
+        val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)
@@ -543,7 +553,7 @@ object executor extends ExecutionRules {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
+            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
@@ -618,7 +628,7 @@ object executor extends ExecutionRules {
                 val (relevantChunks, _) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
+                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
                 val (smDef, smCache) =
                   quantifiedChunkSupporter.summarisingSnapshotMap(
                     s2, wand, formalVars, relevantChunks, v1)
@@ -679,7 +689,7 @@ object executor extends ExecutionRules {
           *   reported by Silicon issue #328.
           */
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
-         v.decider.assumeDefinition(t === rhs)
+         v.decider.assumeDefinition(BuiltinEquals(t, rhs))
 
          t
      }

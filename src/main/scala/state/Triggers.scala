@@ -36,7 +36,7 @@ class TriggerGenerator
   protected def transform[T <: Term](root: T)(f: PartialFunction[Term, Term]) = root.transform(f)()
   protected def Quantification_vars(q: Quantification) = q.vars
   protected def Exp_typ(term: Term): Sort = term.sort
-  protected def Var(id: String, sort: Sort) = terms.Var(Identifier(id), sort)
+  protected def Var(id: String, sort: Sort) = terms.Var(Identifier(id), sort, false)
 
   def generateFirstTriggerGroup(vs: Seq[Var], toSearch: Seq[Term]): Option[(Seq[Trigger], Seq[Var])] =
     generateFirstTriggerSetGroup(vs, toSearch).map {
@@ -193,7 +193,7 @@ class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/,
   protected val solver = SimpleArithmeticSolver
 
   protected def fresh(name: String, typ: Type): Var =
-    Var(Identifier(s"$name@rw${counter.next()}"), typ)
+    Var(Identifier(s"$name@rw${counter.next()}"), typ, false)
 
   protected def log(message: String): Unit = {
 //    logger.println(message)
