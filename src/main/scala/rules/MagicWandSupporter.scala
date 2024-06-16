@@ -17,6 +17,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.utils.ast.BigAnd
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 
@@ -199,6 +200,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                    mwsf: Var,
                                    snapRhs: Term,
                                    v1: Verifier): Vector[Term] = {
+    val mwsfLookup = MWSFLookup(mwsf, freshSnapRoot)
+
     // Map all path conditions to their conditionalized form and flatten the result
     val conditionalizedPcs = conservedPcs.flatMap(_.conditionalized).flatMap {
       case And(terms) => terms
@@ -214,7 +217,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
         case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v.equals(freshSnapRoot) => body
       }(_ => true))
 
-    val mwsfLookup = MWSFLookup(mwsf, freshSnapRoot)
     // If the snapRhs is a FieldValueFunction or PredicateSnapFunction, substitute the snapRhs with the MWSFLookup definition
     val updatedPcs = snapRhs match {
       // Rewrite based on test11 in QPFields.vpr
@@ -236,13 +238,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
               BuiltinEquals(newLookup, rhs)
           }
           if (newTerms.isEmpty) return Vector.empty
-          val quantification = Forall(
+          Vector(Forall(
             Seq(r, freshSnapRoot),
             Implies(cond, And(newTerms)),
             newTerms.map { case BuiltinEquals(lhs, _) => Trigger(lhs) }.toSeq
-          )
-          v1.decider.assumeDefinition(quantification)
-          Vector(quantification)
+          ))
         }
 
         conditionalizedPcs.flatMap {
@@ -266,25 +266,16 @@ object magicWandSupporter extends SymbolicExecutionRules {
         }
 
         def rewriteTerms(cond: Term, terms: Iterable[Term]): Vector[Quantification] = {
-          val newLhs = mwsfLookup
           val newTerms = terms.filter(_ match {
             case BuiltinEquals(Lookup(_, fvf, _), rhs) => fvf == app && rhs.contains(freshSnapRoot)
             case BuiltinEquals(PredicateLookup(_, psf, _), rhs) => psf == app && rhs.contains(freshSnapRoot)
             case _ => false
           }).map(t => {
-            val rhs = t match {
-              case BuiltinEquals(_, rhs) => rhs
-            }
-            BuiltinEquals(newLhs, SortWrapper(rhs, to))
+            val rhs = t.asInstanceOf[BuiltinEquals].p1
+            BuiltinEquals(mwsfLookup, SortWrapper(rhs, to))
           })
           if (newTerms.isEmpty) return Vector.empty
-          val quantification = Forall(
-            Seq(freshSnapRoot),
-            Implies(cond, And(newTerms)),
-            Trigger(newLhs)
-          )
-          v1.decider.assumeDefinition(quantification)
-          Vector(quantification)
+          Vector(Forall(freshSnapRoot, Implies(cond, And(newTerms)), Trigger(mwsfLookup)))
         }
 
         conditionalizedPcs.flatMap {
@@ -315,9 +306,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
    * Package a magic wand into a chunk. It performs the computation of the wand's footprint
    * and captures all values associated to these locations inside the wand's snapshot.
    *
-   * {{{
-   * package A --* B { <proofScript> }
-   * }}}
+   * {{{ package A --* B { <proofScript> } }}}
    *
    * For reference see Chapter 3 and 5 of [[http://malte.schwerhoff.de/docs/phd_thesis.pdf Malte Schwerhoff's PhD thesis]]
    * and [[https://ethz.ch/content/dam/ethz/special-interest/infk/chair-program-method/pm/documents/Education/Theses/Nils_Becker_BA_report.pdf Nils Becker's Bachelor report]]
@@ -341,24 +330,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
     val s = if (state.exhaleExt) state else
       state.copy(reserveHeaps = Heap() :: state.h :: Nil)
 
-    // v.logger.debug(s"wand = $wand")
-    // v.logger.debug("c.reserveHeaps:")
-    // s.reserveHeaps.map(v.stateFormatter.format).foreach(str => v.logger.debug(str, 2))
-
     val stackSize = 3 + s.reserveHeaps.tail.size
     // IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below
     var recordedBranches: Seq[(State, Stack[Term], Stack[Option[Exp]], Vector[Term], Chunk)] = Nil
-
-    /* TODO: When parallelising branches, some of the runtime assertions in the code below crash
-     *       during some executions - since such crashes are hard to debug, branch parallelisation
-     *       has been disabled for now.
-     */
-    val sEmp = s.copy(h = Heap(),
-                      reserveHeaps = Nil,
-                      exhaleExt = false,
-                      conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
-                      recordPcs = true,
-                      parallelizeBranches = false)
 
     def appendToRecordedBranches(s5: State,
                                  ch: Chunk,
@@ -366,36 +340,42 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                  freshSnapRoot: Var,
                                  mwsf: Var,
                                  snapRhs: Term,
-                                 v4: Verifier): VerificationResult = {
+                                 v5: Verifier): VerificationResult = {
       assert(s5.conservedPcs.nonEmpty, s"Unexpected structure of s5.conservedPcs: ${s5.conservedPcs}")
 
       // Producing a wand's LHS and executing the packaging proof code can introduce definitional path conditions, e.g.
       // new permission and snapshot maps, which are in general necessary to proceed after the
       // package statement, e.g. to know which permissions have been consumed.
       // Here, we want to keep *only* the definitions, but no other path conditions.
-      val conservedPcs: Vector[Term] = summarizeDefinitions(s5.conservedPcs.head :+ pcs.definitionsOnly, freshSnapRoot, mwsf, snapRhs, v4)
-      var conservedPcsStack: Stack[Vector[RecordedPathConditions]] = s5.conservedPcs
-
-      conservedPcsStack =
+      val conservedPcs: Vector[Term] = summarizeDefinitions(s5.conservedPcs.head :+ pcs.definitionsOnly, freshSnapRoot, mwsf, snapRhs, v5)
+      val conservedPcsStack: Stack[Vector[RecordedPathConditions]] =
         s5.conservedPcs.tail match {
-          case empty @ Seq() => empty
-          case head +: tail => (head ++ (s5.conservedPcs.head :+ pcs.definitionsOnly)) +: tail
+          case empty@Seq() => empty
+          case head +: tail =>
+            (head ++ (s5.conservedPcs.head :+ pcs.definitionsOnly)) +: tail
         }
 
-      val s6 = s5.copy(conservedPcs = conservedPcsStack, recordPcs = s.recordPcs)
+      val s6 = s5.copy(
+        oldHeaps = s.oldHeaps,
+        parallelizeBranches = s.parallelizeBranches, /* See comment below */
+        reserveHeaps = s5.reserveHeaps.drop(3),
+        conservedPcs = conservedPcsStack,
+        recordPcs = s.recordPcs,
+        exhaleExt = false,
+      )
 
-      recordedBranches :+= (s6, v4.decider.pcs.branchConditions, v4.decider.pcs.branchConditionExps, conservedPcs, ch)
+      recordedBranches :+= (s6, v5.decider.pcs.branchConditions, v5.decider.pcs.branchConditionExps, conservedPcs, ch)
       Success()
     }
 
     def createWandChunkAndRecordResults(s4: State,
                                         freshSnapRoot: Var,
                                         snapRhs: Term,
-                                        v3: Verifier)
+                                        v4: Verifier)
                                        : VerificationResult = {
-      val preMark = v3.decider.setPathConditionMark()
+      val preMark = v4.decider.setPathConditionMark()
 
-      v3.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
+      v4.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
       val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction)
 
       // If the wand is used as a quantified resource anywhere in the program
@@ -403,20 +383,31 @@ object magicWandSupporter extends SymbolicExecutionRules {
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
 
-        evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
-          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, SortWrapper(mwsf, sorts.Snap), v4)
-          v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          v4.decider.assumeDefinition(smValueDef)
+        evals(s4, bodyVars, _ => pve, v4)((s5, args, v5) => {
+          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, SortWrapper(mwsf, sorts.Snap), v5)
+          v5.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          v5.decider.assumeDefinition(smValueDef)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
-          appendToRecordedBranches(s5, ch, v4.decider.pcs.after(preMark), freshSnapRoot, mwsf, snapRhs, v4)
+          appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), freshSnapRoot, mwsf, snapRhs, v5)
         })
       } else {
         val wandSnapshot = MagicWandSnapshot(mwsf)
-        this.createChunk(s4, wand, wandSnapshot, pve, v3)((s5, ch, v4) => {
-          appendToRecordedBranches(s5, ch, v4.decider.pcs.after(preMark), freshSnapRoot, mwsf, snapRhs, v4)
+        this.createChunk(s4, wand, wandSnapshot, pve, v4)((s5, ch, v5) => {
+          appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), freshSnapRoot, mwsf, snapRhs, v5)
         })
       }
     }
+
+    /* TODO: When parallelising branches, some of the runtime assertions in the code below crash
+     *       during some executions - since such crashes are hard to debug, branch parallelisation
+     *       has been disabled for now.
+     */
+    val sEmp = s.copy(h = Heap(),
+      reserveHeaps = Nil,
+      exhaleExt = false,
+      conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
+      recordPcs = true,
+      parallelizeBranches = false)
 
     val tempResult = executionFlowController.locally(sEmp, v)((s1, v1) => {
       /* A snapshot (binary tree) will be constructed using First/Second datatypes,
@@ -458,16 +449,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // Execute proof script, i.e. the part written after the magic wand wrapped by curly braces.
         // The proof script should transform the current state such that we can consume the wand's RHS.
-        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
+        executor.exec(s2, proofScriptCfg, v2)((sProofScript, v3) => {
           // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
-          consume(
-            proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
-            wand.right, pve, proofScriptVerifier
-          )((s3, snapRhs, v3) => {
-
-            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs, v3)
-          })
+          val s3 = sProofScript.copy(oldHeaps = s2.oldHeaps, reserveCfgs = sProofScript.reserveCfgs.tail)
+          consume(s3, wand.right, pve, v3)((s4, snapRhs, v4) =>
+            createWandChunkAndRecordResults(s4, freshSnapRoot, snapRhs, v4)
+          )
         })
       })
     })
@@ -480,24 +468,20 @@ object magicWandSupporter extends SymbolicExecutionRules {
       createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v)
     }
 
-    recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
+    recordedBranches.foldLeft(tempResult)((prevRes, recordedBranch) => {
       prevRes && {
-        val (state, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedState
-        val s1 = state.copy(
-          reserveHeaps = state.reserveHeaps.drop(3),
-          parallelizeBranches = s.parallelizeBranches /* See comment above */
-        )
+        val (s6, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedBranch
 
         // We execute the continuation Q in a new scope with all branch conditions and all conserved path conditions.
-        executionFlowController.locally(s1, v)((s2, v1) => {
+        executionFlowController.locally(s6, v)((s7, v7) => {
           // Set the branch conditions
-          v1.decider.setCurrentBranchCondition(And(branchConditions), Some(viper.silicon.utils.ast.BigAnd(branchConditionsExp.flatten)))
+          v7.decider.setCurrentBranchCondition(And(branchConditions), Some(BigAnd(branchConditionsExp.flatten)))
 
           // Recreate all path conditions in the Z3 proof script that we recorded for that branch
-          conservedPcs.foreach(pcs => v1.decider.assume(pcs))
+          conservedPcs.foreach(pcs => v7.decider.assume(pcs))
 
           // Execute the continuation Q
-          Q(s2, magicWandChunk, v1)
+          Q(s7, magicWandChunk, v7)
         })
       }
     })
