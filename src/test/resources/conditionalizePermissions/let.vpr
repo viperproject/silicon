@@ -11,5 +11,8 @@ function val(): Ref
 
 method test()
 {
+    // Test that the condition is not pushed inside the let expression to get e.g.
+    // inhale let x == (val()) in acc(x.f, ok() ? write : none)
+    // which would not be well-defined.
     inhale ok() ==> let x == (val()) in acc(x.f)
 }
