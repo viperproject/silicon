@@ -1,0 +1,19 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate P1(r$: Ref)
+
+predicate P3(r$: Ref)
+
+method test2()
+{
+    var b: Ref
+    var k: Perm
+
+    inhale acc(P1(b))
+    inhale acc(P3(b))
+
+    exhale perm(P3(b)) >= write ? acc(P3(b)) : (perm(P1(b)) > none ? acc(P1(b), write - perm(P3(b))) : true)
+
+    assert perm(P1(b)) == write
+}
