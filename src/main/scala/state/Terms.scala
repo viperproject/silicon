@@ -2315,15 +2315,6 @@ class MagicWandSnapshot(val mwsf: Term) extends Term with ConditionalFlyweight[T
   override lazy val toString = s"wandSnap($mwsf)"
 
   override val equalityDefiningMembers: Term = mwsf
-
-  /**
-   * Apply the given snapshot of the left-hand side to the magic wand map to get the snapshot of the right-hand side
-   * which includes the values of the left-hand side.
-   *
-   * @param snapLhs The snapshot of the left-hand side that should be applied to the magic wand map.
-   * @return The snapshot of the right-hand side that preserves the values of the left-hand side.
-   */
-  def applyToMWSF(snapLhs: Term): Term = MWSFLookup(mwsf, snapLhs)
 }
 
 object MagicWandSnapshot extends PreciseCondFlyweightFactory[Term, MagicWandSnapshot]  {

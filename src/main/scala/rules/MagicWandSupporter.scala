@@ -225,18 +225,15 @@ object magicWandSupporter extends SymbolicExecutionRules {
           app.applicable.resultSort.isInstanceOf[sorts.PredicateSnapFunction] =>
 
         def rewriteTerms(r: Var, cond: Term, terms: Iterable[Term]): Vector[Quantification] = {
-          val newTerms = terms.filter(_ match {
-            case BuiltinEquals(Lookup(_, fvf, at), _) => r.sort == sorts.Ref && fvf == app && r == at
-            case BuiltinEquals(PredicateLookup(_, psf, args), _) => r.sort == sorts.Snap && psf == app && args == List(r)
-            case _ => false
-          }).map {
-            case BuiltinEquals(lookup, rhs) =>
-              val newLookup = lookup match {
-                case Lookup(field, fvf, at) => Lookup(field, SortWrapper(mwsfLookup, fvf.sort), at)
-                case PredicateLookup(predname, psf, args) => PredicateLookup(predname, SortWrapper(mwsfLookup, psf.sort), args)
-              }
-              BuiltinEquals(newLookup, rhs)
-          }
+          val newTerms = terms.map {
+            case BuiltinEquals(Lookup(field, fvf, at), rhs) if r.sort == sorts.Ref && fvf == app && r == at =>
+              val newLookup = Lookup(field, SortWrapper(mwsfLookup, fvf.sort), at)
+              Some(BuiltinEquals(newLookup, rhs))
+            case BuiltinEquals(PredicateLookup(predname, psf, args), rhs) if r.sort == sorts.Snap && psf == app && args == List(r) =>
+              val newLookup = PredicateLookup(predname, SortWrapper(mwsfLookup, psf.sort), args)
+              Some(BuiltinEquals(newLookup, rhs))
+            case _ => None
+          }.filter(_.isDefined).map(_.get)
           if (newTerms.isEmpty) return Vector.empty
           Vector(Forall(
             Seq(r, freshSnapRoot),
@@ -266,14 +263,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
         }
 
         def rewriteTerms(cond: Term, terms: Iterable[Term]): Vector[Quantification] = {
-          val newTerms = terms.filter(_ match {
-            case BuiltinEquals(Lookup(_, fvf, _), rhs) => fvf == app && rhs.contains(freshSnapRoot)
-            case BuiltinEquals(PredicateLookup(_, psf, _), rhs) => psf == app && rhs.contains(freshSnapRoot)
-            case _ => false
-          }).map(t => {
-            val rhs = t.asInstanceOf[BuiltinEquals].p1
-            BuiltinEquals(mwsfLookup, SortWrapper(rhs, to))
-          })
+          val newTerms = terms.map {
+            case BuiltinEquals(Lookup(_, fvf, _), rhs) if fvf == app && rhs.contains(freshSnapRoot) =>
+              Some(BuiltinEquals(mwsfLookup, SortWrapper(rhs, to)))
+            case BuiltinEquals(PredicateLookup(_, psf, _), rhs) if psf == app && rhs.contains(freshSnapRoot) =>
+              Some(BuiltinEquals(mwsfLookup, SortWrapper(rhs, to)))
+            case _ => None
+          }.filter(_.isDefined).map(_.get)
           if (newTerms.isEmpty) return Vector.empty
           Vector(Forall(freshSnapRoot, Implies(cond, And(newTerms)), Trigger(mwsfLookup)))
         }
@@ -512,24 +508,20 @@ object magicWandSupporter extends SymbolicExecutionRules {
          * The old solution in this case did use this assumption:
          * v2.decider.assume(snap === snapWand.abstractLhs)
          */
-        assert(snapLhs.sort == sorts.Snap, s"expected snapshot but found: $snapLhs")
+        assert(snapLhs.sort == sorts.Snap, s"Expected snapshot but found: $snapLhs")
 
         // Create copy of the state with a new labelled heap (i.e. `oldHeaps`) called "lhs".
         val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> this.getEvalHeap(s1)))
 
-        // If the snapWand is a (wrapped) MagicWandSnapshot then lookup the snapshot of the right-hand side by applying snapLhs.
-        val magicWandSnapshotLookup = snapWand match {
-          case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs)
-          case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs)
-          case predicateLookup: PredicateLookup =>
-            MWSFLookup(SortWrapper(predicateLookup, sorts.MagicWandSnapFunction), snapLhs)
-          case SortWrapper(predicateLookup: PredicateLookup, _) =>
-            MWSFLookup(SortWrapper(predicateLookup, sorts.MagicWandSnapFunction), snapLhs)
-          case _ => snapWand
+        // Convert snapWand to MWSF
+        val mwsf = snapWand match {
+          case SortWrapper(mwsf: MagicWandSnapshot, _) => mwsf
+          case SortWrapper(snapshot, _) => SortWrapper(snapshot, sorts.MagicWandSnapFunction)
+          case _ => SortWrapper(snapWand, sorts.MagicWandSnapFunction)
         }
 
         // Produce the wand's RHS.
-        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2)((s4, v3) => {
+        produce(s3.copy(conservingSnapshotGeneration = true), toSf(MWSFLookup(mwsf, snapLhs)), wand.right, pve, v2)((s4, v3) => {
           // Recreate old state without the magic wand, and the state with the oldHeap called lhs.
           val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
 
