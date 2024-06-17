@@ -106,8 +106,12 @@ object executor extends ExecutionRules {
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
 
-    // Find join point if it exists.
-    val jp: Option[SilverBlock] = edges.headOption.flatMap(edge => s.methodCfg.joinPoints.get(edge.source))
+    // If joining branches is enabled, find join point if it exists.
+    val jp: Option[SilverBlock] = if (s.moreJoins.id >= JoinMode.All.id) {
+      edges.headOption.flatMap(edge => s.methodCfg.joinPoints.get(edge.source))
+    } else {
+      None
+    }
 
     (edges, jp) match {
       case (Seq(), _) => Q(s, v)
