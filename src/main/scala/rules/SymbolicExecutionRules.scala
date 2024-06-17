@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import org.jgrapht.alg.util.Pair
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
@@ -58,7 +57,7 @@ trait SymbolicExecutionRules {
     }
 
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
-      v.decider.pcs.branchConditionExps.map(_.getFirst)
+      v.decider.pcs.branchConditionExps.map(_._1)
         .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
         .sortBy(_.pos match {
           /* Order branchconditions according to source position */

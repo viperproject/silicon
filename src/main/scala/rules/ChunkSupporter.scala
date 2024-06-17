@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
@@ -162,7 +162,7 @@ object chunkSupporter extends ChunkSupportRules {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties)
-      pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
+      pathCond.foreach(p => v.decider.assume(p._1, DebugExp.createInstance(p._2, p._2)))
     }
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {

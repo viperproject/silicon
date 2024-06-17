@@ -6,8 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
-import org.jgrapht.alg.util.Pair
+import viper.silicon.debugger.DebugExp
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
@@ -240,7 +239,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
-    var results: Seq[(State, Stack[Term], Stack[Pair[Exp, Exp]], Vector[RecordedPathConditions], Chunk)] = Nil
+    var results: Seq[(State, Stack[Term], Stack[(Exp, Exp)], Vector[RecordedPathConditions], Chunk)] = Nil
 
     /* TODO: When parallelising branches, some of the runtime assertions in the code below crash
      *       during some executions - since such crashes are hard to debug, branch parallelisation
@@ -383,9 +382,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
           parallelizeBranches = s.parallelizeBranches /* See comment above */
           /*branchConditions = c.branchConditions*/)
         executionFlowController.locally(s1, v)((s2, v1) => {
-          val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_.getFirst))
-          val expNew = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_.getSecond))
-          v1.decider.setCurrentBranchCondition(And(branchConditions), new Pair(exp, expNew))
+          val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._1))
+          val expNew = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2))
+          v1.decider.setCurrentBranchCondition(And(branchConditions), (exp, expNew))
           conservedPcs.foreach(pcs => {
             v1.decider.assume(pcs.conditionalized, DebugExp.createInstance("conditionalized", InsertionOrderedSet(pcs.conditionalizedExp)), enforceAssumption = false)
           })

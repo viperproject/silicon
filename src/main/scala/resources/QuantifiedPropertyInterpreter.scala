@@ -6,7 +6,6 @@
 
 package viper.silicon.resources
 
-import org.jgrapht.alg.util.Pair
 import viper.silicon.interfaces.state.QuantifiedChunk
 import viper.silicon.state.terms
 import viper.silicon.state.terms.{Term, Trigger, Var}
@@ -33,8 +32,8 @@ class QuantifiedPropertyInterpreter extends PropertyInterpreter {
                                  qidPrefix: String)
                                 : (Term, ast.Exp) = {
     val body = buildPathCondition(property.expression, Info(chunk, args, argsExp, perms, permsExp))
-    val bodyTerm = body.getFirst.replace(chunk.quantifiedVars, args)
-    val bodyExp = replaceVarsInExp(body.getSecond, chunk.quantifiedVarExps.map(_.name), argsExp)
+    val bodyTerm = body._1.replace(chunk.quantifiedVars, args)
+    val bodyExp = replaceVarsInExp(body._2, chunk.quantifiedVarExps.map(_.name), argsExp)
     val description = s"$qidPrefix-${property.name}"
     val cond = if (argsUsed) condition else terms.True
     val condExp = if (argsUsed) conditionExp else ast.TrueLit()(conditionExp.pos, conditionExp.info, conditionExp.errT)
@@ -42,17 +41,17 @@ class QuantifiedPropertyInterpreter extends PropertyInterpreter {
     (terms.Forall(qvars, terms.Implies(cond, bodyTerm), triggers, description), ast.Forall(qvarsExp, Seq(), ast.Implies(condExp, bodyExp)())())
   }
 
-  override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = new Pair(info.perms, info.permsExp)
+  override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = (info.perms, info.permsExp)
 
   override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     argsUsed = true
-    new Pair(info.chunk.valueAt(info.args), ast.FuncApp(s"valueAt", info.argsExp)(ast.NoPosition, ast.NoInfo, ast.InternalType, ast.NoTrafos))
+    (info.chunk.valueAt(info.args), ast.FuncApp(s"valueAt", info.argsExp)(ast.NoPosition, ast.NoInfo, ast.InternalType, ast.NoTrafos))
   }
 
   override protected def extractArguments(chunkPlaceholder: ChunkPlaceholder,
-                                          info: Info): Pair[Seq[Term], Seq[ast.Exp]] = {
+                                          info: Info): (Seq[Term], Seq[ast.Exp]) = {
     argsUsed = true
-    new Pair(info.args, info.argsExp)
+    (info.args, info.argsExp)
   }
 
   override protected def buildCheck[K <: IteUsableKind]

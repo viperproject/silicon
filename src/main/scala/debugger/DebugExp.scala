@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package debugger
+package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.Term

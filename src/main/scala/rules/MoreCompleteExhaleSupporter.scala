@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
@@ -312,7 +312,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
-          pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
+          pathCond.foreach(p => v.decider.assume(p._1, DebugExp.createInstance(p._2, p._2)))
         }
         val newHeap = Heap(allChunks)
 

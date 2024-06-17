@@ -6,8 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
-import org.jgrapht.alg.util.Pair
+import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
@@ -353,7 +352,7 @@ object evaluator extends EvaluationRules {
         val impliesRecord = new ImpliesRecord(implies, s, v.decider.pcs, "Implies")
         val uidImplies = v.symbExLog.openScope(impliesRecord)
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-          evalImplies(s1, t0, new Pair(e0, e0New), e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, e1New, v2) => {
+          evalImplies(s1, t0, (e0, e0New), e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, e1New, v2) => {
             v2.symbExLog.closeScope(uidImplies)
             Q(s2, t1, ast.Implies(e0New, e1New)(e.pos, e.info, e.errT), v2)
           }))
@@ -363,7 +362,7 @@ object evaluator extends EvaluationRules {
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, new Pair(e0, e0New), v2)(
+            brancher.branch(s2, t0, (e0, e0New), v2)(
               (s3, v3) => eval(s3, e1, pve, v3)((s4, t, e1New, v4) => QB(s4, t, e1New, v4)),
               (s3, v3) => eval(s3, e2, pve, v3)((s4, t, e2New, v4) => QB(s4, t, e2New, v4)))
           )(entries => {
@@ -565,8 +564,8 @@ object evaluator extends EvaluationRules {
          * to evals), and evaluate the forperm-body with a different qvar assignment each time.
         */
 
-        def bindRcvrsAndEvalBody(s: State, chs: Iterable[NonQuantifiedChunk], args: Seq[ast.Exp], ts: Seq[Term], es: Seq[Pair[ast.Exp, ast.Exp]], v: Verifier)
-                                (Q: (State, Seq[Term], Seq[Pair[ast.Exp, ast.Exp]], Verifier) => VerificationResult)
+        def bindRcvrsAndEvalBody(s: State, chs: Iterable[NonQuantifiedChunk], args: Seq[ast.Exp], ts: Seq[Term], es: Seq[(ast.Exp, ast.Exp)], v: Verifier)
+                                (Q: (State, Seq[Term], Seq[(ast.Exp, ast.Exp)], Verifier) => VerificationResult)
                                 : VerificationResult = {
           if (chs.isEmpty)
             Q(s, ts.reverse, es.reverse, v)
@@ -619,10 +618,10 @@ object evaluator extends EvaluationRules {
               val lhsExp = ast.CondExp(argsPairWiseEqualExp, BigAnd(addConsExp :+ isPositiveExp), ast.FalseLit()())()
               val lhsExpNew = ast.CondExp(argsPairWiseEqualExpNew, BigAnd(addConsExp :+ isPositiveExp), ast.FalseLit()())()
 
-              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False), new Pair(lhsExp, lhsExpNew), body, false, pve, v1) ((s4, tImplies, bodyNew, v2) =>{
+              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False), (lhsExp, lhsExpNew), body, false, pve, v1) ((s4, tImplies, bodyNew, v2) =>{
                 val eImplies: ast.Exp = ast.Implies(lhsExp, body)()
                 val eImpliesNew: ast.Exp = ast.Implies(lhsExpNew, bodyNew)()
-                bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, new Pair(eImplies, eImpliesNew) +: es, v2)((s5, ts1, es1, v3) => {
+                bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, (eImplies, eImpliesNew) +: es, v2)((s5, ts1, es1, v3) => {
                   v3.symbExLog.closeScope(uidImplies)
                   Q(s5, ts1, es1, v3)
                 })
@@ -631,8 +630,8 @@ object evaluator extends EvaluationRules {
           }
         }
 
-        def bindQuantRcvrsAndEvalBody(s: State, chs: Iterable[QuantifiedBasicChunk], args: Seq[ast.Exp], ts: Seq[Term], es: Seq[Pair[ast.Exp, ast.Exp]], v: Verifier)
-                                     (Q: (State, Seq[Term], Seq[Pair[ast.Exp, ast.Exp]], Verifier) => VerificationResult)
+        def bindQuantRcvrsAndEvalBody(s: State, chs: Iterable[QuantifiedBasicChunk], args: Seq[ast.Exp], ts: Seq[Term], es: Seq[(ast.Exp, ast.Exp)], v: Verifier)
+                                     (Q: (State, Seq[Term], Seq[(ast.Exp, ast.Exp)], Verifier) => VerificationResult)
                                      : VerificationResult = {
           if (chs.isEmpty)
             Q(s, ts.reverse, es.reverse, v)
@@ -665,11 +664,11 @@ object evaluator extends EvaluationRules {
                 case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts1)
               }
 
-              evalImplies(s2, And(trig, bc), new Pair(bcExp, bcExp), body, false, pve, v1)((s3, tImplies, bodyNew, v2) => {
+              evalImplies(s2, And(trig, bc), (bcExp, bcExp), body, false, pve, v1)((s3, tImplies, bodyNew, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
                 val eQuant: ast.Exp = ast.Forall(vars, Seq(), ast.Implies(bcExp, body)())()
                 val eQuantNew: ast.Exp = ast.Forall(varsNew, Seq(), ast.Implies(bcExp, bodyNew)())()
-                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, new Pair(eQuant, eQuantNew) +: es, v2)((s4, ts2, es2, v3) => {
+                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, (eQuant, eQuantNew) +: es, v2)((s4, ts2, es2, v3) => {
                   v3.symbExLog.closeScope(uidImplies)
                   Q(s4, ts2, es2, v3)
                 })})
@@ -695,13 +694,13 @@ object evaluator extends EvaluationRules {
             val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
             bindQuantRcvrsAndEvalBody(s1, chs, args, Seq.empty, Seq.empty, v)((s2, ts, es, v1) => {
               val s3 = s2.copy(h = s.h, g = s.g)
-              Q(s3, And(ts), BigAnd(es.map(e => e.getSecond)), v1)
+              Q(s3, And(ts), BigAnd(es.map(e => e._2)), v1)
             })
         } else {
           val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
           bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, Seq.empty, v)((s2, ts, es, v1) => {
             val s3 = s2.copy(h = s.h, g = s.g)
-            Q(s3, And(ts), BigAnd(es.map(e => e.getSecond)), v1)
+            Q(s3, And(ts), BigAnd(es.map(e => e._2)), v1)
           })
         }
 
@@ -1181,7 +1180,7 @@ object evaluator extends EvaluationRules {
        val preMark = v1.decider.setPathConditionMark()
       evals(s2, es1, _ => pve, v1)((s3, ts1, es1New, v2) => {
         val bc = And(ts1)
-        val expPair = new Pair(viper.silicon.utils.ast.BigAnd(es1), viper.silicon.utils.ast.BigAnd(es1New))
+        val expPair = (viper.silicon.utils.ast.BigAnd(es1), viper.silicon.utils.ast.BigAnd(es1New))
         v2.decider.setCurrentBranchCondition(bc, expPair)
         evals(s3, es2, _ => pve, v2)((s4, ts2, es2New, v3) => {
           evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, _) => { // TODO: v4 isn't forward - problem?
@@ -1201,7 +1200,7 @@ object evaluator extends EvaluationRules {
 
   private def evalImplies(s: State,
                           tLhs: Term,
-                          eLhs: Pair[ast.Exp, ast.Exp],
+                          eLhs: (ast.Exp, ast.Exp),
                           eRhs: ast.Exp,
                           fromShortCircuitingAnd: Boolean,
                           pve: PartialVerificationError,
@@ -1522,8 +1521,8 @@ object evaluator extends EvaluationRules {
 
         val joinDefEqs: Seq[(Term, ast.Exp, ast.Exp)] = entries map (entry =>
           (Implies(And(entry.pathConditions.branchConditions), joinTerm === entry.data),
-          ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc.getFirst)), ast.EqCmp(joinExp, entry.dataExp)())(),
-          ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc.getSecond)), ast.EqCmp(joinExp, entry.dataExp)())()))
+          ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._1)), ast.EqCmp(joinExp, entry.dataExp)())(),
+          ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._2)), ast.EqCmp(joinExp, entry.dataExp)())()))
 
 
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) =>sAcc.merge(entry.s))
@@ -1719,7 +1718,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, e0New, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, new Pair(exps.head, e0New), v2, true) _ tupled swapIfAnd(
+            brancher.branch(s2, t0, (exps.head, e0New), v2, true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3, constructor(Seq(t0)), e0New, v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)((s4, t, eTailNew, v4) => QB(s4, t, eTailNew, v4)))
             ){case Seq(ent) =>

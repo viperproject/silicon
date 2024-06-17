@@ -1,4 +1,4 @@
-package debugger
+package viper.silicon.debugger
 
 import viper.silver.FastMessaging
 import viper.silver.parser._

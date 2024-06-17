@@ -1,6 +1,5 @@
-package debugger
+package viper.silicon.debugger
 
-import org.jgrapht.alg.util.Pair
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.rules.evaluator
@@ -23,7 +22,7 @@ case class ProofObligation(s: State,
                            v: Verifier,
                            proverEmits: Seq[String],
                            preambleAssumptions: Seq[DebugAxiom],
-                           branchConditions: Seq[Pair[ast.Exp, ast.Exp]],
+                           branchConditions: Seq[(ast.Exp, ast.Exp)],
                            assumptionsExp: InsertionOrderedSet[DebugExp],
                            assertion: Term,
                            eAssertion: ast.Exp,
@@ -50,7 +49,7 @@ case class ProofObligation(s: State,
 
   private lazy val stateString: String = s"Store:\n\t\t${s.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.mkString("\n\t\t")}\n\n"
 
-  private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.map(_.getSecond).mkString(", ")}\n\n"
+  private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.map(_._2).mkString(", ")}\n\n"
 
   private def assumptionString: String = {
     val filteredAssumptions = assumptionsExp.filter(d => !d.isInternal || printConfig.isPrintInternalEnabled)

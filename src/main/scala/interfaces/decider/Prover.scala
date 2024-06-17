@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces.decider
 
-import debugger.DebugAxiom
+import viper.silicon.debugger.DebugAxiom
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
 import viper.silver.components.StatefulComponent

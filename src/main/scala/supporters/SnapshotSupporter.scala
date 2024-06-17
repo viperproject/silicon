@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters
 
-import debugger.DebugExp
+import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
 import viper.silicon.state.{State, SymbolConverter}
 import viper.silicon.utils.toSf

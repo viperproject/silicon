@@ -7,8 +7,7 @@
 package viper.silicon.decider
 
 import com.typesafe.scalalogging.Logger
-import debugger.DebugExp
-import org.jgrapht.alg.util.Pair
+import viper.silicon.debugger.DebugExp
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -46,7 +45,7 @@ trait Decider {
 
   def checkSmoke(isAssert: Boolean = false): Boolean
 
-  def setCurrentBranchCondition(t: Term, te: Pair[ast.Exp, ast.Exp]): Unit
+  def setCurrentBranchCondition(t: Term, te: (ast.Exp, ast.Exp)): Unit
   def setPathConditionMark(): Mark
 
   def finishDebugSubExp(description : String): Unit
@@ -218,9 +217,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def setCurrentBranchCondition(t: Term, te: Pair[ast.Exp, ast.Exp]): Unit = {
+    def setCurrentBranchCondition(t: Term, te: (ast.Exp, ast.Exp)): Unit = {
       pathConditions.setCurrentBranchCondition(t, te)
-      assume(t, te.getFirst, te.getSecond)
+      assume(t, te._1, te._2)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()

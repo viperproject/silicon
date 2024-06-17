@@ -6,8 +6,7 @@
 
 package viper.silicon.interfaces
 
-import debugger.{DebugAxiom, DebugExp, DebugExpPrintConfiguration}
-import org.jgrapht.alg.util.Pair
+import viper.silicon.debugger.{DebugAxiom, DebugExp, DebugExpPrintConfiguration}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting._
@@ -136,7 +135,7 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
   override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
 }
 
-case class SiliconDebuggingFailureContext(branchConditions: Seq[Pair[ast.Exp, ast.Exp]],
+case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Exp)],
                                  counterExample: Option[Counterexample],
                                  reasonUnknown: Option[String],
                                  state: Option[State],
@@ -151,7 +150,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[Pair[ast.Exp, as
     if (branchConditions.nonEmpty) {
       val branchConditionsString =
         branchConditions
-          .map(_.getSecond)
+          .map(_._2)
           .map(bc => s"$bc [ ${bc.pos} ] ")
           .mkString("\t\t", " ~~> ", "")
 

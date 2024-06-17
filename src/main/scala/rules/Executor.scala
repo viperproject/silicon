@@ -6,8 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
-import org.jgrapht.alg.util.Pair
+import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -64,7 +63,7 @@ object executor extends ExecutionRules {
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
            */
-          brancher.branch(s2, tCond, new Pair(ce.condition, condNew), v1)(
+          brancher.branch(s2, tCond, (ce.condition, condNew), v1)(
             (s3, v3) =>
               exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
                 v4.symbExLog.closeScope(sepIdentifier)
@@ -112,7 +111,7 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, condNew, v1) =>
-            brancher.branch(s2, tCond, new Pair(thenEdge.condition, condNew), v1)(
+            brancher.branch(s2, tCond, (thenEdge.condition, condNew), v1)(
               (s3, v3) => {
                 val s3p = handleOutEdge(s3, thenEdge, v3)
                 exec(s3p, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {

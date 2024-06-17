@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
+import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID

@@ -6,8 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
-import org.jgrapht.alg.util.Pair
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
@@ -222,7 +221,7 @@ object producer extends ProductionRules {
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-          branch(s1, t0, new Pair(e0, e0New), v1)(
+          branch(s1, t0, (e0, e0New), v1)(
             (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
               v3.symbExLog.closeScope(uidImplies)
               Q(s3, v3)
@@ -242,7 +241,7 @@ object producer extends ProductionRules {
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-          branch(s1, t0, new Pair(e0, e0New), v1)(
+          branch(s1, t0, (e0, e0New), v1)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)

@@ -6,8 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
-import org.jgrapht.alg.util.Pair
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
@@ -191,7 +190,7 @@ object consumer extends ConsumptionRules {
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         evaluator.eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-          branch(s1, t0, new Pair(e0, e0New), v1)(
+          branch(s1, t0, (e0, e0New), v1)(
             (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
               v3.symbExLog.closeScope(uidImplies)
               Q(s3, h1, t1, v3)
@@ -206,7 +205,7 @@ object consumer extends ConsumptionRules {
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-          branch(s1, t0, new Pair(e0, e0New), v1)(
+          branch(s1, t0, (e0, e0New), v1)(
             (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)

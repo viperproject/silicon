@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
+import viper.silicon.debugger.DebugExp
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
@@ -101,12 +101,12 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
-          pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
+          pathCond.foreach(p => v.decider.assume(p._1, DebugExp.createInstance(p._2, p._2)))
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
           val pathCond = interpreter.buildPathConditionsForResource(id, desc.delayedProperties)
-          pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
+          pathCond.foreach(p => v.decider.assume(p._1, DebugExp.createInstance(p._2, p._2)))
         }
 
         v.symbExLog.closeScope(sepIdentifier)
@@ -143,7 +143,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     newlyAddedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
-      pathCond.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
+      pathCond.foreach(p => v.decider.assume(p._1, DebugExp.createInstance(p._2, p._2)))
     }
 
     v.symbExLog.closeScope(sepIdentifier)

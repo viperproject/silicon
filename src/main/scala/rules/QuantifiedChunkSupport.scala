@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import debugger.DebugExp
+import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
@@ -1060,7 +1060,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
-    pcs.foreach(p => v.decider.assume(p.getFirst, DebugExp.createInstance(p.getSecond, p.getSecond)))
+    pcs.foreach(p => v.decider.assume(p._1, DebugExp.createInstance(p._2, p._2)))
 
     val resourceIdentifier = resource match {
       case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)

@@ -1,4 +1,4 @@
-package debugger
+package viper.silicon.debugger
 
 import fastparse._
 import viper.silver.ast._

@@ -6,7 +6,6 @@
 
 package viper.silicon.resources
 
-import org.jgrapht.alg.util.Pair
 import viper.silicon.state.terms
 import viper.silicon.state.terms.Term
 import viper.silicon.utils.ast.BigAnd
@@ -15,17 +14,17 @@ import viper.silver.ast
 abstract class PropertyInterpreter {
   protected type Info
 
-  protected def buildPathCondition[K <: Kind](expression: PropertyExpression[K], info: Info): Pair[Term, ast.Exp] = expression match {
+  protected def buildPathCondition[K <: Kind](expression: PropertyExpression[K], info: Info): (Term, ast.Exp) = expression match {
     // Literals
-    case True() => new Pair(terms.True, ast.TrueLit()())
-    case False() => new Pair(terms.False, ast.FalseLit()())
+    case True() => (terms.True, ast.TrueLit()())
+    case False() => (terms.False, ast.FalseLit()())
     case PermissionLiteral(numerator, denominator) => buildPermissionLiteral(numerator, denominator)
-    case Null() => new Pair(terms.Null, ast.NullLit()())
+    case Null() => (terms.Null, ast.NullLit()())
 
     // Boolean operators
     case Not(expr) => {
       val r = buildPathCondition(expr, info)
-      new Pair(terms.Not(r.getFirst), ast.Not(r.getSecond)(r.getSecond.pos, r.getSecond.info, r.getSecond.errT))
+      (terms.Not(r._1), ast.Not(r._2)(r._2.pos, r._2.info, r._2.errT))
     }
     case And(left, right) => buildAnd(left, right, info)
     case Or(left, right) => buildOr(left, right, info)
@@ -61,80 +60,80 @@ abstract class PropertyInterpreter {
     case e => sys.error( s"An expression of type ${e.getClass} is not allowed here.")
   }
 
-  protected def buildPermissionAccess(chunkVariable: ChunkPlaceholder, info: Info): Pair[Term, ast.Exp]
-  protected def buildValueAccess(chunkVariable: ChunkPlaceholder, info: Info): Pair[Term, ast.Exp]
+  protected def buildPermissionAccess(chunkVariable: ChunkPlaceholder, info: Info): (Term, ast.Exp)
+  protected def buildValueAccess(chunkVariable: ChunkPlaceholder, info: Info): (Term, ast.Exp)
 
   /* Assures that if the left-hand side is known to be false without a prover check,
    the right-hand side is not evaluated. */
-  protected def buildAnd(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) : Pair[Term, ast.Exp] = {
+  protected def buildAnd(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) : (Term, ast.Exp) = {
     val leftCond = buildPathCondition(left, info)
-     leftCond.getFirst match {
+     leftCond._1 match {
       case terms.False => leftCond
       case leftTerm =>
         val rightCond = buildPathCondition(right, info)
-        new Pair(terms.And(leftTerm, rightCond.getFirst), ast.And(leftCond.getSecond, rightCond.getSecond)(leftCond.getSecond.pos, leftCond.getSecond.info, leftCond.getSecond.errT))
+        (terms.And(leftTerm, rightCond._1), ast.And(leftCond._2, rightCond._2)(leftCond._2.pos, leftCond._2.info, leftCond._2.errT))
      }
   }
 
   /* Assures that if the left-hand side is known to be true without a prover check,
    the right-hand side is not evaluated. */
-  protected def buildOr(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info): Pair[Term, ast.Exp] = {
+  protected def buildOr(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info): (Term, ast.Exp) = {
     val leftCond = buildPathCondition(left, info)
-    leftCond.getFirst match {
+    leftCond._1 match {
       case terms.True => leftCond
       case leftTerm =>
         val rightCond = buildPathCondition(right, info)
-        new Pair(terms.Or(leftTerm, rightCond.getFirst), ast.Or(leftCond.getSecond, rightCond.getSecond)(leftCond.getSecond.pos, leftCond.getSecond.info, leftCond.getSecond.errT))
+        (terms.Or(leftTerm, rightCond._1), ast.Or(leftCond._2, rightCond._2)(leftCond._2.pos, leftCond._2.info, leftCond._2.errT))
     }
   }
 
   /* Assures that if the left-hand side is known to be false without a prover check,
    the right-hand side is not evaluated. */
-  protected def buildImplies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info): Pair[Term, ast.Exp] = {
+  protected def buildImplies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info): (Term, ast.Exp) = {
     val leftCond = buildPathCondition(left, info)
-    leftCond.getFirst match {
-      case terms.False => new Pair(terms.True, ast.TrueLit()())
+    leftCond._1 match {
+      case terms.False => (terms.True, ast.TrueLit()())
       case leftTerm =>
         val rightCond = buildPathCondition(right, info)
-        new Pair(terms.Implies(leftTerm, rightCond.getFirst), ast.Implies(leftCond.getSecond, rightCond.getSecond)(leftCond.getSecond.pos, leftCond.getSecond.info, leftCond.getSecond.errT))
+        (terms.Implies(leftTerm, rightCond._1), ast.Implies(leftCond._2, rightCond._2)(leftCond._2.pos, leftCond._2.info, leftCond._2.errT))
     }
   }
 
-  protected def buildEquals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K], info: Info): Pair[Term, ast.Exp] = {
+  protected def buildEquals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K], info: Info): (Term, ast.Exp) = {
     (left, right) match {
-      case (Null(), Null()) => new Pair(terms.True, ast.TrueLit()())
+      case (Null(), Null()) => (terms.True, ast.TrueLit()())
       case (ArgumentAccess(cv1), ArgumentAccess(cv2)) =>
         val args1 = extractArguments(cv1, info)
         val args2 = extractArguments(cv2, info)
-        if (args1.getFirst == args2.getFirst) {
+        if (args1._1 == args2._1) {
           // if all arguments are the same, they are definitely equal
-          new Pair(terms.True, ast.TrueLit()())
+          (terms.True, ast.TrueLit()())
         } else {
           // else return argument-wise equal
-          new Pair(terms.And(args1.getFirst.zip(args2.getFirst).map{ case (t1, t2) => t1 === t2 }),
-            BigAnd(args1.getSecond.zip(args2.getSecond).map{ case (e1, e2) => ast.EqCmp(e1, e2)(e1.pos, e1.info, e1.errT) }))
+          (terms.And(args1._1.zip(args2._1).map{ case (t1, t2) => t1 === t2 }),
+            BigAnd(args1._2.zip(args2._2).map{ case (e1, e2) => ast.EqCmp(e1, e2)(e1.pos, e1.info, e1.errT) }))
         }
       case (ArgumentAccess(cv), Null()) =>
         val args = extractArguments(cv, info)
-        new Pair(terms.And(args.getFirst.map(_ === terms.Null)), BigAnd(args.getSecond.map(ast.EqCmp(_, ast.NullLit()())())))
+        (terms.And(args._1.map(_ === terms.Null)), BigAnd(args._2.map(ast.EqCmp(_, ast.NullLit()())())))
       case (Null(), ArgumentAccess(cv)) =>
         val args = extractArguments(cv, info)
-        new Pair(terms.And(args.getFirst.map(_ === terms.Null)), BigAnd(args.getSecond.map(ast.EqCmp(_, ast.NullLit()())())))
+        (terms.And(args._1.map(_ === terms.Null)), BigAnd(args._2.map(ast.EqCmp(_, ast.NullLit()())())))
       case _ =>
         val leftCond = buildPathCondition(left, info)
         val rightCond =  buildPathCondition(right, info)
-        new Pair(terms.Equals(leftCond.getFirst, rightCond.getFirst), ast.EqCmp(leftCond.getSecond, rightCond.getSecond)(leftCond.getSecond.pos, leftCond.getSecond.info, leftCond.getSecond.errT))
+        (terms.Equals(leftCond._1, rightCond._1), ast.EqCmp(leftCond._2, rightCond._2)(leftCond._2.pos, leftCond._2.info, leftCond._2.errT))
     }
   }
 
-  protected def extractArguments(chunkPlaceholder: ChunkPlaceholder, info: Info): Pair[Seq[Term], Seq[ast.Exp]]
+  protected def extractArguments(chunkPlaceholder: ChunkPlaceholder, info: Info): (Seq[Term], Seq[ast.Exp])
 
-  protected def buildPermissionLiteral(numerator: BigInt, denominator: BigInt): Pair[Term, ast.Exp] = {
+  protected def buildPermissionLiteral(numerator: BigInt, denominator: BigInt): (Term, ast.Exp) = {
     require(denominator != 0, "Denominator of permission literal must not be 0")
     (numerator, denominator) match {
-      case (n, _) if n == 0 => new Pair(terms.NoPerm, ast.NoPerm()())
-      case (n, d) if n == d => new Pair(terms.FullPerm, ast.FullPerm()())
-      case (n, d) => new Pair(terms.FractionPerm(terms.IntLiteral(n), terms.IntLiteral(d)), ast.FractionalPerm(ast.IntLit(n)(), ast.IntLit(d)())())
+      case (n, _) if n == 0 => (terms.NoPerm, ast.NoPerm()())
+      case (n, d) if n == d => (terms.FullPerm, ast.FullPerm()())
+      case (n, d) => (terms.FractionPerm(terms.IntLiteral(n), terms.IntLiteral(d)), ast.FractionalPerm(ast.IntLit(n)(), ast.IntLit(d)())())
     }
   }
 
@@ -143,7 +142,7 @@ abstract class PropertyInterpreter {
                             builderExp: (ast.Exp, ast.Exp) => ast.Exp,
                             left: PropertyExpression[K],
                             right: PropertyExpression[K],
-                            pm: Info): Pair[Term, ast.Exp] = {
+                            pm: Info): (Term, ast.Exp) = {
     def wrapper(t0: Term, t1: Term): Term = builder((t0, t1))
     buildBinary(wrapper _, builderExp, left, right, pm)
   }
@@ -153,10 +152,10 @@ abstract class PropertyInterpreter {
                             builderExp: (ast.Exp, ast.Exp) => ast.Exp,
                             left: PropertyExpression[K],
                             right: PropertyExpression[K],
-                            pm: Info): Pair[Term, ast.Exp] = {
+                            pm: Info): (Term, ast.Exp) = {
     val leftTerm = buildPathCondition(left, pm)
     val rightTerm = buildPathCondition(right, pm)
-    new Pair(builder(leftTerm.getFirst, rightTerm.getFirst), builderExp(leftTerm.getSecond, rightTerm.getSecond))
+    (builder(leftTerm._1, rightTerm._1), builderExp(leftTerm._2, rightTerm._2))
   }
 
   protected def buildCheck[K <: IteUsableKind]
@@ -164,22 +163,22 @@ abstract class PropertyInterpreter {
                            thenDo: PropertyExpression[K],
                            otherwise: PropertyExpression[K],
                            info: Info)
-                          : Pair[Term, ast.Exp]
+                          : (Term, ast.Exp)
 
   protected def buildForEach(chunkVariables: Seq[ChunkVariable],
                              body: PropertyExpression[kinds.Boolean],
                              pm: Info)
-                            : Pair[Term, ast.Exp]
+                            : (Term, ast.Exp)
 
   protected def buildIfThenElse[K <: IteUsableKind]
                                (condition: PropertyExpression[kinds.Boolean],
                                 thenDo: PropertyExpression[K],
                                 otherwise: PropertyExpression[K],
-                                pm: Info) : Pair[Term, ast.Exp] = {
+                                pm: Info) : (Term, ast.Exp) = {
     val conditionTerm = buildPathCondition(condition, pm)
     val thenDoTerm = buildPathCondition(thenDo, pm)
     val otherwiseTerm = buildPathCondition(otherwise, pm)
-    new Pair(terms.Ite(conditionTerm.getFirst, thenDoTerm.getFirst, otherwiseTerm.getFirst),
-      ast.And(ast.Implies(conditionTerm.getSecond, thenDoTerm.getSecond)(), ast.Implies(ast.Not(conditionTerm.getSecond)(), otherwiseTerm.getSecond)())())
+    (terms.Ite(conditionTerm._1, thenDoTerm._1, otherwiseTerm._1),
+      ast.And(ast.Implies(conditionTerm._2, thenDoTerm._2)(), ast.Implies(ast.Not(conditionTerm._2)(), otherwiseTerm._2)())())
   }
 }

@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import debugger.SiliconDebugger
+import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.Config.ExhaleMode
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
