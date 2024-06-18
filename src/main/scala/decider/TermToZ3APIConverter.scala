@@ -445,7 +445,7 @@ class TermToZ3APIConverter
       case Let(bindings, body) =>
         convert(body.replace(bindings))
 
-      case MWSFLookup(mwsf, snap) => createApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
+      case MWSFApply(mwsf, snap) => createApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
 
       case _: MagicWandChunkTerm
          | _: Quantification =>

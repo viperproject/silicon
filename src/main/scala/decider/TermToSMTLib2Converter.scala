@@ -316,7 +316,7 @@ class TermToSMTLib2Converter
       parens(text("let") <+> parens(docBindings) <+> render(body))
 
     case MagicWandSnapshot(mwsf) => render(mwsf)
-    case MWSFLookup(mwsf, snap) => renderApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
+    case MWSFApply(mwsf, snap) => renderApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
 
     case _: MagicWandChunkTerm
        | _: Quantification =>

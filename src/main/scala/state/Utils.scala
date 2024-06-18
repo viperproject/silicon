@@ -197,7 +197,7 @@ package object utils {
       case MapDomain(t) => MapDomain(go(t))
       case MapRange(t) => MapRange(go(t))
       case MagicWandSnapshot(t) => MagicWandSnapshot(go(t))
-      case MWSFLookup(t0, t1) => MWSFLookup(go(t0), go(t1))
+      case MWSFApply(t0, t1) => MWSFApply(go(t0), go(t1))
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))
       case Second(t) => Second(go(t))

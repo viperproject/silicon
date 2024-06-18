@@ -200,7 +200,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                    mwsf: Var,
                                    snapRhs: Term,
                                    v1: Verifier): Vector[Term] = {
-    val mwsfLookup = MWSFLookup(mwsf, freshSnapRoot)
+    val mwsfApply = MWSFApply(mwsf, freshSnapRoot)
 
     // Map all path conditions to their conditionalized form and flatten the result
     val conditionalizedPcs = conservedPcs.flatMap(_.conditionalized).flatMap {
@@ -217,7 +217,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v.equals(freshSnapRoot) => body
       }(_ => true))
 
-    // If the snapRhs is a FieldValueFunction or PredicateSnapFunction, substitute the snapRhs with the MWSFLookup definition
+    // If the snapRhs is a FieldValueFunction or PredicateSnapFunction, substitute the snapRhs with the MWSFApply definition
     val updatedPcs = snapRhs match {
       // Rewrite based on test11 in QPFields.vpr
       case SortWrapper(app: App, _) if
@@ -227,10 +227,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
         def rewriteTerms(r: Var, cond: Term, terms: Iterable[Term]): Vector[Quantification] = {
           val newTerms = terms.map {
             case BuiltinEquals(Lookup(field, fvf, at), rhs) if r.sort == sorts.Ref && fvf == app && r == at =>
-              val newLookup = Lookup(field, SortWrapper(mwsfLookup, fvf.sort), at)
+              val newLookup = Lookup(field, SortWrapper(mwsfApply, fvf.sort), at)
               Some(BuiltinEquals(newLookup, rhs))
             case BuiltinEquals(PredicateLookup(predname, psf, args), rhs) if r.sort == sorts.Snap && psf == app && args == List(r) =>
-              val newLookup = PredicateLookup(predname, SortWrapper(mwsfLookup, psf.sort), args)
+              val newLookup = PredicateLookup(predname, SortWrapper(mwsfApply, psf.sort), args)
               Some(BuiltinEquals(newLookup, rhs))
             case _ => None
           }.filter(_.isDefined).map(_.get)
@@ -265,13 +265,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
         def rewriteTerms(cond: Term, terms: Iterable[Term]): Vector[Quantification] = {
           val newTerms = terms.map {
             case BuiltinEquals(Lookup(_, fvf, _), rhs) if fvf == app && rhs.contains(freshSnapRoot) =>
-              Some(BuiltinEquals(mwsfLookup, SortWrapper(rhs, to)))
+              Some(BuiltinEquals(mwsfApply, SortWrapper(rhs, to)))
             case BuiltinEquals(PredicateLookup(_, psf, _), rhs) if psf == app && rhs.contains(freshSnapRoot) =>
-              Some(BuiltinEquals(mwsfLookup, SortWrapper(rhs, to)))
+              Some(BuiltinEquals(mwsfApply, SortWrapper(rhs, to)))
             case _ => None
           }.filter(_.isDefined).map(_.get)
           if (newTerms.isEmpty) return Vector.empty
-          Vector(Forall(freshSnapRoot, Implies(cond, And(newTerms)), Trigger(mwsfLookup)))
+          Vector(Forall(freshSnapRoot, Implies(cond, And(newTerms)), Trigger(mwsfApply)))
         }
 
         conditionalizedPcs.flatMap {
@@ -288,9 +288,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
       freshSnapRoot,
       Implies(
         And(pcsWithFreshSnapRoot),
-        BuiltinEquals(mwsfLookup, snapRhs),
+        BuiltinEquals(mwsfApply, snapRhs),
       ),
-      Trigger(mwsfLookup)
+      Trigger(mwsfApply)
     )
     v1.decider.assumeDefinition(pcsQuantified)
 
@@ -521,7 +521,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         }
 
         // Produce the wand's RHS.
-        produce(s3.copy(conservingSnapshotGeneration = true), toSf(MWSFLookup(mwsf, snapLhs)), wand.right, pve, v2)((s4, v3) => {
+        produce(s3.copy(conservingSnapshotGeneration = true), toSf(MWSFApply(mwsf, snapLhs)), wand.right, pve, v2)((s4, v3) => {
           // Recreate old state without the magic wand, and the state with the oldHeap called lhs.
           val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
 
