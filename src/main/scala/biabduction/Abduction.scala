@@ -14,16 +14,14 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 import viper.silver.verifier.BiAbductionQuestion
 
-object AbductionApplier extends RuleApplier[SiliconAbductionQuestion] {
-  override val rules: Seq[AbductionRule[_]] = Seq(AbductionRemove, AbductionListFoldBase,
+object AbductionApplier extends RuleApplier[AbductionQuestion] {
+  override val rules: Seq[AbductionRule] = Seq(AbductionRemove, AbductionListFoldBase,
     AbductionListFold, AbductionListUnfold, AbductionApply, AbductionPackage, AbductionMissing)
 }
 
-// TODO nklose: cant we just join the check and apply and return either None or Some(AbductionQuestion)?
-
-case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
-                                    lostAccesses: Map[Exp, Term] = Map(), foundState: Seq[Exp] = Seq(),
-                                    foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
+case class AbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
+                             lostAccesses: Map[Exp, Term] = Map(), foundState: Seq[Exp] = Seq(),
+                             foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
 
 /**
   * A rule for abduction. A rule is a pair of a check method and an apply method. The check method checks whether the
@@ -31,7 +29,7 @@ case class SiliconAbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
   * to. The apply method applies the rule to the given expression and returns a new goal.
   * If the rule was applied, then we have to return to the start of the rule list, otherwise we increment the rule index.
   */
-trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
+trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
 
   /**
     * Does a couple of things to ensure evalution works properly:
@@ -39,7 +37,7 @@ trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
     * Check the lost accesses to see if the access is there
     * Evaluate sub-expressions safely to ensure that a missing chunk will not cause the evaluation to silently abort
     */
-  protected def safeArgEval(loc: LocationAccess, q: SiliconAbductionQuestion)(Q: (State, Option[Seq[Term]], Verifier) => VerificationResult): VerificationResult = {
+  protected def safeArgEval(loc: LocationAccess, q: AbductionQuestion)(Q: (State, Option[Seq[Term]], Verifier) => VerificationResult): VerificationResult = {
 
     // TODO Currently we assume only one arg, which may be wrong for arbitrary predicates
     val arg = loc match {
@@ -62,7 +60,7 @@ trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
     }
   }
 
-  protected def checkChunk(loc: LocationAccess, q: SiliconAbductionQuestion)(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
+  protected def checkChunk(loc: LocationAccess, q: AbductionQuestion)(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
     safeArgEval(loc, q) { (s2, args, v2) =>
       args match {
         case Some(arg) =>
@@ -75,7 +73,7 @@ trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
     }
   }
 
-  protected def unfoldPredicate(q: SiliconAbductionQuestion, rec: Exp, p: Exp)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  protected def unfoldPredicate(q: AbductionQuestion, rec: Exp, p: Exp)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
 
     val predicate = q.s.program.predicates.head
     val pa = abductionUtils.getPredicate(q.s.program, rec, p)
@@ -93,27 +91,33 @@ trait AbductionRule[T] extends BiAbductionRule[SiliconAbductionQuestion, T] {
   * Covers the rules pred-remove and acc-remove
   * Remove predicate and fields accesses which are both in the goal and in the current state
   */
-object AbductionRemove extends AbductionRule[Map[Exp, BasicChunk]] {
+object AbductionRemove extends AbductionRule {
 
-  override def check(q: SiliconAbductionQuestion)(Q: Option[Map[Exp, BasicChunk]] => VerificationResult): VerificationResult = {
-
-    val accs = q.goal.collect { case e: AccessPredicate => e }
-
-    accs match {
-      case Seq() => Q(None)
-      case AccessPredicate(loc: LocationAccess, _) :: accs2 =>
+  // TODO we should also remove magic wands, so all access predicates
+  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
+    val acc = q.goal.collectFirst {
+      case e: FieldAccessPredicate => e
+      case e: PredicateAccessPredicate => e
+    }
+    acc match {
+      case None => Q(None)
+      case Some(g@AccessPredicate(loc: LocationAccess, _)) =>
+        val g1 = q.goal.filterNot(g == _)
         checkChunk(loc, q) {
-          case Some(c) => Q(Some(Map(accs.head -> c)))
-          case None => check(q.copy(goal = accs2))(Q)
+          case Some(c) =>
+            consumeChunks(Seq(c), q.copy(goal = g1))(q2 => Q(Some(q2)))
+          case None => apply(q.copy(goal = g1)) {
+            case Some(q2) => Q(Some(q2.copy(goal = g +: q2.goal)))
+            case None => Q(None)
+          }
         }
-      case _ => check(q.copy(goal = accs.tail))(Q)
     }
   }
 
   /**
     * This will crash if the chunks do not exist. This is by design. Only call this if you are sure that the chunks exist.
     */
-  private def consumeChunks(chunks: Seq[BasicChunk], q: SiliconAbductionQuestion)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
+  private def consumeChunks(chunks: Seq[BasicChunk], q: AbductionQuestion)(Q: AbductionQuestion => VerificationResult): VerificationResult = {
     chunks match {
       case Seq() => Q(q)
       case c :: cs =>
@@ -126,39 +130,37 @@ object AbductionRemove extends AbductionRule[Map[Exp, BasicChunk]] {
     }
   }
 
-  override def apply(q: SiliconAbductionQuestion, inst: Map[Exp, BasicChunk])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    val g1 = q.goal.filterNot(inst.contains)
-    consumeChunks(inst.values.toSeq, q.copy(goal = g1))(Q)
-  }
 }
 
 /**
   * Covers the rule fold-base, which removes a predicate instance from the goal if its base case is met
   */
-object AbductionListFoldBase extends AbductionRule[PredicateAccessPredicate] {
+object AbductionListFoldBase extends AbductionRule {
 
-  override protected def check(q: SiliconAbductionQuestion)(Q: Option[PredicateAccessPredicate] => VerificationResult): VerificationResult = {
-    q.goal match {
-      case Seq() => Q(None)
-      case (a: PredicateAccessPredicate) :: as =>
+  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
+    val preds = q.goal.collectFirst { case e: PredicateAccessPredicate => e }
+    preds match {
+      case None => Q(None)
+      case Some(a: PredicateAccessPredicate) =>
+        val g1 = q.goal.filterNot(_ == a)
         safeArgEval(a.loc, q) {
           case (s1, Some(args), v1) =>
             if (v1.decider.check(terms.BuiltinEquals(args.head, terms.Null), Verifier.config.checkTimeout())) {
-              Q(Some(a))
+              val fold = Fold(a)()
+              // TODO Do we have to remove the path condition? How do we do this? Havoc/exhale?
+              Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold)))
             } else {
-              check(q.copy(v = v1, s = s1, goal = as))(Q)
+              apply(q.copy(goal = g1)) {
+                case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
+                case None => Q(None)
+              }
             }
-          case (s1, None, v1) => check(q.copy(v = v1, s = s1, goal = as))(Q)
+          case (_, None, _) => apply(q.copy(goal = g1)) {
+            case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
+            case None => Q(None)
+          }
         }
-      case _ => check(q.copy(goal = q.goal.tail))(Q)
     }
-  }
-
-  override protected def apply(q: SiliconAbductionQuestion, inst: PredicateAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    val g1 = q.goal.filterNot(_ == inst)
-    val fold = Fold(inst)()
-    // TODO Do we have to remove the path condition? How do we do this? Havoc/exhale?
-    Q(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold))
   }
 }
 
@@ -168,93 +170,86 @@ object AbductionListFoldBase extends AbductionRule[PredicateAccessPredicate] {
 
 // We need to add the "old" chunks to the var matching?
 // Or do var matching in the context of the current state vs the old state? If so then maybe we do want goals/results as chunks?
-object AbductionListFold extends AbductionRule[PredicateAccessPredicate] {
+object AbductionListFold extends AbductionRule {
 
-  override protected def check(q: SiliconAbductionQuestion)(Q: Option[PredicateAccessPredicate] => VerificationResult): VerificationResult = {
-    q.goal match {
-      case Seq() => Q(None)
-      case (a: PredicateAccessPredicate) :: as =>
+  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
+    val preds = q.goal.collectFirst { case e: PredicateAccessPredicate => e }
+    preds match {
+      case None => Q(None)
+      case Some(a: PredicateAccessPredicate) =>
+        val g1 = q.goal.filterNot(_ == a)
         val next = abductionUtils.getNextAccess(q.s.program, a.loc.args.head, a.perm)
         checkChunk(next.loc, q) {
-          case Some(_) => Q(Some(a))
-          case None => check(q.copy(goal = as))(Q)
+          case Some(_) =>
+            val headNext = abductionUtils.getNextAccess(q.s.program, a.loc.args.head, a.perm)
+            val nextList = abductionUtils.getPredicate(q.s.program, headNext.loc, a.perm)
+            val g1: Seq[Exp] = q.goal.filterNot(_ == a) :+ nextList
+            val fold = Fold(a)()
+            consumer.consume(q.s, headNext, pve, q.v) { (s1, snap, v1) =>
+              val lost = q.lostAccesses + (headNext.loc -> SortWrapper(snap, sorts.Ref))
+              Q(Some(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost)))
+            }
+          case None => apply(q.copy(goal = g1)) {
+            case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
+            case None => Q(None)
+          }
         }
-      case _ => check(q.copy(goal = q.goal.tail))(Q)
-    }
-  }
-
-  override protected def apply(q: SiliconAbductionQuestion, inst: PredicateAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    val headNext = abductionUtils.getNextAccess(q.s.program, inst.loc.args.head, inst.perm)
-    val nextList = abductionUtils.getPredicate(q.s.program, headNext.loc, inst.perm)
-    val g1: Seq[Exp] = q.goal.filterNot(_ == inst) :+ nextList
-
-    val fold = Fold(inst)()
-    consumer.consume(q.s, headNext, pve, q.v) { (s1, snap, v1) =>
-      val lost = q.lostAccesses + (headNext.loc -> SortWrapper(snap, sorts.Ref))
-      Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost))
     }
   }
 }
 
 
-object AbductionListUnfold extends AbductionRule[FieldAccessPredicate] {
+object AbductionListUnfold extends AbductionRule {
 
-  override protected def check(q: SiliconAbductionQuestion)(Q: Option[FieldAccessPredicate] => VerificationResult): VerificationResult = {
-
-    q.goal match {
-      case Seq() => Q(None)
-      case (a: FieldAccessPredicate) :: as =>
+  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
+    val acc = q.goal.collectFirst { case e: FieldAccessPredicate => e }
+    acc match {
+      case None => Q(None)
+      case Some(a: FieldAccessPredicate) =>
+        val g1 = q.goal.filterNot(a == _)
         val pred = abductionUtils.getPredicate(q.s.program, a.loc.rcv, a.perm)
         checkChunk(pred.loc, q) {
-          case Some(_) => Q(Some(a))
-          case None => check(q.copy(goal = as))(Q)
+          case Some(_) =>
+            val unfold = Unfold(abductionUtils.getPredicate(q.s.program, a.loc.rcv, a.perm))()
+            val nNl = NeCmp(a.loc.rcv, NullLit()())()
+            eval(q.s, nNl, pve, q.v) { case (s1, arg, v1) => {
+              val isNl = q.v.decider.check(arg, Verifier.config.checkTimeout())
+
+              // Add x != null to result if it does not hold
+              val r1 = if (isNl) q.foundState else q.foundState :+ nNl
+
+              // Exchange list(x) with list(x.next) in the state
+              // Unfold
+              unfoldPredicate(q, a.loc.rcv, a.perm) { (s1, v1) =>
+
+                // Add x != null to path condition TODO maybe do this first?
+                produce(s1, freshSnap, nNl, pve, v1)((s2, v2) => {
+                  v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+
+                  // Remove the access chunk
+                  consumer.consume(s2, a, pve, v2)((s3, snap, v3) => {
+                    val lost = q.lostAccesses + (a.loc -> SortWrapper(snap, sorts.Ref))
+                    Q(Some(q.copy(s = s3, v = v3, goal = g1, foundState = r1, foundStmts = q.foundStmts :+ unfold, lostAccesses = lost)))
+                  })
+                })
+              }
+            }
+            }
+          case None => apply(q.copy(goal = g1)) {
+            case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
+            case None => Q(None)
+          }
         }
-      case _ => check(q.copy(goal = q.goal.tail))(Q)
-    }
-  }
-
-
-  override protected def apply(q: SiliconAbductionQuestion, inst: FieldAccessPredicate)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-
-    // Remove access from goal
-    val g1 = q.goal.filterNot(_ == inst)
-
-    val unfold = Unfold(abductionUtils.getPredicate(q.s.program, inst.loc.rcv, inst.perm))()
-
-
-    val nNl = NeCmp(inst.loc.rcv, NullLit()())()
-    eval(q.s, nNl, pve, q.v) { case (s1, arg, v1) => {
-      val isNl = q.v.decider.check(arg, Verifier.config.checkTimeout())
-      // Add x != null to result if it does not hold
-      val r1 = if (isNl) q.foundState else q.foundState :+ nNl
-
-      // Exchange list(x) with list(x.next) in the state
-      // Unfold
-      unfoldPredicate(q, inst.loc.rcv, inst.perm) { (s1, v1) =>
-
-        // Add x != null to path condition TODO maybe do this first?
-        produce(s1, freshSnap, nNl, pve, v1)((s2, v2) => {
-          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-
-          // Remove the access chunk
-          consumer.consume(s2, inst, pve, v2)((s3, snap, v3) => {
-            val lost = q.lostAccesses + (inst.loc -> SortWrapper(snap, sorts.Ref))
-            Q(q.copy(s = s3, v = v3, goal = g1, foundState = r1, foundStmts = q.foundStmts :+ unfold, lostAccesses = lost))
-          })
-        })
-      }
-    }
     }
   }
 }
 
-object AbductionApply extends AbductionRule[MagicWand] {
+object AbductionApply extends AbductionRule {
 
-  override protected def check(q: SiliconAbductionQuestion)(Q: Option[MagicWand] => VerificationResult): VerificationResult = {
-
-    q.goal match {
-      case Seq() => Q(None)
-      case g :: gs =>
+  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
+    q.goal.headOption match {
+      case None => Q(None)
+      case Some(g) =>
         val goalWand = MagicWand(TrueLit()(), g)()
         val goalStructure = goalWand.structure(q.s.program)
         // We drop the first element, because it is the true lit of the lhs
@@ -279,53 +274,45 @@ object AbductionApply extends AbductionRule[MagicWand] {
               }
           }.collectFirst { case c if c.isDefined => c.get }
           matchingWand match {
-            case Some(wand) => Q(Some(wand))
-            case None => check(q.copy(goal = gs))(Q)
+            case Some(wand) =>
+              val g1 = q.goal.filterNot(_ == wand.right) :+ wand.left
+              consumer.consume(q.s, wand, pve, q.v)((s1, _, v1) => {
+                Q(Some(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ Apply(wand)())))
+              })
+            case None =>
+              val g1 = q.goal.filterNot(_ == g)
+              apply(q.copy(goal = g1)) {
+                case Some(q2) => Q(Some(q2.copy(goal = g +: q2.goal)))
+                case None => Q(None)
+              }
           }
-        })
-    }
-  }
-
-  override protected def apply(q: SiliconAbductionQuestion, inst: (MagicWand))(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    inst match {
-      case wand =>
-        val g1 = q.goal.filterNot(_ == wand.right) :+ wand.left
-        consumer.consume(q.s, wand, pve, q.v)((s1, _, v1) => {
-          Q(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ Apply(wand)()))
         })
     }
   }
 }
 
-object AbductionPackage extends AbductionRule[MagicWand] {
+object AbductionPackage extends AbductionRule {
 
-  override protected def check(q: SiliconAbductionQuestion)(Q: Option[MagicWand] => VerificationResult): VerificationResult = {
-    Q(q.goal.collectFirst { case a: MagicWand => a })
-  }
+  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
+    q.goal.collectFirst { case a: MagicWand => a } match {
+      case None => Q(None)
+      case Some(wand) =>
+        producer.produce(q.s, freshSnap, wand.left, pve, q.v)((s1, v1) => {
 
-  override protected def apply(q: SiliconAbductionQuestion, inst: MagicWand)(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
+          val packQ = q.copy(s = s1, v = v1, goal = Seq(wand.right))
+          val packRes = AbductionApplier.apply(packQ)
 
+          // TODO nklose we should instead not trigger
+          if (packRes.goal.nonEmpty) {
+            throw new Exception("Could not find proof script for package")
+          }
 
-    // We find the proof script later on, so we leave it empty here
-    // TODO we have to separate proof script statements from normal statements
-    // Can we solve a separate abduction question with only the rhs in the goal but the otherwise the same state?
-
-
-    producer.produce(q.s, freshSnap, inst.left, pve, q.v)((s1, v1) => {
-
-      val packQ = q.copy(s = s1, v = v1, goal = Seq(inst.right))
-      val packRes = AbductionApplier.apply(packQ)
-
-      // TODO nklose we should instead not trigger
-      if(packRes.goal.nonEmpty){
-        throw new Exception("Could not find proof script for package")
-      }
-
-      val g1 = q.goal.filterNot(_ == inst)
-      val stmts = q.foundStmts :+ Package(inst, Seqn(packRes.foundStmts.reverse, Seq())())()
-      val pres = q.foundState ++ packRes.foundState
-      Q(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts, foundState = pres))
-    })
+          val g1 = q.goal.filterNot(_ == wand)
+          val stmts = q.foundStmts :+ Package(wand, Seqn(packRes.foundStmts.reverse, Seq())())()
+          val pres = q.foundState ++ packRes.foundState
+          Q(Some(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts, foundState = pres)))
+        })
+    }
   }
 }
 
@@ -335,21 +322,19 @@ object AbductionPackage extends AbductionRule[MagicWand] {
   */
 
 // TODO Do we want to add path conditions about the values of fields as well? We do this for unfolds
-object AbductionMissing extends AbductionRule[Seq[AccessPredicate]] {
+object AbductionMissing extends AbductionRule {
 
-  override def check(q: SiliconAbductionQuestion)(Q: Option[Seq[AccessPredicate]] => VerificationResult): VerificationResult = {
+  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
     val accs = q.goal.collect { case e: AccessPredicate => e }
     if (accs.isEmpty) {
       Q(None)
     } else {
-      Q(Some(accs))
+      val g1 = q.goal.filterNot(accs.contains)
+      Q(Some(q.copy(goal = g1, foundState = q.foundState ++ accs)))
     }
   }
 
-  override protected def apply(q: SiliconAbductionQuestion, inst: Seq[AccessPredicate])(Q: SiliconAbductionQuestion => VerificationResult): VerificationResult = {
-    val g1 = q.goal.filterNot(inst.contains)
-    Q(q.copy(goal = g1, foundState = q.foundState ++ inst))
-  }
+  //override protected def instanceString(inst: Seq[AccessPredicate]): String = inst.mkString(" && ")
 
-  override protected def instanceString(inst: Seq[AccessPredicate]): String = inst.mkString(" && ")
+
 }

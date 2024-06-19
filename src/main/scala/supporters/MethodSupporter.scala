@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.biabduction.{AbductionSuccess, BiAbductionSolver, FramingSuccess, abductionUtils}
+import viper.silicon.biabduction.{BiAbductionSolver, abductionUtils}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
@@ -19,7 +19,7 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.{Map, toMap}
 import viper.silver.ast
-import viper.silver.ast.Method
+import viper.silver.ast.VirtualPosition
 import viper.silver.components.StatefulComponent
 import viper.silver.reporter.AnnotationWarning
 import viper.silver.verifier.DummyNode
@@ -122,8 +122,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               executionFlowController.locally(s2a, v2)((s3, v3) => {
                 exec(s3, body, v3) { (s4, v4) => {
                   // Attempt to consume postconditions
-                  consumes(s4, posts, postViolated, v4, Some(method.pos)) ((s5: State, _: Term, v5: Verifier) => {
+                  val postPos = VirtualPosition("At the end of method " + method.name)
+                  consumes(s4, posts, postViolated, v4, Some(postPos)) ((s5: State, _: Term, v5: Verifier) => {
                     // Generate new postconditions from the state left over
+                    // TODO nklose This fails to generate statements if we do abstraction
                     val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
                     val vars = s5.g.values.collect { case (v5, t) if formals.contains(v5) => (v5, t) }
                     val newPosts = BiAbductionSolver.solveFraming(s5, v5, vars, method.pos)
@@ -156,7 +158,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
             }
             //
             val posts = abductionUtils.getFramingSuccesses(suc).flatMap(_.posts).distinct
-            // TODO nklose ignore posts without positions (these are artifacts of invariant inference)
             if(posts.nonEmpty){
               println("Generated postconditions: " + posts.mkString(" && "))
             }

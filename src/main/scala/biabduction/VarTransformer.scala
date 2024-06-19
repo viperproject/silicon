@@ -40,7 +40,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
       case None => currentMatches
       case Some(c) =>
         val newExp = FieldAccess(currentMatches(c.args.head), abductionUtils.getField(c.id, s.program))()
-        val newMatches = currentMatches ++ remainingTerms.collect{ case t if v.decider.check(BuiltinEquals(t, c.snap), Verifier.config.checkTimeout()) => t -> newExp }
+        val newMatches = currentMatches ++ remainingTerms.collect{ case t if t.sort == c.snap.sort && v.decider.check(BuiltinEquals(t, c.snap), Verifier.config.checkTimeout()) => t -> newExp }
         resolveChunks(newMatches, remainingChunks.filter(_ != c), remainingTerms.filter(!newMatches.contains(_)))
     }
   }
@@ -98,7 +98,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
                 case nfa: FieldAccess => nfa
 
                 // Due to heap representation this can sometimes happen
-                case NullLit() =>
+                case NullLit() | LocalVar(_, _) =>
                   val rvcExp = transformExp(target)
                   FieldAccess(rvcExp.get, field)()
               }
