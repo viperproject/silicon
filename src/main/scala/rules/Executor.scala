@@ -202,8 +202,6 @@ object executor extends ExecutionRules {
     exec(s, graph.entry, cfg.Kind.Normal, v, None)(Q)
   }
 
-  // TODO nklose I think we do want to recurse and just add an optional parameter with additional invariants that we can use in the recursion without having
-  // to entirely rebuild the program
   def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock])
           (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
@@ -252,13 +250,20 @@ object executor extends ExecutionRules {
             val edgeConditions = sortedEdges.collect { case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition }
               .distinct
 
-            executionFlowController.locallyWithResult[BiAbductionResult](s, v)((sAbd, vAbd, R) =>
-              LoopInvariantSolver.solveLoopInvariants(sAbd, vAbd, sAbd.g.values.keys.toSeq, block, otherEdges, joinPoint)(R)
-            ) {
+            executionFlowController.locally(s, v) ((sAbd, vAbd) =>
+              LoopInvariantSolver.solveLoopInvariants(sAbd, vAbd, sAbd.g.values.keys.toSeq, block, otherEdges, joinPoint){
+                case invRes: BiAbductionFailure => Failure(Internal(reason = InternalReason(DummyNode, "Failed to find loop invariants")))
+                case invRes: LoopInvariantSuccess => Success(Some(invRes))
+              }
+            ) match {
 
-              case BiAbductionFailure(_, _) => Failure(Internal(reason = InternalReason(DummyNode, "Failed to find loop invariants")))
+              case f: Failure => f
 
-              case LoopInvariantSuccess(_, _, newInvs, _) => {
+              case nfr: NonFatalResult => {
+
+                val newInvs = abductionUtils.getInvariantSuccesses(nfr) match {
+                  case Seq(invSuc) => invSuc.invs
+                }
                 val foundInvs = newInvs.distinct
                 val invs = existingInvs ++ foundInvs
 

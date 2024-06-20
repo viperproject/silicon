@@ -94,7 +94,7 @@ object LoopInvariantSolver {
             val newPreAbstraction = BiAbductionSolver.solveAbstraction(sPreAbd, vPreAbd, q1.preAbstraction ++ newPreState)
 
 
-            val res = executor.follows(sPreAbd, loopEdges, pveLam, vPreAbd, joinPoint)((sPost, vPost) => {
+            executor.follows(sPreAbd, loopEdges, pveLam, vPreAbd, joinPoint)((sPost, vPost) => {
 
               // Values of the variables at the end of loop in terms of the beginning of the loop
               val relVarTrans = VarTransformer(sPost, vPost, sPreAbd.g.values, sPreAbd.h)
@@ -150,15 +150,6 @@ object LoopInvariantSolver {
                   postAbstraction = postAbstraction, absValues = newAbsPostValues), iteration = iteration + 1)(Q)
               }
             })
-
-            res match {
-              case res: NonFatalResult =>
-                abductionUtils.getInvariantSuccesses(res) match {
-                  case Seq(invSuc) => Q(invSuc)
-                  case Seq() => Q(BiAbductionFailure(sPreAbd, vPreAbd))
-                }
-              case _ => Q(BiAbductionFailure(sPreAbd, vPreAbd))
-            }
           }
       })
   }
