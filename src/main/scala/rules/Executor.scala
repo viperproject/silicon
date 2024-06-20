@@ -272,9 +272,9 @@ object executor extends ExecutionRules {
 
                 val invSuc = if (newInvs.isEmpty) {
                   Success()
-                } else Success(Some(LoopInvariantSuccess(s, v, foundInvs, otherEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition.pos)))
+                } else {Success(Some(LoopInvariantSuccess(s, v, foundInvs, otherEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition.pos)))}
 
-                (invSuc &&
+                (invSuc combine
 
                   (executionFlowController.locally(sBody, v)((s0, v0) => {
                     v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")

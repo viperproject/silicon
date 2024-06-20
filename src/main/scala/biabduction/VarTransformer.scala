@@ -49,6 +49,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
 
     t match {
       case t if matches.contains(t) => matches.get(t)
+      case terms.FractionPermLiteral(r) => Some(FractionalPerm(IntLit(r.numerator)(), IntLit(r.denominator)())())
       case terms.FullPerm => Some(FullPerm()())
       case terms.Null => Some(NullLit()())
       case _ => None
