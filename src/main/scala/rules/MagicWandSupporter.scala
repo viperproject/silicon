@@ -219,7 +219,17 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
     // If the snapRhs is a FieldValueFunction or PredicateSnapFunction, substitute the snapRhs with the MWSFApply definition
     val updatedPcs = snapRhs match {
-      // Rewrite based on test11 in QPFields.vpr
+      /*
+       * Rewrite based on test11 in QPFields.vpr
+       * ---------------------------------------
+       * Assume we have a mwsf and fvf with following definition:
+       *   ∀ t: Snap :: mwsf.apply(t) == fvf
+       * and the path condition:
+       *   ∀ r: Ref :: cond ==> fvf.lookup(r) == rhs
+       * then we can add the path condition to:
+       *   ∀ r: Ref, t: Snap :: cond ==> mwsf.apply(t).lookup(r) == rhs
+       */
+      // TODO Extend this for cases where the snapRhs is a binary tree
       case SortWrapper(app: App, _) if
         app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] ||
           app.applicable.resultSort.isInstanceOf[sorts.PredicateSnapFunction] =>
@@ -248,7 +258,16 @@ object magicWandSupporter extends SymbolicExecutionRules {
           case _ => Vector.empty
         }
 
-      // Rewrite for test9 in QPFields.vpr
+      /*
+       * Rewrite based on test9 in QPFields.vpr
+       * ---------------------------------------
+       * Assume we have a mwsf, a fvf, and some reference ref with following definition:
+       *   ∀ t: Snap :: mwsf.apply(t) == fvf.lookup(ref)
+       * and the path condition:
+       *   cond ==> fvf.lookup(ref) == rhs
+       * then we can add the path condition to:
+       *   ∀ t: Snap :: cond ==> mwsf.apply(t) == rhs
+       */
       case SortWrapper(lookup, to) if
         (lookup.isInstanceOf[Lookup] &&
           lookup.asInstanceOf[Lookup].fvf.isInstanceOf[App] &&
@@ -264,9 +283,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         def rewriteTerms(cond: Term, terms: Iterable[Term]): Vector[Quantification] = {
           val newTerms = terms.map {
-            case BuiltinEquals(Lookup(_, fvf, _), rhs) if fvf == app && rhs.contains(freshSnapRoot) =>
+            case BuiltinEquals(Lookup(_, fvf, at), rhs)
+              if fvf == app && rhs.contains(freshSnapRoot) && lookup.isInstanceOf[Lookup] && lookup.asInstanceOf[Lookup].at == at =>
               Some(BuiltinEquals(mwsfApply, SortWrapper(rhs, to)))
-            case BuiltinEquals(PredicateLookup(_, psf, _), rhs) if psf == app && rhs.contains(freshSnapRoot) =>
+            case BuiltinEquals(PredicateLookup(_, psf, args), rhs)
+              if psf == app && rhs.contains(freshSnapRoot) && lookup.isInstanceOf[PredicateLookup] && lookup.asInstanceOf[PredicateLookup].args == args =>
               Some(BuiltinEquals(mwsfApply, SortWrapper(rhs, to)))
             case _ => None
           }.filter(_.isDefined).map(_.get)
