@@ -274,91 +274,91 @@ object magicWandSupporter extends SymbolicExecutionRules {
       }(_ => true))
     val quantifiers = quantifiedVars.map(t => Var(t.applicable.id, t.applicable.resultSort, false))
 
-    // If the `snapRhs` is a FVF or PSF, substitute the snapRhs with the MWSFApply definition
-    val updatedPcs = snapRhsUpdated match {
-      /*
-       * Rewrite based on test11 in QPFields.vpr
-       * ---------------------------------------
-       * Assume we have a mwsf and fvf with following definition:
-       *   ∀ t: Snap :: cond1 ==> mwsf.apply(t) == fvf
-       * and the path condition is part of cond1:
-       *   ∀ r: Ref :: cond2 ==> fvf.lookup(r) == rhs
-       * then we can add the path condition to:
-       *   ∀ r: Ref, t: Snap :: cond1 ==> (mwsf.apply(t) == fvf && cond2 ==> mwsf.apply(t).lookup(r) == rhs)
-       */
-      // TODO Extend this for cases where the snapRhs is a binary tree
-      case SortWrapper(app: App, _) if
-        app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] ||
-          app.applicable.resultSort.isInstanceOf[sorts.PredicateSnapFunction] =>
+    /*
+     * Rewrite based on test11 in QPFields.vpr
+     * ---------------------------------------
+     * Assume we have a MWSF and FVF with the following definition:
+     *   ∀ t: Snap, freshSMs :: cond1 ==> mwsf.apply(t) == fvf
+     * and the following path condition that is part of cond1:
+     *   ∀ r: Ref :: cond2 ==> fvf.lookup(r) == rhs
+     * Then we create the path condition:
+     *   ∀ r: Ref, t: Snap, freshSMs :: cond1 ==> (cond2 ==> mwsf.apply(t).lookup(r) == rhs)
+     */
+    def simplifyQuantification(snap: Term, to: Term): Vector[Term] = {
+      snap match {
+        case SortWrapper(app: App, _) if
+          app.applicable.resultSort.isInstanceOf[sorts.FieldValueFunction] ||
+            app.applicable.resultSort.isInstanceOf[sorts.PredicateSnapFunction] =>
 
-        def rewriteTerms(r: Var, cond: Term, terms: Iterable[Term]): Vector[Term] = {
-          val newTerms = terms.collect {
-            case BuiltinEquals(Lookup(field, fvf, at), rhs) if r.sort == sorts.Ref && fvf == app && r == at =>
-              val newLookup = Lookup(field, SortWrapper(mwsfApply, fvf.sort), at)
-              BuiltinEquals(newLookup, rhs)
-            case BuiltinEquals(PredicateLookup(predname, psf, args), rhs) if r.sort == sorts.Snap && psf == app && args == List(r) =>
-              val newLookup = PredicateLookup(predname, SortWrapper(mwsfApply, psf.sort), args)
-              BuiltinEquals(newLookup, rhs)
+          def rewriteTerms(r: Var, cond: Term, terms: Iterable[Term]): Vector[Term] = {
+            val newTerms = terms.collect {
+              case BuiltinEquals(Lookup(field, fvf, at), rhs) if r.sort == sorts.Ref && fvf == app && r == at =>
+                val newLookup = Lookup(field, SortWrapper(mwsfApply, fvf.sort), at)
+                BuiltinEquals(newLookup, rhs)
+              case BuiltinEquals(PredicateLookup(predname, psf, args), rhs) if r.sort == sorts.Snap && psf == app && args == List(r) =>
+                val newLookup = PredicateLookup(predname, SortWrapper(mwsfApply, psf.sort), args)
+                BuiltinEquals(newLookup, rhs)
+            }
+            if (newTerms.isEmpty) return Vector.empty
+            Vector(Forall(
+              quantifiers,
+              Implies(And(cond +: pcsWithQuantifiedVars), And(newTerms)),
+              newTerms.map { case BuiltinEquals(lhs, _) => Trigger(lhs) }.toSeq
+            ))
           }
-          if (newTerms.isEmpty) return Vector.empty
-          // Vector(Implies(cond, And(newTerms)))
-          Vector(Forall(
-            quantifiers,
-            Implies(And(cond +: pcsWithQuantifiedVars), And(newTerms)),
-            newTerms.map { case BuiltinEquals(lhs, _) => Trigger(lhs) }.toSeq
-          ))
-        }
 
-        conditionalizedPcs.flatMap {
-          case Quantification(Forall, Seq(r), Implies(cond, And(terms)), _, _, _, _) => rewriteTerms(r, cond, terms)
-          case Quantification(Forall, Seq(r), Implies(cond, term), _, _, _, _) => rewriteTerms(r, cond, Seq(term))
-          case _ => Vector.empty
-        }
-
-      /*
-       * Rewrite based on test9 in QPFields.vpr
-       * ---------------------------------------
-       * Assume we have a mwsf, a fvf, and some reference ref with following definition:
-       *   ∀ t: Snap :: mwsf.apply(t) == fvf.lookup(ref)
-       * and the path condition:
-       *   cond ==> fvf.lookup(ref) == rhs
-       * then we can add the path condition to:
-       *   ∀ t: Snap :: cond ==> mwsf.apply(t) == rhs
-       */
-      // case SortWrapper(lookup, to) if
-      //   (lookup.isInstanceOf[Lookup] &&
-      //     lookup.asInstanceOf[Lookup].fvf.isInstanceOf[App] &&
-      //     lookup.asInstanceOf[Lookup].fvf.asInstanceOf[App].applicable.resultSort.isInstanceOf[sorts.FieldValueFunction]) ||
-      //     (lookup.isInstanceOf[PredicateLookup] &&
-      //       lookup.asInstanceOf[PredicateLookup].psf.isInstanceOf[App] &&
-      //       lookup.asInstanceOf[PredicateLookup].psf.asInstanceOf[App].applicable.resultSort.isInstanceOf[sorts.PredicateSnapFunction]) =>
-      //
-      //   val app = lookup match {
-      //     case Lookup(_, fvf, _) => fvf
-      //     case PredicateLookup(_, psf, _) => psf
-      //   }
-      //
-      //   def rewriteTerms(cond: Term, terms: Iterable[Term]): Vector[Quantification] = {
-      //     val newTerms = terms.collect {
-      //       case BuiltinEquals(Lookup(_, fvf, at), rhs)
-      //         if fvf == app && rhs.contains(freshSnapRoot) && lookup.isInstanceOf[Lookup] && lookup.asInstanceOf[Lookup].at == at =>
-      //         BuiltinEquals(mwsfApply, SortWrapper(rhs, to))
-      //       case BuiltinEquals(PredicateLookup(_, psf, args), rhs)
-      //         if psf == app && rhs.contains(freshSnapRoot) /* && lookup.isInstanceOf[PredicateLookup] && lookup.asInstanceOf[PredicateLookup].args == args */ =>
-      //         BuiltinEquals(mwsfApply, SortWrapper(rhs, to))
-      //     }
-      //     if (newTerms.isEmpty) return Vector.empty
-      //     Vector(Forall(freshSnapRoot, Implies(cond, And(newTerms)), Trigger(mwsfApply)))
-      //   }
-      //
-      //   conditionalizedPcs.flatMap {
-      //     case Implies(cond, And(terms)) => rewriteTerms(cond, terms)
-      //     case Implies(cond, eq: BuiltinEquals) => rewriteTerms(cond, Seq(eq))
-      //     case _ => Vector.empty
-      //   }
-
-      case _ => Vector.empty
+          conditionalizedPcs.flatMap {
+            case Quantification(Forall, Seq(r), Implies(cond, And(terms)), _, _, _, _) => rewriteTerms(r, cond, terms)
+            case Quantification(Forall, Seq(r), Implies(cond, term), _, _, _, _) => rewriteTerms(r, cond, Seq(term))
+            case _ => Vector.empty
+          }
+        case Combine(snap1, snap2) => simplifyQuantification(snap1, First(to)) ++ simplifyQuantification(snap2, Second(to))
+        case _ => Vector.empty
+      }
     }
+    val pcsUpdated = simplifyQuantification(snapRhsUpdated, mwsfApply)
+
+    /*
+     * Rewrite based on test9 in QPFields.vpr
+     * ---------------------------------------
+     * Assume we have a mwsf, a fvf, and some reference ref with following definition:
+     *   ∀ t: Snap :: mwsf.apply(t) == fvf.lookup(ref)
+     * and the path condition:
+     *   cond ==> fvf.lookup(ref) == rhs
+     * then we can add the path condition to:
+     *   ∀ t: Snap :: cond ==> mwsf.apply(t) == rhs
+     */
+    // case SortWrapper(lookup, to) if
+    //   (lookup.isInstanceOf[Lookup] &&
+    //     lookup.asInstanceOf[Lookup].fvf.isInstanceOf[App] &&
+    //     lookup.asInstanceOf[Lookup].fvf.asInstanceOf[App].applicable.resultSort.isInstanceOf[sorts.FieldValueFunction]) ||
+    //     (lookup.isInstanceOf[PredicateLookup] &&
+    //       lookup.asInstanceOf[PredicateLookup].psf.isInstanceOf[App] &&
+    //       lookup.asInstanceOf[PredicateLookup].psf.asInstanceOf[App].applicable.resultSort.isInstanceOf[sorts.PredicateSnapFunction]) =>
+    //
+    //   val app = lookup match {
+    //     case Lookup(_, fvf, _) => fvf
+    //     case PredicateLookup(_, psf, _) => psf
+    //   }
+    //
+    //   def rewriteTerms(cond: Term, terms: Iterable[Term]): Vector[Quantification] = {
+    //     val newTerms = terms.collect {
+    //       case BuiltinEquals(Lookup(_, fvf, at), rhs)
+    //         if fvf == app && rhs.contains(freshSnapRoot) && lookup.isInstanceOf[Lookup] && lookup.asInstanceOf[Lookup].at == at =>
+    //         BuiltinEquals(mwsfApply, SortWrapper(rhs, to))
+    //       case BuiltinEquals(PredicateLookup(_, psf, args), rhs)
+    //         if psf == app && rhs.contains(freshSnapRoot) /* && lookup.isInstanceOf[PredicateLookup] && lookup.asInstanceOf[PredicateLookup].args == args */ =>
+    //         BuiltinEquals(mwsfApply, SortWrapper(rhs, to))
+    //     }
+    //     if (newTerms.isEmpty) return Vector.empty
+    //     Vector(Forall(freshSnapRoot, Implies(cond, And(newTerms)), Trigger(mwsfApply)))
+    //   }
+    //
+    //   conditionalizedPcs.flatMap {
+    //     case Implies(cond, And(terms)) => rewriteTerms(cond, terms)
+    //     case Implies(cond, eq: BuiltinEquals) => rewriteTerms(cond, Seq(eq))
+    //     case _ => Vector.empty
+    //   }
 
     // Combine all path conditions which include the freshSnapRoot and add it to the verifier's list of definitions
     val pcsQuantified = Forall(
@@ -372,7 +372,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     v1.decider.assumeDefinition(pcsQuantified)
 
     // Return the summarized path conditions
-    pcsWithoutQuantifiedVars ++ updatedPcs :+ pcsQuantified
+    pcsWithoutQuantifiedVars ++ pcsUpdated :+ pcsQuantified
   }
 
   /**
