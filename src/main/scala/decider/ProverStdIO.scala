@@ -457,7 +457,7 @@ abstract class ProverStdIO(uniqueId: String,
       if (warning) {
         val msg = s"Prover warning: $result"
         reporter report InternalWarningMessage(msg)
-        if (result.endsWith("pattern does not contain all quantified variables.")) logger info msg else logger warn msg
+        logger warn msg
       }
 
       // When `smt.qi.profile` is `true`, Z3 periodically reports the quantifier instantiations using the format
