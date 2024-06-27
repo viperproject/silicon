@@ -184,25 +184,25 @@ object magicWandSupporter extends SymbolicExecutionRules {
   }
 
   /**
-   * Partition path conditions into a set which include the freshSnapRoot and those which do not.
-   * Include the path conditions with the freshSnapRoot in the MWSF definition.
+   * Partition path conditions into a set which include the abstractLhs and those which do not.
+   * Include the path conditions with the abstractLhs in the MWSF definition.
    * It also takes care of special cases that include field value functions.
    *
-   * @param conservedPcs  Vector of path conditions which have been recorded during the execution of the proof script.
-   * @param freshSnapRoot Fresh variable that represents the snapshot of the wand's LHS.
-   * @param mwsf          MagicWandSnapFunction that is used to lookup the snapshot of the wand's RHS.
-   * @param snapRhs       Snapshot of the wand's RHS.
-   * @param v1            Verifier instance.
+   * @param conservedPcs Vector of path conditions which have been recorded during the execution of the proof script.
+   * @param abstractLhs  Fresh variable that represents the snapshot of the wand's LHS.
+   * @param mwsf         MagicWandSnapFunction that is used to lookup the snapshot of the wand's RHS.
+   * @param snapRhs      Snapshot of the wand's RHS.
+   * @param v1           Verifier instance.
    * @return Vector of conserved path conditions.
    */
   private def summarizeDefinitions(conservedPcs: Vector[RecordedPathConditions],
-                                   freshSnapRoot: Var,
+                                   abstractLhs: Var,
                                    mwsf: Var,
                                    snapRhs: Term,
-                                   imgFun: Function,
+                                   invFun: Function,
                                    functionsBeforePackaging: Set[FunctionDecl],
                                    v1: Verifier): Vector[Term] = {
-    val mwsfApply = MWSFApply(mwsf, freshSnapRoot)
+    val mwsfApply = MWSFApply(mwsf, abstractLhs)
     val freshSnapshotMaps = (v1.decider.freshFunctions -- functionsBeforePackaging)
       .filter(f => f.func.resultSort.isInstanceOf[sorts.FieldValueFunction] || f.func.resultSort.isInstanceOf[sorts.PredicateSnapFunction])
 
@@ -301,26 +301,26 @@ object magicWandSupporter extends SymbolicExecutionRules {
     val (updatedPcs, mwsfTerms) = fromSnapTree(snapRhsUpdated, mwsfApply, conditionalizedPcs)
 
     // Combine all variables that will be quantified over
-    // var quantifiedVars = freshSnapRoot +: newSnapshotMaps.toSeq
-    val quantifiedVars = freshSnapRoot +: newSnapshotMaps.filter(app => updatedPcs.exists(pcs => pcs.contains(app))).toSeq
+    val quantifiedVars = abstractLhs +: newSnapshotMaps.filter(app => updatedPcs.exists(pcs => pcs.contains(app))).toSeq
 
-    // Partition path conditions into a set which include the freshSnapRoot and those which do not
+    // Partition path conditions into a set which include the abstractLhs and those which do not
     var (pcsWithQuantifiedVars, pcsWithoutQuantifiedVars) = updatedPcs.partition(pcs => quantifiedVars.exists(qv => pcs.contains(qv)))
 
     // Remove forall quantifiers with the quantified variable in `quantifiedVars`
     pcsWithQuantifiedVars = pcsWithQuantifiedVars
       .map(_.transform {
-        case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v.equals(freshSnapRoot) => body
-      }(_ => true))
-    val quantifiers = quantifiedVars.map(t => Var(t.applicable.id, t.applicable.resultSort, false))
+        case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v.equals(abstractLhs) => body
+      }(_ => true)) ++ mwsfTerms
 
-    // Combine all path conditions which include the freshSnapRoot and add it to the verifier's list of definitions
+    // Add a definition for the inverse function only if it is used in the path conditions
+    if (pcsWithQuantifiedVars.exists(pcs => pcs.existsDefined { case App(f, _) if f == invFun =>})) {
+      pcsWithQuantifiedVars :+= BuiltinEquals(App(invFun, Seq(mwsfApply)), abstractLhs)
+    }
+
+    // Combine all path conditions which include the abstractLhs and add it to the verifier's list of definitions
     val pcsQuantified = Forall(
-      quantifiers,
-      Implies(
-        App(imgFun, Seq(freshSnapRoot)),
-        And(mwsfTerms ++ pcsWithQuantifiedVars)
-      ),
+      abstractLhs,
+      And(pcsWithQuantifiedVars),
       Trigger(mwsfApply)
     )
     v1.decider.assumeDefinition(pcsQuantified)
@@ -364,10 +364,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
     def appendToRecordedBranches(s5: State,
                                  ch: Chunk,
                                  pcs: RecordedPathConditions,
-                                 freshSnapRoot: Var,
+                                 abstractLhs: Var,
                                  mwsf: Var,
                                  snapRhs: Term,
-                                 imgFun: Function,
+                                 invFun: Function,
                                  functionsBeforePackaging: Set[FunctionDecl],
                                  v5: Verifier): VerificationResult = {
       assert(s5.conservedPcs.nonEmpty, s"Unexpected structure of s5.conservedPcs: ${s5.conservedPcs}")
@@ -376,7 +376,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // new permission and snapshot maps, which are in general necessary to proceed after the
       // package statement, e.g. to know which permissions have been consumed.
       // Here, we want to keep *only* the definitions, but no other path conditions.
-      val conservedPcs: Vector[Term] = summarizeDefinitions(s5.conservedPcs.head :+ pcs.definitionsOnly, freshSnapRoot, mwsf, snapRhs, imgFun, functionsBeforePackaging, v5)
+      val conservedPcs: Vector[Term] = summarizeDefinitions(s5.conservedPcs.head :+ pcs.definitionsOnly, abstractLhs, mwsf, snapRhs, invFun, functionsBeforePackaging, v5)
       val conservedPcsStack: Stack[Vector[RecordedPathConditions]] =
         s5.conservedPcs.tail match {
           case empty@Seq() => empty
@@ -398,15 +398,15 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }
 
     def createWandChunkAndRecordResults(s4: State,
-                                        freshSnapRoot: Var,
+                                        abstractLhs: Var,
                                         snapRhs: Term,
                                         functionsBeforePackaging: Set[FunctionDecl],
+                                        mwsf: Var,
+                                        invFun: Function,
                                         v4: Verifier)
                                        : VerificationResult = {
       val preMark = v4.decider.setPathConditionMark()
 
-      v4.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
-      val mwsf = v4.decider.fresh("mwsf", sorts.MagicWandSnapFunction)
       val imgFun = v4.decider.fresh("img", Seq(sorts.Snap), sorts.Bool)
 
       // If the wand is used as a quantified resource anywhere in the program
@@ -419,12 +419,12 @@ object magicWandSupporter extends SymbolicExecutionRules {
           v5.decider.prover.comment("Definitional axioms for singleton-SM's value")
           v5.decider.assumeDefinition(smValueDef)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
-          appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), freshSnapRoot, mwsf, snapRhs, imgFun, functionsBeforePackaging, v5)
+          appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), abstractLhs, mwsf, snapRhs, invFun, functionsBeforePackaging, v5)
         })
       } else {
         val wandSnapshot = MagicWandSnapshot((mwsf, imgFun))
         this.createChunk(s4, wand, wandSnapshot, pve, v4)((s5, ch, v5) => {
-          appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), freshSnapRoot, mwsf, snapRhs, imgFun, functionsBeforePackaging, v5)
+          appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), abstractLhs, mwsf, snapRhs, invFun, functionsBeforePackaging, v5)
         })
       }
     }
@@ -440,18 +440,23 @@ object magicWandSupporter extends SymbolicExecutionRules {
       recordPcs = true,
       parallelizeBranches = false)
 
+    v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
+    val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction)
+    val invFun = v.decider.fresh("inv", Seq(sorts.Snap), sorts.Snap)
+
     val tempResult = executionFlowController.locally(sEmp, v)((s1, v1) => {
       /* A snapshot (binary tree) will be constructed using First/Second datatypes,
        * that preserves the original root. The leafs of this tree will later appear
        * in the snapshot of the RHS at the appropriate places. Thus equating
-       * `freshSnapRoot` with the snapshot received from consuming the LHS when
+       * `abstractLhs` with the snapshot received from consuming the LHS when
        * applying the wand preserves values from the LHS into the RHS.
        */
-      val freshSnapRoot = freshSnap(sorts.Snap, v1)
+      val abstractLhs = freshSnap(sorts.Snap, v1)
+      val invSnap = App(invFun, Seq(MWSFApply(mwsf, abstractLhs)))
       val functionsBeforePackaging = v1.decider.freshFunctions
 
       // Produce the wand's LHS.
-      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
+      produce(s1.copy(conservingSnapshotGeneration = true), toSf(invSnap), wand.left, pve, v1)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
 
         /* Expected shape of reserveHeaps is either
@@ -486,7 +491,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           val s3 = sProofScript.copy(oldHeaps = s2.oldHeaps, reserveCfgs = sProofScript.reserveCfgs.tail)
           consume(s3, wand.right, pve, v3)((s4, snapRhs, v4) =>
-            createWandChunkAndRecordResults(s4, freshSnapRoot, snapRhs, functionsBeforePackaging, v4)
+            createWandChunkAndRecordResults(s4, abstractLhs, snapRhs, functionsBeforePackaging, mwsf, invFun, v4)
           )
         })
       })
@@ -497,7 +502,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
       val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
-      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v.decider.freshFunctions, v)
+      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v.decider.freshFunctions, mwsf, invFun, v)
     }
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedBranch) => {
@@ -551,9 +556,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // Convert snapWand to MWSF
         val mwsf = snapWand match {
-          case SortWrapper(mwsf: MagicWandSnapshot, _) =>
-            v.decider.assume(App(mwsf.imgFun, Seq(snapLhs)))
-            mwsf
+          case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.mwsf
           case SortWrapper(snapshot, _) => SortWrapper(snapshot, sorts.MagicWandSnapFunction)
           case _ => SortWrapper(snapWand, sorts.MagicWandSnapFunction)
         }
