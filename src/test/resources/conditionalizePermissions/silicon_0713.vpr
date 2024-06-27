@@ -1,0 +1,27 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field int: Int
+field unrelated: Int
+
+method conv_layer(a: Set[Ref])
+  requires (forall r: Ref :: r in a ==> acc(r.int, write))
+{
+  label beforeFrame
+  while (true)
+    invariant true ==>
+      (forall r: Ref :: r in a ==> acc(r.int, write)) &&
+      [
+        // on inhale
+        (forperm
+          obj: Ref [obj.unrelated] :: obj.unrelated ==
+          old[beforeFrame](obj.unrelated)) &&
+        (forperm
+          obj: Ref [obj.int] :: obj.int == old[beforeFrame](obj.int)),
+
+        // on exhale
+        true
+      ]
+  { inhale false }
+}

@@ -185,7 +185,7 @@ object evaluator extends EvaluationRules {
          *       term returned by eval, mark as constrainable on client-side (e.g. in consumer).
          */
         val s1 =
-          s.copy(functionRecorder = s.functionRecorder.recordArp(tVar, tConstraints))
+          s.copy(functionRecorder = s.functionRecorder.recordConstrainedVar(tVar, tConstraints))
            .setConstrainable(Seq(tVar), true)
         Q(s1, tVar, v)
 
