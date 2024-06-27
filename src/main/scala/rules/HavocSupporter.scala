@@ -185,7 +185,7 @@ object havocSupporter extends SymbolicExecutionRules {
       case ch: MagicWandChunk =>
         val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction)
         val cond = replacementCond(lhs, ch.args, condInfo)
-        val magicWandSnapshot = MagicWandSnapshot((Ite(cond, havockedSnap, ch.snap.mwsf), ch.snap.imgFun))
+        val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
         ch.withSnap(magicWandSnapshot)
 
       case ch =>

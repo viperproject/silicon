@@ -2307,20 +2307,20 @@ object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[T
  *             In the symbolic execution when we apply a magic wand, it consumes the left-hand side
  *             and uses this function and the resulting snapshot to look up which right-hand side to produce.
  */
-class MagicWandSnapshot(val mwsf: Term, val imgFun: Function) extends Term with ConditionalFlyweight[(Term, Function), MagicWandSnapshot] {
+class MagicWandSnapshot(val mwsf: Term) extends Term with ConditionalFlyweight[Term, MagicWandSnapshot] {
   utils.assertSort(mwsf, "magic wand snap function", sorts.MagicWandSnapFunction)
 
   override val sort: Sort = sorts.MagicWandSnapFunction
 
-  override lazy val toString = s"wandSnap($mwsf, $imgFun)"
+  override lazy val toString = s"wandSnap($mwsf)"
 
-  override val equalityDefiningMembers: (Term, Function) = (mwsf, imgFun)
+  override val equalityDefiningMembers: Term = mwsf
 }
 
-object MagicWandSnapshot extends PreciseCondFlyweightFactory[(Term, Function), MagicWandSnapshot]  {
+object MagicWandSnapshot extends PreciseCondFlyweightFactory[Term, MagicWandSnapshot]  {
   /** Create an instance of [[viper.silicon.state.terms.MagicWandSnapshot]]. */
-  override def actualCreate(arg: (Term, Function)): MagicWandSnapshot =
-    new MagicWandSnapshot(arg._1, arg._2)
+  override def actualCreate(arg: Term): MagicWandSnapshot =
+    new MagicWandSnapshot(arg)
 }
 
 /**

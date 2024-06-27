@@ -91,7 +91,7 @@ package object utils {
     case PredicatePermLookup(_, pm, args) => Seq(pm) ++ args
     case FieldTrigger(_, fvf, at) => fvf :: at :: Nil
     case PredicateTrigger(_, psf, args) => psf +: args
-    case MagicWandSnapshot(mwsf, _) => mwsf :: Nil
+    case MagicWandSnapshot(mwsf) => mwsf :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Simplifier.simplify]] */
@@ -196,7 +196,7 @@ package object utils {
       case MapUpdate(t0, t1, t2) => MapUpdate(go(t0), go(t1), go(t2))
       case MapDomain(t) => MapDomain(go(t))
       case MapRange(t) => MapRange(go(t))
-      case MagicWandSnapshot(t0, t1) => MagicWandSnapshot((go(t0), t1))
+      case MagicWandSnapshot(t) => MagicWandSnapshot(go(t))
       case MWSFApply(t0, t1) => MWSFApply(go(t0), go(t1))
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))

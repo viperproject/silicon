@@ -407,8 +407,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                        : VerificationResult = {
       val preMark = v4.decider.setPathConditionMark()
 
-      val imgFun = v4.decider.fresh("img", Seq(sorts.Snap), sorts.Bool)
-
       // If the wand is used as a quantified resource anywhere in the program
       if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -422,7 +420,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), abstractLhs, mwsf, snapRhs, invFun, functionsBeforePackaging, v5)
         })
       } else {
-        val wandSnapshot = MagicWandSnapshot((mwsf, imgFun))
+        val wandSnapshot = MagicWandSnapshot(mwsf)
         this.createChunk(s4, wand, wandSnapshot, pve, v4)((s5, ch, v5) => {
           appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), abstractLhs, mwsf, snapRhs, invFun, functionsBeforePackaging, v5)
         })
