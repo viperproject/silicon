@@ -21,6 +21,9 @@ import viper.silicon.utils.ast.BigAnd
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 
+import scala.annotation.tailrec
+import scala.collection.immutable.Map
+
 object magicWandSupporter extends SymbolicExecutionRules {
   import consumer._
   import evaluator._
@@ -184,34 +187,45 @@ object magicWandSupporter extends SymbolicExecutionRules {
   }
 
   /**
-   * Partition path conditions into a set which include the abstractLhs and those which do not.
-   * Include the path conditions with the abstractLhs in the MWSF definition.
-   * It also takes care of special cases that include field value functions.
+   * Summarize all path conditions and include them in the definition of the MWSF.
    *
-   * @param conservedPcs Vector of path conditions which have been recorded during the execution of the proof script.
-   * @param abstractLhs  Fresh variable that represents the snapshot of the wand's LHS.
-   * @param mwsf         MagicWandSnapFunction that is used to lookup the snapshot of the wand's RHS.
-   * @param snapRhs      Snapshot of the wand's RHS.
-   * @param v1           Verifier instance.
-   * @return Vector of conserved path conditions.
+   * This method looks for all snapshot maps that were introduced during the packaging of the wand. It then tries
+   * to find a single representative snapshot map for each group of equal snapshot maps.
+   *
+   * Then it breaks up `snapRhs` into a set of equalities such that we can replace all occurrences of a snapshot map
+   * by a term that involves the MWSF. The goal is to replace all occurrences of snapshot maps which were introduced
+   * during the packaging of the wand and therefore are only temporary objects that won't be used after the packaging.
+   *
+   * @param recordedPathConditions   Vector of path conditions which have been recorded during the execution of the proof script.
+   * @param abstractLhs              Fresh variable that represents the snapshot of the wand's LHS.
+   * @param mwsf                     MagicWandSnapFunction that is used to lookup the snapshot of the wand's RHS.
+   * @param snapRhs                  Snapshot of the wand's RHS.
+   * @param functionsBeforePackaging Set of functions that were present before the packaging of the wand.
+   * @param v1                       Verifier instance.
+   * @return Set of all path conditions including the MWSF definition.
    */
-  private def summarizeDefinitions(conservedPcs: Vector[RecordedPathConditions],
+  private def summarizeDefinitions(recordedPathConditions: Vector[RecordedPathConditions],
                                    abstractLhs: Var,
-                                   mwsf: Var,
+                                   mwsf: Term,
                                    snapRhs: Term,
                                    functionsBeforePackaging: Set[FunctionDecl],
                                    v1: Verifier): Vector[Term] = {
     val mwsfApply = MWSFApply(mwsf, abstractLhs)
+
+    // Find all snapshot maps that were introduced during the packaging of the wand
     val freshSnapshotMaps = (v1.decider.freshFunctions -- functionsBeforePackaging)
       .filter(f => f.func.resultSort.isInstanceOf[sorts.FieldValueFunction] || f.func.resultSort.isInstanceOf[sorts.PredicateSnapFunction])
 
     // Map all path conditions to their conditionalized form and flatten the result
-    var conditionalizedPcs = conservedPcs.flatMap(_.conditionalized).flatMap {
+    var conditionalizedPcs = recordedPathConditions.flatMap(_.conditionalized).flatMap {
       case And(terms) => terms
       case term => Vector(term)
     }
 
-    // Identify whether two or three of the snapshot maps are equal
+    // Helper function to find the parent node of a snapshot map in a union-find data structure
+    @tailrec def findParentNode(map: Map[String, String], x: String): String = if (map(x) == x) x else findParentNode(map, map(x))
+
+    // Identify groups of equal snapshot maps
     val groups = conditionalizedPcs.collect {
       // Extract names of all FVFs and PSFs that are part of an equality of the form: fvf0 == fvf1 or psf0 == psf1
       case BuiltinEquals(App(fvf0, Seq()), App(fvf1, Seq()))
@@ -223,104 +237,105 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }.foldLeft(
       freshSnapshotMaps.map(f => (f.func.id.name, f.func.id.name)).toMap
     )((assignments, eq) => {
-      // Find all groups of equal snapshot maps
+      // Find all groups of equal snapshot maps using a union-find data structure
       val (a, b) = eq
       if (!assignments.contains(a) || !assignments.contains(b)) {
         assignments
       } else {
-        val assA = assignments(a)
-        val assB = assignments(b)
+        val assA = findParentNode(assignments, a)
+        val assB = findParentNode(assignments, b)
         if (assA == assB) {
           assignments
         } else if (assA < assB) {
-          assignments.map {
-            case (x, y) => if (y == assB) (x, assA) else (x, y)
-          }
+          assignments.updated(assB, assA)
         } else {
-          assignments.map {
-            case (x, y) => if (y == assA) (x, assB) else (x, y)
-          }
+          assignments.updated(assA, assB)
         }
       }
     })
 
-    // Replace all snapshot maps with one snapshot map of the group they belong to
-    def replaceVars(t: Term): Term = t.transform({
+    // Replace all snapshot maps with the one snapshot map of the group they belong to
+    def replaceSnapshotMaps(t: Term): Term = t.transform({
       case App(fun: Fun, Seq()) if
         (fun.resultSort.isInstanceOf[sorts.FieldValueFunction] || fun.resultSort.isInstanceOf[sorts.PredicateSnapFunction])
           && groups.contains(fun.id.name) =>
-        App(fun.copy(id = Identifier(groups(fun.id.name))), Seq())
+        App(fun.copy(id = Identifier(findParentNode(groups, fun.id.name))), Seq())
     })()
-    conditionalizedPcs = conditionalizedPcs.map(replaceVars).filter {
+    val snapRhsUpdated = replaceSnapshotMaps(snapRhs)
+    conditionalizedPcs = conditionalizedPcs.map(replaceSnapshotMaps)
+
+    // If there is a term `Lookup(_, sm, _) == abstractLhs`, replace all occurrences of `Lookup(_, sm, _)` with `abstractLhs`
+    conditionalizedPcs.find({
+      case BuiltinEquals(Lookup(_, fvf, _), SortWrapper(`abstractLhs`, _)) => fvf.sort.isInstanceOf[sorts.FieldValueFunction]
+      case BuiltinEquals(PredicateLookup(_, psf, _), SortWrapper(`abstractLhs`, _)) => psf.sort.isInstanceOf[sorts.PredicateSnapFunction]
+      case _ => false
+    }) match {
+      case Some(BuiltinEquals(Lookup(_, fvf, _), _)) =>
+        conditionalizedPcs = conditionalizedPcs.map(_.transform {
+          case l@Lookup(_, `fvf`, _) if fvf.sort.isInstanceOf[sorts.FieldValueFunction] => SortWrapper(abstractLhs, l.sort)
+        }())
+      case Some(BuiltinEquals(PredicateLookup(_, psf, _), _)) =>
+        conditionalizedPcs = conditionalizedPcs.map(_.transform {
+          case l@PredicateLookup(_, `psf`, _) if psf.sort.isInstanceOf[sorts.PredicateSnapFunction] => SortWrapper(abstractLhs, l.sort)
+        }())
+      case _ =>
+    }
+
+    // Remove all path conditions of the form `p0 == p1` where p0 is syntactically equal to p1
+    conditionalizedPcs = conditionalizedPcs.filter {
       case BuiltinEquals(p0, p1) => p0 != p1
       case _ => true
     }
-    val snapRhsUpdated = replaceVars(snapRhs)
+
+    // Transform the term `mwsfLookup == snapRhs` into a set of equalities using First and Second constructors on `snapRhs`
+    // If the resulting term is a snapshot map or a lookup of a snapshot map, substitute it with a corresponding MWSF term
     val newSnapshotMaps = freshSnapshotMaps.filter(f => {
       val id = f.func.id.name
       groups.exists({ case (from, to) => from == to && from == id })
     }).map(f => App(f.func, Seq.empty))
-
-    def fromSnapTree(snap: Term, mwsfTerm: Term, pcsList: Vector[Term]): (Vector[Term], Vector[Term]) = {
+    def substituteMwsfTerm(snap: Term, mwsfTerm: Term, pcsList: Vector[Term]): (Vector[Term], Vector[Term]) = {
       snap match {
         case Combine(snap1, snap2) =>
-          val (pcsList1, terms1) = fromSnapTree(snap1, First(mwsfTerm), pcsList)
-          val (pcsList2, terms2) = fromSnapTree(snap2, Second(mwsfTerm), pcsList1)
+          val (pcsList1, terms1) = substituteMwsfTerm(snap1, First(mwsfTerm), pcsList)
+          val (pcsList2, terms2) = substituteMwsfTerm(snap2, Second(mwsfTerm), pcsList1)
           (pcsList2, terms1 ++ terms2)
         case _ =>
           var transformed = false
-          val pcsListNew = pcsList.map(pcs => {
-            snap match {
-              case SortWrapper(app: App, _) if app.sort.isInstanceOf[sorts.FieldValueFunction] && newSnapshotMaps.contains(app) =>
+          val pcsListNew = snap match {
+            case SortWrapper(app: App, _) if app.sort.isInstanceOf[sorts.FieldValueFunction] && newSnapshotMaps.contains(app) =>
+              pcsList.map(pcs => {
                 transformed = true
-                pcs.transform {
-                  case Lookup(field, fvf, at) if fvf == app => Lookup(field, SortWrapper(mwsfTerm, app.sort), at)
-                }()
-              case SortWrapper(Lookup(snapField, app: App, snapAt), _) if app.sort.isInstanceOf[sorts.FieldValueFunction] && newSnapshotMaps.contains(app) =>
+                pcs.transform { case Lookup(field, `app`, at) => Lookup(field, SortWrapper(mwsfTerm, app.sort), at) }()
+              })
+            case SortWrapper(Lookup(snapField, app: App, snapAt), _) if app.sort.isInstanceOf[sorts.FieldValueFunction] && newSnapshotMaps.contains(app) =>
+              pcsList.map(pcs => {
                 transformed = true
-                pcs.transform {
-                  case l@Lookup(field, fvf, at) if fvf == app && field == snapField && at == snapAt => SortWrapper(mwsfTerm, l.sort)
-                }()
-              case SortWrapper(app: App, _) if app.sort.isInstanceOf[sorts.PredicateSnapFunction] && newSnapshotMaps.contains(app) =>
+                pcs.transform { case l@Lookup(`snapField`, `app`, `snapAt`) => SortWrapper(mwsfTerm, l.sort) }()
+              })
+            case SortWrapper(app: App, _) if app.sort.isInstanceOf[sorts.PredicateSnapFunction] && newSnapshotMaps.contains(app) =>
+              pcsList.map(pcs => {
                 transformed = true
-                pcs.transform {
-                  case PredicateLookup(pred, psf, args) if psf == app => PredicateLookup(pred, SortWrapper(mwsfTerm, app.sort), args)
-                }()
-              case SortWrapper(PredicateLookup(snapPred, app: App, _), _) if app.sort.isInstanceOf[sorts.PredicateSnapFunction] && newSnapshotMaps.contains(app) =>
+                pcs.transform { case PredicateLookup(pred, `app`, args) => PredicateLookup(pred, SortWrapper(mwsfTerm, app.sort), args) }()
+              })
+            case SortWrapper(PredicateLookup(snapPred, app: App, _), _) if app.sort.isInstanceOf[sorts.PredicateSnapFunction] && newSnapshotMaps.contains(app) =>
+              pcsList.map(pcs => {
                 transformed = true
-                pcs.transform {
-                  case l@PredicateLookup(pred, psf, _) if psf == app && pred == snapPred => SortWrapper(mwsfTerm, l.sort)
-                }()
-              case _ => pcs
-            }
-          })
+                pcs.transform { case l@PredicateLookup(`snapPred`, `app`, _) => SortWrapper(mwsfTerm, l.sort) }()
+              })
+            case _ => pcsList
+          }
           (pcsListNew, if (transformed) Vector.empty else Vector(BuiltinEquals(mwsfTerm, snap)))
       }
     }
-    val (updatedPcs, mwsfTerms) = fromSnapTree(snapRhsUpdated, mwsfApply, conditionalizedPcs)
+    val (updatedPcs, mwsfTerms) = substituteMwsfTerm(snapRhsUpdated, mwsfApply, conditionalizedPcs)
 
-    // Combine all variables that will be quantified over
-    val quantifiedVars = abstractLhs +: newSnapshotMaps.filter(app => updatedPcs.exists(pcs => pcs.contains(app))).toSeq
-
-    // Partition path conditions into a set which include the abstractLhs and those which do not
-    var (pcsWithQuantifiedVars, pcsWithoutQuantifiedVars) = updatedPcs.partition(pcs => quantifiedVars.exists(qv => pcs.contains(qv)))
-
-    // Remove forall quantifiers with the quantified variable in `quantifiedVars`
-    pcsWithQuantifiedVars = pcsWithQuantifiedVars
-      .map(_.transform {
-        case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v.equals(abstractLhs) => body
-      }(_ => true)) ++ mwsfTerms
+    // Partition path conditions into a set which include the abstractLhs or any new snapshot map and those which do not
+    val (pcsWithAbstractLhs, pcsWithoutAbstractLhs) = updatedPcs.partition(pcs => pcs.contains(abstractLhs))
 
     // Combine all path conditions which include the abstractLhs and add it to the verifier's list of definitions
-    val pcsQuantified = Forall(
-      abstractLhs,
-      And(pcsWithQuantifiedVars),
-      Trigger(mwsfApply)
-    )
+    val pcsQuantified = Forall(abstractLhs, And(pcsWithAbstractLhs ++ mwsfTerms), Trigger(mwsfApply))
     v1.decider.assumeDefinition(pcsQuantified)
-
-    // Return the summarized path conditions
-    pcsWithoutQuantifiedVars :+ pcsQuantified
+    pcsWithoutAbstractLhs :+ pcsQuantified
   }
 
   /**
@@ -359,7 +374,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                  ch: Chunk,
                                  pcs: RecordedPathConditions,
                                  abstractLhs: Var,
-                                 mwsf: Var,
+                                 mwsf: Term,
                                  snapRhs: Term,
                                  functionsBeforePackaging: Set[FunctionDecl],
                                  v5: Verifier): VerificationResult = {
@@ -411,7 +426,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
           v5.decider.prover.comment("Definitional axioms for singleton-SM's value")
           v5.decider.assumeDefinition(smValueDef)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
-          appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), abstractLhs, mwsf, snapRhs, functionsBeforePackaging, v5)
+          val lookupMwsf = SortWrapper(ResourceLookup(wand, sm, args, s.program), sorts.MagicWandSnapFunction)
+          appendToRecordedBranches(s5, ch, v5.decider.pcs.after(preMark), abstractLhs, lookupMwsf, snapRhs, functionsBeforePackaging, v5)
         })
       } else {
         val wandSnapshot = MagicWandSnapshot(mwsf)
