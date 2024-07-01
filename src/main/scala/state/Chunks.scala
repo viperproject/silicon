@@ -131,7 +131,7 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
-  require(wsf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction] && wsf.sort.asInstanceOf[terms.sorts.PredicateSnapFunction].codomainSort == sorts.Snap, s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")
+  require(wsf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction] && wsf.sort.asInstanceOf[terms.sorts.PredicateSnapFunction].codomainSort == sorts.Snap, s"Quantified magic wand chunk values must be of sort Snap ($wsf), but found ${wsf.sort}")
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   override val resourceID = MagicWandID

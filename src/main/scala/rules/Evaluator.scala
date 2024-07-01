@@ -715,7 +715,7 @@ object evaluator extends EvaluationRules {
           if (pos.end.isEmpty) {
             fallbackName
           } else {
-            val file = pos.file.toString()
+            val file = pos.file.getFileName.toString
             val end = pos.end.get
             s"$file@${pos.start.line}@${pos.start.column}@${end.line}@${end.column}"
           }

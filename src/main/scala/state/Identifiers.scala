@@ -18,6 +18,12 @@ sealed trait Identifier {
     withSuffix(Identifier.defaultSeparator, suffix)
 
   def withSuffix(separator: String, suffix: String): SuffixedIdentifier
+
+  override def equals(obj: Any): Boolean =
+    obj match {
+      case that: Identifier => this.toString == that.toString
+      case _ => false
+    }
 }
 
 /* TODO: Remove object Identifier, make concrete identifiers' constructors private, and force all
