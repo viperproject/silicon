@@ -181,7 +181,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     override def getProverOptions(): Map[String, String] = _proverOptions
 
     override def resetProverOptions(): Unit = {
-      _proverResetOptions.foreach { case (k, v) => _prover.setOption(k, v) }
+      try {
+        _proverResetOptions.foreach { case (k, v) => _prover.setOption(k, v) }
+      } catch {
+        case e: Exception => println(e)
+      }
       _proverResetOptions = Map.empty
       _proverOptions = Map.empty
     }
@@ -204,6 +208,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       _declaredFreshMacros = Vector.empty
       _freshMacroStack = Stack.empty
       _freshFunctionStack = Stack.empty
+      _proverOptions = Map.empty
     }
 
     def stop(): Unit = {
