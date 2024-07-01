@@ -7,9 +7,10 @@
 package viper.silicon.rules
 
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
+import viper.silicon.reporting.CounterexampleGenerator
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
-import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
+import viper.silver.frontend.{ExtendedModel, IntermediateModel, MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
@@ -40,6 +41,8 @@ trait SymbolicExecutionRules {
             SiliconVariableCounterexample(s.g, nativeModel)
           case MappedModel =>
             SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel, s.program)
+          case IntermediateModel => CounterexampleGenerator(nativeModel, s.g, s.h.values, s.oldHeaps, s.program).imCE
+          case ExtendedModel => CounterexampleGenerator(nativeModel, s.g, s.h.values, s.oldHeaps, s.program)
         }
         val finalCE = ceTrafo match {
           case Some(trafo) => trafo.f(ce)
