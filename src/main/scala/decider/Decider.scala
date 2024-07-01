@@ -181,11 +181,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     override def getProverOptions(): Map[String, String] = _proverOptions
 
     override def resetProverOptions(): Unit = {
-      try {
-        _proverResetOptions.foreach { case (k, v) => _prover.setOption(k, v) }
-      } catch {
-        case e: Exception => println(e)
-      }
+      _proverResetOptions.foreach { case (k, v) => _prover.setOption(k, v) }
       _proverResetOptions = Map.empty
       _proverOptions = Map.empty
     }
