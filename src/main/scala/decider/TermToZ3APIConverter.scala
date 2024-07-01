@@ -128,6 +128,7 @@ class TermToZ3APIConverter
 
       case sorts.FieldPermFunction() => ctx.mkUninterpretedSort("$FPM") // text("$FPM")
       case sorts.PredicatePermFunction() => ctx.mkUninterpretedSort("$PPM") // text("$PPM")
+      case sorts.MagicWandSnapFunction => ctx.mkUninterpretedSort("$MWSF")
     }
     sortCache.update(s, res)
     res
@@ -159,6 +160,7 @@ class TermToZ3APIConverter
 
       case sorts.FieldPermFunction() => Some(ctx.mkSymbol("$FPM")) // text("$FPM")
       case sorts.PredicatePermFunction() => Some(ctx.mkSymbol("$PPM")) // text("$PPM")
+      case sorts.MagicWandSnapFunction => Some(ctx.mkSymbol("$MWSF"))
     }
   }
 

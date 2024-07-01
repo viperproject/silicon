@@ -204,6 +204,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       _declaredFreshMacros = Vector.empty
       _freshMacroStack = Stack.empty
       _freshFunctionStack = Stack.empty
+      _proverOptions = Map.empty
     }
 
     def stop(): Unit = {
