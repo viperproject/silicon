@@ -328,7 +328,9 @@ object producer extends ProductionRules {
                 WildcardSimplifyingPermTimes(tPerm, s3.permissionScalingFactor)
               if (s3.qpFields.contains(field)) {
                 val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
-                quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v3)(Q)
+                quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v3)((s4, _, v4) => {
+                  Q(s4, v4)
+                })
               } else {
                 val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
                 chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) =>
@@ -351,7 +353,9 @@ object producer extends ProductionRules {
                 val formalArgs = s2.predicateFormalVarMap(predicate)
                 val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
                 quantifiedChunkSupporter.produceSingleLocation(
-                  s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
+                  s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)((s3, _, v3) => {
+                  Q(s3, v3)
+                })
               } else {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)

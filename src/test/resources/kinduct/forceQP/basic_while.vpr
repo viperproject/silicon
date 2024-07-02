@@ -1,0 +1,158 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+define forceQPs() {
+    if (false) {
+        inhale forall x: Ref :: acc(x.f)
+    }
+}
+
+method t1(n: Int) returns ()
+    requires n > 0
+{
+    forceQPs()
+    var i: Int := 0
+
+    while (i < n)
+        invariant i <= n
+    {
+        i := i+1
+    }
+}
+
+method t2(n: Int) returns ()
+    requires n > 0
+{
+    forceQPs()
+    var i: Int := 0
+
+    while (i < n)
+        //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+        invariant i < n
+    {
+        i := i+1
+    }
+}
+
+method t3(n: Int) returns ()
+    requires n > 0
+{
+    forceQPs()
+    var i: Int := 2
+
+    while (i < n)
+        //:: ExpectedOutput(invariant.not.established:assertion.false)
+        invariant i <= n
+    {
+        i := i+1
+    }
+}
+
+method t4(n: Int, r: Ref) returns ()
+    requires n > 0
+    requires r != null
+{
+    var i: Int := 2
+    forceQPs()
+
+    //:: ExpectedOutput(if.failed:insufficient.permission)
+    while (i < (r.f))
+    {
+        i := i+1
+    }
+}
+
+method t5(n: Int, r: Ref) returns ()
+    requires n > 0
+    requires acc(r.f, write)
+{
+    var i: Int := 2
+    forceQPs()
+
+    while (i < (r.f))
+        invariant acc(r.f, write)
+    {
+        i := i+1
+    }
+}
+
+method t6(r: Ref) returns ()
+{
+    forceQPs()
+    while (perm(r.f) == none) /* OK - perm(e.f) does not require e != null */
+    {
+    }
+}
+
+method t7(r: Ref) returns ()
+{
+    var i: Int := 1
+    var j: Int := 2
+    forceQPs()
+
+    while (true)
+    {
+        assert i == 1
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert j == 2
+        j := j+1
+    }
+}
+
+method t8(r: Ref) returns ()
+{
+    var j: Int := 2
+    forceQPs()
+
+    while (j < 10)
+    {
+        j := j+1
+    }
+
+    assert j >= 10
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method t9(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var j: Int := 2
+    forceQPs()
+    while (j < (r.f))
+        invariant acc(r.f, write)
+    {
+        j := j+1
+    }
+    assert j >= (r.f)
+}
+
+method t10(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var j: Int := 2
+    forceQPs()
+
+    while (j < (r.f))
+    {
+        j := j+1
+    }
+    assert j >= (r.f)
+}
+
+method t11(r: Ref) returns ()
+  requires r != null
+{
+    var j: Int := 2
+    forceQPs()
+
+    while (j < 3)
+        //:: ExpectedOutput(invariant.not.established:insufficient.permission)
+        invariant r != null && r.f == 2
+    {
+        j := j+1
+    }
+}

@@ -1,0 +1,97 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+define forceQPs() {
+    if (false) {
+        inhale forall x: Ref :: acc(x.f)
+    }
+}
+
+method test01(x: Ref) returns (b: Bool)
+  requires acc(x.f)
+  ensures  acc(x.f) && x.f == old(x.f)
+{
+  forceQPs()
+  while (b)
+    invariant acc(x.f, 1/2)
+  {
+    b := !b
+  }
+}
+
+method test02(x: Ref) returns (b: Bool) {
+  forceQPs()
+  while (b)
+    //:: ExpectedOutput(invariant.not.established:insufficient.permission)
+    invariant acc(x.f, 1/2)
+  {
+    b := !b
+  }
+}
+
+method test03(x: Ref) returns (b: Bool)
+  requires acc(x.f)
+{
+  while (b)
+    invariant acc(x.f, 1/2)
+  {
+    exhale acc(x.f, 1/4)
+    b := !b
+  }
+  assert acc(x.f, 1/2)
+  assert acc(x.f, 3/4)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(x.f, write)
+  forceQPs()
+}
+
+method test20a(x: Ref, y: Ref) returns (n: Int)
+  requires acc(x.f)
+  ensures  n == 42 ==> acc(y.f)
+  ensures  acc(x.f) && x.f == old(x.f)
+{
+  while (n != 0)
+    invariant acc(x.f, 1/2)
+  {
+    n := n - 1
+
+    if (n == 42) {
+      inhale acc(y.f)
+      goto brk
+    }
+  }
+  forceQPs()
+
+  label brk
+
+  if (n == 0) {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert perm(y.f) == none
+  }
+}
+
+method test20b(x: Ref, y: Ref) returns (n: Int)
+  requires acc(x.f) && x != y
+  ensures  n == 42 ==> acc(y.f)
+  ensures  acc(x.f) && x.f == old(x.f)
+{
+  forceQPs()
+  while (n != 0)
+    invariant acc(x.f, 1/2)
+  {
+    n := n - 1
+
+    if (n == 42) {
+      inhale acc(y.f)
+      goto brk
+    }
+  }
+
+  label brk
+
+  if (n == 0) {
+    assert perm(y.f) == none
+  }
+}

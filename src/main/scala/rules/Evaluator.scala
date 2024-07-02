@@ -227,30 +227,60 @@ object evaluator extends EvaluationRules {
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
-              if (relevantChunks.size == 1) {
-                // No need to create a summary since there is only one chunk to look at.
-                if (s1.heapDependentTriggers.contains(fa.field)) {
-                  val trigger = FieldTrigger(fa.field.name, relevantChunks.head.fvf, tRcvr)
-                  v1.decider.assume(trigger)
-                }
-                val permCheck =
-                  if (s1.triggerExp) {
-                    True
-                  } else {
-                    val permVal = relevantChunks.head.perm
-                    val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
-                    IsPositive(totalPermissions)
-                  }
-                v1.decider.assert(permCheck, s1) {
-                  case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
-                  case true =>
-                    val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
-                    val fr2 =
-                      s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                    val s2 = s1.copy(functionRecorder = fr2)
-                    Q(s2, smLookup, v1)
-                }
+              if (s1.loopPhaseStack.nonEmpty && s1.loopPhaseStack.head._1 != LoopPhases.Checking) {
+                val identifier = BasicChunkIdentifier(fa.field.name)
+                val (s1a, currentPermAmount) = evalCurrentPermQP(s1, s1.h, Seq(tRcvr), identifier, fa.field, v1)
+                val havePerm = IsPositive(currentPermAmount)
+                joiner.join[(Heap, Term), (Heap, Term)](s1a, v1, false)((s1p, v1p, QM) => {
+                  brancher.branch(s1p, havePerm, None, v1p)((s2, v2) => {
+                    val (s3, smDef3, pmDef3) =
+                      quantifiedChunkSupporter.heapSummarisingMaps(
+                        s = s2,
+                        resource = fa.field,
+                        codomainQVars = Seq(`?r`),
+                        relevantChunks = relevantChunks,
+                        optSmDomainDefinitionCondition = None,
+                        optQVarsInstantiations = None,
+                        v = v2)
+                    if (s3.heapDependentTriggers.contains(fa.field)) {
+                      val trigger = FieldTrigger(fa.field.name, smDef3.sm, tRcvr)
+                      v2.decider.assume(trigger)
+                    }
+                    val permCheck =
+                      if (s3.triggerExp) {
+                        True
+                      } else {
+                        val totalPermissions = PermLookup(fa.field.name, pmDef3.pm, tRcvr)
+                        IsPositive(totalPermissions)
+                      }
+                    v2.decider.assert(permCheck, s3) {
+                      case false =>
+                        createFailure(pve dueTo InsufficientPermission(fa), v2, s3)
+                      case true =>
+                        val smLookup = Lookup(fa.field.name, smDef3.sm, tRcvr)
+                        val fr3 =
+                          s3.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, smLookup)
+                            .recordFvfAndDomain(smDef3)
+                        val s4 = s3.copy(functionRecorder = fr3)
+                        QM(s4, (s4.h, smLookup), v2)
+                    }
+                  },
+                    (s2, v2) => {
+                      val perms = s2.loopReadVarStack.head._1
+                      quantifiedChunkSupporter.consumeSingleLocation(s2, s2.h, Seq(`?r`), Seq(tRcvr), fa, perms, None, pve, v2)((s3, h3, consh3, tSnap, v3) => {
+                        QM(s3, (s3.h, tSnap.convert(v3.symbolConverter.toSort(fa.field.typ))), v3)
+                      })
+                    })
+                }) {
+                  case Seq(e) => (e.s, e.data)
+                  case Seq(e1, e2) =>
+                    val mergedState = State.merge(e1.s, e1.pathConditions, e2.s, e2.pathConditions)
+                    (mergedState, (mergedState.h, e1.data._2))
+                }((s2, ht2, v2) => {
+                  val (h2, tSnap) = ht2
+                  Q(s2, tSnap, v2)
+                })
+
               } else {
                 val (s2, smDef1, pmDef1) =
                   quantifiedChunkSupporter.heapSummarisingMaps(
@@ -487,56 +517,7 @@ object evaluator extends EvaluationRules {
             case pred: ast.Predicate => s1.qpPredicates.contains(pred)}
           val (s2, currentPermAmount) =
             if (usesQPChunks) {
-              res match {
-                case wand: ast.MagicWand =>
-                  val (relevantChunks, _) =
-                    quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, identifier)
-                  val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                  val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
-                  val (s2, pmDef) = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))) {
-                    val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
-                    v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
-                    (s2, pmDef)
-                  } else {
-                    val (pmDef, pmCache) =
-                      quantifiedChunkSupporter.summarisingPermissionMap(
-                        s1, wand, formalVars, relevantChunks, null, v1)
-
-                    (s1.copy(pmCache = pmCache), pmDef)
-                  }
-                  (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
-
-                case field: ast.Field =>
-                  val (relevantChunks, _) =
-                    quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
-                  val (s2, pmDef) = if (s1.heapDependentTriggers.contains(field)) {
-                    val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
-                    v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
-                    (s2, pmDef)
-                  } else {
-                    val (pmDef, pmCache) =
-                      quantifiedChunkSupporter.summarisingPermissionMap(
-                        s1, field, Seq(`?r`), relevantChunks, null, v1)
-
-                    (s1.copy(pmCache = pmCache), pmDef)
-                  }
-                  val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
-                  v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
-                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm))
-                  (s2, currentPermAmount)
-
-                case predicate: ast.Predicate =>
-                  val (relevantChunks, _) =
-                    quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, identifier)
-                  val (s2, smDef, pmDef) =
-                    quantifiedChunkSupporter.heapSummarisingMaps(
-                      s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
-                  if (s2.heapDependentTriggers.contains(predicate)){
-                    val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
-                    v1.decider.assume(trigger)
-                  }
-                  (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
-              }
+              evalCurrentPermQP(s1, h, args, identifier, res, v1)
             } else {
               val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
               val currentPermAmount =
@@ -1202,6 +1183,58 @@ object evaluator extends EvaluationRules {
     }
 
     resultTerm
+  }
+
+  def evalCurrentPermQP(s1: State, h: Heap, args: Seq[Term], identifier: ChunkIdentifer, res: ast.Resource, v1: Verifier) : (State, Term) = {
+    res match {
+      case wand: ast.MagicWand =>
+        val (relevantChunks, _) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, identifier)
+        val bodyVars = wand.subexpressionsToEvaluate(s1.program)
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
+        val (s2, pmDef) = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))) {
+          val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
+          v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
+          (s2, pmDef)
+        } else {
+          val (pmDef, pmCache) =
+            quantifiedChunkSupporter.summarisingPermissionMap(
+              s1, wand, formalVars, relevantChunks, null, v1)
+
+          (s1.copy(pmCache = pmCache), pmDef)
+        }
+        (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
+
+      case field: ast.Field =>
+        val (relevantChunks, _) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
+        val (s2, pmDef) = if (s1.heapDependentTriggers.contains(field)) {
+          val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
+          v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
+          (s2, pmDef)
+        } else {
+          val (pmDef, pmCache) =
+            quantifiedChunkSupporter.summarisingPermissionMap(
+              s1, field, Seq(`?r`), relevantChunks, null, v1)
+
+          (s1.copy(pmCache = pmCache), pmDef)
+        }
+        val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
+        v1.decider.assume(PermAtMost(currentPermAmount, FullPerm))
+        (s2, currentPermAmount)
+
+      case predicate: ast.Predicate =>
+        val (relevantChunks, _) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, identifier)
+        val (s2, smDef, pmDef) =
+          quantifiedChunkSupporter.heapSummarisingMaps(
+            s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
+        if (s2.heapDependentTriggers.contains(predicate)) {
+          val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
+          v1.decider.assume(trigger)
+        }
+        (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
+    }
   }
 
   def evalQuantified(s: State,

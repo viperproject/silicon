@@ -1,0 +1,91 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field next: Ref
+
+define forceQPs() {
+    if (false) {
+        inhale forall x: Ref :: acc(x.next)
+        inhale forall x: Ref :: List(x)
+    }
+}
+
+predicate List(x: Ref) { true }
+
+method test01(x: Ref)
+  requires acc(List(x))
+{
+  while (true)
+    invariant acc(List(x))
+  {
+    unfold acc(List(x))
+    goto brk
+    assert false /* Does not fail - should not be executed */
+    assume false /* Same here */
+  }
+  forceQPs()
+
+  label brk
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test011(x: Ref)
+  requires acc(List(x))
+{
+  while (true)
+  {
+    unfold acc(List(x))
+    goto brk
+    assert false /* Does not fail - should not be executed */
+    assume false /* Same here */
+  }
+  forceQPs()
+
+  label brk
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test02a()
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{
+  var b: Bool
+  forceQPs()
+
+  while (b) {
+    b := !b
+    goto brk
+  }
+
+  label brk
+}
+
+method test02b()
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{
+  while (true) {
+    goto brk
+  }
+  forceQPs()
+
+  label brk
+}
+
+method test10() {
+  var b: Bool := true
+
+  while (b)
+  {
+    goto end
+    b := false
+  }
+
+  assert false
+  forceQPs()
+
+  label end
+}
+

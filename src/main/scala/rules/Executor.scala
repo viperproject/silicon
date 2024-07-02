@@ -455,8 +455,8 @@ object executor extends ExecutionRules {
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
             val (relevantChunks, otherChunks) =
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
-            val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-            val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v2)
+            //val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
+            //val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v2)
             val s2p = if (s2.heapDependentTriggers.contains(field)){
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -466,30 +466,18 @@ object executor extends ExecutionRules {
             } else {
               s2
             }
-            v2.decider.clearModel()
-            val result = quantifiedChunkSupporter.removePermissions(
-              s2p,
-              relevantChunks,
-              Seq(`?r`),
-              `?r` === tRcvr,
-              Some(Seq(tRcvr)),
-              field,
-              FullPerm,
-              chunkOrderHeuristics,
-              v2
-            )
-            result match {
-              case (Complete(), s3, remainingChunks, consumedChunks) =>
-                val h3 = Heap(remainingChunks ++ otherChunks)
+            quantifiedChunkSupporter.consumeSingleLocation(s2p, s2p.h, Seq(`?r`), Seq(tRcvr), fa, FullPerm, None, pve, v2)(
+              (s3, h3, consumedHeap3, snap3, v3) => {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
-                v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-                v1.decider.assumeDefinition(smValueDef)
+                v3.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+                v3.decider.assumeDefinition(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
                 if (s3.heapDependentTriggers.contains(field))
-                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
-                Q(s3.copy(h = h3 + ch), v2)
-              case (Incomplete(_), s3, _, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
+                  v3.decider.assume(FieldTrigger(field.name, sm, tRcvr))
+                Q(s3.copy(h = h3 + ch), v3)
+              }
+            )
+          }))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
