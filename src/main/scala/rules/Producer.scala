@@ -436,7 +436,7 @@ object producer extends ProductionRules {
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
               v1
-            )(Q)
+            )((s2, _, v2) => Q(s2, v2))
           case (s1, _, _, None, v1) => Q(s1, v1)
         }
 
@@ -469,7 +469,7 @@ object producer extends ProductionRules {
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
               v1
-            )(Q)
+            )((s2, _, v2) => Q(s2, v2))
           case (s1, _, _, None, v1) => Q(s1, v1)
         }
 
@@ -502,7 +502,7 @@ object producer extends ProductionRules {
               NegativePermission(ast.FullPerm()()),
               QPAssertionNotInjective(wand),
               v1
-            )(Q)
+            )((s2, _, v2) => Q(s2, v2))
           case (s1, _, _, None, v1) => Q(s1, v1)
         }
 

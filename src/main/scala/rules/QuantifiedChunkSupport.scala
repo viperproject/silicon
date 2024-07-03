@@ -794,7 +794,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               v: Verifier)
-             (Q: (State, Verifier) => VerificationResult)
+             (Q: (State, QuantifiedBasicChunk, Verifier) => VerificationResult)
              : VerificationResult = {
 
     val gain = if (!Verifier.config.unsafeWildcardOptimization() ||
@@ -953,7 +953,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                      functionRecorder = fr1.recordFieldInv(inv),
                      conservedPcs = conservedPcs,
                      smCache = smCache1)
-            Q(s1, v)
+            Q(s1, ch, v)
           case false =>
             createFailure(pve dueTo notInjectiveReason, v, s)}
       case false =>
@@ -1032,7 +1032,35 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Heap, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     if (s.loopPhaseStack.nonEmpty && s.loopPhaseStack.head._1 != LoopPhases.Checking) {
-      ???
+      val (identifier, trigger) = resource match {
+        case f: ast.Field => (BasicChunkIdentifier(f.name), (sm: Term) => FieldTrigger(f.name, sm, tArgs.head))
+        case p: ast.Predicate => (BasicChunkIdentifier(p.name), (sm: Term) => PredicateTrigger(p.name, sm, tArgs))
+      }
+      if (s.loopPhaseStack.head._1 == LoopPhases.Transferring) {
+        ???
+      } else {
+        // Assuming
+        val (relevantChunks, _) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, identifier)
+        val (pmDef, pmCache) =
+          quantifiedChunkSupporter.summarisingPermissionMap(
+            s, resource, formalQVars, relevantChunks, null, v)
+        val currentPerm = ResourcePermissionLookup(resource, pmDef.pm, formalQVars, s.program)
+        val permissionToProduce = PermMax(PermMinus(tPerm, currentPerm), NoPerm)
+        val s2 = s.copy(pmCache = pmCache)
+        val snapSort = resource match {
+          case f: ast.Field => v.symbolConverter.toSort(f.typ)
+          case _ => sorts.Snap
+        }
+        val freshSnap = v.decider.fresh(snapSort)
+        val forall = ast.Forall(Seq(), Seq(), ast.TrueLit()())() // Just used to get the position for a potentioal warning.
+        produce(s2, forall, resource, qvars, formalQVars, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals, tCond, tArgs, freshSnap, permissionToProduce, pve, negativePermissionReason, notInjectiveReason, v)(
+          (s3, ch, v3) => {
+            val h3 = h + ch
+            doConsume(s3, h3, resource, qvars, formalQVars, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals, tCond, tArgs, tPerm, pve, negativePermissionReason, notInjectiveReason, insufficientPermissionReason, v3)(Q)
+          }
+        )
+      }
     } else {
       doConsume(s, h, resource, qvars, formalQVars, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals, tCond, tArgs, tPerm, pve, negativePermissionReason, notInjectiveReason, insufficientPermissionReason, v)(Q)
     }
@@ -1291,7 +1319,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               quantifiedChunkSupporter.extractHints(None, arguments), v)
         }
         magicWandSupporter.consumeFromMultipleHeaps(s, heaps, permissions, failure, Seq(), v)(
-          consumeFromOneOfMultipleHeaps(identifier, codomainQVars, arguments, resource, chunkOrderHeuristics)
+          consumeSingleFromOneOfMultipleHeaps(identifier, codomainQVars, arguments, resource, chunkOrderHeuristics)
         )((s1, hs1, cHeap1, optChunks, v1) => {
           val newTopHeap = hs1.head + cHeap1
           val totalConsumedAmount = cHeap1.values.foldLeft(NoPerm: Term)((q, ch) => PermPlus(q, ch.asInstanceOf[GeneralChunk].perm))
@@ -1345,7 +1373,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  def consumeFromOneOfMultipleHeaps(chunkIdentifier: ChunkIdentifer,
+  def consumeFromOneOfMultipleHeaps(resource: ast.Resource, qvars: Seq[Var], formalQVars: Seq[Var])(s2: State, heap: Heap, rPerm: Term, v2: Verifier) = {
+    ???
+  }
+
+  def consumeSingleFromOneOfMultipleHeaps(chunkIdentifier: ChunkIdentifer,
                                     codomainQVars: Seq[Var],
                                     arguments: Seq[Term],
                                     resource: ast.Resource,
