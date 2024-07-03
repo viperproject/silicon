@@ -57,7 +57,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       resource match {
         case f: ast.Field => v.symbolConverter.toSort(f.typ)
         case _: ast.Predicate => sorts.Snap
-        case _: ast.MagicWand => sorts.Snap
+        case _: ast.MagicWand => sorts.MagicWandSnapFunction
       }
 
     val `?s` = Var(Identifier("?s"), sort, false)
@@ -595,7 +595,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           )
 
           v.decider.assume(constraint)
-          newFr = newFr.recordArp(permTaken, constraint)
+          newFr = newFr.recordConstrainedVar(permTaken, constraint)
           consumedChunks.append(ch.withPerm(permTaken))
           ch.withPerm(PermMinus(ch.perm, permTaken))
         }

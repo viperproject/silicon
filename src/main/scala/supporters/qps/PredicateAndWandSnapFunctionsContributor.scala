@@ -21,7 +21,6 @@ import viper.silicon.state.terms.{Sort, SortDecl, sorts}
 import viper.silver.ast.PredicateAccess
 
 trait PredicateSnapFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
-trait MagicWandSnapFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
 /** Creates background definitions for n-tuples of predicate and wand arguments. Currently,
   * snapshot trees are used to built n-tuples.
@@ -45,8 +44,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
                                                       termConverter: TermConverter[String, String, String],
                                                       predicateSnapGenerator: PredicateSnapGenerator,
                                                       config: Config)
-    extends PredicateSnapFunctionsContributor[Sort, String, String]
-       with MagicWandSnapFunctionsContributor[Sort, String, String] {
+    extends PredicateSnapFunctionsContributor[Sort, String, String] {
 
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])

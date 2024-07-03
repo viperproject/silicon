@@ -94,7 +94,7 @@ package object utils {
 
   }
 
-  /** @see [[viper.silver.ast.utility.Transformer.simplify()]] */
+  /** @see [[viper.silver.ast.utility.Simplifier.simplify]] */
   def transform[T <: Term](term: T,
                            pre: PartialFunction[Term, Term] = PartialFunction.empty)
                           (recursive: Term => Boolean = !pre.isDefinedAt(_),
@@ -197,7 +197,8 @@ package object utils {
       case MapUpdate(t0, t1, t2) => MapUpdate(go(t0), go(t1), go(t2))
       case MapDomain(t) => MapDomain(go(t))
       case MapRange(t) => MapRange(go(t))
-      case MagicWandSnapshot(lhs, rhs) => MagicWandSnapshot(go(lhs), go(rhs))
+      case MagicWandSnapshot(t) => MagicWandSnapshot(go(t))
+      case MWSFLookup(t0, t1) => MWSFLookup(go(t0), go(t1))
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))
       case Second(t) => Second(go(t))

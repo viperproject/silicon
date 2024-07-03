@@ -218,7 +218,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
          * to use t1 or t2 and constrain it.
          */
         val t3 = v.decider.fresh(t1.sort)
-        (fr.recordFreshSnapshot(t3), t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
+        (fr.recordConstrainedVar(t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2))), t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
     }
   }
 

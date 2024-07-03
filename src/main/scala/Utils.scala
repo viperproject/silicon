@@ -222,6 +222,7 @@ package object utils {
     case class ViperEmbedding(embeddedSort: Sort) extends silver.ast.ExtensionType {
       def substitute(typVarsMap: Predef.Map[silver.ast.TypeVar, silver.ast.Type]): silver.ast.Type = this
       def isConcrete: Boolean = true
+      override def toString: String = s"ViperEmbedding(sorts.$embeddedSort)"
     }
   }
 
