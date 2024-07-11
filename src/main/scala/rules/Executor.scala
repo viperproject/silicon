@@ -234,11 +234,9 @@ object executor extends ExecutionRules {
              *   - Follow the outgoing edges
              */
 
-            //val invs = oldInvs
 
             /* Havoc local variables that are assigned to in the loop body */
             val wvs = s.methodCfg.writtenVars(block)
-            val nwvs = s.g.values.keys.filterNot(wvs.contains).toSeq
             /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
@@ -250,12 +248,11 @@ object executor extends ExecutionRules {
             val edgeConditions = sortedEdges.collect { case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition }
               .distinct
 
-            executionFlowController.locally(s, v) ((sAbd, vAbd) =>
-              LoopInvariantSolver.solveLoopInvariants(sAbd, vAbd, sAbd.g.values.keys.toSeq, block, otherEdges, joinPoint){
-                case invRes: BiAbductionFailure => Failure(Internal(reason = InternalReason(DummyNode, "Failed to find loop invariants")))
-                case invRes: LoopInvariantSuccess => Success(Some(invRes))
-              }
-            ) match {
+            val invsRes = executionFlowController.locally(s, v) ((sAbd, vAbd) =>
+              LoopInvariantSolver.solveLoopInvariants(sAbd, vAbd, sAbd.g.values.keys.toSeq, block, otherEdges, joinPoint)
+            )
+
+            invsRes match {
 
               case f: Failure => f
 
@@ -263,6 +260,7 @@ object executor extends ExecutionRules {
 
                 val newInvs = abductionUtils.getInvariantSuccesses(nfr) match {
                   case Seq(invSuc) => invSuc.invs
+                  case Seq() => Seq()
                 }
                 val foundInvs = newInvs.distinct
                 val invs = existingInvs ++ foundInvs
@@ -272,71 +270,72 @@ object executor extends ExecutionRules {
 
                 val invSuc = if (newInvs.isEmpty) {
                   Success()
-                } else {Success(Some(LoopInvariantSuccess(s, v, foundInvs, otherEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition.pos)))}
+                } else {
+                  Success(Some(LoopInvariantSuccess(s, v, foundInvs, otherEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition.pos)))
+                }
 
-                (invSuc combine
-
-                  (executionFlowController.locally(sBody, v)((s0, v0) => {
-                    v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
-                    val mark = v0.decider.setPathConditionMark()
-                    produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
-                      phase1data = phase1data :+ (s1,
-                        v1.decider.pcs.after(mark),
-                        v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */ )
-                      Success()
-                    })
+                val wfi = executionFlowController.locally(sBody, v)((s0, v0) => {
+                  v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
+                  val mark = v0.decider.setPathConditionMark()
+                  produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
+                    phase1data = phase1data :+ (s1,
+                      v1.decider.pcs.after(mark),
+                      v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */ )
+                    Success()
                   })
-                    combine executionFlowController.locally(s, v)((s0, v0) => {
-                    v0.decider.prover.comment("Loop head block: Establish invariant")
-                    val prePos = VirtualPosition("Before loop " + block.toString)
-                    consumes(s0, invs, LoopInvariantNotEstablished, v0, Some(prePos))((sLeftover, _, v1) => {
-                      v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
-                      phase1data.foldLeft(Success(): VerificationResult) {
-                        case (result, _) if !result.continueVerification => result
-                        case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
-                          val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
-                          intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
-                            v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions, true) /* [BRANCH-PARALLELISATION] */
-                            v2.decider.assume(pcs.assumptions)
-                            v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                            if (v2.decider.checkSmoke())
-                              Success()
-                            else {
-                              execs(s3, stmts, v2)((s4, v3) => {
-                                v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
-                                edgeConditions.foldLeft(Success(): VerificationResult) {
-                                  case (result, _) if !result.continueVerification => result
-                                  case (intermediateResult, eCond) =>
-                                    intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
-                                      eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _) => {
-                                        v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
+                })
 
-                                        // We have to check the inferred invariants after loop manually here instead of
-                                        // relying on the reentry of the loop head, as this will not have the additional invariants
+                val con = executionFlowController.locally(s, v) ((s0, v0) => {
+                  v0.decider.prover.comment("Loop head block: Establish invariant")
+                  val prePos = VirtualPosition("Before loop " + block.toString)
+                  consumes(s0, invs, LoopInvariantNotEstablished, v0, Some(prePos))((sLeftover, _, v1) => {
+                    v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
+                    phase1data.foldLeft(Success(): VerificationResult) {
+                      case (result, _) if !result.continueVerification => result
+                      case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
+                        val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
+                        intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
+                          v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions, true) /* [BRANCH-PARALLELISATION] */
+                          v2.decider.assume(pcs.assumptions)
+                          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+                          if (v2.decider.checkSmoke())
+                            Success()
+                          else {
+                            execs(s3, stmts, v2)((s4, v3) => {
+                              v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
+                              edgeConditions.foldLeft(Success(): VerificationResult) {
+                                case (result, _) if !result.continueVerification => result
+                                case (intermediateResult, eCond) =>
+                                  intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
+                                    eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _) => {
+                                      v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
+
+                                      // We have to check the inferred invariants after loop manually here instead of
+                                      // relying on the reentry of the loop head, as this will not have the additional invariants
+                                      executionFlowController.locally(s4, v3)((s5, v5) => {
+                                        follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) => {
+                                          val endPos = VirtualPosition("End of loop " + block.toString)
+                                          // TODO nklose check that no new state is abduced, this would be incorrect
+                                          consumes(s6, foundInvs, e => LoopInvariantNotPreserved(e), v6, Some(endPos))((_, _, _) => Success())
+                                        }
+                                        )
+                                      }) combine
+                                        // Continue after the loop (with the new invariants)
                                         executionFlowController.locally(s4, v3)((s5, v5) => {
-                                          follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) => {
-                                            val endPos = VirtualPosition("End of loop " + block.toString)
-                                            // TODO nklose check that no new state is abduced, this would be incorrect
-                                            consumes(s6, foundInvs, e => LoopInvariantNotPreserved(e), v6, Some(endPos))((_, _, _) => Success())
-                                          }
-                                          )
-                                        }) &&
-                                          // Continue after the loop (with the new invariants)
-                                          executionFlowController.locally(s4, v3)((s5, v5) => {
-                                            follows(s5, outEdges, WhileFailed, v5, joinPoint)((s6, v6) => Q(s6, v6))
-                                          })
-                                      })
+                                          follows(s5, outEdges, WhileFailed, v5, joinPoint)((s6, v6) => Q(s6, v6))
+                                        })
                                     })
-                                }
-                              })
-                            }
-                          })
-                      }
-                    })
-                  })))
+                                  })
+                              }
+                            })
+                          }
+                        })
+                    }
+                  })
+                })
+                invSuc combine wfi combine con
               }
             }
-
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -357,7 +356,7 @@ object executor extends ExecutionRules {
            (Q: (State, Verifier) => VerificationResult)
   : VerificationResult =
 
-    if (stmts.nonEmpty)
+    if(stmts.nonEmpty)
       exec(s, stmts.head, v)((s1, v1) =>
         execs(s1, stmts.tail, v1)(Q))
     else

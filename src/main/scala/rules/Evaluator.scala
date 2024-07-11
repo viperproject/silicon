@@ -7,25 +7,25 @@
 package viper.silicon.rules
 
 import viper.silicon.biabduction.AbductionQuestion
-import viper.silver.ast
-import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, PartialVerificationError, VerifierWarning}
-import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, PreconditionInAppFalse}
-import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
-import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
+import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.toSf
 import viper.silicon.utils.ast.flattenOperator
+import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
-import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
-import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
-import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
+import viper.silver.ast
 import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
+import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
+import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, PreconditionInAppFalse}
+import viper.silver.verifier.reasons._
+import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations

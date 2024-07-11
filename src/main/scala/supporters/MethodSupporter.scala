@@ -123,6 +123,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                 exec(s3, body, v3) { (s4, v4) => {
                   // Attempt to consume postconditions
                   val postPos = VirtualPosition("At the end of method " + method.name)
+                  // TODO nklose this fails to account for bcs in statements
                   consumes(s4, posts, postViolated, v4, Some(postPos)) ((s5: State, _: Term, v5: Verifier) => {
                     // Generate new postconditions from the state left over
                     // TODO nklose This fails to generate statements if we do abstraction

@@ -49,6 +49,10 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
 
     t match {
       case t if matches.contains(t) => matches.get(t)
+      //case BuiltinEquals(t1, t2) => (transformTerm(t1), transformTerm(t2)) match {
+      //  case (Some(e1), Some(e2)) => Some(EqCmp(e1, e2)())
+      //  case _ => None
+      //}
       case terms.FractionPermLiteral(r) => Some(FractionalPerm(IntLit(r.numerator)(), IntLit(r.denominator)())())
       case terms.FullPerm => Some(FullPerm()())
       case terms.Null => Some(NullLit()())
@@ -87,7 +91,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
   // This is kinda tricky if the expression contains field accesses.
   // We do not get the guarantee that the chunks exist in the current state, so we can not evaluate them
   // directly
-  def transformExp(e: Exp): Option[Exp] = {
+  def transformExp(e: Exp, strict: Boolean = true): Option[Exp] = {
     try {
       val res = e.transform {
         case fa@FieldAccess(target, field) =>
@@ -95,11 +99,16 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
             // If the chunk exists in the current state, then we want to match the snap term
             case Some(term) =>
               val existingChunkTerm = transformTerm(term)
-              existingChunkTerm.get match {
-                case nfa: FieldAccess => nfa
+              existingChunkTerm match {
+                case Some(nfa: FieldAccess) => nfa
 
                 // Due to heap representation this can sometimes happen
-                case NullLit() | LocalVar(_, _) =>
+                case Some(NullLit()) | Some(LocalVar(_, _)) =>
+                  val rvcExp = transformExp(target)
+                  FieldAccess(rvcExp.get, field)()
+
+                // TODO nklose this maybe wrong sometimes?
+                case None =>
                   val rvcExp = transformExp(target)
                   FieldAccess(rvcExp.get, field)()
               }
@@ -108,11 +117,12 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
               val rvcExp = transformExp(target)
               FieldAccess(rvcExp.get, field)()
           }
-        case lv: LocalVar => transformTerm(s.g(lv)).get
+        case lv: LocalVar =>
+          transformTerm(s.g(lv)).get
       }
       Some(res)
     } catch {
-      case _: NoSuchElementException => None
+      case _: NoSuchElementException => if(strict) None else Some(e)
     }
   }
 }

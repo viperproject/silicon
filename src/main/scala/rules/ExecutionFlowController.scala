@@ -172,4 +172,27 @@ object executionFlowController extends ExecutionFlowRules {
                         : VerificationResult =
 
       tryOrFailWithResult[(R1, R2)](s, v)((s1, v1, QS) => action(s1, v1, (s2, r21, r22, v2) => QS(s2, (r21, r22), v2)))((s2, r, v2) => Q(s2, r._1, r._2, v2))
+
+
+  def tryOrElse0(s: State, v: Verifier)
+                (action: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult)
+                (Q: (State, Verifier) => VerificationResult)
+                (F: FatalResult => VerificationResult): VerificationResult ={
+    tryOrElseWithResult[scala.Null](s, v)(((s1, v1, QS) => action(s1, v1, (s2, v2) => QS(s2, null, v2))))((s2, _, v2) => Q(s2, v2))(F)
+  }
+
+  private def tryOrElseWithResult[R](s: State, v: Verifier)
+                  (action: (State, Verifier, (State, R, Verifier) => VerificationResult) => VerificationResult)
+                  (Q: (State, R, Verifier) => VerificationResult)
+                  (F: FatalResult => VerificationResult)
+  : VerificationResult = {
+
+    // This is not as efficient as it maybe could be, we call action twice.
+    // To speed it up we would have to save the s2, v2, r that we currently ignore in the fake
+    // continuation
+    locallyWithResult[R](s, v) { (s1, v1, Q1) => action(s1, v1, (_, _, _) => Success()) } match {
+      case Success(_) => action(s, v, Q)
+      case f: FatalResult => F(f)
+    }
+  }
 }
