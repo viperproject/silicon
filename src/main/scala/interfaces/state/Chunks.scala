@@ -17,12 +17,18 @@ trait GeneralChunk extends Chunk {
   val resourceID: ResourceID
   val id: ChunkIdentifer
   val perm: Term
+  def applyCondition(newCond: Term): GeneralChunk
+  def permMinus(perm: Term): GeneralChunk
+  def permPlus(perm: Term): GeneralChunk
   def withPerm(perm: Term): GeneralChunk
 }
 
 trait NonQuantifiedChunk extends GeneralChunk {
   val args: Seq[Term]
   val snap: Term
+  override def applyCondition(newCond: Term): NonQuantifiedChunk
+  override def permMinus(perm: Term): NonQuantifiedChunk
+  override def permPlus(perm: Term): NonQuantifiedChunk
   override def withPerm(perm: Term): NonQuantifiedChunk
   def withSnap(snap: Term): NonQuantifiedChunk
 }
@@ -31,6 +37,9 @@ trait QuantifiedChunk extends GeneralChunk {
   val quantifiedVars: Seq[Var]
   def snapshotMap: Term
   def valueAt(arguments: Seq[Term]): Term
+  override def applyCondition(newCond: Term): QuantifiedChunk
+  override def permMinus(perm: Term): QuantifiedChunk
+  override def permPlus(perm: Term): QuantifiedChunk
   override def withPerm(perm: Term): QuantifiedChunk
   def withSnapshotMap(snap: Term): QuantifiedChunk
 }
