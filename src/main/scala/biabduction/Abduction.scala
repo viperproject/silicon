@@ -16,8 +16,8 @@ import viper.silver.ast._
 import viper.silver.verifier.{BiAbductionQuestion, DummyReason}
 
 object AbductionApplier extends RuleApplier[AbductionQuestion] {
-  override val rules: Seq[AbductionRule] = Seq(AbductionRemove, AbductionListFoldBase,
-    AbductionListFold, AbductionListUnfold, AbductionApply, AbductionPackage, AbductionMissing)
+  override val rules: Seq[AbductionRule] = Seq(AbductionRemove, AbductionFoldBase,
+    AbductionFold, AbductionUnfold, AbductionApply, AbductionPackage, AbductionMissing)
 }
 
 case class AbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
@@ -39,36 +39,36 @@ trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
     * Check the lost accesses to see if the access is there
     * Evaluate sub-expressions safely to ensure that a missing chunk will not cause the evaluation to silently abort
     */
-  protected def safeEval(e: Exp, q: AbductionQuestion)(Q: (State, Option[Term], Verifier) => VerificationResult): VerificationResult = {
+  protected def safeEval(e: Exp, s: State, v: Verifier, lostAccesses: Map[Exp, Term])(Q: (State, Option[Term], Verifier) => VerificationResult): VerificationResult = {
 
     if (!e.contains[LocationAccess]) {
-      eval(q.s, e, pve, q.v)((s1, t, v1) => Q(s1, Some(t), v1))
+      eval(s, e, pve, v)((s1, t, v1) => Q(s1, Some(t), v1))
     } else {
 
       // If the arg was lost, we have it in the map
-      if (q.lostAccesses.contains(e)) {
-        Q(q.s, Some(q.lostAccesses(e)), q.v)
+      if (lostAccesses.contains(e)) {
+        Q(s, Some(lostAccesses(e)), v)
       } else {
         e match {
           // If the arg is a location access, we have to recursively check it
-          case loc: LocationAccess => checkChunk(loc, q) {
-            case Some(c) => Q(q.s, Some(c.snap), q.v)
-            case None => Q(q.s, None, q.v)
+          case loc: LocationAccess => checkChunk(loc, s, v, lostAccesses) {
+            case Some(c) => Q(s, Some(c.snap), v)
+            case None => Q(s, None, v)
           }
-          case v: AbstractLocalVar => Q(q.s, Some(q.s.g(v)), q.v)
+          case lv: AbstractLocalVar => Q(s, Some(s.g(lv)), v)
           //case _ => evalLocationAccess(q.s, loc, pve, q.v) { (s2, _, tArgs, v2) => Q(s2, Some(tArgs), v2) }
         }
       }
     }
   }
 
-  protected def checkChunk(loc: LocationAccess, q: AbductionQuestion)(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
+  protected def checkChunk(loc: LocationAccess, s: State, v: Verifier, lostAccesses: Map[Exp, Term])(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
     // TODO Currently we assume only one arg, which may be wrong for arbitrary predicates
     val arg = loc match {
       case FieldAccess(rcv, _) => rcv
       case PredicateAccess(args, _) => args.head
     }
-    safeEval(arg, q) { (s2, terms, v2) =>
+    safeEval(arg, s, v, lostAccesses) { (s2, terms, v2) =>
       terms match {
         case Some(term) =>
           val resource = loc.res(s2.program)
@@ -98,7 +98,7 @@ object AbductionRemove extends AbductionRule {
       case None => Q(None)
       case Some(g@AccessPredicate(loc: LocationAccess, _)) =>
         val g1 = q.goal.filterNot(g == _)
-        checkChunk(loc, q) {
+        checkChunk(loc, q.s, q.v, q.lostAccesses) {
           case Some(c) =>
             consumeChunks(Seq(c), q.copy(goal = g1))(q2 => Q(Some(q2)))
           case None => apply(q.copy(goal = g1)) {
@@ -151,11 +151,11 @@ object AbductionFoldBase extends AbductionRule {
           case None => Q(None)
           case Some(cond) =>
             val g1 = q.goal.filterNot(_ == a)
-            val concCond = cond.transform { case pred.formalArgs.head => a.loc.args.head }
-            safeEval(concCond, q) {
+            val concCond = cond.transform { case lv: AbstractLocalVar if lv == pred.formalArgs.head.localVar => a.loc.args.head }
+            safeEval(concCond, q.s, q.v, q.lostAccesses) {
               case (s1, Some(term), v1) =>
                 if (v1.decider.check(term, Verifier.config.checkTimeout())) {
-                  safeEval(a.loc.args.head, q) {
+                  safeEval(a.loc.args.head, q.s, q.v, q.lostAccesses) {
                     case (s2, Some(t), v2) =>
                       val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                       predicateSupporter.fold(s1, pred, List(t), terms.FullPerm, wildcards, pve, v2) { (s3, v3) =>
@@ -191,7 +191,7 @@ object AbductionFold extends AbductionRule {
     locs match {
       case Seq() => Q(None)
       case loc :: rest =>
-        checkChunk(loc, q) {
+        checkChunk(loc, q.s, q.v, q.lostAccesses) {
           case Some(chunk) => Q(Some(loc, chunk))
           case None => findFirstFieldChunk(rest, q)(Q)
         }
@@ -205,7 +205,7 @@ object AbductionFold extends AbductionRule {
       case Some(a: PredicateAccessPredicate) =>
         val g1 = q.goal.filterNot(_ == a)
         val pred = a.loc.loc(q.s.program)
-        val fields = pred.body.get.transform { case pred.formalArgs.head => a.loc.args.head }.collect { case e: FieldAccessPredicate => e.loc }.toSeq
+        val fields = pred.body.get.transform { case lc: AbstractLocalVar if pred.formalArgs.head.localVar == lc => a.loc.args.head }.collect { case e: FieldAccessPredicate => e.loc }.toSeq
 
         // If we do not fold this predicate, we recurse to try the others by calling this
         val R = () => {
@@ -219,13 +219,12 @@ object AbductionFold extends AbductionRule {
             val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
             executionFlowController.tryOrElse0(q.s, q.v) {
               (sa, va, T) => predicateSupporter.fold(sa, pred, chunk.args.toList, terms.FullPerm, wildcards, pve, va, Some(a.pos))(T)
-            }
-            {
+            } {
               (s1: State, v1: Verifier) =>
-              val fold = Fold(a)()
-              val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, sorts.Ref))
-              Q(Some(q.copy(s = s1, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost)))
-            }{ _: FatalResult => R() }
+                val fold = Fold(a)()
+                val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, sorts.Ref))
+                Q(Some(q.copy(s = s1, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost)))
+            } { _: FatalResult => R() }
           case None => R()
         }
     }
@@ -238,22 +237,23 @@ object AbductionUnfold extends AbductionRule {
     pres match {
       case Seq() => Q(None)
       case pred :: rest =>
-        checkChunk(pred, q) {
+        checkChunk(pred, q.s, q.v, q.lostAccesses) {
           case None => checkPredicates(rest, q, goal)(Q)
           case Some(predChunk) =>
             val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
             val bcsBefore = q.v.decider.pcs.branchConditions
             var failedBranches: Seq[silicon.Stack[Term]] = Seq()
             var succBranches: Seq[silicon.Stack[Term]] = Seq()
-            val tryUnfold = predicateSupporter.unfold(q.s, pred.loc(q.s.program), predChunk.args.toList, terms.FullPerm, wildcards, pve, q.v, pred){
-              (s1, v1) => checkChunk(goal, q){
-                case None =>
-                  failedBranches = failedBranches :+ v1.decider.pcs.branchConditions
-                  Failure(pve dueTo DummyReason)
-                case Some(fieldChunk) =>
-                  succBranches = succBranches :+ v1.decider.pcs.branchConditions
-                  Success()
-              }
+            val tryUnfold = predicateSupporter.unfold(q.s, pred.loc(q.s.program), predChunk.args.toList, terms.FullPerm, wildcards, pve, q.v, pred) {
+              (s1, v1) =>
+                checkChunk(goal, s1, v1, q.lostAccesses) {
+                  case None =>
+                    failedBranches = failedBranches :+ v1.decider.pcs.branchConditions
+                    Failure(pve dueTo DummyReason)
+                  case Some(_) =>
+                    succBranches = succBranches :+ v1.decider.pcs.branchConditions
+                    Success()
+                }
             }
             tryUnfold match {
               case _: NonFatalResult => Q(Some(pred, predChunk, Seq()))
@@ -286,14 +286,14 @@ object AbductionUnfold extends AbductionRule {
         }
 
         val preds = abductionUtils.getContainingPredicates(a.loc, q.s.program).filter(abductionUtils.isValidPredicate)
-        val predAccs = preds.map {pred => PredicateAccess(Seq(a.loc.rcv), pred)(NoPosition, NoInfo, NoTrafos)}
-        checkPredicates(predAccs, q, a.loc){
+        val predAccs = preds.map { pred => PredicateAccess(Seq(a.loc.rcv), pred)(NoPosition, NoInfo, NoTrafos) }
+        checkPredicates(predAccs, q, a.loc) {
           case None => R()
           case Some((pred, predChunk, conds)) =>
             produces(q.s, freshSnap, conds, _ => pve, q.v)((s1, v1) => {
               val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
-              predicateSupporter.unfold(s1, pred.loc(q.s.program), predChunk.args.toList, terms.FullPerm, wildcards, pve, v1, pred){(s2, v2) =>
-                Q(Some(q.copy(s = s2, v = v2, foundStmts = q.foundStmts :+ Unfold(PredicateAccessPredicate(pred, FullPerm()())())(), foundState = q.foundState :+ conds)))
+              predicateSupporter.unfold(s1, pred.loc(q.s.program), predChunk.args.toList, terms.FullPerm, wildcards, pve, v1, pred) { (s2, v2) =>
+                Q(Some(q.copy(s = s2, v = v2, foundStmts = q.foundStmts :+ Unfold(PredicateAccessPredicate(pred, FullPerm()())())(), foundState = q.foundState ++ conds)))
               }
             })
         }
@@ -406,7 +406,7 @@ object AbductionListFoldBase extends AbductionRule {
           case (s1, Some(args), v1) =>
             if (v1.decider.check(terms.BuiltinEquals(args.head, terms.Null), Verifier.config.checkTimeout())) {
               val fold = Fold(a)()
-              // TODO Do we have to remove the path condition? How do we do this? Havoc/exhale?
+              // Do we have to remove the path condition? How do we do this? Havoc/exhale?
               Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold)))
             } else {
               apply(q.copy(goal = g1)) {
@@ -423,7 +423,7 @@ object AbductionListFoldBase extends AbductionRule {
   }
 }
 
-// TODO this does not always do the right thing, see the reassign example
+// this does not always do the right thing, see the reassign example
 // If we add list(x.next) to our goal, but x.next was assigned to in the method, then we
 // find a precondition for the original value of x.next, not for the assigned value.
 
@@ -481,7 +481,7 @@ object AbductionListUnfold extends AbductionRule {
               // Unfold
               unfoldPredicate(q, a.loc.rcv, a.perm) { (s1, v1) =>
 
-                // Add x != null to path condition TODO maybe do this first?
+                // Add x != null to path condition maybe do this first?
                 produce(s1, freshSnap, nNl, pve, v1)((s2, v2) => {
                   v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
 

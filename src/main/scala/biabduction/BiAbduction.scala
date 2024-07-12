@@ -175,8 +175,8 @@ object abductionUtils {
       case None => false
       case Some(body) =>
         !body.topLevelConjuncts.exists {
-          case fa: FieldAccessPredicate => false
-          case imp: Implies => false
+          case _: FieldAccessPredicate => false
+          case _: Implies => false
           case _ => true
         }
     })
@@ -186,8 +186,12 @@ object abductionUtils {
     g.values.collect({ case (v, t1) if t1 == t => v }).toSeq
   }
 
-  def getField(name: BasicChunkIdentifier, p: Program) = {
+  def getField(name: BasicChunkIdentifier, p: Program): Field = {
     p.fields.find(_.name == name.name).get
+  }
+  
+  def getPredicate(name: BasicChunkIdentifier, p: Program): Predicate ={
+    p.predicates.find(_.name == name.name).get
   }
 
   def getAbductionResults(vr: NonFatalResult): Seq[AbductionSuccess] = {

@@ -8,13 +8,62 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 
 object AbstractionApplier extends RuleApplier[AbstractionQuestion] {
-  override val rules: Seq[AbstractionRule] = Seq(AbstractionListFold, AbstractionListPackage, AbstractionJoin, AbstractionApply)
+  override val rules: Seq[AbstractionRule] = Seq(AbstractionFold, AbstractionPackage, AbstractionJoin, AbstractionApply)
 }
 
 case class AbstractionQuestion(exps: Seq[Exp], s: State, v: Verifier)
 
 trait AbstractionRule extends BiAbductionRule[AbstractionQuestion]
 
+object AbstractionFold extends AbstractionRule {
+  
+  override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
+    Q(None)
+  }
+}
+
+object AbstractionPackage extends AbstractionRule {
+
+  override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
+    Q(None)
+  }
+}
+
+object AbstractionJoin extends AbstractionRule {
+
+  override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
+    val wands = q.exps.collect { case wand: MagicWand => wand }
+    val pairs = wands.combinations(2).toSeq
+    pairs.collectFirst {
+      case wands if wands(0).right == wands(1).left => (wands(0), wands(1))
+      case wands if wands(1).right == wands(0).left => (wands(1), wands(0))
+    } match {
+      case None => Q(None)
+      case (Some(inst)) =>
+        val exps1 = q.exps.filterNot(exp => inst._1 == exp || inst._2 == exp) :+ MagicWand(inst._1.left, inst._2.right)()
+        Q(Some(q.copy(exps = exps1)))
+    }
+  }
+}
+
+object AbstractionApply extends AbstractionRule {
+
+  override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
+    val wands = q.exps.collect { case wand: MagicWand => wand }
+    val matches = wands.filter(wand => q.exps.contains(wand.left))
+    if (matches.isEmpty) {
+      Q(None)
+    } else {
+      val lefts = matches.map(_.left)
+      val rights = matches.map(_.right)
+
+      val exps1 = q.exps.filterNot(matches.contains).filter(lefts.contains(_)) ++ rights
+      Q(Some(q.copy(exps = exps1)))
+    }
+  }
+}
+
+/*
 object AbstractionListFold extends AbstractionRule {
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
@@ -73,37 +122,4 @@ object AbstractionListPackage extends AbstractionRule {
     }
   }
 }
-
-object AbstractionJoin extends AbstractionRule {
-
-  override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
-    val wands = q.exps.collect { case wand: MagicWand => wand }
-    val pairs = wands.combinations(2).toSeq
-    pairs.collectFirst {
-      case wands if wands(0).right == wands(1).left => (wands(0), wands(1))
-      case wands if wands(1).right == wands(0).left => (wands(1), wands(0))
-    } match {
-      case None => Q(None)
-      case (Some(inst)) =>
-        val exps1 = q.exps.filterNot(exp => inst._1 == exp || inst._2 == exp) :+ MagicWand(inst._1.left, inst._2.right)()
-        Q(Some(q.copy(exps = exps1)))
-    }
-  }
-}
-
-object AbstractionApply extends AbstractionRule {
-
-  override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
-    val wands = q.exps.collect { case wand: MagicWand => wand }
-    val matches = wands.filter(wand => q.exps.contains(wand.left))
-    if (matches.isEmpty) {
-      Q(None)
-    } else {
-      val lefts = matches.map(_.left)
-      val rights = matches.map(_.right)
-
-      val exps1 = q.exps.filterNot(matches.contains).filter(lefts.contains(_)) ++ rights
-      Q(Some(q.copy(exps = exps1)))
-    }
-  }
-}
+ */

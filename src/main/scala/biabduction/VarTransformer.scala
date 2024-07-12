@@ -66,7 +66,8 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     (b, rcv) match {
       case (_, None) => None
       case (BasicChunk(FieldID, _, _, _, _), rcv) => Some(FieldAccessPredicate(FieldAccess(rcv.get, abductionUtils.getField(b.id, s.program))(), transformTerm(b.perm).get)())
-      case (BasicChunk(PredicateID, _, _, _, _), rcv) => Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))
+      case (BasicChunk(PredicateID, id, _, _, _), rcv) => Some(PredicateAccessPredicate(PredicateAccess(Seq(rcv.get), id.name)(), transformTerm(b.perm).get)())
+        //Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))
     }
   }
 
