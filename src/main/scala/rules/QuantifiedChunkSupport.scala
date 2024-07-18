@@ -1797,11 +1797,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
-        Left(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.invs.get.condition)
+        Left(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
       case qfc: QuantifiedFieldChunk if qfc.singletonArguments.isDefined =>
         Right(qfc.singletonArguments.get)
       case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
-        Left(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.invs.get.condition)
+        Left(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.singletonArguments.isDefined =>
         Right(qpc.singletonArguments.get)
       case _ => return None
@@ -1838,9 +1838,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     relevantChunks.find { ch =>
       val chunkInfo = ch match {
         case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
-          Some(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.invs.get.condition)
+          Some(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
         case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
-          Some(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.invs.get.condition)
+          Some(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
         case _ => None
       }
       chunkInfo match {
