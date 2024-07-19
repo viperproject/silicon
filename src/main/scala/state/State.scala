@@ -267,7 +267,7 @@ object State {
     h map (c => {
       c match {
         case c: GeneralChunk =>
-          c.withPerm(Ite(cond, c.perm, NoPerm))
+          c.applyCondition(cond)
         case _ => sys.error("Chunk type not conditionalizable.")
       }
     })
