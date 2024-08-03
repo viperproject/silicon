@@ -174,8 +174,6 @@ object executor extends ExecutionRules {
               Q(s4, v4)
             } else {
               // Continue after merging at join point.
-              // Guessing this means that everything after a merge will have the path id of
-              // the first branch (don't know yet if that's ok)
               exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint, pathId)(Q)
             }
           })
@@ -199,11 +197,13 @@ object executor extends ExecutionRules {
         val uidBranchPoint = v.symbExLog.insertBranchPoint(edges.length)
         val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
           case (result: VerificationResult, (edge, edgeIndex)) => {
+            var branchPathId = pathId
             if (edgeIndex != 0) {
               v.symbExLog.switchToNextBranch(uidBranchPoint)
+              branchPathId = nextPathId()
             }
             v.symbExLog.markReachable(uidBranchPoint)
-            result combine follow(s, edge, v, joinPoint, pathId)(Q)
+            result combine follow(s, edge, v, joinPoint, branchPathId)(Q)
           }
         }
         v.symbExLog.endBranchPoint(uidBranchPoint)
