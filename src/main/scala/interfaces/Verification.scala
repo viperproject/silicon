@@ -176,7 +176,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Ex
   lazy val stateString: String = {
     if (state.isDefined){
       s"\n\nStore:\n\t\t${state.get.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${state.get.h.values.mkString("\n\t\t")}"
-    }else{
+    } else {
       ""
     }
   }
@@ -194,7 +194,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Ex
   lazy val failedAssertionString: String ={
     if (failedAssertionExp.finalExp.isDefined){
       s"\n\nFailed Assertion:\n\t\t${failedAssertionExp.finalExp.get.toString()}"
-    }else{
+    } else {
       failedAssertionExp.description.get
     }
   }

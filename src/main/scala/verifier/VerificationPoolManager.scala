@@ -102,7 +102,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     val thread = Thread.currentThread()
     if (thread.isInstanceOf[WorkerBorrowingForkJoinWorkerThread]){
       new WorkerAwareForkJoinTask(task).fork
-    }else{
+    } else {
       threadPool.submit(new WorkerAwareForkJoinTask(task))
     }
   }

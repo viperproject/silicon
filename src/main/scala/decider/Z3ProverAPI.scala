@@ -474,7 +474,7 @@ class Z3ProverAPI(uniqueId: String,
         }
         if (preamblePhaseOver){
           prover.add(axiom)
-        }else{
+        } else {
           preambleAssumes.add(axiom)
         }
       case swd: SortWrapperDecl =>

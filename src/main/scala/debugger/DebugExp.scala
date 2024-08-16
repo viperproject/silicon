@@ -154,7 +154,7 @@ class ImplicationDebugExp(id: Int,
 
       if (children.nonEmpty) {
         getTopLevelString(currDepth) + " ==> " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
-      }else{
+      } else {
         getTopLevelString(currDepth)
       }
   }
@@ -181,7 +181,7 @@ class QuantifiedDebugExp(id: Int,
 
     if (qvars.nonEmpty) {
       "\n\t" + ("\t"*currDepth) + "[" + id + "] " + quantifier.replace("QA", "forall") + " " + qvars.mkString(", ") + " :: " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
-    }else{
+    } else {
       getTopLevelString(currDepth)
     }
   }

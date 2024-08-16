@@ -191,7 +191,7 @@ class FunctionData(val programFunction: ast.Function,
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
     if (programFunction.posts.nonEmpty) {
       expressionTranslator.translatePostcondition(program, programFunction.posts, this)
-    }else{
+    } else {
       Seq()
     }
   }

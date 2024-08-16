@@ -53,7 +53,7 @@ trait Verifier {
     val equalHeaps = s.oldHeaps.filter(h => h._1.startsWith("debug@") && h._2.equals(s.h)).keys
     if (equalHeaps.nonEmpty){
       equalHeaps.head
-    }else{
+    } else {
       val counter = debugHeapCounter.getAndIncrement()
       s"debug@$counter"
     }

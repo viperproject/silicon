@@ -831,8 +831,9 @@ case class ExtractedFunction(fname: String,
         } else {
           throw new IllegalArgumentException(s"false types for partial application: required $subtypes but got: $args")
         }
-      }else
+      } else {
         throw new IllegalArgumentException(s"to many arguments for function: $fname")
+      }
     }
   }
 

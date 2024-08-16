@@ -45,7 +45,7 @@ case class ProofObligation(s: State,
       s"\n\t\t${originalErrorReason.pos}" +
         (if (s.currentMember.isDefined){
          s" (inside ${s.currentMember.get.name})"
-        }else{
+        } else {
           ""
         }) +
       s"\n\t\t${originalErrorReason.readableMessage}\n\n"
@@ -74,7 +74,7 @@ case class ProofObligation(s: State,
   private def axiomsString: String = {
     if (printConfig.isPrintAxiomsEnabled && preambleAssumptions.nonEmpty){
       s"Axioms: ${preambleAssumptions.zipWithIndex.foldLeft[String]("")((s, d) => s + s"\n\t[A${d._2}] " + d._1.toString)}\n\n"
-    }else{
+    } else {
       ""
     }
   }
@@ -82,7 +82,7 @@ case class ProofObligation(s: State,
   private def assertionString: String = {
     if (eAssertion.finalExp.isDefined){
       s"Assertion:\n\t$eAssertion\n\n"
-    }else{
+    } else {
       eAssertion.description.get
     }
   }
@@ -120,7 +120,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         val obl = getObligationByIndex(0)
         initializeAndDebugObligation(obl)
         return
-      }else{
+      } else {
         println(s"Which verification result do you want to debug next [0 - ${failures.size - 1}] (or q to quit):")
         val userInput = readLine()
         if (userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit")) {
@@ -167,7 +167,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         new DebugResolver(this.pprogram, this.resolver.names), new DebugTranslator(this.pprogram, translator.getMembers())))
       println(s"Current obligation:\n$obl")
       obl
-    }else{
+    } else {
       None
     }
   }
@@ -204,7 +204,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
     if (failedPExp.isDefined){
       obl.resolver.typechecker.curMember = failedPExp.get.asInstanceOf[PScope]
-    }else{
+    } else {
       println("Could not determine the scope for typechecking.")
     }
 

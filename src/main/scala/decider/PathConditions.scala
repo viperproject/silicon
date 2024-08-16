@@ -307,7 +307,7 @@ private trait LayeredPathConditionStackLike {
       if (layer.nonGlobalAssumptionDebugExps.nonEmpty && !implicationLHSExp.equals(TrueLit()())) {
         conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew), Some(implicationLHS),
           false, layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten)
-      }else{
+      } else {
         conditionalTerms ++= layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten
       }
     }
@@ -384,7 +384,7 @@ private trait LayeredPathConditionStackLike {
           val quantDebugExp = DebugExp.createQuantifiedInstance(description=None, originalExp=None, finalExp = None, term = None, isInternal_ = false,
             children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars, triggers = triggers)
           nonGlobals += quantDebugExp
-        }else{
+        } else {
           nonGlobals += DebugExp.createInstance("quantifiedExp", layer.nonGlobalAssumptionDebugExps)
         }
     }

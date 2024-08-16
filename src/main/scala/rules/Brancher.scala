@@ -220,7 +220,7 @@ object brancher extends BranchingRules {
             v.decider.resetProverOptions()
             v.decider.setProverOptions(proverArgsOfCurrentDecider)
           }
-        }else{
+        } else {
           rs = elseBranchFuture.get()
         }
       } catch {
