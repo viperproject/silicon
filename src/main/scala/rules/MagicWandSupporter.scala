@@ -8,7 +8,6 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon._
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
@@ -246,7 +245,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
     val stackSize = 3 + s.reserveHeaps.tail.size
     // IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below
-    var recordedBranches: Seq[(State, Stack[Term], Stack[(Exp, Exp)], Seq[(Term, DebugExp)], Chunk)] = Nil
+    var recordedBranches: Seq[(State, Stack[Term], Stack[(Exp, Exp)], (Seq[Term], Seq[DebugExp]), Chunk)] = Nil
 
     /* TODO: When parallelising branches, some of the runtime assertions in the code below crash
      *       during some executions - since such crashes are hard to debug, branch parallelisation
@@ -259,7 +258,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                       recordPcs = true,
                       parallelizeBranches = false)
 
-    def appendToResults(s5: State, ch: Chunk, pcs: RecordedPathConditions, conservedPcs: Seq[(Term, DebugExp)], v4: Verifier): Unit = {
+    def appendToResults(s5: State, ch: Chunk, pcs: RecordedPathConditions, conservedPcs: (Seq[Term], Seq[DebugExp]), v4: Verifier): Unit = {
       assert(s5.conservedPcs.nonEmpty, s"Unexpected structure of s5.conservedPcs: ${s5.conservedPcs}")
 
       var conservedPcsStack: Stack[Vector[RecordedPathConditions]] = s5.conservedPcs
@@ -304,26 +303,27 @@ object magicWandSupporter extends SymbolicExecutionRules {
           v4.decider.assumeDefinition(smValueDef, debugExp)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args, bodyVars, FullPerm, ast.FullPerm()(), sm, s.program)
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
-          appendToResults(s5, ch, v4.decider.pcs.after(preMark), conservedPcs.flatMap(pcs => pcs.conditionalized.zip(pcs.conditionalizedExp)), v4)
+          appendToResults(s5, ch, v4.decider.pcs.after(preMark), (conservedPcs.flatMap(_.conditionalized), conservedPcs.flatMap(_.conditionalizedExp)), v4)
           Success()
         })
       } else {
         this.createChunk(s4, wand, wandSnapshot, pve, v3)((s5, ch, v4) => {
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
           // Partition path conditions into a set which include the freshSnapRoot and those which do not
-          val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized.zip(pcs.conditionalizedExp)).partition(pcs => pcs._1.contains(freshSnapRoot))
+          val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
+          val (pcsWithFreshSnapRootExp, pcsWithoutFreshSnapRootExp) = conservedPcs.flatMap(pcs => pcs.conditionalizedExp).partition(_.term.get.contains(freshSnapRoot))
           // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
           val pcsQuantified = Forall(
             freshSnapRoot,
             And(pcsWithFreshSnapRoot.map {
               // Remove forall quantifiers with the same quantified variable
-              case (Quantification(Forall, v :: Nil, body: Term, _, _, _, _), _) if v == freshSnapRoot => body
-              case (p, _) => p
+              case Quantification(Forall, v :: Nil, body: Term, _, _, _, _) if v == freshSnapRoot => body
+              case p => p
             }),
             Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
           )
 
-          appendToResults(s5, ch, v4.decider.pcs.after(preMark), (pcsQuantified, DebugExp.createInstance("MWSF definition", true)) +: pcsWithoutFreshSnapRoot, v4)
+          appendToResults(s5, ch, v4.decider.pcs.after(preMark), (pcsQuantified +: pcsWithoutFreshSnapRoot, DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: pcsWithoutFreshSnapRootExp) , v4)
           Success()
         })
       }
@@ -407,7 +407,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           v1.decider.setCurrentBranchCondition(And(branchConditions), (exp, expNew))
 
           // Recreate all path conditions in the Z3 proof script that we recorded for that branch
-          conservedPcs.foreach(pcs => v1.decider.assume(pcs._1, pcs._2))
+          v1.decider.assume(conservedPcs._1, conservedPcs._2)
 
           // Execute the continuation Q
           Q(s2, magicWandChunk, v1)

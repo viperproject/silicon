@@ -40,6 +40,7 @@ trait Decider {
   def setProverOptions(options: Map[String, String]): Unit
   def getProverOptions(): Map[String, String]
   def resetProverOptions(): Unit
+  def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError]
 
   def pcs: PathConditionStack
 
@@ -59,6 +60,7 @@ trait Decider {
 
   def assume(t: Term, e: ast.Exp, finalExp: ast.Exp): Unit
   def assume(t: Term, debugExp: DebugExp): Unit
+  def assume(terms: Seq[Term], debugExps: Seq[DebugExp]): Unit
   def assumeDefinition(t: Term, debugExp: DebugExp): Unit
   def assume(assumptions: Iterable[(Term, DebugExp)]): Unit
   def assume(assumptions: InsertionOrderedSet[(Term, DebugExp)], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
@@ -161,10 +163,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         getProver(Z3ProverStdIO.name)
     }
 
-    private def createProver(): Option[DependencyNotFoundError] = {
-      _prover = getProver(Verifier.config.prover())
+    def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError] = {
+      _prover = getProver(proverName)
 
-      _prover.start() /* Cannot query prover version otherwise */
+      _prover.start(userArgsString) /* Cannot query prover version otherwise */
 
       val proverVersion = _prover.version()
       // One can pass some options. This allows to check whether they have been received.
@@ -214,7 +216,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       _declaredFreshMacros = Vector.empty
       _freshMacroStack = Stack.empty
       _freshFunctionStack = Stack.empty
-      createProver()
+      createProver(Verifier.config.prover(), Verifier.config.proverArgs)
     }
 
     def reset(): Unit = {
@@ -259,19 +261,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Assuming facts */
 
     def startDebugSubExp(): Unit = {
-      if(Verifier.config.enableDebugging()) {
+      if (Verifier.config.enableDebugging()) {
         pathConditions.startDebugSubExp()
       }
     }
 
     def finishDebugSubExp(description: String): Unit = {
-      if(Verifier.config.enableDebugging()) {
+      if (Verifier.config.enableDebugging()) {
         pathConditions.finishDebugSubExp(description)
       }
     }
 
     def addDebugExp(e: DebugExp): Unit = {
-      if(Verifier.config.enableDebugging()) {
+      if (Verifier.config.enableDebugging()) {
         pathConditions.addDebugExp(e)
       }
     }
@@ -302,6 +304,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(filteredAssumptions map (_._1), isDefinition=isDefinition)
+    }
+
+    def assume(assumptions: Seq[Term], debugExps: Seq[DebugExp]): Unit = {
+      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions))
+      if (Verifier.config.enableDebugging()) {
+        debugExps foreach (e => addDebugExp(e))
+      }
     }
 
     def assume(terms: Iterable[Term], debugExp: DebugExp, enforceAssumption: Boolean): Unit = {
@@ -402,13 +411,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def fresh(id: String, sort: Sort, pType: PType): Var = {
       val term = prover_fresh[Var](id, Nil, sort, false)
-      if(Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType)
+      if (Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType)
       term
     }
 
     def fresh(s: Sort, pType: PType): Var = {
       val term = prover_fresh[Var]("$t", Nil, s, false)
-      if(Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType)
+      if (Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType)
       term
     }
 
@@ -420,7 +429,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def freshARP(id: String = "$k"): (Var, Term) = {
       val permVar = prover_fresh[Var](id, Nil, sorts.Perm, true)
       val permVarConstraints = IsReadPermVar(permVar)
-      if(Verifier.config.enableDebugging()) debugVariableTypes += (permVar.id.name -> PPrimitiv(PReserved(PKw.Perm)((NoPosition, NoPosition)))())
+      if (Verifier.config.enableDebugging()) debugVariableTypes += (permVar.id.name -> PPrimitiv(PReserved(PKw.Perm)((NoPosition, NoPosition)))())
       (permVar, permVarConstraints)
     }
 

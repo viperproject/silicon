@@ -27,16 +27,6 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.HasLineColumn
-import viper.silver.cfg.ConditionalEdge
-import viper.silver.cfg.silver.SilverCfg
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.errors._
-import viper.silver.verifier.reasons._
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
-import viper.silver.{ast, cfg}
-
-import scala.annotation.unused
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 
 trait ExecutionRules extends SymbolicExecutionRules {
@@ -322,7 +312,7 @@ object executor extends ExecutionRules {
            (Q: (State, Verifier) => VerificationResult)
            : VerificationResult =
 
-    if(stmts.nonEmpty)
+    if (stmts.nonEmpty)
       exec(s, stmts.head, v)((s1, v1) =>
         execs(s1, stmts.tail, v1)(Q))
     else
@@ -431,10 +421,10 @@ object executor extends ExecutionRules {
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
                 }
                 val s4 = s3.copy(h = h3 + ch)
-                val s5 = if(Verifier.config.enableDebugging()) s4.copy(oldHeaps = s4.oldHeaps + (v.getDebugOldLabel(s4) -> magicWandSupporter.getEvalHeap(s4))) else s4
+                val s5 = if (Verifier.config.enableDebugging()) s4.copy(oldHeaps = s4.oldHeaps + (v.getDebugOldLabel(s4) -> magicWandSupporter.getEvalHeap(s4))) else s4
                 Q(s5, v2)
               case (Incomplete(_, _), s3, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3, None)}}))
+                createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
@@ -450,7 +440,7 @@ object executor extends ExecutionRules {
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), Seq(eRcvrNew), tSnap, FullPerm, ast.FullPerm()(ass.pos, ass.info, ass.errT))
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                 val s5 = s4.copy(h = h4)
-                val s6 = if(Verifier.config.enableDebugging()) s5.copy(oldHeaps = s5.oldHeaps + (v4.getDebugOldLabel(s5) -> magicWandSupporter.getEvalHeap(s5))) else s5
+                val s6 = if (Verifier.config.enableDebugging()) s5.copy(oldHeaps = s5.oldHeaps + (v4.getDebugOldLabel(s5) -> magicWandSupporter.getEvalHeap(s5))) else s5
                 Q(s6, v4)
               })
             })
@@ -503,7 +493,7 @@ object executor extends ExecutionRules {
           if (v1.decider.checkSmoke(true))
             QS(s1.copy(h = s.h), v1)
           else
-            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, Some(a), true)
+            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, a, true)
         })((_, _) => Success())
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>

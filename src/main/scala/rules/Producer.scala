@@ -21,12 +21,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
-
-import scala.collection.mutable
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -389,7 +384,7 @@ object producer extends ProductionRules {
           val ch =
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args, bodyVars, FullPerm, ast.FullPerm()(wand.pos, wand.info, wand.errT), sm, s.program)
           val h2 = s1.h + ch
-          val smCache1 = if(s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))){
+          val smCache1 = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))){
             val (relevantChunks, _) =
               quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
             val (smDef1, smCache1) =
@@ -536,7 +531,7 @@ object producer extends ProductionRules {
         }
 
       case _: ast.InhaleExhaleExp =>
-        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s, None)
+        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s, "valid AST")
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

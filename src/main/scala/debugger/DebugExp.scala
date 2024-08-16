@@ -42,6 +42,10 @@ object DebugExp {
     createInstance(Some(description), None, None, None, isInternal_, InsertionOrderedSet.empty)
   }
 
+  def createInstance(description: String, term: Term, isInternal_ : Boolean): DebugExp = {
+    createInstance(Some(description), None, None, Some(term), isInternal_, InsertionOrderedSet.empty)
+  }
+
   def createInstance(originalExp: ast.Exp, finalExp: ast.Exp): DebugExp = {
     createInstance(None, Some(originalExp), Some(finalExp), InsertionOrderedSet.empty)
   }
@@ -107,20 +111,20 @@ class DebugExp(val id: Int,
   def childrenToString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     val nonInternalChildren = children.filter(de => config.isPrintInternalEnabled || !de.isInternal)
     if (nonInternalChildren.isEmpty) ""
-    else if(maxDepth <= currDepth) "[...]"
+    else if (maxDepth <= currDepth) "[...]"
     else {
       nonInternalChildren.tail.foldLeft[String](nonInternalChildren.head.toString(currDepth+1, maxDepth, config))((s, de) => s + de.toString(currDepth+1, maxDepth, config))
     }
   }
 
   def getTopLevelString(currDepth: Int): String = {
-    val delimiter = if(finalExp.isDefined && description.isDefined) ": " else ""
+    val delimiter = if (finalExp.isDefined && description.isDefined) ": " else ""
     "\n\t" + ("\t"*currDepth) + "[" + id + "] " + description.getOrElse("") + delimiter + finalExp.getOrElse("")
   }
 
 
   def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
-    if(isInternal_ && !config.isPrintInternalEnabled){
+    if (isInternal_ && !config.isPrintInternalEnabled){
       return ""
     }
     getTopLevelString(currDepth) + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
@@ -141,7 +145,7 @@ class ImplicationDebugExp(id: Int,
                           isInternal_ : Boolean,
                           children : InsertionOrderedSet[DebugExp]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
 
-  override def getAllTerms: InsertionOrderedSet[Term] = if(term.isDefined) InsertionOrderedSet(term.get) else InsertionOrderedSet.empty
+  override def getAllTerms: InsertionOrderedSet[Term] = if (term.isDefined) InsertionOrderedSet(term.get) else InsertionOrderedSet.empty
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
       if (isInternal_ && !config.isPrintInternalEnabled) {
@@ -168,7 +172,7 @@ class QuantifiedDebugExp(id: Int,
                          val qvars : Seq[ast.Exp],
                          val triggers: Seq[ast.Trigger]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
 
-  override def getAllTerms: InsertionOrderedSet[Term] = if(term.isDefined) InsertionOrderedSet(term.get) else InsertionOrderedSet.empty
+  override def getAllTerms: InsertionOrderedSet[Term] = if (term.isDefined) InsertionOrderedSet(term.get) else InsertionOrderedSet.empty
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     if (isInternal_ && !config.isPrintInternalEnabled) {
@@ -203,12 +207,12 @@ class DebugExpPrintConfiguration {
 
   def addHierarchyLevelForId(str: String): Unit ={
     val strSplit = str.split("->")
-    if(strSplit.size < 2){
+    if (strSplit.size < 2){
       println("invalid input")
       return
     }
     val level = strSplit(1).trim.toIntOption
-    if(level.isEmpty){
+    if (level.isEmpty){
       println("invalid input")
       return
     }

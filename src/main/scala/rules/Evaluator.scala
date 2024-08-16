@@ -10,7 +10,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 import viper.silver.ast
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
-import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, Internal, PreconditionInAppFalse}
+import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -19,18 +19,14 @@ import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, Implies
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
-import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
+import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
-import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, HasLineColumn, IntLit, LocalVarWithVersion, NoPosition, TrueLit, VirtualPosition, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, IntLit, LocalVarWithVersion, TrueLit, WeightedQuantifier}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
-import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
-import viper.silver.verifier.reasons._
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
@@ -230,9 +226,10 @@ object evaluator extends EvaluationRules {
                 val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
                 Q(s3, fvfLookup, newFa, v1)
               } else {
-                v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
+                val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
+                v1.decider.assert(toAssert) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, None)
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, toAssert, perms.IsPositive(ast.CurrentPerm(fa)())())
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -261,7 +258,7 @@ object evaluator extends EvaluationRules {
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, Some(permCheckExp))
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
                     val fr2 =
@@ -292,7 +289,7 @@ object evaluator extends EvaluationRules {
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s2, Some(permCheckExp))
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                     val fr2 =
@@ -312,9 +309,9 @@ object evaluator extends EvaluationRules {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             val debugOldLabel = v2.getDebugOldLabel(s3)
-            val newFa = if(s3.isEvalInOld) ast.FieldAccess(eArgs.head, fa.field)(e.pos, e.info, e.errT)
+            val newFa = if (s3.isEvalInOld) ast.FieldAccess(eArgs.head, fa.field)(e.pos, e.info, e.errT)
                         else ast.DebugLabelledOld(ast.FieldAccess(eArgs.head, fa.field)(), debugOldLabel)(e.pos, e.info, e.errT)
-            val s4 = if(Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
+            val s4 = if (Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
             Q(s4, tSnap, newFa, v1)
           })
         })
@@ -334,7 +331,7 @@ object evaluator extends EvaluationRules {
       case old@ast.DebugLabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
           case None =>
-            createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, lbl)(old.pos, old.info, old.errT)), v, s, None)
+            createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, lbl)(old.pos, old.info, old.errT)), v, s, "labelled state reached")
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)((s1, t0, _, v1) =>
               Q(s1, t0, old, v1))
@@ -343,7 +340,7 @@ object evaluator extends EvaluationRules {
       case old @ ast.LabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
           case None =>
-            createFailure(pve dueTo LabelledStateNotReached(old), v, s, None)
+            createFailure(pve dueTo LabelledStateNotReached(old), v, s, "labelled state reached")
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)((s1, t0, e0new, v1) =>
               Q(s1, t0, ast.LabelledOld(e0new, lbl)(old.pos, old.info, old.errT), v1))}
@@ -823,7 +820,7 @@ object evaluator extends EvaluationRules {
             if (v1.decider.checkSmoke(true)) {
               Unreachable()
             } else {
-              createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, None)
+              createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
             }
         }
 
@@ -990,7 +987,7 @@ object evaluator extends EvaluationRules {
                     Q(s12, r12._1, r12._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
-                  createFailure(pve dueTo NonPositivePermission(ePermNew), v2, s2, Some(ast.PermGtCmp(ePermNew, ast.NoPerm()())(ePermNew.pos, ePermNew.info, ePermNew.errT)))}))
+                  createFailure(pve dueTo NonPositivePermission(ePermNew), v2, s2, IsPositive(tPerm), ast.PermGtCmp(ePermNew, ast.NoPerm()())(ePermNew.pos, ePermNew.info, ePermNew.errT))}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
           Q(s, unknownValue, ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT), v)
@@ -1022,13 +1019,13 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqAt(t0, t1), eNew, v1)
                   case false =>
-                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Some(assertExp2))
+                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                       v1.decider.assume(Less(t1, SeqLength(t0)), ast.LeCmp(e1, ast.SeqLength(e0)())(), ast.LeCmp(e1New, ast.SeqLength(e0New)())())
                       failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     } else failure}
               case false =>
-                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, Some(assertExp1))
+                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, AtLeast(t1, IntLiteral(0)), assertExp1)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)), ast.GeCmp(e1, ast.IntLit(0)())(), ast.GeCmp(e1New, ast.IntLit(0)())())
                   val assertExp2 = ast.LtCmp(e1New, ast.SeqLength(e0New)())(e1.pos, e1.info, e1.errT)
@@ -1036,7 +1033,7 @@ object evaluator extends EvaluationRules {
                     case true =>
                       failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     case false =>
-                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Some(assertExp2))
+                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2)
                       if (v1.reportFurtherErrors()) {
                         v1.decider.assume(Less(t1, SeqLength(t0)), ast.LeCmp(e1New, ast.SeqLength(e0)())(), ast.LeCmp(e1New, ast.SeqLength(e0New)())())
                         failure2 combine Q(s1, SeqAt(t0, t1), eNew, v1)
@@ -1064,13 +1061,13 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                   case false =>
-                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Some(assertExp2))
+                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                       v1.decider.assume(Less(t1, SeqLength(t0)), ast.LeCmp(e1, ast.SeqLength(e0)())(), ast.LeCmp(e1New, ast.SeqLength(e0New)())())
                       failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)}
                     else failure}
               case false =>
-                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, Some(assertExp))
+                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, AtLeast(t1, IntLiteral(0)), assertExp)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)), ast.GeCmp(e1, ast.IntLit(0)())(), ast.GeCmp(e1New, ast.IntLit(0)())())
                   val assertExp2 = ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT)
@@ -1078,7 +1075,7 @@ object evaluator extends EvaluationRules {
                     case true =>
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                     case false =>
-                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Some(assertExp2))
+                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2)
                       if (v1.reportFurtherErrors()) {
                         v1.decider.assume(Less(t1, SeqLength(t0)), ast.LeCmp(e1, ast.SeqLength(e0)())(), ast.LeCmp(e1New, ast.SeqLength(e0New)())())
                         failure2 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
@@ -1189,7 +1186,7 @@ object evaluator extends EvaluationRules {
             v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
               case true => Q(s1, MapLookup(baseT, keyT), eNew, v1)
               case false =>
-                val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1, Some(ast.MapContains(key, base)(ml.pos, ml.info, ml.errT)))
+                val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1, SetIn(keyT, MapDomain(baseT)), ast.MapContains(key, base)(ml.pos, ml.info, ml.errT))
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(SetIn(keyT, MapDomain(baseT)), ast.AnySetContains(key, base)(ml.pos, ml.info, ml.errT), ast.AnySetContains(keyNew, baseNew)(ml.pos, ml.info, ml.errT))
                   failure1 combine Q(s1, MapLookup(baseT, keyT), eNew, v1)
@@ -1213,7 +1210,7 @@ object evaluator extends EvaluationRules {
       /* Unexpected nodes */
 
       case _: ast.InhaleExhaleExp =>
-        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s, None)
+        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s, "valid AST")
 
       case _: ast.EpsilonPerm
          | _: ast.Maplet
@@ -1441,7 +1438,7 @@ object evaluator extends EvaluationRules {
     v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
       case false =>
-        val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s, Some(ast.NeCmp(eDivisor, ast.IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT)))
+        val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s, tDivisor !== tZero, ast.NeCmp(eDivisor, ast.IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT))
         if (s.retryLevel == 0  && v.reportFurtherErrors()) {
           val exp = ast.NeCmp(eDivisor, IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT)
           val expNew = ast.NeCmp(eDivisorNew, IntLit(0)())(eDivisorNew.pos, eDivisorNew.info, eDivisorNew.errT)
@@ -1833,7 +1830,7 @@ object evaluator extends EvaluationRules {
             ){case Seq(ent) =>
                 (ent.s, ent.data)
               case Seq(ent1, ent2) =>
-                val exp = if(constructor == Or) ast.Or(ent1.data._2, ent2.data._2)() else ast.And(ent1.data._2, ent2.data._2)()
+                val exp = if (constructor == Or) ast.Or(ent1.data._2, ent2.data._2)() else ast.And(ent1.data._2, ent2.data._2)()
                 (ent1.s.merge(ent2.s), (constructor(Seq(ent1.data._1, ent2.data._1)), exp))
               case entries =>
                 sys.error(s"Unexpected join data entries $entries")

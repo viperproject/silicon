@@ -80,6 +80,10 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def start(): Unit = {
+    start(Verifier.config.proverArgs)
+  }
+
+  def start(userArgsString: Option[String]): Unit = {
     // Calling `start()` multiple times in a row would leak memory and prover processes.
     if (proverShutdownHook != null) {
       throw new AssertionError("stop() should be called between any pair of start() calls")
@@ -88,7 +92,7 @@ abstract class ProverStdIO(uniqueId: String,
     lastTimeout = -1
     logfileWriter = if (!Verifier.config.outputProverLog) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     proverPath = getProverPath
-    prover = createProverInstance()
+    prover = createProverInstance(userArgsString)
     input = new BufferedReader(new InputStreamReader(prover.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(prover.getOutputStream)), true)
     // Register a shutdown hook to stop prover when the JVM gracefully terminates.
@@ -104,7 +108,7 @@ abstract class ProverStdIO(uniqueId: String,
     Runtime.getRuntime.addShutdownHook(proverShutdownHook)
   }
 
-  protected def createProverInstance(): Process = {
+  protected def createProverInstance(userArgsString: Option[String]): Process = {
     // One can pass some options. This allows to check whether they have been received.
     val msg = s"Starting prover at location '$proverPath'"
     reporter report ConfigurationConfirmation(msg)
@@ -118,7 +122,7 @@ abstract class ProverStdIO(uniqueId: String,
     if (!proverFile.canExecute)
       throw ExternalToolError("Prover", s"Cannot run prover at location '$proverFile': file is not executable.")
 
-    val userProvidedArgs: Array[String] = Verifier.config.proverArgs match {
+    val userProvidedArgs: Array[String] = userArgsString match {
       case None =>
         Array()
 

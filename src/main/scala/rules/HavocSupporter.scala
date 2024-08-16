@@ -130,7 +130,7 @@ object havocSupporter extends SymbolicExecutionRules {
         val injectivityDebugExp = DebugExp.createInstance("QP receiver injectivity check is well-defined", true)
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp)
         v.decider.assert(receiverInjectivityCheck) {
-          case false => createFailure(pve dueTo notInjectiveReason, v, s1, None)
+          case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
           case true =>
             // Generate the inverse axioms
             val (inverseFunctions, imagesOfCodomain, _) = quantifiedChunkSupporter.getFreshInverseFunctions(

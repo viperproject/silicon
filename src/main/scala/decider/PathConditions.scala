@@ -180,7 +180,7 @@ private class PathConditionStackLayer
 
   def finishDebugSubExp(description: String): Unit = {
     val children = popDebugSubExp()
-    if(children.nonEmpty) {
+    if (children.nonEmpty) {
       val debugExp = DebugExp.createInstance(description = description, children = children)
       addDebugExp(debugExp)
     }
@@ -297,14 +297,14 @@ private trait LayeredPathConditionStackLike {
       layer.branchConditionExp match {
         case Some(condition) =>
           implicationLHS = And(implicationLHS, layer.branchCondition.get)
-          implicationLHSExp = if(implicationLHSExp.equals(TrueLit()())) condition._1
+          implicationLHSExp = if (implicationLHSExp.equals(TrueLit()())) condition._1
                               else ast.And(implicationLHSExp, condition._1)()
           implicationLHSExpNew = if (implicationLHSExpNew.equals(TrueLit()())) condition._2
           else ast.And(implicationLHSExpNew, condition._2)()
         case None =>
       }
 
-      if(layer.nonGlobalAssumptionDebugExps.nonEmpty && !implicationLHSExp.equals(TrueLit()())) {
+      if (layer.nonGlobalAssumptionDebugExps.nonEmpty && !implicationLHSExp.equals(TrueLit()())) {
         conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew), Some(implicationLHS),
           false, layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten)
       }else{
@@ -371,9 +371,9 @@ private trait LayeredPathConditionStackLike {
       globals ++= layer.globalAssumptionDebugExps
 
       val branchConditionExp = layer.branchConditionExp
-        if(branchConditionExp.isDefined){
+        if (branchConditionExp.isDefined){
           var quantBody: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
-          if(branchConditionExp.get._1.equals(ast.TrueLit()())) {
+          if (branchConditionExp.get._1.equals(ast.TrueLit()())) {
             quantBody = layer.nonGlobalAssumptionDebugExps
           }
           else{
@@ -518,7 +518,7 @@ private[decider] class LayeredPathConditionStack
 
     markToLength += (mark -> layers.length)
 
-    val debugExpStackTmp = if(layers.nonEmpty && Verifier.config.enableDebugging()) layers.head.debugExpStack else Stack.empty
+    val debugExpStackTmp = if (layers.nonEmpty && Verifier.config.enableDebugging()) layers.head.debugExpStack else Stack.empty
 
     layers = new PathConditionStackLayer() +: layers
 

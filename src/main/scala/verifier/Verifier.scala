@@ -51,7 +51,7 @@ trait Verifier {
 
   def getDebugOldLabel(s: State): String = {
     val equalHeaps = s.oldHeaps.filter(h => h._1.startsWith("debug@") && h._2.equals(s.h)).keys
-    if(equalHeaps.nonEmpty){
+    if (equalHeaps.nonEmpty){
       equalHeaps.head
     }else{
       val counter = debugHeapCounter.getAndIncrement()

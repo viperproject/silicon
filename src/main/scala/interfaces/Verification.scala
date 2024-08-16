@@ -108,7 +108,7 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
                                  reasonUnknown: Option[String]) extends FailureContext {
   lazy val branchConditionString: String = {
-    if(branchConditions.nonEmpty) {
+    if (branchConditions.nonEmpty) {
       val branchConditionsString =
         branchConditions
           .map(bc => s"$bc [ ${bc.pos} ] ")
@@ -136,16 +136,17 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
 }
 
 case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Exp)],
-                                 counterExample: Option[Counterexample],
-                                 reasonUnknown: Option[String],
-                                 state: Option[State],
-                                 verifier: Option[Verifier],
-                                 proverDecls: Seq[String],
-                                 preambleAssumptions: Seq[DebugAxiom] ,
-                                 macroDecls: Vector[MacroDecl],
-                                 functionDecls: Set[FunctionDecl],
-                                 assumptions: InsertionOrderedSet[DebugExp],
-                                 failedAssertion: Option[ast.Exp]) extends FailureContext {
+                                          counterExample: Option[Counterexample],
+                                          reasonUnknown: Option[String],
+                                          state: Option[State],
+                                          verifier: Option[Verifier],
+                                          proverDecls: Seq[String],
+                                          preambleAssumptions: Seq[DebugAxiom] ,
+                                          macroDecls: Vector[MacroDecl],
+                                          functionDecls: Set[FunctionDecl],
+                                          assumptions: InsertionOrderedSet[DebugExp],
+                                          failedAssertion: Term,
+                                          failedAssertionExp: DebugExp) extends FailureContext {
   lazy val branchConditionString: String = {
     if (branchConditions.nonEmpty) {
       val branchConditionsString =
@@ -173,7 +174,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Ex
   }
 
   lazy val stateString: String = {
-    if(state.isDefined){
+    if (state.isDefined){
       s"\n\nStore:\n\t\t${state.get.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${state.get.h.values.mkString("\n\t\t")}"
     }else{
       ""
@@ -191,10 +192,10 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Ex
   }
 
   lazy val failedAssertionString: String ={
-    if(failedAssertion.isDefined){
-      s"\n\nFailed Assertion:\n\t\t${failedAssertion.get.toString()}"
+    if (failedAssertionExp.finalExp.isDefined){
+      s"\n\nFailed Assertion:\n\t\t${failedAssertionExp.finalExp.get.toString()}"
     }else{
-      ""
+      failedAssertionExp.description.get
     }
   }
 

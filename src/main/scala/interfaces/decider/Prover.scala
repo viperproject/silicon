@@ -38,6 +38,7 @@ trait ProverLike {
 }
 
 trait Prover extends ProverLike with StatefulComponent {
+  def start(userArgsString: Option[String]): Unit
   def assert(goal: Term, timeout: Option[Int] = None): Boolean
   def check(timeout: Option[Int] = None): Result
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function

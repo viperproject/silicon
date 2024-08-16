@@ -6,8 +6,10 @@
 
 package viper.silicon.rules
 
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
+import viper.silicon.state.terms.{False, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
@@ -15,7 +17,32 @@ import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
-  protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssertExp: Option[ast.Exp], generateNewModel: Boolean = false): Failure = {
+
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertDescription: String, generateNewModel: Boolean): Failure = {
+    createFailure(ve, v, s, failedAssert, DebugExp.createInstance(failedAssertDescription), generateNewModel)
+  }
+
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertDescription: String): Failure = {
+    createFailure(ve, v, s, failedAssert, DebugExp.createInstance(failedAssertDescription), false)
+  }
+
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, missingTermDescription: String): Failure = {
+    createFailure(ve, v, s, False, DebugExp.createInstance(s"Asserted term for '$missingTermDescription' not available, substituting false."), false)
+  }
+
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, missingTermDescription: String, generateNewModel: Boolean): Failure = {
+    createFailure(ve, v, s, False, DebugExp.createInstance(s"Asserted term for '$missingTermDescription' not available, substituting false."), generateNewModel)
+  }
+
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: ast.Exp): Failure = {
+    createFailure(ve, v, s, failedAssert, DebugExp.createInstance(failedAssertExp, failedAssertExp), false)
+  }
+
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: ast.Exp, generateNewModel: Boolean): Failure = {
+    createFailure(ve, v, s, failedAssert, DebugExp.createInstance(failedAssertExp, failedAssertExp), generateNewModel)
+  }
+
+  protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: DebugExp, generateNewModel: Boolean): Failure = {
     if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
     val res = ve match {
@@ -66,9 +93,9 @@ trait SymbolicExecutionRules {
         })
     } else Seq()
 
-    if(Verifier.config.enableDebugging()){
+    if (Verifier.config.enableDebugging()){
       val assumptions = v.decider.pcs.assumptionExps
-      res.failureContexts = Seq(SiliconDebuggingFailureContext(v.decider.pcs.branchConditionExps, counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions, v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssertExp))
+      res.failureContexts = Seq(SiliconDebuggingFailureContext(v.decider.pcs.branchConditionExps, counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions, v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp))
     }else{
       res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
     }

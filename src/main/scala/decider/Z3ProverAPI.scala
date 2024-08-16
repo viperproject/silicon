@@ -111,9 +111,22 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def start(): Unit = {
+    start(Verifier.config.proverArgs)
+  }
+
+  def start(userArgsString: Option[String]): Unit = {
     pushPopScopeDepth = 0
     lastTimeout = -1
-    ctx = new Context(Z3ProverAPI.initialOptions.asJava)
+
+    val userArgsMap = userArgsString match {
+      case Some(args) =>
+        args.trim.split(" ").map(_.split("=")).map{case Array(k, v) => k -> v}.toMap
+      case None =>
+        Map.empty[String, String]
+    }
+
+    val allArgs = Z3ProverAPI.initialOptions ++ userArgsMap
+    ctx = new Context(allArgs.asJava)
     val params = ctx.mkParams()
 
     // When setting parameters via API, we have to remove the smt. prefix
@@ -527,7 +540,7 @@ class Z3ProverAPI(uniqueId: String,
     if (lastTimeout != effectiveTimeout) {
       lastTimeout = effectiveTimeout
 
-      if(Verifier.config.proverEnableResourceBounds) {
+      if (Verifier.config.proverEnableResourceBounds) {
         ctx.updateParamValue("rlimit", (effectiveTimeout * Verifier.config.proverResourcesPerMillisecond).toString)
       } else {
         ctx.updateParamValue("timeout", effectiveTimeout.toString)

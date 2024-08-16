@@ -21,12 +21,6 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons._
-
-import scala.collection.mutable
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -469,7 +463,7 @@ object consumer extends ConsumptionRules {
                 Q(s5, h1, snap1, v4)})})))
 
       case _: ast.InhaleExhaleExp =>
-        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s, None)
+        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s, "valid AST")
 
       /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
@@ -606,7 +600,7 @@ object consumer extends ConsumptionRules {
             v2.decider.assume(t, e, eNew)
             QS(s3, v2)
           case false =>
-            val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, Some(eNew))
+            val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
             if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
               v2.decider.assume(t, e, eNew)
               failure combine QS(s3, v2)

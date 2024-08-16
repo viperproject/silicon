@@ -114,7 +114,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
-      val failure = createFailure(ve, v, s, None)
+      val failure = createFailure(ve, v, s, "chunk consume in package")
       magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
@@ -139,7 +139,7 @@ object chunkSupporter extends ChunkSupportRules {
             case _ if v1.decider.checkSmoke(true) =>
               Success() // TODO: Mark branch as dead?
             case _ =>
-              createFailure(ve, v1, s1, None, true)
+              createFailure(ve, v1, s1, "consuming chunk", true)
           }
         }
       )(Q)
@@ -246,7 +246,7 @@ object chunkSupporter extends ChunkSupportRules {
       case _ if v.decider.checkSmoke(true) =>
         Success() // TODO: Mark branch as dead?
       case _ =>
-        createFailure(ve, v, s, None, true)
+        createFailure(ve, v, s, "looking up chunk", true)
     }
   }
 

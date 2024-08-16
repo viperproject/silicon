@@ -52,7 +52,7 @@ class Z3ProverStdIO(uniqueId: String,
     if (lastTimeout != effectiveTimeout) {
       lastTimeout = effectiveTimeout
 
-      if(Verifier.config.proverEnableResourceBounds) {
+      if (Verifier.config.proverEnableResourceBounds) {
         writeLine(s"(set-option :rlimit ${effectiveTimeout * Verifier.config.proverResourcesPerMillisecond})")
       } else {
         writeLine(s"(set-option :timeout $effectiveTimeout)")

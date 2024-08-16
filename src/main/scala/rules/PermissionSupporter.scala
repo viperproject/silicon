@@ -25,7 +25,7 @@ object permissionSupporter extends SymbolicExecutionRules {
       case _ =>
         v.decider.assert(perms.IsNonNegative(tPerm)) {
           case true => Q(s, v)
-          case false => createFailure(pve dueTo NegativePermission(ePerm), v, s, Some(ast.GeCmp(ePerm, ast.IntLit(0)())(ePerm.pos, ePerm.info, ePerm.errT)))
+          case false => createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), perms.IsNonNegative(ePerm)(ePerm.pos, ePerm.info, ePerm.errT))
         }
     }
   }
@@ -40,7 +40,7 @@ object permissionSupporter extends SymbolicExecutionRules {
       case _ =>
         v.decider.assert(perms.IsPositive(tPerm)) {
           case true => Q(s, v)
-          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, Some(ast.GtCmp(ePerm, ast.NoPerm()())()))
+          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), perms.IsPositive(ePerm)())
         }
     }
   }
