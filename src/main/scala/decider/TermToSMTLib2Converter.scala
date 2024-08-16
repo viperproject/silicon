@@ -61,6 +61,8 @@ class TermToSMTLib2Converter
 
     case sorts.FieldPermFunction() => text("$FPM")
     case sorts.PredicatePermFunction() => text("$PPM")
+
+    case sorts.MagicWandSnapFunction => text("$MWSF")
   }
 
   def convert(d: Decl): String = {
@@ -223,6 +225,7 @@ class TermToSMTLib2Converter
     case bop: SeqTake => renderBinaryOp("Seq_take", bop)
     case bop: SeqDrop => renderBinaryOp("Seq_drop", bop)
     case bop: SeqIn => renderBinaryOp("Seq_contains", bop)
+    case bop: SeqInTrigger => renderBinaryOp("Seq_contains_trigger", bop)
     case SeqUpdate(t0, t1, t2) => renderNAryOp("Seq_update", t0, t1, t2)
 
     /* Sets */
@@ -262,7 +265,7 @@ class TermToSMTLib2Converter
 
     case Lookup(field, fvf, at) => //fvf.sort match {
 //      case _: sorts.PartialFieldValueFunction =>
-        parens(text("$FVF.lookup_") <> field <+> render(fvf) <+> render(at))
+      parens(text("$FVF.lookup_") <> field <+> render(fvf) <+> render(at))
 //      case _: sorts.TotalFieldValueFunction =>
 //        render(Apply(fvf, Seq(at)))
 //        parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
@@ -311,6 +314,9 @@ class TermToSMTLib2Converter
     case Let(bindings, body) =>
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)
       parens(text("let") <+> parens(docBindings) <+> render(body))
+
+    case MagicWandSnapshot(mwsf) => render(mwsf)
+    case MWSFLookup(mwsf, snap) => renderApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
 
     case _: MagicWandChunkTerm
        | _: Quantification =>

@@ -38,7 +38,7 @@ trait Verifier {
   def axiomRewriter: AxiomRewriter
   def quantifierSupporter: QuantifierSupporter
   def snapshotSupporter: SnapshotSupporter
-  def stateConsolidator: StateConsolidationRules
+  def stateConsolidator(s: State): StateConsolidationRules
 
   def verificationPoolManager: VerificationPoolManager
 

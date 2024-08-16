@@ -17,8 +17,10 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
-import viper.silicon.rules.{DefaultStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingStateConsolidator, StateConsolidationRules}
+import viper.silicon.rules.{DefaultStateConsolidator, LastRetryFailOnlyStateConsolidator, LastRetryStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingFailOnlyStateConsolidator, RetryingStateConsolidator, StateConsolidationRules}
 import viper.silicon.utils.Counter
+import viper.silver.ast
+import viper.silver.reporter.AnnotationWarning
 
 import scala.collection.mutable
 
@@ -57,15 +59,54 @@ abstract class BaseVerifier(val config: Config,
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
   val snapshotSupporter = new DefaultSnapshotSupporter(symbolConverter)
 
-  val stateConsolidator: StateConsolidationRules = {
+  private lazy val defaultStateConsolidator: StateConsolidationRules = new DefaultStateConsolidator(config)
+  private lazy val minimalStateConsolidator: StateConsolidationRules = new MinimalStateConsolidator
+  private lazy val retryingStateConsolidator: StateConsolidationRules = new RetryingStateConsolidator(config)
+  private lazy val retryingFailOnlyStateConsolidator: StateConsolidationRules = new RetryingFailOnlyStateConsolidator(config)
+  private lazy val lastRetryStateConsolidator: StateConsolidationRules = new LastRetryStateConsolidator(config)
+  private lazy val lastRetryFailOnlyStateConsolidator: StateConsolidationRules = new LastRetryFailOnlyStateConsolidator(config)
+  private lazy val minimalRetryingStateConsolidator: StateConsolidationRules = new MinimalRetryingStateConsolidator(config)
+  private lazy val moreComplexExhaleStateConsolidator: StateConsolidationRules = new MoreComplexExhaleStateConsolidator(config)
+
+  override def stateConsolidator(s: State): StateConsolidationRules = {
     import StateConsolidationMode._
 
-    config.stateConsolidationMode() match {
-      case Minimal => new MinimalStateConsolidator
-      case Default => new DefaultStateConsolidator(config)
-      case Retrying => new RetryingStateConsolidator(config)
-      case MinimalRetrying => new MinimalRetryingStateConsolidator(config)
-      case MoreCompleteExhale => new MoreComplexExhaleStateConsolidator(config)
+    val mode = s.currentMember match {
+      case Some(member) =>
+        member.info.getUniqueInfo[ast.AnnotationInfo] match {
+          case Some(ai) if ai.values.contains("stateConsolidationMode") =>
+            val modeAnnotation = ai.values("stateConsolidationMode")
+            try {
+              modeAnnotation match {
+                case Seq("minimal") => Minimal
+                case Seq("default") => Default
+                case Seq("retrying") => Retrying
+                case Seq("minimalRetrying") => MinimalRetrying
+                case Seq("moreCompleteExhale") => MoreCompleteExhale
+                case Seq("lastRetry") => LastRetry
+                case Seq("retryingFailOnly") => RetryingFailOnly
+                case Seq("lastRetryFailOnly") => LastRetryFailOnly
+                case Seq(v) => StateConsolidationMode(v.toInt)
+              }
+            } catch {
+              case _ =>
+                reporter report AnnotationWarning(s"Member ${member.name} has invalid stateConsolidationMode annotation value. Annotation will be ignored.")
+                config.stateConsolidationMode()
+            }
+          case _ => config.stateConsolidationMode()
+        }
+      case None => config.stateConsolidationMode()
+    }
+
+    mode match {
+      case Minimal => minimalStateConsolidator
+      case Default => defaultStateConsolidator
+      case Retrying => retryingStateConsolidator
+      case MinimalRetrying => minimalRetryingStateConsolidator
+      case MoreCompleteExhale => moreComplexExhaleStateConsolidator
+      case LastRetry => lastRetryStateConsolidator
+      case RetryingFailOnly => retryingFailOnlyStateConsolidator
+      case LastRetryFailOnly => lastRetryFailOnlyStateConsolidator
     }
   }
 

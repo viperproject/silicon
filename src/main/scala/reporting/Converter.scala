@@ -255,7 +255,7 @@ object Converter {
       case IntLiteral(x)     => LitIntEntry(x)
       case t: BooleanLiteral => LitBoolEntry(t.value)
       case Null              => VarEntry(model.entries(nullRefId).toString, sorts.Ref)
-      case Var(_, sort) =>
+      case Var(_, sort, _) =>
         val key: String = term.toString
         val entry: Option[ModelEntry] = model.entries.get(key)
         entry

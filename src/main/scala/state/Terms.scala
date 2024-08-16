@@ -76,6 +76,11 @@ object sorts {
     override lazy val toString = id.toString
   }
 
+  object MagicWandSnapFunction extends Sort {
+    val id: Identifier = Identifier("MWSF")
+    override lazy val toString: String = id.toString
+  }
+
   case class FieldPermFunction() extends Sort  {
     val id = Identifier("FPM")
     override lazy val toString = id.toString
@@ -247,8 +252,8 @@ object Macro extends CondFlyweightFactory[(Identifier, Seq[Sort], Sort), Macro, 
   override def actualCreate(args: (Identifier, Stack[Sort], Sort)): Macro = new Macro(args._1, args._2, args._3)
 }
 
-class Var private[terms] (val id: Identifier, val sort: Sort) extends Function with Application[Var] with ConditionalFlyweight[(Identifier, Sort), Var] {
-  override val equalityDefiningMembers: (Identifier, Sort) = (id, sort)
+class Var private[terms] (val id: Identifier, val sort: Sort, val isWildcard: Boolean) extends Function with Application[Var] with ConditionalFlyweight[(Identifier, Sort, Boolean), Var] {
+  override val equalityDefiningMembers: (Identifier, Sort, Boolean) = (id, sort, isWildcard)
   val applicable: Var = this
   val args: Seq[Term] = Seq.empty
   val argSorts: Seq[Sort] = Seq(sorts.Unit)
@@ -256,11 +261,11 @@ class Var private[terms] (val id: Identifier, val sort: Sort) extends Function w
 
   override lazy val toString = id.toString
 
-  def copy(id: Identifier = id, sort: Sort = sort) = Var(id, sort)
+  def copy(id: Identifier = id, sort: Sort = sort, isWildcard: Boolean = isWildcard) = Var(id, sort, isWildcard)
 }
 
-object Var extends CondFlyweightFactory[(Identifier, Sort), Var, Var] {
-  override def actualCreate(args: (Identifier, Sort)): Var = new Var(args._1, args._2)
+object Var extends CondFlyweightFactory[(Identifier, Sort, Boolean), Var, Var] {
+  override def actualCreate(args: (Identifier, Sort, Boolean)): Var = new Var(args._1, args._2, args._3)
 }
 
 class App private[terms] (val applicable: Applicable, val args: Seq[Term])
@@ -321,39 +326,39 @@ sealed trait Term extends Node {
 
   lazy val subterms: Seq[Term] = state.utils.subterms(this)
 
-  /** @see [[ast.utility.Visitor.visit()]] */
+  /** @see [[ast.utility.Visitor.visit]] */
   def visit(f: PartialFunction[Term, Any]): Unit =
     ast.utility.Visitor.visit(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.visitOpt()]] */
+  /** @see [[ast.utility.Visitor.visitOpt]] */
   def visitOpt(f: Term => Boolean): Unit =
     ast.utility.Visitor.visitOpt(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.reduceTree()]] */
+  /** @see [[ast.utility.Visitor.reduceTree]] */
   def reduceTree[R](f: (Term, Seq[R]) => R): R =
     ast.utility.Visitor.reduceTree(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.existsDefined()]] */
+  /** @see [[ast.utility.Visitor.existsDefined]] */
   def existsDefined(f: PartialFunction[Term, Any]): Boolean =
     ast.utility.Visitor.existsDefined(this, state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.hasSubnode()]] */
+  /** @see [[ast.utility.Visitor.hasSubnode]] */
   def hasSubterm(subterm: Term): Boolean =
     ast.utility.Visitor.hasSubnode(this, subterm, state.utils.subterms)
 
-  /** @see [[ast.utility.Visitor.deepCollect()]] */
+  /** @see [[ast.utility.Visitor.deepCollect]] */
   def deepCollect[R](f: PartialFunction[Term, R]) : Seq[R] =
     ast.utility.Visitor.deepCollect(Seq(this), state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.shallowCollect()]] */
+  /** @see [[ast.utility.Visitor.shallowCollect]] */
   def shallowCollect[R](f: PartialFunction[Term, R]): Seq[R] =
     ast.utility.Visitor.shallowCollect(Seq(this), state.utils.subterms)(f)
 
-  /** @see [[ast.utility.Visitor.find()]] */
+  /** @see [[ast.utility.Visitor.find]] */
   def find[R](f: PartialFunction[Term, R]): Option[R] =
     ast.utility.Visitor.find(this, state.utils.subterms)(f)
 
-  /** @see [[state.utils.transform()]] */
+  /** @see [[state.utils.transform]] */
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
                (recursive: Term => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[Term, Term] = PartialFunction.empty)
@@ -677,6 +682,22 @@ case object Forall extends Quantifier {
   override lazy val toString = "QA"
 }
 
+object SimplifyingForall {
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Term = tBody match {
+    case True => True
+    case False if qvars.nonEmpty =>
+      // This assumes that every sort is non-empty, which should be a safe assumption, since otherwise, declaring a
+      // variable of that sort would also already be unsound.
+      False
+    case _ =>
+      if (qvars.isEmpty) {
+        tBody
+      } else {
+        Forall(qvars, tBody, triggers)
+      }
+  }
+}
+
 object Exists extends Quantifier {
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Exists, qvar :: Nil, tBody, triggers)
@@ -735,6 +756,16 @@ object Quantification
 
   private val qidCounter = new AtomicInteger()
 
+  def transformSeqTerms(t: Trigger): Seq[Trigger] = {
+    val transformed = Trigger(t.p.map(_.transform{
+      case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
+    }()))
+    if (transformed != t)
+      Seq(t, transformed)
+    else
+      Seq(t)
+  }
+
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}")
 
@@ -769,6 +800,8 @@ object Quantification
             weight: Option[Int])
            : Quantification = {
 
+    val rewrittenTriggers = if (Verifier.config.useOldAxiomatization()) triggers else triggers.flatMap(transformSeqTerms(_))
+
 //    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
@@ -776,7 +809,7 @@ object Quantification
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    createIfNonExistent(q, vars, tBody, triggers, name, isGlobal, weight)
+    createIfNonExistent(q, vars, tBody, rewrittenTriggers, name, isGlobal, weight)
 //    tBody match {
 //    case True | False => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
@@ -1297,6 +1330,21 @@ class PermTimes private[terms] (val p0: Term, val p1: Term)
   override val op = "*"
 }
 
+object WildcardSimplifyingPermTimes extends ((Term, Term) => Term) {
+  override def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
+    case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
+    case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
+    case (Ite(c, t1, t2), t3) => Ite(c, WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case _ => PermTimes(t0, t1)
+  }
+}
+
 object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (FullPerm, t) => t
@@ -1304,6 +1352,12 @@ object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
     case (NoPerm, _) => NoPerm
     case (_, NoPerm) => NoPerm
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
+    case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
+    case (PermPlus(t1, t2), t3) => PermPlus(PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, PermPlus(t2, t3)) => PermPlus(PermTimes(t1, t2), PermTimes(t1, t3))
+    case (PermMinus(t1, t2), t3) => PermMinus(PermTimes(t1, t3), PermTimes(t2, t3))
+    case (t1, PermMinus(t2, t3)) => PermMinus(PermTimes(t1, t2), PermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, PermTimes(t1, t2), PermTimes(t1, t3))
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -1646,6 +1700,23 @@ object SeqIn extends CondFlyweightTermFactory[(Term, Term), SeqIn] {
   override def actualCreate(args: (Term, Term)): SeqIn = new SeqIn(args._1, args._2)
 }
 
+class SeqInTrigger private[terms] (val p0: Term, val p1: Term) extends BooleanTerm
+  with ConditionalFlyweightBinaryOp[SeqInTrigger] {
+
+  override lazy val toString = s"$p1 in $p0"
+}
+
+object SeqInTrigger extends CondFlyweightTermFactory[(Term, Term), SeqInTrigger] {
+  override def apply(v0: (Term, Term)) = {
+    val (t0, t1) = v0
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+    utils.assertSort(t1, "second operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
+    createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term)): SeqInTrigger = new SeqInTrigger(args._1, args._2)
+}
+
 class SeqUpdate private[terms] (val t0: Term, val t1: Term, val t2: Term)
     extends SeqTerm
        with ConditionalFlyweight[(Term, Term, Term), SeqUpdate] {
@@ -1663,7 +1734,10 @@ object SeqUpdate extends CondFlyweightTermFactory[(Term, Term, Term), SeqUpdate]
     utils.assertSort(t1, "second operand", sorts.Int)
     utils.assertSort(t2, "third operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
 
-    createIfNonExistent(v0)
+    if (Verifier.config.useOldAxiomatization())
+      createIfNonExistent(v0)
+    else
+      SeqAppend(SeqTake(t0,t1),SeqAppend(SeqSingleton(t2),SeqDrop(t0,Plus(t1,IntLiteral(1)))))
   }
 
   override def actualCreate(args: (Term, Term, Term)): SeqUpdate = new SeqUpdate(args._1, args._2, args._3)
@@ -2226,48 +2300,63 @@ object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[T
 
 /* Magic wands */
 
-class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
-  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
-  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
+/**
+ * Represents a snapshot of a magic wand, which is a function from `Snap` to `Snap`.
+ *
+ * @param mwsf The function that represents the snapshot of the magic wand. It is a variable of sort [[sorts.MagicWandSnapFunction]].
+ *             In the symbolic execution when we apply a magic wand, it consumes the left-hand side
+ *             and uses this function and the resulting snapshot to look up which right-hand side to produce.
+ */
+class MagicWandSnapshot(val mwsf: Term) extends Term with ConditionalFlyweight[Term, MagicWandSnapshot] {
+  utils.assertSort(mwsf, "magic wand snap function", sorts.MagicWandSnapFunction)
 
-  override lazy val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
+  override val sort: Sort = sorts.MagicWandSnapFunction
 
-  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
-    assert(this.abstractLhs == other.abstractLhs)
-    val condition = And(branchConditions)
-    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
-      this.rhsSnapshot
-    else
-      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
-  }
+  override lazy val toString = s"wandSnap($mwsf)"
+
+  override val equalityDefiningMembers: Term = mwsf
+
+  /**
+   * Apply the given snapshot of the left-hand side to the magic wand map to get the snapshot of the right-hand side
+   * which includes the values of the left-hand side.
+   *
+   * @param snapLhs The snapshot of the left-hand side that should be applied to the magic wand map.
+   * @return The snapshot of the right-hand side that preserves the values of the left-hand side.
+   */
+  def applyToMWSF(snapLhs: Term): Term = MWSFLookup(mwsf, snapLhs)
 }
 
-object MagicWandSnapshot  {
-  def apply(snapshot: Term): MagicWandSnapshot = {
-    assert(snapshot.sort == sorts.Snap)
-    snapshot match {
-      case snap: MagicWandSnapshot => snap
-      case _ =>
-        MagicWandSnapshot(First(snapshot), Second(snapshot))
-    }
+object MagicWandSnapshot extends PreciseCondFlyweightFactory[Term, MagicWandSnapshot]  {
+  /** Create an instance of [[viper.silicon.state.terms.MagicWandSnapshot]]. */
+  override def actualCreate(arg: Term): MagicWandSnapshot =
+    new MagicWandSnapshot(arg)
+}
+
+/**
+ * Term that applies a [[sorts.MagicWandSnapFunction]] to a snapshot.
+ * It returns a snapshot for the RHS of a magic wand that includes that values of the given snapshot.
+ *
+ * @param mwsf Term of sort [[sorts.MagicWandSnapFunction]]. Function from `Snap` to `Snap`.
+ * @param snap Term of sort [[sorts.Snap]] to which the MWSF is applied to. It represents the values of the wand's LHS.
+ */
+class MWSFLookup(val mwsf: Term, val snap: Term) extends Term with ConditionalFlyweightBinaryOp[MWSFLookup] {
+  val sort: Sort = sorts.Snap
+  override def p0: Term = mwsf
+  override def p1: Term = snap
+  override lazy val toString = s"$mwsf[$snap]"
+}
+
+object MWSFLookup extends PreciseCondFlyweightFactory[(Term, Term), MWSFLookup] {
+  override def apply(pair: (Term, Term)): MWSFLookup = {
+    val (mwsf, snap) = pair
+    utils.assertSort(mwsf, "mwsf", sorts.MagicWandSnapFunction)
+    utils.assertSort(snap, "snap", sorts.Snap)
+    createIfNonExistent(pair)
   }
 
-  // Since MagicWandSnapshot subclasses Combine, we apparently cannot inherit the normal subclass, so we
-  // have to copy paste the code here.
-  var pool = new TrieMap[(Term, Term), MagicWandSnapshot]()
-
-  def createIfNonExistent(args: (Term, Term)): MagicWandSnapshot = {
-    if (Verifier.config.useFlyweight) {
-      pool.getOrElseUpdate(args, actualCreate(args))
-    } else {
-      actualCreate(args)
-    }
-  }
-
-  def actualCreate(tuple: (Term, Term)) = new MagicWandSnapshot(tuple._1, tuple._2)
-  def apply(fst: Term, snd: Term): MagicWandSnapshot = createIfNonExistent((fst, snd))
-
-  def unapply(mws: MagicWandSnapshot) = Some((mws.abstractLhs, mws.rhsSnapshot))
+  /** Create an instance of [[viper.silicon.state.terms.MWSFLookup]]. */
+  override def actualCreate(args: (Term, Term)): MWSFLookup =
+    new MWSFLookup(args._1, args._2)
 }
 
 class MagicWandChunkTerm(val chunk: MagicWandChunk) extends Term with ConditionalFlyweight[MagicWandChunk, MagicWandChunkTerm] {
@@ -2392,7 +2481,7 @@ object PsfTop extends (String => Identifier) {
  */
 
 /* Note: Sort wrappers should probably not be used as (outermost) triggers
- * because they are optimised away if wrappee `t` already has sort `to`.
+ * because they are optimised away if wrapped `t` already has sort `to`.
  */
 class SortWrapper(val t: Term, val to: Sort)
     extends Term
@@ -2459,8 +2548,8 @@ object Let extends CondFlyweightTermFactory[(Map[Var, Term], Term), Let] {
 /* Predefined terms */
 
 object predef {
-  val `?s` = Var(Identifier("s@$"), sorts.Snap) // with SnapshotTerm
-  val `?r` = Var(Identifier("r"), sorts.Ref)
+  val `?s` = Var(Identifier("s@$"), sorts.Snap, false) // with SnapshotTerm
+  val `?r` = Var(Identifier("r"), sorts.Ref, false)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)
@@ -2503,6 +2592,8 @@ object utils {
     case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
     case PermPermDiv(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case Ite(_, t0, NoPerm) => consumeExactRead(t0, constrainableARPs)
+    case Ite(_, NoPerm, t1) => consumeExactRead(t1, constrainableARPs)
     case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case _ => true
   }

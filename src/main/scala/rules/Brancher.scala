@@ -65,7 +65,7 @@ object brancher extends BranchingRules {
       || skipPathFeasibilityCheck
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
-    val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin && executeThenBranch && executeElseBranch
+    val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
 //    val additionalPaths =
 //      if (executeThenBranch && exploreFalseBranch) 1
@@ -86,7 +86,13 @@ object brancher extends BranchingRules {
     val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), Some(conditionExp._1))
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
+    var proverArgsOfCurrentDecider: viper.silicon.Map[String, String] = null
+    var wasElseExecutedOnDifferentVerifier = false
+    var functionsOfElseBranchDecider: Set[FunctionDecl] = null
+    var proverArgsOfElseBranchDecider: viper.silicon.Map[String, String] = null
+    var macrosOfElseBranchDecider: Seq[MacroDecl] = null
     var pcsForElseBranch: PathConditionStack = null
+    var noOfErrors = 0
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
@@ -101,7 +107,9 @@ object brancher extends BranchingRules {
         if (parallelizeElseBranch){
           functionsOfCurrentDecider = v.decider.freshFunctions
           macrosOfCurrentDecider = v.decider.freshMacros
+          proverArgsOfCurrentDecider = v.decider.getProverOptions()
           pcsForElseBranch = v.decider.pcs.duplicate()
+          noOfErrors = v.errorsReportedSoFar.get()
         }
 
         (v0: Verifier) => {
@@ -110,18 +118,25 @@ object brancher extends BranchingRules {
           if (v.uniqueId != v0.uniqueId){
             /* [BRANCH-PARALLELISATION] */
             // executing the else branch on a different verifier, need to adapt the state
+            wasElseExecutedOnDifferentVerifier = true
 
+            if (s.underJoin)
+              v0.decider.pushSymbolStack()
             val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
             val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
 
             v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
+            proverArgsOfElseBranchDecider = v0.decider.getProverOptions()
+            v0.decider.resetProverOptions()
+            v0.decider.setProverOptions(proverArgsOfCurrentDecider)
             v0.decider.prover.comment(s"Bulk-declaring functions")
-            v0.decider.declareAndRecordAsFreshFunctions(newFunctions)
+            v0.decider.declareAndRecordAsFreshFunctions(newFunctions, false)
             v0.decider.prover.comment(s"Bulk-declaring macros")
-            v0.decider.declareAndRecordAsFreshMacros(newMacros)
+            v0.decider.declareAndRecordAsFreshMacros(newMacros, false)
 
             v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
             v0.decider.setPcs(pcsForElseBranch)
+            v0.errorsReportedSoFar.set(noOfErrors)
           }
           elseBranchVerifier = v0.uniqueId
 
@@ -132,7 +147,17 @@ object brancher extends BranchingRules {
             if (v.uniqueId != v0.uniqueId)
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
 
-            fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            val result = fElse(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
+            if (wasElseExecutedOnDifferentVerifier) {
+              v1.decider.resetProverOptions()
+              v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
+              if (s.underJoin) {
+                val newSymbols = v1.decider.popSymbolStack()
+                functionsOfElseBranchDecider = newSymbols._1
+                macrosOfElseBranchDecider = newSymbols._2
+              }
+            }
+            result
           })
         }
       } else {
@@ -162,7 +187,7 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
-            fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })
         } else {
           Unreachable()
@@ -180,6 +205,7 @@ object brancher extends BranchingRules {
       try {
         if (parallelizeElseBranch) {
           val pcsAfterThenBranch = v.decider.pcs.duplicate()
+          val noOfErrorsAfterThenBranch = v.errorsReportedSoFar.get()
 
           val pcsBefore = v.decider.pcs
 
@@ -189,7 +215,10 @@ object brancher extends BranchingRules {
             // we have done other work during the join, need to reset
             v.decider.prover.comment(s"Resetting path conditions after interruption")
             v.decider.setPcs(pcsAfterThenBranch)
+            v.errorsReportedSoFar.set(noOfErrorsAfterThenBranch)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            v.decider.resetProverOptions()
+            v.decider.setProverOptions(proverArgsOfCurrentDecider)
           }
         }else{
           rs = elseBranchFuture.get()
@@ -210,6 +239,15 @@ object brancher extends BranchingRules {
 
     }, alwaysWaitForOther = parallelizeElseBranch)
     v.symbExLog.endBranchPoint(uidBranchPoint)
+    if (wasElseExecutedOnDifferentVerifier && s.underJoin) {
+
+      v.decider.prover.comment(s"[To continue after join, adding else branch functions and macros to current verifier.]")
+      v.decider.prover.comment(s"Bulk-declaring functions")
+      v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider, true)
+      v.decider.prover.comment(s"Bulk-declaring macros")
+      // Declare macros without duplicates; we keep only the last occurrence of every declaration to avoid errors.
+      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider.reverse.distinct.reverse, true)
+    }
     res
   }
 }

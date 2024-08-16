@@ -1,0 +1,71 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+// first version of the example
+
+domain ArrayDomain {}
+
+field val_int: Int
+field val_ref: Ref
+
+function idx_into(a: ArrayDomain, a_len: Int): Int
+function array_len(a: ArrayDomain): Int
+function to_domain(self: Ref): ArrayDomain
+  requires acc(Array(self), read$())
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+predicate Array(self: Ref)
+predicate usize(self: Ref) {
+  acc(self.val_int, write)
+}
+
+method foo() {
+  var a: Ref
+  var a_len: Int
+  var _3: Ref
+  var unknown: Ref
+  var i: Ref
+  inhale acc(a.val_ref, write) && acc(Array(a.val_ref), write)
+
+  inhale acc(_3.val_ref, write) && acc(usize(unknown), read$()) // <- removing this makes it pass
+
+  exhale acc(a.val_ref, read$())
+
+  inhale acc(usize(i), write) && acc(a.val_ref, read$())
+
+  inhale (unfolding acc(usize(i), write) in
+      (forall q: Int :: { idx_into(to_domain(a.val_ref), q) }
+        !(q < i.val_int) ||
+        idx_into(to_domain(a.val_ref), q) <=
+        idx_into(to_domain(a.val_ref), i.val_int)))
+
+  assert (unfolding acc(usize(i), write) in
+      (forall q: Int :: { idx_into(to_domain(a.val_ref), q) }
+        !(q < i.val_int) ||
+        idx_into(to_domain(a.val_ref), q) <=
+        idx_into(to_domain(a.val_ref), i.val_int)))
+}
+
+
+// second version of the example
+
+function holds(a: Ref, b: Int): Bool
+
+method foo2() {
+  var a: Ref
+  var _3: Ref
+
+  inhale acc(a.val_ref, write)
+
+  inhale acc(_3.val_ref, write) // <- removing this makes it pass
+
+  exhale acc(a.val_ref, 1 / 2)
+  inhale acc(a.val_ref, 1 / 2)
+
+  inhale forall q: Int :: holds(a.val_ref, q)
+  assert forall q: Int :: holds(a.val_ref, q)
+}

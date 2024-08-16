@@ -17,6 +17,7 @@ import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
 import viper.silicon.utils.ast.extractPTypeFromExp
 import viper.silver.parser.{PType, PUnknown}
+import viper.silver.ast.AnnotationInfo
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
@@ -97,7 +98,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {
           case Some(t) => t
-          case None => Var(Identifier(v.name), toSort(v.typ))
+          case None => Var(Identifier(v.name), toSort(v.typ), false)
         }
 
       case eQuant: ast.QuantifiedExp =>
@@ -118,7 +119,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         tQuant.transform({ case v: Var =>
           v.id match {
             case sid: SuffixedIdentifier if names.contains(sid.prefix.name) =>
-              Var(SimpleIdentifier(sid.prefix.name), v.sort)
+              Var(SimpleIdentifier(sid.prefix.name), v.sort, false)
             case _ => v
           }
         })()
@@ -129,9 +130,18 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
-        val fun = symbolConverter.toFunction(silverFunc)
+        val funcAnn = silverFunc.info.getUniqueInfo[AnnotationInfo]
+        val fun = funcAnn match {
+          case Some(a) if a.values.contains("opaque") =>
+            val funcAppAnn = eFApp.info.getUniqueInfo[AnnotationInfo]
+            funcAppAnn match {
+              case Some(a) if a.values.contains("reveal") => symbolConverter.toFunction(silverFunc)
+              case _ => functionSupporter.limitedVersion(symbolConverter.toFunction(silverFunc))
+            }
+          case _ => symbolConverter.toFunction(silverFunc)
+        }
         val args = eFApp.args map (arg => translate(arg))
-        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, PUnknown()())
+        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, PUnknown())
         val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height

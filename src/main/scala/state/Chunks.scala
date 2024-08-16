@@ -195,13 +195,16 @@ case class MagicWandChunk(id: MagicWandIdentifier,
   override val resourceID = MagicWandID
 
   override def withPerm(newPerm: Term, newPermExp: ast.Exp) = MagicWandChunk(id, bindings, args, argsExp, snap, newPerm, newPermExp)
-  override def withSnap(newSnap: Term) = MagicWandChunk(id, bindings, args, argsExp, MagicWandSnapshot(newSnap), perm, permExp)
+  override def withSnap(newSnap: Term) = newSnap match {
+    case s: MagicWandSnapshot => MagicWandChunk(id, bindings, args, argsExp, s, perm, permExp)
+    case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found ${newSnap.getClass}")
+  }
 
   override lazy val toString = {
     val pos = id.ghostFreeWand.pos match {
       case rp: viper.silver.ast.HasLineColumn => s"${rp.line}:${rp.column}"
       case other => other.toString
     }
-    s"wand@$pos[$snap; ${args.mkString(",")}]"
+    s"wand@$pos[$snap; ${args.mkString(", ")}]"
   }
 }

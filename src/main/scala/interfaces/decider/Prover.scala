@@ -29,6 +29,7 @@ trait ProverLike {
     preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }
+  def setOption(name: String, value: String): String
   def assume(term: Term): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit

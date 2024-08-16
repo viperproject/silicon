@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{Forall, Term, Var}
 import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silver.ast
 import viper.silicon.verifier.Verifier
@@ -27,8 +27,13 @@ private case class Incomplete(permsNeeded: Term, permsNeededExp: ast.Exp) extend
 }
 
 object ConsumptionResult {
-  def apply(term: Term, exp: ast.Exp, v: Verifier, timeout: Int): ConsumptionResult = {
-    if (v.decider.check(IsNonPositive(term), timeout))
+  def apply(term: Term, exp: ast.Exp, qvars: Seq[Var],  v: Verifier, timeout: Int): ConsumptionResult = {
+    val toCheck = if (qvars.isEmpty) {
+      IsNonPositive(term)
+    } else {
+      Forall(qvars, IsNonPositive(term), Seq())
+    }
+    if (v.decider.check(toCheck, timeout))
       Complete()
     else
       Incomplete(term, exp)

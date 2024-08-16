@@ -176,7 +176,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         case _ => None
       }
     while(failedPExp.isDefined && !failedPExp.get.isInstanceOf[PScope]){
-      failedPExp = failedPExp.get.parent
+      failedPExp = failedPExp.get.getParent
     }
     if(failedPExp.isDefined){
       obl.resolver.typechecker.curMember = failedPExp.get.asInstanceOf[PScope]
@@ -197,7 +197,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     obl.preambleAssumptions foreach (a => v.decider.prover.assumeAxioms(a.terms, a.description))
 
-    obl.assumptionsExp foreach (debugExp => v.decider.assume(debugExp.getAllTerms, debugExp, enforceAssumption = false, overwriteTerm = false))
+    obl.assumptionsExp foreach (debugExp => v.decider.assume(debugExp.getAllTerms, debugExp, enforceAssumption = false))
     obl.copy(v = v)
   }
 
@@ -302,7 +302,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     def typecheckPExp(pexp: PExp): Unit = {
       try {
         obl.resolver.typechecker.names.check(pexp, None, obl.resolver.typechecker.curMember)
-        obl.resolver.typechecker.check(pexp, PPrimitiv("Bool")())
+        obl.resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
       } catch {
         case e: Throwable => println(s"Error while typechecking $str: ${e.getMessage}")
           throw e

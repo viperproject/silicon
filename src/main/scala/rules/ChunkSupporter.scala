@@ -94,7 +94,7 @@ object chunkSupporter extends ChunkSupportRules {
            * registered with the function recorder. However, since nothing was consumed,
            * returning the unit snapshot seems more appropriate.
            */
-          val fresh = v2.decider.fresh(sorts.Snap, PUnknown()())
+          val fresh = v2.decider.fresh(sorts.Snap, PUnknown())
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
           Q(s3, h2, fresh, v2)
       })
@@ -115,12 +115,11 @@ object chunkSupporter extends ChunkSupportRules {
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, None)
-      magicWandSupporter.transfer(s, perms, permsExp, failure, v)(consumeGreedy(_, _, id, args, _, _, _))((s1, optCh, v1) =>
+      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
-        // 2022-05-07 MHS: MoreCompleteExhale isn't yet integrated into function verification, hence the limitation to method verification
-        if (s.isMethodVerification && s1.moreCompleteExhale) {
+        if (s1.moreCompleteExhale) {
           moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
@@ -177,7 +176,7 @@ object chunkSupporter extends ChunkSupportRules {
             newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
           }
-          (ConsumptionResult(PermMinus(perms, toTake), ast.PermSub(permsExp, toTakeExp)(permsExp.pos, permsExp.info, permsExp.errT), v, 0), s, newHeap, takenChunk)
+          (ConsumptionResult(PermMinus(perms, toTake), ast.PermSub(permsExp, toTakeExp)(permsExp.pos, permsExp.info, permsExp.errT), Seq(), v, 0), s, newHeap, takenChunk)
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             val exp = ast.PermLtCmp(permsExp, ch.permExp)(permsExp.pos, permsExp.info, permsExp.errT)
@@ -206,7 +205,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
-    val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s, h, ch, v)
+    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, h, ch, v)
     Q(s.copy(functionRecorder = fr1), h1, v)
   }
 
@@ -222,7 +221,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
-        if (s.isMethodVerification && s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
+        if (s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
         else lookupGreedy _
       lookupFunction(s1, s1.h, resource, args, argsExp, ve, v1)((s2, tSnap, v2) =>
         QS(s2.copy(h = s.h), s2.h, tSnap, v2))
@@ -240,8 +239,8 @@ object chunkSupporter extends ChunkSupportRules {
                           : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
-
-    findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+    val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
+    findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(true) =>

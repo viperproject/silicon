@@ -39,6 +39,9 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
 
     override def emitSettings(contents: Iterable[String]): Unit =
       workerVerifiers foreach (_.decider.prover.emitSettings(contents))
+
+    override def setOption(name: String, value: String): String =
+      (workerVerifiers map (_.decider.prover.setOption(name, value))).head
   }
 
   /* Verifier pool management */

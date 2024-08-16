@@ -81,7 +81,7 @@ object predicateSupporter extends PredicateSupportRules {
           quantifiedChunkSupporter.singletonSnapshotMap(s2, predicate, tArgs, predSnap, v1)
         v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
         val debugExp = DebugExp.createInstance("Definitional axioms for singleton-SM's value", true)
-        v1.decider.assume(smValueDef, debugExp)
+        v1.decider.assumeDefinition(smValueDef, debugExp)
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
             formalArgs, predicate.formalArgs, predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program)

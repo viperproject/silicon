@@ -22,7 +22,7 @@ import scala.annotation.implicitNotFound
 import scala.collection.immutable.ArraySeq
 
 package object utils {
-  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort, PUnknown()())
+  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort, PUnknown())
   def toSf(t: Term): (Sort, Verifier) => Term = (sort, _) => t.convert(sort)
 
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
@@ -152,9 +152,9 @@ package object utils {
           val sourceNode = info.sourcePNode
           sourceNode match {
             case decl: PUnnamedTypedDeclaration => decl.typ
-            case _ => PUnknown()()
+            case _ => PUnknown()
           }
-        case _ => PUnknown()()
+        case _ => PUnknown()
       }
     }
 
@@ -165,9 +165,9 @@ package object utils {
           sourceNode match {
             case e: PExp => e.typ
             case d: PUnnamedTypedDeclaration => d.typ
-            case _ => PUnknown()()
+            case _ => PUnknown()
           }
-        case _ => PUnknown()()
+        case _ => PUnknown()
       }
     }
 
@@ -274,6 +274,7 @@ package object utils {
     case class ViperEmbedding(embeddedSort: Sort) extends silver.ast.ExtensionType {
       def substitute(typVarsMap: Predef.Map[silver.ast.TypeVar, silver.ast.Type]): silver.ast.Type = this
       def isConcrete: Boolean = true
+      override def toString: String = s"ViperEmbedding(sorts.$embeddedSort)"
     }
   }
 

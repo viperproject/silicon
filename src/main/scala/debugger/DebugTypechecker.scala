@@ -15,15 +15,13 @@ class DebugTypeChecker(override val names: NameAnalyser) extends TypeChecker(nam
 
   override def checkInternal(exp: PExp): Unit = {
         exp match {
-          case pviu: PVersionedIdnUse =>
-            acceptAndCheckTypedEntityWithVersion[PAnyVarDecl, Nothing](Seq(pviu), s"Could not resolve the type of ${pviu.versionedName}")
+          case pviu: PVersionedIdnUseExp =>
+            acceptAndCheckTypedEntityWithVersion(Seq(pviu), s"Could not resolve the type of ${pviu.versionedName}")
           case _ => super.checkInternal(exp)
         }
   }
 
-  def acceptAndCheckTypedEntityWithVersion[T1: ClassTag, T2: ClassTag]
-  (idnUses: Seq[PVersionedIdnUse], errorMessage: => String): Unit = {
-
+  def acceptAndCheckTypedEntityWithVersion(idnUses: Seq[PVersionedIdnUseExp], errorMessage: => String): Unit = {
     idnUses.foreach { use =>
       val decl1 = debugVariableTypes.get(use.versionedName)
 

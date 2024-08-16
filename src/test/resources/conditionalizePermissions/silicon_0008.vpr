@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+method deAlias(x: Ref, y: Ref, k: Perm)
+  requires k >= none
+  requires acc(x.f, k) && acc(y.f, k)
+  // The following postcondition should fail in default greedy Silicon because --conditionalizePermissions creates a
+  // situation where the two chunks may or may not alias in the same branch, so they cannot definitively be merged,
+  // so greedy Silicon cannot prove the postcondition using any individual chunk.
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures x == y ==> acc(x.f, 2 * k)
+{}

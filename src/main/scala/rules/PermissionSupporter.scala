@@ -10,9 +10,9 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
-import viper.silicon.state.terms.{Term, perms, Var}
+import viper.silicon.state.terms.{Term, Var, perms}
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.reasons.NegativePermission
+import viper.silver.verifier.reasons.{NegativePermission, NonPositivePermission}
 
 object permissionSupporter extends SymbolicExecutionRules {
   def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, pve: PartialVerificationError, v: Verifier)
@@ -26,6 +26,21 @@ object permissionSupporter extends SymbolicExecutionRules {
         v.decider.assert(perms.IsNonNegative(tPerm)) {
           case true => Q(s, v)
           case false => createFailure(pve dueTo NegativePermission(ePerm), v, s, Some(ast.GeCmp(ePerm, ast.IntLit(0)())(ePerm.pos, ePerm.info, ePerm.errT)))
+        }
+    }
+  }
+
+  def assertPositive(s: State, tPerm: Term, ePerm: ast.Exp, pve: PartialVerificationError, v: Verifier)
+                    (Q: (State, Verifier) => VerificationResult)
+  : VerificationResult = {
+
+    tPerm match {
+      case k: Var if s.constrainableARPs.contains(k) =>
+        Q(s, v)
+      case _ =>
+        v.decider.assert(perms.IsPositive(tPerm)) {
+          case true => Q(s, v)
+          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, Some(ast.GtCmp(ePerm, ast.NoPerm()())()))
         }
     }
   }

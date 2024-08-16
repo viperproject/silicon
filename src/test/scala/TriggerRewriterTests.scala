@@ -30,14 +30,14 @@ class TriggerRewriterTests extends AnyFunSuite with Matchers with BeforeAndAfter
     }
 
     override protected def fresh(id: String, s: Sort): Var = {
-      Var(Identifier(s"$id${counter.next()}"), s)
+      Var(Identifier(s"$id${counter.next()}"), s, false)
     }
   }
 
-  lazy val x0 = Var(Identifier("x0"), sorts.Int)
-  lazy val x1 = Var(Identifier("x1"), sorts.Int)
-  lazy val y0 = Var(Identifier("y0"), sorts.Int)
-  lazy val z0 = Var(Identifier("z0"), sorts.Int)
+  lazy val x0 = Var(Identifier("x0"), sorts.Int, false)
+  lazy val x1 = Var(Identifier("x1"), sorts.Int, false)
+  lazy val y0 = Var(Identifier("y0"), sorts.Int, false)
+  lazy val z0 = Var(Identifier("z0"), sorts.Int, false)
 
   import rewriter.rewrite
 
