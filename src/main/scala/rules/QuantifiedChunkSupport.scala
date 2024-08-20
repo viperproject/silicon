@@ -918,7 +918,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
            * to that axiom.
            */
           (inverseFunctions.axiomInversesOfInvertibles.triggers,
-            inverseFunctions.axiomInversesOfInvertibles.vars, Seq() /* TODO: ast.Exp for debugging */)
+            inverseFunctions.axiomInversesOfInvertibles.vars, qvarExps)
       }
 
     if (effectiveTriggers.isEmpty) {

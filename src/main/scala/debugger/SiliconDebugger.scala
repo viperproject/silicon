@@ -2,10 +2,12 @@ package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
+import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
 import viper.silicon.state.terms.{False, Term, True}
-import viper.silicon.state.{IdentifierFactory, State}
+import viper.silicon.state.{BasicChunk, IdentifierFactory, QuantifiedFieldChunk, State}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
 import viper.silver.ast
@@ -50,9 +52,25 @@ case class ProofObligation(s: State,
         }) +
       s"\n\t\t${originalErrorReason.readableMessage}\n\n"
 
-  private lazy val stateString: String = s"Store:\n\t\t${s.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.mkString("\n\t\t")}\n\n"
+  private lazy val stateString: String = s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
 
   private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.map(_._2).mkString(", ")}\n\n"
+
+  private def chunkString(c: Chunk): String = {
+    c match {
+      case bc: BasicChunk =>
+        bc.resourceID match {
+          case FieldID => s"${bc.argsExp.head}.${bc.id} -> ${bc.snap} # ${Simplifier.simplify(bc.permExp, true)}"
+          case PredicateID => s"${bc.id}(${bc.argsExp.mkString(", ")}) -> ${bc.snap} # ${Simplifier.simplify(bc.permExp, true)}"
+        }
+      case qfc: QuantifiedFieldChunk =>
+        if (qfc.singletonRcvrExp.isDefined) {
+          s"${qfc.singletonRcvrExp.get}.${qfc.id} -> ${qfc.fvf} # ${Simplifier.simplify(qfc.permExp, true)}"
+        } else {
+          s"TODO"
+        }
+    }
+  }
 
   private def assumptionString: String = {
     val filteredAssumptions = assumptionsExp.filter(d => !d.isInternal || printConfig.isPrintInternalEnabled)
@@ -174,8 +192,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
   private def filterAndSimplifyAssumption(a: DebugExp): Option[DebugExp] = {
     val filteredChildren = a.children.flatMap(c => filterAndSimplifyAssumption(c))
-    val simplifiedFinalExp = a.finalExp.map(e => Simplifier.simplify(e))
-    val simplifiedOriginalExp = a.originalExp.map(e => Simplifier.simplify(e))
+    val simplifiedFinalExp = a.finalExp.map(e => Simplifier.simplify(e, true))
+    val simplifiedOriginalExp = a.originalExp.map(e => Simplifier.simplify(e, true))
     if (simplifiedFinalExp.isDefined && simplifiedFinalExp.get == TrueLit()()) {
       if (a.term.isEmpty || a.term.get != True) {
         println(s"Warning: Final expression is True but term is not True. Term: ${a.term}")

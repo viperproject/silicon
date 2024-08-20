@@ -189,7 +189,7 @@ class QuantifiedDebugExp(id: Int,
 
 
 class DebugExpPrintConfiguration {
-  var isPrintInternalEnabled: Boolean = true
+  var isPrintInternalEnabled: Boolean = false
   var printHierarchyLevel: Int = 5
   var nodeToHierarchyLevelMap: Map[Int, Int] = Map.empty
   var isPrintAxiomsEnabled: Boolean = false

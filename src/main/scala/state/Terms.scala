@@ -1124,6 +1124,7 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Conditio
 
 object BuiltinEquals extends CondFlyweightFactory[(Term, Term), BooleanTerm, BuiltinEquals] {
   override def apply(v0: (Term, Term)) = v0 match {
+    case (v0: Var, v1: Var) if v0 == v1 => True
     case (p0: PermLiteral, p1: PermLiteral) =>
       // NOTE: The else-case (False) is only justified because permission literals are stored in a normal form
       // such that two literals are semantically equivalent iff they are syntactically equivalent.
