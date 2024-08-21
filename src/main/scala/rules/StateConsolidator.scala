@@ -251,7 +251,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val trigger = FieldTrigger(field.name, smDef.sm, receiver)
           val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
-          val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos), ast.FullPerm()())())()
+          val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos), v.getDebugOldLabel(sn))()
+          val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
           v.decider.assume(
             Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"), DebugExp.createInstance(exp, exp))
         } else {
@@ -263,7 +264,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
            */
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
-              val exp = ast.PermLeCmp(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(), ast.FullPerm()())()
+              val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(), v.getDebugOldLabel(sn))()
+              val exp = ast.PermLeCmp(permExp, ast.FullPerm()())()
               v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), DebugExp.createInstance(exp, exp))
             } else {
               val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
@@ -271,7 +273,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
               val chunkReceiverExp = chunk.quantifiedVarExps.head.localVar
-              val exp = ast.Forall(chunk.quantifiedVarExps, Seq(), ast.PermLeCmp(ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT), ast.FullPerm()())())()
+              var permExp: ast.Exp = ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT)
+              permExp = ast.DebugLabelledOld(permExp, v.getDebugOldLabel(sn))()
+              val exp = ast.Forall(chunk.quantifiedVarExps, Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
               v.decider.assume(
                 Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"), DebugExp.createInstance(exp, exp))
             }

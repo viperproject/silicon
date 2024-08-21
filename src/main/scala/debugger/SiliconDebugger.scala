@@ -7,7 +7,7 @@ import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Succes
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
 import viper.silicon.state.terms.{False, Term, True}
-import viper.silicon.state.{BasicChunk, IdentifierFactory, QuantifiedFieldChunk, State}
+import viper.silicon.state.{BasicChunk, IdentifierFactory, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
 import viper.silver.ast
@@ -63,12 +63,28 @@ case class ProofObligation(s: State,
           case FieldID => s"${bc.argsExp.head}.${bc.id} -> ${bc.snap} # ${Simplifier.simplify(bc.permExp, true)}"
           case PredicateID => s"${bc.id}(${bc.argsExp.mkString(", ")}) -> ${bc.snap} # ${Simplifier.simplify(bc.permExp, true)}"
         }
+      case mwc: MagicWandChunk =>
+        val shape = mwc.id.ghostFreeWand
+        val expBindings = mwc.bindings.map(b => b._1 -> b._2._2)
+        val instantiated = shape.replace(expBindings)
+        instantiated.toString
       case qfc: QuantifiedFieldChunk =>
         if (qfc.singletonRcvrExp.isDefined) {
-          s"${qfc.singletonRcvrExp.get}.${qfc.id} -> ${qfc.fvf} # ${Simplifier.simplify(qfc.permExp, true)}"
+          val receiver = Simplifier.simplify(qfc.singletonRcvrExp.get, true)
+          val perm = Simplifier.simplify(qfc.permExp.replace(qfc.quantifiedVarExps.head.localVar, receiver), true)
+          s"${receiver}.${qfc.id} -> ${qfc.fvf} # ${perm}"
         } else {
-          s"TODO"
+          val varsString = qfc.quantifiedVarExps.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          qfc.toString // TODO
         }
+      case qpc: QuantifiedPredicateChunk =>
+        if (qpc.singletonArgExps.isDefined) {
+          s"${qpc.id}(${qpc.singletonArgExps.get.map(e => Simplifier.simplify(e, true)).mkString(", ")}) -> ${qpc.psf} # ${Simplifier.simplify(qpc.permExp, true)}"
+        } else {
+          qpc.toString // TODO
+        }
+      case qwc: QuantifiedMagicWandChunk =>
+        qwc.toString // TODO
     }
   }
 

@@ -561,7 +561,7 @@ object evaluator extends EvaluationRules {
                   }
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
-                  val exp = ast.PermLeCmp(ast.CurrentPerm(resacc)(), ast.FullPerm()())()
+                  val exp = ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resacc)(), v1.getDebugOldLabel(s2))(), ast.FullPerm()())()
                   v1.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, s2.substituteVarsInExp(exp))
                   (s2, currentPermAmount)
 

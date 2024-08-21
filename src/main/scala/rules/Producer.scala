@@ -329,7 +329,7 @@ object producer extends ProductionRules {
               val gainExp = ast.PermMul(ePermNew, s3.permissionScalingFactorExp)(ePermNew.pos, ePermNew.info, ePermNew.errT)
               if (s3.qpFields.contains(field)) {
                 val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
-                quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)), Seq(tRcvr), Seq(eRcvr), snap, gain, gainExp, trigger, v3)(Q)
+                quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)), Seq(tRcvr), Seq(eRcvrNew), snap, gain, gainExp, trigger, v3)(Q)
               } else {
                 val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Seq(eRcvrNew), snap, gain, gainExp)
                 chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) =>
@@ -353,7 +353,7 @@ object producer extends ProductionRules {
                 val formalArgs = s2.predicateFormalVarMap(predicate)
                 val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
                 quantifiedChunkSupporter.produceSingleLocation(
-                  s2, predicate, formalArgs, predicate.formalArgs, tArgs, eArgs, snap, gain, gainExp, trigger, v2)(Q)
+                  s2, predicate, formalArgs, predicate.formalArgs, tArgs, eArgsNew, snap, gain, gainExp, trigger, v2)(Q)
               } else {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgsNew, snap1, gain, gainExp)
