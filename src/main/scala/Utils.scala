@@ -172,7 +172,11 @@ package object utils {
     }
 
     def buildMinExp(exps: Seq[silver.ast.Exp], typ: silver.ast.Type): silver.ast.Exp = {
-      silver.ast.FuncApp("min", exps)(NoPosition, NoInfo, typ, NoTrafos)
+      exps match {
+        case Seq(e) => e
+        case Seq(e0, e1) => silver.ast.DebugPermMin(e0, e1)(e0.pos, e0.info)
+        case exps if exps.length > 2 => silver.ast.DebugPermMin(exps.head, buildMinExp(exps.tail, typ))(exps.head.pos, exps.head.info)
+      }
     }
 
     def buildQuantExp(quantifier: Quantifier, vars: Seq[silver.ast.LocalVarDecl], eBody: silver.ast.Exp, eTrigger: Seq[silver.ast.Trigger]): silver.ast.Exp = {

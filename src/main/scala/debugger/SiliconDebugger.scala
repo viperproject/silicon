@@ -1,7 +1,7 @@
 package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
+import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverAPI, Z3ProverStdIO}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
@@ -199,7 +199,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         failureContext.failedAssertion, failureContext.failedAssertionExp, None,
         new DebugExpPrintConfiguration, currResult.message.reason,
         new DebugResolver(this.pprogram, this.resolver.names), new DebugTranslator(this.pprogram, translator.getMembers())))
-      println(s"Current obligation:\n$obl")
+      println(s"Current obligation:\n${obl.get}")
       obl
     } else {
       None
@@ -210,12 +210,12 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     val filteredChildren = a.children.flatMap(c => filterAndSimplifyAssumption(c))
     val simplifiedFinalExp = a.finalExp.map(e => Simplifier.simplify(e, true))
     val simplifiedOriginalExp = a.originalExp.map(e => Simplifier.simplify(e, true))
-    if (simplifiedFinalExp.isDefined && simplifiedFinalExp.get == TrueLit()()) {
-      if (a.term.isEmpty || a.term.get != True) {
-        println(s"Warning: Final expression is True but term is not True. Term: ${a.term}")
-      }
-    }
-    if (filteredChildren.nonEmpty || a.term.isDefined) {
+//    if (simplifiedFinalExp.isDefined && simplifiedFinalExp.get == TrueLit()()) {
+//      if (a.term.isEmpty || a.term.get != True) {
+//        println(s"Warning: Final expression is True but term is not True. Term: ${a.term}")
+//      }
+//    }
+    if (filteredChildren.nonEmpty || (a.term.isDefined && a.term.get != True && (simplifiedFinalExp.isEmpty || simplifiedFinalExp.get != TrueLit()()))) {
       a match {
         case i: ImplicationDebugExp => Some(new ImplicationDebugExp(i.id, i.description, simplifiedOriginalExp, simplifiedFinalExp, a.term, a.isInternal, filteredChildren))
         case q: QuantifiedDebugExp => Some(new QuantifiedDebugExp(q.id, q.description, simplifiedOriginalExp, simplifiedFinalExp, a.term, a.isInternal, filteredChildren, q.quantifier, q.qvars, q.triggers))
@@ -271,6 +271,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           case "r" | "reset" =>
             lastSolverOptions = None
             obl = originalObl
+            initVerifier(obl, obl.v.decider.prover.name, lastSolverOptions)
             println(s"Current obligation:\n$obl")
           case "ra" | "remove" | "remove assumption" =>
             obl = removeAssumptions(obl)
@@ -353,8 +354,11 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       obl
     } else {
       val assumptionE = translateStringToExp(userInput, obl)
-      val (_, _, _, resV) = evalAssumption(assumptionE, obl, free, obl.v)
-      obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, v = resV)
+      evalAssumption(assumptionE, obl, free, obl.v) match {
+        case Some((resS, resT, resE, evalAssumptions)) =>
+          val allAssumptions = obl.assumptionsExp ++ evalAssumptions + DebugExp.createInstance(assumptionE, resE).withTerm(resT)
+          obl.copy(s = resS, assumptionsExp = allAssumptions)
+      }
     }
   }
 
@@ -428,17 +432,20 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     translatePExp(pexp)
   }
 
-  private def evalAssumption(e: ast.Exp, obl: ProofObligation, isFree: Boolean, v: Verifier): (State, Term, ast.Exp, Verifier) = {
+  private def evalAssumption(e: ast.Exp, obl: ProofObligation, isFree: Boolean, v: Verifier): Option[(State, Term, ast.Exp, InsertionOrderedSet[DebugExp])] = {
     var resT: Term = null
     var resS: State = null
     var resE: ast.Exp = null
     var resV: Verifier = null
+    var evalPcs: RecordedPathConditions = null
     val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(e, r))
+    val beforeEval = v.decider.setPathConditionMark()
     val verificationResult = evaluator.eval3(obl.s, e, pve, v)((newS, t, newE, newV) => {
       resS = newS
       resT = t
       resE = newE
       resV = newV
+      evalPcs = newV.decider.pcs.after(beforeEval)
       Success()
     })
 
@@ -448,13 +455,15 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         if (proved) {
           println("Assumption was added successfully!")
           resV.decider.assume(resT, e, resE)
+          Some((resS, resT, resE, evalPcs.assumptionExps))
         } else {
           println("Fail! Could not prove assumption. Skipping")
+          None
         }
       case _ =>
         println("Error while evaluating expression: " + verificationResult.toString)
+        None
     }
-    (resS, resT, resE, resV)
   }
 
   private def assertProofObligation(obl: ProofObligation): Unit = {

@@ -465,6 +465,9 @@ object evaluator extends EvaluationRules {
       case ast.PermMul(e0, e1) =>
         evalBinOp(s, e0, e1, PermTimes, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, ast.PermMul(e0new, e1New)(e.pos, e.info, e.errT), v1))
 
+      case ast.DebugPermMin(e0, e1) =>
+        evalBinOp(s, e0, e1, PermMin, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, ast.DebugPermMin(e0new, e1New)(e.pos, e.info, e.errT), v1))
+
       case ast.IntPermMul(e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           eval(s1, e1, pve, v1)((s2, t1, e1New, v2) =>
