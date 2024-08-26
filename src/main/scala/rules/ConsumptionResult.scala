@@ -21,13 +21,13 @@ private case class Complete() extends ConsumptionResult {
   override def ||(other: => ConsumptionResult): ConsumptionResult = this
 }
 
-private case class Incomplete(permsNeeded: Term, permsNeededExp: ast.Exp) extends ConsumptionResult {
+private case class Incomplete(permsNeeded: Term, permsNeededExp: Option[ast.Exp]) extends ConsumptionResult {
   override def isComplete: Boolean = false
   override def ||(other: => ConsumptionResult): ConsumptionResult = other
 }
 
 object ConsumptionResult {
-  def apply(term: Term, exp: ast.Exp, qvars: Seq[Var],  v: Verifier, timeout: Int): ConsumptionResult = {
+  def apply(term: Term, exp: Option[ast.Exp], qvars: Seq[Var],  v: Verifier, timeout: Int): ConsumptionResult = {
     val toCheck = if (qvars.isEmpty) {
       IsNonPositive(term)
     } else {

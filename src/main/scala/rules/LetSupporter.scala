@@ -49,7 +49,7 @@ object letSupporter extends LetSupportRules {
 
   private def handle[E <: ast.Exp]
                     (s: State,
-                     bindings: Seq[(ast.AbstractLocalVar, (Term, ast.Exp))],
+                     bindings: Seq[(ast.AbstractLocalVar, (Term, Option[ast.Exp]))],
                      let: ast.Let,
                      pve: PartialVerificationError,
                      v: Verifier)

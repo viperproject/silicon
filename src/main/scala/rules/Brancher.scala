@@ -21,7 +21,7 @@ import viper.silver.verifier.Failure
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
-             conditionExp: (ast.Exp, ast.Exp),
+             conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
@@ -32,7 +32,7 @@ trait BranchingRules extends SymbolicExecutionRules {
 object brancher extends BranchingRules {
   def branch(s: State,
              condition: Term,
-             conditionExp: (ast.Exp, ast.Exp),
+             conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
@@ -41,7 +41,7 @@ object brancher extends BranchingRules {
 
     val negatedCondition = Not(condition)
     val negatedConditionExp = ast.Not(conditionExp._1)(pos = conditionExp._1.pos, info = conditionExp._1.info, ast.NoTrafos)
-    val negatedConditionExpNew = ast.Not(conditionExp._2)(pos = conditionExp._2.pos, info = conditionExp._2.info, ast.NoTrafos)
+    val negatedConditionExpNew = conditionExp._2.map(ce => ast.Not(ce)(pos = ce.pos, info = ce.info, ast.NoTrafos))
 
 
     /* Skip path feasibility check if one of the following holds:

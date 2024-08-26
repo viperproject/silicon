@@ -35,20 +35,20 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     * @param property a property with an expression potentially containing <code>This()</code>
     * @return the corresponding term
     */
-  def buildPathConditionForChunk(chunk: NonQuantifiedChunk, property: Property): (Term, ast.Exp) = {
+  def buildPathConditionForChunk(chunk: NonQuantifiedChunk, property: Property): (Term, Option[ast.Exp]) = {
     val info = Info(Map(This() -> chunk), chunk.resourceID)
     buildPathCondition(property.expression, info)
   }
 
   // TODO: remove once singleton quantified chunks are not used anymore
-  def buildPathConditionForChunk(chunk: QuantifiedBasicChunk, property: Property): (Term, ast.Exp) = {
+  def buildPathConditionForChunk(chunk: QuantifiedBasicChunk, property: Property): (Term, Option[ast.Exp]) = {
     require(chunk.singletonArguments.isDefined)
     val info = Info(Map(This() -> chunk), chunk.resourceID)
     buildPathCondition(property.expression, info)
   }
 
   // TODO: remove once singleton quantified chunks are not used anymore
-  def buildPathConditionsForChunk(chunk: QuantifiedBasicChunk, properties: Iterable[Property]): Iterable[(Term, ast.Exp)] = {
+  def buildPathConditionsForChunk(chunk: QuantifiedBasicChunk, properties: Iterable[Property]): Iterable[(Term, Option[ast.Exp])] = {
     properties.map(buildPathConditionForChunk(chunk, _))
   }
 
@@ -60,40 +60,57 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     * @param property an expression <b>not</b> containing <code>This()</code>
     * @return the corresponding term
     */
-  def buildPathConditionForResource(resourceID: ResourceID, property: Property): (Term, ast.Exp) = {
+  def buildPathConditionForResource(resourceID: ResourceID, property: Property): (Term, Option[ast.Exp]) = {
      buildPathCondition(property.expression, Info(Map.empty, resourceID))
   }
 
-  def buildPathConditionsForChunk(chunk: NonQuantifiedChunk, properties: Iterable[Property]): Iterable[(Term, ast.Exp)] = {
+  def buildPathConditionsForChunk(chunk: NonQuantifiedChunk, properties: Iterable[Property]): Iterable[(Term, Option[ast.Exp])] = {
     properties.map(buildPathConditionForChunk(chunk, _))
   }
 
-  def buildPathConditionsForResource(resourceID: ResourceID, properties: Iterable[Property]): Iterable[(Term, ast.Exp)] = {
+  def buildPathConditionsForResource(resourceID: ResourceID, properties: Iterable[Property]): Iterable[(Term, Option[ast.Exp])] = {
     properties.map(buildPathConditionForResource(resourceID, _))
   }
 
   override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     info.pm(chunkPlaceholder) match {
-      case c: NonQuantifiedChunk => (c.perm, c.permExp)
+      case c: NonQuantifiedChunk =>
+        if (withExp)
+          (c.perm, c.permExp)
+        else
+          (c.perm, None)
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => (c.perm.replace(c.quantifiedVars, c.singletonArguments.get), replaceVarsInExp(c.permExp, c.quantifiedVarExps.map(_.name), c.singletonArgumentExps.get))
+      case c: QuantifiedBasicChunk =>
+        val permTerm = c.perm.replace(c.quantifiedVars, c.singletonArguments.get)
+        if (withExp)
+          (permTerm, Some(replaceVarsInExp(c.permExp.get, c.quantifiedVarExps.get.map(_.name), c.singletonArgumentExps.get)))
+        else
+          (permTerm, None)
     }
   }
 
-  override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
+  override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info): (Term, Option[ast.Exp]) = {
     info.pm(chunkPlaceholder) match {
-      case c: NonQuantifiedChunk => (c.snap, ast.LocalVar("SnapshotValue", ast.Int)())
+      case c: NonQuantifiedChunk =>
+        if (Verifier.config.enableDebugging())
+          (c.snap, Some(???)) // ast.LocalVar("SnapshotValue", ast.Int)())
+        else
+          (c.snap, None)
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => (c.valueAt(c.singletonArguments.get), c.singletonArgumentExps.get.head)
+      case c: QuantifiedBasicChunk =>
+        if (Verifier.config.enableDebugging())
+          (c.valueAt(c.singletonArguments.get), Some(c.singletonArgumentExps.get.head))
+        else
+          (c.valueAt(c.singletonArguments.get), None)
     }
   }
 
   override protected def extractArguments(chunkPlaceholder: ChunkPlaceholder,
-                                          info: Info): (Seq[Term], Seq[ast.Exp]) = {
+                                          info: Info): (Seq[Term], Option[Seq[ast.Exp]]) = {
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk => (c.args, c.argsExp)
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => (c.singletonArguments.get, c.singletonArgumentExps.get)
+      case c: QuantifiedBasicChunk => (c.singletonArguments.get, Option.when(withExp)(c.singletonArgumentExps.get))
     }
   }
 
@@ -101,7 +118,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                                    (condition: PropertyExpression[kinds.Boolean],
                                     thenDo: PropertyExpression[K],
                                     otherwise: PropertyExpression[K],
-                                    info: Info): (Term, ast.Exp) = {
+                                    info: Info): (Term, Option[ast.Exp]) = {
     val conditionTerm = buildPathCondition(condition, info)._1
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
       buildPathCondition(thenDo, info)
@@ -113,7 +130,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
   override protected def buildForEach(chunkVariables: Seq[ChunkVariable],
                                       body: PropertyExpression[kinds.Boolean],
                                       info: Info)
-                                     : (Term, ast.Exp) = {
+                                     : (Term, Option[ast.Exp]) = {
     info.pm.get(This()) match {
       case Some(_) =>
          sys.error("Property expressions may not contain any ForEach clauses.")
@@ -121,7 +138,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
         // when interpreting a static or delayed property, look at every ID separately
         val conds = nonQuantifiedChunks.filter(_.resourceID == info.resourceID)
           .groupBy(ch => ch.id).values.map(chs => buildForEach(chs, chunkVariables, body, info))
-        (terms.And(conds.map(_._1)), BigAnd(conds.map(_._2)))
+        (terms.And(conds.map(_._1)), Option.when(withExp)(BigAnd(conds.map(_._2.get))))
     }
   }
 
@@ -129,8 +146,8 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                            chunkVariables: Seq[ChunkVariable],
                            body: PropertyExpression[kinds.Boolean],
                            info: Info)
-                            : (Term, ast.Exp) = {
-    val builder: GeneralChunk => (Term, ast.Exp) = chunkVariables match {
+                            : (Term, Option[ast.Exp]) = {
+    val builder: GeneralChunk => (Term, Option[ast.Exp]) = chunkVariables match {
       case c +: Seq() => chunk => buildPathCondition(body, info.addMapping(c, chunk))
       case c +: tail => chunk => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
     }
@@ -143,6 +160,6 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
           None
         }
       }
-    (terms.And(conds.map(_._1)), BigAnd(conds.map(_._2)))
+    (terms.And(conds.map(_._1)), Option.when(withExp)(BigAnd(conds.map(_._2.get))))
   }
 }

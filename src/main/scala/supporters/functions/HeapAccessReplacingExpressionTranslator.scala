@@ -16,12 +16,13 @@ import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, Sy
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
 import viper.silicon.utils.ast.extractPTypeFromExp
+import viper.silicon.verifier.Verifier
 import viper.silver.parser.{PType, PUnknown}
 import viper.silver.ast.AnnotationInfo
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
-                                              fresh: (String, Sort, PType) => Var,
+                                              fresh: (String, Sort, Option[PType]) => Var,
                                               resolutionFailureMessage: (ast.Positioned, FunctionData) => String,
                                               stopOnResolutionFailure: (ast.Positioned, FunctionData) => Boolean,
                                               reporter: Reporter)
@@ -124,7 +125,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         })()
 
-      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), extractPTypeFromExp(loc))
+      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), Option.when(Verifier.config.enableDebugging())(extractPTypeFromExp(loc)))
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
@@ -141,7 +142,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           case _ => symbolConverter.toFunction(silverFunc)
         }
         val args = eFApp.args map (arg => translate(arg))
-        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, PUnknown())
+        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
         val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height
@@ -155,7 +156,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case _ => super.translate(symbolConverter.toSort)(e)
     }
 
-  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, pType: PType): Term =
+  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, pType: Option[PType]): Term =
     map.get(key) match {
       case Some(s) =>
         s.convert(sort)

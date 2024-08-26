@@ -51,7 +51,7 @@ trait Decider {
 
   def checkSmoke(isAssert: Boolean = false): Boolean
 
-  def setCurrentBranchCondition(t: Term, te: (ast.Exp, ast.Exp)): Unit
+  def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
   def setPathConditionMark(): Mark
 
   def finishDebugSubExp(description : String): Unit
@@ -59,12 +59,13 @@ trait Decider {
   def startDebugSubExp(): Unit
 
   def assume(t: Term, e: ast.Exp, finalExp: ast.Exp): Unit
-  def assume(t: Term, debugExp: DebugExp): Unit
-  def assume(terms: Seq[Term], debugExps: Seq[DebugExp]): Unit
-  def assumeDefinition(t: Term, debugExp: DebugExp): Unit
-  def assume(assumptions: Iterable[(Term, DebugExp)]): Unit
-  def assume(assumptions: InsertionOrderedSet[(Term, DebugExp)], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
-  def assume(terms: Iterable[Term], debugExp: DebugExp, enforceAssumption: Boolean): Unit
+  def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit
+  def assume(t: Term, debugExp: Option[DebugExp]): Unit
+  def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit
+  def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit
+  def assume(assumptions: Iterable[(Term, Option[DebugExp])]): Unit
+  def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
+  def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
 
   def check(t: Term, timeout: Int): Boolean
 
@@ -74,12 +75,12 @@ trait Decider {
    */
   def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
 
-  def fresh(id: String, sort: Sort, ptype: PType): Var
+  def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl
 
-  def fresh(sort: Sort, pType: PType): Var
-  def fresh(v: ast.AbstractLocalVar): (Var, ast.LocalVarWithVersion)
+  def fresh(sort: Sort, pType: Option[PType]): Var
+  def fresh(v: ast.AbstractLocalVar): (Var, Option[ast.LocalVarWithVersion])
   def freshARP(id: String = "$k"): (Var, Term)
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
@@ -251,9 +252,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def setCurrentBranchCondition(t: Term, te: (ast.Exp, ast.Exp)): Unit = {
+    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit = {
       pathConditions.setCurrentBranchCondition(t, te)
-      assume(t, te._1, te._2)
+      assume(t, Option.when(te._2.isDefined)(te._1), te._2)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()
@@ -279,47 +280,55 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(t: Term, e : ast.Exp, finalExp : ast.Exp): Unit = {
-      assume(InsertionOrderedSet(Seq((t, DebugExp.createInstance(e, finalExp)))), false)
+      assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e, finalExp)))), false, false)
     }
 
-    def assume(t: Term, debugExp: DebugExp): Unit = {
+    def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit = {
+      if (finalExp.isDefined) {
+        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), false, false)
+      } else {
+        assume(assumptions=InsertionOrderedSet((t, None)), false, false)
+      }
+    }
+
+    def assume(t: Term, debugExp: Option[DebugExp]): Unit = {
       assume(InsertionOrderedSet(Seq((t, debugExp))), false)
     }
 
-    def assumeDefinition(t: Term, debugExp: DebugExp): Unit = {
+    def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit = {
       assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption=false, isDefinition=true)
     }
 
-    def assume(assumptions: Iterable[(Term, DebugExp)]): Unit =
+    def assume(assumptions: Iterable[(Term, Option[DebugExp])]): Unit =
       assume(InsertionOrderedSet(assumptions), false)
 
-    def assume(assumptions: InsertionOrderedSet[(Term, DebugExp)], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit = {
+    def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit = {
       val filteredAssumptions =
         if (enforceAssumption) assumptions
         else assumptions filterNot (a => isKnownToBeTrue(a._1))
 
 
       if (Verifier.config.enableDebugging()) {
-        filteredAssumptions foreach (a => addDebugExp(a._2.withTerm(a._1)))
+        filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
       }
 
       if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(filteredAssumptions map (_._1), isDefinition=isDefinition)
     }
 
-    def assume(assumptions: Seq[Term], debugExps: Seq[DebugExp]): Unit = {
+    def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit = {
       assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions))
       if (Verifier.config.enableDebugging()) {
-        debugExps foreach (e => addDebugExp(e))
+        debugExps.get foreach (e => addDebugExp(e))
       }
     }
 
-    def assume(terms: Iterable[Term], debugExp: DebugExp, enforceAssumption: Boolean): Unit = {
+    def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
       if (Verifier.config.enableDebugging() && filteredTerms.nonEmpty) {
-        addDebugExp(debugExp.withTerm(And(filteredTerms)))
+        addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
       }
 
       if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms))
@@ -409,21 +418,22 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function =
       prover_fresh[Fun](id, argSorts, resultSort, false)
 
-    def fresh(id: String, sort: Sort, pType: PType): Var = {
+    def fresh(id: String, sort: Sort, pType: Option[PType]): Var = {
       val term = prover_fresh[Var](id, Nil, sort, false)
-      if (Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType)
+      if (Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType.get)
       term
     }
 
-    def fresh(s: Sort, pType: PType): Var = {
+    def fresh(s: Sort, pType: Option[PType]): Var = {
       val term = prover_fresh[Var]("$t", Nil, s, false)
-      if (Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType)
+      if (Verifier.config.enableDebugging()) debugVariableTypes += (term.id.name -> pType.get)
       term
     }
 
-    def fresh(v: ast.AbstractLocalVar): (Var, ast.LocalVarWithVersion) = {
-      val term = fresh(v.name, symbolConverter.toSort(v.typ), extractPTypeFromExp(v))
-      (term, LocalVarWithVersion(simplifyVariableName(term.id.name), v.typ)(v.pos, v.info, v.errT))
+    def fresh(v: ast.AbstractLocalVar): (Var, Option[ast.LocalVarWithVersion]) = {
+      val withExp = Verifier.config.enableDebugging()
+      val term = fresh(v.name, symbolConverter.toSort(v.typ), Option.when(withExp)(extractPTypeFromExp(v)))
+      (term, Option.when(withExp)(LocalVarWithVersion(simplifyVariableName(term.id.name), v.typ)(v.pos, v.info, v.errT)))
     }
 
     def freshARP(id: String = "$k"): (Var, Term) = {

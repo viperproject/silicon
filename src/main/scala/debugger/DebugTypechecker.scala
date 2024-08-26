@@ -3,9 +3,6 @@ package viper.silicon.debugger
 import viper.silver.FastMessaging
 import viper.silver.parser._
 
-import scala.reflect.ClassTag
-
-
 class DebugResolver(override val p: PProgram, names: NameAnalyser) extends Resolver(p){
   override val typechecker: DebugTypeChecker = new DebugTypeChecker(names)
 }

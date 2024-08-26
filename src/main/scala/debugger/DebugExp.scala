@@ -50,6 +50,10 @@ object DebugExp {
     createInstance(None, Some(originalExp), Some(finalExp), InsertionOrderedSet.empty)
   }
 
+  def createInstance(originalExp: Option[ast.Exp], finalExp: Option[ast.Exp]): DebugExp = {
+    createInstance(None, Some(originalExp.get), Some(finalExp.get), InsertionOrderedSet.empty)
+  }
+
   def createImplicationInstance(description: Option[String],
                                 originalExp: Option[ast.Exp],
                                 finalExp: Option[ast.Exp],

@@ -77,12 +77,12 @@ package object utils {
     }
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
-    s.g.values.values foreach (p => collect(p._2))
+    s.g.values.values foreach (p => collect(p._2.get))
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
     s.h.values.foreach {
       case bc: BasicChunk =>
-        bc.argsExp foreach collect
+        bc.argsExp.get foreach collect
       case qch: QuantifiedFieldChunk =>
         qch.singletonRcvrExp.foreach(rcvr => {
           collect(rcvr)

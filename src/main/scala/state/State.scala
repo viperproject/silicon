@@ -15,15 +15,14 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{BooleanLiteral, False, IntLiteral, Term, True, Var}
-import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
-import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{And, Ite, NoPerm, PermLiteral, SeqAppend, Term, Var}
+import viper.silicon.state.terms.{Term, Var}
+import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.terms.{And, Ite, NoPerm}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
-import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
+import viper.silicon.utils.ast.BigAnd
+import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, Stack}
-import viper.silver.ast.{LocalVar, LocalVarWithVersion, TrueLit}
 import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),
@@ -43,7 +42,7 @@ final case class State(g: Store = Store(),
                        invariantContexts: Stack[Heap] = Stack.empty,
 
                        constrainableARPs: InsertionOrderedSet[Var] = InsertionOrderedSet.empty,
-                       quantifiedVariables: Stack[(Var, ast.AbstractLocalVar)] = Nil,
+                       quantifiedVariables: Stack[(Var, Option[ast.AbstractLocalVar])] = Nil,
                        retrying: Boolean = false,
                        underJoin: Boolean = false,
                        functionRecorder: FunctionRecorder = NoopFunctionRecorder,
@@ -55,7 +54,7 @@ final case class State(g: Store = Store(),
 
                        partiallyConsumedHeap: Option[Heap] = None,
                        permissionScalingFactor: Term = terms.FullPerm,
-                       permissionScalingFactorExp: ast.Exp = ast.FullPerm()(),
+                       permissionScalingFactorExp: Option[ast.Exp] = if (Verifier.config.enableDebugging()) Some(ast.FullPerm()()) else None,
                        isEvalInOld: Boolean = false,
 
                        reserveHeaps: Stack[Heap] = Nil,
@@ -115,9 +114,9 @@ final case class State(g: Store = Store(),
     copy(constrainableARPs = newConstrainableARPs)
   }
 
-  def scalePermissionFactor(p: Term, exp: ast.Exp) =
+  def scalePermissionFactor(p: Term, exp: Option[ast.Exp]) =
     copy(permissionScalingFactor = terms.PermTimes(p, permissionScalingFactor),
-      permissionScalingFactorExp = ast.PermMul(exp, permissionScalingFactorExp)(exp.pos, exp.info, exp.errT))
+      permissionScalingFactorExp = permissionScalingFactorExp.map(psf => ast.PermMul(exp.get, psf)(exp.get.pos, exp.get.info, exp.get.errT)))
 
   def merge(other: State): State =
     State.merge(this, other)
@@ -125,24 +124,24 @@ final case class State(g: Store = Store(),
   def preserveAfterLocalEvaluation(post: State): State =
     State.preserveAfterLocalEvaluation(this, post)
 
-  def functionRecorderQuantifiedVariables(): Seq[(Var, ast.AbstractLocalVar)] =
-    functionRecorder.data.fold(Seq.empty[(Var, ast.AbstractLocalVar)])(d => d.arguments.zip(d.argumentExps))
+  def functionRecorderQuantifiedVariables(): Seq[(Var, Option[ast.AbstractLocalVar])] =
+    functionRecorder.data.fold(Seq.empty[(Var, Option[ast.AbstractLocalVar])])(d => d.arguments.zip(d.argumentExps))
 
-  def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[(Var, ast.AbstractLocalVar)] = (
+  def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[(Var, Option[ast.AbstractLocalVar])] = (
        functionRecorderQuantifiedVariables()
     ++ quantifiedVariables.filter(x => filterPredicate(x._1))
   )
 
-  def relevantQuantifiedVariables(occurringIn: Seq[Term]): Seq[(Var, ast.AbstractLocalVar)] =
+  def relevantQuantifiedVariables(occurringIn: Seq[Term]): Seq[(Var, Option[ast.AbstractLocalVar])] =
     relevantQuantifiedVariables(x => occurringIn.exists(_.contains(x)))
 
 
   def substituteVarsInExp(e : ast.Exp): ast.Exp = {
     val varMapping = g.expValues.map { case (localVar, finalExp) => localVar.name -> finalExp}
-    Sanitizer.replaceFreeVariablesInExpression(e, varMapping, Set())
+    Sanitizer.replaceFreeVariablesInExpression(e, varMapping.map(vm => vm._1 -> vm._2.get), Set())
   }
 
-  lazy val relevantQuantifiedVariables: Seq[(Var, ast.AbstractLocalVar)] =
+  lazy val relevantQuantifiedVariables: Seq[(Var, Option[ast.AbstractLocalVar])] =
     relevantQuantifiedVariables(_ => true)
 
   override val toString = s"${this.getClass.getSimpleName}(...)"
@@ -277,25 +276,25 @@ object State {
   }
 
   // Puts a collection of chunks under a condition.
-  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: ast.Exp): Iterable[Chunk] = {
+  private def conditionalizeChunks(h: Iterable[Chunk], cond: Term, condExp: Option[ast.Exp]): Iterable[Chunk] = {
     h map (c => {
       c match {
         case c: GeneralChunk =>
-          c.withPerm(Ite(cond, c.perm, NoPerm), ast.CondExp(condExp, c.permExp, ast.NoPerm()())())
+          c.withPerm(Ite(cond, c.perm, NoPerm), condExp.map(ce => ast.CondExp(ce, c.permExp.get, ast.NoPerm()())()))
         case _ => sys.error("Chunk type not conditionalizable.")
       }
     })
   }
 
   // Puts a heap under a condition.
-  private def conditionalizeHeap(h: Heap, cond: Term, condExp: ast.Exp): Heap = {
+  private def conditionalizeHeap(h: Heap, cond: Term, condExp: Option[ast.Exp]): Heap = {
     Heap(conditionalizeChunks(h.values, cond, condExp))
   }
 
   // Merges two heaps together, by putting h1 under condition cond1,
   // and h2 under cond2.
   // Assumes that cond1 is the negation of cond2.
-  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: ast.Exp, h2: Heap, cond2: Term, cond2Exp: ast.Exp): Heap = {
+  def mergeHeap(h1: Heap, cond1: Term, cond1Exp: Option[ast.Exp], h2: Heap, cond2: Term, cond2Exp: Option[ast.Exp]): Heap = {
     val (unconditionalHeapChunks, h1HeapChunksToConditionalize) = h1.values.partition(c1 => h2.values.exists(_ == c1))
     val h2HeapChunksToConditionalize = h2.values.filter(c2 => !unconditionalHeapChunks.exists(_ == c2))
     val h1ConditionalizedHeapChunks = conditionalizeChunks(h1HeapChunksToConditionalize, cond1, cond1Exp)
@@ -360,9 +359,10 @@ object State {
             val smDomainNeeded3 = smDomainNeeded1 || smDomainNeeded2
 
             val conditions1 = And(pc1.branchConditions)
-            val conditions1Exp = BigAnd(pc1.branchConditionExps.map(_._2))
+            val withExp = Verifier.config.enableDebugging()
+            val conditions1Exp = if (withExp) Some(BigAnd(pc1.branchConditionExps.map(_._2.get))) else None
             val conditions2 = And(pc2.branchConditions)
-            val conditions2Exp = BigAnd(pc2.branchConditionExps.map(_._2))
+            val conditions2Exp = if (withExp) Some(BigAnd(pc2.branchConditionExps.map(_._2.get))) else None
 
             val mergeStore = (g1: Store, g2: Store) => {
               Store(mergeMaps(g1.values, (conditions1, conditions1Exp), g2.values, (conditions2, conditions2Exp))
@@ -376,7 +376,7 @@ object State {
                   Some(v1)
                 } else {
                   assert(v1._1.sort == v2._1.sort)
-                  Some((Ite(cond1._1, v1._1, v2._1), ast.CondExp(cond1._2, v1._2, v2._2)()))
+                  Some((Ite(cond1._1, v1._1, v2._1), cond1._2.map(c1 => ast.CondExp(c1, v1._2.get, v2._2.get)())))
                 }
               }))
             }

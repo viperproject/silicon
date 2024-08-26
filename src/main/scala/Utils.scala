@@ -11,7 +11,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver
 import viper.silver.ast.utility.Triggers.TriggerGenerationWithAddAndSubtract
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{NoInfo, NoPosition, NoTrafos, SourcePNodeInfo}
+import viper.silver.ast.SourcePNodeInfo
 import viper.silver.components.StatefulComponent
 import viper.silver.parser.{PExp, PType, PUnknown, PUnnamedTypedDeclaration}
 import viper.silver.verifier.errors.Internal
@@ -22,7 +22,7 @@ import scala.annotation.implicitNotFound
 import scala.collection.immutable.ArraySeq
 
 package object utils {
-  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort, PUnknown())
+  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort, Option.when(Verifier.config.enableDebugging())(PUnknown()))
   def toSf(t: Term): (Sort, Verifier) => Term = (sort, _) => t.convert(sort)
 
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =

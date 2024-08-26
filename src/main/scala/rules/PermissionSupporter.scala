@@ -15,7 +15,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.verifier.reasons.{NegativePermission, NonPositivePermission}
 
 object permissionSupporter extends SymbolicExecutionRules {
-  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  def assertNotNegative(s: State, tPerm: Term, ePerm: ast.Exp, ePermNew: Option[ast.Exp], pve: PartialVerificationError, v: Verifier)
                        (Q: (State, Verifier) => VerificationResult)
                        : VerificationResult = {
 
@@ -25,7 +25,9 @@ object permissionSupporter extends SymbolicExecutionRules {
       case _ =>
         v.decider.assert(perms.IsNonNegative(tPerm)) {
           case true => Q(s, v)
-          case false => createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), perms.IsNonNegative(ePerm)(ePerm.pos, ePerm.info, ePerm.errT))
+          case false =>
+            val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
+            createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), assertExp)
         }
     }
   }
@@ -40,7 +42,7 @@ object permissionSupporter extends SymbolicExecutionRules {
       case _ =>
         v.decider.assert(perms.IsPositive(tPerm)) {
           case true => Q(s, v)
-          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), perms.IsPositive(ePerm)())
+          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), Option.when(withExp)(perms.IsPositive(ePerm)()))
         }
     }
   }

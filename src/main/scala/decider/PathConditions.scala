@@ -25,7 +25,7 @@ import viper.silver.ast.TrueLit
 
 trait RecordedPathConditions {
   def branchConditions: Stack[Term]
-  def branchConditionExps: Stack[(ast.Exp, ast.Exp)]
+  def branchConditionExps: Stack[(ast.Exp, Option[ast.Exp])]
   def assumptions: InsertionOrderedSet[Term]
   def assumptionExps: InsertionOrderedSet[DebugExp]
   def definingAssumptions: InsertionOrderedSet[Term]
@@ -58,7 +58,7 @@ trait RecordedPathConditions {
 }
 
 trait PathConditionStack extends RecordedPathConditions {
-  def setCurrentBranchCondition(condition: Term, conditionExp: (ast.Exp, ast.Exp)): Unit
+  def setCurrentBranchCondition(condition: Term, conditionExp: (ast.Exp, Option[ast.Exp])): Unit
   def add(assumption: Term): Unit
   def addDefinition(assumption: Term): Unit
   def add(declaration: Decl): Unit
@@ -88,7 +88,7 @@ private class PathConditionStackLayer
     extends Cloneable {
 
   private var _branchCondition: Option[Term] = None
-  private var _branchConditionExp: Option[(ast.Exp, ast.Exp)] = None
+  private var _branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = None
   private var _globalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _nonGlobalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _globalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
@@ -100,7 +100,7 @@ private class PathConditionStackLayer
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
 
   def branchCondition: Option[Term] = _branchCondition
-  def branchConditionExp: Option[(ast.Exp, ast.Exp)] = _branchConditionExp
+  def branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = _branchConditionExp
   def globalAssumptions: InsertionOrderedSet[Term] = _globalAssumptions
   def globalDefiningAssumptions: InsertionOrderedSet[Term] = _globalDefiningAssumptions
   def nonGlobalDefiningAssumptions: InsertionOrderedSet[Term] = _nonGlobalDefiningAssumptions
@@ -139,7 +139,7 @@ private class PathConditionStackLayer
     _branchCondition = Some(condition)
   }
 
-  def branchConditionExp_=(condition: (ast.Exp, ast.Exp)): Unit = {
+  def branchConditionExp_=(condition: (ast.Exp, Option[ast.Exp])): Unit = {
     assert(_branchConditionExp.isEmpty,
       s"Branch condition is already set (to ${_branchConditionExp.get}), "
         + s"won't override (with $condition).")
@@ -243,7 +243,7 @@ private trait LayeredPathConditionStackLike {
   protected def branchConditions(layers: Stack[PathConditionStackLayer]): Stack[Term] =
     layers.flatMap(_.branchCondition)
 
-  protected def branchConditionExps(layers: Stack[PathConditionStackLayer]): Stack[(ast.Exp, ast.Exp)] =
+  protected def branchConditionExps(layers: Stack[PathConditionStackLayer]): Stack[(ast.Exp, Option[ast.Exp])] =
     layers.flatMap(_.branchConditionExp)
 
   protected def assumptions(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
@@ -299,8 +299,8 @@ private trait LayeredPathConditionStackLike {
           implicationLHS = And(implicationLHS, layer.branchCondition.get)
           implicationLHSExp = if (implicationLHSExp.equals(TrueLit()())) condition._1
                               else ast.And(implicationLHSExp, condition._1)()
-          implicationLHSExpNew = if (implicationLHSExpNew.equals(TrueLit()())) condition._2
-          else ast.And(implicationLHSExpNew, condition._2)()
+          implicationLHSExpNew = if (implicationLHSExpNew.equals(TrueLit()())) condition._2.get
+          else ast.And(implicationLHSExpNew, condition._2.get)()
         case None =>
       }
 
@@ -377,7 +377,7 @@ private trait LayeredPathConditionStackLike {
             quantBody = layer.nonGlobalAssumptionDebugExps
           }
           else{
-            quantBody = InsertionOrderedSet(DebugExp.createImplicationInstance(description = None, originalExp = Some(branchConditionExp.get._1), finalExp = Some(branchConditionExp.get._2), term = layer.branchCondition, isInternal_ = false,
+            quantBody = InsertionOrderedSet(DebugExp.createImplicationInstance(description = None, originalExp = Some(branchConditionExp.get._1), finalExp = Some(branchConditionExp.get._2.get), term = layer.branchCondition, isInternal_ = false,
               children = layer.nonGlobalAssumptionDebugExps))
           }
 
@@ -398,7 +398,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
        with RecordedPathConditions {
 
   val branchConditions: Stack[Term] = branchConditions(from)
-  val branchConditionExps: Stack[(ast.Exp, ast.Exp)] = branchConditionExps(from)
+  val branchConditionExps: Stack[(ast.Exp, Option[ast.Exp])] = branchConditionExps(from)
   val assumptions: InsertionOrderedSet[Term] = assumptions(from)
   val assumptionExps: InsertionOrderedSet[DebugExp] = assumptionExps(from)
   val definingAssumptions: InsertionOrderedSet[Term] = definingAssumptions(from)
@@ -408,7 +408,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
   val conditionalized: Seq[Term] = conditionalized(from)
-  val conditionalizedExp: Seq[DebugExp] = conditionalizedExp(from)
+  lazy val conditionalizedExp: Seq[DebugExp] = conditionalizedExp(from)
 
   def definitionsOnly(): RecordedPathConditions = {
     new DefaultRecordedPathConditions(from.map(_.definitionsOnly))
@@ -452,7 +452,7 @@ private[decider] class LayeredPathConditionStack
 
   pushScope() /* Create an initial layer on the stack */
 
-  def setCurrentBranchCondition(condition: Term, conditionExp: (ast.Exp, ast.Exp)): Unit = {
+  def setCurrentBranchCondition(condition: Term, conditionExp: (ast.Exp, Option[ast.Exp])): Unit = {
     /* TODO: Split condition into top-level conjuncts as well? */
 
     layers.head.branchCondition = condition
@@ -557,7 +557,7 @@ private[decider] class LayeredPathConditionStack
 
   def branchConditions: Stack[Term] = layers.flatMap(_.branchCondition)
 
-  override def branchConditionExps: Stack[(ast.Exp, ast.Exp)] = layers.flatMap(_.branchConditionExp)
+  override def branchConditionExps: Stack[(ast.Exp, Option[ast.Exp])] = layers.flatMap(_.branchConditionExp)
 
   def assumptions: InsertionOrderedSet[Term] = allAssumptions
 

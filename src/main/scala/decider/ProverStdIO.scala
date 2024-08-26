@@ -10,8 +10,6 @@ import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.debugger.DebugAxiom
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}

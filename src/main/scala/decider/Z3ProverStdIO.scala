@@ -12,7 +12,6 @@ import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silver.reporter.Reporter
 import viper.silicon.common.config.Version
-import viper.silicon.state.terms.Decl
 
 
 object Z3ProverStdIO {

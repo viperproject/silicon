@@ -14,42 +14,43 @@ import viper.silver.ast
 
 class QuantifiedPropertyInterpreter extends PropertyInterpreter {
 
-  protected case class Info(chunk: QuantifiedChunk, args: Seq[Term], argsExp: Seq[ast.Exp], perms: Term, permsExp: ast.Exp)
+  protected case class Info(chunk: QuantifiedChunk, args: Seq[Term], argsExp: Option[Seq[ast.Exp]], perms: Term, permsExp: Option[ast.Exp])
 
   private var argsUsed = false
 
   def buildPathConditionForChunk(chunk: QuantifiedChunk,
                                  property: Property,
                                  qvars: Seq[Var],
-                                 qvarsExp: Seq[ast.LocalVarDecl],
+                                 qvarsExp: Option[Seq[ast.LocalVarDecl]],
                                  args: Seq[Term],
-                                 argsExp: Seq[ast.Exp],
+                                 argsExp: Option[Seq[ast.Exp]],
                                  perms: Term,
-                                 permsExp: ast.Exp,
+                                 permsExp: Option[ast.Exp],
                                  condition: Term,
-                                 conditionExp: ast.Exp,
+                                 conditionExp: Option[ast.Exp],
                                  triggers: Seq[Trigger],
                                  qidPrefix: String)
-                                : (Term, ast.Exp) = {
+                                : (Term, Option[ast.Exp]) = {
     val body = buildPathCondition(property.expression, Info(chunk, args, argsExp, perms, permsExp))
     val bodyTerm = body._1.replace(chunk.quantifiedVars, args)
-    val bodyExp = replaceVarsInExp(body._2, chunk.quantifiedVarExps.map(_.name), argsExp)
+    val bodyExp = body._2.map(b => replaceVarsInExp(b, chunk.quantifiedVarExps.get.map(_.name), argsExp.get))
     val description = s"$qidPrefix-${property.name}"
     val cond = if (argsUsed) condition else terms.True
-    val condExp = if (argsUsed) conditionExp else ast.TrueLit()(conditionExp.pos, conditionExp.info, conditionExp.errT)
+    val condExp = if (argsUsed || conditionExp.isEmpty) conditionExp else Some(ast.TrueLit()(conditionExp.get.pos, conditionExp.get.info, conditionExp.get.errT))
     argsUsed = false
-    (terms.Forall(qvars, terms.Implies(cond, bodyTerm), triggers, description), ast.Forall(qvarsExp, Seq(), ast.Implies(condExp, bodyExp)())())
+    val forallExp = bodyExp.map(b => ast.Forall(qvarsExp.get, Seq(), ast.Implies(condExp.get, b)())())
+    (terms.Forall(qvars, terms.Implies(cond, bodyTerm), triggers, description), forallExp)
   }
 
   override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = (info.perms, info.permsExp)
 
   override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     argsUsed = true
-    (info.chunk.valueAt(info.args), ast.FuncApp(s"valueAt", info.argsExp)(ast.NoPosition, ast.NoInfo, ast.InternalType, ast.NoTrafos))
+    (info.chunk.valueAt(info.args), Option.when(withExp)(???)) //  ast.FuncApp(s"valueAt", info.argsExp)(ast.NoPosition, ast.NoInfo, ast.InternalType, ast.NoTrafos))
   }
 
   override protected def extractArguments(chunkPlaceholder: ChunkPlaceholder,
-                                          info: Info): (Seq[Term], Seq[ast.Exp]) = {
+                                          info: Info): (Seq[Term], Option[Seq[ast.Exp]]) = {
     argsUsed = true
     (info.args, info.argsExp)
   }

@@ -204,7 +204,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Ex
 
 trait SiliconCounterexample extends Counterexample {
   val internalStore: Store
-  lazy val store: Map[String, (Term, ast.Exp)] = internalStore.values.map{case (k, v) => k.name -> v}
+  lazy val store: Map[String, (Term, Option[ast.Exp])] = internalStore.values.map{case (k, v) => k.name -> v}
   def withStore(s: Store) : SiliconCounterexample
 }
 

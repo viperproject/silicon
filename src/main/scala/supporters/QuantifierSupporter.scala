@@ -6,6 +6,7 @@
 
 package viper.silicon.supporters
 
+import viper.silicon.rules.evaluator
 import viper.silicon.state.terms._
 import viper.silver.parser.{PType, PUnknown}
 
@@ -15,7 +16,7 @@ trait QuantifierSupporter {
 //  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: (String, Sort) => Var)
 //                                 : Seq[(Trigger, Iterable[Var])]
 
-  def makeTriggersHeapIndependent(q: Quantification, fresh: (String, Sort, PType) => Var): Seq[Quantification]
+  def makeTriggersHeapIndependent(q: Quantification, fresh: (String, Sort, Option[PType]) => Var): Seq[Quantification]
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String]
 }
@@ -65,7 +66,7 @@ class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends Qua
 //    triggersAndVars
 //  }
 
-  def makeTriggersHeapIndependent(q: Quantification, fresh: (String, Sort, PType) => Var): Seq[Quantification] = {
+  def makeTriggersHeapIndependent(q: Quantification, fresh: (String, Sort, Option[PType]) => Var): Seq[Quantification] = {
     def computeHeapDeps(t: Term): Seq[Term] = t match {
       case App(HeapDepFun(_,_,_), args) => args.flatMap(computeHeapDeps)
       case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] => Seq(fvf)
@@ -88,7 +89,7 @@ class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends Qua
       .distinct
       // : Seq[(Trigger, Seq[Term])]
       // Map all heap dependencies to fresh variables
-      .map({ case (ts, deps) => (ts, deps.map(t => (t, fresh("proj", t.sort, PUnknown()))).toMap)})
+      .map({ case (ts, deps) => (ts, deps.map(t => (t, fresh("proj", t.sort, Option.when(evaluator.withExp)(PUnknown())))).toMap)})
       // : Seq[(Trigger, Map[Term, Var])]
       // For each trigger, create a new quantifier where all heap dependencies are replaced with the new variables
       .map({ case (ts, m) =>

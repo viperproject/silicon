@@ -30,20 +30,12 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.components.StatefulComponent
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
-
-import java.text.SimpleDateFormat
-import java.util.concurrent._
-import scala.annotation.unused
-import scala.collection.mutable
-import scala.util.Random
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)

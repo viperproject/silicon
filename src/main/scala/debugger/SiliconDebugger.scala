@@ -1,12 +1,12 @@
 package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverAPI, Z3ProverStdIO}
+import viper.silicon.decider.{Cvc5ProverStdIO, RecordedPathConditions, Z3ProverStdIO}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
-import viper.silicon.state.terms.{False, Term, True}
+import viper.silicon.state.terms.{Term, True}
 import viper.silicon.state.{BasicChunk, IdentifierFactory, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
@@ -20,7 +20,6 @@ import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
 import java.nio.file.Paths
 import scala.io.StdIn.readLine
-import scala.language.postfixOps
 
 case class ProofObligation(s: State,
                            v: Verifier,
@@ -60,26 +59,26 @@ case class ProofObligation(s: State,
     c match {
       case bc: BasicChunk =>
         bc.resourceID match {
-          case FieldID => s"${bc.argsExp.head}.${bc.id} -> ${bc.snap} # ${Simplifier.simplify(bc.permExp, true)}"
-          case PredicateID => s"${bc.id}(${bc.argsExp.mkString(", ")}) -> ${bc.snap} # ${Simplifier.simplify(bc.permExp, true)}"
+          case FieldID => s"${bc.argsExp.head}.${bc.id} -> ${bc.snap} # ${Simplifier.simplify(bc.permExp.get, true)}"
+          case PredicateID => s"${bc.id}(${bc.argsExp.mkString(", ")}) -> ${bc.snap} # ${Simplifier.simplify(bc.permExp.get, true)}"
         }
       case mwc: MagicWandChunk =>
         val shape = mwc.id.ghostFreeWand
-        val expBindings = mwc.bindings.map(b => b._1 -> b._2._2)
+        val expBindings = mwc.bindings.map(b => b._1 -> b._2._2.get)
         val instantiated = shape.replace(expBindings)
         instantiated.toString
       case qfc: QuantifiedFieldChunk =>
         if (qfc.singletonRcvrExp.isDefined) {
           val receiver = Simplifier.simplify(qfc.singletonRcvrExp.get, true)
-          val perm = Simplifier.simplify(qfc.permExp.replace(qfc.quantifiedVarExps.head.localVar, receiver), true)
+          val perm = Simplifier.simplify(qfc.permExp.get.replace(qfc.quantifiedVarExps.get.head.localVar, receiver), true)
           s"${receiver}.${qfc.id} -> ${qfc.fvf} # ${perm}"
         } else {
-          val varsString = qfc.quantifiedVarExps.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsString = qfc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
           qfc.toString // TODO
         }
       case qpc: QuantifiedPredicateChunk =>
         if (qpc.singletonArgExps.isDefined) {
-          s"${qpc.id}(${qpc.singletonArgExps.get.map(e => Simplifier.simplify(e, true)).mkString(", ")}) -> ${qpc.psf} # ${Simplifier.simplify(qpc.permExp, true)}"
+          s"${qpc.id}(${qpc.singletonArgExps.get.map(e => Simplifier.simplify(e, true)).mkString(", ")}) -> ${qpc.psf} # ${Simplifier.simplify(qpc.permExp.get, true)}"
         } else {
           qpc.toString // TODO
         }
@@ -255,7 +254,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     obl.preambleAssumptions foreach (a => v.decider.prover.assumeAxioms(a.terms, a.description))
 
-    obl.assumptionsExp foreach (debugExp => v.decider.assume(debugExp.getAllTerms, debugExp, enforceAssumption = false))
+    obl.assumptionsExp foreach (debugExp => v.decider.assume(debugExp.getAllTerms, Some(debugExp), enforceAssumption = false))
     obl.copy(v = v)
   }
 
@@ -375,7 +374,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       val pve: PartialVerificationError = PartialVerificationError(r => ContractNotWellformed(assertionE, r))
       val verificationResult = evaluator.eval3(obl.s, assertionE, pve, obl.v)((_, t, newE, newV) => {
         resT = t
-        resE = newE
+        resE = newE.get
         resV = newV
         Success()
       })
@@ -443,7 +442,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     val verificationResult = evaluator.eval3(obl.s, e, pve, v)((newS, t, newE, newV) => {
       resS = newS
       resT = t
-      resE = newE
+      resE = newE.get
       resV = newV
       evalPcs = newV.decider.pcs.after(beforeEval)
       Success()
@@ -454,7 +453,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         val proved = isFree || resV.decider.prover.assert(resT, None)
         if (proved) {
           println("Assumption was added successfully!")
-          resV.decider.assume(resT, e, resE)
+          resV.decider.assume(resT, Some(e), Some(resE))
           Some((resS, resT, resE, evalPcs.assumptionExps))
         } else {
           println("Fail! Could not prove assumption. Skipping")

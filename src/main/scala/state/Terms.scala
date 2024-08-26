@@ -2566,7 +2566,7 @@ object perms {
        */
 
   def IsNonNegative(e: ast.Exp)(pos: ast.Position = ast.NoPosition, info: ast.Info = ast.NoInfo, errT: ast.ErrorTrafo = ast.NoTrafos): ast.Exp =
-    ast.GeCmp(e, ast.NoPerm()())()
+    ast.GeCmp(e, ast.NoPerm()())(pos, info, errT)
 
   def IsPositive(p: Term): Term = p match {
     case p: PermLiteral => if (p.literal > Rational.zero) True else False
@@ -2574,7 +2574,7 @@ object perms {
   }
 
   def IsPositive(e: ast.Exp)(pos: ast.Position = ast.NoPosition, info: ast.Info = ast.NoInfo, errT: ast.ErrorTrafo = ast.NoTrafos): ast.Exp =
-    ast.GtCmp(e, ast.NoPerm()())()
+    ast.GtCmp(e, ast.NoPerm()())(pos, info, errT)
 
   def IsNonPositive(p: Term): Term = p match {
     case p: PermLiteral => if (p.literal <= Rational.zero) True else False
@@ -2582,7 +2582,7 @@ object perms {
   }
 
   def IsNonPositive(e: ast.Exp)(pos: ast.Position = ast.NoPosition, info: ast.Info = ast.NoInfo, errT: ast.ErrorTrafo = ast.NoTrafos): ast.Exp =
-    ast.LeCmp(e, ast.NoPerm()())()
+    ast.LeCmp(e, ast.NoPerm()())(pos, info, errT)
 
   def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term = {
     def binaryPermPlus(t0: Term, t1: Term) = PermPlus(t0, t1)

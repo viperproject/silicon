@@ -26,9 +26,9 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               h: Heap,
               resource: ast.Resource,
               args: Seq[Term],
-              argsExp: Seq[ast.Exp],
+              argsExp: Option[Seq[ast.Exp]],
               perms: Term,
-              permsExp: ast.Exp,
+              permsExp: Option[ast.Exp],
               ve: VerificationError,
               v: Verifier,
               description: String)
@@ -43,7 +43,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              h: Heap,
              resource: ast.Resource,
              args: Seq[Term],
-             argsExp: Seq[ast.Exp],
+             argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -69,13 +69,14 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
 }
 
 object chunkSupporter extends ChunkSupportRules {
+
   def consume(s: State,
               h: Heap,
               resource: ast.Resource,
               args: Seq[Term],
-              argsExp: Seq[ast.Exp],
+              argsExp: Option[Seq[ast.Exp]],
               perms: Term,
-              permsExp: ast.Exp,
+              permsExp: Option[ast.Exp],
               ve: VerificationError,
               v: Verifier,
               description: String)
@@ -94,7 +95,7 @@ object chunkSupporter extends ChunkSupportRules {
            * registered with the function recorder. However, since nothing was consumed,
            * returning the unit snapshot seems more appropriate.
            */
-          val fresh = v2.decider.fresh(sorts.Snap, PUnknown())
+          val fresh = v2.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
           Q(s3, h2, fresh, v2)
       })
@@ -104,9 +105,9 @@ object chunkSupporter extends ChunkSupportRules {
                        h: Heap,
                        resource: ast.Resource,
                        args: Seq[Term],
-                       argsExp: Seq[ast.Exp],
+                       argsExp: Option[Seq[ast.Exp]],
                        perms: Term,
-                       permsExp: ast.Exp,
+                       permsExp: Option[ast.Exp],
                        ve: VerificationError,
                        v: Verifier)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
@@ -151,7 +152,7 @@ object chunkSupporter extends ChunkSupportRules {
                             id: ChunkIdentifer,
                             args: Seq[Term],
                             perms: Term,
-                            permsExp: ast.Exp,
+                            permsExp: Option[ast.Exp],
                             v: Verifier)
                            : (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk]) = {
 
@@ -161,27 +162,30 @@ object chunkSupporter extends ChunkSupportRules {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties)
-      pathCond.foreach(p => v.decider.assume(p._1, DebugExp.createInstance(p._2, p._2)))
+      pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
     }
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
       case Some(ch) =>
         if (consumeExact) {
           val toTake = PermMin(ch.perm, perms)
-          val toTakeExp = buildMinExp(Seq(ch.permExp, permsExp), ast.Perm)
-          val newChunk = ch.withPerm(PermMinus(ch.perm, toTake), ast.PermSub(ch.permExp, toTakeExp)(permsExp.pos, permsExp.info, permsExp.errT))
+          val toTakeExp = permsExp.map(pe => buildMinExp(Seq(ch.permExp.get, pe), ast.Perm))
+          val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, toTakeExp.get)(pe.pos, pe.info, pe.errT))
+          val newChunk = ch.withPerm(PermMinus(ch.perm, toTake), newPermExp)
           val takenChunk = Some(ch.withPerm(toTake, toTakeExp))
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
           }
-          (ConsumptionResult(PermMinus(perms, toTake), ast.PermSub(permsExp, toTakeExp)(permsExp.pos, permsExp.info, permsExp.errT), Seq(), v, 0), s, newHeap, takenChunk)
+          val remainingExp = permsExp.map(pe => ast.PermSub(pe, toTakeExp.get)(pe.pos, pe.info, pe.errT))
+          (ConsumptionResult(PermMinus(perms, toTake), remainingExp, Seq(), v, 0), s, newHeap, takenChunk)
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
-            val exp = ast.PermLtCmp(permsExp, ch.permExp)(permsExp.pos, permsExp.info, permsExp.errT)
-            v.decider.assume(PermLess(perms, ch.perm), DebugExp.createInstance(exp, exp))
-            val newChunk = ch.withPerm(PermMinus(ch.perm, perms), ast.PermSub(ch.permExp, permsExp)(permsExp.pos, permsExp.info, permsExp.errT))
+            val constraintExp = permsExp.map(pe => ast.PermLtCmp(pe, ch.permExp.get)(pe.pos, pe.info, pe.errT))
+            v.decider.assume(PermLess(perms, ch.perm), Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
+            val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, pe)(pe.pos, pe.info, pe.errT))
+            val newChunk = ch.withPerm(PermMinus(ch.perm, perms), newPermExp)
             val takenChunk = ch.withPerm(perms, permsExp)
             val newHeap = h - ch + newChunk
             assumeProperties(newChunk, newHeap)
@@ -213,7 +217,7 @@ object chunkSupporter extends ChunkSupportRules {
              h: Heap,
              resource: ast.Resource,
              args: Seq[Term],
-             argsExp: Seq[ast.Exp],
+             argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -232,7 +236,7 @@ object chunkSupporter extends ChunkSupportRules {
                            h: Heap,
                            resource: ast.Resource,
                            args: Seq[Term],
-                           argsExp: Seq[ast.Exp],
+                           argsExp: Option[Seq[ast.Exp]],
                            ve: VerificationError,
                            v: Verifier)
                           (Q: (State, Term, Verifier) => VerificationResult)

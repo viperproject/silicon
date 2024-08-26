@@ -20,10 +20,8 @@ import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
-import viper.silicon.debugger.DebugAxiom
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.reporting.ExternalToolError
-import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
+import viper.silicon.reporting.ProverInteractionFailed
 
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
