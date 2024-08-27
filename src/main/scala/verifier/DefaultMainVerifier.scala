@@ -300,8 +300,8 @@ class DefaultMainVerifier(config: Config,
      ++ methodVerificationResults)
 
     if (Verifier.config.enableDebugging()){
-      val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
-      debugger.startDebugger()
+      //val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
+      //debugger.startDebugger()
     }
 
     verificationResults

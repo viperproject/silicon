@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.Macros
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.VerificationResult
@@ -42,7 +43,7 @@ object permissionSupporter extends SymbolicExecutionRules {
       case _ =>
         v.decider.assert(perms.IsPositive(tPerm)) {
           case true => Q(s, v)
-          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), Option.when(withExp)(perms.IsPositive(ePerm)()))
+          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), Macros.when(withExp)(perms.IsPositive(ePerm)()))
         }
     }
   }

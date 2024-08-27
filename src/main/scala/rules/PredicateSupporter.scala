@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.Macros
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
@@ -75,7 +76,7 @@ object predicateSupporter extends PredicateSupportRules {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.convert(terms.sorts.Snap) +: tArgs)
         val eArgsString = eArgs.mkString(", ")
-        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+        v1.decider.assume(predTrigger, Macros.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
       }
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
@@ -84,11 +85,11 @@ object predicateSupporter extends PredicateSupportRules {
         val (sm, smValueDef) =
           quantifiedChunkSupporter.singletonSnapshotMap(s2, predicate, tArgs, predSnap, v1)
         v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
-        val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
+        val debugExp = Macros.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
         v1.decider.assumeDefinition(smValueDef, debugExp)
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program)
+            formalArgs, Macros.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program)
         val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
         val smCache = if (s2.heapDependentTriggers.contains(predicate)) {
@@ -99,7 +100,7 @@ object predicateSupporter extends PredicateSupportRules {
               s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
           val eArgsString = eArgs.mkString(", ")
           v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs),
-            Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
+            Macros.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
           smCache1
         } else {
           s2.smCache
@@ -150,7 +151,7 @@ object predicateSupporter extends PredicateSupportRules {
         s1,
         s1.h,
         formalVars,
-        Option.when(withExp)(predicate.formalArgs),
+        Macros.when(withExp)(predicate.formalArgs),
         tArgs,
         eArgs,
         pa,
@@ -169,7 +170,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate).triggerFunction,
                 snap.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
+            v2.decider.assume(predicateTrigger, Macros.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }
           Q(s4.copy(g = s.g,
                     permissionScalingFactor = s.permissionScalingFactor,
@@ -188,7 +189,7 @@ object predicateSupporter extends PredicateSupportRules {
             val predicateTrigger =
               App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${pa.predicateName}($eargs))")))
+            v2.decider.assume(predicateTrigger, Macros.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${pa.predicateName}($eargs))")))
           }
           val s5 = s4.copy(g = s.g,
                            permissionScalingFactor = s.permissionScalingFactor,

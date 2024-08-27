@@ -17,7 +17,7 @@ import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.utils.ast.{BigAnd, buildMinExp, removeKnownToBeTrueExp, replaceVarsInExp, simplifyVariableName}
 import viper.silicon.verifier.Verifier
-import viper.silicon.{MList, MMap}
+import viper.silicon.{MList, MMap, Macros}
 import viper.silver.ast
 import viper.silver.parser.{PKw, PPrimitiv, PReserved}
 import viper.silver.verifier.VerificationError
@@ -66,13 +66,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val `?s` = Var(Identifier("?s"), sort, false)
     var summarisingSnapshotDefinitions: Seq[Term] = Vector.empty
     var permissionSum: Term = NoPerm
-    var permissionSumExp: Option[ast.Exp] = Option.when(withExp)(ast.NoPerm()())
+    var permissionSumExp: Option[ast.Exp] = Macros.when(withExp)(ast.NoPerm()())
 
     relevantChunks.foreach(ch => {
       val argumentEqualities =
         And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
       val argumentEqualitiesExp =
-        Option.when(withExp)(BigAnd(ch.argsExp.get.zip(argsExp.get).map { case (e1, e2) => ast.EqCmp(e1, e2)() }))
+        Macros.when(withExp)(BigAnd(ch.argsExp.get.zip(argsExp.get).map { case (e1, e2) => ast.EqCmp(e1, e2)() }))
 
       summarisingSnapshotDefinitions :+=
         Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
@@ -144,12 +144,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       if (v.decider.check(And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 }), Verifier.config.checkTimeout())) {
         return Q(s, chunk.snap, Seq(), chunk.perm, chunk.permExp, v)
       } else {
-        return Q(s, chunk.snap, Seq(), NoPerm, Option.when(withExp)(ast.NoPerm()()), v)
+        return Q(s, chunk.snap, Seq(), NoPerm, Macros.when(withExp)(ast.NoPerm()()), v)
       }
     }
     val (s1, taggedSnap, snapDefs, permSum, permSumExp) = summariseOnly(s, relevantChunks, resource, args, argsExp, knownValue, v)
 
-    v.decider.assumeDefinition(And(snapDefs), Option.when(withExp)(DebugExp.createInstance("Snapshot", true)))
+    v.decider.assumeDefinition(And(snapDefs), Macros.when(withExp)(DebugExp.createInstance("Snapshot", true)))
 //    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
     val s2 =
@@ -337,7 +337,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+          pathCond.foreach(p => v.decider.assume(p._1, Macros.when(withExp)(DebugExp.createInstance(p._2, p._2))))
         }
         val newHeap = Heap(allChunks)
 
@@ -378,9 +378,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     v.decider.startDebugSubExp()
 
     var totalPermSum: Term = NoPerm
-    var totalPermSumExp: Option[ast.Exp] = Option.when(withExp)(ast.NoPerm()())
+    var totalPermSumExp: Option[ast.Exp] = Macros.when(withExp)(ast.NoPerm()())
     var totalPermTaken: Term = NoPerm
-    var totalPermTakenExp: Option[ast.Exp] = Option.when(withExp)(ast.NoPerm()())
+    var totalPermTakenExp: Option[ast.Exp] = Macros.when(withExp)(ast.NoPerm()())
     var newFr = s.functionRecorder
 
 
@@ -389,7 +389,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val eqCmps = ch.args.zip(args).map { case (t1, t2) => t1 === t2 }
         val eq = And(eqCmps)
         val eqExp = permsExp.map(pe => BigAnd(removeKnownToBeTrueExp(ch.argsExp.get.zip(argsExp.get).map{ case (t1, t2) => ast.EqCmp(t1, t2)(pe.pos, pe.info, pe.errT) }.toList, eqCmps.toList)))
-        val permTaken = v.decider.fresh("p", sorts.Perm, Option.when(withExp)(PPrimitiv(PReserved(PKw.Perm)((ast.NoPosition, ast.NoPosition)))()))
+        val permTaken = v.decider.fresh("p", sorts.Perm, Macros.when(withExp)(PPrimitiv(PReserved(PKw.Perm)((ast.NoPosition, ast.NoPosition)))()))
         val permTakenExp = permsExp.map(pe => ast.LocalVar(simplifyVariableName(permTaken.id.name), ast.Perm)(pe.pos, pe.info, pe.errT))
 
         totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm))
@@ -408,7 +408,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             ast.Implies(ast.Not(eqExp.get)(), ast.EqCmp(permTakenExp.get, ast.NoPerm()())())(pe.pos, pe.info, pe.errT))))
 
 
-        v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
+        v.decider.assume(constraint, Macros.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
         newFr = newFr.recordConstrainedVar(permTaken, constraint)
 
         ch.withPerm(PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)))
@@ -432,7 +432,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     v.decider.assert(totalPermTaken !== NoPerm) {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
-        v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
+        v.decider.assume(perms === totalPermTaken, Macros.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
         summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, _, v1) =>
           Q(s2, updatedChunks, Some(snap), v1))
       case false =>
@@ -466,7 +466,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           val eq = freeReceiver === chunk.args.head /* For field chunks, the receiver is the only argument */
           PermPlus(permSum, Ite(eq, chunk.perm, NoPerm))
         }
-      val permissionSumExp = Option.when(withExp)(relevantChunks.foldLeft(ast.NoPerm()(): ast.Exp) { case (permSumExp, chunk) =>
+      val permissionSumExp = Macros.when(withExp)(relevantChunks.foldLeft(ast.NoPerm()(): ast.Exp) { case (permSumExp, chunk) =>
         val eq = ast.EqCmp(freeReceiverExp, chunk.argsExp.get.head)() /* For field chunks, the receiver is the only argument */
         ast.PermAdd(permSumExp, ast.CondExp(eq, chunk.permExp.get, ast.NoPerm()())())()
       })

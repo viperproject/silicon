@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.LazyLogging
 
 import scala.annotation.unused
 import viper.silver.ast
-import viper.silicon.Map
+import viper.silicon.{Macros, Map}
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
@@ -125,7 +125,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         })()
 
-      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), Option.when(Verifier.config.enableDebugging())(extractPTypeFromExp(loc)))
+      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), Macros.when(Verifier.config.enableDebugging())(extractPTypeFromExp(loc)))
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
@@ -142,7 +142,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           case _ => symbolConverter.toFunction(silverFunc)
         }
         val args = eFApp.args map (arg => translate(arg))
-        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
+        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, Macros.when(Verifier.config.enableDebugging())(PUnknown()))
         val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height

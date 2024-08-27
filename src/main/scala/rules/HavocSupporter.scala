@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.Map
+import viper.silicon.{Macros, Map}
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
@@ -127,7 +127,7 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
-        val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance("QP receiver injectivity check is well-defined", true))
+        val injectivityDebugExp = Macros.when(withExp)(DebugExp.createInstance("QP receiver injectivity check is well-defined", true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp)
         v.decider.assert(receiverInjectivityCheck) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
@@ -140,14 +140,14 @@ object havocSupporter extends SymbolicExecutionRules {
               codomainQVars = codomainQVars,
               codomainQVarExps = codomainQVarsExp,
               additionalInvArgs = Seq(), // There are no additional quantified vars
-              additionalInvArgExps = Option.when(withExp)(Seq()),
+              additionalInvArgExps = Macros.when(withExp)(Seq()),
               userProvidedTriggers = None,
               qidPrefix = qid,
               v = v1
             )
             val comment = "Definitional axioms for havocall inverse functions"
             v.decider.prover.comment(comment)
-            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Macros.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
             // which may be havocked. Since we are executing a Havocall statement, we wrap
@@ -189,7 +189,7 @@ object havocSupporter extends SymbolicExecutionRules {
 
     val newChunks = relevantChunks.map {
       case ch: MagicWandChunk =>
-        val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
+        val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Macros.when(withExp)(PUnknown()))
         val cond = replacementCond(lhs, ch.args, condInfo)
         val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
         ch.withSnap(magicWandSnapshot)
@@ -277,7 +277,7 @@ object havocSupporter extends SymbolicExecutionRules {
       )
 
       v.decider.prover.comment("axiomatized snapshot map after havoc")
-      val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
+      val debugExp = Macros.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
       v.decider.assume(newAxiom, debugExp)
 
       ch.withSnapshotMap(newSm)
@@ -330,15 +330,15 @@ object havocSupporter extends SymbolicExecutionRules {
   // Get the variables that we must quantify over for each resource type
   private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): (Seq[Var], Option[Seq[ast.LocalVarDecl]]) = {
       eRsc match {
-        case _: ast.Field => (Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())))
+        case _: ast.Field => (Seq(`?r`), Macros.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())))
         case p: ast.Predicate =>
           val predicate = s.program.findPredicate(p.name)
-          (s.predicateFormalVarMap(s.program.findPredicate(p.name)), Option.when(withExp)(predicate.formalArgs))
+          (s.predicateFormalVarMap(s.program.findPredicate(p.name)), Macros.when(withExp)(predicate.formalArgs))
         case w: ast.MagicWand =>
           val bodyVars = w.subexpressionsToEvaluate(s.program)
           (bodyVars.indices.toList.map(i =>
               Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false)),
-            Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
+            Macros.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
             )
     }
   }

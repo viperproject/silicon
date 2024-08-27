@@ -6,6 +6,7 @@
 
 package viper.silicon.resources
 
+import viper.silicon.Macros
 import viper.silicon.interfaces.state.QuantifiedChunk
 import viper.silicon.state.terms
 import viper.silicon.state.terms.{Term, Trigger, Var}
@@ -46,7 +47,7 @@ class QuantifiedPropertyInterpreter extends PropertyInterpreter {
 
   override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     argsUsed = true
-    (info.chunk.valueAt(info.args), Option.when(withExp)(???)) //  ast.FuncApp(s"valueAt", info.argsExp)(ast.NoPosition, ast.NoInfo, ast.InternalType, ast.NoTrafos))
+    (info.chunk.valueAt(info.args), Macros.when(withExp)(???)) //  ast.FuncApp(s"valueAt", info.argsExp)(ast.NoPosition, ast.NoInfo, ast.InternalType, ast.NoTrafos))
   }
 
   override protected def extractArguments(chunkPlaceholder: ChunkPlaceholder,

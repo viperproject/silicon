@@ -6,6 +6,7 @@
 
 package viper.silicon.resources
 
+import viper.silicon.Macros
 import viper.silicon.state.terms
 import viper.silicon.state.terms.Term
 import viper.silicon.utils.ast.BigAnd
@@ -25,10 +26,10 @@ abstract class PropertyInterpreter {
   protected def buildPathCondition[K <: Kind](expression: PropertyExpression[K], info: Info): (Term, Option[ast.Exp]) = {
     expression match {
       // Literals
-      case True() => (terms.True, Option.when(withExp)(trueLit))
-      case False() => (terms.False, Option.when(withExp)(falseLit))
+      case True() => (terms.True, Macros.when(withExp)(trueLit))
+      case False() => (terms.False, Macros.when(withExp)(falseLit))
       case PermissionLiteral(numerator, denominator) => buildPermissionLiteral(numerator, denominator)
-      case Null() => (terms.Null, Option.when(withExp)(nullLit))
+      case Null() => (terms.Null, Macros.when(withExp)(nullLit))
 
       // Boolean operators
       case Not(expr) => {
@@ -102,7 +103,7 @@ abstract class PropertyInterpreter {
   protected def buildImplies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info): (Term, Option[ast.Exp]) = {
     val leftCond = buildPathCondition(left, info)
     leftCond._1 match {
-      case terms.False => (terms.True, Option.when(withExp)(trueLit))
+      case terms.False => (terms.True, Macros.when(withExp)(trueLit))
       case leftTerm =>
         val rightCond = buildPathCondition(right, info)
         (terms.Implies(leftTerm, rightCond._1), leftCond._2.map(lc => ast.Implies(lc, rightCond._2.get)(lc.pos, lc.info, lc.errT)))
@@ -111,24 +112,24 @@ abstract class PropertyInterpreter {
 
   protected def buildEquals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K], info: Info): (Term, Option[ast.Exp]) = {
     (left, right) match {
-      case (Null(), Null()) => (terms.True, Option.when(withExp)(trueLit))
+      case (Null(), Null()) => (terms.True, Macros.when(withExp)(trueLit))
       case (ArgumentAccess(cv1), ArgumentAccess(cv2)) =>
         val args1 = extractArguments(cv1, info)
         val args2 = extractArguments(cv2, info)
         if (args1._1 == args2._1) {
           // if all arguments are the same, they are definitely equal
-          (terms.True, Option.when(withExp)(trueLit))
+          (terms.True, Macros.when(withExp)(trueLit))
         } else {
           // else return argument-wise equal
           (terms.And(args1._1.zip(args2._1).map{ case (t1, t2) => t1 === t2 }),
-            Option.when(withExp)(BigAnd(args1._2.get.zip(args2._2.get).map{ case (e1, e2) => ast.EqCmp(e1, e2)(e1.pos, e1.info, e1.errT) })))
+            Macros.when(withExp)(BigAnd(args1._2.get.zip(args2._2.get).map{ case (e1, e2) => ast.EqCmp(e1, e2)(e1.pos, e1.info, e1.errT) })))
         }
       case (ArgumentAccess(cv), Null()) =>
         val args = extractArguments(cv, info)
-        (terms.And(args._1.map(_ === terms.Null)), Option.when(withExp)(BigAnd(args._2.get.map(ast.EqCmp(_, nullLit)()))))
+        (terms.And(args._1.map(_ === terms.Null)), Macros.when(withExp)(BigAnd(args._2.get.map(ast.EqCmp(_, nullLit)()))))
       case (Null(), ArgumentAccess(cv)) =>
         val args = extractArguments(cv, info)
-        (terms.And(args._1.map(_ === terms.Null)), Option.when(withExp)(BigAnd(args._2.get.map(ast.EqCmp(_, nullLit)()))))
+        (terms.And(args._1.map(_ === terms.Null)), Macros.when(withExp)(BigAnd(args._2.get.map(ast.EqCmp(_, nullLit)()))))
       case _ =>
         val leftCond = buildPathCondition(left, info)
         val rightCond =  buildPathCondition(right, info)
@@ -141,9 +142,9 @@ abstract class PropertyInterpreter {
   protected def buildPermissionLiteral(numerator: BigInt, denominator: BigInt): (Term, Option[ast.Exp]) = {
     require(denominator != 0, "Denominator of permission literal must not be 0")
     (numerator, denominator) match {
-      case (n, _) if n == 0 => (terms.NoPerm, Option.when(withExp)(noPerm))
-      case (n, d) if n == d => (terms.FullPerm, Option.when(withExp)(fullPerm))
-      case (n, d) => (terms.FractionPerm(terms.IntLiteral(n), terms.IntLiteral(d)), Option.when(withExp)(ast.FractionalPerm(ast.IntLit(n)(), ast.IntLit(d)())()))
+      case (n, _) if n == 0 => (terms.NoPerm, Macros.when(withExp)(noPerm))
+      case (n, d) if n == d => (terms.FullPerm, Macros.when(withExp)(fullPerm))
+      case (n, d) => (terms.FractionPerm(terms.IntLiteral(n), terms.IntLiteral(d)), Macros.when(withExp)(ast.FractionalPerm(ast.IntLit(n)(), ast.IntLit(d)())()))
     }
   }
 
@@ -165,7 +166,7 @@ abstract class PropertyInterpreter {
                             pm: Info): (Term, Option[ast.Exp]) = {
     val leftTerm = buildPathCondition(left, pm)
     val rightTerm = buildPathCondition(right, pm)
-    (builder(leftTerm._1, rightTerm._1), Option.when(withExp)(builderExp(leftTerm._2.get, rightTerm._2.get)))
+    (builder(leftTerm._1, rightTerm._1), Macros.when(withExp)(builderExp(leftTerm._2.get, rightTerm._2.get)))
   }
 
   protected def buildCheck[K <: IteUsableKind]

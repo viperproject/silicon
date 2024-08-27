@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.Map
+import viper.silicon.{Macros, Map}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state._
@@ -309,7 +309,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         NoPerm)
 
     val conditionalizedPermissionsExp =
-      Option.when(withExp)(ast.CondExp(
+      Macros.when(withExp)(ast.CondExp(
         ast.And(BigAnd(imagesOfCodomainExp.get), conditionExp.get)(),
         permissionExps.get,
         ast.NoPerm()())())
@@ -546,7 +546,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1)
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
 
-    val qvar = v.decider.fresh("s", sorts.Snap, Option.when(withExp)(PUnknown())) /* Quantified snapshot s */
+    val qvar = v.decider.fresh("s", sorts.Snap, Macros.when(withExp)(PUnknown())) /* Quantified snapshot s */
 
     // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
     // including necessary sort wrapper applications
@@ -677,13 +677,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
-        v.decider.assume(pmDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false)
+        v.decider.assume(pmDef.valueDefinitions, Macros.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false)
         (pmDef, s.pmCache)
       case _ =>
         val (pm, valueDef) =
           quantifiedChunkSupporter.summarisePerm(s, relevantChunks, formalQVars, resource, smDef, v)
         val pmDef = PermMapDefinition(resource, pm, valueDef)
-        v.decider.assume(valueDef, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false)
+        v.decider.assume(valueDef, Macros.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false)
         (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
     }
   }
@@ -724,7 +724,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           case None =>
             val comment = "Definitional axioms for snapshot map domain"
             v.decider.prover.comment(comment)
-            v.decider.assume(smDef.domainDefinitions, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+            v.decider.assume(smDef.domainDefinitions, Macros.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
           case Some(_instantiations) =>
             // TODO: Avoid pattern matching on resource
             val instantiations = resource match {
@@ -736,7 +736,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment(comment)
             // TODO: Avoid cast to Quantification
             v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)),
-              Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+              Macros.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
         }
       }
 
@@ -744,7 +744,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         case None =>
           val comment = "Definitional axioms for snapshot map values"
           v.decider.prover.comment(comment)
-          v.decider.assume(smDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+          v.decider.assume(smDef.valueDefinitions, Macros.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
         case Some(_instantiations) =>
           // TODO: Avoid pattern matching on resource
           val instantiations = resource match {
@@ -756,7 +756,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           v.decider.prover.comment(comment)
           // TODO: Avoid cast to Quantification
           v.decider.assume(smDef.valueDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)),
-            Option.when(withExp)(DebugExp.createInstance(comment, true)), enforceAssumption = false)
+            Macros.when(withExp)(DebugExp.createInstance(comment, true)), enforceAssumption = false)
       }
     }
 
@@ -882,7 +882,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         codomainQVarExps     = formalQVarExps,
         sm                   = tSnap,
         additionalInvArgs    = s.relevantQuantifiedVariables(tArgs).map(_._1),
-        additionalInvArgExps = Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        additionalInvArgExps = Macros.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
         userProvidedTriggers = optTrigger.map(_ => tTriggers),
         qidPrefix            = qid,
         v                    = v,
@@ -931,7 +931,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
-    v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
+    v.decider.assume(auxGlobals, Macros.when(withExp)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
       enforceAssumption = false)
 
     val commentNonGlobals = "Nested auxiliary terms: non-globals"
@@ -940,7 +940,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       auxNonGlobals.map(_.copy(
         vars = effectiveTriggersQVars,
         triggers = effectiveTriggers)),
-      Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false)
+      Macros.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false)
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegImplicationExp = eCond.map(c => ast.Implies(c, ast.PermGeCmp(ePerm.get, ast.NoPerm()())())(c.pos, c.info, c.errT))
@@ -967,7 +967,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val comment = "Check receiver injectivity"
         v.decider.prover.comment(comment)
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
-          Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
+          Macros.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
@@ -977,8 +977,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment(comment)
             val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
-            v.decider.assume(inv.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+              Macros.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+            v.decider.assume(inv.definitionalAxioms, Macros.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs
@@ -1029,7 +1029,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
               val condOfInv = tCond.replace(qvarsToInv)
               v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars))),
-                Option.when(withExp)(DebugExp.createInstance("Inverse Trigger", true)))
+                Macros.when(withExp)(DebugExp.createInstance("Inverse Trigger", true)))
               smCache1
             } else {
               s.smCache
@@ -1064,7 +1064,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val comment = "Definitional axioms for singleton-SM's value"
     v.decider.prover.comment(comment)
     val definitionalAxiomMark = v.decider.setPathConditionMark()
-    v.decider.assumeDefinition(smValueDef, Option.when(withExp)(DebugExp.createInstance(comment, true)))
+    v.decider.assumeDefinition(smValueDef, Macros.when(withExp)(DebugExp.createInstance(comment, true)))
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
@@ -1074,7 +1074,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
-    pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+    pcs.foreach(p => v.decider.assume(p._1, Macros.when(withExp)(DebugExp.createInstance(p._2, p._2))))
 
     val resourceIdentifier = resource match {
       case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
@@ -1086,7 +1086,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       val (smDef1, smCache1) =
         quantifiedChunkSupporter.summarisingSnapshotMap(
           s, resource, formalQVars, relevantChunks, v)
-      v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(withExp)(DebugExp.createInstance("Resource Trigger", true)))
+      v.decider.assume(resourceTriggerFactory(smDef1.sm), Macros.when(withExp)(DebugExp.createInstance("Resource Trigger", true)))
       smCache1
     } else {
       s.smCache
@@ -1137,7 +1137,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         formalQVars,
         formalQVarsExp,
         s.relevantQuantifiedVariables(tArgs).map(_._1),
-        Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        Macros.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
         optTrigger.map(_ => tTriggers),
         qid,
         v)
@@ -1158,7 +1158,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
-    v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false)
+    v.decider.assume(auxGlobals, Macros.when(withExp)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false)
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)
@@ -1168,10 +1168,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(
           auxNonGlobals.map(_.copy(
             vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers)), Option.when(withExp)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false)
+            triggers = effectiveTriggers)), Macros.when(withExp)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false)
       case Some(_) =>
         /* Explicit triggers were provided. */
-        v.decider.assume(auxNonGlobals, Option.when(withExp)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false)
+        v.decider.assume(auxNonGlobals, Macros.when(withExp)(DebugExp.createInstance(description=comment2, children=auxNonGlobalsExp.get)), enforceAssumption = false)
     }
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
@@ -1217,7 +1217,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Macros.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
@@ -1232,8 +1232,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment("Definitional axioms for inverse functions")
 
             v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(withExp)(DebugExp.createInstance("Inverse Function Axioms", isInternal_ = true)), enforceAssumption = false)
-            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance("Inverse function axiom", isInternal_ = true)), enforceAssumption = false)
+              Macros.when(withExp)(DebugExp.createInstance("Inverse Function Axioms", isInternal_ = true)), enforceAssumption = false)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Macros.when(withExp)(DebugExp.createInstance("Inverse function axiom", isInternal_ = true)), enforceAssumption = false)
 
             if (s.heapDependentTriggers.contains(resourceIdentifier)){
               v.decider.assume(
@@ -1241,7 +1241,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   formalQVars,
                   Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.get.sm, formalQVars, s.program)),
                   Trigger(inverseFunctions.inversesOf(formalQVars)))),
-                Option.when(withExp)(DebugExp.createInstance("Inverse Function", isInternal_ = true)), enforceAssumption = false)
+                Macros.when(withExp)(DebugExp.createInstance("Inverse Function", isInternal_ = true)), enforceAssumption = false)
             }
 
 
@@ -1296,13 +1296,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   formalQVarsExp,
                   smDef2.sm,
                   s3.relevantQuantifiedVariables(tArgs).map(_._1),
-                  Option.when(withExp)(s3.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+                  Macros.when(withExp)(s3.relevantQuantifiedVariables(tArgs).map(_._2.get)),
                   optTrigger.map(_ => tTriggers),
                   qid,
                   v2,
                   s.program
                 )
-                val debugExp = Option.when(withExp)(DebugExp.createInstance("Inverse functions for quantified permission", true))
+                val debugExp = Macros.when(withExp)(DebugExp.createInstance("Inverse functions for quantified permission", true))
                 v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program), debugExp)
                 v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses, debugExp)
                 val substitutedAxiomInversesOfInvertibles = inverseFunctions.axiomInversesOfInvertibles.replace(formalQVars, tArgs)
@@ -1315,7 +1315,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               })((s4, optCh, v3) =>
                 optCh match {
                   case Some(ch) => Q(s4, s4.h, ch.snapshotMap.convert(sorts.Snap), v3)
-                  case _ => Q(s4, s4.h, v3.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown())), v3)
+                  case _ => Q(s4, s4.h, v3.decider.fresh(sorts.Snap, Macros.when(withExp)(PUnknown())), v3)
                 }
               )
             } else {
@@ -1331,7 +1331,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   None,
                   resource,
                   lossOfInvOfLoc,
-                  Option.when(withExp)(???), // ast.LocalVar("inversePermission", ast.Perm)(),
+                  Macros.when(withExp)(???), // ast.LocalVar("inversePermission", ast.Perm)(),
                   chunkOrderHeuristics,
                   v
                 )
@@ -1436,7 +1436,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val snap = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
             Q(s4, s4.h, snap, v2)
           case _ =>
-            Q(s4, s4.h, v2.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown())), v2)
+            Q(s4, s4.h, v2.decider.fresh(sorts.Snap, Macros.when(withExp)(PUnknown())), v2)
         }
       )
     } else {
@@ -1518,7 +1518,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     var remainingChunks = Vector.empty[QuantifiedBasicChunk]
     var permsNeeded = perms
     var permsNeededExp = permsExp
-    var success: ConsumptionResult = Incomplete(permsNeeded, Option.when(withExp)(ast.TrueLit()()))
+    var success: ConsumptionResult = Incomplete(permsNeeded, Macros.when(withExp)(ast.TrueLit()()))
 
     v.decider.prover.comment("Precomputing data for removing quantified permissions")
 
@@ -1658,7 +1658,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             Nil,
             s"qp.srp${v.counter(this).next()}")
 
-        val forallExp = Option.when(withExp)(ast.Forall(codomainQVarsExp.get, Seq(), ast.Implies(
+        val forallExp = Macros.when(withExp)(ast.Forall(codomainQVarsExp.get, Seq(), ast.Implies(
           ast.NeCmp(ithChunk.permExp.get, ast.NoPerm()())(),
           ast.PermLtCmp(conditionalizedPermsExp.get, ithChunk.permExp.get)())())())
 
@@ -1823,7 +1823,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val imageFunctions = Array.ofDim[Function](qvars.length) /* img_i */
     val imagesOfFcts = Array.ofDim[Term](qvars.length) // /* img_i(f_1(xs), ..., f_m(xs)) */
     val imagesOfCodomains = Array.ofDim[Term](qvars.length) /* img_i(rs) */
-    val imagesOfCodomainExps = Option.when(withExp)(Array.ofDim[ast.Exp](qvars.length))
+    val imagesOfCodomainExps = Macros.when(withExp)(Array.ofDim[ast.Exp](qvars.length))
     val inversesOfFcts = Array.ofDim[Term](qvars.length)       /* inv_i(f_1(xs), ..., f_m(xs)) */
     val inversesOfCodomains = Array.ofDim[Term](qvars.length)  /* inv_i(rs) */
 

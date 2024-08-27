@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
+import viper.silicon.Macros
 
 import scala.collection.mutable
 import viper.silver.ast
@@ -246,7 +247,7 @@ object consumer extends ConsumptionRules {
               qvars = qvars,
               qVarExps = qvarExps,
               formalQVars = Seq(`?r`),
-              formalQVarsExp = Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
+              formalQVarsExp = Macros.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
               qid = qid.name,
               optTrigger = optTrigger,
               tTriggers = tTriggers,
@@ -291,7 +292,7 @@ object consumer extends ConsumptionRules {
               qvars = qvars,
               qVarExps = qvarExps,
               formalQVars = formalVars,
-              formalQVarsExp = Option.when(withExp)(predicate.formalArgs),
+              formalQVarsExp = Macros.when(withExp)(predicate.formalArgs),
               qid = qid.name,
               optTrigger = optTrigger,
               tTriggers = tTriggers,
@@ -316,7 +317,7 @@ object consumer extends ConsumptionRules {
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-        val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
+        val formalVarExps = Macros.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
         val qid = MagicWandIdentifier(wand, s.program).toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
@@ -345,7 +346,7 @@ object consumer extends ConsumptionRules {
               tArgs = tArgs,
               eArgs = bodyVarsNew,
               tPerm = tPerm,
-              ePerm = Option.when(withExp)(ePerm),
+              ePerm = Macros.when(withExp)(ePerm),
               pve = pve,
               negativePermissionReason = NegativePermission(ePerm),
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
@@ -365,7 +366,7 @@ object consumer extends ConsumptionRules {
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, field, Seq(`?r`), relevantChunks, v2)
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: ${eRcvrNew.get.toString()}.${field.name}"))
+              val debugExp = Macros.when(withExp)(DebugExp.createInstance(s"Field Trigger: ${eRcvrNew.get.toString()}.${field.name}"))
               v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
               //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
               s2.copy(smCache = smCache1)
@@ -381,7 +382,7 @@ object consumer extends ConsumptionRules {
               s2p,
               h,
               Seq(`?r`),
-              Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT))),
+              Macros.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT))),
               Seq(tRcvr),
               eRcvrNew.map(Seq(_)),
               loc,
@@ -409,7 +410,7 @@ object consumer extends ConsumptionRules {
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}(${eArgsNew.mkString(", ")}))", isInternal_ = true))
+              val debugExp = Macros.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}(${eArgsNew.mkString(", ")}))", isInternal_ = true))
               v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
               s2.copy(smCache = smCache1)
             } else {
@@ -425,7 +426,7 @@ object consumer extends ConsumptionRules {
               s2p,
               h,
               formalVars,
-              Option.when(withExp)(predicate.formalArgs),
+              Macros.when(withExp)(predicate.formalArgs),
               tArgs,
               eArgsNew,
               loc,
@@ -478,7 +479,7 @@ object consumer extends ConsumptionRules {
                 s1, wand, formalVars, relevantChunks, v1)
             val argsString = bodyVarsNew.mkString(", ")
             val predName = MagicWandIdentifier(wand, s.program).toString
-            val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger($predName($argsString))", isInternal_ = true))
+            val debugExp = Macros.when(withExp)(DebugExp.createInstance(s"PredicateTrigger($predName($argsString))", isInternal_ = true))
             v1.decider.assume(PredicateTrigger(predName, smDef1.sm, tArgs), debugExp)
             s1.copy(smCache = smCache1)
           } else {
@@ -490,9 +491,9 @@ object consumer extends ConsumptionRules {
             s1p,
             h,
             formalVars,
-            Option.when(withExp)(wand.formalArgs),
+            Macros.when(withExp)(wand.formalArgs),
             tArgs,
-            Option.when(withExp)(bodyVars),
+            Macros.when(withExp)(bodyVars),
             wand,
             loss,
             lossExp,
@@ -508,7 +509,7 @@ object consumer extends ConsumptionRules {
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, eArgs, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
-          chunkSupporter.consume(s1, h, wand, tArgs, eArgs, FullPerm, Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), ve, v1, description)(Q)
+          chunkSupporter.consume(s1, h, wand, tArgs, eArgs, FullPerm, Macros.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), ve, v1, description)(Q)
         })
 
       case _ =>
@@ -549,8 +550,8 @@ object consumer extends ConsumptionRules {
           case Seq(entry1, entry2) => // Both branches are alive
             val mergedData = (
               State.mergeHeap(
-                entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
-                entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
+                entry1.data._1, And(entry1.pathConditions.branchConditions), Macros.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
+                entry2.data._1, And(entry2.pathConditions.branchConditions), Macros.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
               ),
               // Asume that entry1.pcs is inverse of entry2.pcs
               Ite(And(entry1.pathConditions.branchConditions), entry1.data._2, entry2.data._2)
@@ -590,18 +591,18 @@ object consumer extends ConsumptionRules {
         val termToAssert = t match {
           case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
             val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
-            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Option.when(withExp)(e), eNew)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Macros.when(withExp)(e), eNew)
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
         v2.decider.assert(termToAssert) {
           case true =>
-            v2.decider.assume(t, Option.when(withExp)(e), eNew)
+            v2.decider.assume(t, Macros.when(withExp)(e), eNew)
             QS(s3, v2)
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
             if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
-              v2.decider.assume(t, Option.when(withExp)(e), eNew)
+              v2.decider.assume(t, Macros.when(withExp)(e), eNew)
               failure combine QS(s3, v2)
             } else failure}})
     })((s4, v4) => {

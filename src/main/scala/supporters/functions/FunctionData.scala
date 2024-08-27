@@ -20,7 +20,7 @@ import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.Verifier
-import viper.silicon.{Config, Map, toMap}
+import viper.silicon.{Config, Macros, Map, toMap}
 import viper.silver.ast.LocalVarWithVersion
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
@@ -68,7 +68,7 @@ class FunctionData(val programFunction: ast.Function,
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
                          symbolConverter.toSort(programFunction.result.typ), false)
 
-  val valFormalResultExp = Option.when(Verifier.config.enableDebugging())(LocalVarWithVersion(simplifyVariableName(formalResult.id.name), programFunction.result.typ)())
+  val valFormalResultExp = Macros.when(Verifier.config.enableDebugging())(LocalVarWithVersion(simplifyVariableName(formalResult.id.name), programFunction.result.typ)())
 
   val arguments = Seq(`?s`) ++ formalArgs.values
   val argumentExps =
@@ -251,7 +251,7 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
+           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap, Macros.when(Verifier.config.enableDebugging())(PUnknown()))
         +: expressionTranslator.translatePrecondition(program, predAcc.args, this))
 
       val fapp = App(triggerFunction, args)

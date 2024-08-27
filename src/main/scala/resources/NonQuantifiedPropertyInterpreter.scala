@@ -6,7 +6,7 @@
 
 package viper.silicon.resources
 
-import viper.silicon.Map
+import viper.silicon.{Macros, Map}
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{QuantifiedBasicChunk, terms}
@@ -110,7 +110,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk => (c.args, c.argsExp)
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => (c.singletonArguments.get, Option.when(withExp)(c.singletonArgumentExps.get))
+      case c: QuantifiedBasicChunk => (c.singletonArguments.get, Macros.when(withExp)(c.singletonArgumentExps.get))
     }
   }
 
@@ -138,7 +138,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
         // when interpreting a static or delayed property, look at every ID separately
         val conds = nonQuantifiedChunks.filter(_.resourceID == info.resourceID)
           .groupBy(ch => ch.id).values.map(chs => buildForEach(chs, chunkVariables, body, info))
-        (terms.And(conds.map(_._1)), Option.when(withExp)(BigAnd(conds.map(_._2.get))))
+        (terms.And(conds.map(_._1)), Macros.when(withExp)(BigAnd(conds.map(_._2.get))))
     }
   }
 
@@ -160,6 +160,6 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
           None
         }
       }
-    (terms.And(conds.map(_._1)), Option.when(withExp)(BigAnd(conds.map(_._2.get))))
+    (terms.And(conds.map(_._1)), Macros.when(withExp)(BigAnd(conds.map(_._2.get))))
   }
 }

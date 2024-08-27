@@ -254,7 +254,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit = {
       pathConditions.setCurrentBranchCondition(t, te)
-      assume(t, Option.when(te._2.isDefined)(te._1), te._2)
+      assume(t, Macros.when(te._2.isDefined)(te._1), te._2)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()
@@ -432,8 +432,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def fresh(v: ast.AbstractLocalVar): (Var, Option[ast.LocalVarWithVersion]) = {
       val withExp = Verifier.config.enableDebugging()
-      val term = fresh(v.name, symbolConverter.toSort(v.typ), Option.when(withExp)(extractPTypeFromExp(v)))
-      (term, Option.when(withExp)(LocalVarWithVersion(simplifyVariableName(term.id.name), v.typ)(v.pos, v.info, v.errT)))
+      val term = fresh(v.name, symbolConverter.toSort(v.typ), Macros.when(withExp)(extractPTypeFromExp(v)))
+      (term, Macros.when(withExp)(LocalVarWithVersion(simplifyVariableName(term.id.name), v.typ)(v.pos, v.info, v.errT)))
     }
 
     def freshARP(id: String = "$k"): (Var, Term) = {
