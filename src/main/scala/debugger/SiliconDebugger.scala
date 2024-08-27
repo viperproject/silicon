@@ -209,11 +209,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     val filteredChildren = a.children.flatMap(c => filterAndSimplifyAssumption(c))
     val simplifiedFinalExp = a.finalExp.map(e => Simplifier.simplify(e, true))
     val simplifiedOriginalExp = a.originalExp.map(e => Simplifier.simplify(e, true))
-//    if (simplifiedFinalExp.isDefined && simplifiedFinalExp.get == TrueLit()()) {
-//      if (a.term.isEmpty || a.term.get != True) {
-//        println(s"Warning: Final expression is True but term is not True. Term: ${a.term}")
-//      }
-//    }
+
     if (filteredChildren.nonEmpty || (a.term.isDefined && a.term.get != True && (simplifiedFinalExp.isEmpty || simplifiedFinalExp.get != TrueLit()()))) {
       a match {
         case i: ImplicationDebugExp => Some(new ImplicationDebugExp(i.id, i.description, simplifiedOriginalExp, simplifiedFinalExp, a.term, a.isInternal, filteredChildren))
@@ -505,31 +501,4 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       case None =>
     }
   }
-
-  // TODO: add interaction option to choose SMT solver on-the-fly
-//  private def chooseProver(): Int = {
-//    0
-//  }
-//
-//  private def getNewProver(proverId: Int): ProverStdIO = {
-//    val termConverter = new TermToSMTLib2Converter()
-//    termConverter.start()
-//    if (proverId == 0) {
-//      val z3Prover = new Z3ProverStdIO("Z3", termConverter, identifierFactory, reporter)
-//      z3Prover.start()
-//      new SMTLib2PreambleReader().emitPreamble(Z3ProverStdIO.staticPreamble, z3Prover, isOptions = true)
-//      z3Prover
-//    } else { // else if (proverId == 1)
-//      val cvcProver = new Cvc5ProverStdIO("CVC5", termConverter, identifierFactory, reporter)
-//      cvcProver.start()
-//      new SMTLib2PreambleReader().emitPreamble(Cvc5ProverStdIO.staticPreamble, cvcProver, isOptions = true)
-//      cvcProver
-//    }
-//    //    else {
-//    //      val z3Prover = new TraceGeneratingZ3ProverStdIO("Z3", termConverter, identifierFactory, reporter)
-//    //      z3Prover.start()
-//    //      new SMTLib2PreambleReader().emitPreamble(Z3ProverStdIO.staticPreamble, z3Prover, true)
-//    //      z3Prover
-//    //    }
-//  }
 }

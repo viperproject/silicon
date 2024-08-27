@@ -27,6 +27,7 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, TrueLit, WeightedQuantifier}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
+import viper.silver.utility.Common.Rational
 
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution

@@ -31,18 +31,6 @@ class DebugParser extends FastParser {
 
   ParserExtension.addNewExpAtStart(debugOld(_))
   ParserExtension.addNewExpAtStart(versionedidnuse(_))
-
-//  override def atom(implicit ctx: P[_]): P[PExp] =
-//    P(ParserExtension.newExpAtStart(ctx) | versionedidnuse
-//    | debugOld
-//    | annotatedAtom
-//    | integer | booltrue | boolfalse | nul | old
-//    | result | unExp | typedFuncApp
-//    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
-//    | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-//    | size | explicitSeqNonEmpty | seqRange
-//    | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
-//    | newExp | funcApp | idnuse | ParserExtension.newExpAtEnd(ctx))
 }
 
 

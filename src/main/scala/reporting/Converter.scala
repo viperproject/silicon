@@ -7,6 +7,7 @@
 package viper.silicon.reporting
 
 import viper.silicon
+
 import scala.util.{Success, Try}
 import viper.silver.verifier.{ApplicationEntry, ConstantEntry, MapEntry, Model, ModelEntry, ValueEntry}
 import viper.silver.ast
@@ -20,6 +21,7 @@ import viper.silicon.decider.TermToSMTLib2Converter
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms.sorts.UserSort
 import viper.silicon.state.terms.sorts.Snap
+import viper.silver.utility.Common.Rational
 
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
   override lazy val toString: String =

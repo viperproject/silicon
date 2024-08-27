@@ -53,7 +53,7 @@ trait RecordedPathConditions {
                     triggers: Seq[ast.Trigger],
                  name: String,
                  isGlobal: Boolean,
-                 ignore: Term /* TODO: Hack, implement properly */)
+                 ignore: Term /* TODO: Hack, implement properly, see quantified above */)
   : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])
 }
 
@@ -190,11 +190,6 @@ private class PathConditionStackLayer
     if (e.getAllTerms.nonEmpty && e.getAllTerms.forall(t => PathConditions.isGlobal(t))) {
       addGlobalDebugExp(e)
     } else {
-      if (e.getAllTerms.exists(t => PathConditions.isGlobal(t)) && !e.isInternal) {
-        // this should not happen
-        addGlobalDebugExp(DebugExp.createInstance("failed to distinguish global and non-global terms"))
-      }
-
       if (debugExpStack.isEmpty) {
         addNonGlobalDebugExp(e)
       } else {
@@ -305,8 +300,8 @@ private trait LayeredPathConditionStackLike {
       }
 
       if (layer.nonGlobalAssumptionDebugExps.nonEmpty && !implicationLHSExp.equals(TrueLit()())) {
-        conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew), Some(implicationLHS),
-          false, layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten)
+        conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew),
+          Some(implicationLHS), false, layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten)
       } else {
         conditionalTerms ++= layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten
       }
@@ -430,7 +425,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
                     triggers: Seq[ast.Trigger],
                     name: String,
                     isGlobal: Boolean,
-                    ignore: Term /* TODO: Hack, implement properly */)
+                    ignore: Term)
                     : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
 
     quantifiedExp(from, quantifier, qvars, triggers, name, isGlobal, ignore)
