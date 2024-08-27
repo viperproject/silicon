@@ -160,10 +160,10 @@ object evaluator extends EvaluationRules {
       case _: ast.NullLit => Q(s, Null, eOpt, v)
       case ast.IntLit(bigval) => Q(s, IntLiteral(bigval), eOpt, v)
 
-      case ast.EqCmp(e0, e1) => evalBinOp(s, e0, e1, Equals, pve, v)((s1, t, e0new, e1new, v1) =>
-        Q(s1, t, Option.when(withExp)(ast.EqCmp(e0new.get, e1new.get)(e.pos, e.info, e.errT)), v1))
-      case ast.NeCmp(e0, e1) => evalBinOp(s, e0, e1, (p0: Term, p1: Term) => Not(Equals(p0, p1)), pve, v)((s1, t, e0new, e1new, v1) =>
-        Q(s1, t, Option.when(withExp)(ast.NeCmp(e0new.get, e1new.get)(e.pos, e.info, e.errT)), v1))
+      case ast.EqCmp(e0, e1) => evalBinOp(s, e0, e1, Equals, pve, v)((s1, t, e0New, e1New, v1) =>
+        Q(s1, t, Option.when(withExp)(ast.EqCmp(e0New.get, e1New.get)(e.pos, e.info, e.errT)), v1))
+      case ast.NeCmp(e0, e1) => evalBinOp(s, e0, e1, (p0: Term, p1: Term) => Not(Equals(p0, p1)), pve, v)((s1, t, e0New, e1New, v1) =>
+        Q(s1, t, Option.when(withExp)(ast.NeCmp(e0New.get, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case x: ast.LocalVarWithVersion =>
         val sort = v.symbolConverter.toSort(x.typ)
@@ -177,9 +177,9 @@ object evaluator extends EvaluationRules {
 
       case ast.FractionalPerm(e0, e1) =>
         var t1: Term = null
-        evalBinOp(s, e0, e1, (t0, _t1) => {t1 = _t1; FractionPerm(t0, t1)}, pve, v)((s1, tFP, e0new, e1new, v1) =>
-          failIfDivByZero(s1, tFP, e1, e1new, t1, predef.Zero, pve, v1)((s2, t, v2)
-            => Q(s2, t, e0new.map(ast.FractionalPerm(_, e1new.get)(e.pos, e.info, e.errT)), v2)))
+        evalBinOp(s, e0, e1, (t0, _t1) => {t1 = _t1; FractionPerm(t0, t1)}, pve, v)((s1, tFP, e0New, e1New, v1) =>
+          failIfDivByZero(s1, tFP, e1, e1New, t1, predef.Zero, pve, v1)((s2, t, v2)
+            => Q(s2, t, e0New.map(ast.FractionalPerm(_, e1New.get)(e.pos, e.info, e.errT)), v2)))
 
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = v.decider.freshARP()
@@ -328,16 +328,16 @@ object evaluator extends EvaluationRules {
         })
 
       case ast.Not(e0) =>
-        eval(s, e0, pve, v)((s1, t0, e0new, v1) =>
-          Q(s1, Not(t0), e0new.map(ast.Not(_)(e.pos, e.info, e.errT)), v1))
+        eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
+          Q(s1, Not(t0), e0New.map(ast.Not(_)(e.pos, e.info, e.errT)), v1))
 
       case ast.Minus(e0) =>
-        eval(s, e0, pve, v)((s1, t0, e0new, v1) =>
-          Q(s1, Minus(0, t0), e0new.map(ast.Minus(_)(e.pos, e.info, e.errT)), v1))
+        eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
+          Q(s1, Minus(0, t0), e0New.map(ast.Minus(_)(e.pos, e.info, e.errT)), v1))
 
       case ast.Old(e0) =>
-        evalInOldState(s, Verifier.PRE_STATE_LABEL, e0, pve, v)((s1, t0, e0new, v1) =>
-          Q(s1, t0, e0new.map(ast.Old(_)(e.pos, e.info, e.errT)), v1))
+        evalInOldState(s, Verifier.PRE_STATE_LABEL, e0, pve, v)((s1, t0, e0New, v1) =>
+          Q(s1, t0, e0New.map(ast.Old(_)(e.pos, e.info, e.errT)), v1))
 
       case old@ast.DebugLabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
@@ -353,8 +353,8 @@ object evaluator extends EvaluationRules {
           case None =>
             createFailure(pve dueTo LabelledStateNotReached(old), v, s, "labelled state reached")
           case _ =>
-            evalInOldState(s, lbl, e0, pve, v)((s1, t0, e0new, v1) =>
-              Q(s1, t0, e0new.map(ast.LabelledOld(_, lbl)(old.pos, old.info, old.errT)), v1))}
+            evalInOldState(s, lbl, e0, pve, v)((s1, t0, e0New, v1) =>
+              Q(s1, t0, e0New.map(ast.LabelledOld(_, lbl)(old.pos, old.info, old.errT)), v1))}
 
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
@@ -377,8 +377,8 @@ object evaluator extends EvaluationRules {
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
-        evalBinOp(s, e0, e1, (t1, t2) => And(t1, t2), pve, v)((s1, t, e0new, e1new, v1) =>
-          Q(s1, t, e0new.map(ast.And(_, e1new.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, (t1, t2) => And(t1, t2), pve, v)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(ast.And(_, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       /* Short-circuiting evaluation of AND */
       case ae @ ast.And(_, _) =>
@@ -388,8 +388,8 @@ object evaluator extends EvaluationRules {
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
-        evalBinOp(s, e0, e1, (t1, t2) => Or(t1, t2), pve, v)((s1, t, e0new, e1new, v1) =>
-          Q(s1, t, e0new.map(ast.Or(_, e1new.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, (t1, t2) => Or(t1, t2), pve, v)((s1, t, e0New, e1New, v1) =>
+          Q(s1, t, e0New.map(ast.Or(_, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       /* Short-circuiting evaluation of OR */
       case oe @ ast.Or(_, _) =>
@@ -435,13 +435,13 @@ object evaluator extends EvaluationRules {
       /* Integers */
 
       case ast.Add(e0, e1) =>
-        evalBinOp(s, e0, e1, Plus, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.Add(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Plus, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.Add(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.Sub(e0, e1) =>
-        evalBinOp(s, e0, e1, Minus, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.Sub(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Minus, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.Sub(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.Mul(e0, e1) =>
-        evalBinOp(s, e0, e1, Times, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.Mul(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Times, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.Mul(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.Div(e0, e1) =>
         evalBinOp(s, e0, e1, Div, pve, v)((s1, tDiv, e0New, e1New, v1) =>
@@ -454,34 +454,34 @@ object evaluator extends EvaluationRules {
           => Q(s2, t, e0New.map(e0p => ast.Mod(e0p, e1New.get)(e.pos, e.info, e.errT)), v2)))
 
       case ast.LeCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, AtMost, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.LeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, AtMost, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.LeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.LtCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, Less, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.LtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Less, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.LtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.GeCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, AtLeast, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.GeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, AtLeast, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.GeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.GtCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, Greater, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.GtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Greater, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.GtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       /* Permissions */
 
       case ast.PermAdd(e0, e1) =>
-        evalBinOp(s, e0, e1, PermPlus, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.PermAdd(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, PermPlus, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermAdd(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermSub(e0, e1) =>
-        evalBinOp(s, e0, e1, PermMinus, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.PermSub(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, PermMinus, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermSub(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermMinus(e0) =>
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           Q(s1, PermMinus(NoPerm, t0), e0New.map(e0p => ast.PermMinus(e0p)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermMul(e0, e1) =>
-        evalBinOp(s, e0, e1, PermTimes, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.PermMul(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, PermTimes, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermMul(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.DebugPermMin(e0, e1) =>
-        evalBinOp(s, e0, e1, PermMin, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.DebugPermMin(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, PermMin, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.DebugPermMin(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.IntPermMul(e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
@@ -501,16 +501,16 @@ object evaluator extends EvaluationRules {
               Q(s3, t, e0New.map(e0p => ast.PermPermDiv(e0p, e1New.get)(e.pos, e.info, e.errT)), v3))))
 
       case ast.PermLeCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, AtMost, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.PermLeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, AtMost, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermLeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermLtCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, Less, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.PermLtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Less, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermLtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermGeCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, AtLeast, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.PermGeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, AtLeast, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermGeCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       case ast.PermGtCmp(e0, e1) =>
-        evalBinOp(s, e0, e1, Greater, pve, v)((s1, t, e0new, e1New, v1) => Q(s1, t, e0new.map(e0p => ast.PermGtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        evalBinOp(s, e0, e1, Greater, pve, v)((s1, t, e0New, e1New, v1) => Q(s1, t, e0New.map(e0p => ast.PermGtCmp(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
       /* Others */
 
@@ -1472,9 +1472,9 @@ object evaluator extends EvaluationRules {
                        (Q: (State, T, Option[ast.Exp], Option[ast.Exp], Verifier) => VerificationResult)
                        : VerificationResult = {
 
-    eval(s, e0, pve, v)((s1, t0, e0new, v1) =>
-      eval(s1, e1, pve, v1)((s2, t1, e1new, v2) =>
-        Q(s2, termOp(t0, t1), e0new, e1new, v2)))
+    eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
+      eval(s1, e1, pve, v1)((s2, t1, e1New, v2) =>
+        Q(s2, termOp(t0, t1), e0New, e1New, v2)))
   }
 
   private def failIfDivByZero(s: State,
