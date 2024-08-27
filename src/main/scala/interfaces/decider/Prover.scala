@@ -12,6 +12,7 @@ import viper.silicon.common.config.Version
 import viper.silver.components.StatefulComponent
 import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 import viper.silver.verifier.Model
 
 sealed abstract class Result
@@ -21,12 +22,14 @@ object Unknown extends Result
 
 /* TODO: Should be generic, not hardcoded to Strings */
 trait ProverLike {
+  protected val debugMode = Verifier.config.enableDebugging()
   var preambleAssumptions: Seq[DebugAxiom] = Seq()
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
   def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = {
-    preambleAssumptions :+= new DebugAxiom(description, terms)
+    if (debugMode)
+      preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }
   def setOption(name: String, value: String): String

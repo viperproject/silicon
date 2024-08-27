@@ -177,6 +177,8 @@ abstract class ProverStdIO(uniqueId: String,
         Runtime.getRuntime.removeShutdownHook(proverShutdownHook)
         proverShutdownHook = null
       }
+      allDecls = Seq()
+      allEmits = Seq()
     }
   }
 
@@ -196,7 +198,9 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def emit(content: String): Unit = {
-    allEmits :+= content
+    if (debugMode) {
+      allEmits :+= content
+    }
     writeLine(content)
     readSuccess()
   }
@@ -403,7 +407,8 @@ abstract class ProverStdIO(uniqueId: String,
 
   def declare(decl: Decl): Unit = {
     val str = termConverter.convert(decl)
-    allDecls = allDecls :+ decl
+    if (debugMode)
+      allDecls = allDecls :+ decl
     emit(str)
   }
 
