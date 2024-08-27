@@ -1331,7 +1331,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   None,
                   resource,
                   lossOfInvOfLoc,
-                  Option.when(withExp)(???), // ast.LocalVar("inversePermission", ast.Perm)(),
+                  lossExp,
                   chunkOrderHeuristics,
                   v
                 )

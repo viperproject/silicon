@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon._
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
@@ -280,6 +281,26 @@ object magicWandSupporter extends SymbolicExecutionRules {
       recordedBranches :+= (s6, v4.decider.pcs.branchConditions, v4.decider.pcs.branchConditionExps, conservedPcs, ch)
     }
 
+    def filterDebugExpsWithoutSnapshot(debugExps: Seq[DebugExp], snapshot: Term): Seq[DebugExp] = {
+      debugExps.flatMap(de => {
+        val curChildrenSeq = de.children.toSeq
+        val newChildren = filterDebugExpsWithoutSnapshot(curChildrenSeq, snapshot)
+        val (newTerm, newOExp, newFExp) = de.term match {
+          case s@Some(t) if !t.contains(snapshot) => (s, de.originalExp, de.finalExp)
+          case _ => (None, None, None)
+        }
+        if (newChildren.nonEmpty || newTerm.isDefined) {
+          val newDebugExp = if (newChildren != curChildrenSeq || newTerm != de.term)
+            new DebugExp(de.id, de.description, newOExp, newFExp, newTerm, de.isInternal, InsertionOrderedSet(newChildren))
+          else
+            de
+          Some(newDebugExp)
+        } else {
+          None
+        }
+      })
+    }
+
     def createWandChunkAndRecordResults(s4: State,
                                         freshSnapRoot: Var,
                                         snapRhs: Term,
@@ -313,7 +334,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
           // Partition path conditions into a set which include the freshSnapRoot and those which do not
           val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
-          val pcsWithWithoutExp = Option.when(withExp)(conservedPcs.flatMap(pcs => pcs.conditionalizedExp).partition(_.term.get.contains(freshSnapRoot)))
+          val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
           // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
           val pcsQuantified = Forall(
             freshSnapRoot,
@@ -326,7 +347,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           )
 
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), (pcsQuantified +: pcsWithoutFreshSnapRoot,
-            Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: pcsWithWithoutExp.get._2)) , v4)
+            Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: pcsWithoutExp.get)) , v4)
           Success()
         })
       }

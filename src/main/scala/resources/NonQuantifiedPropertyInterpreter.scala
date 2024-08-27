@@ -93,7 +93,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk =>
         if (Verifier.config.enableDebugging())
-          (c.snap, Some(???)) // ast.LocalVar("SnapshotValue", ast.Int)())
+          (c.snap, c.argsExp.map(_.head))
         else
           (c.snap, None)
       // TODO: remove once singleton quantified chunks are not used anymore
