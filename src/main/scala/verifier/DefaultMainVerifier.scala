@@ -58,6 +58,8 @@ class DefaultMainVerifier(config: Config,
 
   Verifier.config = config
 
+  override val debugMode = config.enableDebugging()
+
   private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
 

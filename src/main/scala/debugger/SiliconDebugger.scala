@@ -194,7 +194,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       }
 
       val obl = Some(ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls, failureContext.preambleAssumptions,
-        failureContext.branchConditions, failureContext.assumptions.flatMap(filterAndSimplifyAssumption),
+        failureContext.branchConditions, failureContext.assumptions,
         failureContext.failedAssertion, failureContext.failedAssertionExp, None,
         new DebugExpPrintConfiguration, currResult.message.reason,
         new DebugResolver(this.pprogram, this.resolver.names), new DebugTranslator(this.pprogram, translator.getMembers())))
@@ -204,23 +204,6 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       None
     }
   }
-
-  private def filterAndSimplifyAssumption(a: DebugExp): Option[DebugExp] = {
-    val filteredChildren = a.children.flatMap(c => filterAndSimplifyAssumption(c))
-    val simplifiedFinalExp = a.finalExp.map(e => Simplifier.simplify(e, true))
-    val simplifiedOriginalExp = a.originalExp.map(e => Simplifier.simplify(e, true))
-
-    if (filteredChildren.nonEmpty || (a.term.isDefined && a.term.get != True && (simplifiedFinalExp.isEmpty || simplifiedFinalExp.get != TrueLit()()))) {
-      a match {
-        case i: ImplicationDebugExp => Some(new ImplicationDebugExp(i.id, i.description, simplifiedOriginalExp, simplifiedFinalExp, a.term, a.isInternal, filteredChildren))
-        case q: QuantifiedDebugExp => Some(new QuantifiedDebugExp(q.id, q.description, simplifiedOriginalExp, simplifiedFinalExp, a.term, a.isInternal, filteredChildren, q.quantifier, q.qvars, q.triggers))
-        case _ => Some(new DebugExp(a.id, a.description, simplifiedOriginalExp, simplifiedFinalExp, a.term, a.isInternal, filteredChildren))
-      }
-    } else {
-      None
-    }
-  }
-
 
   private def initTypechecker(obl: ProofObligation, failedAssertion: Option[ast.Exp]): Unit = {
     var failedPExp: Option[PNode] =
@@ -242,7 +225,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   }
 
   private def initVerifier(obl: ProofObligation, proverName: String, userArgsString: Option[String]): ProofObligation = {
-    val v = new WorkerVerifier(this.mainVerifier, obl.v.uniqueId, NoopReporter)
+    val v = new WorkerVerifier(this.mainVerifier, obl.v.uniqueId, NoopReporter, false)
     counter += 1
     v.start()
     v.decider.createProver(proverName, userArgsString)
@@ -250,7 +233,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     obl.preambleAssumptions foreach (a => v.decider.prover.assumeAxioms(a.terms, a.description))
 
-    obl.assumptionsExp foreach (debugExp => v.decider.assume(debugExp.getAllTerms, Some(debugExp), enforceAssumption = false))
+    println("Initializing prover...")
+    obl.assumptionsExp foreach (debugExp => v.decider.debuggerAssume(debugExp.getAllTerms))
     obl.copy(v = v)
   }
 
@@ -449,7 +433,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         val proved = isFree || resV.decider.prover.assert(resT, None)
         if (proved) {
           println("Assumption was added successfully!")
-          resV.decider.assume(resT, Some(e), Some(resE))
+          resV.asInstanceOf[WorkerVerifier].decider.debuggerAssume(Seq(resT))
           Some((resS, resT, resE, evalPcs.assumptionExps))
         } else {
           println("Fail! Could not prove assumption. Skipping")
@@ -477,6 +461,12 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       case "true" | "1" | "t" => obl.printConfig.isPrintInternalEnabled = true
       case "false" | "0" | "f" => obl.printConfig.isPrintInternalEnabled = false
       case _ =>
+    }
+
+    println(s"Enter the new value for nChildrenToShow:")
+    readLine().toIntOption match {
+      case Some(value) => obl.printConfig.nChildrenToShow = value
+      case None =>
     }
 
     println(s"Enter the new value for printHierarchyLevel:")

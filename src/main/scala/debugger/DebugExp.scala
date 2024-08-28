@@ -7,8 +7,12 @@
 package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.PathConditions
 import viper.silicon.state.terms.Term
 import viper.silver.ast
+import viper.silver.ast.utility.Simplifier
+
+import scala.collection.mutable
 
 object DebugExp {
   private var idCounter: Int = 0
@@ -20,7 +24,8 @@ object DebugExp {
                      isInternal_ : Boolean,
                      children: InsertionOrderedSet[DebugExp]
                     ): DebugExp = {
-    val debugExp = new DebugExp(idCounter, description, originalExp, finalExp, term, isInternal_, children)
+
+    val debugExp = new DebugExp(idCounter, description, originalExp.map(Simplifier.simplify(_, true)), finalExp.map(Simplifier.simplify(_, true)), term, isInternal_, children)
     idCounter += 1
     debugExp
   }
@@ -61,7 +66,7 @@ object DebugExp {
                                 isInternal_ : Boolean,
                                 children: InsertionOrderedSet[DebugExp]
                                ): ImplicationDebugExp = {
-    val debugExp = new ImplicationDebugExp(idCounter, description, originalExp, finalExp, term, isInternal_, children)
+    val debugExp = new ImplicationDebugExp(idCounter, description, originalExp.map(Simplifier.simplify(_, true)), finalExp.map(Simplifier.simplify(_, true)), term, isInternal_, children)
     idCounter += 1
     debugExp
   }
@@ -76,7 +81,7 @@ object DebugExp {
                                qvars: Seq[ast.Exp],
                                triggers: Seq[ast.Trigger]
                               ): QuantifiedDebugExp ={
-    val debugExp = new QuantifiedDebugExp(idCounter, description, originalExp, finalExp, term, isInternal_, children, quantifier, qvars, triggers)
+    val debugExp = new QuantifiedDebugExp(idCounter, description, originalExp.map(Simplifier.simplify(_, true)), finalExp.map(Simplifier.simplify(_, true)), term, isInternal_, children, quantifier, qvars, triggers)
     idCounter += 1
     debugExp
   }
@@ -89,15 +94,23 @@ class DebugExp(val id: Int,
                val isInternal_ : Boolean,
                val children : InsertionOrderedSet[DebugExp]) {
 
+  lazy val isGlobal: Boolean = {
+    val thisGlobal = term match {
+      case Some(t) => PathConditions.isGlobal(t)
+      case _ => true
+    }
+    thisGlobal && children.forall(_.isGlobal)
+  }
+
   def withTerm(newTerm: Term): DebugExp = {
     new DebugExp(id, description, originalExp, finalExp, Some(newTerm), isInternal_, children)
   }
 
-  def getAllTerms: InsertionOrderedSet[Term] = {
+  def getAllTerms: LazyList[Term] = {
     if (term.isEmpty) {
-      children.flatMap(_.getAllTerms)
+      LazyList.from(children).flatMap(_.getAllTerms)
     } else {
-      children.flatMap(_.getAllTerms) + term.get
+      term.get #:: LazyList.from(children).flatMap(_.getAllTerms)
     }
   }
 
@@ -117,7 +130,11 @@ class DebugExp(val id: Int,
     if (nonInternalChildren.isEmpty) ""
     else if (maxDepth <= currDepth) "[...]"
     else {
-      nonInternalChildren.tail.foldLeft[String](nonInternalChildren.head.toString(currDepth+1, maxDepth, config))((s, de) => s + de.toString(currDepth+1, maxDepth, config))
+      val resBuilder = new mutable.StringBuilder()
+      val childrenToShow = if (config.nChildrenToShow > 0) nonInternalChildren.take(config.nChildrenToShow) else nonInternalChildren
+      childrenToShow.foreach(de => resBuilder.addAll(de.toString(currDepth+1, maxDepth, config)))
+      if (childrenToShow.size < nonInternalChildren.size) resBuilder.addAll("\n\t" + ("\t"*(currDepth + 1)) + "[...]")
+      resBuilder.toString()
     }
   }
 
@@ -149,7 +166,7 @@ class ImplicationDebugExp(id: Int,
                           isInternal_ : Boolean,
                           children : InsertionOrderedSet[DebugExp]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
 
-  override def getAllTerms: InsertionOrderedSet[Term] = if (term.isDefined) InsertionOrderedSet(term.get) else InsertionOrderedSet.empty
+  override def getAllTerms: LazyList[Term] = if (term.isDefined) LazyList(term.get) else LazyList.empty
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
       if (isInternal_ && !config.isPrintInternalEnabled) {
@@ -176,7 +193,7 @@ class QuantifiedDebugExp(id: Int,
                          val qvars : Seq[ast.Exp],
                          val triggers: Seq[ast.Trigger]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
 
-  override def getAllTerms: InsertionOrderedSet[Term] = if (term.isDefined) InsertionOrderedSet(term.get) else InsertionOrderedSet.empty
+  override def getAllTerms: LazyList[Term] = if (term.isDefined) LazyList(term.get) else LazyList.empty
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     if (isInternal_ && !config.isPrintInternalEnabled) {
@@ -194,7 +211,8 @@ class QuantifiedDebugExp(id: Int,
 
 class DebugExpPrintConfiguration {
   var isPrintInternalEnabled: Boolean = false
-  var printHierarchyLevel: Int = 5
+  var nChildrenToShow: Int = 5
+  var printHierarchyLevel: Int = 2
   var nodeToHierarchyLevelMap: Map[Int, Int] = Map.empty
   var isPrintAxiomsEnabled: Boolean = false
 
@@ -228,8 +246,9 @@ class DebugExpPrintConfiguration {
 
   override def toString: String = {
     s"isPrintInternalEnabled = $isPrintInternalEnabled\n" +
-      s"printHierarchyLevel    = $printHierarchyLevel\n" +
-      s"hierarchy per id  = $nodeToHierarchyLevelMap\n" +
+      s"nChildrenToShow      = $nChildrenToShow\n" +
+      s"printHierarchyLevel  = $printHierarchyLevel\n" +
+      s"hierarchy per id     = $nodeToHierarchyLevelMap\n" +
       s"isPrintAxiomsEnabled = $isPrintAxiomsEnabled\n"
   }
 }

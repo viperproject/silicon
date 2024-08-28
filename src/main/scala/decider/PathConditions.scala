@@ -187,7 +187,7 @@ private class PathConditionStackLayer
   }
 
   def addDebugExp(e: DebugExp): Unit = {
-    if (e.getAllTerms.nonEmpty && e.getAllTerms.forall(t => PathConditions.isGlobal(t))) {
+    if (e.isGlobal) {
       addGlobalDebugExp(e)
     } else {
       if (debugExpStack.isEmpty) {
@@ -667,7 +667,7 @@ private[decider] class LayeredPathConditionStack
   }
 }
 
-private object PathConditions {
+object PathConditions {
   def isGlobal(assumption: Term): Boolean = {
     assumption match {
       case quantification: Quantification => quantification.isGlobal
