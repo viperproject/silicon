@@ -8,8 +8,9 @@ package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.PathConditions
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{And, Exists, Forall, Implies, Quantification, Term, Trigger, True, Var}
 import viper.silver.ast
+import viper.silver.ast.TrueLit
 import viper.silver.ast.utility.Simplifier
 
 import scala.collection.mutable
@@ -25,7 +26,9 @@ object DebugExp {
                      children: InsertionOrderedSet[DebugExp]
                     ): DebugExp = {
 
-    val debugExp = new DebugExp(idCounter, description, originalExp.map(Simplifier.simplify(_, true)), finalExp.map(Simplifier.simplify(_, true)), term, isInternal_, children)
+    val originalExpSimplified = originalExp.map(Simplifier.simplify(_, true))
+    val finalExpSimplified = finalExp.map(Simplifier.simplify(_, true))
+    val debugExp = new DebugExp(idCounter, description, originalExpSimplified, finalExpSimplified, term, isInternal_, children)
     idCounter += 1
     debugExp
   }
@@ -72,16 +75,15 @@ object DebugExp {
   }
 
   def createQuantifiedInstance(description: Option[String],
-                               originalExp: Option[ast.Exp],
-                               finalExp: Option[ast.Exp],
-                               term: Option[Term],
                                isInternal_ : Boolean,
                                children: InsertionOrderedSet[DebugExp],
                                quantifier: String,
                                qvars: Seq[ast.Exp],
-                               triggers: Seq[ast.Trigger]
+                               tQvars: Seq[Var],
+                               triggers: Seq[ast.Trigger],
+                               tTriggers: Seq[Trigger]
                               ): QuantifiedDebugExp ={
-    val debugExp = new QuantifiedDebugExp(idCounter, description, originalExp.map(Simplifier.simplify(_, true)), finalExp.map(Simplifier.simplify(_, true)), term, isInternal_, children, quantifier, qvars, triggers)
+    val debugExp = new QuantifiedDebugExp(idCounter, description, isInternal_, children, quantifier, qvars, tQvars, triggers, tTriggers)
     idCounter += 1
     debugExp
   }
@@ -166,7 +168,10 @@ class ImplicationDebugExp(id: Int,
                           isInternal_ : Boolean,
                           children : InsertionOrderedSet[DebugExp]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
 
-  override def getAllTerms: LazyList[Term] = if (term.isDefined) LazyList(term.get) else LazyList.empty
+  override def getAllTerms: LazyList[Term] = {
+    assert(term.isDefined)
+    LazyList(Implies(term.get, And(children.flatMap(_.getAllTerms))))
+  }
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
       if (isInternal_ && !config.isPrintInternalEnabled) {
@@ -176,7 +181,7 @@ class ImplicationDebugExp(id: Int,
       if (children.nonEmpty) {
         getTopLevelString(currDepth) + " ==> " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
       } else {
-        getTopLevelString(currDepth)
+        "true"
       }
   }
 }
@@ -184,16 +189,17 @@ class ImplicationDebugExp(id: Int,
 
 class QuantifiedDebugExp(id: Int,
                          description : Option[String],
-                         originalExp : Option[ast.Exp],
-                         finalExp : Option[ast.Exp],
-                         term : Option[Term],
                          isInternal_ : Boolean,
                          children : InsertionOrderedSet[DebugExp],
                          val quantifier: String,
                          val qvars : Seq[ast.Exp],
-                         val triggers: Seq[ast.Trigger]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
-
-  override def getAllTerms: LazyList[Term] = if (term.isDefined) LazyList(term.get) else LazyList.empty
+                         val tQvars: Seq[Var],
+                         val triggers: Seq[ast.Trigger],
+                         val tTriggers: Seq[Trigger]) extends DebugExp(id, description, None, None, None, isInternal_, children) {
+  override def getAllTerms: LazyList[Term] = {
+    val q = if (quantifier == "QA") Forall else Exists
+    LazyList(Quantification(q, tQvars, And(children.flatMap(_.getAllTerms)), tTriggers))
+  }
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
     if (isInternal_ && !config.isPrintInternalEnabled) {
@@ -201,7 +207,7 @@ class QuantifiedDebugExp(id: Int,
     }
 
     if (qvars.nonEmpty) {
-      "\n\t" + ("\t"*currDepth) + "[" + id + "] " + quantifier.replace("QA", "forall") + " " + qvars.mkString(", ") + " :: " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
+      "\n\t" + ("\t"*currDepth) + "[" + id + "] " + (if (quantifier == "QA") "forall" else "exists") + " " + qvars.mkString(", ") + " :: " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
     } else {
       getTopLevelString(currDepth)
     }

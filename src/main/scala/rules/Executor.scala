@@ -605,7 +605,7 @@ object executor extends ExecutionRules {
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
-                  v3.decider.finishDebugSubExp(s"folded ${predAcc.toString()}")
+                  v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }
               )})))
@@ -636,7 +636,7 @@ object executor extends ExecutionRules {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
                 (s4, v4) => {
-                  v2.decider.finishDebugSubExp(s"unfolded ${pa.toString()}")
+                  v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   Q(s4, v4)
                 })
             })

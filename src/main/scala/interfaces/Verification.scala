@@ -193,7 +193,7 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Ex
 
   lazy val failedAssertionString: String ={
     if (failedAssertionExp.finalExp.isDefined){
-      s"\n\nFailed Assertion:\n\t\t${failedAssertionExp.finalExp.get.toString()}"
+      s"\n\nFailed Assertion:\n\t\t${failedAssertionExp.finalExp.get.toString}"
     } else {
       failedAssertionExp.description.get
     }

@@ -134,6 +134,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
 
+
+    //private val TODODELETEtermSources = mutable.Map.empty[Term, DebugExp]
+
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
 
@@ -337,11 +340,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms))
     }
 
-    def debuggerAssume(terms: Iterable[Term]) = {
+    def debuggerAssume(terms: Iterable[Term], de: DebugExp) = {
       terms.foreach(t => {
         if (!_debuggerAssumedTerms.contains(t)) {
           _debuggerAssumedTerms += t
           prover.assume(t)
+          //TODODELETEtermSources.put(t, de)
         }
       })
     }

@@ -6,7 +6,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
-import viper.silicon.state.terms.{Term, True}
+import viper.silicon.state.terms.Term
 import viper.silicon.state.{BasicChunk, IdentifierFactory, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
@@ -234,7 +234,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     obl.preambleAssumptions foreach (a => v.decider.prover.assumeAxioms(a.terms, a.description))
 
     println("Initializing prover...")
-    obl.assumptionsExp foreach (debugExp => v.decider.debuggerAssume(debugExp.getAllTerms))
+    obl.assumptionsExp foreach (debugExp => v.decider.debuggerAssume(debugExp.getAllTerms, debugExp))
     obl.copy(v = v)
   }
 
@@ -433,7 +433,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         val proved = isFree || resV.decider.prover.assert(resT, None)
         if (proved) {
           println("Assumption was added successfully!")
-          resV.asInstanceOf[WorkerVerifier].decider.debuggerAssume(Seq(resT))
+          resV.asInstanceOf[WorkerVerifier].decider.debuggerAssume(Seq(resT), null)
           Some((resS, resT, resE, evalPcs.assumptionExps))
         } else {
           println("Fail! Could not prove assumption. Skipping")

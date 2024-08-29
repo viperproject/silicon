@@ -50,10 +50,12 @@ trait RecordedPathConditions {
 
   def quantifiedExp(quantifier: Quantifier,
                     qvars: Seq[ast.Exp],
+                    tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
-                 name: String,
-                 isGlobal: Boolean,
-                 ignore: Term /* TODO: Hack, implement properly, see quantified above */)
+                    tTriggers: Seq[Trigger],
+                    name: String,
+                    isGlobal: Boolean,
+                    ignore: Term /* TODO: Hack, implement properly, see quantified above */)
   : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])
 }
 
@@ -301,9 +303,9 @@ private trait LayeredPathConditionStackLike {
 
       if (layer.nonGlobalAssumptionDebugExps.nonEmpty && !implicationLHSExp.equals(TrueLit()())) {
         conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew),
-          Some(implicationLHS), false, layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten)
+          Some(implicationLHS), false, layer.nonGlobalAssumptionDebugExps)
       } else {
-        conditionalTerms ++= layer.nonGlobalAssumptionDebugExps ++ layer.debugExpStack.flatten
+        conditionalTerms ++= layer.nonGlobalAssumptionDebugExps
       }
     }
 
@@ -354,7 +356,9 @@ private trait LayeredPathConditionStackLike {
   def quantifiedExp(layers: Stack[PathConditionStackLayer],
                     quantifier: Quantifier,
                     qvars: Seq[ast.Exp],
+                    tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
+                    tTriggers: Seq[Trigger],
                     name: String,
                     isGlobal: Boolean,
                     ignore: Term )
@@ -370,14 +374,13 @@ private trait LayeredPathConditionStackLike {
           var quantBody: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
           if (branchConditionExp.get._1.equals(ast.TrueLit()())) {
             quantBody = layer.nonGlobalAssumptionDebugExps
-          }
-          else{
+          } else {
             quantBody = InsertionOrderedSet(DebugExp.createImplicationInstance(description = None, originalExp = Some(branchConditionExp.get._1), finalExp = Some(branchConditionExp.get._2.get), term = layer.branchCondition, isInternal_ = false,
               children = layer.nonGlobalAssumptionDebugExps))
           }
 
-          val quantDebugExp = DebugExp.createQuantifiedInstance(description=None, originalExp=None, finalExp = None, term = None, isInternal_ = false,
-            children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars, triggers = triggers)
+          val quantDebugExp = DebugExp.createQuantifiedInstance(description=None, isInternal_ = false,
+            children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars, tQvars = tQvars, triggers = triggers, tTriggers = tTriggers)
           nonGlobals += quantDebugExp
         } else {
           nonGlobals += DebugExp.createInstance("quantifiedExp", layer.nonGlobalAssumptionDebugExps)
@@ -422,13 +425,15 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
 
   def quantifiedExp(quantifier: Quantifier,
                     qvars: Seq[ast.Exp],
+                    tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
+                    tTriggers: Seq[Trigger],
                     name: String,
                     isGlobal: Boolean,
                     ignore: Term)
                     : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
 
-    quantifiedExp(from, quantifier, qvars, triggers, name, isGlobal, ignore)
+    quantifiedExp(from, quantifier, qvars, tQvars, triggers, tTriggers, name, isGlobal, ignore)
   }
 }
 
@@ -585,13 +590,15 @@ private[decider] class LayeredPathConditionStack
 
   def quantifiedExp(quantifier: Quantifier,
                     qvars: Seq[ast.Exp],
+                    tQvars: Seq[Var],
                     triggers: Seq[ast.Trigger],
-                 name: String,
-                 isGlobal: Boolean,
-                 ignore: Term)
+                    tTriggers: Seq[Trigger],
+                    name: String,
+                    isGlobal: Boolean,
+                    ignore: Term)
   : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
 
-    quantifiedExp(layers, quantifier, qvars, triggers, name, isGlobal, ignore)
+    quantifiedExp(layers, quantifier, qvars, tQvars, triggers, tTriggers, name, isGlobal, ignore)
   }
 
   def mark(): Mark = pushLayer()
