@@ -724,8 +724,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val generateBlockMessages: ScallopOption[Boolean] = opt[Boolean]("generateBlockMessages",
-    descr = ( "Generate a message whenever a label is first reached and when a path of the symbloic execution run " +
-              "has finished."),
+    descr = ( "Generate a message whenever an execution path reaches a new block, a block fails" +
+              " , or a path has finished"),
     default = Some(false),
     noshort = true
   )

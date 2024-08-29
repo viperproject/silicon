@@ -222,44 +222,28 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    var blockLabel = "None"
-    var methodName = "None"
-    if(Verifier.config.generateBlockMessages()){
-      // // Get the label of the block for messages used by Prusti Assistant
-      // block.elements
-      // .iterator
-      // .takeWhile(_ => blockLabel == "None")
-      // .foreach( element =>
-      //   element match {
-      //     case Left(ast.Label(name, _)) => blockLabel = name
-      //     case _ =>
-      //   }
-      // )
-      // Can simplify the above if labels are _always_ the first statement in the block
-      if (block.elements.length > 0){
-        block.elements.head match {
-          case Left(ast.Label(name, _)) => blockLabel = name
-          case _ =>
-        }
-      }
-      if(s.isMethodVerification){
-        methodName = s.currentMember.get.asInstanceOf[ast.Method].name
-        // if(methodName.startsWith("builtin")){
-        //   methodName = "None"
-        // }
-      }
-      if(blockLabel != "None"){
-        v.reporter.report(BlockReachedMessage(methodName, blockLabel, pathId))
-        pathComplete.synchronized{
+    var blockLabel: Option[String] = None 
+    var methodName: Option[String] = None 
+    var sLocal = s
+    if(Verifier.config.generateBlockMessages() && s.isMethodVerification && block.elements.length > 0){
+      block.elements.head match {
+        case Left(ast.Label(name, _)) => {
+          blockLabel = Some(name)
+          methodName = Some(s.currentMember.get.asInstanceOf[ast.Method].name)
+          sLocal = s.setCurrentBlock(blockLabel.get, pathId)
+          v.reporter.report(BlockReachedMessage(methodName.get, blockLabel.get, pathId))
+          pathComplete.synchronized{
           if(!pathComplete.contains(pathId))
             pathComplete.addOne((pathId, false))
+          }
         }
+        case _ =>
       }
     }
     
     val executed = block match {
       case cfg.StatementBlock(stmt) =>
-        execs(s, stmt, v)((s1, v1) =>
+        execs(sLocal, stmt, v)((s1, v1) =>
           follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint, pathId)(Q))
 
       case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
@@ -286,15 +270,15 @@ object executor extends ExecutionRules {
              */
 
             /* Havoc local variables that are assigned to in the loop body */
-            val wvs = s.methodCfg.writtenVars(block)
+            val wvs = sLocal.methodCfg.writtenVars(block)
               /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
-            val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => {
+            val gBody = Store(wvs.foldLeft(sLocal.g.values)((map, x) => {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
-            val sBody = s.copy(g = gBody, h = Heap())
+            val sBody = sLocal.copy(g = gBody, h = Heap())
 
-            val edges = s.methodCfg.outEdges(block)
+            val edges = sLocal.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
             val sortedEdges = otherEdges ++ outEdges
             val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
@@ -312,7 +296,7 @@ object executor extends ExecutionRules {
                                               v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */)
                   Success()
                 })})
-            combine executionFlowController.locally(s, v)((s0, v0) => {
+            combine executionFlowController.locally(sLocal, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
                 consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
@@ -348,23 +332,22 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
+            consumes(sLocal, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
               Success())
         }
     }
 
-    if(Verifier.config.generateBlockMessages()){
-      if(blockLabel != "None"){
-        // Only send the message from the offending node
-        var incomplete = false
-        pathComplete.synchronized{
-          incomplete = !pathComplete.get(pathId).get
-          if (incomplete)
-            pathComplete.update(pathId, true)
-        }
+    // Only send a path processed message from the last explored node of a path
+    if(Verifier.config.generateBlockMessages() && blockLabel.isDefined){
+      var incomplete = false
+      pathComplete.synchronized{
+        incomplete = !pathComplete.get(pathId).get
         if (incomplete)
-          v.reporter.report(PathProcessedMessage(methodName, blockLabel, pathId, executed.getClass().getSimpleName()))
+          pathComplete.update(pathId, true)
       }
+      
+      if (incomplete)
+        v.reporter.report(PathProcessedMessage(methodName.get, pathId, executed.getClass().getSimpleName()))
     }
 
     executed
