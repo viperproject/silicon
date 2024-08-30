@@ -108,12 +108,11 @@ class DebugExp(val id: Int,
     new DebugExp(id, description, originalExp, finalExp, Some(newTerm), isInternal_, children)
   }
 
-  def getAllTerms: LazyList[Term] = {
-    if (term.isEmpty) {
-      LazyList.from(children).flatMap(_.getAllTerms)
-    } else {
-      term.get #:: LazyList.from(children).flatMap(_.getAllTerms)
-    }
+  def getAllTerms(visited: mutable.HashSet[DebugExp]): Seq[Term] = {
+    if (visited.contains(this))
+      return Seq.empty
+    visited.add(this)
+    term.toSeq ++ children.toSeq.flatMap(_.getAllTerms(visited))
   }
 
   def isInternal: Boolean = isInternal_
@@ -153,6 +152,23 @@ class DebugExp(val id: Int,
     getTopLevelString(currDepth) + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
   }
 
+  def getExpWithId(id: Int, visited: mutable.HashSet[DebugExp]): Option[DebugExp] = {
+    if (visited.contains(this))
+      return None
+    visited.add(this)
+    if (this.id == id) {
+      return Some(this)
+    }
+    val toSearch = children.toSeq
+    var found: Option[DebugExp] = None
+    var i = 0
+    while (found.isEmpty && i < toSearch.size) {
+      found = toSearch(i).getExpWithId(id, visited)
+      i += 1
+    }
+    found
+  }
+
   def toString(config: DebugExpPrintConfiguration): String = {
     toString(0, config.printHierarchyLevel, config)
   }
@@ -168,9 +184,12 @@ class ImplicationDebugExp(id: Int,
                           isInternal_ : Boolean,
                           children : InsertionOrderedSet[DebugExp]) extends DebugExp(id, description, originalExp, finalExp, term, isInternal_, children) {
 
-  override def getAllTerms: LazyList[Term] = {
+  override def getAllTerms(visited: mutable.HashSet[DebugExp]): Seq[Term] = {
+    if (visited.contains(this))
+      return Seq.empty
+    visited.add(this)
     assert(term.isDefined)
-    LazyList(Implies(term.get, And(children.flatMap(_.getAllTerms))))
+    Seq(Implies(term.get, And(children.toSeq.flatMap(_.getAllTerms(visited)))))
   }
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {
@@ -196,9 +215,12 @@ class QuantifiedDebugExp(id: Int,
                          val tQvars: Seq[Var],
                          val triggers: Seq[ast.Trigger],
                          val tTriggers: Seq[Trigger]) extends DebugExp(id, description, None, None, None, isInternal_, children) {
-  override def getAllTerms: LazyList[Term] = {
+  override def getAllTerms(visited: mutable.HashSet[DebugExp]): Seq[Term] = {
+    if (visited.contains(this))
+      return Seq.empty
+    visited.add(this)
     val q = if (quantifier == "QA") Forall else Exists
-    LazyList(Quantification(q, tQvars, And(children.flatMap(_.getAllTerms)), tTriggers))
+    Seq(Quantification(q, tQvars, And(children.toSeq.flatMap(_.getAllTerms(visited))), tTriggers))
   }
 
   override def toString(currDepth: Int, maxDepth: Int, config: DebugExpPrintConfiguration): String = {

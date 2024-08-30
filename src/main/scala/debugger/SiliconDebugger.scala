@@ -19,6 +19,7 @@ import viper.silver.verifier.errors.ContractNotWellformed
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
 import java.nio.file.Paths
+import scala.collection.mutable
 import scala.io.StdIn.readLine
 
 case class ProofObligation(s: State,
@@ -51,9 +52,9 @@ case class ProofObligation(s: State,
         }) +
       s"\n\t\t${originalErrorReason.readableMessage}\n\n"
 
-  private lazy val stateString: String = s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+  private lazy val stateString: String = s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
 
-  private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.map(_._2).mkString(", ")}\n\n"
+  private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.map(_._2).mkString("\n\t\t")}\n\n"
 
   private def chunkString(c: Chunk): String = {
     c match {
@@ -234,7 +235,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     obl.preambleAssumptions foreach (a => v.decider.prover.assumeAxioms(a.terms, a.description))
 
     println("Initializing prover...")
-    obl.assumptionsExp foreach (debugExp => v.decider.debuggerAssume(debugExp.getAllTerms, debugExp))
+    obl.assumptionsExp foreach (debugExp => v.decider.debuggerAssume(debugExp.getAllTerms(new mutable.HashSet()), debugExp))
     obl.copy(v = v)
   }
 
@@ -242,11 +243,16 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     var obl = originalObl
 
     while (true) {
-      println(s"\nEnter 'q' to quit, 'r' to reset the proof obligation, 'ra' to remove assumptions, 'af' to add free assumptions, 'ap' prove additional assumptions, 'p' to execute proof, 'c' to change print configuration, 's' to change the SMT solver, 't' to change the timeout")
+      println(s"\nEnter 'q' to quit, 'z' to zoom in on (i.e., show all children of) an assumption, " +
+        s"'r' to reset the proof obligation, 'ra' to remove assumptions, 'af' to add free assumptions, " +
+        s"'ap' prove additional assumptions, 'p' to execute proof, 'c' to change print configuration, " +
+        s"'s' to change the SMT solver, 't' to change the timeout")
       try {
         val userInput = readLine()
         userInput.toLowerCase match {
           case "q" | "quit" => return
+          case "z" | "zoom" =>
+            showAssumptions(obl)
           case "r" | "reset" =>
             lastSolverOptions = None
             obl = originalObl
@@ -274,8 +280,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
             obl = changeSolver(obl)
           case "t" | "timeout" =>
             obl = setTimeout(obl)
-          case "print" =>
-            printSingleAssumption(obl)
+          //case "print" =>
+          //  printSingleAssumption(obl)
           case _ => println("Invalid input!")
         }
       }catch {
@@ -317,6 +323,32 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
+  private def showAssumptions(obl: ProofObligation) = {
+    println(s"Enter the assumption you want to zoom in on:")
+    val userInput = readLine()
+    val indexOpt = userInput.trim.toIntOption
+    indexOpt match {
+      case Some(id) =>
+        val toSearch = obl.assumptionsExp.toSeq
+        var found: Option[DebugExp] = None
+        var i = 0
+        while (found.isEmpty && i < toSearch.size) {
+          found = toSearch(i).getExpWithId(id, new mutable.HashSet())
+          i += 1
+        }
+        if (found.isDefined) {
+          val filteredChildren = found.get.children.filter(d => !d.isInternal || obl.printConfig.isPrintInternalEnabled)
+          if (filteredChildren.nonEmpty) {
+            println(s"${filteredChildren.foldLeft[String]("")((s, de) => s + de.toString(obl.printConfig))}\n\n")
+          }
+        } else {
+          println("Assumption not found")
+        }
+      case None =>
+        println("Invalid input")
+    }
+  }
+
   private def removeAssumptions(obl: ProofObligation): ProofObligation = {
     println(s"Enter the assumptions you want to remove:")
     val userInput = readLine()
@@ -337,6 +369,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         case Some((resS, resT, resE, evalAssumptions)) =>
           val allAssumptions = obl.assumptionsExp ++ evalAssumptions + DebugExp.createInstance(assumptionE, resE).withTerm(resT)
           obl.copy(s = resS, assumptionsExp = allAssumptions)
+        case None =>
+          obl
       }
     }
   }
@@ -446,7 +480,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   }
 
   private def assertProofObligation(obl: ProofObligation): Unit = {
-    val verificationResult = obl.v.decider.prover.assert(obl.assertion)
+    val verificationResult = obl.v.decider.prover.assert(obl.assertion, obl.timeout)
     if (verificationResult) {
       println("PASS: Proving obligation was successful.\n")
     } else {
@@ -479,8 +513,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       case _ =>
     }
 
-    println(s"Enter the new value for nodeToHierarchyLevelMap:")
-    obl.printConfig.addHierarchyLevelForId(readLine())
+    //println(s"Enter the new value for nodeToHierarchyLevelMap:")
+    //obl.printConfig.addHierarchyLevelForId(readLine())
   }
 
   private def printSingleAssumption(obl: ProofObligation): Unit={
