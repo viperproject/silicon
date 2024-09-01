@@ -193,7 +193,7 @@ import scala.util.{Failure, Success, Try}
 
 case object SymbExLogger {
   def ofConfig(config: Config): SymbExLogger[_ <: MemberSymbExLogger] = {
-    if(config.ideModeAdvanced())
+    if (config.ideModeAdvanced())
       SymbExLog(parseLogConfig(config))
     else
       NoopSymbExLog
@@ -243,7 +243,7 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
     val log = newEntityLogger(member, pcs)
 
     synchronized {
-      if(isClosed) {
+      if (isClosed) {
         // If we time out and close the log, but somehow manage to race to move on to a new member in time, the log is
         // closed so the records are not vacuously recorded, and the log is not added to the map of logs.
         log.close()
@@ -319,7 +319,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
 
   def whenOpen(f: => Unit): Unit =
     synchronized {
-      if(!isClosed) f else ()
+      if (!isClosed) f else ()
     }
 
   var main: MemberRecord = _

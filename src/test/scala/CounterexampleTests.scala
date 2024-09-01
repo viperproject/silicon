@@ -11,9 +11,9 @@ import viper.silver.testing.{AbstractOutput, CustomAnnotation, DefaultAnnotatedT
 import fastparse._
 import viper.silicon.interfaces.SiliconMappedCounterexample
 import viper.silicon.reporting.{ExtractedModel, ExtractedModelEntry, LitIntEntry, LitPermEntry, NullRefEntry, RecursiveRefEntry, RefEntry, SeqEntry}
-import viper.silicon.state.terms.Rational
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIntLit, PLookup, PUnExp, PSymOp}
+import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIntLit, PLookup, PSymOp, PUnExp}
+import viper.silver.utility.Common.Rational
 import viper.silver.verifier.{FailureContext, VerificationError}
 
 import java.nio.file.Path

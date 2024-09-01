@@ -20,7 +20,8 @@ import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
-import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
+import viper.silicon.reporting.ExternalToolError
+import viper.silicon.reporting.ProverInteractionFailed
 
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
@@ -90,6 +91,7 @@ class Z3ProverAPI(uniqueId: String,
   val emittedSortSymbols = mutable.LinkedHashSet[Symbol]()
   val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
   val emittedFuncSymbols = mutable.Queue[Symbol]()
+  var allDecls: Seq[Decl] = Seq()
 
   // If true, we do not define macros on the Z3 level, but perform macro expansion ourselves on Silicon Terms.
   // Otherwise, we define a function on the Z3 level and axiomatize it according to the macro definition.
@@ -106,9 +108,22 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def start(): Unit = {
+    start(Verifier.config.proverArgs)
+  }
+
+  def start(userArgsString: Option[String]): Unit = {
     pushPopScopeDepth = 0
     lastTimeout = -1
-    ctx = new Context(Z3ProverAPI.initialOptions.asJava)
+
+    val userArgsMap = userArgsString match {
+      case Some(args) =>
+        args.trim.split(" ").map(_.split("=")).map{case Array(k, v) => k -> v}.toMap
+      case None =>
+        Map.empty[String, String]
+    }
+
+    val allArgs = Z3ProverAPI.initialOptions ++ userArgsMap
+    ctx = new Context(allArgs.asJava)
     val params = ctx.mkParams()
 
     // When setting parameters via API, we have to remove the smt. prefix
@@ -170,6 +185,7 @@ class Z3ProverAPI(uniqueId: String,
     emittedSorts.clear()
     emittedFuncSymbols.clear()
     emittedSortSymbols.clear()
+    allDecls = Seq()
   }
 
   def reset(): Unit = {
@@ -180,6 +196,8 @@ class Z3ProverAPI(uniqueId: String,
 
   def stop(): Unit = {
     emittedPreambleString.clear()
+    allDecls = Seq()
+    preambleAssumptions = Seq()
     preamblePhaseOver = false
     emittedFuncs.clear()
     emittedSorts.clear()
@@ -225,6 +243,8 @@ class Z3ProverAPI(uniqueId: String,
     }
     emittedPreambleString.appendAll(contents)
   }
+
+  def getAllEmits(): Seq[String] = emittedPreambleString.toSeq
 
   override def emitSettings(contents: Iterable[String]): Unit = {
     // we ignore this, don't know any better solution atm.
@@ -428,6 +448,8 @@ class Z3ProverAPI(uniqueId: String,
     // current state) and record it in out collection(s) of emmitted declarations.
     // Special handling for macro declarations if expandMacros is true; in that case,
     // nothing is declared on the Z3 level, and we simply remember the definition ourselves.
+    if (debugMode)
+      allDecls = allDecls :+ decl
     decl match {
       case SortDecl(s) =>
         val convertedSort = termConverter.convertSort(s)
@@ -451,7 +473,7 @@ class Z3ProverAPI(uniqueId: String,
         }
         if (preamblePhaseOver){
           prover.add(axiom)
-        }else{
+        } else {
           preambleAssumes.add(axiom)
         }
       case swd: SortWrapperDecl =>
@@ -462,6 +484,8 @@ class Z3ProverAPI(uniqueId: String,
         }
     }
   }
+
+  override def getAllDecls(): Seq[Decl] = allDecls
 
   override def getModel(): ViperModel = {
     val entries = new mutable.HashMap[String, ModelEntry]()
@@ -515,7 +539,7 @@ class Z3ProverAPI(uniqueId: String,
     if (lastTimeout != effectiveTimeout) {
       lastTimeout = effectiveTimeout
 
-      if(Verifier.config.proverEnableResourceBounds) {
+      if (Verifier.config.proverEnableResourceBounds) {
         ctx.updateParamValue("rlimit", (effectiveTimeout * Verifier.config.proverResourcesPerMillisecond).toString)
       } else {
         ctx.updateParamValue("timeout", effectiveTimeout.toString)

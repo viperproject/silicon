@@ -6,13 +6,16 @@
 
 package viper.silicon.interfaces
 
+import viper.silicon.debugger.{DebugAxiom, DebugExp, DebugExpPrintConfiguration}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
+import viper.silicon.reporting._
+import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Term}
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
-import viper.silicon.state.terms.Term
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Program
+import viper.silver.verifier._
 
 /*
  * Results
@@ -105,7 +108,7 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
                                  reasonUnknown: Option[String]) extends FailureContext {
   lazy val branchConditionString: String = {
-    if(branchConditions.nonEmpty) {
+    if (branchConditions.nonEmpty) {
       val branchConditionsString =
         branchConditions
           .map(bc => s"$bc [ ${bc.pos} ] ")
@@ -132,9 +135,76 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
   override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
 }
 
+case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Exp)],
+                                          counterExample: Option[Counterexample],
+                                          reasonUnknown: Option[String],
+                                          state: Option[State],
+                                          verifier: Option[Verifier],
+                                          proverDecls: Seq[String],
+                                          preambleAssumptions: Seq[DebugAxiom] ,
+                                          macroDecls: Vector[MacroDecl],
+                                          functionDecls: Set[FunctionDecl],
+                                          assumptions: InsertionOrderedSet[DebugExp],
+                                          failedAssertion: Term,
+                                          failedAssertionExp: DebugExp) extends FailureContext {
+  lazy val branchConditionString: String = {
+    if (branchConditions.nonEmpty) {
+      val branchConditionsString =
+        branchConditions
+          .map(_._2)
+          .map(bc => s"$bc [ ${bc.pos} ] ")
+          .mkString("\t\t", " ~~> ", "")
+
+      s"\n\t\tunder branch conditions:\n$branchConditionsString"
+    } else {
+      ""
+    }
+  }
+
+  lazy val counterExampleString: String = {
+    counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
+  }
+
+  lazy val reasonUnknownString: String = {
+    if (reasonUnknown.isDefined) {
+      s"\nPotential prover incompleteness: ${reasonUnknown.get}"
+    } else {
+      ""
+    }
+  }
+
+  lazy val stateString: String = {
+    if (state.isDefined){
+      s"\n\nStore:\n\t\t${state.get.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${state.get.h.values.mkString("\n\t\t")}"
+    } else {
+      ""
+    }
+  }
+
+  lazy val allAssumptionsString: String = {
+    if (assumptions.nonEmpty) {
+      val config = new DebugExpPrintConfiguration
+      config.isPrintInternalEnabled = true
+      s"\n\nassumptions:\n\t${assumptions.tail.foldLeft[String](assumptions.head.toString(config))((s, de) => de.toString(config) + s)}"
+    } else {
+      ""
+    }
+  }
+
+  lazy val failedAssertionString: String ={
+    if (failedAssertionExp.finalExp.isDefined){
+      s"\n\nFailed Assertion:\n\t\t${failedAssertionExp.finalExp.get.toString}"
+    } else {
+      failedAssertionExp.description.get
+    }
+  }
+
+  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString + stateString + allAssumptionsString + failedAssertionString
+}
+
 trait SiliconCounterexample extends Counterexample {
   val internalStore: Store
-  lazy val store: Map[String, Term] = internalStore.values.map{case (k, v) => k.name -> v}
+  lazy val store: Map[String, (Term, Option[ast.Exp])] = internalStore.values.map{case (k, v) => k.name -> v}
   def withStore(s: Store) : SiliconCounterexample
 }
 
