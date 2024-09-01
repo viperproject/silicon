@@ -179,6 +179,7 @@ abstract class ProverStdIO(uniqueId: String,
       }
       allDecls = Seq()
       allEmits = Seq()
+      preambleAssumptions = Seq()
     }
   }
 

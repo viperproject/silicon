@@ -197,6 +197,7 @@ class Z3ProverAPI(uniqueId: String,
   def stop(): Unit = {
     emittedPreambleString.clear()
     allDecls = Seq()
+    preambleAssumptions = Seq()
     preamblePhaseOver = false
     emittedFuncs.clear()
     emittedSorts.clear()
