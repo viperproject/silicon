@@ -182,8 +182,8 @@ object evaluator extends EvaluationRules {
             => Q(s2, t, e0New.map(ast.FractionalPerm(_, e1New.get)(e.pos, e.info, e.errT)), v2)))
 
       case _: ast.WildcardPerm =>
-        val (tVar, tConstraints) = v.decider.freshARP()
-        val constraintExp = Option.when(withExp)(DebugExp.createInstance(s"wildcard == ${tVar.toString}", true))
+        val (tVar, tConstraints, eVar) = v.decider.freshARP()
+        val constraintExp = Option.when(withExp)(DebugExp.createInstance(s"${eVar.get.toString} > none", true))
         v.decider.assumeDefinition(tConstraints, constraintExp)
         /* TODO: Only record wildcards in State.constrainableARPs that are used in exhale
          *       position. Currently, wildcards used in inhale position (only) may not be removed
@@ -199,7 +199,7 @@ object evaluator extends EvaluationRules {
         val s1 =
           s.copy(functionRecorder = s.functionRecorder.recordConstrainedVar(tVar, tConstraints))
            .setConstrainable(Seq(tVar), true)
-        Q(s1, tVar, eOpt, v)
+        Q(s1, tVar, eVar, v)
 
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, eRcvr, v1) => {

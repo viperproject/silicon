@@ -81,7 +81,7 @@ trait Decider {
 
   def fresh(sort: Sort, pType: Option[PType]): Var
   def fresh(v: ast.AbstractLocalVar): (Var, Option[ast.LocalVarWithVersion])
-  def freshARP(id: String = "$k"): (Var, Term)
+  def freshARP(id: String = "$k"): (Var, Term, Option[ast.LocalVarWithVersion])
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
   def generateModel(): Unit
@@ -452,11 +452,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       (term, Option.when(withExp)(LocalVarWithVersion(simplifyVariableName(term.id.name), v.typ)(v.pos, v.info, v.errT)))
     }
 
-    def freshARP(id: String = "$k"): (Var, Term) = {
+    def freshARP(id: String = "$k"): (Var, Term, Option[ast.LocalVarWithVersion]) = {
       val permVar = prover_fresh[Var](id, Nil, sorts.Perm, true)
       val permVarConstraints = IsReadPermVar(permVar)
       if (debugMode) debugVariableTypes += (permVar.id.name -> PPrimitiv(PReserved(PKw.Perm)((NoPosition, NoPosition)))())
-      (permVar, permVarConstraints)
+      (permVar, permVarConstraints, Option.when(debugMode)(LocalVarWithVersion(simplifyVariableName(permVar.id.name), ast.Perm)()))
     }
 
     def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl = {

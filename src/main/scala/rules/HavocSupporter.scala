@@ -106,7 +106,7 @@ object havocSupporter extends SymbolicExecutionRules {
       pve   = pve,
       v     = v)
     {
-      case (s1, tVars, _, Seq(tCond), _, Some((tArgs, _, Seq(), _, _)), v1) =>
+      case (s1, tVars, eVars, Seq(tCond), _, Some((tArgs, eArgs, Seq(), _, _)), v1) =>
         // Seq() represents an empty list of Triggers
         // TODO: unnamed arguments are (tAuxGlobal, tAux) and (auxGlobalsExp, auxNonGlobalsExp). How should these be handled?
 
@@ -135,8 +135,10 @@ object havocSupporter extends SymbolicExecutionRules {
             // Generate the inverse axioms
             val (inverseFunctions, imagesOfCodomain, _) = quantifiedChunkSupporter.getFreshInverseFunctions(
               qvars = tVars,
+              qvarExps = eVars,
               condition = tCond,
               invertibles = tArgs,
+              invertibleExps = eArgs,
               codomainQVars = codomainQVars,
               codomainQVarExps = codomainQVarsExp,
               additionalInvArgs = Seq(), // There are no additional quantified vars

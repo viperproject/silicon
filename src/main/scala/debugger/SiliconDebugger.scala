@@ -52,16 +52,18 @@ case class ProofObligation(s: State,
         }) +
       s"\n\t\t${originalErrorReason.readableMessage}\n\n"
 
-  private lazy val stateString: String = s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+  private lazy val stateString: String =
+    s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
 
-  private lazy val branchConditionString: String = s"Branch Conditions:\n\t\t${branchConditions.map(_._2).mkString("\n\t\t")}\n\n"
+  private lazy val branchConditionString: String =
+    s"Branch Conditions:\n\t\t${branchConditions.map(bc => Simplifier.simplify(bc._2, true)).filter(bc => bc != ast.TrueLit()()).mkString("\n\t\t")}\n\n"
 
   private def chunkString(c: Chunk): String = {
-    c match {
+    val res = c match {
       case bc: BasicChunk =>
         bc.resourceID match {
-          case FieldID => s"${bc.argsExp.head}.${bc.id} -> ${bc.snap} # ${Simplifier.simplify(bc.permExp.get, true)}"
-          case PredicateID => s"${bc.id}(${bc.argsExp.mkString(", ")}) -> ${bc.snap} # ${Simplifier.simplify(bc.permExp.get, true)}"
+          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${Simplifier.simplify(bc.permExp.get, true)})"
+          case PredicateID => s"acc(${bc.id}(${bc.argsExp.mkString(", ")}), ${Simplifier.simplify(bc.permExp.get, true)})"
         }
       case mwc: MagicWandChunk =>
         val shape = mwc.id.ghostFreeWand
@@ -72,20 +74,26 @@ case class ProofObligation(s: State,
         if (qfc.singletonRcvrExp.isDefined) {
           val receiver = Simplifier.simplify(qfc.singletonRcvrExp.get, true)
           val perm = Simplifier.simplify(qfc.permExp.get.replace(qfc.quantifiedVarExps.get.head.localVar, receiver), true)
-          s"${receiver}.${qfc.id} -> ${qfc.fvf} # ${perm}"
+          s"acc(${receiver}.${qfc.id}, ${perm})"
         } else {
           val varsString = qfc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          qfc.toString // TODO
+          val qvarsString = "forall " + qfc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qfc.invs.get.qvarExps.get.zip(qfc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
+          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qfc.quantifiedVarExps.get.head.name}.${qfc.id}, ${Simplifier.simplify(qfc.permExp.get, true)})"
         }
       case qpc: QuantifiedPredicateChunk =>
         if (qpc.singletonArgExps.isDefined) {
-          s"${qpc.id}(${qpc.singletonArgExps.get.map(e => Simplifier.simplify(e, true)).mkString(", ")}) -> ${qpc.psf} # ${Simplifier.simplify(qpc.permExp.get, true)}"
+          s"acc(${qpc.id}(${qpc.singletonArgExps.get.map(e => Simplifier.simplify(e, true)).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
         } else {
-          qpc.toString // TODO
+          val varsString = qpc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val qvarsString = "forall " + qpc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
+          val varsEqualString = qpc.invs.get.qvarExps.get.zip(qpc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
+          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qpc.id}(${qpc.quantifiedVarExps.get.map(_.name).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
         }
       case qwc: QuantifiedMagicWandChunk =>
         qwc.toString // TODO
     }
+    res
   }
 
   private def assumptionString: String = {

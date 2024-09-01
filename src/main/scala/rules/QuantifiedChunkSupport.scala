@@ -33,9 +33,11 @@ import scala.reflect.ClassTag
 
 case class InverseFunctions(condition: Term,
                             invertibles: Seq[Term],
+                            invertibleExps: Option[Seq[ast.Exp]],
                             additionalArguments: Vector[Var],
                             axiomInversesOfInvertibles: Quantification,
                             axiomInvertiblesOfInverses: Quantification,
+                            qvarExps: Option[Seq[ast.LocalVarDecl]],
                             qvarsToInverses: Map[Var, Function],
                             qvarsToImages: Map[Var, Function]) {
 
@@ -143,8 +145,10 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     *         variables, and thus they only have meaning for the caller).
     */
   def getFreshInverseFunctions(qvars: Seq[Var],
+                               qvarExps: Option[Seq[ast.LocalVarDecl]],
                                condition: Term,
                                invertibles: Seq[Term],
+                               invertibleExps: Option[Seq[ast.Exp]],
                                codomainQVars: Seq[Var],
                                codomainQVarExps: Option[Seq[ast.LocalVarDecl]],
                                additionalInvArgs: Seq[Var],
@@ -193,6 +197,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     *              see [[getFreshInverseFunctions]].
     */
   def createQuantifiedChunk(qvars: Seq[Var],
+                            qvarExps: Option[Seq[ast.LocalVarDecl]],
                             condition: Term,
                             conditionExp: Option[ast.Exp],
                             resource: ast.Resource,
@@ -269,6 +274,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   /** @inheritdoc [[QuantifiedChunkSupport.createQuantifiedChunk]] */
   def createQuantifiedChunk(qvars: Seq[Var],
+                            qvarExps: Option[Seq[ast.LocalVarDecl]],
                             condition: Term,
                             conditionExp: Option[ast.Exp],
                             resource: ast.Resource,
@@ -290,8 +296,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val (inverseFunctions, imagesOfCodomain, imagesOfCodomainExp) =
       getFreshInverseFunctions(
         qvars,
+        qvarExps,
         And(condition, IsPositive(permissions)),
         arguments,
+        argumentExps,
         codomainQVars,
         codomainQVarExps,
         additionalInvArgs,
@@ -871,6 +879,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val (ch: QuantifiedBasicChunk, inverseFunctions) =
       quantifiedChunkSupporter.createQuantifiedChunk(
         qvars                = qvars,
+        qvarExps             = qvarExps,
         condition            = tCond,
         conditionExp         = eCond,
         resource             = resource,
@@ -1105,7 +1114,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               h: Heap,
               resource: ast.Resource,
               qvars: Seq[Var],
-              qVarExps: Option[Seq[ast.LocalVarDecl]],
+              qvarExps: Option[Seq[ast.LocalVarDecl]],
               formalQVars: Seq[Var],
               formalQVarsExp: Option[Seq[ast.LocalVarDecl]],
               qid: String,
@@ -1132,8 +1141,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val (inverseFunctions, imagesOfFormalQVars, imagesOfFormalQVarExps) =
       quantifiedChunkSupporter.getFreshInverseFunctions(
         qvars,
+        qvarExps,
         And(tCond, IsPositive(tPerm)),
         tArgs,
+        eArgs,
         formalQVars,
         formalQVarsExp,
         s.relevantQuantifiedVariables(tArgs).map(_._1),
@@ -1177,7 +1188,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegImplicationExp = ePerm.map(p => ast.Implies(eCond.get, ast.PermGeCmp(p, ast.NoPerm()())())(p.pos, p.info, p.errT))
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
-    val nonNegExp = qVarExps.map(qv => ast.Forall(qv, Nil, nonNegImplicationExp.get)())
+    val nonNegExp = qvarExps.map(qv => ast.Forall(qv, Nil, nonNegImplicationExp.get)())
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
     v.decider.assert(nonNegTerm) {
       case true =>
@@ -1285,6 +1296,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 }
                 val (consumedChunk, inverseFunctions) = quantifiedChunkSupporter.createQuantifiedChunk(
                   qvars,
+                  qvarExps,
                   condOfInvOfLoc,
                   eCond,
                   resource,
@@ -1795,8 +1807,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   // TODO: Update method's API documentation
   /** @inheritdoc [[QuantifiedChunkSupport.getFreshInverseFunctions()]] */
   def getFreshInverseFunctions(qvars: Seq[Var], /* xs := x_1, ..., x_n */
+                               qvarExps: Option[Seq[ast.LocalVarDecl]],
                                condition: Term, /* c(xs) */
                                invertibles: Seq[Term], /* fs := f_1(xs), ..., f_m(xs) */
+                               invertibleExps: Option[Seq[ast.Exp]],
                                codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                                codomainQVarExps: Option[Seq[ast.LocalVarDecl]],
                                additionalInvArgs: Seq[Var],
@@ -1912,9 +1926,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val res = InverseFunctions(
       condition,
       invertibles,
+      invertibleExps,
       additionalInvArgs.toVector,
       axInvsOfFct,
       axFctsOfInvs,
+      qvarExps,
       qvars.zip(inverseFunctions).to(Map),
       qvars.zip(imageFunctions).filter(_._2 != null).to(Map)
     )
