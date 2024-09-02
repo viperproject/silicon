@@ -468,7 +468,7 @@ object consumer extends ConsumptionRules {
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-
+        val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
         evals(s, bodyVars, _ => pve, v)((s1, tArgs, bodyVarsNew, v1) => {
           val s1p = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program))){
             val (relevantChunks, _) =
@@ -490,7 +490,7 @@ object consumer extends ConsumptionRules {
             s1p,
             h,
             formalVars,
-            Option.when(withExp)(wand.formalArgs),
+            formalVarExps,
             tArgs,
             Option.when(withExp)(bodyVars),
             wand,
