@@ -190,9 +190,13 @@ object executionFlowController extends ExecutionFlowRules {
     // This is not as efficient as it maybe could be, we call action twice.
     // To speed it up we would have to save the s2, v2, r that we currently ignore in the fake
     // continuation
-    locallyWithResult[R](s, v) { (s1, v1, Q1) =>
-      action(s1, v1, (_, _, _) => Success()) } {
-      case Success(_) => action(s, v, Q)
+    val res1 = locally(s, v) { (s1, v1) =>
+      action(s1, v1, (_, _, _) => Success()) }
+
+    res1 match {
+      case _: NonFatalResult => 
+        val res = action(s, v, Q)
+        res
       case f: FatalResult => F(f)
     }
   }

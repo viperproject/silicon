@@ -223,7 +223,8 @@ object AbductionFold extends AbductionRule {
               (s1: State, v1: Verifier) =>
                 val fold = Fold(a)()
                 val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, sorts.Ref))
-                Q(Some(q.copy(s = s1, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost)))
+                val q2 = q.copy(s = s1, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
+                Q(Some(q2))
             } { _: FatalResult => R() }
           case None => R()
         }
@@ -357,17 +358,18 @@ object AbductionPackage extends AbductionRule {
         producer.produce(q.s, freshSnap, wand.left, pve, q.v)((s1, v1) => {
 
           val packQ = q.copy(s = s1, v = v1, goal = Seq(wand.right))
-          val packRes = AbductionApplier.apply(packQ)
+          AbductionApplier.applyRules(packQ){ packRes =>
+            
+            // TODO nklose we should instead not trigger
+            if (packRes.goal.nonEmpty) {
+              throw new Exception("Could not find proof script for package")
+            }
 
-          // TODO nklose we should instead not trigger
-          if (packRes.goal.nonEmpty) {
-            throw new Exception("Could not find proof script for package")
+            val g1 = q.goal.filterNot(_ == wand)
+            val stmts = q.foundStmts :+ Package(wand, Seqn(packRes.foundStmts.reverse, Seq())())()
+            val pres = q.foundState ++ packRes.foundState
+            Q(Some(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts, foundState = pres)))
           }
-
-          val g1 = q.goal.filterNot(_ == wand)
-          val stmts = q.foundStmts :+ Package(wand, Seqn(packRes.foundStmts.reverse, Seq())())()
-          val pres = q.foundState ++ packRes.foundState
-          Q(Some(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts, foundState = pres)))
         })
     }
   }

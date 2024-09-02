@@ -7,12 +7,12 @@ import viper.silicon.state.terms.{BuiltinEquals, Term}
 import viper.silicon.state._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.Internal
+//import viper.silver.verifier.PartialVerificationError
+//import viper.silver.verifier.errors.Internal
 
 case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, Term], targetHeap: Heap) {
 
-  val pve: PartialVerificationError = Internal()
+  //val pve: PartialVerificationError = Internal()
 
   // Ask the decider whether any of the terms are equal to a target.
   val matches: Map[Term, Exp] = resolveMatches()

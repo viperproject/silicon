@@ -87,22 +87,18 @@ trait RuleApplier[S] {
   /**
     * Recursively applies the rules until we reach the end of the rules list.
     */
-  def apply(in: S, currentRule: Int = 0): S = {
+  def applyRules(in: S, currentRule: Int = 0)(Q: S => VerificationResult): VerificationResult = {
 
-    var result = in
-
-    if (currentRule < rules.length) {
-      rules(currentRule).apply(in) { s =>
-        s match {
-          case Some(out) =>
-            result = apply(out)
-          case None =>
-            result = apply(in, currentRule + 1)
-        }
-        Failure(Internal().dueTo(DummyReason))
+    if(currentRule == rules.length){
+      Q(in)
+    } else {
+      rules(currentRule).apply(in) {
+        case Some(out) =>
+          applyRules(out)(Q)
+        case None =>
+          applyRules(in, currentRule + 1)(Q)
       }
     }
-    result
   }
 }
 
@@ -120,7 +116,7 @@ object BiAbductionSolver {
 
   def solveAbduction(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer], loc: Position): BiAbductionResult = {
 
-    executionFlowController.locally(s, v)((s1, v1) => {
+    val res = executionFlowController.locally(s, v)((s1, v1) => {
 
       val qPre = AbductionQuestion(s1, v1, goal)
 
@@ -129,27 +125,32 @@ object BiAbductionSolver {
         case _ => qPre
       }
 
-      val q1 = AbductionApplier.apply(q)
-
-      if (q1.goal.isEmpty) {
-        Success(Some(AbductionSuccess(q.s, q.v, q.v.decider.pcs.duplicate(), q1.foundState, q1.foundStmts, loc = loc)))
-      } else {
-        Failure(Internal() dueTo DummyReason)
+      AbductionApplier.applyRules(q){ q1 =>
+        if (q1.goal.isEmpty) {
+          Success(Some(AbductionSuccess(q.s, q.v, q.v.decider.pcs.duplicate(), q1.foundState, q1.foundStmts, loc = loc)))
+        } else {
+          Failure(Internal() dueTo DummyReason)
+        }
       }
-    }) match {
-      case Success(Some(abd: AbductionSuccess)) => abd
-      case _ => BiAbductionFailure(s, v)
+
+    })
+
+    res match {
+      case nf: NonFatalResult =>
+        // TODO Can we ever get multiple abduction results here?
+        abductionUtils.getAbductionResults(nf).head
+      case _ =>
+        BiAbductionFailure(s, v)
     }
   }
 
-  def solveAbstraction(s: State, v: Verifier, exps: Seq[Exp]): Seq[Exp] = {
-    var res: Seq[Exp] = Seq()
-    executionFlowController.locally(s, v)((s1, v1) => {
+  def solveAbstraction(s: State, v: Verifier, exps: Seq[Exp])(Q: Seq[Exp] => VerificationResult): VerificationResult = {
+    executionFlowController.locallyWithResult[Seq[Exp]](s, v)((s1, v1, QS) => {
       val q = AbstractionQuestion(exps, s1, v1)
-      res = AbstractionApplier.apply(q).exps
-      Success()
-    })
-    res
+      AbstractionApplier.applyRules(q){ q1 =>
+        QS(q1.exps)
+      }
+    })(Q)
   }
 
   def solveFraming(s: State, v: Verifier, postVars: Map[AbstractLocalVar, Term], loc: Position = NoPosition, ignoredBcs: Seq[Exp] = Seq()): FramingSuccess = {

@@ -89,77 +89,81 @@ object LoopInvariantSolver {
               q
             }
 
-            val newPreAbstraction = BiAbductionSolver.solveAbstraction(sPreAbd, vPreAbd, q1.preAbstraction ++ newPreState)
-            val res = executionFlowController.locally(sPreAbd, vPreAbd) { (sPreAbd2, vPreAbd2) =>
-              executor.follows(sPreAbd2, loopEdges, pveLam, vPreAbd2, joinPoint)((sPost, vPost) => {
+            BiAbductionSolver.solveAbstraction(sPreAbd, vPreAbd, q1.preAbstraction ++ newPreState) { newPreAbstraction =>
+              val res = executionFlowController.locally(sPreAbd, vPreAbd) { (sPreAbd2, vPreAbd2) =>
+                executor.follows(sPreAbd2, loopEdges, pveLam, vPreAbd2, joinPoint)((sPost, vPost) => {
 
-                // Values of the variables at the end of loop in terms of the beginning of the loop
-                val relVarTrans = VarTransformer(sPost, vPost, sPreAbd2.g.values.filter { case (v, _) => origVars.contains(v)}, sPreAbd2.h)
-                val relPreValues = sPost.g.values.collect { case (v, t) if wvs.contains(v) => (v, relVarTrans.transformTerm(t)) }
-                  .collect { case (v, e) if e.isDefined => (v, e.get) }
+                  // Values of the variables at the end of loop in terms of the beginning of the loop
+                  val relVarTrans = VarTransformer(sPost, vPost, sPreAbd2.g.values.filter { case (v, _) => origVars.contains(v) }, sPreAbd2.h)
+                  val relPreValues = sPost.g.values.collect { case (v, t) if wvs.contains(v) => (v, relVarTrans.transformTerm(t)) }
+                    .collect { case (v, e) if e.isDefined => (v, e.get) }
 
 
-                // We would like to transform as much as possible to the absVars.
-                // However, if state is created, then this my not be possible. Then we are willing to transform things to
-                // wvs as well
-                val postTranAbs = VarTransformer(sPost, vPost, sPost.g.values.filter { case (v, _) => absVars.contains(v) }, sPost.h)
-                val postTranOrig = VarTransformer(sPost, vPost, sPost.g.values.filter { case (v, _) => origVars.contains(v) }, sPost.h)
-                val postsRaw = BiAbductionSolver.solveFraming(sPost, vPost, sPost.g.values, NoPosition, Seq(loopCondition)).posts
-                val postsTran = postsRaw.map{exp =>
-                  val wvsPost = postTranOrig.transformExp(exp)
-                  postTranAbs.transformExp(wvsPost.get, strict=false).get
-                }
-                val postAbstraction = BiAbductionSolver.solveAbstraction(sPost, vPost, postsTran)
+                  // We would like to transform as much as possible to the absVars.
+                  // However, if state is created, then this my not be possible. Then we are willing to transform things to
+                  // wvs as well
+                  val postTranAbs = VarTransformer(sPost, vPost, sPost.g.values.filter { case (v, _) => absVars.contains(v) }, sPost.h)
+                  val postTranOrig = VarTransformer(sPost, vPost, sPost.g.values.filter { case (v, _) => origVars.contains(v) }, sPost.h)
+                  val postsRaw = BiAbductionSolver.solveFraming(sPost, vPost, sPost.g.values, NoPosition, Seq(loopCondition)).posts
+                  val postsTran = postsRaw.map { exp =>
+                    val wvsPost = postTranOrig.transformExp(exp)
+                    postTranAbs.transformExp(wvsPost.get, strict = false).get
+                  }
+                  BiAbductionSolver.solveAbstraction(sPost, vPost, postsTran) { postAbstraction =>
 
-                val newAbsPostValues: Map[AbstractLocalVar, Exp] = relPreValues.collect { case (v, e) => (v, e.transform {
-                  case lv: LocalVar if q1.absValues.contains(lv) => q1.absValues(lv)
-                })
-                }
+                    val newAbsPostValues: Map[AbstractLocalVar, Exp] = relPreValues.collect { case (v, e) => (v, e.transform {
+                      case lv: LocalVar if q1.absValues.contains(lv) => q1.absValues(lv)
+                    })
+                    }
 
-                // To check whether we are done, we take the previous abstractions and "push them forward" an iteration
-                val relPreAssigns: Map[Exp, Exp] = {
-                  q1.absValues.collect {
-                    case (v, e) if newAbsPostValues.contains(v) => (e, newAbsPostValues(v))
+                    // To check whether we are done, we take the previous abstractions and "push them forward" an iteration
+                    val relPreAssigns: Map[Exp, Exp] = {
+                      q1.absValues.collect {
+                        case (v, e) if newAbsPostValues.contains(v) => (e, newAbsPostValues(v))
+                      }
+                    }
+                    val prevPreAbstTrans = q1.preAbstraction.map(_.transform {
+                      case exp: Exp if relPreAssigns.contains(exp) => relPreAssigns(exp)
+                    })
+
+                    val relPostAssigns: Map[Exp, Exp] = {
+                      newAbsPostValues.collect {
+                        case (v, e) if q1.absValues.contains(v) => (q1.absValues(v), e)
+                      }
+                    }
+                    val prevPostAbstTrans = q1.postAbstraction.map(_.transform {
+                      case exp: Exp if relPostAssigns.contains(exp) =>
+                        relPostAssigns(exp)
+                    })
+
+                    // If the pushed forward abstraction is the same as the previous one, we are done
+                    if (newPreAbstraction.diff(prevPreAbstTrans).isEmpty && postAbstraction.diff(prevPostAbstTrans).isEmpty) {
+
+                      // Swap in the assigned to variables again instead of the absolute values
+                      val newAbsSwapped = newAbsPostValues.collect { case (v, e) if origVars.contains(v) => (e, v) }
+                      val relPreAbstraction = newPreAbstraction.map(_.transform {
+                        case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
+                      })
+                      val postInv = postAbstraction.map(_.transform {
+                        case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
+                      })
+
+                      val preInv = relPreAbstraction.flatMap(getPreInvariant)
+                      Success(Some(LoopInvariantSuccess(sPost, vPost, invs = preInv ++ postInv, loopCondition.pos)))
+                    } else {
+                      // Else continue with next iteration, using the state from the end of the loop
+                      executionFlowController.locally(sPost, vPost)((sNext, vNext) => {
+                        solveLoopInvariants(sNext, vNext, origVars, loopHead, loopEdges, joinPoint, q1.copy(preAbstraction = newPreAbstraction,
+                          postAbstraction = postAbstraction, absValues = newAbsPostValues), iteration = iteration + 1)
+                      }
+                      )
+                    }
                   }
                 }
-                val prevPreAbstTrans = q1.preAbstraction.map(_.transform {
-                  case exp: Exp if relPreAssigns.contains(exp) => relPreAssigns(exp)
-                })
-
-                val relPostAssigns: Map[Exp, Exp] = {
-                  newAbsPostValues.collect {
-                    case (v, e) if q1.absValues.contains(v) => (q1.absValues(v), e)
-                  }
-                }
-                val prevPostAbstTrans = q1.postAbstraction.map(_.transform {
-                  case exp: Exp if relPostAssigns.contains(exp) =>
-                    relPostAssigns(exp)
-                })
-
-                // If the pushed forward abstraction is the same as the previous one, we are done
-                if (newPreAbstraction.diff(prevPreAbstTrans).isEmpty && postAbstraction.diff(prevPostAbstTrans).isEmpty) {
-
-                  // Swap in the assigned to variables again instead of the absolute values
-                  val newAbsSwapped = newAbsPostValues.collect { case (v, e) if origVars.contains(v) => (e, v) }
-                  val relPreAbstraction = newPreAbstraction.map(_.transform {
-                    case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
-                  })
-                  val postInv = postAbstraction.map(_.transform {
-                    case exp: Exp if newAbsSwapped.contains(exp) => newAbsSwapped(exp)
-                  })
-
-                  val preInv = relPreAbstraction.flatMap(getPreInvariant)
-                  Success(Some(LoopInvariantSuccess(sPost, vPost, invs = preInv ++ postInv, loopCondition.pos)))
-                } else {
-                  // Else continue with next iteration, using the state from the end of the loop
-                  executionFlowController.locally(sPost, vPost)((sNext, vNext) => {
-                    solveLoopInvariants(sNext, vNext, origVars, loopHead, loopEdges, joinPoint, q1.copy(preAbstraction = newPreAbstraction,
-                      postAbstraction = postAbstraction, absValues = newAbsPostValues), iteration = iteration + 1)
-                  })
-                }
-              })
+                )
+              }
+              res
             }
-            res
           }
       })
   }
