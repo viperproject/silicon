@@ -52,7 +52,7 @@ object executor extends ExecutionRules {
   import evaluator._
   import producer._
   private val pathIdGenerator = new AtomicInteger(0)
-  private val pathComplete = collection.mutable.HashMap[Int, Boolean]();
+  private val pathComplete = collection.mutable.HashSet[Int]();
 
   def nextPathId(): Int = {
     pathIdGenerator.incrementAndGet()
@@ -233,9 +233,9 @@ object executor extends ExecutionRules {
           sLocal = s.setCurrentBlock(blockLabel.get, pathId)
           v.reporter.report(BlockReachedMessage(methodName.get, blockLabel.get, pathId))
           pathComplete.synchronized{
-          if(!pathComplete.contains(pathId))
-            pathComplete.addOne((pathId, false))
-          }
+            if(!pathComplete.contains(pathId))
+              pathComplete.addOne(pathId)
+            }
         }
         case _ =>
       }
@@ -339,15 +339,12 @@ object executor extends ExecutionRules {
 
     // Only send a path processed message from the last explored node of a path
     if(Verifier.config.generateBlockMessages() && blockLabel.isDefined){
-      var incomplete = false
       pathComplete.synchronized{
-        incomplete = !pathComplete.get(pathId).get
-        if (incomplete)
-          pathComplete.update(pathId, true)
+        if (pathComplete.contains(pathId)) {
+          pathComplete.remove(pathId)
+          v.reporter.report(PathProcessedMessage(methodName.get, pathId, executed.getClass().getSimpleName()))
+        }
       }
-      
-      if (incomplete)
-        v.reporter.report(PathProcessedMessage(methodName.get, pathId, executed.getClass().getSimpleName()))
     }
 
     executed
