@@ -723,6 +723,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val generateBlockMessages: ScallopOption[Boolean] = opt[Boolean]("generateBlockMessages",
+    descr = ( "Generate a message whenever an execution path reaches a new block, a block fails" +
+              " , or a path has finished"),
+    default = Some(false),
+    noshort = true
+  )
+
   val printTranslatedProgram: ScallopOption[Boolean] = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified to stdout.",
     default = Some(false),

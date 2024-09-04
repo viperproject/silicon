@@ -15,6 +15,7 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors._
+import viper.silver.reporter.{PathProcessedMessage, BlockReachedMessage}
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
@@ -28,6 +29,7 @@ import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableNam
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
+import java.util.concurrent.atomic.AtomicInteger
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -49,8 +51,14 @@ object executor extends ExecutionRules {
   import consumer._
   import evaluator._
   import producer._
+  private val pathIdGenerator = new AtomicInteger(0)
+  private val pathComplete = collection.mutable.HashSet[Int]();
 
-  private def follow(s: State, edge: SilverEdge, v: Verifier, joinPoint: Option[SilverBlock])
+  def nextPathId(): Int = {
+    pathIdGenerator.incrementAndGet()
+  }
+
+  private def follow(s: State, edge: SilverEdge, v: Verifier, joinPoint: Option[SilverBlock], pathId: Int)
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
@@ -72,7 +80,7 @@ object executor extends ExecutionRules {
              */
             brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1)(
               (s3, v3) =>
-                exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
+                exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint, pathId)((s4, v4) => {
                   v4.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
                 }),
@@ -83,7 +91,7 @@ object executor extends ExecutionRules {
 
         case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
           val s1 = handleOutEdge(s, edge, v)
-          exec(s1, ue.target, ue.kind, v, joinPoint)(Q)
+          exec(s1, ue.target, ue.kind, v, joinPoint, pathId)(Q)
       }
     }
   }
@@ -105,7 +113,8 @@ object executor extends ExecutionRules {
                       edges: Seq[SilverEdge],
                       @unused pvef: ast.Exp => PartialVerificationError,
                       v: Verifier,
-                      joinPoint: Option[SilverBlock])
+                      joinPoint: Option[SilverBlock],
+                      pathId: Int)
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
 
@@ -118,7 +127,7 @@ object executor extends ExecutionRules {
 
     (edges, jp) match {
       case (Seq(), _) => Q(s, v)
-      case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
+      case (Seq(edge), _) => follow(s, edge, v, joinPoint, pathId)(Q)
       case (Seq(edge1, edge2), Some(newJoinPoint)) if
           s.moreJoins.id >= JoinMode.All.id &&
           // Can't directly match type because of type erasure ...
@@ -147,8 +156,8 @@ object executor extends ExecutionRules {
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
             brancher.branch(s2, t0, (cedge1.condition, condNew), v2)(
               // Follow only until join point.
-              (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
-              (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
+              (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint), pathId)((s, v) => QB(s, null, v)),
+              (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint), nextPathId())((s, v) => QB(s, null, v))
             )
           })(entries => {
             val s2 = entries match {
@@ -165,7 +174,7 @@ object executor extends ExecutionRules {
               Q(s4, v4)
             } else {
               // Continue after merging at join point.
-              exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint)(Q)
+              exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint, pathId)(Q)
             }
           })
         )
@@ -177,10 +186,10 @@ object executor extends ExecutionRules {
         val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, eCondNew, v1) =>
           brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1)(
             (s3, v3) => {
-              follow(s3, thenEdge, v3, joinPoint)(Q)
+              follow(s3, thenEdge, v3, joinPoint, pathId)(Q)
             },
             (s3, v3) => {
-              follow(s3, elseEdge, v3, joinPoint)(Q)
+              follow(s3, elseEdge, v3, joinPoint, nextPathId())(Q)
             }))
         res
 
@@ -188,11 +197,13 @@ object executor extends ExecutionRules {
         val uidBranchPoint = v.symbExLog.insertBranchPoint(edges.length)
         val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
           case (result: VerificationResult, (edge, edgeIndex)) => {
+            var branchPathId = pathId
             if (edgeIndex != 0) {
               v.symbExLog.switchToNextBranch(uidBranchPoint)
+              branchPathId = nextPathId()
             }
             v.symbExLog.markReachable(uidBranchPoint)
-            result combine follow(s, edge, v, joinPoint)(Q)
+            result combine follow(s, edge, v, joinPoint, branchPathId)(Q)
           }
         }
         v.symbExLog.endBranchPoint(uidBranchPoint)
@@ -204,17 +215,36 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    exec(s, graph.entry, cfg.Kind.Normal, v, None)(Q)
+    exec(s, graph.entry, cfg.Kind.Normal, v, None, nextPathId())(Q)
   }
 
-  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock])
+  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock], pathId: Int)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    block match {
+    var blockLabel: Option[String] = None 
+    var methodName: Option[String] = None 
+    var sLocal = s
+    if(Verifier.config.generateBlockMessages() && s.isMethodVerification && block.elements.length > 0){
+      block.elements.head match {
+        case Left(ast.Label(name, _)) => {
+          blockLabel = Some(name)
+          methodName = Some(s.currentMember.get.asInstanceOf[ast.Method].name)
+          sLocal = s.setCurrentBlock(blockLabel.get, pathId)
+          v.reporter.report(BlockReachedMessage(methodName.get, blockLabel.get, pathId))
+          pathComplete.synchronized{
+            if(!pathComplete.contains(pathId))
+              pathComplete.addOne(pathId)
+            }
+        }
+        case _ =>
+      }
+    }
+    
+    val executed = block match {
       case cfg.StatementBlock(stmt) =>
-        execs(s, stmt, v)((s1, v1) =>
-          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint)(Q))
+        execs(sLocal, stmt, v)((s1, v1) =>
+          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint, pathId)(Q))
 
       case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
            | _: cfg.PostconditionBlock[ast.Stmt, ast.Exp] =>
@@ -240,15 +270,15 @@ object executor extends ExecutionRules {
              */
 
             /* Havoc local variables that are assigned to in the loop body */
-            val wvs = s.methodCfg.writtenVars(block)
+            val wvs = sLocal.methodCfg.writtenVars(block)
               /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
-            val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => {
+            val gBody = Store(wvs.foldLeft(sLocal.g.values)((map, x) => {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
-            val sBody = s.copy(g = gBody, h = Heap())
+            val sBody = sLocal.copy(g = gBody, h = Heap())
 
-            val edges = s.methodCfg.outEdges(block)
+            val edges = sLocal.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
             val sortedEdges = otherEdges ++ outEdges
             val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
@@ -266,7 +296,7 @@ object executor extends ExecutionRules {
                                               v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */)
                   Success()
                 })})
-            combine executionFlowController.locally(s, v)((s0, v0) => {
+            combine executionFlowController.locally(sLocal, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
                 consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
@@ -294,7 +324,7 @@ object executor extends ExecutionRules {
                               }
                             }
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
+                            edgeCondWelldefinedness combine follows(s4, sortedEdges, WhileFailed, v3, joinPoint, pathId)(Q)})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -302,10 +332,22 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
+            consumes(sLocal, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
               Success())
         }
     }
+
+    // Only send a path processed message from the last explored node of a path
+    if(Verifier.config.generateBlockMessages() && blockLabel.isDefined){
+      pathComplete.synchronized{
+        if (pathComplete.contains(pathId)) {
+          pathComplete.remove(pathId)
+          v.reporter.report(PathProcessedMessage(methodName.get, pathId, executed.getClass().getSimpleName()))
+        }
+      }
+    }
+
+    executed
   }
 
   def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)
