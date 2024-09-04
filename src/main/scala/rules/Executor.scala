@@ -350,14 +350,14 @@ object executor extends ExecutionRules {
     executed
   }
 
-    def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)
+  def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)
            (Q: (State, Verifier) => VerificationResult)
            : VerificationResult =
 
     if (stmts.nonEmpty)
       exec(s, stmts.head, v)((s1, v1) =>
         execs(s1, stmts.tail, v1)(Q))
-    else 
+    else
       Q(s, v)
 
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
