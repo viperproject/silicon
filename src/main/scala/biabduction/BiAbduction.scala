@@ -132,7 +132,6 @@ object BiAbductionSolver {
           Failure(Internal() dueTo DummyReason)
         }
       }
-
     })
 
     res match {

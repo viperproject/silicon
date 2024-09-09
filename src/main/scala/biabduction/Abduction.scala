@@ -55,7 +55,8 @@ trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
             case Some(c) => Q(s, Some(c.snap), v)
             case None => Q(s, None, v)
           }
-          case lv: AbstractLocalVar => Q(s, Some(s.g(lv)), v)
+          //case lv: AbstractLocalVar => Q(s, Some(s.g(lv)), v)
+          case _ => eval(s, e, pve, v)((s, t, v) => Q(s, Some(t), v))
           //case _ => evalLocationAccess(q.s, loc, pve, q.v) { (s2, _, tArgs, v2) => Q(s2, Some(tArgs), v2) }
         }
       }
@@ -359,7 +360,7 @@ object AbductionPackage extends AbductionRule {
 
           val packQ = q.copy(s = s1, v = v1, goal = Seq(wand.right))
           AbductionApplier.applyRules(packQ){ packRes =>
-            
+
             // TODO nklose we should instead not trigger
             if (packRes.goal.nonEmpty) {
               throw new Exception("Could not find proof script for package")
