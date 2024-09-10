@@ -140,6 +140,10 @@ object chunkSupporter extends ChunkSupportRules {
             case _ if v1.decider.checkSmoke(true) =>
               Success() // TODO: Mark branch as dead?
             case _ =>
+
+              // TODO nklose: we should move abduction out of createFailure to here and then just recurse with the results
+              // This should also replace the result handling in executor and consumer
+              // We can then do the abduction on the "original" state s, not the partial heap h
               createFailure(ve, v1, s1, "consuming chunk", true)
           }
         }

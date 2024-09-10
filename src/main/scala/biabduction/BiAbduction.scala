@@ -114,7 +114,7 @@ trait BiAbductionRule[S] {
 // TODO nklose can we move this all into happening for consumes only?
 object BiAbductionSolver {
 
-  def solveAbduction(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer], loc: Position): BiAbductionResult = {
+  def solveAbduction(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer], loc: Position): Seq[BiAbductionResult] = {
 
     val res = executionFlowController.locally(s, v)((s1, v1) => {
 
@@ -136,10 +136,9 @@ object BiAbductionSolver {
 
     res match {
       case nf: NonFatalResult =>
-        // TODO Can we ever get multiple abduction results here?
-        abductionUtils.getAbductionResults(nf).head
+        abductionUtils.getAbductionResults(nf)
       case _ =>
-        BiAbductionFailure(s, v)
+        Seq(BiAbductionFailure(s, v))
     }
   }
 

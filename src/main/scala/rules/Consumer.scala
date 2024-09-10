@@ -6,16 +6,9 @@
 
 package viper.silicon.rules
 
-import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
-
-import scala.collection.mutable
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons._
-import viper.silicon.interfaces.VerificationResult
 import viper.silicon.biabduction.{AbductionSuccess, BiAbductionFailure}
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, Success, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
@@ -186,16 +179,18 @@ object consumer extends ConsumptionRules {
     res match {
       case f@Failure(ve, _) if abductionLocation.isDefined =>
         ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-          case Some(as: AbductionSuccess) => {
+          case Some((as: AbductionSuccess) :: rest ) => {
+            // Current assumption: we always do this recursively up the stack, so we only have to do the head
             producer.produces(s, freshSnap, as.state, ContractNotWellformed, v) { (s1, v1) =>
               executor.execs(s1, as.stmts.reverse, v1) { (s2, v2) =>
                 // TODO nklose this is not working. The abduced heap chunk is not being consumed
-                wrappedConsumeTlc(s2, s2.h, a, pve, v2, abductionLocation)(Q) && Success(Some(as.copy(loc = abductionLocation.get)))
+                val restSuc = rest.foldLeft[VerificationResult](Success()){ case (suc, abs: AbductionSuccess) => suc && Success(Some(abs.copy(loc = abductionLocation.get))) }
+                restSuc && Success(Some(as.copy(loc = abductionLocation.get))) && wrappedConsumeTlc(s2, s2.h, a, pve, v2, abductionLocation)(Q)
               }
             }
           }
-          case Some(_: BiAbductionFailure) =>
-            println("Abduction failed")
+          case Some(Seq(_: BiAbductionFailure)) =>
+            //println("Abduction failed")
             f
         }
       case res => res
