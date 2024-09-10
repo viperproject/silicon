@@ -6,11 +6,12 @@ import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.state.terms.{BuiltinEquals, Term}
 import viper.silicon.state._
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 import viper.silver.ast._
 //import viper.silver.verifier.PartialVerificationError
 //import viper.silver.verifier.errors.Internal
 
-case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, Term], targetHeap: Heap) {
+case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap) {
 
   //val pve: PartialVerificationError = Internal()
 
@@ -20,7 +21,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
   private def resolveMatches(): Map[Term, Exp] = {
 
 
-    val allTerms: Seq[Term] = (s.g.values.values ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten).toSeq.distinct //.collect { case t: Var => t }
+    val allTerms: Seq[Term] = (s.g.values.values.map{case (t1, _) => t1} ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten).toSeq.distinct //.collect { case t: Var => t }
 
 
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
@@ -28,7 +29,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     val directTargets = targetVars.map(_.swap)
 
     val directAliases = allTerms.map { t =>
-      t -> directTargets.collectFirst { case (t1, e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
+      t -> directTargets.collectFirst { case ((t1, _), e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
     }.collect { case (t2, Some(e)) => t2 -> e }.toMap
 
     resolveChunks(directAliases, targetHeap.values.collect { case c: BasicChunk
@@ -65,8 +66,8 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     val rcv = transformTerm(b.args.head)
     (b, rcv) match {
       case (_, None) => None
-      case (BasicChunk(FieldID, _, _, _, _), rcv) => Some(FieldAccessPredicate(FieldAccess(rcv.get, abductionUtils.getField(b.id, s.program))(), transformTerm(b.perm).get)())
-      case (BasicChunk(PredicateID, id, _, _, _), rcv) => Some(PredicateAccessPredicate(PredicateAccess(Seq(rcv.get), id.name)(), transformTerm(b.perm).get)())
+      case (BasicChunk(FieldID, _, _, _, _, _, _), rcv) => Some(FieldAccessPredicate(FieldAccess(rcv.get, abductionUtils.getField(b.id, s.program))(), transformTerm(b.perm).get)())
+      case (BasicChunk(PredicateID, id, _, _, _, _, _), rcv) => Some(PredicateAccessPredicate(PredicateAccess(Seq(rcv.get), id.name)(), transformTerm(b.perm).get)())
         //Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))
     }
   }

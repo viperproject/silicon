@@ -6,14 +6,10 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.AbductionQuestion
-import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
-import viper.silver.ast
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
-import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
-import viper.silver.verifier.reasons._
+import viper.silicon.biabduction.AbductionQuestion
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
@@ -22,20 +18,17 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.utils.ast._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
-import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
-import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, PreconditionInAppFalse}
-import viper.silver.verifier.reasons._
-import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, TrueLit, WeightedQuantifier}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
+import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, PreconditionInAppFalse}
+import viper.silver.verifier.reasons._
+import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
@@ -901,7 +894,7 @@ object evaluator extends EvaluationRules {
               case a => a
             })
             val pvePre =
-              ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
+              ErrorWrapperWithTransformers(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
                 reasonOffendingNode.replace(formalsToActuals)), exampleTrafo, abductionTrafo)
             val argsPairs: Seq[(Term, Option[ast.Exp])] = if (withExp) tArgs.zip(eArgsNew.get.map(Some(_))) else tArgs.zip(Seq.fill(tArgs.size)(None))
             val s3 = s2.copy(g = Store(fargs.zip(argsPairs)),

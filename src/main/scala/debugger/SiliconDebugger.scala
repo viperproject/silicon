@@ -413,7 +413,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         Success()
       })
       verificationResult match {
-        case Success() =>
+        case Success(_) =>
           obl.copy(assumptionsExp = resV.decider.pcs.assumptionExps, assertion = resT, eAssertion = DebugExp.createInstance(resE, resE), v = resV)
         case _ =>
           throw new UnknownError("Error while evaluating expression: " + verificationResult.toString)
@@ -483,7 +483,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     })
 
     verificationResult match {
-      case Success() =>
+      case Success(_) =>
         val proved = isFree || resV.decider.prover.assert(resT, None)
         if (proved) {
           println("Assumption was added successfully!")

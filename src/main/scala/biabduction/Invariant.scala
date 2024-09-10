@@ -95,7 +95,7 @@ object LoopInvariantSolver {
 
                   // Values of the variables at the end of loop in terms of the beginning of the loop
                   val relVarTrans = VarTransformer(sPost, vPost, sPreAbd2.g.values.filter { case (v, _) => origVars.contains(v) }, sPreAbd2.h)
-                  val relPreValues = sPost.g.values.collect { case (v, t) if wvs.contains(v) => (v, relVarTrans.transformTerm(t)) }
+                  val relPreValues = sPost.g.values.collect { case (v, (t, _)) if wvs.contains(v) => (v, relVarTrans.transformTerm(t)) }
                     .collect { case (v, e) if e.isDefined => (v, e.get) }
 
 

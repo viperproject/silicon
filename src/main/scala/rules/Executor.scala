@@ -6,18 +6,10 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction._
-import viper.silicon.debugger.DebugExp
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Config.JoinMode
-
-import scala.annotation.unused
-import viper.silver.cfg.silver.SilverCfg
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
-import viper.silver.verifier.errors._
-import viper.silver.verifier.reasons._
-import viper.silver.{ast, cfg}
+import viper.silicon.biabduction._
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -34,7 +26,7 @@ import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
-import viper.silver.verifier.{AbductionQuestionTransformer, CounterexampleTransformer, DummyNode, PartialVerificationError}
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.{ast, cfg}
 
 import scala.annotation.unused
@@ -111,7 +103,7 @@ object executor extends ExecutionRules {
     }
   }
 
-  private def follows(s: State,
+  def follows(s: State,
                       edges: Seq[SilverEdge],
                       @unused pvef: ast.Exp => PartialVerificationError,
                       v: Verifier,
@@ -629,7 +621,7 @@ object executor extends ExecutionRules {
             case ce: SiliconCounterexample => ce.withStore(s1.g)
             case ce => ce
           })
-          val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
+          val pvePre = ErrorWrapperWithTransformers(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
           val preCondId = v1.symbExLog.openScope(preCondLog)
           val argsWithExp = if (withExp)
@@ -773,7 +765,7 @@ object executor extends ExecutionRules {
            | _: ast.Assume
            | _: ast.ExtensionStmt
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
-    })
+    }
 
     executed match {
       case Failure(_: PostconditionViolated, _) => executed // Postconditions are handled elsewhere, we do not want to restart for them

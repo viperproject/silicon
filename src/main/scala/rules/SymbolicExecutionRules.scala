@@ -100,14 +100,6 @@ trait SymbolicExecutionRules {
         })
     } else Seq()
 
-    if (Verifier.config.enableDebugging()){
-      val assumptions = v.decider.pcs.assumptionExps
-      res.failureContexts = Seq(SiliconDebuggingFailureContext(v.decider.pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get),
-        counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
-        v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get))
-    } else {
-      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
-    }
     val abdGoal: Option[AccessPredicate] = ve.reason match {
       case reason: InsufficientPermission =>
         val acc = reason.offendingNode match {
@@ -120,7 +112,15 @@ trait SymbolicExecutionRules {
     }
     val abductionResult = abdGoal.map{acc => BiAbductionSolver.solveAbduction(s, v, Seq(acc), aqTrafo, ve.pos)}
 
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionResult))
+    if (Verifier.config.enableDebugging()){
+      val assumptions = v.decider.pcs.assumptionExps
+      res.failureContexts = Seq(SiliconDebuggingFailureContext(v.decider.pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get),
+        counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
+        v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get))
+    } else {
+      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionResult))
+    }
+    
     Failure(res, v.reportFurtherErrors())
   }
 }

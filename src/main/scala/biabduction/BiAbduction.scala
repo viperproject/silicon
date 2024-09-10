@@ -1,7 +1,7 @@
 package viper.silicon.biabduction
 
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.interfaces.{Failure, FatalResult, NonFatalResult, Success, VerificationResult}
+import viper.silicon.interfaces.{Failure, NonFatalResult, Success, VerificationResult}
 import viper.silicon.rules.executionFlowController
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
@@ -31,10 +31,10 @@ trait BiAbductionSuccess extends BiAbductionResult {
 case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), loc: Position) extends BiAbductionSuccess {
 
   override def toString: String = {
-    "Successful abduction at line " + line + ":\n" + "Abduced state\n" + state.map(_.toString()).mkString("\n") + "\nAbduced statements\n" + stmts.reverse.map(_.toString()).mkString("\n")
+    "Successful abduction at line " + line + ":\n" + "Abduced state\n" + state.map(_.toString).mkString("\n") + "\nAbduced statements\n" + stmts.reverse.map(_.toString()).mkString("\n")
   }
 
-  def toPrecondition(preVars: Map[AbstractLocalVar, Term], preHeap: Heap, ignoredBcs: Seq[Exp] = Seq()): Option[Seq[Exp]] = {
+  def toPrecondition(preVars: Map[AbstractLocalVar, (Term, Option[Exp])], preHeap: Heap, ignoredBcs: Seq[Exp] = Seq()): Option[Seq[Exp]] = {
 
     // We have to use the pcs from the abduction point
     val prevPcs = v.decider.pcs
@@ -152,7 +152,7 @@ object BiAbductionSolver {
     })(Q)
   }
 
-  def solveFraming(s: State, v: Verifier, postVars: Map[AbstractLocalVar, Term], loc: Position = NoPosition, ignoredBcs: Seq[Exp] = Seq()): FramingSuccess = {
+  def solveFraming(s: State, v: Verifier, postVars: Map[AbstractLocalVar, (Term, Option[Exp])], loc: Position = NoPosition, ignoredBcs: Seq[Exp] = Seq()): FramingSuccess = {
 
     val tra = VarTransformer(s, v, postVars, s.h)
     val res = s.h.values.collect { case c: BasicChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq

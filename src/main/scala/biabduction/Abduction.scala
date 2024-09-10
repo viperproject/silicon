@@ -42,7 +42,7 @@ trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
   protected def safeEval(e: Exp, s: State, v: Verifier, lostAccesses: Map[Exp, Term])(Q: (State, Option[Term], Verifier) => VerificationResult): VerificationResult = {
 
     if (!e.contains[LocationAccess]) {
-      eval(s, e, pve, v)((s1, t, v1) => Q(s1, Some(t), v1))
+      eval(s, e, pve, v)((s1, t, _, v1) => Q(s1, Some(t), v1))
     } else {
 
       // If the arg was lost, we have it in the map
@@ -56,7 +56,7 @@ trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
             case None => Q(s, None, v)
           }
           //case lv: AbstractLocalVar => Q(s, Some(s.g(lv)), v)
-          case _ => eval(s, e, pve, v)((s, t, v) => Q(s, Some(t), v))
+          case _ => eval(s, e, pve, v)((s, t, _, v) => Q(s, Some(t), v))
           //case _ => evalLocationAccess(q.s, loc, pve, q.v) { (s2, _, tArgs, v2) => Q(s2, Some(tArgs), v2) }
         }
       }
@@ -122,7 +122,7 @@ object AbductionRemove extends AbductionRule {
           case PredicateID => q.s.program.predicates.head
           case FieldID => q.s.program.fields.head
         }
-        chunkSupporter.consume(q.s, q.s.h, resource, c1.args, c1.perm, ve, q.v, "")((s1, _, _, v1) => consumeChunks(cs, q.copy(s = s1, v = v1))(Q))
+        chunkSupporter.consume(q.s, q.s.h, resource, c1.args, None, c1.perm, None, ve, q.v, "")((s1, _, _, v1) => consumeChunks(cs, q.copy(s = s1, v = v1))(Q))
     }
   }
 
@@ -159,7 +159,7 @@ object AbductionFoldBase extends AbductionRule {
                   safeEval(a.loc.args.head, q.s, q.v, q.lostAccesses) {
                     case (s2, Some(t), v2) =>
                       val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                      predicateSupporter.fold(s1, pred, List(t), terms.FullPerm, wildcards, pve, v2) { (s3, v3) =>
+                      predicateSupporter.fold(s1, pred, List(t), None, terms.FullPerm, None, wildcards, pve, v2) { (s3, v3) =>
                         val fold = Fold(a)()
                         Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold, s = s3, v = v3)))
                       }
@@ -219,7 +219,7 @@ object AbductionFold extends AbductionRule {
           case Some((field, chunk)) =>
             val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
             executionFlowController.tryOrElse0(q.s, q.v) {
-              (sa, va, T) => predicateSupporter.fold(sa, pred, chunk.args.toList, terms.FullPerm, wildcards, pve, va, Some(a.pos))(T)
+              (sa, va, T) => predicateSupporter.fold(sa, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pve, va, Some(a.pos))(T)
             } {
               (s1: State, v1: Verifier) =>
                 val fold = Fold(a)()
@@ -246,7 +246,7 @@ object AbductionUnfold extends AbductionRule {
             val bcsBefore = q.v.decider.pcs.branchConditions
             var failedBranches: Seq[silicon.Stack[Term]] = Seq()
             var succBranches: Seq[silicon.Stack[Term]] = Seq()
-            val tryUnfold = predicateSupporter.unfold(q.s, pred.loc(q.s.program), predChunk.args.toList, terms.FullPerm, wildcards, pve, q.v, pred) {
+            val tryUnfold = predicateSupporter.unfold(q.s, pred.loc(q.s.program), predChunk.args.toList, None, terms.FullPerm, None, wildcards, pve, q.v, pred) {
               (s1, v1) =>
                 checkChunk(goal, s1, v1, q.lostAccesses) {
                   case None =>
@@ -294,7 +294,7 @@ object AbductionUnfold extends AbductionRule {
           case Some((pred, predChunk, conds)) =>
             produces(q.s, freshSnap, conds, _ => pve, q.v)((s1, v1) => {
               val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
-              predicateSupporter.unfold(s1, pred.loc(q.s.program), predChunk.args.toList, terms.FullPerm, wildcards, pve, v1, pred) { (s2, v2) =>
+              predicateSupporter.unfold(s1, pred.loc(q.s.program), predChunk.args.toList, None, terms.FullPerm, None, wildcards, pve, v1, pred) { (s2, v2) =>
                 Q(Some(q.copy(s = s2, v = v2, foundStmts = q.foundStmts :+ Unfold(PredicateAccessPredicate(pred, FullPerm()())())(), foundState = q.foundState ++ conds)))
               }
             })
@@ -315,7 +315,7 @@ object AbductionApply extends AbductionRule {
         val subexps = goalWand.subexpressionsToEvaluate(q.s.program).tail
         // If the args of the magic wand chunk match the evaluated subexpressions, then the right hand of the magic wand
         // chunk is our goal, so the rule can be applieed
-        evals(q.s, subexps, _ => pve, q.v)((s1, args, v1) => {
+        evals(q.s, subexps, _ => pve, q.v)((s1, args, _, v1) => {
           val matchingWand = q.s.h.values.collect {
             case m: MagicWandChunk if m.id.ghostFreeWand.structure(q.s.program).right == goalStructure.right && m.args.takeRight(args.length) == args =>
               // If we find a matching wand, we have to find an expression representing the left hand side of the wand
