@@ -65,7 +65,7 @@ object LoopInvariantSolver {
 
         case nonf: NonFatalResult =>
 
-          val abdReses = abductionUtils.getAbductionResults(nonf)
+          val abdReses = abductionUtils.getAbductionSuccesses(nonf)
           val preStateVars = sPreInv.g.values.filter { case (v, _) => absVars.contains(v) }
           val newStateOpt = abdReses.map { abd => abd.toPrecondition(preStateVars, sPreInv.h, Seq(loopCondition)) }
           if (newStateOpt.contains(None)) {

@@ -2,14 +2,16 @@ package viper.silicon.biabduction
 
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Failure, NonFatalResult, Success, VerificationResult}
-import viper.silicon.rules.executionFlowController
+import viper.silicon.rules.{executionFlowController, executor, producer}
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
 import viper.silicon.utils.ast.BigAnd
+import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
-import viper.silver.verifier.errors.Internal
-import viper.silver.verifier.{AbductionQuestionTransformer, DummyReason, PartialVerificationError, VerificationError}
+import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, Internal}
+import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
+import viper.silver.verifier.{DummyReason, PartialVerificationError, VerificationError}
 
 trait BiAbductionResult {
   def s: State
@@ -111,14 +113,29 @@ trait BiAbductionRule[S] {
 
 }
 
-// TODO nklose can we move this all into happening for consumes only?
 object BiAbductionSolver {
 
-  def solveAbduction(s: State, v: Verifier, goal: Seq[Exp], tra: Option[AbductionQuestionTransformer], loc: Position): Seq[BiAbductionResult] = {
+  def solveAbduction(s: State, v: Verifier, ve: VerificationError, f: Failure)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
 
-    val res = executionFlowController.locally(s, v)((s1, v1) => {
+    val abdGoal: Option[AccessPredicate] = ve.reason match {
+      case reason: InsufficientPermission =>
+        val acc = reason.offendingNode match {
+          case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()
+          case n: PredicateAccess => PredicateAccessPredicate(n, FullPerm()())()
+        }
+        Some(acc)
+      case reason: MagicWandChunkNotFound => Some(reason.offendingNode)
+      case _ => None
+    }
+    val tra = ve match {
+      case ErrorWrapperWithTransformers(_, _, aqTra) => Some(aqTra)
+      case _ => None
+    }
 
-      val qPre = AbductionQuestion(s1, v1, goal)
+    // TODO nklose I want to do the abduction locally and then continue with the result
+    executionFlowController.locally(s, v)((s1, v1) => {
+
+      val qPre = AbductionQuestion(s1, v1, Seq(abdGoal.get))
 
       val q = tra match {
         case Some(trafo) => trafo.f(qPre).asInstanceOf[AbductionQuestion]
@@ -127,19 +144,16 @@ object BiAbductionSolver {
 
       AbductionApplier.applyRules(q){ q1 =>
         if (q1.goal.isEmpty) {
-          Success(Some(AbductionSuccess(q.s, q.v, q.v.decider.pcs.duplicate(), q1.foundState, q1.foundStmts, loc = loc)))
+          producer.produces(s, freshSnap, q1.foundState, _ => Internal(), v) {(s1, v1) =>
+            executor.execs (s1, q1.foundStmts.reverse, v1) {(s2, v2) =>
+              Q(s2, v2) && Success(Some(AbductionSuccess(q.s, q.v, q.v.decider.pcs.duplicate(), q1.foundState, q1.foundStmts, loc = ve.pos)))
+            }
+          }
         } else {
-          Failure(Internal() dueTo DummyReason)
+          f
         }
       }
     })
-
-    res match {
-      case nf: NonFatalResult =>
-        abductionUtils.getAbductionResults(nf)
-      case _ =>
-        Seq(BiAbductionFailure(s, v))
-    }
   }
 
   def solveAbstraction(s: State, v: Verifier, exps: Seq[Exp])(Q: Seq[Exp] => VerificationResult): VerificationResult = {
@@ -182,18 +196,18 @@ object abductionUtils {
   }
 
   def getVars(t: Term, g: Store): Seq[AbstractLocalVar] = {
-    g.values.collect({ case (v, t1) if t1 == t => v }).toSeq
+    g.values.collect({ case (v, (t1, _)) if t1 == t => v }).toSeq
   }
 
   def getField(name: BasicChunkIdentifier, p: Program): Field = {
     p.fields.find(_.name == name.name).get
   }
-  
+
   def getPredicate(name: BasicChunkIdentifier, p: Program): Predicate ={
     p.predicates.find(_.name == name.name).get
   }
 
-  def getAbductionResults(vr: NonFatalResult): Seq[AbductionSuccess] = {
+  def getAbductionSuccesses(vr: NonFatalResult): Seq[AbductionSuccess] = {
     (vr +: vr.previous).collect { case Success(Some(abd: AbductionSuccess)) => abd }
   }
 

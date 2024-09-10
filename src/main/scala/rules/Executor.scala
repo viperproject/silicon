@@ -399,7 +399,7 @@ object executor extends ExecutionRules {
         v.decider.prover.comment(stmt.toString())
     }
 
-    val executed = stmt match {
+    stmt match {
       case ast.Seqn(stmts, _) =>
         execs(s, stmts, v)(Q)
 
@@ -765,28 +765,6 @@ object executor extends ExecutionRules {
            | _: ast.Assume
            | _: ast.ExtensionStmt
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
-    }
-
-    // TODO nklose: make everything happen in consume, nothing here.
-    executed match {
-
-      case Failure(_: PostconditionViolated, _) => executed // Postconditions are handled elsewhere, we do not want to restart for them
-      case Failure(ve, _) if ve.failureContexts.nonEmpty =>
-        val abReses = ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult.get
-        abReses.head match {
-          case as: AbductionSuccess =>
-            producer.produces(s, freshSnap, as.state, ContractNotWellformed, v) { (s1, v1) =>
-              executor.execs(s1, as.stmts.reverse, v1) { (s2, v2) =>
-                val restSuc = abReses.tail.foldLeft[VerificationResult](Success()){ case (suc, abs: AbductionSuccess) => suc && Success(Some(abs.copy(loc = stmt.pos))) }
-                restSuc && Success(Some(as)) && exec(s2, stmt, v2)((s3, v3) => Q(s3, v3))
-              }
-            }
-
-          case _: BiAbductionFailure =>
-            //println("Abduction failed")
-            executed
-        }
-      case _ => executed
     }
   }
 

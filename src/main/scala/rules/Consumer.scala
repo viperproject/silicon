@@ -165,7 +165,7 @@ object consumer extends ConsumptionRules {
      * consume.
      */
     val sInit = s.copy(h = h)
-    val res = executionFlowController.tryOrFail2[Heap, Term](sInit, v) ((s0, v1, QS) => {
+    executionFlowController.tryOrFail2[Heap, Term](sInit, v) ((s0, v1, QS) => {
       val h0 = s0.h /* h0 is h, but potentially consolidated */
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
@@ -175,26 +175,6 @@ object consumer extends ConsumptionRules {
         v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
-
-    res match {
-      case f@Failure(ve, _) if abductionLocation.isDefined =>
-        ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
-          case Some((as: AbductionSuccess) :: rest ) => {
-            // Current assumption: we always do this recursively up the stack, so we only have to do the head
-            producer.produces(s, freshSnap, as.state, ContractNotWellformed, v) { (s1, v1) =>
-              executor.execs(s1, as.stmts.reverse, v1) { (s2, v2) =>
-                // TODO nklose this is not working. The abduced heap chunk is not being consumed
-                val restSuc = rest.foldLeft[VerificationResult](Success()){ case (suc, abs: AbductionSuccess) => suc && Success(Some(abs.copy(loc = abductionLocation.get))) }
-                restSuc && Success(Some(as.copy(loc = abductionLocation.get))) && wrappedConsumeTlc(s2, s2.h, a, pve, v2, abductionLocation)(Q)
-              }
-            }
-          }
-          case Some(Seq(_: BiAbductionFailure)) =>
-            //println("Abduction failed")
-            f
-        }
-      case res => res
-    }
   }
 
   private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier, abductionLocation: Option[Position])

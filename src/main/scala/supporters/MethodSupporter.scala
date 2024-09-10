@@ -138,7 +138,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
           // Collect all the abductions and try to generate preconditions
           val ins = method.formalArgs.map(_.localVar)
           val inVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
-          val abds = abductionUtils.getAbductionResults(suc)
+          val abds = abductionUtils.getAbductionSuccesses(suc)
           val pres = abds.map {abd => abd.toPrecondition(inVars, abd.s.oldHeaps.head._2)}
           // If we fail to generate preconditions somewhere, then we actually fail
           if(pres.contains(None)){

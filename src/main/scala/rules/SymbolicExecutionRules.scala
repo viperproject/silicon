@@ -7,18 +7,14 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
-import viper.silicon.biabduction.{BiAbductionResult, BiAbductionSolver, AbductionQuestion}
-import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
+import viper.silicon.interfaces._
 import viper.silicon.state.State
 import viper.silicon.state.terms.{False, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.{AccessPredicate, FieldAccess, FieldAccessPredicate, FullPerm, PredicateAccess, PredicateAccessPredicate}
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithTransformers
-import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import viper.silver.verifier.{AbductionQuestionTransformer, Counterexample, CounterexampleTransformer, VerificationError}
+import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
   lazy val withExp = Verifier.config.enableDebugging()
@@ -50,11 +46,9 @@ trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: Option[DebugExp], generateNewModel: Boolean): Failure = {
     if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
-    var aqTrafo: Option[AbductionQuestionTransformer] = None
     val res = ve match {
-      case ErrorWrapperWithTransformers(wrapped, ceTra, aqTra) =>
+      case ErrorWrapperWithTransformers(wrapped, ceTra, _) =>
         ceTrafo = Some(ceTra)
-        aqTrafo = Some(aqTra)
         wrapped
       case _ => ve
     }
@@ -100,17 +94,7 @@ trait SymbolicExecutionRules {
         })
     } else Seq()
 
-    val abdGoal: Option[AccessPredicate] = ve.reason match {
-      case reason: InsufficientPermission =>
-        val acc = reason.offendingNode match {
-          case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()
-          case n: PredicateAccess => PredicateAccessPredicate(n, FullPerm()())()
-        }
-        Some(acc)
-      case reason: MagicWandChunkNotFound => Some(reason.offendingNode)
-      case _ => None
-    }
-    val abductionResult = abdGoal.map{acc => BiAbductionSolver.solveAbduction(s, v, Seq(acc), aqTrafo, ve.pos)}
+
 
     if (Verifier.config.enableDebugging()){
       val assumptions = v.decider.pcs.assumptionExps
@@ -118,7 +102,7 @@ trait SymbolicExecutionRules {
         counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
         v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get))
     } else {
-      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown, abductionResult))
+      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
     }
     
     Failure(res, v.reportFurtherErrors())
