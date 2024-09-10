@@ -46,7 +46,10 @@ case class SnapshotMapCache private (
          : Option[SnapshotMapCache.Value] = {
 
     cache.get(key) match {
-      case Some((smDef, totalPermissions, `optSmDomainDefinitionCondition`)) =>
+      case Some((smDef, totalPermissions, cachedSmDomainDefinitionCondition))
+          if cachedSmDomainDefinitionCondition == optSmDomainDefinitionCondition ||  // defined under the same condition
+            (cachedSmDomainDefinitionCondition.contains(terms.True) && optSmDomainDefinitionCondition.isEmpty) // cached is always defined and we don't need a domain
+            =>
         Some((smDef, totalPermissions))
 
       case _ =>

@@ -30,7 +30,9 @@ class ConditionalPermissionRewriter {
     case (i@Implies(cond, acc: AccessPredicate), cc) =>
       // Found an implication b ==> acc(...)
       // Transformation causes issues if the permission involve a wildcard, so we avoid that case.
-      val res = if (!acc.perm.contains[WildcardPerm])
+      // Also, we cannot push perm and forperm expressions further in, since their value may be different at different
+      // places in the same assertion.
+      val res = if (!acc.perm.contains[WildcardPerm] && !Expressions.containsPermissionIntrospection(cond))
         (conditionalize(acc, cc.c &*& cond), cc) // Won't recurse into acc's children (see recurseFunc below)
       else
         (Implies(And(cc.c.exp, cond)(), acc)(i.pos, i.info, i.errT), cc)
@@ -38,10 +40,10 @@ class ConditionalPermissionRewriter {
       res
 
     case (i@Implies(cond, l: Let), cc) if !l.isPure =>
-      if (Expressions.proofObligations(l.exp)(p).isEmpty) {
+      if (Expressions.proofObligations(l.exp)(p).isEmpty && !Expressions.containsPermissionIntrospection(cond)) {
         (l, cc.updateContext(cc.c &*& cond))
       } else {
-        // bound expression might only be well-defined under context conditiond;
+        // bound expression might only be well-defined under context condition;
         // thus, don't push conditions further in.
         val res = (Implies(And(cc.c.exp, cond)(), l)(i.pos, i.info, i.errT), cc)
         alreadySeen.add(res._1)
@@ -50,7 +52,11 @@ class ConditionalPermissionRewriter {
 
     case (impl: Implies, cc) if !impl.right.isPure =>
       // Entering an implication b ==> A, where A is not pure, i.e. contains an accessibility accessibility
-      (impl.right, cc.updateContext(cc.c &*& impl.left))
+      if (Expressions.containsPermissionIntrospection(impl.left)) {
+        (Implies(And(cc.c.exp, impl.left)(), impl.right)(impl.pos, impl.info, impl.errT), cc)
+      } else {
+        (impl.right, cc.updateContext(cc.c &*& impl.left))
+      }
 
     case (acc: AccessPredicate, cc) if cc.c.optExp.nonEmpty =>
       // Found an accessibility predicate nested under some conditionals
@@ -86,7 +92,8 @@ class ConditionalPermissionRewriter {
   // Rewrite impure ternary expressions to a conjuction of implications in order to be able to use the implication
   // rewriter above.
   private val ternaryRewriter = ViperStrategy.Slim{
-    case ce@CondExp(cond, tExp, fExp) if !tExp.isPure || !fExp.isPure =>
+    case ce@CondExp(cond, tExp, fExp)
+        if (!tExp.isPure || !fExp.isPure) && !Expressions.containsPermissionIntrospection(cond) =>
       And(Implies(cond, tExp)(ce.pos, ce.info, ce.errT),
         Implies(Not(cond)(cond.pos, cond.info, cond.errT), fExp)(ce.pos, ce.info, ce.errT))(ce.pos, ce.info, ce.errT)
   }

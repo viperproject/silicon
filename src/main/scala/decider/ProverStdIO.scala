@@ -9,7 +9,6 @@ package viper.silicon.decider
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
@@ -19,7 +18,7 @@ import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter, QuantifierInstantiationsMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, QuantifierInstantiationsMessage, Reporter}
 import viper.silver.verifier.Model
 
 import scala.collection.mutable
@@ -38,6 +37,8 @@ abstract class ProverStdIO(uniqueId: String,
   protected var proverShutdownHook: Thread = _
   protected var input: BufferedReader = _
   protected var output: PrintWriter = _
+  protected var allDecls: Seq[Decl] = Seq()
+  protected var allEmits: Seq[String] = Seq()
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
@@ -77,6 +78,10 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def start(): Unit = {
+    start(Verifier.config.proverArgs)
+  }
+
+  def start(userArgsString: Option[String]): Unit = {
     // Calling `start()` multiple times in a row would leak memory and prover processes.
     if (proverShutdownHook != null) {
       throw new AssertionError("stop() should be called between any pair of start() calls")
@@ -85,7 +90,7 @@ abstract class ProverStdIO(uniqueId: String,
     lastTimeout = -1
     logfileWriter = if (!Verifier.config.outputProverLog) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     proverPath = getProverPath
-    prover = createProverInstance()
+    prover = createProverInstance(userArgsString)
     input = new BufferedReader(new InputStreamReader(prover.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(prover.getOutputStream)), true)
     // Register a shutdown hook to stop prover when the JVM gracefully terminates.
@@ -101,7 +106,7 @@ abstract class ProverStdIO(uniqueId: String,
     Runtime.getRuntime.addShutdownHook(proverShutdownHook)
   }
 
-  protected def createProverInstance(): Process = {
+  protected def createProverInstance(userArgsString: Option[String]): Process = {
     // One can pass some options. This allows to check whether they have been received.
     val msg = s"Starting prover at location '$proverPath'"
     reporter report ConfigurationConfirmation(msg)
@@ -115,7 +120,7 @@ abstract class ProverStdIO(uniqueId: String,
     if (!proverFile.canExecute)
       throw ExternalToolError("Prover", s"Cannot run prover at location '$proverFile': file is not executable.")
 
-    val userProvidedArgs: Array[String] = Verifier.config.proverArgs match {
+    val userProvidedArgs: Array[String] = userArgsString match {
       case None =>
         Array()
 
@@ -172,6 +177,9 @@ abstract class ProverStdIO(uniqueId: String,
         Runtime.getRuntime.removeShutdownHook(proverShutdownHook)
         proverShutdownHook = null
       }
+      allDecls = Seq()
+      allEmits = Seq()
+      preambleAssumptions = Seq()
     }
   }
 
@@ -191,9 +199,14 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def emit(content: String): Unit = {
+    if (debugMode) {
+      allEmits :+= content
+    }
     writeLine(content)
     readSuccess()
   }
+
+  def getAllEmits() : Seq[String] = allEmits
 
   override def setOption(name: String, value: String): String = {
     writeLine(s"(get-option :${name})")
@@ -395,6 +408,8 @@ abstract class ProverStdIO(uniqueId: String,
 
   def declare(decl: Decl): Unit = {
     val str = termConverter.convert(decl)
+    if (debugMode)
+      allDecls = allDecls :+ decl
     emit(str)
   }
 
@@ -501,4 +516,6 @@ abstract class ProverStdIO(uniqueId: String,
     lastReasonUnknown = null
     lastModel = null
   }
+
+  def getAllDecls(): Seq[Decl] = allDecls
 }

@@ -25,7 +25,8 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def fappToSnap: Map[ast.FuncApp, Term]
   def freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition]
   def freshFieldInvs: InsertionOrderedSet[InverseFunctions]
-  def freshArps: InsertionOrderedSet[(Var, Term)]
+  def freshConstrainedVars: InsertionOrderedSet[(Var, Term)]
+  def freshConstraints: InsertionOrderedSet[Term]
   def freshSnapshots: InsertionOrderedSet[Function]
   def freshPathSymbols: InsertionOrderedSet[Function]
   def freshMacros: InsertionOrderedSet[MacroDecl]
@@ -33,7 +34,8 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder
   def recordFieldInv(inv: InverseFunctions): FunctionRecorder
-  def recordArp(arp: Var, constraint: Term): FunctionRecorder
+  def recordConstrainedVar(v: Var, constraint: Term): FunctionRecorder
+  def recordConstraint(constraint: Term): FunctionRecorder
   def recordFreshSnapshot(snap: Function): FunctionRecorder
   def recordPathSymbol(symbol: Function): FunctionRecorder
   def recordFreshMacro(decl: MacroDecl): FunctionRecorder
@@ -46,7 +48,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                                   private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet(),
                                   freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet(),
-                                  freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
+                                  freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
+                                  freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet(),
                                   freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet(),
                                   freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet(),
                                   freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet(),
@@ -186,8 +189,12 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     if (depth <= 2) copy(freshFieldInvs = freshFieldInvs + inv)
     else this
 
-  def recordArp(arp: Var, constraint: Term): ActualFunctionRecorder =
-    if (depth <= 2) copy(freshArps = freshArps + ((arp, constraint)))
+  def recordConstrainedVar(arp: Var, constraint: Term): ActualFunctionRecorder =
+    if (depth <= 2) copy(freshConstrainedVars = freshConstrainedVars + ((arp, constraint)))
+    else this
+
+  def recordConstraint(constraint: Term): ActualFunctionRecorder =
+    if (depth <= 2) copy(freshConstraints = freshConstraints + constraint)
     else this
 
   def recordFreshSnapshot(snap: Function): ActualFunctionRecorder =
@@ -230,7 +237,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 
     val fvfs = freshFvfsAndDomains ++ other.freshFvfsAndDomains
     val fieldInvs = freshFieldInvs ++ other.freshFieldInvs
-    val arps = freshArps ++ other.freshArps
+    val arps = freshConstrainedVars ++ other.freshConstrainedVars
+    val constraints = freshConstraints ++ other.freshConstraints
     val snaps = freshSnapshots ++ other.freshSnapshots
     val symbols = freshPathSymbols ++ other.freshPathSymbols
     val macros = freshMacros ++ other.freshMacros
@@ -239,7 +247,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
          fappToSnaps = fts,
          freshFvfsAndDomains = fvfs,
          freshFieldInvs = fieldInvs,
-         freshArps = arps,
+         freshConstrainedVars = arps,
+         freshConstraints = constraints,
          freshSnapshots = snaps,
          freshPathSymbols = symbols,
          freshMacros = macros)
@@ -268,7 +277,8 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   val locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   val freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   val freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
-  val freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  val freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  val freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   val freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   val freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   val freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
@@ -284,7 +294,8 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): NoopFunctionRecorder.type = this
   def recordFieldInv(inv: InverseFunctions): NoopFunctionRecorder.type = this
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): NoopFunctionRecorder.type = this
-  def recordArp(arp: Var, constraint: Term): NoopFunctionRecorder.type = this
+  def recordConstrainedVar(arp: Var, constraint: Term): NoopFunctionRecorder.type = this
+  def recordConstraint(constraint: Term): NoopFunctionRecorder.type = this
   def recordFreshSnapshot(snap: Function): NoopFunctionRecorder.type = this
   def recordPathSymbol(symbol: Function): NoopFunctionRecorder.type = this
   def recordFreshMacro(decl: MacroDecl): NoopFunctionRecorder.type = this

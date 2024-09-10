@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+function ok(): Bool
+
+
+function val(): Ref
+    requires ok()
+
+method test()
+{
+    // Test that the condition is not pushed inside the let expression to get e.g.
+    // inhale let x == (val()) in acc(x.f, ok() ? write : none)
+    // which would not be well-defined.
+    inhale ok() ==> let x == (val()) in acc(x.f)
+}

@@ -15,13 +15,13 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.reporter.{BranchFailureMessage}
+import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
-             conditionExp: Option[ast.Exp],
+             conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
@@ -32,7 +32,7 @@ trait BranchingRules extends SymbolicExecutionRules {
 object brancher extends BranchingRules {
   def branch(s: State,
              condition: Term,
-             conditionExp: Option[ast.Exp],
+             conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
@@ -40,7 +40,8 @@ object brancher extends BranchingRules {
             : VerificationResult = {
 
     val negatedCondition = Not(condition)
-    val negatedConditionExp = conditionExp.fold[Option[ast.Exp]](None)(c => Some(ast.Not(c)(pos = conditionExp.get.pos, info = conditionExp.get.info, ast.NoTrafos)))
+    val negatedConditionExp = ast.Not(conditionExp._1)(pos = conditionExp._1.pos, info = conditionExp._1.info, ast.NoTrafos)
+    val negatedConditionExpNew = conditionExp._2.map(ce => ast.Not(ce)(pos = ce.pos, info = ce.info, ast.NoTrafos))
 
 
     /* Skip path feasibility check if one of the following holds:
@@ -50,7 +51,7 @@ object brancher extends BranchingRules {
     val skipPathFeasibilityCheck = (
          fromShortCircuitingAnd
       || (   s.quantifiedVariables.nonEmpty
-          && s.quantifiedVariables.exists(condition.freeVariables.contains))
+          && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
     /* True if the then-branch is to be explored */
@@ -82,7 +83,7 @@ object brancher extends BranchingRules {
 
     var elseBranchVerifier: String = null
 
-    val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), conditionExp)
+    val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), Some(conditionExp._1))
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
     var proverArgsOfCurrentDecider: viper.silicon.Map[String, String] = null
@@ -141,12 +142,12 @@ object brancher extends BranchingRules {
 
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
+            v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
 
             if (v.uniqueId != v0.uniqueId)
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
 
-            val result = fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            val result = fElse(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
             if (wasElseExecutedOnDifferentVerifier) {
               v1.decider.resetProverOptions()
               v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
@@ -186,7 +187,7 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
-            fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })
         } else {
           Unreachable()
@@ -219,7 +220,7 @@ object brancher extends BranchingRules {
             v.decider.resetProverOptions()
             v.decider.setProverOptions(proverArgsOfCurrentDecider)
           }
-        }else{
+        } else {
           rs = elseBranchFuture.get()
         }
       } catch {
@@ -244,7 +245,8 @@ object brancher extends BranchingRules {
       v.decider.prover.comment(s"Bulk-declaring functions")
       v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider, true)
       v.decider.prover.comment(s"Bulk-declaring macros")
-      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider, true)
+      // Declare macros without duplicates; we keep only the last occurrence of every declaration to avoid errors.
+      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider.reverse.distinct.reverse, true)
     }
     res
   }

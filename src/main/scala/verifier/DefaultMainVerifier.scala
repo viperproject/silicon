@@ -6,7 +6,8 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.Config.ExhaleMode
+import viper.silicon.debugger.SiliconDebugger
+import viper.silicon.Config.{ExhaleMode, JoinMode}
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
@@ -30,10 +31,11 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
+import viper.silver.frontend.FrontendStateCache
+import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
@@ -43,24 +45,23 @@ import viper.silver.verifier.VerifierWarning
 
 trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
-
   def verificationPoolManager: VerificationPoolManager
-
   def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
 }
 
 class DefaultMainVerifier(config: Config,
                           override val reporter: Reporter,
                           override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
-  extends BaseVerifier(config, "00")
-    with MainVerifier
-    with DefaultFunctionVerificationUnitProvider
-    with DefaultPredicateVerificationUnitProvider {
+    extends BaseVerifier(config, "00")
+       with MainVerifier
+       with DefaultFunctionVerificationUnitProvider
+       with DefaultPredicateVerificationUnitProvider {
 
   Verifier.config = config
 
-  private val uniqueIdCounter = new Counter(1)
+  override val debugMode = config.enableDebugging()
 
+  private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
 
   override def openSymbExLogger(member: Member): Unit = {
@@ -77,9 +78,9 @@ class DefaultMainVerifier(config: Config,
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
+  protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
-
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
 
   private val statefulSubcomponents = List[StatefulComponent](
@@ -87,6 +88,7 @@ class DefaultMainVerifier(config: Config,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
@@ -279,13 +281,12 @@ class DefaultMainVerifier(config: Config,
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
-          reporter report VerificationResultMessage(s"silicon" /*, cfg*/ , elapsed, condenseToViperResult(results))
+          reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
           logger debug s"Silicon finished verification of method `CFG` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
 
           results
         })
       })
-
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
@@ -297,19 +298,26 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
-    (functionVerificationResults
-      ++ predicateVerificationResults
-      ++ methodVerificationResults)
+    val verificationResults = (   functionVerificationResults
+     ++ predicateVerificationResults
+     ++ methodVerificationResults)
+
+    if (Verifier.config.enableDebugging()){
+      val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
+      debugger.startDebugger()
+    }
+
+    verificationResults
   }
 
-  private def createInitialState(member: ast.Member,
+    private def createInitialState(member: ast.Member,
                                  program: ast.Program,
                                  functionData: Map[ast.Function, FunctionData],
                                  predicateData: Map[ast.Predicate, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
-    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map {
+    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
       case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
       case r => r
     }
@@ -329,10 +337,30 @@ class DefaultMainVerifier(config: Config,
       case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
     val moreJoinsAnnotated = member.info.getUniqueInfo[ast.AnnotationInfo] match {
-      case Some(ai) => ai.values.contains("moreJoins")
-      case _ => false
+      case Some(ai) if ai.values.contains("moreJoins") =>
+        ai.values("moreJoins") match {
+          case Seq() | Seq("all") => Some(JoinMode.All)
+          case Seq("off") => Some(JoinMode.Off)
+          case Seq("impure") => Some(JoinMode.Impure)
+          case Seq(vl) =>
+            try {
+              Some(JoinMode(vl.toInt))
+            } catch {
+              case _: NumberFormatException =>
+                reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $vl. Annotation will be ignored.")
+                None
+            }
+          case v =>
+            reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $v. Annotation will be ignored.")
+            None
+        }
+      case _ => None
     }
-    val moreJoins = (Verifier.config.moreJoins() || moreJoinsAnnotated) && member.isInstanceOf[ast.Method]
+    val moreJoins = if (member.isInstanceOf[ast.Method]) {
+      moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(JoinMode.Off))
+    } else {
+      JoinMode.Off
+    }
 
     val methodPermCache = mutable.HashMap[String, InsertionOrderedSet[ast.Location]]()
     val permResources: InsertionOrderedSet[ast.Location] = if (Verifier.config.unsafeWildcardOptimization()) member match {
@@ -366,18 +394,18 @@ class DefaultMainVerifier(config: Config,
     } else InsertionOrderedSet.empty
 
     State(program = program,
-      functionData = functionData,
-      predicateData = predicateData,
-      qpFields = quantifiedFields,
-      qpPredicates = quantifiedPredicates,
-      qpMagicWands = quantifiedMagicWands,
+          functionData = functionData,
+          predicateData = predicateData,
+          qpFields = quantifiedFields,
+          qpPredicates = quantifiedPredicates,
+          qpMagicWands = quantifiedMagicWands,
           permLocations = permResources,
-      predicateSnapMap = predSnapGenerator.snapMap,
-      predicateFormalVarMap = predSnapGenerator.formalVarMap,
-      currentMember = Some(member),
-      heapDependentTriggers = resourceTriggers,
-      moreCompleteExhale = mce,
-      moreJoins = moreJoins)
+          predicateSnapMap = predSnapGenerator.snapMap,
+          predicateFormalVarMap = predSnapGenerator.formalVarMap,
+          currentMember = Some(member),
+          heapDependentTriggers = resourceTriggers,
+          moreCompleteExhale = mce,
+          moreJoins = moreJoins)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -403,8 +431,8 @@ class DefaultMainVerifier(config: Config,
   }
 
   private def excludeMethod(method: ast.Method) = (
-    !method.name.matches(config.includeMethods())
-      || method.name.matches(config.excludeMethods()))
+       !method.name.matches(config.includeMethods())
+    || method.name.matches(config.excludeMethods()))
 
   /* Prover preamble: Static preamble */
 
@@ -415,7 +443,7 @@ class DefaultMainVerifier(config: Config,
     if (config.proverRandomizeSeeds) {
       sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
       val options = decider.prover.randomizeSeedsOptions
-        .map(key => s"(set-option :$key ${Random.nextInt(10000)})")
+        .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
       preambleReader.emitPreamble(options, sink, true)
     }
@@ -445,6 +473,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -457,6 +486,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -469,6 +499,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -486,6 +517,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -498,6 +530,7 @@ class DefaultMainVerifier(config: Config,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -521,7 +554,7 @@ class DefaultMainVerifier(config: Config,
       emitSortWrappers(component.sortsAfterAnalysis, sink))
 
     val backendTypes = new mutable.LinkedHashSet[BackendType]
-    program.visit {
+    program.visit{
       case t: BackendType => backendTypes.add(t)
     }
     emitSortWrappers(backendTypes map symbolConverter.toSort, sink)
@@ -569,13 +602,13 @@ class DefaultMainVerifier(config: Config,
 
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$T$" -> s"$$T$i$$",
-              "$S$" -> sanitizedSortString,
-              s"$$T$i$$" -> sortString),
+                "$S$" -> sanitizedSortString,
+                s"$$T$i$$" -> sortString),
             sink)
         } else {
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$S$" -> sanitizedSortString,
-              "$T$" -> sortString),
+                "$T$" -> sortString),
             sink)
         }
 
