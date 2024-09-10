@@ -172,9 +172,7 @@ object consumer extends ConsumptionRules {
         v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
-
-
-
+    
     res match {
       case f@Failure(ve, _) if abductionLocation.isDefined =>
         ve.failureContexts.head.asInstanceOf[SiliconFailureContext].abductionResult match {
