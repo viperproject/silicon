@@ -27,8 +27,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
            ePerm: Option[ast.Exp],
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
-           v: Verifier,
-           abductionLocation: Option[ast.Position])
+           v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult
 
@@ -58,8 +57,7 @@ object predicateSupporter extends PredicateSupportRules {
            ePerm: Option[ast.Exp],
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
-           v: Verifier,
-           abductionLocation: Option[ast.Position] = None)
+           v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
@@ -72,7 +70,7 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, pve, v, abductionLocation)((s1a, snap, v1) => {
+    consume(s1, body, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.convert(terms.sorts.Snap) +: tArgs)

@@ -3,7 +3,7 @@ package viper.silicon.biabduction
 import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.chunkSupporter.findChunk
-import viper.silicon.state.terms.{BuiltinEquals, Term}
+import viper.silicon.state.terms.{BuiltinEquals, Term, Var}
 import viper.silicon.state._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -20,9 +20,10 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
 
   private def resolveMatches(): Map[Term, Exp] = {
 
-
-    val allTerms: Seq[Term] = (s.g.values.values.map{case (t1, _) => t1} ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten).toSeq.distinct //.collect { case t: Var => t }
-
+    val allTerms: Seq[Term] = (s.g.values.values.map{case (t1, _) => t1}
+      ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten
+      ++ targetVars.values.map(_._1)
+      ++ v.decider.pcs.branchConditions.collect{ case t => t.subterms.collect{case tVar: Var => tVar}}.flatten).toSeq.distinct
 
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
     //val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
@@ -119,8 +120,10 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
               val rvcExp = transformExp(target)
               FieldAccess(rvcExp.get, field)()
           }
-        case lv: LocalVar =>
-          transformTerm(s.g(lv)).get
+        case lv: LocalVar => {
+          val term: Term = s.g.values.getOrElse(lv, targetVars(lv))._1
+          transformTerm(term).get 
+        }
       }
       Some(res)
     } catch {

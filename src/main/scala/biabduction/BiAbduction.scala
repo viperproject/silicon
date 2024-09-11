@@ -1,7 +1,7 @@
 package viper.silicon.biabduction
 
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.interfaces.{Failure, NonFatalResult, Success, VerificationResult}
+import viper.silicon.interfaces.{Failure, FatalResult, NonFatalResult, Success, VerificationResult}
 import viper.silicon.rules.{executionFlowController, executor, producer}
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
@@ -51,8 +51,8 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
     } else {
       // TODO There is a common case where we add x != null because we know acc(x.next). We want to remove this bc
       // If performing the abduction somehow introduces branches, then this could cause problems here.
-      val bcs = v.decider.pcs.branchConditions.map { term => varTrans.transformTerm(term) }
-        .collect {
+      val bcsTerms = v.decider.pcs.branchConditions.map { term => varTrans.transformTerm(term) }
+      val bcs = bcsTerms.collect {
           case Some(e) if e != TrueLit()() && !ignoredBcs.contains(e) && !ignoredBcs.contains(varTrans.transformExp(e).get) => varTrans.transformExp(e).get
         }.toSet
 
@@ -115,9 +115,9 @@ trait BiAbductionRule[S] {
 
 object BiAbductionSolver {
 
-  def solveAbduction(s: State, v: Verifier, ve: VerificationError, f: Failure)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  def solveAbduction(s: State, v: Verifier, pve: PartialVerificationError, f: Failure)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
 
-    val abdGoal: Option[AccessPredicate] = ve.reason match {
+    val abdGoal: Option[AccessPredicate] = f.message.reason match {
       case reason: InsufficientPermission =>
         val acc = reason.offendingNode match {
           case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()
@@ -127,34 +127,34 @@ object BiAbductionSolver {
       case reason: MagicWandChunkNotFound => Some(reason.offendingNode)
       case _ => None
     }
-    val tra = ve match {
+
+    // The failure has possible already been unwrapped, so we use the pve.
+    val tra = pve dueTo DummyReason match {
       case ErrorWrapperWithTransformers(_, _, aqTra) => Some(aqTra)
       case _ => None
     }
 
-    // TODO nklose I want to do the abduction locally and then continue with the result
-    executionFlowController.locally(s, v)((s1, v1) => {
-
+    executionFlowController.locallyWithResult[AbductionQuestion](s, v) { (s1, v1, QS) =>
       val qPre = AbductionQuestion(s1, v1, Seq(abdGoal.get))
-
       val q = tra match {
         case Some(trafo) => trafo.f(qPre).asInstanceOf[AbductionQuestion]
         case _ => qPre
       }
-
-      AbductionApplier.applyRules(q){ q1 =>
-        if (q1.goal.isEmpty) {
-          producer.produces(s, freshSnap, q1.foundState, _ => Internal(), v) {(s1, v1) =>
-            executor.execs (s1, q1.foundStmts.reverse, v1) {(s2, v2) =>
-              Q(s2, v2) && Success(Some(AbductionSuccess(q.s, q.v, q.v.decider.pcs.duplicate(), q1.foundState, q1.foundStmts, loc = ve.pos)))
-            }
+      AbductionApplier.applyRules(q)(QS)
+    } { q1 =>
+      if (q1.goal.isEmpty) {
+        producer.produces(s, freshSnap, q1.foundState, _ => Internal(), v) { (s2, v2) =>
+          executor.execs(s2, q1.foundStmts.reverse, v2) { (s3, v3) =>
+            Success(Some(AbductionSuccess(s, v, v.decider.pcs.duplicate(), q1.foundState, q1.foundStmts, loc = f.message.pos))) && Q(s3, v3)
           }
-        } else {
-          f
         }
+      } else {
+        f
       }
-    })
+    }
   }
+
+
 
   def solveAbstraction(s: State, v: Verifier, exps: Seq[Exp])(Q: Seq[Exp] => VerificationResult): VerificationResult = {
     executionFlowController.locallyWithResult[Seq[Exp]](s, v)((s1, v1, QS) => {

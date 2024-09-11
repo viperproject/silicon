@@ -219,7 +219,7 @@ object AbductionFold extends AbductionRule {
           case Some((field, chunk)) =>
             val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
             executionFlowController.tryOrElse0(q.s, q.v) {
-              (sa, va, T) => predicateSupporter.fold(sa, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pve, va, Some(a.pos))(T)
+              (sa, va, T) => predicateSupporter.fold(sa, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pve, va)(T)
             } {
               (s1: State, v1: Verifier) =>
                 val fold = Fold(a)()

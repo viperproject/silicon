@@ -177,15 +177,22 @@ object executionFlowController extends ExecutionFlowRules {
   def tryOrElse0(s: State, v: Verifier)
                 (action: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult)
                 (Q: (State, Verifier) => VerificationResult)
-                (F: FatalResult => VerificationResult): VerificationResult ={
+                (F: Failure => VerificationResult): VerificationResult ={
     tryOrElseWithResult[scala.Null](s, v)(((s1, v1, QS) => action(s1, v1, (s2, v2) => QS(s2, null, v2))))((s2, _, v2) => Q(s2, v2))(F)
   }
-  
+
+  def tryOrElse2[R1, R2](s: State, v: Verifier)
+                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResult) => VerificationResult)
+                        (Q: (State, R1, R2, Verifier) => VerificationResult)
+                        (F: Failure => VerificationResult) : VerificationResult = {
+    tryOrElseWithResult[(R1, R2)](s, v)((s1, v1, QS) => action(s1, v1, (s2, r21, r22, v2) => QS(s2, (r21, r22), v2)))((s2, r, v2) => Q(s2, r._1, r._2, v2))(F)
+  }
+
+
   private def tryOrElseWithResult[R](s: State, v: Verifier)
                   (action: (State, Verifier, (State, R, Verifier) => VerificationResult) => VerificationResult)
                   (Q: (State, R, Verifier) => VerificationResult)
-                  (F: FatalResult => VerificationResult)
-  : VerificationResult = {
+                  (F: Failure => VerificationResult) : VerificationResult = {
 
     // This is not as efficient as it maybe could be, we call action twice.
     // To speed it up we would have to save the s2, v2, r that we currently ignore in the fake
@@ -197,7 +204,8 @@ object executionFlowController extends ExecutionFlowRules {
       case _: NonFatalResult => 
         val res = action(s, v, Q)
         res
-      case f: FatalResult => F(f)
+      case f: Failure =>
+        F(f)
     }
   }
 }

@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silicon.biabduction.{AbductionSuccess, BiAbductionSolver}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
@@ -15,14 +14,10 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.utils.ast.buildMinExp
-import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.{AccessPredicate, FieldAccess, FieldAccessPredicate, FullPerm, PredicateAccess, PredicateAccessPredicate}
 import viper.silver.parser.PUnknown
-import viper.silver.verifier.{AbductionQuestionTransformer, VerificationError}
-import viper.silver.verifier.errors.ErrorWrapperWithTransformers
-import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
+import viper.silver.verifier.VerificationError
 
 import scala.reflect.ClassTag
 
@@ -145,10 +140,7 @@ object chunkSupporter extends ChunkSupportRules {
             case _ if v1.decider.checkSmoke(true) =>
               Success() // TODO: Mark branch as dead?
             case _ =>
-              val f = createFailure(ve, v1, s1, "consuming chunk", true)
-              BiAbductionSolver.solveAbduction(s, v, ve, f)((s2, v2) =>
-                consume2(s2, h, resource, args, argsExp, perms, permsExp, ve, v2)(Q)
-              )
+              createFailure(ve, v1, s1, "consuming chunk", true)
           }
         }
       )(Q)

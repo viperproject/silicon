@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.biabduction.AbductionQuestion
+import viper.silicon.biabduction.{AbductionQuestion, BiAbductionSolver}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
@@ -23,7 +23,7 @@ import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, TrueLit, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, Exp, LocalVarWithVersion, TrueLit, WeightedQuantifier}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
 import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, PreconditionInAppFalse}
@@ -91,11 +91,21 @@ object evaluator extends EvaluationRules {
   def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
           (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
           : VerificationResult = {
-
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
-    eval3(s, e, pve, v)((s1, t, eNew, v1) => {
-      v1.symbExLog.closeScope(sepIdentifier)
-      Q(s1, t, eNew, v1)})
+    executionFlowController.tryOrElse2[Term, Option[Exp]](s, v) { (s, v, QS) =>
+      eval3(s, e, pve, v)(QS)
+    }{
+      (s1, t, eNew, v1) => {
+        v1.symbExLog.closeScope(sepIdentifier)
+        Q(s1, t, eNew, v1)}
+    }{
+      f =>
+        BiAbductionSolver.solveAbduction(s, v, pve, f)((s2, v2) => {
+          v2.symbExLog.closeScope(sepIdentifier)
+          eval(s2, e, pve, v2)(Q)
+        }
+        )
+    }
   }
 
   def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
