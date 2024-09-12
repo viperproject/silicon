@@ -14,7 +14,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithTransformers
-import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
+import viper.silver.verifier.{AbductionQuestionTransformer, Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
   lazy val withExp = Verifier.config.enableDebugging()
@@ -46,9 +46,11 @@ trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: Option[DebugExp], generateNewModel: Boolean): Failure = {
     if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
+    var abTrafo: Option[AbductionQuestionTransformer] = None
     val res = ve match {
-      case ErrorWrapperWithTransformers(wrapped, ceTra, _) =>
+      case ErrorWrapperWithTransformers(wrapped, ceTra, abTra) =>
         ceTrafo = Some(ceTra)
+        abTrafo = Some(abTra)
         wrapped
       case _ => ve
     }
@@ -102,7 +104,7 @@ trait SymbolicExecutionRules {
         counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
         v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get))
     } else {
-      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
+      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown), SiliconAbductionFailureContext(abTrafo))
     }
     
     Failure(res, v.reportFurtherErrors())

@@ -207,15 +207,9 @@ object AbductionFold extends AbductionRule {
         val g1 = q.goal.filterNot(_ == a)
         val pred = a.loc.loc(q.s.program)
         val fields = pred.body.get.transform { case lc: AbstractLocalVar if pred.formalArgs.head.localVar == lc => a.loc.args.head }.collect { case e: FieldAccessPredicate => e.loc }.toSeq
-
-        // If we do not fold this predicate, we recurse to try the others by calling this
-        val R = () => {
-          apply(q.copy(goal = g1)) {
-            case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
-            case None => Q(None)
-          }
-        }
         findFirstFieldChunk(fields, q) {
+          // If we find a chunk, then we definitely have to fold. So we attempt to and abduce anything else that might be missing.
+          // TODO nklose if the predicate is conditional in a weird way, then this might be wrong?
           case Some((field, chunk)) =>
             val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
             executionFlowController.tryOrElse0(q.s, q.v) {
@@ -226,8 +220,15 @@ object AbductionFold extends AbductionRule {
                 val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, sorts.Ref))
                 val q2 = q.copy(s = s1, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
                 Q(Some(q2))
-            } { _: FatalResult => R() }
-          case None => R()
+            } { f =>
+              BiAbductionSolver.solveAbduction(q.s, q.v, f)((s3, v3) => {apply(q.copy(s = s3, v = v3))(Q)})}
+          case None => {
+            // If we do not find a chunk, we recurse to try the others by calling this
+            apply(q.copy(goal = g1)) {
+              case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
+              case None => Q(None)
+            }
+          }
         }
     }
   }
@@ -316,16 +317,16 @@ object AbductionApply extends AbductionRule {
         // If the args of the magic wand chunk match the evaluated subexpressions, then the right hand of the magic wand
         // chunk is our goal, so the rule can be applieed
         evals(q.s, subexps, _ => pve, q.v)((s1, args, _, v1) => {
-          val matchingWand = q.s.h.values.collect {
-            case m: MagicWandChunk if m.id.ghostFreeWand.structure(q.s.program).right == goalStructure.right && m.args.takeRight(args.length) == args =>
+          val matchingWand = s1.h.values.collect {
+            case m: MagicWandChunk if m.id.ghostFreeWand.structure(s1.program).right == goalStructure.right && m.args.takeRight(args.length) == args =>
               // If we find a matching wand, we have to find an expression representing the left hand side of the wand
               val lhsTerms = m.args.dropRight(args.length)
-              val varTransformer = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
+              val varTransformer = VarTransformer(s1, v1, s1.g.values, s1.h)
               val lhsArgs = lhsTerms.map(t => varTransformer.transformTerm(t))
               if (lhsArgs.contains(None)) {
                 None
               } else {
-                val formalLhsArgs = m.id.ghostFreeWand.subexpressionsToEvaluate(q.s.program).dropRight(args.length)
+                val formalLhsArgs = m.id.ghostFreeWand.subexpressionsToEvaluate(s1.program).dropRight(args.length)
                 val lhs = m.id.ghostFreeWand.left.transform {
                   case n if formalLhsArgs.contains(n) => lhsArgs(formalLhsArgs.indexOf(n)).get // I am assuming that the subexpressions are unique, which should hold
                 }
@@ -335,8 +336,8 @@ object AbductionApply extends AbductionRule {
           matchingWand match {
             case Some(wand) =>
               val g1 = q.goal.filterNot(_ == wand.right) :+ wand.left
-              consumer.consume(q.s, wand, pve, q.v)((s1, _, v1) => {
-                Q(Some(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ Apply(wand)())))
+              consumer.consume(s1, wand, pve, v1)((s2, _, v2) => {
+                Q(Some(q.copy(s = s2, v = v2, goal = g1, foundStmts = q.foundStmts :+ Apply(wand)())))
               })
             case None =>
               val g1 = q.goal.filterNot(_ == g)

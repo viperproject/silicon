@@ -180,6 +180,13 @@ object executionFlowController extends ExecutionFlowRules {
                 (F: Failure => VerificationResult): VerificationResult ={
     tryOrElseWithResult[scala.Null](s, v)(((s1, v1, QS) => action(s1, v1, (s2, v2) => QS(s2, null, v2))))((s2, _, v2) => Q(s2, v2))(F)
   }
+  
+  def tryOrElse1[R1](s: State, v: Verifier)
+                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResult) => VerificationResult)
+                    (Q: (State, R1, Verifier) => VerificationResult)
+                    (F: Failure => VerificationResult) : VerificationResult = {
+    tryOrElseWithResult[R1](s, v)((s1, v1, QS) => action(s1, v1, (s2, r, v2) => QS(s2, r, v2)))(Q)(F)
+  }
 
   def tryOrElse2[R1, R2](s: State, v: Verifier)
                         (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResult) => VerificationResult)

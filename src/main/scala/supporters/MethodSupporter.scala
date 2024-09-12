@@ -121,17 +121,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               && {
               executionFlowController.locally(s2a, v2)((s3, v3) => {
                 exec(s3, body, v3) { (s4, v4) => {
-                  // Attempt to consume postconditions
-                  val postPos = VirtualPosition("At the end of method " + method.name)
-                  // TODO nklose this fails to account for bcs in statements
-                  consumes(s4, posts, postViolated, v4) ((s5: State, _: Term, v5: Verifier) => {
-                    // Generate new postconditions from the state left over
-                    // TODO nklose This fails to generate statements if we do abstraction
-                    val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
-                    val vars = s5.g.values.collect { case (v5, t) if formals.contains(v5) => (v5, t) }
-                    val newPosts = BiAbductionSolver.solveFraming(s5, v5, vars, method.pos)
-                    Success(Some(newPosts))
-                  })}}})})})})
+                  handlePostConditions(s4, method, posts, v3)
+                }}})})})})
 
       val abdResult: VerificationResult = result match {
         case suc: NonFatalResult =>
@@ -157,7 +148,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
             if(invs.nonEmpty){
               println("Generated invariants::\n" + invs.mkString("\n"))
             }
-            //
             val posts = abductionUtils.getFramingSuccesses(suc).flatMap(_.posts).distinct
             if(posts.nonEmpty){
               println("Generated postconditions: " + posts.mkString(" && "))
@@ -181,5 +171,27 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
     }
 
     def stop(): Unit = {}
+
+    private def handlePostConditions(s: State, method: ast.Method, posts: Seq[ast.Exp], v: Verifier): VerificationResult = {
+      val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
+      executionFlowController.tryOrElse1[Term](s, v) { (s, v, QS) =>
+        consumes(s, posts, postViolated, v)(QS)
+      } {
+        (s1: State, _: Term, v1: Verifier) => {
+          // TODO nklose This fails to generate statements if we do abstraction
+          val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
+          val vars = s1.g.values.collect { case (v2, t) if formals.contains(v2) => (v2, t) }
+          val newPosts = BiAbductionSolver.solveFraming(s1, v1, vars, method.pos)
+          val newRes = if(newPosts.posts.isEmpty) Success() else handlePostConditions(s1, method, newPosts.posts, v1)
+          newRes && Success(Some(newPosts))
+        }
+      } {
+        f =>
+          BiAbductionSolver.solveAbduction(s, v, f)((s3, v3) => {
+            handlePostConditions(s3, method, posts, v3)
+          }
+          )
+      }
+    }
   }
 }

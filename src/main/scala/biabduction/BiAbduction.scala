@@ -1,7 +1,7 @@
 package viper.silicon.biabduction
 
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.interfaces.{Failure, FatalResult, NonFatalResult, Success, VerificationResult}
+import viper.silicon.interfaces._
 import viper.silicon.rules.{executionFlowController, executor, producer}
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
@@ -9,7 +9,7 @@ import viper.silicon.utils.ast.BigAnd
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
-import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, Internal}
+import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{DummyReason, PartialVerificationError, VerificationError}
 
@@ -115,7 +115,7 @@ trait BiAbductionRule[S] {
 
 object BiAbductionSolver {
 
-  def solveAbduction(s: State, v: Verifier, pve: PartialVerificationError, f: Failure)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  def solveAbduction(s: State, v: Verifier, f: Failure)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
 
     val abdGoal: Option[AccessPredicate] = f.message.reason match {
       case reason: InsufficientPermission =>
@@ -128,11 +128,7 @@ object BiAbductionSolver {
       case _ => None
     }
 
-    // The failure has possible already been unwrapped, so we use the pve.
-    val tra = pve dueTo DummyReason match {
-      case ErrorWrapperWithTransformers(_, _, aqTra) => Some(aqTra)
-      case _ => None
-    }
+    val tra = f.message.failureContexts.collectFirst { case SiliconAbductionFailureContext(trafo) if trafo.isDefined => trafo.get }
 
     executionFlowController.locallyWithResult[AbductionQuestion](s, v) { (s1, v1, QS) =>
       val qPre = AbductionQuestion(s1, v1, Seq(abdGoal.get))

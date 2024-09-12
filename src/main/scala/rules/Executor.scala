@@ -295,8 +295,7 @@ object executor extends ExecutionRules {
 
                 val con = executionFlowController.locally(s, v) ((s0, v0) => {
                   v0.decider.prover.comment("Loop head block: Establish invariant")
-                  val prePos = VirtualPosition("Before loop " + block.toString)
-                  consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
+                  checkInvariants(s0, v0, invs)((sLeftover, v1) => {
                     v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                     phase1data.foldLeft(Success(): VerificationResult) {
                       case (result, _) if !result.continueVerification => result
@@ -322,9 +321,8 @@ object executor extends ExecutionRules {
                                       // relying on the reentry of the loop head, as this will not have the additional invariants
                                       executionFlowController.locally(s4, v3)((s5, v5) => {
                                         follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) => {
-                                          val endPos = VirtualPosition("End of loop " + block.toString)
                                           // TODO nklose check that no new state is abduced, this would be incorrect
-                                          consumes(s6, foundInvs, e => LoopInvariantNotPreserved(e), v6)((_, _, _) => Success())
+                                          checkInvariants(s6, v6, foundInvs)((_, _) => Success())
                                         }
                                         )
                                       }) combine
@@ -352,12 +350,16 @@ object executor extends ExecutionRules {
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             // TODO nklose check that no new state is abduced, this would be incorrect
-            val pos = VirtualPosition("End of loop " + block.toString)
-            consumes(s, existingInvs, e => LoopInvariantNotPreserved(e), v)((s1, _, v1) => {
-              Q(s1, v1)
-            })
+            checkInvariants(s, v, existingInvs)(Q)
         }
     }
+
+  }
+
+  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp])(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+    executionFlowController.tryOrElse1[Term](s, v){(s1, v1, QS) => consumes(s1, invs, LoopInvariantNotPreserved, v1)(QS) }
+    {(s1, _, v1) => Q(s1, v1)}
+    {f => BiAbductionSolver.solveAbduction(s, v, f)((s3, v3) => checkInvariants(s3, v3, invs)(Q))}
   }
 
   def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)
@@ -374,9 +376,18 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    exec2(s, stmt, v) {(s1, v1) =>
-      v1.symbExLog.closeScope(sepIdentifier)
-      Q(s1, v1)
+    executionFlowController.tryOrElse0(s, v) { (s1, v1, QS) =>
+      exec2(s1, stmt, v1)(QS)
+    } { (s2, v2) =>
+      v2.symbExLog.closeScope(sepIdentifier)
+      Q(s2, v2)
+    } {
+      f =>
+        BiAbductionSolver.solveAbduction(s, v, f)((s3, v3) => {
+          v3.symbExLog.closeScope(sepIdentifier)
+          exec(s3, stmt, v3)(Q)
+        }
+        )
     }
   }
 
@@ -488,7 +499,7 @@ object executor extends ExecutionRules {
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            executionFlowController.tryOrElse2[Heap, Term](s2, v2) { (s2a, v2a, QS) => chunkSupporter.consume(s2a, s2a.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), ve, v2a, description)(QS) } { (s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), ve, v2, description)((s3, h3, _, v3) => {
               val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)))
@@ -497,13 +508,7 @@ object executor extends ExecutionRules {
                 val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (v4.getDebugOldLabel(s5) -> magicWandSupporter.getEvalHeap(s5))) else s5
                 Q(s6, v4)
               })
-            }
-            } { f =>
-              BiAbductionSolver.solveAbduction(s, v, pve, f) { (s5, v5) => {
-                exec2(s5, stmt, v5)(Q)
-              }
-              }
-            }
+            })
           })
         )
 

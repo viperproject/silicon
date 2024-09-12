@@ -7,7 +7,6 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.biabduction.BiAbductionSolver
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
@@ -17,7 +16,6 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.Position
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
@@ -75,19 +73,13 @@ object consumer extends ConsumptionRules {
   /** @inheritdoc */
   def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
              (Q: (State, Term, Verifier) => VerificationResult)
-             : VerificationResult = {
+  : VerificationResult = {
 
-    executionFlowController.tryOrElse2[Heap, Term](s, v) { (s, v, QS) =>
-      consumeR(s, s.h, a.whenExhaling, pve, v)(QS)
-    } { (s1, h1, snap, v1) => {
+    consumeR(s, s.h, a.whenExhaling, pve, v) { (s1, h1, snap, v1) => {
       val s2 = s1.copy(h = h1,
         partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap, v1)
     }
-    } { f =>
-      BiAbductionSolver.solveAbduction(s, v, pve, f)((s2, v2) =>
-        consume(s2, a, pve, v2)(Q)
-      )
     }
   }
 
@@ -110,17 +102,11 @@ object consumer extends ConsumptionRules {
       allPves ++= pves
     })
 
-    executionFlowController.tryOrElse2[Heap, Term](s, v) { (s, v, QS) =>
-      consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)(QS)
-    } { (s1, h1, snap1, v1) => {
+    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v){ (s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
         partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
     }
-    } { f =>
-      BiAbductionSolver.solveAbduction(s, v, allPves.head, f)((s2, v2) =>
-        consumes(s2, as, pvef, v2)(Q)
-      )
     }
   }
 
