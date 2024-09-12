@@ -8,13 +8,13 @@ package viper.silicon.logger.records.data
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.interfaces.state.NonQuantifiedChunk
+import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
-class SingleMergeRecord(val destChunks: Seq[NonQuantifiedChunk],
-                        val newChunks: Seq[NonQuantifiedChunk],
+class SingleMergeRecord(val destChunks: Seq[Chunk],
+                        val newChunks: Seq[Chunk],
                         p: PathConditionStack) extends DataRecord {
   val value: ast.Node = null
   val state: State = null
