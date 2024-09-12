@@ -366,7 +366,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           condition,
           permissions,
           optInverseFunctions,
-          Some(conditionalizedPermissions),
           optSingletonArguments.map(_.head),
           hints)
 
@@ -378,7 +377,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           condition,
           permissions,
           optInverseFunctions,
-          Some(conditionalizedPermissions),
           optSingletonArguments,
           hints)
 
@@ -389,7 +387,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           sm,
           conditionalizedPermissions,
           optInverseFunctions,
-          Some(conditionalizedPermissions),
           optSingletonArguments,
           hints)
 

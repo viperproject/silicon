@@ -73,7 +73,6 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 condition: Term,
                                 permValue: Term,
                                 invs: Option[InverseFunctions],
-                                initialCond: Option[Term],
                                 singletonRcvr: Option[Term],
                                 hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
@@ -97,11 +96,11 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
     Lookup(id.name, fvf, arguments.head)
   }
 
-  override def applyCondition(newCond: Term) = QuantifiedFieldChunk(id, fvf, terms.And(newCond, condition), permValue, invs, initialCond, singletonRcvr, hints)
-  override def permMinus(newPerm: Term) = QuantifiedFieldChunk(id, fvf, condition, PermMinus(permValue, newPerm), invs, initialCond, singletonRcvr, hints)
-  override def permPlus(newPerm: Term) = QuantifiedFieldChunk(id, fvf, condition, PermPlus(permValue, newPerm), invs, initialCond, singletonRcvr, hints)
+  override def applyCondition(newCond: Term) = QuantifiedFieldChunk(id, fvf, terms.And(newCond, condition), permValue, invs, singletonRcvr, hints)
+  override def permMinus(newPerm: Term) = QuantifiedFieldChunk(id, fvf, condition, PermMinus(permValue, newPerm), invs, singletonRcvr, hints)
+  override def permPlus(newPerm: Term) = QuantifiedFieldChunk(id, fvf, condition, PermPlus(permValue, newPerm), invs, singletonRcvr, hints)
   override def withPerm(newPerm: Term) = throw new RuntimeException("Should not be used with quantified field chunks")
-  override def withSnapshotMap(newFvf: Term) = QuantifiedFieldChunk(id, newFvf, condition, permValue, invs, initialCond, singletonRcvr, hints)
+  override def withSnapshotMap(newFvf: Term) = QuantifiedFieldChunk(id, newFvf, condition, permValue, invs, singletonRcvr, hints)
 
   override lazy val toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$id -> $fvf # $perm"
 }
@@ -112,7 +111,6 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     condition: Term,
                                     permValue: Term,
                                     invs: Option[InverseFunctions],
-                                    initialCond: Option[Term],
                                     singletonArgs: Option[Seq[Term]],
                                     hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
@@ -128,11 +126,11 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
 
   override def valueAt(args: Seq[Term]) = PredicateLookup(id.name, psf, args)
 
-  override def applyCondition(newCond: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, terms.And(newCond, condition), permValue, invs, initialCond, singletonArgs, hints)
-  override def permMinus(newPerm: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, condition, PermMinus(permValue, newPerm), invs, initialCond, singletonArgs, hints)
-  override def permPlus(newPerm: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, condition, PermPlus(permValue, newPerm), invs, initialCond, singletonArgs, hints)
+  override def applyCondition(newCond: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, terms.And(newCond, condition), permValue, invs, singletonArgs, hints)
+  override def permMinus(newPerm: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, condition, PermMinus(permValue, newPerm), invs, singletonArgs, hints)
+  override def permPlus(newPerm: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, condition, PermPlus(permValue, newPerm), invs, singletonArgs, hints)
   override def withPerm(newPerm: Term) = throw new RuntimeException("Should not be used with quantified predicate chunks")
-  override def withSnapshotMap(newPsf: Term) = QuantifiedPredicateChunk(id, quantifiedVars, newPsf, condition, permValue, invs, initialCond, singletonArgs, hints)
+  override def withSnapshotMap(newPsf: Term) = QuantifiedPredicateChunk(id, quantifiedVars, newPsf, condition, permValue, invs, singletonArgs, hints)
 
   override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm"
 }
@@ -142,7 +140,6 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     wsf: Term,
                                     perm: Term,
                                     invs: Option[InverseFunctions],
-                                    initialCond: Option[Term],
                                     singletonArgs: Option[Seq[Term]],
                                     hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
@@ -160,8 +157,8 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
   override def applyCondition(newCond: Term) = withPerm(Ite(newCond, perm, NoPerm))
   override def permMinus(newPerm: Term) = withPerm(PermMinus(perm, newPerm))
   override def permPlus(newPerm: Term) = withPerm(PermPlus(perm, newPerm))
-  override def withPerm(newPerm: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, wsf, newPerm, invs, initialCond, singletonArgs, hints)
-  override def withSnapshotMap(newWsf: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, newWsf, perm, invs, initialCond, singletonArgs, hints)
+  override def withPerm(newPerm: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, wsf, newPerm, invs, singletonArgs, hints)
+  override def withSnapshotMap(newWsf: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, newWsf, perm, invs, singletonArgs, hints)
 
   override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $wsf # $perm"
 }
