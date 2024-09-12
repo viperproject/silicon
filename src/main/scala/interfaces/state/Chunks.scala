@@ -20,7 +20,6 @@ trait GeneralChunk extends Chunk {
   def applyCondition(newCond: Term): GeneralChunk
   def permMinus(perm: Term): GeneralChunk
   def permPlus(perm: Term): GeneralChunk
-  def withPerm(perm: Term): GeneralChunk
 }
 
 trait NonQuantifiedChunk extends GeneralChunk {
@@ -29,7 +28,7 @@ trait NonQuantifiedChunk extends GeneralChunk {
   override def applyCondition(newCond: Term): NonQuantifiedChunk
   override def permMinus(perm: Term): NonQuantifiedChunk
   override def permPlus(perm: Term): NonQuantifiedChunk
-  override def withPerm(perm: Term): NonQuantifiedChunk
+  def withPerm(perm: Term): NonQuantifiedChunk
   def withSnap(snap: Term): NonQuantifiedChunk
 }
 
@@ -40,6 +39,5 @@ trait QuantifiedChunk extends GeneralChunk {
   override def applyCondition(newCond: Term): QuantifiedChunk
   override def permMinus(perm: Term): QuantifiedChunk
   override def permPlus(perm: Term): QuantifiedChunk
-  override def withPerm(perm: Term): QuantifiedChunk
   def withSnapshotMap(snap: Term): QuantifiedChunk
 }
