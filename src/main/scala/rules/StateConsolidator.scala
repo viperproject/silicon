@@ -195,15 +195,13 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, v)
 
       Some(fr2, BasicChunk(rid1, id1, args1, combinedSnap, PermPlus(perm1, perm2)), snapEq)
-    case (l@QuantifiedFieldChunk(id1, fvf1, condition1, perm1, invs1, initialCond1, _, hints1), r@QuantifiedFieldChunk(_, fvf2, _, perm2, _, _, singletonRcvr2, hints2)) =>
+    case (l@QuantifiedFieldChunk(id1, fvf1, condition1, perm1, invs1, initialCond1, singletonRcvr1, hints1), r@QuantifiedFieldChunk(_, fvf2, _, perm2, _, _, _, hints2)) =>
       assert(l.quantifiedVars == Seq(`?r`))
       assert(r.quantifiedVars == Seq(`?r`))
       // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
       val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, fvf1, fvf2, l.perm, r.perm, v)
-      // TODO: Deal with hints
-      // TODO: Store multiple known singleton receivers for better heuristics?
-      Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, PermPlus(perm1, perm2), invs1, initialCond1, singletonRcvr2, hints1), snapEq)
-    case (l@QuantifiedPredicateChunk(id1, qVars1, psf1, _, perm1, _, _, _, hints1), r@QuantifiedPredicateChunk(_, qVars2, psf2, condition2, perm2, initialCond2, invs2, singletonArgs2, hints2)) =>
+      Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, PermPlus(perm1, perm2), invs1, initialCond1, singletonRcvr1, if (hints1.nonEmpty) hints1 else hints2), snapEq)
+    case (l@QuantifiedPredicateChunk(id1, qVars1, psf1, _, perm1, _, _, singletonArgs1, hints1), r@QuantifiedPredicateChunk(_, qVars2, psf2, condition2, perm2, initialCond2, invs2, singletonArgs2, hints2)) =>
       val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
 
       Some(fr2, QuantifiedPredicateChunk(id1, qVars2, combinedSnap, condition2, PermPlus(perm1.replace(qVars1, qVars2), perm2), initialCond2, invs2, singletonArgs2, hints2), snapEq)
