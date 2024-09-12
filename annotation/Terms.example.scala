@@ -843,49 +843,6 @@ object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Te
 }
 
 /*
-  Helper class for permissions
- */
-
-final class Rational(n: BigInt, d: BigInt) extends Ordered[Rational] {
-  require(d != 0, "Denominator of Rational must not be 0.")
-
-  private val g = n.gcd(d)
-  val numerator: BigInt = n / g * d.signum
-  val denominator: BigInt = d.abs / g
-
-  def +(that: Rational): Rational = {
-    val newNum = this.numerator * that.denominator + that.numerator * this.denominator
-    val newDen = this.denominator * that.denominator
-    Rational(newNum, newDen)
-  }
-  def -(that: Rational): Rational = this + (-that)
-  def unary_- = Rational(-numerator, denominator)
-  def abs = Rational(numerator.abs, denominator)
-  def signum = Rational(numerator.signum, 1)
-
-  def *(that: Rational): Rational = Rational(this.numerator * that.numerator, this.denominator * that.denominator)
-  def /(that: Rational): Rational = this * that.inverse
-  def inverse = Rational(denominator, numerator)
-
-  def compare(that: Rational) = (this.numerator * that.denominator - that.numerator * this.denominator).signum
-
-  override def equals(obj: Any) = obj match {
-    case that: Rational => this.numerator == that.numerator && this.denominator == that.denominator
-    case _ => false
-  }
-
-  override lazy val toString = s"$numerator/$denominator"
-}
-
-object Rational extends ((BigInt, BigInt) => Rational) {
-  val zero = Rational(0, 1)
-  val one = Rational(1, 1)
-
-  def apply(numer: BigInt, denom: BigInt) = new Rational(numer, denom)
-  def unapply(r: Rational) = Some(r.numerator, r.denominator)
-}
-
-/*
  * Permissions
  */
 

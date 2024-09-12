@@ -13,7 +13,8 @@ import viper.silver.reporter.Reporter
 
 class WorkerVerifier(mainVerifier: MainVerifier,
                      uniqueId: String,
-                     override val reporter: Reporter)
+                     override val reporter: Reporter,
+                     override val debugMode: Boolean)
     extends BaseVerifier(Verifier.config, uniqueId)
        with DefaultMethodVerificationUnitProvider
        with DefaultCfgVerificationUnitProvider {

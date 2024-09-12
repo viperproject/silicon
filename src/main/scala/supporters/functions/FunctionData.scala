@@ -18,7 +18,11 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
 import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
+import viper.silicon.utils.ast.simplifyVariableName
+import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
+import viper.silver.ast.LocalVarWithVersion
+import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
 
 /* TODO: Refactor FunctionData!
@@ -64,7 +68,14 @@ class FunctionData(val programFunction: ast.Function,
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
                          symbolConverter.toSort(programFunction.result.typ), false)
 
+  val valFormalResultExp = Option.when(Verifier.config.enableDebugging())(LocalVarWithVersion(simplifyVariableName(formalResult.id.name), programFunction.result.typ)())
+
   val arguments = Seq(`?s`) ++ formalArgs.values
+  val argumentExps =
+    if (Verifier.config.enableDebugging())
+      Seq(Some(ast.LocalVar(`?s`.id.name, ast.InternalType)())) ++ formalArgs.keys.map(Some(_))
+    else
+      Seq.fill(1 + formalArgs.size)(None)
 
   val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
@@ -185,7 +196,7 @@ class FunctionData(val programFunction: ast.Function,
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
     if (programFunction.posts.nonEmpty) {
       expressionTranslator.translatePostcondition(program, programFunction.posts, this)
-    }else{
+    } else {
       Seq()
     }
   }
@@ -240,7 +251,7 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap)
+           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
         +: expressionTranslator.translatePrecondition(program, predAcc.args, this))
 
       val fapp = App(triggerFunction, args)

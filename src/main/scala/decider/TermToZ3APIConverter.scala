@@ -247,7 +247,7 @@ class TermToZ3APIConverter
               val substituted = body.replace(vars, fapp.args)
               val res = convert(substituted)
               res
-            }else {
+            } else {
               createApp(convertId(fapp.applicable.id), fapp.args, fapp.sort)
             }
           }
@@ -271,7 +271,7 @@ class TermToZ3APIConverter
           val weightValue = weight.getOrElse(1)
           if (quant == Forall) {
             ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
-          }else{
+          } else {
             ctx.mkExists(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }
         }

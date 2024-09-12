@@ -44,8 +44,20 @@ trait Verifier {
 
   val errorsReportedSoFar = new AtomicInteger(0);
 
+  var debugHeapCounter = new AtomicInteger(0);
+
   def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > errorsReportedSoFar.get()
     || Verifier.config.numberOfErrorsToReport() == 0);
+
+  def getDebugOldLabel(s: State): String = {
+    val equalHeaps = s.oldHeaps.filter(h => h._1.startsWith("debug@") && h._2.equals(s.h)).keys
+    if (equalHeaps.nonEmpty){
+      equalHeaps.head
+    } else {
+      val counter = debugHeapCounter.getAndIncrement()
+      s"debug@$counter"
+    }
+  }
 }
 
 object Verifier {

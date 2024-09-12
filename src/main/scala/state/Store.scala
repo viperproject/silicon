@@ -12,33 +12,43 @@ import viper.silicon.state.terms.Term
 import viper.silver.ast.AbstractLocalVar
 
 trait Store {
-  def values: Map[ast.AbstractLocalVar, Term]
+  def values: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])]
+  def termValues: Map[ast.AbstractLocalVar, Term]
+  def expValues: Map[ast.AbstractLocalVar, Option[ast.Exp]]
   def apply(key: ast.AbstractLocalVar): Term
   def get(key: ast.AbstractLocalVar): Option[Term]
-  def +(kv: (ast.AbstractLocalVar, Term)): Store
+  def getExp(key: ast.AbstractLocalVar): Option[ast.Exp]
+  def +(kv: (ast.AbstractLocalVar, (Term, Option[ast.Exp]))): Store
   def +(other: Store): Store
 }
 
 trait StoreFactory[ST <: Store] {
   def apply(): ST
-  def apply(bindings: Map[ast.AbstractLocalVar, Term]): ST
-  def apply(pair: (ast.AbstractLocalVar, Term)): ST
-  def apply(pairs: Iterable[(ast.AbstractLocalVar, Term)]): ST
+  def apply(bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])]): ST
+  def apply(pair: (ast.AbstractLocalVar, (Term, Option[ast.Exp]))): ST
+  def apply(pairs: Iterable[(ast.AbstractLocalVar, (Term, Option[ast.Exp]))]): ST
 }
 
 object Store extends StoreFactory[MapBackedStore] {
   def apply() = new MapBackedStore(Map.empty)
-  def apply(pair: (AbstractLocalVar, Term)) = new MapBackedStore(Map(pair))
-  def apply(bindings: Map[AbstractLocalVar, Term]) = new MapBackedStore(toMap(bindings))
-  def apply(bindings: Iterable[(AbstractLocalVar, Term)]) = new MapBackedStore(toMap(bindings))
+  def apply(pair: (AbstractLocalVar, (Term, Option[ast.Exp]))) = new MapBackedStore(Map(pair))
+  def apply(bindings: Map[AbstractLocalVar, (Term, Option[ast.Exp])]) = new MapBackedStore(toMap(bindings))
+  def apply(bindings: Iterable[(AbstractLocalVar, (Term, Option[ast.Exp]))]) = new MapBackedStore(toMap(bindings))
 }
 
-final class MapBackedStore private[state] (map: Map[ast.AbstractLocalVar, Term])
+final class MapBackedStore private[state] (map: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])])
     extends Store {
 
   val values = map
-  def apply(key: ast.AbstractLocalVar) = map(key)
-  def get(key: ast.AbstractLocalVar) = map.get(key)
-  def +(entry: (ast.AbstractLocalVar, Term)) = new MapBackedStore(map + entry)
+
+  def termValues = values.map{case (localVar, pair) => localVar -> pair._1}
+  def expValues = values.map{case (localVar, pair) => localVar -> pair._2}
+  def apply(key: ast.AbstractLocalVar) = map(key)._1
+  def get(key: ast.AbstractLocalVar) = termValues.get(key)
+  def getExp(key: ast.AbstractLocalVar) = expValues.get(key) match {
+    case Some(e) => e
+    case None => None
+  }
+  def +(entry: (ast.AbstractLocalVar, (Term, Option[ast.Exp]))) = new MapBackedStore(map + entry)
   def +(other: Store) = new MapBackedStore(map ++ other.values)
 }

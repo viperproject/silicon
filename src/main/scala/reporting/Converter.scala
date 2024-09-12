@@ -7,6 +7,7 @@
 package viper.silicon.reporting
 
 import viper.silicon
+
 import scala.util.{Success, Try}
 import viper.silver.verifier.{ApplicationEntry, ConstantEntry, MapEntry, Model, ModelEntry, ValueEntry}
 import viper.silver.ast
@@ -20,6 +21,7 @@ import viper.silicon.decider.TermToSMTLib2Converter
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms.sorts.UserSort
 import viper.silicon.state.terms.sorts.Snap
+import viper.silver.utility.Common.Rational
 
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
   override lazy val toString: String =
@@ -343,10 +345,10 @@ object Converter {
   def extractHeap(h: Iterable[Chunk], model: Model): ExtractedHeap = {
     var entries: Vector[HeapEntry] = Vector()
     h foreach {
-      case c @ BasicChunk(FieldID, _, _, _, _) =>
+      case c @ BasicChunk(FieldID, _, _, _, _, _, _) =>
         val entry = extractField(c, model)
         entries = entries :+ entry
-      case c @ BasicChunk(PredicateID, _, _, _, _) =>
+      case c @ BasicChunk(PredicateID, _, _, _, _, _, _) =>
         val entry = extractPredicate(c, model)
         entries = entries :+ entry
       case c: BasicChunk =>
@@ -580,7 +582,7 @@ object Converter {
                     ): ExtractedModel = {
     var map: Map[String, ExtractedModelEntry] = Map()
     val nullRefName: String = model.entries.getOrElse("$Ref.null","Ref!val!0").toString
-    for ((variable: ast.AbstractLocalVar, term: Term) <- store.values) {
+    for ((variable: ast.AbstractLocalVar, term: Term) <- store.termValues) {
       var localSort: Option[Sort] = None
       val name = variable match {
         case ast.LocalVar(n, typ) =>
@@ -831,8 +833,9 @@ case class ExtractedFunction(fname: String,
         } else {
           throw new IllegalArgumentException(s"false types for partial application: required $subtypes but got: $args")
         }
-      }else
+      } else {
         throw new IllegalArgumentException(s"to many arguments for function: $fname")
+      }
     }
   }
 
