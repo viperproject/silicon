@@ -293,24 +293,24 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             val eq = And(eqHelper)
             val eqExp = ch.argsExp.map(args => BigAnd(removeKnownToBeTrueExp(args.zip(argsExp.get).map { case (t1, t2) => ast.EqCmp(t1, t2)(permsExp.get.pos, permsExp.get.info, permsExp.get.errT) }.toList, eqHelper.toList)))
 
-            val (pTaken, pTakenExp) = if (s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
+            val takenTerm = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
+            val pTakenExp = permsExp.map(pe => ast.CondExp(eqExp.get, buildMinExp(Seq(ch.permExp.get, pNeededExp.get), ast.Perm), ast.NoPerm()(pe.pos, pe.info, pe.errT))(eqExp.get.pos, eqExp.get.info, eqExp.get.errT))
+            val pTaken = if (takenTerm.isInstanceOf[PermLiteral] || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
               // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
               // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
               // that already exists.
-              // During function verification, we should not define macros, since they could contain resullt, which is not
+              // During function verification, we should not define macros, since they could contain result, which is not
               // defined elsewhere.
-              val iteExp = permsExp.map(pe => ast.CondExp(eqExp.get, buildMinExp(Seq(ch.permExp.get, pNeededExp.get), ast.Perm), ast.NoPerm()(pe.pos, pe.info, pe.errT))(eqExp.get.pos, eqExp.get.info, eqExp.get.errT))
-              (Ite(eq, PermMin(ch.perm, pNeeded), NoPerm), iteExp)
+              // Also, we don't introduce a macro if the term is a straightforward literal.
+              takenTerm
             } else {
-              val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
-              val pTakenExp = eqExp.map(eq => ast.CondExp(eq, buildMinExp(Seq(ch.permExp.get, pNeededExp.get), ast.Perm), ast.NoPerm()())(eq.pos, eq.info, eq.errT))
               val pTakenArgs = additionalArgs
-              val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
+              val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, takenTerm)
               val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
               currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
               val pTakenApp = App(pTakenMacro, pTakenArgs)
-              v.symbExLog.addMacro(pTakenApp, pTakenBody)
-              (pTakenApp, pTakenExp)
+              v.symbExLog.addMacro(pTakenApp, takenTerm)
+              pTakenApp
             }
 
             pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
