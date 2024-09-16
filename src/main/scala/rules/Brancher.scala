@@ -148,12 +148,12 @@ object brancher extends BranchingRules {
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
-            var macrosOfElseBranchDeciderBefore: Seq[MacroDecl] = null
+            var nMacrosOfElseBranchDeciderBefore: Int = 0
 
             if (v.uniqueId != v0.uniqueId) {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               if (s.underJoin) {
-                macrosOfElseBranchDeciderBefore = v1.decider.freshMacros
+                nMacrosOfElseBranchDeciderBefore = v1.decider.freshMacros.size
                 functionsOfElseBranchdDeciderBefore = v1.decider.freshFunctions
               }
             }
@@ -164,8 +164,7 @@ object brancher extends BranchingRules {
               v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
               if (s.underJoin) {
                 functionsOfElseBranchDecider = v1.decider.freshFunctions -- functionsOfElseBranchdDeciderBefore
-                val elseMacrosBeforeSet = HashSet.from(macrosOfElseBranchDeciderBefore)
-                macrosOfElseBranchDecider = v1.decider.freshMacros.filter(m => !elseMacrosBeforeSet.contains(m))
+                macrosOfElseBranchDecider = v1.decider.freshMacros.drop(nMacrosOfElseBranchDeciderBefore)
               }
             }
             result
