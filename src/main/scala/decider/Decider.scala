@@ -96,10 +96,8 @@ trait Decider {
   // slower, so this tradeoff seems worth it.
   def freshFunctions: Set[FunctionDecl]
   def freshMacros: Vector[MacroDecl]
-  def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toStack: Boolean): Unit
-  def declareAndRecordAsFreshMacros(functions: Seq[MacroDecl], toStack: Boolean): Unit
-  def pushSymbolStack(): Unit
-  def popSymbolStack(): (Set[FunctionDecl], Seq[MacroDecl])
+  def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl]): Unit
+  def declareAndRecordAsFreshMacros(functions: Seq[MacroDecl]): Unit
   def setPcs(other: PathConditionStack): Unit
 
   def statistics(): Map[String, String]
@@ -126,9 +124,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private var _declaredFreshFunctions: Set[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
     private var _declaredFreshMacros: Vector[MacroDecl] = _
-
-    private var _freshFunctionStack: Stack[mutable.HashSet[FunctionDecl]] = _
-    private var _freshMacroStack: Stack[mutable.ListBuffer[MacroDecl]] = _
+    private var _declaredFreshMacroNames: Set[String] = _ /* contains names of _declaredFreshMacros for faster lookup */
 
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
@@ -221,8 +217,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       pathConditions = new LayeredPathConditionStack()
       _declaredFreshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
       _declaredFreshMacros = Vector.empty
-      _freshMacroStack = Stack.empty
-      _freshFunctionStack = Stack.empty
+      _declaredFreshMacroNames = HashSet.empty
       createProver(Verifier.config.prover(), Verifier.config.proverArgs)
     }
 
@@ -231,8 +226,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       pathConditions = new LayeredPathConditionStack()
       _declaredFreshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
       _declaredFreshMacros = Vector.empty
-      _freshMacroStack = Stack.empty
-      _freshFunctionStack = Stack.empty
+      _declaredFreshMacroNames = HashSet.empty
       _proverOptions = Map.empty
     }
 
@@ -466,7 +460,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       prover.declare(macroDecl)
 
       _declaredFreshMacros = _declaredFreshMacros :+ macroDecl /* [BRANCH-PARALLELISATION] */
-      _freshMacroStack.foreach(l => l.append(macroDecl))
+      _declaredFreshMacroNames = _declaredFreshMacroNames + name.name
 
       macroDecl
     }
@@ -504,7 +498,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val decl = FunctionDecl(fun)
       _declaredFreshFunctions = _declaredFreshFunctions + decl /* [BRANCH-PARALLELISATION] */
-      _freshFunctionStack.foreach(s => s.add(decl))
 
       fun
     }
@@ -514,39 +507,23 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def freshFunctions: Set[FunctionDecl] = _declaredFreshFunctions
     def freshMacros: Vector[MacroDecl] = _declaredFreshMacros
 
-    def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toSymbolStack: Boolean): Unit = {
+    def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl]): Unit = {
       for (f <- functions) {
         if (!_declaredFreshFunctions.contains(f)) {
           prover.declare(f)
           _declaredFreshFunctions = _declaredFreshFunctions + f
         }
       }
-      if (toSymbolStack)
-        _freshFunctionStack.foreach(s => s.addAll(functions))
     }
 
-    def declareAndRecordAsFreshMacros(macros: Seq[MacroDecl], toStack: Boolean): Unit = {
+    def declareAndRecordAsFreshMacros(macros: Seq[MacroDecl]): Unit = {
       for (m <- macros) {
-        if (!_declaredFreshMacros.contains(m)) {
+        if (!_declaredFreshMacroNames.contains(m.id.name)) {
           prover.declare(m)
           _declaredFreshMacros = _declaredFreshMacros.appended(m)
+          _declaredFreshMacroNames = _declaredFreshMacroNames + m.id.name
         }
       }
-      if (toStack)
-        _freshMacroStack.foreach(l => l.appendAll(macros))
-    }
-
-    def pushSymbolStack(): Unit = {
-      _freshFunctionStack = _freshFunctionStack.prepended(mutable.HashSet())
-      _freshMacroStack = _freshMacroStack.prepended(mutable.ListBuffer())
-    }
-
-    def popSymbolStack(): (Set[FunctionDecl], Seq[MacroDecl]) = {
-      val funcDecls = _freshFunctionStack.head.toSet
-      _freshFunctionStack = _freshFunctionStack.tail
-      val macroDecls = _freshMacroStack.head.toSeq
-      _freshMacroStack = _freshMacroStack.tail
-      (funcDecls, macroDecls)
     }
 
     /* Misc */

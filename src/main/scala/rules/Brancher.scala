@@ -124,8 +124,6 @@ object brancher extends BranchingRules {
             // executing the else branch on a different verifier, need to adapt the state
             wasElseExecutedOnDifferentVerifier = true
 
-            if (s.underJoin)
-              v0.decider.pushSymbolStack()
             val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
             val v0FreshMacros = HashSet.from(v0.decider.freshMacros)
             val newMacros = macrosOfCurrentDecider.filter(m => !v0FreshMacros.contains(m))
@@ -135,9 +133,9 @@ object brancher extends BranchingRules {
             v0.decider.resetProverOptions()
             v0.decider.setProverOptions(proverArgsOfCurrentDecider)
             v0.decider.prover.comment(s"Bulk-declaring functions")
-            v0.decider.declareAndRecordAsFreshFunctions(newFunctions, false)
+            v0.decider.declareAndRecordAsFreshFunctions(newFunctions)
             v0.decider.prover.comment(s"Bulk-declaring macros")
-            v0.decider.declareAndRecordAsFreshMacros(newMacros.toSeq, false)
+            v0.decider.declareAndRecordAsFreshMacros(newMacros)
 
             v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
             v0.decider.setPcs(pcsForElseBranch)
@@ -149,17 +147,25 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
 
-            if (v.uniqueId != v0.uniqueId)
+            var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
+            var macrosOfElseBranchDeciderBefore: Seq[MacroDecl] = null
+
+            if (v.uniqueId != v0.uniqueId) {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+              if (s.underJoin) {
+                macrosOfElseBranchDeciderBefore = v1.decider.freshMacros
+                functionsOfElseBranchdDeciderBefore = v1.decider.freshFunctions
+              }
+            }
 
             val result = fElse(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
             if (wasElseExecutedOnDifferentVerifier) {
               v1.decider.resetProverOptions()
               v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
               if (s.underJoin) {
-                val newSymbols = v1.decider.popSymbolStack()
-                functionsOfElseBranchDecider = newSymbols._1
-                macrosOfElseBranchDecider = newSymbols._2
+                functionsOfElseBranchDecider = v1.decider.freshFunctions -- functionsOfElseBranchdDeciderBefore
+                val elseMacrosBeforeSet = HashSet.from(macrosOfElseBranchDeciderBefore)
+                macrosOfElseBranchDecider = v1.decider.freshMacros.filter(m => !elseMacrosBeforeSet.contains(m))
               }
             }
             result
@@ -248,9 +254,9 @@ object brancher extends BranchingRules {
 
       v.decider.prover.comment(s"[To continue after join, adding else branch functions and macros to current verifier.]")
       v.decider.prover.comment(s"Bulk-declaring functions")
-      v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider, true)
+      v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider)
       v.decider.prover.comment(s"Bulk-declaring macros")
-      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider, true)
+      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider)
     }
     res
   }
