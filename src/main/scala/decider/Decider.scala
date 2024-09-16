@@ -129,10 +129,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
-
-
-    //private val TODODELETEtermSources = mutable.Map.empty[Term, DebugExp]
-
+    
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
 
