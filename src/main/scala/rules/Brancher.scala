@@ -250,8 +250,7 @@ object brancher extends BranchingRules {
       v.decider.prover.comment(s"Bulk-declaring functions")
       v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider, true)
       v.decider.prover.comment(s"Bulk-declaring macros")
-      // Declare macros without duplicates; we keep only the last occurrence of every declaration to avoid errors.
-      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider.reverse.distinct.reverse, true)
+      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider, true)
     }
     res
   }
