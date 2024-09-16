@@ -515,41 +515,25 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def freshMacros: Vector[MacroDecl] = _declaredFreshMacros
 
     def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toSymbolStack: Boolean): Unit = {
-      if (!toSymbolStack) {
-        for (f <- functions) {
-          if (!_declaredFreshFunctions.contains(f))
-            prover.declare(f)
-
+      for (f <- functions) {
+        if (!_declaredFreshFunctions.contains(f)) {
+          prover.declare(f)
           _declaredFreshFunctions = _declaredFreshFunctions + f
-        }
-      } else {
-        for (f <- functions) {
-          if (!_declaredFreshFunctions.contains(f))
-            prover.declare(f)
-
-          _declaredFreshFunctions = _declaredFreshFunctions + f
-          _freshFunctionStack.foreach(s => s.add(f))
         }
       }
+      if (toSymbolStack)
+        _freshFunctionStack.foreach(s => s.addAll(functions))
     }
 
     def declareAndRecordAsFreshMacros(macros: Seq[MacroDecl], toStack: Boolean): Unit = {
-      if (!toStack) {
-        for (m <- macros) {
-          if (!_declaredFreshMacros.contains(m)) {
-            prover.declare(m)
-            _declaredFreshMacros = _declaredFreshMacros.appended(m)
-          }
-        }
-      } else {
-        for (m <- macros) {
-          if (!_declaredFreshMacros.contains(m)) {
-            prover.declare(m)
-            _declaredFreshMacros = _declaredFreshMacros.appended(m)
-          }
-          _freshMacroStack.foreach(l => l.append(m))
+      for (m <- macros) {
+        if (!_declaredFreshMacros.contains(m)) {
+          prover.declare(m)
+          _declaredFreshMacros = _declaredFreshMacros.appended(m)
         }
       }
+      if (toStack)
+        _freshMacroStack.foreach(l => l.appendAll(macros))
     }
 
     def pushSymbolStack(): Unit = {
