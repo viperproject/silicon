@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
@@ -17,6 +19,8 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
+
+import scala.collection.immutable.HashSet
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
@@ -123,7 +127,8 @@ object brancher extends BranchingRules {
             if (s.underJoin)
               v0.decider.pushSymbolStack()
             val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
-            val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
+            val v0FreshMacros = HashSet.from(v0.decider.freshMacros)
+            val newMacros = macrosOfCurrentDecider.filter(m => !v0FreshMacros.contains(m))
 
             v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
             proverArgsOfElseBranchDecider = v0.decider.getProverOptions()
@@ -132,7 +137,7 @@ object brancher extends BranchingRules {
             v0.decider.prover.comment(s"Bulk-declaring functions")
             v0.decider.declareAndRecordAsFreshFunctions(newFunctions, false)
             v0.decider.prover.comment(s"Bulk-declaring macros")
-            v0.decider.declareAndRecordAsFreshMacros(newMacros, false)
+            v0.decider.declareAndRecordAsFreshMacros(newMacros.toSeq, false)
 
             v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
             v0.decider.setPcs(pcsForElseBranch)
