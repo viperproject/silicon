@@ -1029,6 +1029,11 @@ object evaluator extends EvaluationRules {
           Option.when(withExp)(s.relevantQuantifiedVariables.map(_._2.get)), v))((s4, r4, v4)
           => Q(s4, r4._1, r4._2, v4))
 
+      case ast.Asserting(eAss, eIn) =>
+        consume(s, eAss, pve, v)((_, _, _) => {
+          eval(s, eIn, pve, v)(Q)
+        })
+
       /* Sequences */
 
       case ast.SeqContains(e0, e1) => evalBinOp(s, e1, e0, SeqIn, pve, v)((s1, t, e1New, e0New, v1) =>
