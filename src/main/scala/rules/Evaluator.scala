@@ -1032,7 +1032,7 @@ object evaluator extends EvaluationRules {
       /* Sequences */
 
       case ast.SeqContains(e0, e1) => evalBinOp(s, e1, e0, SeqIn, pve, v)((s1, t, e1New, e0New, v1) =>
-        Q(s, t, e0New.map(e0p => ast.SeqContains(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
+        Q(s1, t, e0New.map(e0p => ast.SeqContains(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
         /* Note the reversed order of the arguments! */
 
       case ast.SeqIndex(e0, e1) =>
