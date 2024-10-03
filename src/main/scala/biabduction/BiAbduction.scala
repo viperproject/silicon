@@ -152,15 +152,19 @@ object BiAbductionSolver {
 
 
 
-  def solveAbstraction(s: State, v: Verifier, exps: Seq[Exp])(Q: Seq[Exp] => VerificationResult): VerificationResult = {
-    executionFlowController.locallyWithResult[Seq[Exp]](s, v)((s1, v1, QS) => {
-      val q = AbstractionQuestion(exps, s1, v1)
-      AbstractionApplier.applyRules(q){ q1 =>
-        QS(q1.exps)
-      }
-    })(Q)
+  def solveAbstraction(s: State, v: Verifier)(Q: (State, Verifier, Seq[Exp]) => VerificationResult): VerificationResult = {
+    val q = AbstractionQuestion(s1, v1)
+    val res = AbstractionApplier.applyRules(q) { q1 =>
+      Success(solveFraming(q1.s, q1.v, q1.s.g.values))
+    } match {
+      case NonFatalResult =>
+        val exps = abductionUtils.getFramingSuccesses(res).head
+        Q(exps.s, exps.v, exps.posts)
+    }
   }
 
+  // TODO nklose we would like to abstract postconditions, but we cannot do it here anymore! We call this from an abstraction rule
+  // So we have to do this only where we generate the postconditions. 
   def solveFraming(s: State, v: Verifier, postVars: Map[AbstractLocalVar, (Term, Option[Exp])], loc: Position = NoPosition, ignoredBcs: Seq[Exp] = Seq()): FramingSuccess = {
 
     val tra = VarTransformer(s, v, postVars, s.h)

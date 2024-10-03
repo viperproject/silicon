@@ -8,8 +8,6 @@ import viper.silicon.state._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
-//import viper.silver.verifier.PartialVerificationError
-//import viper.silver.verifier.errors.Internal
 
 case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap) {
 
@@ -20,10 +18,10 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
 
   private def resolveMatches(): Map[Term, Exp] = {
 
-    val allTerms: Seq[Term] = (s.g.values.values.map{case (t1, _) => t1}
+    val allTerms: Seq[Term] = (s.g.values.values.map { case (t1, _) => t1 }
       ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten
       ++ targetVars.values.map(_._1)
-      ++ v.decider.pcs.branchConditions.collect{ case t => t.subterms.collect{case tVar: Var => tVar}}.flatten).toSeq.distinct
+      ++ v.decider.pcs.branchConditions.collect { case t => t.subterms.collect { case tVar: Var => tVar } }.flatten).toSeq.distinct
 
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
     //val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
@@ -34,15 +32,16 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     }.collect { case (t2, Some(e)) => t2 -> e }.toMap
 
     resolveChunks(directAliases, targetHeap.values.collect { case c: BasicChunk
-      if c.resourceID == FieldID && !(directAliases.contains(c.args.head) && directAliases.contains(c.snap)) => c }.toSeq, allTerms.filter(!directAliases.contains(_)))
+      if c.resourceID == FieldID && !(directAliases.contains(c.args.head) && directAliases.contains(c.snap)) => c
+    }.toSeq, allTerms.filter(!directAliases.contains(_)))
   }
 
   private def resolveChunks(currentMatches: Map[Term, Exp], remainingChunks: Seq[BasicChunk], remainingTerms: Seq[Term]): Map[Term, Exp] = {
-    remainingChunks.collectFirst { case c if currentMatches.contains(c.args.head) => c} match {
+    remainingChunks.collectFirst { case c if currentMatches.contains(c.args.head) => c } match {
       case None => currentMatches
       case Some(c) =>
         val newExp = FieldAccess(currentMatches(c.args.head), abductionUtils.getField(c.id, s.program))()
-        val newMatches = currentMatches ++ remainingTerms.collect{ case t if t.sort == c.snap.sort && v.decider.check(BuiltinEquals(t, c.snap), Verifier.config.checkTimeout()) => t -> newExp }
+        val newMatches = currentMatches ++ remainingTerms.collect { case t if t.sort == c.snap.sort && v.decider.check(BuiltinEquals(t, c.snap), Verifier.config.checkTimeout()) => t -> newExp }
         resolveChunks(newMatches, remainingChunks.filter(_ != c), remainingTerms.filter(!newMatches.contains(_)))
     }
   }
@@ -62,14 +61,26 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     }
   }
 
-  def transformChunk(b: BasicChunk): Option[Exp] = {
+  def transformChunk(b: NonQuantifiedChunk): Option[Exp] = {
 
-    val rcv = transformTerm(b.args.head)
-    (b, rcv) match {
-      case (_, None) => None
-      case (BasicChunk(FieldID, _, _, _, _, _, _), rcv) => Some(FieldAccessPredicate(FieldAccess(rcv.get, abductionUtils.getField(b.id, s.program))(), transformTerm(b.perm).get)())
-      case (BasicChunk(PredicateID, id, _, _, _, _, _), rcv) => Some(PredicateAccessPredicate(PredicateAccess(Seq(rcv.get), id.name)(), transformTerm(b.perm).get)())
-        //Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))
+    b match {
+      case bc: BasicChunk =>
+        val rcv = transformTerm(bc.args.head)
+        (bc, rcv) match {
+          case (_, None) => None
+          case (BasicChunk(FieldID, _, _, _, _, _, _), rcv) => Some(FieldAccessPredicate(FieldAccess(rcv.get, abductionUtils.getField(bc.id, s.program))(), transformTerm(b.perm).get)())
+          case (BasicChunk(PredicateID, id, _, _, _, _, _), rcv) => Some(PredicateAccessPredicate(PredicateAccess(Seq(rcv.get), id.name)(), transformTerm(b.perm).get)())
+
+        }
+      case mwc: MagicWandChunk =>
+        val rcvs = mwc.args.map(a => a -> transformTerm(a)).toMap
+        if (rcvs.values.toSeq.contains(None)) None else {
+          val shape = mwc.id.ghostFreeWand
+          val expBindings = mwc.bindings.map(b => b._1 -> rcvs(b._2._1).get)
+          val instantiated = shape.replace(expBindings)
+          Some(instantiated)
+          //Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))
+        }
     }
   }
 
@@ -122,12 +133,12 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
           }
         case lv: LocalVar => {
           val term: Term = s.g.values.getOrElse(lv, targetVars(lv))._1
-          transformTerm(term).get 
+          transformTerm(term).get
         }
       }
       Some(res)
     } catch {
-      case _: NoSuchElementException => if(strict) None else Some(e)
+      case _: NoSuchElementException => if (strict) None else Some(e)
     }
   }
 }

@@ -820,7 +820,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDebugging",
     descr = "Enable debugging mode",
-    default = Some(false),
+    default = Some(true), // Set to true for biabduction testing
     noshort = true
   )
 

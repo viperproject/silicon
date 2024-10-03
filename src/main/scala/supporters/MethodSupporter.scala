@@ -178,7 +178,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
         consumes(s, posts, postViolated, v)(QS)
       } {
         (s1: State, _: Term, v1: Verifier) => {
-          // TODO nklose This fails to generate statements if we do abstraction
+          // TODO nklose We want to do abstraction, but that might require adding folds and such...
           val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
           val vars = s1.g.values.collect { case (v2, t) if formals.contains(v2) => (v2, t) }
           val newPosts = BiAbductionSolver.solveFraming(s1, v1, vars, method.pos)
