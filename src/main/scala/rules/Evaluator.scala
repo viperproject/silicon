@@ -1030,8 +1030,9 @@ object evaluator extends EvaluationRules {
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
-        consume(s, eAss, pve, v)((_, _, _) => {
-          eval(s, eIn, pve, v)(Q)
+        consume(s, eAss, pve, v)((s2, _, v2) => {
+          val s3 = s2.copy(g = s.g, h = s.h)
+          eval(s3, eIn, pve, v2)(Q)
         })
 
       /* Sequences */
