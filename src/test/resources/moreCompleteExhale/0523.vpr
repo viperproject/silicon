@@ -9,9 +9,9 @@ function req(x: Ref): Bool
 
 method test(x: Ref) {
   inhale acc(x.f)
-  //:: ExpectedOutput(application.precondition:insufficient.permission)
-  assert req(x) // Fails only without --enableMoreCompleteExhale (and should fail)
-  assert false  // Fails even with --enableMoreCompleteExhale (and should fail)
+  assert req(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
 }
 
 
