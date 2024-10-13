@@ -1526,27 +1526,21 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            v: Verifier)
                           : ConsumptionResult = {
 
-    var success = false
     var permsAvailable: Term = NoPerm
     var permsAvailableExp: Option[ast.Exp] = Option.when(withExp)(ast.NoPerm()())
 
-    var tookEnoughCheck: Term = False
 
     for (ch <- candidates) {
-      if (!success) {
-        permsAvailable = PermPlus(permsAvailable, ch.perm)
-        permsAvailableExp = permsAvailableExp.map(pae => ast.PermAdd(pae, permsExp.get)())
-
-        tookEnoughCheck =
-          Forall(codomainQVars, Implies(condition, Implies(Greater(perms, NoPerm), Greater(permsAvailable, NoPerm))), Nil)
-
-        success = v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())
-      }
+      permsAvailable = PermPlus(permsAvailable, ch.perm)
+      permsAvailableExp = permsAvailableExp.map(pae => ast.PermAdd(pae, permsExp.get)())
     }
+
+    val tookEnoughCheck =
+      Forall(codomainQVars, Implies(condition, Implies(Greater(perms, NoPerm), Greater(permsAvailable, NoPerm))), Nil)
 
     // final check
     val result =
-      if (success || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */ )
+      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */ )
         Complete()
       else
         Incomplete(PermMinus(permsAvailable, perms), permsAvailableExp.map(pa => ast.PermSub(pa, permsExp.get)()))
