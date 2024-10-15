@@ -242,7 +242,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         }
 
         magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, Seq(), v)(consumeSingle)((s1, hs1, cHeap1, optChunks, v1) => {
-          val newTopHeap = hs1.head + cHeap1
+          // val newTopHeap = hs1.head + cHeap1 // apparently unused.
           val totalConsumedAmount = cHeap1.values.foldLeft(NoPerm: Term)((q, ch) => PermPlus(q, ch.asInstanceOf[GeneralChunk].perm))
           val totalConsumedFromFirst = if (optChunks.length > 0 && optChunks.head.nonEmpty) {
             PermMin(optChunks.head.get.asInstanceOf[NonQuantifiedChunk].perm, totalConsumedAmount)
@@ -254,9 +254,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
           val nonEmptyChunks = optChunks.filter(_.isDefined)
           val cHeap2 = if (nonEmptyChunks.isEmpty) Heap() else Heap(Seq(nonEmptyChunks.head.get.asInstanceOf[NonQuantifiedChunk].withPerm(totalConsumedFromAllButFirst)))
-          val newTopHeap2 = if (nonEmptyChunks.isEmpty) s.h else s.h + cHeap2
+          val (fr1p, newTopHeap2) = if (nonEmptyChunks.isEmpty) (s1.functionRecorder, s.h) else v1.stateConsolidator(s1).merge(s1.functionRecorder, s.h, cHeap2, v1) // s.h + cHeap2
 
-          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2)
+          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1p)
           if (nonEmptyChunks.isEmpty){
             assert(v1.decider.checkSmoke(true))
             Success()
@@ -288,7 +288,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val snap = v.decider.fresh(snapSort)
         val ch = BasicChunk(FieldID, identifier, args, snap, gain)
         chunkSupporter.produce(s, h, ch, v)((s2, h2, v2) => {
-          doActualConsumeComplete(s2.copy(h = s2.h + ch), h2, resource, args, perms, ve, v2)(Q)
+          val (fr3, mergedHeap) = v2.stateConsolidator(s2).merge(s2.functionRecorder, s2.h, ch, v2)
+          doActualConsumeComplete(s2.copy(h = mergedHeap, functionRecorder = fr3), h2, resource, args, perms, ve, v2)(Q)
         })
       }
     } else {

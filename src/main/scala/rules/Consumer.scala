@@ -125,8 +125,8 @@ object consumer extends ConsumptionRules {
       else
         wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, cHeap, snap1, v1) =>
           consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, cHeap2, snap2, v2) => {
-            val combined = cHeap + cHeap2
-            Q(s2, h2, combined, Combine(snap1, snap2), v2)}))
+            val (fr3, combinedHeap) = v2.stateConsolidator(s2).merge(s2.functionRecorder, cHeap, cHeap2, v2)// cHeap + cHeap2
+            Q(s2.copy(functionRecorder = fr3), h2, combinedHeap, Combine(snap1, snap2), v2)}))
     }
   }
 
