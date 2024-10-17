@@ -7,6 +7,8 @@ import viper.silicon.state._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 
+import scala.annotation.tailrec
+
 object AbstractionApplier extends RuleApplier[AbstractionQuestion] {
   override val rules: Seq[AbstractionRule] = Seq(AbstractionFold, AbstractionPackage, AbstractionJoin, AbstractionApply)
 }
@@ -16,7 +18,7 @@ case class AbstractionQuestion(s: State, v: Verifier) {
   // TODO we assume each field only appears in at most one predicate
   def fields: Map[Field, Predicate] = s.program.predicates.flatMap { pred => pred.body.get.collect { case fa: FieldAccessPredicate => (fa.loc.field, pred) } }.toMap
 
-  def varTran = VarTransformer(s, v, s.g.values, Heap())
+  def varTran: VarTransformer = VarTransformer(s, v, s.g.values, Heap())
 
   def isTriggerField(bc: BasicChunk): Boolean = {
     bc.resourceID match {
@@ -33,7 +35,7 @@ object AbstractionFold extends AbstractionRule {
   private def checkChunks(chunks: Seq[BasicChunk], q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
     chunks match {
       case Seq() => Q(None)
-      case chunk :: rest =>
+      case chunk +: rest =>
         val pred = q.fields(abductionUtils.getField(chunk.id, q.s.program))
         val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
         executionFlowController.tryOrElse0(q.s, q.v) {
@@ -52,16 +54,16 @@ object AbstractionFold extends AbstractionRule {
 }
 
 
-// TODO nklose Never fold. Instead, check if there exists a var in the state so that the field access is equal to it. If so, then we can package where the var gives us the lhs.
 object AbstractionPackage extends AbstractionRule {
 
+  @tailrec
   private def findWandFieldChunk(chunks: Seq[BasicChunk], q: AbstractionQuestion): Option[(Exp, BasicChunk)] = {
     chunks match {
       case Seq() => None
-      case chunk :: rest =>
-        q.varTran.transformChunk(chunk) match {
+      case chunk +: rest =>
+        q.varTran.transformTerm(chunk.snap) match {
           case None => findWandFieldChunk(rest, q)
-          case Some(lhs) => Some((lhs, chunk))
+          case Some(snap) => Some((snap, chunk))
         }
     }
   }
@@ -86,7 +88,7 @@ object AbstractionPackage extends AbstractionRule {
 object AbstractionJoin extends AbstractionRule {
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
-    val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.toSeq
+    val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect{case Some(wand: MagicWand) => wand}.toSeq
     val pairs = wands.combinations(2).toSeq
     pairs.collectFirst {
       case wands if wands(0).right == wands(1).left => (wands(0), wands(1))
@@ -94,8 +96,8 @@ object AbstractionJoin extends AbstractionRule {
     } match {
       case None => Q(None)
       case (Some((w1, w2))) =>
-        magicWandSupporter.packageWand(q.s, MagicWand(w1.left, w2.right)(), Seq(Apply(w1), Apply(w2)), pve, q.v) {
-          (s1, v1) => Q(Some(q.copy(s = s1, v = v1)))
+        magicWandSupporter.packageWand(q.s, MagicWand(w1.left, w2.right)(), Seqn(Seq(Apply(w1)(), Apply(w2)()), Seq())(), pve, q.v) {
+          (s1, wandChunk, v1) => Q(Some(q.copy(s = s1.copy(h = s1.h.+(wandChunk)), v = v1)))
         }
     }
   }
@@ -111,7 +113,7 @@ object AbstractionApply extends AbstractionRule {
       case None => Q(None)
       case Some(wand) =>
         magicWandSupporter.applyWand(q.s, wand, pve, q.v) {
-          (s1, v1) => Q(Some(q.copy(s = s1, v = v1))
+          (s1, v1) => Q(Some(q.copy(s = s1, v = v1)))
         }
     }
   }

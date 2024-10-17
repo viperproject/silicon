@@ -40,7 +40,8 @@ class MagicWandSnapFunctionsContributor(preambleReader: PreambleReader[String, S
    */
   override def analyze(program: Program): Unit = {
     // If there are not magic wands, do not add any definitions or axioms
-    if (!program.existsDefined { case ast.MagicWand(_, _) => true }) return
+    // Removed for abduction
+    //if (!program.existsDefined { case ast.MagicWand(_, _) => true }) return
 
     collectedSorts = InsertionOrderedSet(sorts.MagicWandSnapFunction)
     collectedFunctionDecls = preambleReader.readPreamble(FILE_DECLARATIONS)

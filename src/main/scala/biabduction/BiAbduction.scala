@@ -2,6 +2,7 @@ package viper.silicon.biabduction
 
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.rules.{executionFlowController, executor, producer}
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
@@ -152,23 +153,22 @@ object BiAbductionSolver {
 
 
 
-  def solveAbstraction(s: State, v: Verifier)(Q: (State, Verifier, Seq[Exp]) => VerificationResult): VerificationResult = {
-    val q = AbstractionQuestion(s1, v1)
-    val res = AbstractionApplier.applyRules(q) { q1 =>
-      Success(solveFraming(q1.s, q1.v, q1.s.g.values))
+  def solveAbstraction(s: State, v: Verifier)(Q: (State, Seq[Exp], Verifier) => VerificationResult): VerificationResult = {
+    val q = AbstractionQuestion(s, v)
+    AbstractionApplier.applyRules(q) { q1 =>
+      Success(Some(solveFraming(q1.s, q1.v, q1.s.g.values)))
     } match {
-      case NonFatalResult =>
+      case res: NonFatalResult =>
         val exps = abductionUtils.getFramingSuccesses(res).head
-        Q(exps.s, exps.v, exps.posts)
+        Q(exps.s, exps.posts, exps.v)
     }
   }
 
-  // TODO nklose we would like to abstract postconditions, but we cannot do it here anymore! We call this from an abstraction rule
-  // So we have to do this only where we generate the postconditions. 
+  // This does not do abstraction, but just transforms state back into expressions.
   def solveFraming(s: State, v: Verifier, postVars: Map[AbstractLocalVar, (Term, Option[Exp])], loc: Position = NoPosition, ignoredBcs: Seq[Exp] = Seq()): FramingSuccess = {
 
     val tra = VarTransformer(s, v, postVars, s.h)
-    val res = s.h.values.collect { case c: BasicChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
+    val res = s.h.values.collect { case c: NonQuantifiedChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
     val bcs = v.decider.pcs.branchConditions.map { term => tra.transformTerm(term) }.collect { case Some(e) if e != TrueLit()() && !ignoredBcs.contains(e) => e }.toSet
     val posts = res.map { e =>
       if (bcs.isEmpty) {

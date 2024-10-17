@@ -76,7 +76,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
         val rcvs = mwc.args.map(a => a -> transformTerm(a)).toMap
         if (rcvs.values.toSeq.contains(None)) None else {
           val shape = mwc.id.ghostFreeWand
-          val expBindings = mwc.bindings.map(b => b._1 -> rcvs(b._2._1).get)
+          val expBindings = mwc.bindings.collect { case (lv, (term, _)) if rcvs.contains(term) => lv -> rcvs(term).get}
           val instantiated = shape.replace(expBindings)
           Some(instantiated)
           //Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))

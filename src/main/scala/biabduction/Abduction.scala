@@ -116,7 +116,7 @@ object AbductionRemove extends AbductionRule {
   private def consumeChunks(chunks: Seq[BasicChunk], q: AbductionQuestion)(Q: AbductionQuestion => VerificationResult): VerificationResult = {
     chunks match {
       case Seq() => Q(q)
-      case c :: cs =>
+      case c +: cs =>
         val c1 = findChunk[BasicChunk](q.s.h.values, c.id, c.args, q.v).get
         val resource: Resource = c.resourceID match {
           case PredicateID => q.s.program.predicates.head
@@ -191,7 +191,7 @@ object AbductionFold extends AbductionRule {
   protected def findFirstFieldChunk(locs: Seq[FieldAccess], q: AbductionQuestion)(Q: Option[(FieldAccess, BasicChunk)] => VerificationResult): VerificationResult = {
     locs match {
       case Seq() => Q(None)
-      case loc :: rest =>
+      case loc +: rest =>
         checkChunk(loc, q.s, q.v, q.lostAccesses) {
           case Some(chunk) => Q(Some(loc, chunk))
           case None => findFirstFieldChunk(rest, q)(Q)
