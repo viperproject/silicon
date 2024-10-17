@@ -242,8 +242,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         }
 
         magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, Seq(), v)(consumeSingle)((s1, hs1, cHeap1, optChunks, v1) => {
-          val newTopHeap = hs1.head + cHeap1
-          val totalConsumedAmount = cHeap1.values.foldLeft(NoPerm: Term)((q, ch) => PermPlus(q, ch.asInstanceOf[GeneralChunk].perm))
+          //val (fr1, newTopHeap) = v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap1, v1)
+          //val (fr1, newTopHeap) = (s1.functionRecorder, s1.h + cHeap1)
+          val totalConsumedAmount = perms
           val totalConsumedFromFirst = if (optChunks.length > 0 && optChunks.head.nonEmpty) {
             PermMin(optChunks.head.get.asInstanceOf[NonQuantifiedChunk].perm, totalConsumedAmount)
           } else {
@@ -253,10 +254,16 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
 
           val nonEmptyChunks = optChunks.filter(_.isDefined)
-          val cHeap2 = if (nonEmptyChunks.isEmpty) Heap() else Heap(Seq(nonEmptyChunks.head.get.asInstanceOf[NonQuantifiedChunk].withPerm(totalConsumedFromAllButFirst)))
-          val newTopHeap2 = if (nonEmptyChunks.isEmpty) s.h else s.h + cHeap2
+          val cHeap2 = if (nonEmptyChunks.isEmpty)
+            Heap()
+          else
+            Heap(Seq(nonEmptyChunks.head.get.asInstanceOf[NonQuantifiedChunk].withPerm(totalConsumedFromAllButFirst)))
+          val (fr1, newTopHeap2) = if (nonEmptyChunks.isEmpty)
+            (s1.functionRecorder, s1.h)
+          else
+            v1.stateConsolidator(s1).merge(s1.functionRecorder,s1.h, cHeap2, v1)
 
-          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2)
+          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1)
           if (nonEmptyChunks.isEmpty){
             assert(v1.decider.checkSmoke(true))
             Success()
@@ -288,7 +295,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val snap = v.decider.fresh(snapSort)
         val ch = BasicChunk(FieldID, identifier, args, snap, gain)
         chunkSupporter.produce(s, h, ch, v)((s2, h2, v2) => {
-          doActualConsumeComplete(s2.copy(h = s2.h + ch), h2, resource, args, perms, ve, v2)(Q)
+          val (fr3, s3h) = v2.stateConsolidator(s2).merge(s2.functionRecorder, s2.h, ch, v2)
+          doActualConsumeComplete(s2.copy(h = s3h, functionRecorder = fr3), h2, resource, args, perms, ve, v2)(Q)
         })
       }
     } else {
@@ -426,7 +434,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                 //Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
                 Success()
               case false =>
-                result = (Incomplete(pNeeded), s1, newHeap, consumedHeap, None)
+                val consumedChunk = if (consumedChunks.isEmpty) None else Some(consumedChunks.head.withSnap(condSnap).withPerm(PermMinus(perms, pNeeded)))
+                result = (Incomplete(pNeeded), s1, newHeap, consumedHeap, consumedChunk)
                 //Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
                 Success()
             }

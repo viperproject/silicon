@@ -1320,7 +1320,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         magicWandSupporter.consumeFromMultipleHeaps(s, heaps, permissions, failure, Seq(), v)(
           consumeSingleFromOneOfMultipleHeaps(identifier, codomainQVars, arguments, resource, chunkOrderHeuristics)
         )((s1, hs1, cHeap1, optChunks, v1) => {
-          val newTopHeap = hs1.head + cHeap1
+          //val newTopHeap = hs1.head + cHeap1
           val totalConsumedAmount = cHeap1.values.foldLeft(NoPerm: Term)((q, ch) => PermPlus(q, ch.asInstanceOf[GeneralChunk].perm))
           val totalConsumedFromFirst = if (optChunks.length > 0 && optChunks.head.nonEmpty) {
             PermMin(optChunks.head.get.asInstanceOf[QuantifiedBasicChunk].perm, totalConsumedAmount)
@@ -1332,9 +1332,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
           val nonEmptyChunks = optChunks.filter(_.isDefined)
           val cHeap2 = if (nonEmptyChunks.isEmpty) Heap() else Heap(Seq(nonEmptyChunks.head.get.asInstanceOf[QuantifiedBasicChunk].withPerm(totalConsumedFromAllButFirst)))
-          val newTopHeap2 = if (nonEmptyChunks.isEmpty) s.h else s.h + cHeap2
+          val (fr2, newTopHeap2) = if (nonEmptyChunks.isEmpty)
+            (s1.functionRecorder, s.h)
+          else
+            v1.stateConsolidator(s1).merge(s1.functionRecorder, s.h, cHeap2, v1)
 
-          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2)
+          val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr2)
           if (nonEmptyChunks.isEmpty) {
             assert(v1.decider.checkSmoke(true))
             Success()

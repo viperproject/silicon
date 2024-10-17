@@ -233,6 +233,29 @@ method mFrame4(r: Ref)
 
 }
 
+method mFrame4af(r: Ref)
+    requires acc(r.f) && acc(r.g)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+        invariant r.f == 1
+    {
+        assert acc(r.f)
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert false
+        var tmp: Bool
+        tmp := havocBool()
+        if (tmp)
+        {
+            r.g := r.g
+        }
+        b := havocBool()
+    }
+
+}
+
 method mFrame5(r: Ref)
     requires acc(r.f) && acc(r.g)
 {
