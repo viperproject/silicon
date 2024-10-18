@@ -20,7 +20,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{Exp, Stmt, VirtualPosition}
+import viper.silver.ast.{Exp, Position, Stmt, VirtualPosition}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
@@ -228,6 +228,10 @@ object executor extends ExecutionRules {
         sys.error(s"Unexpected block: $block")
 
       case block@cfg.LoopHeadBlock(existingInvs, stmts, _) =>
+
+        val invLoc = s.methodCfg.outEdges(block).head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition.pos
+        val endPos = VirtualPosition("End of loop at " + invLoc.toString)
+        
         incomingEdgeKind match {
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
@@ -249,6 +253,7 @@ object executor extends ExecutionRules {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
             val sBody = s.copy(g = gBody, h = Heap())
+
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition (_.kind == cfg.Kind.Out)
@@ -275,11 +280,13 @@ object executor extends ExecutionRules {
 
                 type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
                 var phase1data: Vector[PhaseData] = Vector.empty
+                
+
 
                 val invSuc = if (newInvs.isEmpty) {
                   Success()
                 } else {
-                  Success(Some(LoopInvariantSuccess(s, v, foundInvs, otherEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition.pos)))
+                  Success(Some(LoopInvariantSuccess(s, v, foundInvs, invLoc)))
                 }
 
                 val wfi = executionFlowController.locally(sBody, v)((s0, v0) => {
@@ -295,7 +302,7 @@ object executor extends ExecutionRules {
 
                 val con = executionFlowController.locally(s, v) ((s0, v0) => {
                   v0.decider.prover.comment("Loop head block: Establish invariant")
-                  checkInvariants(s0, v0, invs)((sLeftover, v1) => {
+                  checkInvariants(s0, v0, invs, invLoc)((sLeftover, v1) => {
                     v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                     phase1data.foldLeft(Success(): VerificationResult) {
                       case (result, _) if !result.continueVerification => result
@@ -322,7 +329,7 @@ object executor extends ExecutionRules {
                                       executionFlowController.locally(s4, v3)((s5, v5) => {
                                         follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) => {
                                           // TODO nklose check that no new state is abduced, this would be incorrect
-                                          checkInvariants(s6, v6, foundInvs)((_, _) => Success())
+                                          checkInvariants(s6, v6, foundInvs, endPos)((_, _) => Success())
                                         }
                                         )
                                       }) combine
@@ -350,16 +357,16 @@ object executor extends ExecutionRules {
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             // TODO nklose check that no new state is abduced, this would be incorrect
-            checkInvariants(s, v, existingInvs)(Q)
+            checkInvariants(s, v, existingInvs, endPos)(Q)
         }
     }
 
   }
 
-  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp])(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp], loc: Position)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
     executionFlowController.tryOrElse1[Term](s, v){(s1, v1, QS) => consumes(s1, invs, LoopInvariantNotPreserved, v1)(QS) }
     {(s1, _, v1) => Q(s1, v1)}
-    {f => BiAbductionSolver.solveAbduction(s, v, f)((s3, v3) => checkInvariants(s3, v3, invs)(Q))}
+    {f => BiAbductionSolver.solveAbduction(s, v, f, Some(loc))((s3, v3) => checkInvariants(s3, v3, invs, loc)(Q))}
   }
 
   def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)

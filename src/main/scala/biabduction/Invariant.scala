@@ -55,7 +55,7 @@ object LoopInvariantSolver {
     locs match {
       case Seq() => Q(Seq())
       case loc +: rest =>
-        findChunkFromExp(loc, s, v){
+        findChunkFromExp(loc, s, v) {
           case Some(chunk) => findChunks(rest, s, v) { chunks => Q(chunk +: chunks) }
         }
     }

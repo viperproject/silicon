@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.biabduction.{BiAbductionSolver, abductionUtils}
+import viper.silicon.biabduction.{BiAbductionSolver, FramingSuccess, VarTransformer, abductionUtils}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
@@ -122,7 +122,12 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               executionFlowController.locally(s2a, v2)((s3, v3) => {
                 exec(s3, body, v3) { (s4, v4) => {
                   handlePostConditions(s4, method, posts, v3)
-                }}})})})})
+                }
+                }
+              })
+            })
+          })
+        })
 
       val abdResult: VerificationResult = result match {
         case suc: NonFatalResult =>
@@ -130,26 +135,26 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
           val ins = method.formalArgs.map(_.localVar)
           val inVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
           val abds = abductionUtils.getAbductionSuccesses(suc)
-          val pres = abds.map {abd => abd.toPrecondition(inVars, abd.s.oldHeaps.head._2)}
+          val pres = abds.map { abd => abd.toPrecondition(inVars, abd.s.oldHeaps.head._2) }
           // If we fail to generate preconditions somewhere, then we actually fail
-          if(pres.contains(None)){
+          if (pres.contains(None)) {
             Failure(Internal(reason = InternalReason(DummyNode, "Failed to generate preconditions from abduction results")))
           } else {
             // Otherwise we succeed
             val presTra = pres.flatMap(_.get).distinct
-            if(presTra.nonEmpty){
-            println("Generated preconditions from abductions: " + presTra.mkString(" && "))
+            if (presTra.nonEmpty) {
+              println("Generated preconditions from abductions: " + presTra.mkString(" && "))
             }
-            val stmtStrs = abds.flatMap {abd => abd.stmts.map {stmt => "  Line " + abd.line + ": " + stmt.toString() }}.distinct
-            if(stmtStrs.nonEmpty) {
+            val stmtStrs = abds.flatMap { abd => abd.stmts.map { stmt => "  Line " + abd.line + ": " + stmt.toString() } }.distinct
+            if (stmtStrs.nonEmpty) {
               println("Abduced the following statements:\n" + stmtStrs.reverse.mkString("\n"))
             }
             val invs = abductionUtils.getInvariantSuccesses(suc).map(invSuc => "  Line " + invSuc.line + ": " + invSuc.invs.mkString(" && ")).distinct
-            if(invs.nonEmpty){
+            if (invs.nonEmpty) {
               println("Generated invariants::\n" + invs.mkString("\n"))
             }
             val posts = abductionUtils.getFramingSuccesses(suc).flatMap(_.posts).distinct
-            if(posts.nonEmpty){
+            if (posts.nonEmpty) {
               println("Generated postconditions: " + posts.mkString(" && "))
             }
             result
@@ -179,11 +184,15 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
       } {
         (s1: State, _: Term, v1: Verifier) => {
           // TODO nklose We want to do abstraction, but that might require adding folds and such...
-          val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
-          val vars = s1.g.values.collect { case (v2, t) if formals.contains(v2) => (v2, t) }
-          val newPosts = BiAbductionSolver.solveFraming(s1, v1, vars, method.pos)
-          val newRes = if(newPosts.posts.isEmpty) Success() else handlePostConditions(s1, method, newPosts.posts, v1)
-          newRes && Success(Some(newPosts))
+          BiAbductionSolver.solveAbstraction(s1, v1) { (s2, framedPosts, v2) =>
+            val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
+            val vars = s2.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
+            //val newPosts = BiAbductionSolver.solveFraming(s1, v1, vars, method.pos)
+            val varTran = VarTransformer(s2, v2, vars, s2.h)
+            val newPosts = framedPosts.map { e => varTran.transformExp(e) }.collect { case Some(e) => e }
+            val newRes = if (newPosts.isEmpty) Success() else handlePostConditions(s1, method, newPosts, v1)
+            newRes && Success(Some(FramingSuccess(s2, v2, newPosts, method.pos)))
+          }
         }
       } {
         f =>

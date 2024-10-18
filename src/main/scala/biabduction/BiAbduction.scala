@@ -116,7 +116,7 @@ trait BiAbductionRule[S] {
 
 object BiAbductionSolver {
 
-  def solveAbduction(s: State, v: Verifier, f: Failure)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  def solveAbduction(s: State, v: Verifier, f: Failure, loc: Option[Position] = None)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
 
     val abdGoal: Option[AccessPredicate] = f.message.reason match {
       case reason: InsufficientPermission =>
@@ -142,7 +142,7 @@ object BiAbductionSolver {
       if (q1.goal.isEmpty) {
         producer.produces(s, freshSnap, q1.foundState, _ => Internal(), v) { (s2, v2) =>
           executor.execs(s2, q1.foundStmts.reverse, v2) { (s3, v3) =>
-            Success(Some(AbductionSuccess(s, v, v.decider.pcs.duplicate(), q1.foundState, q1.foundStmts, loc = f.message.pos))) && Q(s3, v3)
+            Success(Some(AbductionSuccess(s, v, v.decider.pcs.duplicate(), q1.foundState, q1.foundStmts, loc = loc.getOrElse(f.message.pos)))) && Q(s3, v3)
           }
         }
       } else {
