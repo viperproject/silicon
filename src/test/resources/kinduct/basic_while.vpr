@@ -140,3 +140,67 @@ method t11(r: Ref) returns ()
         j := j+1
     }
 }
+
+method justChecking(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var j: Int := 2
+    while (j < (r.f))
+        invariant acc(r.f, 1/2)
+    {
+        j := j+1
+    }
+    assert perm(r.f) == write
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method justChecking2(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var j: Int := 2
+    assume r.f == 32
+    while (j < (r.f))
+        invariant acc(r.f, 1/2)
+    {
+        assume r.f == 34
+        j := j+1
+    }
+    assert perm(r.f) == write
+    assert false
+}
+
+method justChecking3(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var j: Int := 2
+    assume r.f == 32
+    while (j < (r.f))
+        invariant acc(r.f, 1/2)
+    {
+        r.f := 34
+        j := j+1
+    }
+    assert perm(r.f) == write
+    assert r.f == 32 || r.f == 34
+    assert r.f == 34
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f == 32
+}
+
+method justChecking4(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var j: Int
+    assume r.f == 32
+    while (j < (r.f))
+        invariant acc(r.f, 1/2)
+    {
+        r.f := 34
+        j := j+1
+    }
+    assert perm(r.f) == write
+    assert r.f == 32 || r.f == 34
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f == 34
+}

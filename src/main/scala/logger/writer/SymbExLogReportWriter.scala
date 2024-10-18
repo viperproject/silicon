@@ -58,32 +58,32 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case QuantifiedFieldChunk(id, fvf, perm, invs, cond, receiver, hints) =>
+    case QuantifiedFieldChunk(id, fvf, condition, perm, invs, receiver, hints) =>
       JsObject(
         "type" -> JsString("quantified_field_chunk"),
         "field" -> JsString(id.toString),
         "field_value_function" -> TermWriter.toJSON(fvf),
+        "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "receiver" -> receiver.map(TermWriter.toJSON).getOrElse(JsNull),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedPredicateChunk(id, vars, psf, perm, invs, cond, singletonArgs, hints) =>
+    case QuantifiedPredicateChunk(id, vars, psf, condition, perm, invs, singletonArgs, hints) =>
       JsObject(
         "type" -> JsString("quantified_predicate_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
         "predicate" -> JsString(id.toString),
         "predicate_snap_function" -> TermWriter.toJSON(psf),
+        "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedMagicWandChunk(id, vars, wsf, perm, invs, cond, singletonArgs, hints) =>
+    case QuantifiedMagicWandChunk(id, vars, wsf, perm, invs, singletonArgs, hints) =>
       JsObject(
         "type" -> JsString("quantified_magic_wand_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
@@ -91,7 +91,6 @@ object SymbExLogReportWriter {
         "wand_snap_function" -> TermWriter.toJSON(wsf),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )

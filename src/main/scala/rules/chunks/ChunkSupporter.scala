@@ -44,12 +44,6 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult
 
-  def findMatchingChunk[CH <: NonQuantifiedChunk: ClassTag]
-                       (chunks: Iterable[Chunk],
-                        chunk: CH,
-                        v: Verifier)
-                       : Option[CH]
-
   def findChunksWithID[CH <: NonQuantifiedChunk: ClassTag]
                       (chunks: Iterable[Chunk],
                        id: ChunkIdentifer)
@@ -278,7 +272,7 @@ object chunkSupporter extends ChunkSupportRules {
     }
   }
 
-  private[chunks] def findChunk[CH <: NonQuantifiedChunk: ClassTag]
+  def findChunk[CH <: NonQuantifiedChunk: ClassTag]
                (chunks: Iterable[Chunk],
                 id: ChunkIdentifer,
                 args: Iterable[Term],
@@ -286,11 +280,6 @@ object chunkSupporter extends ChunkSupportRules {
                : Option[CH] = {
     val relevantChunks = findChunksWithID[CH](chunks, id)
     findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v)
-  }
-
-  def findMatchingChunk[CH <: NonQuantifiedChunk: ClassTag]
-                       (chunks: Iterable[Chunk], chunk: CH, v: Verifier): Option[CH] = {
-    findChunk[CH](chunks, chunk.id, chunk.args, v)
   }
 
   def findChunksWithID[CH <: NonQuantifiedChunk: ClassTag](chunks: Iterable[Chunk], id: ChunkIdentifer): Iterable[CH] = {

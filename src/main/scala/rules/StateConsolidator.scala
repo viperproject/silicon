@@ -26,7 +26,7 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
   def consolidateOptionally(s: State, v: Verifier): State
   def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
-  def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap)
+  def merge(fr: FunctionRecorder, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap)
 
   protected def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State
   protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
@@ -44,7 +44,7 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
 
-  def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
+  def merge(fr: FunctionRecorder, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) =
     (fr, h + ch)
 
   protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s
@@ -66,13 +66,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
     val (functionRecorderAfterHeapMerging, mergedHeaps) =
       initialHeaps.foldLeft((s.functionRecorder, Nil: List[Heap])) { case ((fr, hs), h) =>
-        val (nonQuantifiedChunks, otherChunks) = partition(h)
-
         var continue = false
 
-        var mergedChunks: Seq[NonQuantifiedChunk] = Nil
-        var destChunks: Seq[NonQuantifiedChunk] = Nil
-        var newChunks: Seq[NonQuantifiedChunk] = nonQuantifiedChunks
+        var mergedChunks: Seq[Chunk] = Nil
+        var destChunks: Seq[Chunk] = Nil
+        var newChunks: Seq[Chunk] = h.values.toSeq
         var functionRecorder: FunctionRecorder = fr
 
         var fixedPointRound: Int = 0
@@ -94,10 +92,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           fixedPointRound = fixedPointRound + 1
         } while (continue)
 
-        val allChunks = mergedChunks ++ otherChunks
-        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+        val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
 
-        mergedChunks foreach { ch =>
+        mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
         }
@@ -107,7 +104,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         }
 
         v.symbExLog.closeScope(sepIdentifier)
-        (functionRecorder, hs :+ Heap(allChunks))
+        (functionRecorder, hs :+ Heap(mergedChunks))
       }
 
     val s1 = s.copy(functionRecorder = functionRecorderAfterHeapMerging,
@@ -123,43 +120,41 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     if (s.retrying) consolidate(s, v)
     else s
 
-  def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) = {
+  def merge(fr: FunctionRecorder, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) = {
     merge(fr, h, Heap(Seq(ch)), v)
   }
 
   def merge(fr1: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
-    val (nonQuantifiedChunks, otherChunks) = partition(h)
-    val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
-    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
+    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, v)
 
     v.decider.assume(snapEqs)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
-    newlyAddedChunks foreach { ch =>
+    newlyAddedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
     }
 
     v.symbExLog.closeScope(sepIdentifier)
-    (fr2, Heap(mergedChunks ++ otherChunks ++ newOtherChunk))
+    (fr2, Heap(mergedChunks))
   }
 
   private def singleMerge(fr: FunctionRecorder,
-                          destChunks: Seq[NonQuantifiedChunk],
-                          newChunks: Seq[NonQuantifiedChunk],
+                          destChunks: Seq[Chunk],
+                          newChunks: Seq[Chunk],
                           v: Verifier)
                          : (FunctionRecorder,
-                            Seq[NonQuantifiedChunk],
-                            Seq[NonQuantifiedChunk],
+                            Seq[Chunk],
+                            Seq[Chunk],
                             InsertionOrderedSet[Term]) = {
 
     val mergeLog = new SingleMergeRecord(destChunks, newChunks, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
     // bookkeeper.heapMergeIterations += 1
 
-    val initial = (fr, destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
+    val initial = (fr, destChunks, Seq[Chunk](), InsertionOrderedSet[Term]())
 
     val result = newChunks.foldLeft(initial) { case ((fr1, accMergedChunks, accNewChunks, accSnapEqs), nextChunk) =>
       /* accMergedChunks: already merged chunks
@@ -169,7 +164,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
        *           sequence of destination chunks
        */
 
-      chunkSupporter.findMatchingChunk(accMergedChunks, nextChunk, v) match {
+      findMatchingChunk(accMergedChunks, nextChunk, v) match {
         case Some(ch) =>
           mergeChunks(fr1, ch, nextChunk, v) match {
             case Some((fr2, newChunk, snapEq)) =>
@@ -185,14 +180,38 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     result
   }
 
+  private def findMatchingChunk(chunks: Iterable[Chunk], chunk: Chunk, v: Verifier): Option[Chunk] = {
+    chunk match {
+      case chunk: BasicChunk =>
+        chunkSupporter.findChunk[BasicChunk](chunks, chunk.id, chunk.args, v)
+      case chunk: QuantifiedChunk => quantifiedChunkSupporter.findChunk(chunks, chunk, v)
+      case _ => None
+    }
+  }
+
   // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)
   // and returns the merged chunk or None, if the chunks could not be merged
-  private def mergeChunks(fr1: FunctionRecorder, chunk1: NonQuantifiedChunk, chunk2: NonQuantifiedChunk, v: Verifier) = (chunk1, chunk2) match {
+  private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, v: Verifier) = (chunk1, chunk2) match {
     case (BasicChunk(rid1, id1, args1, snap1, perm1), BasicChunk(_, _, _, snap2, perm2)) =>
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, v)
 
       Some(fr2, BasicChunk(rid1, id1, args1, combinedSnap, PermPlus(perm1, perm2)), snapEq)
-    case (_, _) =>
+    case (l@QuantifiedFieldChunk(id1, fvf1, condition1, perm1, invs1, singletonRcvr1, hints1),
+    r@QuantifiedFieldChunk(_, fvf2, _, perm2, _, _, hints2)) =>
+      assert(l.quantifiedVars == Seq(`?r`))
+      assert(r.quantifiedVars == Seq(`?r`))
+      // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
+      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, fvf1, fvf2, l.perm, r.perm, v)
+      val permSum = PermPlus(perm1, perm2)
+      val bestHints = if (hints1.nonEmpty) hints1 else hints2
+      Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, permSum, invs1, singletonRcvr1, bestHints), snapEq)
+    case (l@QuantifiedPredicateChunk(id1, qVars1, psf1, _, perm1, _, _, _),
+    r@QuantifiedPredicateChunk(_, qVars2, psf2, condition2, perm2, invs2, singletonArgs2, hints2)) =>
+      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
+
+      val permSum = PermPlus(perm1.replace(qVars1, qVars2), perm2)
+      Some(fr2, QuantifiedPredicateChunk(id1, qVars2, combinedSnap, condition2, permSum, invs2, singletonArgs2, hints2), snapEq)
+    case _ =>
       None
   }
 
@@ -339,7 +358,7 @@ class MinimalRetryingStateConsolidator(config: Config) extends RetryingStateCons
   override def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
 
-  override def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
+  override def merge(fr: FunctionRecorder, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) =
     (fr, h + ch)
 
   override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s

@@ -478,7 +478,8 @@ object executor extends ExecutionRules {
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
                 if (s3.heapDependentTriggers.contains(field))
                   v3.decider.assume(FieldTrigger(field.name, sm, tRcvr))
-                Q(s3.copy(h = h3 + ch), v3)
+                val (fr4, h4) = v3.stateConsolidator(s3).merge(s3.functionRecorder, h3, ch, v3)
+                Q(s3.copy(h = h4, functionRecorder = fr4), v3)
               }
             )
           }))
