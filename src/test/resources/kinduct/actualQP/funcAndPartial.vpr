@@ -1,0 +1,248 @@
+
+
+
+
+field f: Int
+field g: Ref
+
+define accc(rcv, fld, prm) ( forall myvar: Ref :: myvar == rcv ==> acc(myvar.fld, prm) )
+
+
+function getF(r: Ref): Int
+    requires accc(r, f, 1/2)
+{
+    r.f
+}
+
+function getFFull(r: Ref): Int
+    requires accc(r, f, 1/1)
+{
+    r.f
+}
+
+method mFuncFrame(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := getF(r1)
+        bp := havocBool()
+    }
+    assert r1.f == 0
+}
+
+method mFuncFrameFalse(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := getF(r1)
+        bp := havocBool()
+    }
+    assert r1.f == 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method mFuncFrame2(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := getFFull(r1)
+        bp := havocBool()
+    }
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r1.f == 0
+}
+
+method mFldInv(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        invariant r1.f >= 0
+    {
+        var tmp: Int
+        bp := havocBool()
+    }
+    assert r1.f == 0
+}
+
+method mFldInvFalse(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        invariant r1.f >= 0
+    {
+        var tmp: Int
+        bp := havocBool()
+    }
+    assert r1.f == 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method mFldInvFail(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+        invariant r1.f >= 0
+    {
+        var tmp: Int
+        if (r1.f == 0) {
+            r1.f := r1.f + 1
+        } else {
+            r1.f := r1.f - 3
+        }
+        bp := havocBool()
+    }
+}
+
+method mFldInv2(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        invariant accc(r1, f, write) && r1.f >= 0
+    {
+        var tmp: Int
+        bp := havocBool()
+    }
+    var after: Int
+    after := r1.f
+    r1.f := 17
+    assert after >= 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert after == 0
+}
+
+method mFuncInv2(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        invariant accc(r1, f, write) && getF(r1) >= 0
+    {
+        var tmp: Int
+        bp := havocBool()
+    }
+    var after: Int
+    after := r1.f
+    r1.f := 17
+    assert after >= 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert after == 0
+}
+
+method mFldInvFail2(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+        invariant accc(r1, f, write) && r1.f >= 0
+    {
+        var tmp: Int
+        if (r1.f == 0) {
+            r1.f := r1.f + 1
+        } else {
+            r1.f := r1.f - 3
+        }
+        bp := havocBool()
+    }
+}
+
+method mFuncInv(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        invariant getF(r1) >= 0
+    {
+        var tmp: Int
+        bp := havocBool()
+    }
+    assert r1.f == 0
+}
+
+method mFuncInvFalse(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        invariant getF(r1) >= 0
+    {
+        var tmp: Int
+        bp := havocBool()
+    }
+    assert r1.f == 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method mFuncInvFail(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+    r1.f := 0
+
+    while (bp)
+        //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+        invariant getF(r1) >= 0
+    {
+        var tmp: Int
+        if (r1.f == 0) {
+            r1.f := r1.f + 1
+        } else {
+            r1.f := r1.f - 3
+        }
+        bp := havocBool()
+    }
+}
+
+method havocBool() returns (r: Bool)
+function detBool(): Bool

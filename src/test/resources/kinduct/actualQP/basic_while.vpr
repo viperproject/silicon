@@ -1,0 +1,209 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+define accc(rcv, fld, prm) ( forall myvar: Ref :: myvar == rcv ==> acc(myvar.fld, prm) )
+
+
+method t1(n: Int) returns ()
+    requires n > 0
+{
+    var i: Int := 0
+
+    while (i < n)
+        invariant i <= n
+    {
+        i := i+1
+    }
+}
+
+method t2(n: Int) returns ()
+    requires n > 0
+{
+    var i: Int := 0
+
+    while (i < n)
+        //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+        invariant i < n
+    {
+        i := i+1
+    }
+}
+
+method t3(n: Int) returns ()
+    requires n > 0
+{
+    var i: Int := 2
+
+    while (i < n)
+        //:: ExpectedOutput(invariant.not.established:assertion.false)
+        invariant i <= n
+    {
+        i := i+1
+    }
+}
+
+method t4(n: Int, r: Ref) returns ()
+    requires n > 0
+    requires r != null
+{
+    var i: Int := 2
+
+    //:: ExpectedOutput(if.failed:insufficient.permission)
+    while (i < (r.f))
+    {
+        i := i+1
+    }
+}
+
+method t5(n: Int, r: Ref) returns ()
+    requires n > 0
+    requires accc(r, f, write)
+{
+    var i: Int := 2
+
+    while (i < (r.f))
+        invariant accc(r, f, write)
+    {
+        i := i+1
+    }
+}
+
+method t6(r: Ref) returns ()
+{
+    while (perm(r.f) == none) /* OK - perm(e.f) does not require e != null */
+    {
+    }
+}
+
+method t7(r: Ref) returns ()
+{
+    var i: Int := 1
+    var j: Int := 2
+
+    while (true)
+    {
+        assert i == 1
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert j == 2
+        j := j+1
+    }
+}
+
+method t8(r: Ref) returns ()
+{
+    var j: Int := 2
+
+    while (j < 10)
+    {
+        j := j+1
+    }
+
+    assert j >= 10
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method t9(r: Ref) returns ()
+    requires accc(r, f, write)
+{
+    var j: Int := 2
+    while (j < (r.f))
+        invariant accc(r, f, write)
+    {
+        j := j+1
+    }
+    assert j >= (r.f)
+}
+
+method t10(r: Ref) returns ()
+    requires accc(r, f, write)
+{
+    var j: Int := 2
+
+
+    while (j < (r.f))
+    {
+        j := j+1
+    }
+    assert j >= (r.f)
+}
+
+method t11(r: Ref) returns ()
+  requires r != null
+{
+    var j: Int := 2
+
+    while (j < 3)
+        //:: ExpectedOutput(invariant.not.established:insufficient.permission)
+        invariant r != null && r.f == 2
+    {
+        j := j+1
+    }
+}
+
+method justChecking(r: Ref) returns ()
+    requires accc(r, f, write)
+{
+    var j: Int := 2
+    while (j < (r.f))
+        invariant accc(r, f, 1/2)
+    {
+        j := j+1
+    }
+    assert perm(r.f) == write
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method justChecking2(r: Ref) returns ()
+    requires accc(r, f, write)
+{
+    var j: Int := 2
+    assume r.f == 32
+    while (j < (r.f))
+        invariant accc(r, f, 1/2)
+    {
+        assume r.f == 34
+        j := j+1
+    }
+    assert perm(r.f) == write
+    assert false
+}
+
+method justChecking3(r: Ref) returns ()
+    requires accc(r, f, write)
+{
+    var j: Int := 2
+    assume r.f == 32
+    while (j < (r.f))
+        invariant accc(r, f, 1/2)
+    {
+        r.f := 34
+        j := j+1
+    }
+    assert perm(r.f) == write
+    assert r.f == 32 || r.f == 34
+    assert r.f == 34
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f == 32
+}
+
+method justChecking4(r: Ref) returns ()
+    requires accc(r, f, write)
+{
+    var j: Int
+    assume r.f == 32
+    while (j < (r.f))
+        invariant accc(r, f, 1/2)
+    {
+        r.f := 34
+        j := j+1
+    }
+    assert perm(r.f) == write
+    assert r.f == 32 || r.f == 34
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f == 34
+}

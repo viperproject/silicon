@@ -1,0 +1,82 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field next: Ref
+
+predicate List(x: Ref) { true }
+
+define Listtt(rcv) ( forall myvar: Ref :: myvar == rcv ==> acc(List(myvar), write) )
+
+
+method test01(x: Ref)
+  requires Listtt(x)
+{
+  while (true)
+    invariant Listtt(x)
+  {
+    unfold List(x)
+    goto brk
+    assert false /* Does not fail - should not be executed */
+    assume false /* Same here */
+  }
+
+  label brk
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test011(x: Ref)
+  requires Listtt(x)
+{
+  while (true)
+  {
+    unfold List(x)
+    goto brk
+    assert false /* Does not fail - should not be executed */
+    assume false /* Same here */
+  }
+
+  label brk
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test02a()
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{
+  var b: Bool
+
+  while (b) {
+    b := !b
+    goto brk
+  }
+
+  label brk
+}
+
+method test02b()
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{
+  while (true) {
+    goto brk
+  }
+
+  label brk
+}
+
+method test10() {
+  var b: Bool := true
+
+  while (b)
+  {
+    goto end
+    b := false
+  }
+
+  assert false
+
+  label end
+}
+

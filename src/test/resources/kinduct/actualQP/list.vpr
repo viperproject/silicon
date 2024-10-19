@@ -1,0 +1,171 @@
+
+field val: Int
+field next: Ref
+
+predicate list(r: Ref) {
+    acc(r.val) && acc(r.next) && (r.next != null ==> list(r.next))
+}
+
+define listtt(rcv) ( forall myvar: Ref :: myvar == rcv ==> acc(list(myvar), write) )
+
+
+method itSum(head: Ref)
+    requires listtt(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    while (cur != null)
+    {
+        unfold list(cur)
+        sum := sum + cur.val
+        cur := cur.next
+    }
+}
+
+method itSum2(head: Ref)
+    requires listtt(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    while (cur != null)
+    {
+        //:: ExpectedOutput(assignment.failed:insufficient.permission)
+        sum := sum + cur.val
+        cur := cur.next
+    }
+}
+
+method itSum3(head: Ref)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    while (cur != null)
+    {
+        //:: ExpectedOutput(unfold.failed:insufficient.permission)
+        unfold list(cur)
+        sum := sum + cur.val
+        cur := cur.next
+    }
+}
+
+method itSum4(head: Ref)
+    requires listtt(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    while (cur != null)
+    {
+        unfold list(cur)
+        sum := sum + cur.val
+        cur := cur.next
+    }
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert listtt(cur)
+}
+
+predicate lseg(this: Ref, end: Ref) {
+    this != end ==> (acc(this.val, write) && acc(this.next, write) && lseg(this.next, end))
+}
+
+predicate single(end: Ref, nxt: Ref) {
+    acc(end.next) && acc(end.val) && end.next == nxt
+}
+
+method listSumLseg(head: Ref)
+    requires listtt(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    fold lseg(head, cur)
+    while (cur != null)
+    {
+        unfold list(cur)
+        sum := sum + cur.val
+        var nxt: Ref
+        nxt := cur.next
+        fold single(cur, nxt)
+        concat(head, cur, nxt)
+        cur := nxt
+    }
+    assert lseg(head, cur)
+}
+
+method listSumLseg2(head: Ref)
+    requires listtt(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    fold lseg(head, cur)
+    while (cur != null)
+    {
+        unfold list(cur)
+        sum := sum + cur.val
+        var nxt: Ref
+        nxt := cur.next
+        fold single(cur, nxt)
+        concat(head, cur, nxt)
+        //:: ExpectedOutput(assignment.failed:insufficient.permission)
+        cur := cur.next
+    }
+}
+
+method listSumLseg3(head: Ref)
+    requires listtt(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    fold lseg(head, cur)
+    while (cur != null)
+    {
+        unfold list(cur)
+        sum := sum + cur.val
+        var nxt: Ref
+        nxt := cur.next
+        //:: ExpectedOutput(fold.failed:insufficient.permission)
+        fold list(nxt)
+        concat(head, cur, nxt)
+        cur := nxt
+    }
+}
+
+method listSumLseg4(head: Ref)
+    requires listtt(head)
+{
+    var cur: Ref
+    cur := head
+    var sum: Int
+    sum := 0
+    fold lseg(head, cur)
+    while (cur != null)
+    {
+        unfold list(cur)
+        sum := sum + cur.val
+        var nxt: Ref
+        nxt := cur.next
+        fold single(cur, nxt)
+        concat(head, cur, nxt)
+        //:: ExpectedOutput(call.precondition:insufficient.permission)
+        concat(head, cur, nxt)
+        cur := nxt
+    }
+    assert lseg(head, cur)
+}
+
+method concat(head: Ref, end: Ref, nxt: Ref)
+    requires lseg(head, end)
+    requires single(end, nxt)
+    ensures lseg(head, nxt)

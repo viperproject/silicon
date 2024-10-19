@@ -1,0 +1,89 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+define accc(rcv, fld, prm) ( forall myvar: Ref :: myvar == rcv ==> acc(myvar.fld, prm) )
+
+
+method test01(x: Ref) returns (b: Bool)
+  requires accc(x, f, write)
+  ensures  accc(x, f, write) && x.f == old(x.f)
+{
+  while (b)
+    invariant accc(x, f, 1/2)
+  {
+    b := !b
+  }
+}
+
+method test02(x: Ref) returns (b: Bool) {
+  while (b)
+    //:: ExpectedOutput(invariant.not.established:insufficient.permission)
+    invariant accc(x, f, 1/2)
+  {
+    b := !b
+  }
+}
+
+method test03(x: Ref) returns (b: Bool)
+  requires accc(x, f, write)
+{
+  while (b)
+    invariant accc(x, f, 1/2)
+  {
+    exhale accc(x, f, 1/4)
+    b := !b
+  }
+  assert accc(x, f, 1/2)
+  assert accc(x, f, 3/4)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert accc(x, f, write)
+}
+
+method test20a(x: Ref, y: Ref) returns (n: Int)
+  requires accc(x, f, write)
+  ensures  n == 42 ==> accc(y, f, write)
+  ensures  accc(x, f, write) && x.f == old(x.f)
+{
+  while (n != 0)
+    invariant accc(x, f, 1/2)
+  {
+    n := n - 1
+
+    if (n == 42) {
+      inhale accc(y, f, write)
+      goto brk
+    }
+  }
+
+  label brk
+
+  if (n == 0) {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert perm(y.f) == none
+  }
+}
+
+method test20b(x: Ref, y: Ref) returns (n: Int)
+  requires accc(x, f, write) && x != y
+  ensures  n == 42 ==> accc(y, f, write)
+  ensures  accc(x, f, write) && x.f == old(x.f)
+{
+  while (n != 0)
+    invariant accc(x, f, 1/2)
+  {
+    n := n - 1
+
+    if (n == 42) {
+      inhale accc(y, f, write)
+      goto brk
+    }
+  }
+
+  label brk
+
+  if (n == 0) {
+    assert perm(y.f) == none
+  }
+}

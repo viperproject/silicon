@@ -1,0 +1,371 @@
+field f: Int
+field g: Ref
+
+define accc(rcv, fld, prm) ( forall myvar: Ref :: myvar == rcv ==> acc(myvar.fld, prm) )
+
+predicate P(x: Ref) { accc(x, f, write) && accc(x, g, 1/2) }
+
+method havocBool() returns (b: Bool)
+function detBool(): Bool
+
+method m(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        assert accc(r2, f, 1/2) && accc(r3, f, 1/2) && accc(r1, f, 1/2)
+        tmp := r1.f
+        if (r2 == r3)
+        {
+            r2.f := tmp + 1
+        }
+        assert tmp == r1.f  // should actually pass :/ does not because we dont take all the perm into the loop.
+        bp := havocBool()
+    }
+    r1.f := 0
+    assert accc(r2, f, 1/2) && accc(r3, f, 1/2)
+}
+
+method mF(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        //:: ExpectedOutput(assert.failed:insufficient.permission)
+        assert accc(r2, f, 1/2) && accc(r3, f, 1/2) && accc(r1, f, 1/2) && accc(r2, f, write)
+        tmp := r1.f
+        if (r2 == r3)
+        {
+            r2.f := tmp + 1
+        }
+        assert tmp == r1.f  // should actually pass :/ does not because we dont take all the perm into the loop.
+        bp := havocBool()
+    }
+    r1.f := 0
+    assert accc(r2, f, 1/2) && accc(r3, f, 1/2)
+}
+
+method ms(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r1.f
+        if (r2 == r3)
+        {
+            r2.f := tmp + 1
+        }
+        //assert tmp == r1.f  // should actually pass :/ does not because we dont take all the perm into the loop.
+        bp := havocBool()
+    }
+    r1.f := 0
+    assert accc(r2, f, 1/2) && accc(r3, f, 1/2)
+}
+
+method msf(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r1.f
+        if (r2 == r3)
+        {
+            r2.f := tmp + 1
+        }
+        //assert tmp == r1.f  // should actually pass :/ does not because we dont take all the perm into the loop.
+        bp := havocBool()
+    }
+    r1.f := 0
+    assert accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert accc(r2, f, 1/2) && accc(r3, f, 1/1)
+}
+
+method mp(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r1.f
+        //if (r2 == r3)
+        //{
+        //:: ExpectedOutput(assignment.failed:insufficient.permission)
+            r2.f := tmp + 1
+        //}
+        assert tmp == r1.f
+        bp := havocBool()
+    }
+}
+
+method mpp(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires accc(r1, f, write) && accc(r2, f, 1/2) && accc(r3, f, 1/2)
+    requires accc(r2, g, write)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r2.f
+        if (r2 == r3)
+        {
+            r3.f := tmp + 1
+        }
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert tmp == r2.f
+        bp := havocBool()
+    }
+}
+
+method m0(n: Int, d: Int)
+    requires n > 0 && d > 0
+{
+  var i: Int := d
+  var res: Int := n
+  while (i > 0)
+  {
+    res := sqrt(res)
+    i := i - 1
+  }
+}
+
+method m0p(n: Int, d: Int, d0: Int)
+    requires n > 0 && d > 0 && d0 > 0
+{
+  var i: Int := d
+  var res: Int := n
+  while (i > 0)
+  {
+    //:: ExpectedOutput(call.precondition:assertion.false)
+    res := div(d0, res)
+    i := i - 1
+  }
+}
+
+method sqrt(n: Int) returns (r: Int)
+  requires n >= 0
+  ensures r >= 0
+
+method div(n0: Int, n: Int) returns (r: Int)
+  requires n > 0 && n0 >= n
+  ensures r >= 0
+
+method mFrame(r: Ref)
+    requires accc(r, f, write)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+    {
+        b := havocBool()
+    }
+    assert r.f == 1
+}
+
+method mFrame2(r: Ref)
+    requires accc(r, f, write)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+    {
+        assert accc(r, f, write)
+        b := havocBool()
+    }
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f == 1
+}
+
+method mFrame3(r: Ref)
+    requires accc(r, f, write)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+        invariant r.f == 1
+    {
+        assert accc(r, f, write)
+        b := havocBool()
+    }
+    assert r.f == 1
+}
+
+method mFrame4(r: Ref)
+    requires accc(r, f, write) && accc(r, g, write)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+        invariant r.f == 1
+    {
+        assert accc(r, f, write)
+        var tmp: Bool
+        tmp := havocBool()
+        if (tmp)
+        {
+            //:: ExpectedOutput(assignment.failed:insufficient.permission)
+            r.g := r.g
+        }
+        b := havocBool()
+    }
+
+}
+
+method mFrame4af(r: Ref)
+    requires accc(r, f, write) && accc(r, g, write)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+        invariant r.f == 1
+    {
+        assert accc(r, f, write)
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert false
+        var tmp: Bool
+        tmp := havocBool()
+        if (tmp)
+        {
+            r.g := r.g
+        }
+        b := havocBool()
+    }
+
+}
+
+method mFrame5(r: Ref)
+    requires accc(r, f, write) && accc(r, g, write)
+{
+    var b: Bool
+    b := havocBool()
+    r.f := 1
+    while (b)
+        invariant r.f == 1
+    {
+        assert accc(r, f, write)
+        var tmp: Bool
+        tmp := detBool()
+        if (tmp)
+        {
+            r.g := r.g
+        }
+        b := havocBool()
+    }
+
+}
+
+method mRead(r: Ref, p: Perm)
+    requires p > none
+    requires accc(r, f, p)
+{
+    var b: Bool
+    b := havocBool()
+    var tmp: Int
+    tmp := 0
+    while (b)
+    {
+        tmp := tmp + r.f
+        tmp := tmp + r.f
+        b := havocBool()
+    }
+}
+
+method mRead2(r: Ref, p: Perm)
+    requires p >= none
+    requires accc(r, f, p)
+{
+    var b: Bool
+    b := havocBool()
+    var tmp: Int
+    tmp := 0
+    while (b)
+    {
+        //:: ExpectedOutput(assignment.failed:insufficient.permission)
+        tmp := tmp + r.f
+        tmp := tmp + r.f
+        b := havocBool()
+    }
+}
+
+method mRead3(r: Ref, p: Perm)
+    requires p > none
+    requires accc(r, f, p)
+{
+    var b: Bool
+    b := havocBool()
+    var tmp: Int
+    tmp := 0
+    var before: Int
+    before := r.f
+    while (b)
+    {
+        tmp := tmp + r.f
+        tmp := tmp + r.f
+        b := havocBool()
+    }
+    assert before == r.f
+    assert perm(r.f) == p
+}
+
+method mRead4(r: Ref, p: Perm)
+    requires p > none
+    requires accc(r, f, p)
+{
+    var b: Bool
+    b := havocBool()
+    var tmp: Int
+    tmp := 0
+    var before: Int
+    before := r.f
+    while (b)
+    {
+        tmp := tmp + r.f
+        tmp := tmp + r.f
+        b := havocBool()
+    }
+    assert before == r.f
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert perm(r.f) > p
+}
+
+
+// assert
+// exhale
+// read
+// unfold
+// write
+// under condition
+// value thing (div by zero)
+
+// not enough perm initially
+// not enough perm
+
+// function read
+
+
+// linkedlist thing
