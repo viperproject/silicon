@@ -19,6 +19,7 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{And, Ite, NoPerm, PermLiteral, SeqAppend, Term, Var}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
+import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, Stack}
 import viper.silver.cfg.silver.SilverCfg.SilverLoopHeadBlock
 
@@ -85,6 +86,10 @@ final case class State(g: Store = Store(),
                        loopHeapStack: Stack[Heap] = Stack(),
                        loopReadVarStack: Stack[(Var, Boolean)] = Stack())
     extends Mergeable[State] {
+
+  val mustNotUseValueMapCache: Boolean = {
+    Verifier.config.disableValueMapCaching() || (loopPhaseStack.nonEmpty && loopPhaseStack.head._1 != LoopPhases.Checking)
+  }
 
   assert(loopPhaseStack.length == loopHeapStack.length)
 

@@ -84,6 +84,7 @@ method test20b(x: Ref, y: Ref) returns (n: Int)
   label brk
 
   if (n == 0) {
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
     assert perm(y.f) == none
   }
 }
