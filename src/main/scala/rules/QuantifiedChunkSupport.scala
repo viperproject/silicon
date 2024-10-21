@@ -1208,7 +1208,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
                       val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1, smCache = smCache2)
                       if (nonEmptyChunks.isEmpty) {
-                        assert(v1.decider.checkSmoke(true))
+                        assert(v1.decider.check(tPerm === NoPerm, 0))
                         Success()
                       } else {
                         val snap = smDef2 match {
@@ -1537,8 +1537,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
           val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr2)
           if (nonEmptyChunks.isEmpty) {
-            assert(v1.decider.checkSmoke(true))
-            Success()
+            //assert(v1.decider.check(permissions === NoPerm, 0))
+            val snapSort = resource match {
+              case f: ast.Field => v1.symbolConverter.toSort(f.typ)
+              case _ => sorts.Snap
+            }
+            Q(s1p, hs1.head, cHeap2, v1.decider.fresh(snapSort), v1)
           } else {
             val sm = nonEmptyChunks.head.get match {
               case ch: QuantifiedFieldChunk => ch.fvf

@@ -265,8 +265,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
           val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1)
           if (nonEmptyChunks.isEmpty){
-            assert(v1.decider.checkSmoke(true))
-            Success()
+            assert(v1.decider.check(perms === NoPerm, 0))
+            Q(s1p, hs1.head, cHeap2, None, v1)
           } else {
             Q(s1p, hs1.head, cHeap2, nonEmptyChunks.head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
           }
