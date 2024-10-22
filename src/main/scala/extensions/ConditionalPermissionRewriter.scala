@@ -105,9 +105,9 @@ class ConditionalPermissionRewriter {
     val noTernaryProgram: Program = ternaryRewriter.execute(root)
     val functionRewriter = rewriter(root, true, new mutable.HashSet[Exp]())
     val nonFunctionRewriter = rewriter(root, false, new mutable.HashSet[Exp]())
-    val res = noTernaryProgram.copy(functions = noTernaryProgram.functions.map(functionRewriter.execute(_)),
-      predicates = noTernaryProgram.predicates.map(nonFunctionRewriter.execute(_)),
-      methods = noTernaryProgram.methods.map(nonFunctionRewriter.execute(_)))(noTernaryProgram.pos, noTernaryProgram.info, noTernaryProgram.errT)
+    val res = noTernaryProgram.copy(functions = noTernaryProgram.functions.map(functionRewriter.execute[Function](_)),
+      predicates = noTernaryProgram.predicates.map(nonFunctionRewriter.execute[Predicate](_)),
+      methods = noTernaryProgram.methods.map(nonFunctionRewriter.execute[Method](_)))(noTernaryProgram.pos, noTernaryProgram.info, noTernaryProgram.errT)
     res
   }
 
