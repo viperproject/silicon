@@ -165,7 +165,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val data = functionData(function)
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data),
         conservingSnapshotGeneration = true,
-        assertReadAccessOnly = !Verifier.config.respectFunctionPrecPermAmounts())
+        assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {

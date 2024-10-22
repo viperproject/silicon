@@ -89,7 +89,7 @@ final case class State(g: Store = Store(),
   }
 
   val mayAssumeUpperBounds: Boolean = {
-    currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrecPermAmounts()
+    currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrePermAmounts()
   }
 
   val isLastRetry: Boolean = retryLevel == 0
