@@ -1104,130 +1104,118 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
         val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
 
-        v.decider.assert(nonNegTerm, s, None) {
-          case true => {
-            v.decider.assert(nonNegTerm, s) {
-              case true =>
-                val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
-                val chunkOrderHeuristics =
-                  qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
-                val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
-                  (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
-                  PermTimes(tPerm, s.permissionScalingFactor)
-                else
-                  WildcardSimplifyingPermTimes(tPerm, s.permissionScalingFactor)
-                val (relevantChunks, otherChunks) =
-                  quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
-                    h, ChunkIdentifier(resource, s.program))
-                val resourceIdentifier = resource match {
-                  case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-                  case r => r
-                }
-                val (newCond, smCache1, smDef1) = if (s.heapDependentTriggers.contains(resourceIdentifier)) {
-                  val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s, resource, formalQVars, relevantChunks, v)
-                  (And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)), smCache1, Some(smDef1))
-                } else {
-                  (tCond, s.smCache, None)
-                }
-
-                /* TODO: Can we omit/simplify the injectivity check in certain situations? */
-                val receiverInjectivityCheck =
-                  quantifiedChunkSupporter.injectivityAxiom(
-                    qvars = qvars,
-                    condition = newCond,
-                    perms = tPerm,
-                    arguments = tArgs,
-                    triggers = Nil,
-                    qidPrefix = qid,
-                    program = s.program)
-                v.decider.prover.comment("Check receiver injectivity")
-                v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
-
-                v.decider.assert(receiverInjectivityCheck, s, None){
-                  case true => {
-
-                    v.decider.prover.comment("Definitional axioms for inverse functions")
-                    v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
-                    v.decider.assume(inverseFunctions.definitionalAxioms)
-
-                    val heaps = Seq(h) ++ s.loopHeapStack
-                    val failure = createFailure(pve dueTo insufficientPermissionReason, v, s)
-                    val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
-                    val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
-                    val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
-                    val argsOfInvOfLoc = tArgs.map(a => a.replace(qvarsToInvOfLoc))
-                    val argumentsMatch = And(formalQVars.zip(argsOfInvOfLoc).map(va => va._1 === va._2))
-                    val chunkOrderHeuristics =
-                      qpAppChunkOrderHeuristics(tArgs, qvars, hints, v)
-
-                    val ummmm = consumeFromOneOfMultipleHeaps(resource, qvars, formalQVars, tArgs, qvarsToInvOfLoc, condOfInvOfLoc, argumentsMatch, imagesOfFormalQVars, optTrigger, tTriggers, qid, chunkOrderHeuristics) _
-
-                    magicWandSupporter.consumeFromMultipleHeaps(s, heaps, tPerm, failure, Seq(), v)(ummmm)((s1, hs1, cHeap1, optChunks, v1) => {
-                      //val (fr1, newTopHeap) = v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap1, v1)
-                      //val (fr1, newTopHeap) = (s1.functionRecorder, s1.h + cHeap1)
-
-
-                      val lossOfInvOfLoc = tPerm.replace(qvarsToInvOfLoc)
-
-                      val optSmDomainDefinitionCondition2 =
-                        if (s1.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(imagesOfFormalQVars)))
-                        else None
-
-                      val nonEmptyChunks = optChunks.filter(_.isDefined)
-
-
-
-                      val (smDef2, smCache2) = if (nonEmptyChunks.isEmpty) {
-                        (None, s1.smCache)
-                      } else {
-                        val tmp = quantifiedChunkSupporter.summarisingSnapshotMap(
-                          s1, resource, formalQVars, nonEmptyChunks.map(_.get), v1, optSmDomainDefinitionCondition2)
-                        (Some(tmp._1), tmp._2)
-                      }
-
-                      val totalConsumedAmount = tPerm
-                      val totalConsumedFromFirst = if (optChunks.length > 0 && optChunks.head.nonEmpty) {
-                        PermMin(optChunks.head.get.perm, totalConsumedAmount)
-                      } else {
-                        NoPerm
-                      }
-                      val totalConsumedFromAllButFirst = PermMinus(totalConsumedAmount, totalConsumedFromFirst)
-
-
-
-                      val cHeap2 = if (nonEmptyChunks.isEmpty)
-                        Heap()
-                      else
-                        Heap(Seq(nonEmptyChunks.last.get.withPerm(totalConsumedFromAllButFirst)))
-                      val (fr1, newTopHeap2) = if (nonEmptyChunks.isEmpty)
-                        (s1.functionRecorder, s1.h)
-                      else
-                        v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap2, v1)
-
-                      val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1, smCache = smCache2)
-                      if (nonEmptyChunks.isEmpty) {
-                        assert(v1.decider.check(tPerm === NoPerm, 0))
-                        Success()
-                      } else {
-                        val snap = smDef2 match {
-                          case None => v1.decider.fresh(sorts.Snap)
-                          case Some(smDef) => smDef.sm
-                        }
-                        Q(s1p, hs1.head, cHeap2, snap, v1)
-                      }
-                    })
-                  }
-                  case false => {
-                    createFailure(pve dueTo notInjectiveReason, v, s)
-                  }
-                }
+        v.decider.assert(nonNegTerm, s) {
+          case true =>
+            val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
+            val (relevantChunks, otherChunks) =
+              quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
+                h, ChunkIdentifier(resource, s.program))
+            val resourceIdentifier = resource match {
+              case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
+              case r => r
             }
-          }
-          case false => {
+            val (newCond, smCache1, smDef1) = if (s.heapDependentTriggers.contains(resourceIdentifier)) {
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s, resource, formalQVars, relevantChunks, v)
+              (And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)), smCache1, Some(smDef1))
+            } else {
+              (tCond, s.smCache, None)
+            }
+
+            /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+            val receiverInjectivityCheck =
+              quantifiedChunkSupporter.injectivityAxiom(
+                qvars = qvars,
+                condition = newCond,
+                perms = tPerm,
+                arguments = tArgs,
+                triggers = Nil,
+                qidPrefix = qid,
+                program = s.program)
+            v.decider.prover.comment("Check receiver injectivity")
+            v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
+
+            v.decider.assert(receiverInjectivityCheck, s, None){
+              case true => {
+
+                v.decider.prover.comment("Definitional axioms for inverse functions")
+                v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
+                v.decider.assume(inverseFunctions.definitionalAxioms)
+
+                val heaps = Seq(h) ++ s.loopHeapStack
+                val failure = createFailure(pve dueTo insufficientPermissionReason, v, s)
+                val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
+                val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
+                val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
+                val argsOfInvOfLoc = tArgs.map(a => a.replace(qvarsToInvOfLoc))
+                val argumentsMatch = And(formalQVars.zip(argsOfInvOfLoc).map(va => va._1 === va._2))
+                val chunkOrderHeuristics =
+                  qpAppChunkOrderHeuristics(tArgs, qvars, hints, v)
+
+                val ummmm = consumeFromOneOfMultipleHeaps(resource, qvars, formalQVars, tArgs, qvarsToInvOfLoc, condOfInvOfLoc, argumentsMatch, imagesOfFormalQVars, optTrigger, tTriggers, qid, chunkOrderHeuristics) _
+
+                magicWandSupporter.consumeFromMultipleHeaps(s, heaps, tPerm, failure, Seq(), v)(ummmm)((s1, hs1, cHeap1, optChunks, v1) => {
+                  //val (fr1, newTopHeap) = v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap1, v1)
+                  //val (fr1, newTopHeap) = (s1.functionRecorder, s1.h + cHeap1)
+
+
+                  val lossOfInvOfLoc = tPerm.replace(qvarsToInvOfLoc)
+
+                  val optSmDomainDefinitionCondition2 =
+                    if (s1.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(imagesOfFormalQVars)))
+                    else None
+
+                  val nonEmptyChunks = optChunks.filter(_.isDefined)
+
+
+
+                  val (smDef2, smCache2) = if (nonEmptyChunks.isEmpty) {
+                    (None, s1.smCache)
+                  } else {
+                    val tmp = quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s1, resource, formalQVars, nonEmptyChunks.map(_.get), v1, optSmDomainDefinitionCondition2)
+                    (Some(tmp._1), tmp._2)
+                  }
+
+                  val totalConsumedAmount = lossOfInvOfLoc
+                  val totalConsumedFromFirst = if (optChunks.length > 0 && optChunks.head.nonEmpty) {
+                    PermMin(optChunks.head.get.perm, totalConsumedAmount)
+                  } else {
+                    NoPerm
+                  }
+                  val totalConsumedFromAllButFirst = PermMinus(totalConsumedAmount, totalConsumedFromFirst)
+
+
+
+                  val cHeap2 = if (nonEmptyChunks.isEmpty)
+                    Heap()
+                  else
+                    Heap(Seq(nonEmptyChunks.last.get.withPerm(totalConsumedFromAllButFirst)))
+                  val (fr1, newTopHeap2) = if (nonEmptyChunks.isEmpty)
+                    (s1.functionRecorder, s1.h)
+                  else
+                    v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap2, v1)
+
+                  val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1, smCache = smCache2)
+                  if (nonEmptyChunks.isEmpty) {
+                    assert(v1.decider.check(tPerm === NoPerm, 0))
+                    Q(s1p, hs1.head, cHeap2, v1.decider.fresh(sorts.Snap), v1)
+                  } else {
+                    val snap = smDef2 match {
+                      case None => v1.decider.fresh(sorts.Snap)
+                      case Some(smDef) => smDef.sm
+                    }
+                    Q(s1p, hs1.head, cHeap2, snap, v1)
+                  }
+                })
+              }
+              case false => {
+                createFailure(pve dueTo notInjectiveReason, v, s)
+              }
+            }
+          case false =>
             createFailure(pve dueTo negativePermissionReason, v, s)
-          }
         }
       } else {
         // Assuming
@@ -1577,10 +1565,27 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  def consumeFromOneOfMultipleHeaps(resource: ast.Resource, qvars: Seq[Var], formalQVars: Seq[Var], tArgs: Seq[Term], qvarsToInvOfLoc: Map[Var, App], condOfInvOfLoc: Term, argumentsMatch: Term, imagesOfFormalQVars: Seq[Term], optTrigger: Option[Seq[ast.Trigger]], tTriggers: Seq[Trigger], qid: String, chunkOrderHeuristics: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk])(s: State, h: Heap, tPerm: Term, v: Verifier) = {
+  def consumeFromOneOfMultipleHeaps(resource: ast.Resource, qvars: Seq[Var], formalQVars: Seq[Var], tArgs: Seq[Term],
+                                    qvarsToInvOfLoc: Map[Var, App], condOfInvOfLoc: Term, argumentsMatch: Term,
+                                    imagesOfFormalQVars: Seq[Term], optTrigger: Option[Seq[ast.Trigger]],
+                                    tTriggers: Seq[Trigger], qid: String,
+                                    chunkOrderHeuristics: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk])(s: State, h: Heap, tPerm: Term, v: Verifier)
+                                    : (ConsumptionResult, State, Heap, Heap, Option[QuantifiedBasicChunk]) = {
     val (relevantChunks, otherChunks) =
       quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
         h, ChunkIdentifier(resource, s.program))
+
+    if (relevantChunks.isEmpty) {
+      val res = if (v.decider.check(tPerm === NoPerm, Verifier.config.checkTimeout())) {
+        (Complete(), s, h, Heap(Seq()), None)
+      } else {
+        (Incomplete(tPerm), s, h, Heap(Seq()), None)
+      }
+      return res
+    }
+
+    val lossOfInvOfLoc = tPerm.replace(qvarsToInvOfLoc)
+
     val (result, s2, remainingChunks, consumedChunks) =
       quantifiedChunkSupporter.removePermissions(
         s,
@@ -1589,10 +1594,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         And(condOfInvOfLoc, And(imagesOfFormalQVars), argumentsMatch),
         None,
         resource,
-        tPerm,
+        lossOfInvOfLoc,
         chunkOrderHeuristics,
         v)
-    val lossOfInvOfLoc = tPerm.replace(qvarsToInvOfLoc)
+
     val optSmDomainDefinitionCondition2 =
       if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(imagesOfFormalQVars)))
       else None
