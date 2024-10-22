@@ -1060,7 +1060,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         case p: ast.Predicate => (BasicChunkIdentifier(p.name), (sm: Term) => PredicateTrigger(p.name, sm, tArgs))
       }
       if (s.loopPhaseStack.head._1 == LoopPhases.Transferring) {
-        // TODO: check injective, check non-negative!!!!!!!!!!!
 
         val (inverseFunctions, imagesOfFormalQVars) =
           quantifiedChunkSupporter.getFreshInverseFunctions(
@@ -1221,12 +1220,19 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         // Assuming
         val (relevantChunks, _) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, identifier)
-        val (pmDef, pmCache) =
-          quantifiedChunkSupporter.summarisingPermissionMap(
-            s, resource, formalQVars, relevantChunks, null, v)
-        val currentPerm = ResourcePermissionLookup(resource, pmDef.pm, tArgs, s.program)
+
+        val (pmCache2, currentPerm) = if (relevantChunks.isEmpty) {
+          (s.pmCache, NoPerm)
+        } else {
+          val (pmDef, pmCache) =
+            quantifiedChunkSupporter.summarisingPermissionMap(
+              s, resource, formalQVars, relevantChunks, null, v)
+          val currentPerm = ResourcePermissionLookup(resource, pmDef.pm, tArgs, s.program)
+          (pmCache, currentPerm)
+        }
+
         val permissionToProduce = PermMax(PermMinus(tPerm, currentPerm), NoPerm)
-        val s2 = s.copy(pmCache = pmCache)
+        val s2 = s.copy(pmCache = pmCache2)
         val snapSort = resource match {
           case f: ast.Field => sorts.FieldValueFunction(v.symbolConverter.toSort(f.typ), f.name)
           case p: ast.Predicate => sorts.FieldValueFunction(sorts.Snap, p.name)
@@ -1544,12 +1550,19 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         // Assuming
         val (relevantChunks, _) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, identifier)
-        val (pmDef, pmCache) =
-          quantifiedChunkSupporter.summarisingPermissionMap(
-            s, resource, codomainQVars, relevantChunks, null, v)
-        val currentPerm = ResourcePermissionLookup(resource, pmDef.pm, codomainQVars, s.program)
+
+        val (pmCache2, currentPerm) = if (relevantChunks.nonEmpty) {
+          val (pmDef, pmCache) =
+            quantifiedChunkSupporter.summarisingPermissionMap(
+              s, resource, codomainQVars, relevantChunks, null, v)
+          val currentPerm = ResourcePermissionLookup(resource, pmDef.pm, codomainQVars, s.program)
+          (pmCache, currentPerm)
+        } else {
+          (s.pmCache, NoPerm)
+        }
+
         val permissionToProduce = PermMax(PermMinus(permissions, currentPerm), NoPerm)
-        val s2 = s.copy(pmCache = pmCache)
+        val s2 = s.copy(pmCache = pmCache2)
         val snapSort = resource match {
           case f: ast.Field => v.symbolConverter.toSort(f.typ)
           case _ => sorts.Snap
@@ -1575,8 +1588,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
         h, ChunkIdentifier(resource, s.program))
 
+    val condition = And(condOfInvOfLoc, And(imagesOfFormalQVars), argumentsMatch)
+    val lossOfInvOfLoc = tPerm.replace(qvarsToInvOfLoc)
+
     if (relevantChunks.isEmpty) {
-      val res = if (v.decider.check(tPerm === NoPerm, Verifier.config.checkTimeout())) {
+      val res = if (v.decider.check(Forall(formalQVars, Implies(condition, lossOfInvOfLoc === NoPerm), Nil), Verifier.config.checkTimeout())) {
         (Complete(), s, h, Heap(Seq()), None)
       } else {
         (Incomplete(tPerm), s, h, Heap(Seq()), None)
@@ -1584,14 +1600,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       return res
     }
 
-    val lossOfInvOfLoc = tPerm.replace(qvarsToInvOfLoc)
-
     val (result, s2, remainingChunks, consumedChunks) =
       quantifiedChunkSupporter.removePermissions(
         s,
         relevantChunks,
         formalQVars,
-        And(condOfInvOfLoc, And(imagesOfFormalQVars), argumentsMatch),
+        condition,
         None,
         resource,
         lossOfInvOfLoc,
@@ -1641,11 +1655,21 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                    )(s: State, h: Heap, rPerm: Term, v: Verifier) : (ConsumptionResult, State, Heap, Heap, Option[QuantifiedBasicChunk]) = {
     val (relevantChunks, otherChunks) =
       quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, chunkIdentifier)
+
+    val condition = And(codomainQVars.zip(arguments).map { case (r, e) => r === e })
+    if (relevantChunks.isEmpty) {
+      if (v.decider.check(Forall(codomainQVars, Implies(condition, rPerm === NoPerm), Nil), Verifier.config.checkTimeout())) {
+        return (Complete(), s, h, Heap(Seq()), None)
+      } else {
+        return (Incomplete(rPerm), s, h, Heap(Seq()), None)
+      }
+    }
+
     val (result, s2, remainingChunks, consumedChunks) = quantifiedChunkSupporter.removePermissions(
       s,
       relevantChunks,
       codomainQVars,
-      And(codomainQVars.zip(arguments).map { case (r, e) => r === e }),
+      condition,
       Some(arguments),
       resource,
       rPerm,
