@@ -962,7 +962,7 @@ object evaluator extends EvaluationRules {
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           v.decider.startDebugSubExp()
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
-            eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
+            eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) =>
               v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
                   joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
@@ -1015,7 +1015,7 @@ object evaluator extends EvaluationRules {
                     Q(s12, r12._1, r12._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
-                  createFailure(pve dueTo NonPositivePermission(ePerm), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}))
+                  createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
           Q(s, unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
