@@ -166,7 +166,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           case (r: Complete, sIn, hps, ch, cchs)  =>
             (r, sIn, heap +: hps, ch, None +: cchs)
           case (Incomplete(permsNeeded), sIn, hps, ch, cchs) =>
-            val sInP = sIn // if (hps.nonEmpty) sIn else sIn.copy(loopReadVarStack = sIn.loopReadVarStack.tail.prepended((sIn.loopReadVarStack.head._1, false)))
+            val sInP = if (hps.nonEmpty) sIn else sIn.copy(loopReadVarStack = sIn.loopReadVarStack.tail.prepended((sIn.loopReadVarStack.head._1, false)))
             val (success, sOutP, h, cHeap, cch) = consumeFunction(sInP, heap, permsNeeded, v)
             val sOut = sOutP.copy(loopReadVarStack = sIn.loopReadVarStack)
             val tEq = (cchs.flatten.lastOption, cch) match {

@@ -334,7 +334,6 @@ object executor extends ExecutionRules {
             val (phase, kRemaining, loopHeap) = s.loopPhaseStack.head
             val edges = s.methodCfg.outEdges(block)
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v, true)((sp, _, v) => {
-              val shuh = s
               phase match {
                 case LoopPhases.Transferring =>
                   if (kRemaining > 1) {

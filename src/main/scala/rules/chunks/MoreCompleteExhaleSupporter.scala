@@ -266,7 +266,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1)
           if (nonEmptyChunks.isEmpty){
             assert(v1.decider.check(perms === NoPerm, 0))
-            Q(s1p, hs1.head, cHeap2, None, v1)
+            if (v1.decider.checkSmoke(false))
+              Success()
+            else
+              Q(s1p, hs1.head, cHeap2, None, v1)
           } else {
             Q(s1p, hs1.head, cHeap2, nonEmptyChunks.head.map(_.asInstanceOf[NonQuantifiedChunk].snap), v1)
           }
@@ -333,7 +336,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         var res: (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = (Incomplete(perms), s, h, Heap(), None)
         actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, consumedChunks, optSnap, v2) => {
           //Q(s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), optSnap, v2)
-          val consumedChunk = Some(consumedChunks.head.withSnap(optSnap.get).withPerm(perms))
+          val consumedChunk = Some(consumedChunks.head.withSnap(optSnap.get).withPerm(perms).withArgs(args))
           res = (Complete(), s1, Heap(updatedChunks ++ otherChunks), Heap(consumedChunks), consumedChunk)
           Success()
         })
@@ -360,7 +363,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (moreNeeded) {
             val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
-            val pTaken = if (true || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
+            val pTaken = if (s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
               // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
               // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
               // that already exists.
@@ -423,18 +426,18 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit).convert(snap.sort)
           }
           if (!moreNeeded) {
-            val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms))
+            val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms).withArgs(args))
             result = (Complete(), s1, newHeap, consumedHeap, consumedChunk)//Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
             Success()
           } else {
             v1.decider.assert(pNeeded === NoPerm, s1) {
               case true =>
-                val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms))
+                val consumedChunk = Some(consumedChunks.head.withSnap(condSnap).withPerm(perms).withArgs(args))
                 result = (Complete(), s1, newHeap, consumedHeap, consumedChunk)
                 //Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
                 Success()
               case false =>
-                val consumedChunk = if (consumedChunks.isEmpty) None else Some(consumedChunks.head.withSnap(condSnap).withPerm(PermMinus(perms, pNeeded)))
+                val consumedChunk = if (consumedChunks.isEmpty) None else Some(consumedChunks.head.withSnap(condSnap).withPerm(PermMinus(perms, pNeeded)).withArgs(args))
                 result = (Incomplete(pNeeded), s1, newHeap, consumedHeap, consumedChunk)
                 //Q(s1, newHeap, consumedHeap, Some(condSnap), v1)
                 Success()
@@ -499,7 +502,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (moreNeeded) {
             val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
-            val pTaken = if (s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
+            val pTaken = if (true) { //s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
               // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
               // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
               // that already exists.

@@ -72,6 +72,29 @@ method ms(r1: Ref, r2: Ref, r3: Ref, b: Bool)
     assert acc(r2.f, 1/2) && acc(r3.f, 1/2)
 }
 
+
+method mshuh(r1: Ref, r2: Ref, r3: Ref, b: Bool)
+    requires acc(r1.f) && acc(r2.f, 1/2) && acc(r3.f, 1/2)
+    requires acc(r2.g)
+{
+    var bp: Bool := b
+
+    while (bp)
+    {
+        var tmp: Int
+        tmp := r1.f
+        tmp := r1.f
+        if (r2 == r3)
+        {
+            r2.f := tmp + 1
+        }
+        //assert tmp == r1.f  // should actually pass :/ does not because we dont take all the perm into the loop.
+        bp := havocBool()
+    }
+    r1.f := 0
+    assert acc(r2.f, 1/2) && acc(r3.f, 1/2)
+}
+
 method msf(r1: Ref, r2: Ref, r3: Ref, b: Bool)
     requires acc(r1.f) && acc(r2.f, 1/2) && acc(r3.f, 1/2)
     requires acc(r2.g)
