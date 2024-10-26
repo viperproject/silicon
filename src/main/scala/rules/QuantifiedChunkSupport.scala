@@ -1235,7 +1235,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val s2 = s.copy(pmCache = pmCache2)
         val snapSort = resource match {
           case f: ast.Field => sorts.FieldValueFunction(v.symbolConverter.toSort(f.typ), f.name)
-          case p: ast.Predicate => sorts.FieldValueFunction(sorts.Snap, p.name)
+          case p: ast.Predicate => sorts.PredicateSnapFunction(s.predicateSnapMap(p), p.name)
           case _ => ???
         }
 

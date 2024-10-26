@@ -1,0 +1,284 @@
+field next: Ref
+
+field val: Ref
+
+field int_val: Int
+
+define accc(rcv, fld, prm) ( forall myvar: Ref :: myvar == rcv ==> acc(myvar.fld, prm) )
+define paccc(name, a1, a2, prm) (forall myvar1: Ref, myvar2: Ref :: myvar1 == a1 && myvar2 == a2 ==> acc(name(myvar1, myvar2), prm) )
+
+predicate outerseg(x: Ref, until: Ref) {
+  x != until ==> (accc(x, val, write) && accc(x, next, write) && paccc(innerseg, x.val, null, write) && paccc(outerseg, x.next, until, write))
+}
+
+predicate innerseg(x: Ref, until: Ref) {
+  x != until ==> (accc(x, int_val, write) && accc(x, next, write) && innerseg(x.next, until))
+}
+
+method sum(x: Ref)
+  requires outerseg(x, null)
+  ensures outerseg(x, null)
+{
+  var res: Int := 0
+  var cur: Ref := x
+  fold outerseg(cur, cur)
+  while (cur != null)
+  {
+    unfold outerseg(cur, null)
+    var icur: Ref
+    var iinit: Ref
+    iinit := cur.val
+    icur := iinit
+    fold innerseg(iinit, icur)
+    while (icur!= null)
+    {
+      unfold innerseg(icur, null)
+      res := res + icur.int_val
+
+      var itmp: Ref := icur
+      icur := icur.next
+      fold innerseg(icur, icur)
+      fold innerseg(itmp, icur)
+      concatinnersegs(iinit, itmp, icur)
+    }
+
+    var tmp: Ref := cur
+    cur := cur.next
+    fold outerseg(cur, cur)
+    fold outerseg(tmp, cur)
+    concatoutersegs(x, tmp, cur)
+  }
+}
+
+
+method sumf1(x: Ref)
+  requires outerseg(x, null)
+  ensures outerseg(x, null)
+{
+  var res: Int := 0
+  var cur: Ref := x
+  fold outerseg(cur, cur)
+  while (cur != null)
+  {
+    unfold outerseg(cur, null)
+    var icur: Ref
+    var iinit: Ref
+    iinit := cur.val
+    icur := iinit
+    fold innerseg(iinit, icur)
+    while (icur!= null)
+    {
+      unfold innerseg(icur, null)
+      res := res + icur.int_val
+
+      var itmp: Ref := icur
+      icur := icur.next
+      //:: ExpectedOutput(fold.failed:insufficient.permission)
+      fold innerseg(itmp, icur)
+      concatinnersegs(iinit, itmp, icur)
+    }
+
+    var tmp: Ref := cur
+    cur := cur.next
+    fold outerseg(cur, cur)
+    fold outerseg(tmp, cur)
+    concatoutersegs(x, tmp, cur)
+  }
+}
+
+method sumf2(x: Ref)
+  requires outerseg(x, null)
+  ensures outerseg(x, null)
+{
+  var res: Int := 0
+  var cur: Ref := x
+  while (cur != null)
+  {
+    unfold outerseg(cur, null)
+    var icur: Ref
+    var iinit: Ref
+    iinit := cur.val
+    icur := iinit
+    fold innerseg(iinit, icur)
+    while (icur!= null)
+    {
+      unfold innerseg(icur, null)
+      res := res + icur.int_val
+
+      var itmp: Ref := icur
+      icur := icur.next
+      fold innerseg(icur, icur)
+      fold innerseg(itmp, icur)
+      concatinnersegs(iinit, itmp, icur)
+    }
+
+    var tmp: Ref := cur
+    cur := cur.next
+    fold outerseg(cur, cur)
+    fold outerseg(tmp, cur)
+    //:: ExpectedOutput(call.precondition:insufficient.permission)
+    concatoutersegs(x, tmp, cur)
+  }
+}
+
+method sumf3(x: Ref)
+  ensures outerseg(x, null)
+{
+  var res: Int := 0
+  var cur: Ref := x
+  fold outerseg(cur, cur)
+  while (cur != null)
+  {
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
+    unfold outerseg(cur, null)
+    var icur: Ref
+    var iinit: Ref
+    iinit := cur.val
+    icur := iinit
+    fold innerseg(iinit, icur)
+    while (icur!= null)
+    {
+      unfold innerseg(icur, null)
+      res := res + icur.int_val
+
+      var itmp: Ref := icur
+      icur := icur.next
+      fold innerseg(icur, icur)
+      fold innerseg(itmp, icur)
+      concatinnersegs(iinit, itmp, icur)
+    }
+
+    var tmp: Ref := cur
+    cur := cur.next
+    fold outerseg(cur, cur)
+    fold outerseg(tmp, cur)
+    concatoutersegs(x, tmp, cur)
+  }
+}
+
+
+method sumPart(x: Ref)
+  requires outerseg(x, null)
+  ensures outerseg(x, null)
+{
+  var res: Int := 0
+  var cur: Ref := x
+  fold acc(outerseg(cur, cur), 1/2)
+  while (cur != null)
+  {
+    unfold acc(outerseg(cur, null), 1/2)
+    var icur: Ref
+    var iinit: Ref
+    iinit := cur.val
+    icur := iinit
+    fold acc(innerseg(iinit, icur), 1/4)
+    while (icur!= null)
+    {
+      unfold acc(innerseg(icur, null), 1/4)
+      res := res + icur.int_val
+
+      var itmp: Ref := icur
+      icur := icur.next
+      fold acc(innerseg(icur, icur), 1/4)
+      fold acc(innerseg(itmp, icur), 1/4)
+      concatinnersegsp(iinit, itmp, icur, 1/4)
+    }
+
+    var tmp: Ref := cur
+    cur := cur.next
+    fold acc(outerseg(cur, cur), 1/2)
+    fold acc(outerseg(tmp, cur), 1/2)
+    concatoutersegsp(x, tmp, cur, 1/2)
+  }
+}
+
+method sumPartf1(x: Ref)
+  requires outerseg(x, null)
+  ensures outerseg(x, null)
+{
+  var res: Int := 0
+  var cur: Ref := x
+  fold acc(outerseg(cur, cur), 1/2)
+  while (cur != null)
+  {
+    unfold acc(outerseg(cur, null), 1/2)
+    var icur: Ref
+    var iinit: Ref
+    iinit := cur.val
+    icur := iinit
+    fold acc(innerseg(iinit, icur), 1/4)
+    while (icur!= null)
+    {
+      unfold acc(innerseg(icur, null), 1/4)
+      res := res + icur.int_val
+      //:: ExpectedOutput(assignment.failed:insufficient.permission)
+      icur.int_val := icur.int_val + 1
+
+      var itmp: Ref := icur
+      icur := icur.next
+      fold acc(innerseg(icur, icur), 1/4)
+      fold acc(innerseg(itmp, icur), 1/4)
+      concatinnersegsp(iinit, itmp, icur, 1/4)
+    }
+
+    var tmp: Ref := cur
+    cur := cur.next
+    fold acc(outerseg(cur, cur), 1/2)
+    fold acc(outerseg(tmp, cur), 1/2)
+    concatoutersegsp(x, tmp, cur, 1/2)
+  }
+}
+
+method sumPartf2(x: Ref)
+  requires outerseg(x, null)
+  ensures outerseg(x, null)
+{
+  var res: Int := 0
+  var cur: Ref := x
+  fold acc(outerseg(cur, cur), 1/2)
+  while (cur != null)
+  {
+    unfold acc(outerseg(cur, null), 1/2)
+    var icur: Ref
+    var iinit: Ref
+    iinit := cur.val
+    icur := iinit
+    fold acc(innerseg(iinit, icur), 1/4)
+    while (icur!= null)
+    {
+      unfold acc(innerseg(icur, null), 1/4)
+      res := res + icur.int_val
+
+      var itmp: Ref := icur
+      icur := icur.next
+      fold acc(innerseg(icur, icur), 1/4)
+      fold acc(innerseg(itmp, icur), 1/4)
+      //:: ExpectedOutput(call.precondition:insufficient.permission)
+      concatinnersegsp(iinit, itmp, icur, 1/2)
+    }
+
+    var tmp: Ref := cur
+    cur := cur.next
+    fold acc(outerseg(cur, cur), 1/2)
+    fold acc(outerseg(tmp, cur), 1/2)
+    concatoutersegsp(x, tmp, cur, 1/2)
+  }
+}
+
+method concatoutersegs(x: Ref, y: Ref, z: Ref)
+  requires outerseg(x, y) && outerseg(y, z)
+  ensures outerseg(x, z)
+
+method concatinnersegs(x: Ref, y: Ref, z: Ref)
+  requires innerseg(x, y) && innerseg(y, z)
+  ensures innerseg(x, z)
+
+method concatinnersegsp(x: Ref, y: Ref, z: Ref, p: Perm)
+  requires p > none
+  requires acc(innerseg(x, y), p) && acc(innerseg(y, z), p)
+  ensures acc(innerseg(x, z), p)
+
+method concatoutersegsp(x: Ref, y: Ref, z: Ref, p: Perm)
+  requires p > none
+  requires acc(outerseg(x, y), p) && acc(outerseg(y, z), p)
+  ensures acc(outerseg(x, z), p)
