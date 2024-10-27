@@ -17,6 +17,7 @@ trait Store {
   def get(key: ast.AbstractLocalVar): Option[Term]
   def +(kv: (ast.AbstractLocalVar, Term)): Store
   def +(other: Store): Store
+  def addEquality(t1: Term, t2: Term): Store
 }
 
 trait StoreFactory[ST <: Store] {
@@ -41,4 +42,8 @@ final class MapBackedStore private[state] (map: Map[ast.AbstractLocalVar, Term])
   def get(key: ast.AbstractLocalVar) = map.get(key)
   def +(entry: (ast.AbstractLocalVar, Term)) = new MapBackedStore(map + entry)
   def +(other: Store) = new MapBackedStore(map ++ other.values)
+  def addEquality(t1: Term, t2: Term) = {
+    val newMap = map.map { case (k, v) => (k, v.replace(t1, t2)) }
+    new MapBackedStore(newMap)
+  }
 }

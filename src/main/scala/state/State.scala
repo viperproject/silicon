@@ -116,6 +116,15 @@ final case class State(g: Store = Store(),
 
   def cycles(m: ast.Member) = visited.count(_ == m)
 
+  def addEquality(t1: Term, t2: Term): State = {
+    if (t1 == t2) {
+      this
+    } else {
+      val newState = copy(g = g.addEquality(t1, t2), h = h.addEquality(t1, t2))
+      newState
+    }
+  }
+
   def setConstrainable(arps: Iterable[Var], constrainable: Boolean) = {
     val newConstrainableARPs =
       if (constrainable) constrainableARPs ++ arps

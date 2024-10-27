@@ -9,7 +9,9 @@ package viper.silicon.interfaces.state
 import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.{Term, Var}
 
-trait Chunk
+trait Chunk {
+  def addEquality(t1: Term, t2: Term): Chunk = this
+}
 
 trait ChunkIdentifer
 

@@ -25,6 +25,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.AnnotationInfo
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 
 trait ExecutionRules extends SymbolicExecutionRules {
@@ -748,6 +749,7 @@ object executor extends ExecutionRules {
   }
 
    private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
+     return rhs
      rhs match {
        case _: Var | _: Literal =>
          rhs

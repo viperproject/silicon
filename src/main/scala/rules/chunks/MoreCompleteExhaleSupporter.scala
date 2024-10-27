@@ -8,7 +8,7 @@ package viper.silicon.rules.chunks
 
 import viper.silicon.rules.chunks.chunkSupporter.findChunksWithID
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.interfaces.{Success, Unreachable, VerificationResult}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.{Complete, ConsumptionResult, ConsumptionRules, Incomplete, SnapshotMapDefinition, SymbolicExecutionRules, magicWandSupporter}
 import viper.silicon.state._
@@ -485,20 +485,26 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val consumedChunks = ListBuffer[NonQuantifiedChunk]()
         var moreNeeded = true
 
-        val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v).filter(c =>
-          v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout())
-        )
+        val (sortedChunks, checkedDefiniteAlias) = if (relevantChunks.size < 2) {
+          (relevantChunks, None)
+        } else {
+          val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v).filter(c =>
+            v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout())
+          )
 
-        val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
-          // The definitive alias and syntactic aliases should get priority, since it is always
-          // possible to consume from them
-          definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
+          val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
+            // The definitive alias and syntactic aliases should get priority, since it is always
+            // possible to consume from them
+            definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
+          }
+
+          (relevantChunks.sortWith(sortFunction), Some(definiteAlias))
         }
 
         val additionalArgs = s.relevantQuantifiedVariables
         var currentFunctionRecorder = s.functionRecorder
 
-        relevantChunks.sortWith(sortFunction) foreach { ch =>
+        sortedChunks foreach { ch =>
           if (moreNeeded) {
             val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
@@ -526,15 +532,20 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pNeeded = PermMinus(pNeeded, pTaken)
             val consumedChunk = ch.withPerm(pTaken)
 
-            if (!v.decider.check(pTaken=== NoPerm, Verifier.config.splitTimeout())) {
+            val noneTaken = pTaken=== NoPerm
+
+            if (noneTaken == False || !v.decider.check(noneTaken, Verifier.config.splitTimeout())) {
               consumedChunks.append(consumedChunk)
             }
 
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
+            val newChunkHasNoPerm = IsNonPositive(newChunk.perm)
+
+            if (newChunkHasNoPerm == False || !v.decider.check(newChunkHasNoPerm, Verifier.config.splitTimeout())) {
               newChunks.append(newChunk)
             }
 
-            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout())
+            val noMoreNeeded = pNeeded === NoPerm
+            moreNeeded = noMoreNeeded == False || !v.decider.check(noMoreNeeded, Verifier.config.splitTimeout())
           } else {
             newChunks.append(ch)
           }
@@ -553,7 +564,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
-        summarise(s0, relevantChunks.toSeq, resource, args, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
+        val checkedDefiniteValue = checkedDefiniteAlias.map(_.map(_.snap))
+
+        summarise(s0, relevantChunks.toSeq, resource, args, checkedDefiniteValue, v)((s1, snap, _, _, v1) => {
           val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
             snap
           } else {
