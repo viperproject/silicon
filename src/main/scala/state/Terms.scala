@@ -264,6 +264,8 @@ class Var private[terms] (val id: Identifier, val sort: Sort, val isWildcard: Bo
   override lazy val toString = id.toString
 
   def copy(id: Identifier = id, sort: Sort = sort, isWildcard: Boolean = isWildcard) = Var(id, sort, isWildcard)
+
+  override val isDefinitelyNonTriggering: Boolean = true
 }
 
 object Var extends CondFlyweightFactory[(Identifier, Sort, Boolean), Var, Var] {
@@ -412,6 +414,8 @@ sealed trait Term extends Node {
       case other => Vector(other)
     }
   }
+
+  val isDefinitelyNonTriggering: Boolean = false
 }
 
 trait UnaryOp[E] {
@@ -526,10 +530,12 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
 
 trait ConditionalFlyweightBinaryOp[T] extends ConditionalFlyweight[(Term, Term), T] with BinaryOp[Term] with Term {
   override val equalityDefiningMembers = (p0,  p1)
+  override val isDefinitelyNonTriggering: Boolean = p0.isDefinitelyNonTriggering && p1.isDefinitelyNonTriggering
 }
 
 trait ConditionalFlyweightUnaryOp[T] extends ConditionalFlyweight[Term, T] with UnaryOp[Term] with Term {
   override val equalityDefiningMembers = p
+  override val isDefinitelyNonTriggering: Boolean = p.isDefinitelyNonTriggering
 }
 
 /**
@@ -590,7 +596,9 @@ trait GeneralCondFlyweightFactory[IF, T <: IF, U, V <: U with ConditionalFlyweig
 
 /* Literals */
 
-sealed trait Literal extends Term
+sealed trait Literal extends Term {
+  override val isDefinitelyNonTriggering: Boolean = true
+}
 
 case object Unit extends SnapshotTerm with Literal {
   override lazy val toString = "_"
@@ -1068,7 +1076,31 @@ object Ite extends CondFlyweightTermFactory[(Term, Term, Term), Ite] {
     case (False, _, e2) => e2
     case (e0, True, False) => e0
     case (e0, False, True) => Not(e0)
+    case (c, e1, e2) =>
+      val eqs = getEqualities(c)
+      if (eqs.nonEmpty) {
+        val eqMap: scala.collection.immutable.Map[Term, Term] = eqs.map(eq => eq.p0 -> eq.p1).toMap
+        val eqFalseMap: scala.collection.immutable.Map[Term, Term] = eqs.flatMap(eq => {
+          Seq(eq -> False, eq.flip() -> False)
+        }).toMap
+        createIfNonExistent(c, replace(e1, eqMap), replace(e2, eqFalseMap))
+      } else {
+        createIfNonExistent(v0)
+      }
     case _ => createIfNonExistent(v0)
+  }
+
+  def replace(t: Term, rps: scala.collection.immutable.Map[Term, Term]): Term = {
+    assert(rps.nonEmpty)
+    t.transform {
+      case trm if rps.contains(trm) => rps(trm)
+    }()
+  }
+
+  def getEqualities(t: Term): Seq[Equals] = t match {
+    case eq@Equals(_, _) => Seq(eq)
+    case And(ts) => ts.flatMap(getEqualities)
+    case _ => Seq()
   }
 
   override def actualCreate(args: (Term, Term, Term)): Ite = new Ite(args._1, args._2, args._3)
@@ -1078,9 +1110,12 @@ object Ite extends CondFlyweightTermFactory[(Term, Term, Term), Ite] {
 
 sealed trait ComparisonTerm extends BooleanTerm
 
-sealed trait Equals extends ComparisonTerm with BinaryOp[Term] { override val op = "==" }
+sealed trait Equals extends ComparisonTerm with BinaryOp[Term] {
+  override val op = "=="
+  def flip(): Equals
+}
 
-object Equals extends ((Term, Term) => BooleanTerm) {
+object Equals extends ((Term, Term) => Term) {
   def apply(e0: Term, e1: Term) = {
     assert(e0.sort == e1.sort,
            s"Expected both operands to be of the same sort, but found ${e0.sort} ($e0) and ${e1.sort} ($e1).")
@@ -1122,11 +1157,15 @@ object Equals extends ((Term, Term) => BooleanTerm) {
 }
 
 /* Represents built-in equality, e.g., '=' in SMT-LIB */
-class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends ConditionalFlyweightBinaryOp[BuiltinEquals] with Equals
+class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends ConditionalFlyweightBinaryOp[BuiltinEquals] with Equals {
+  override def flip() = BuiltinEquals.createIfNonExistent(p1, p0)
+}
 
-object BuiltinEquals extends CondFlyweightFactory[(Term, Term), BooleanTerm, BuiltinEquals] {
+object BuiltinEquals extends CondFlyweightTermFactory[(Term, Term), BuiltinEquals] {
   override def apply(v0: (Term, Term)) = v0 match {
-    case (v0: Var, v1: Var) if v0 == v1 => True
+    case (p0, p1) if p0 == p1 && p0.isDefinitelyNonTriggering && p1.isDefinitelyNonTriggering => True
+    case (p0, Ite(c, t1, t2)) => Ite(c, BuiltinEquals(p0, t1), BuiltinEquals(p0, t2))
+    case (Ite(c, t1, t2), p0) => Ite(c, BuiltinEquals(t1, p0), BuiltinEquals(t2, p0))
     case (p0: PermLiteral, p1: PermLiteral) =>
       // NOTE: The else-case (False) is only justified because permission literals are stored in a normal form
       // such that two literals are semantically equivalent iff they are syntactically equivalent.
@@ -1139,7 +1178,7 @@ object BuiltinEquals extends CondFlyweightFactory[(Term, Term), BooleanTerm, Bui
 
 /* Custom equality that (potentially) needs to be axiomatised. */
 class CustomEquals private[terms] (val p0: Term, val p1: Term) extends ConditionalFlyweightBinaryOp[CustomEquals] with Equals {
-
+  override def flip() = CustomEquals.createIfNonExistent(p1, p0)
   override val op = "==="
 }
 
@@ -1403,6 +1442,11 @@ object PermPlus extends CondFlyweightTermFactory[(Term, Term), PermPlus] {
     case (FractionPerm(n1, d1), FractionPerm(n2, d2)) if d1 == d2 => FractionPerm(Plus(n1, n2), d1)
     case (PermMinus(t00, t01), t1) if t01 == t1 => t00
     case (t0, PermMinus(t10, t11)) if t11 == t0 => t10
+    case (Ite(c, t1, t2), t3) => Ite(c, PermPlus(t1, t3), PermPlus(t2, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, PermPlus(t1, t2), PermPlus(t1, t3))
+    case (PermMin(t0, t1), t2) => PermMin(PermPlus(t0, t2), PermPlus(t1, t2))
+    case (PermMax(t0, t1), t2) => PermMax(PermPlus(t0, t2), PermPlus(t1, t2))
+    case (t0, PermMax(t1, t2)) => PermMax(PermPlus(t0, t1), PermPlus(t0, t2))
 
     case (_, _) => createIfNonExistent(v0)
   }
@@ -1428,9 +1472,21 @@ object PermMinus extends CondFlyweightTermFactory[(Term, Term), PermMinus] {
     case (t0, NoPerm) => t0
     case (p0, p1) if p0 == p1 => NoPerm
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal - p1.literal)
-    case (p0, PermMinus(p1, p2)) if p0 == p1 => p2
+    case (p0, PermMinus(p1, p2)) =>
+      if (p0 == p1) {
+        p2
+      } else {
+        PermPlus(PermMinus(p0, p1), p2)
+      }
+    case (PermMinus(t0, t1), t2) => PermMinus(t0, PermPlus(t1, t2))
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
+    case (Ite(c, t1, t2), t3) => Ite(c, PermMinus(t1, t3), PermMinus(t2, t3))
+    case (t1, Ite(c, t2, t3)) => Ite(c, PermMinus(t1, t2), PermMinus(t1, t3))
+    case (PermMin(p0, p1), p2) => PermMin(PermMinus(p0, p2), PermMinus(p1, p2))
+    case (t0, PermMin(t1, t2)) => PermMax(PermMinus(t0, t1), PermMinus(t0, t2))
+    case (PermMax(p0, p1), p2) => PermMax(PermMinus(p0, p2), PermMinus(p1, p2))
+    case (t0, PermMax(t1, t2)) => PermMin(PermMinus(t0, t1), PermMinus(t0, t2))
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -1454,10 +1510,9 @@ object PermLess extends CondFlyweightTermFactory[(Term, Term), PermLess] {
       case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal < p1.literal) True else False
 
       case (t0, Ite(tCond, tIf, tElse)) =>
-        /* The pattern p0 < b ? p1 : p2 arises very often in the context of quantified permissions.
-         * Pushing the comparisons into the ite allows further simplifications.
-         */
         Ite(tCond, PermLess(t0, tIf), PermLess(t0, tElse))
+      case (Ite(tCond, tIf, tElse), t0) =>
+        Ite(tCond, PermLess(tIf, t0), PermLess(tElse, t0))
 
       case _ => createIfNonExistent(v0)
     }
@@ -1476,6 +1531,10 @@ object PermAtMost extends CondFlyweightTermFactory[(Term, Term), PermAtMost] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal <= p1.literal) True else False
     case (t0, t1) if t0 == t1 => True
+    case (t0, Ite(tCond, tIf, tElse)) =>
+      Ite(tCond, PermAtMost(t0, tIf), PermAtMost(t0, tElse))
+    case (Ite(tCond, tIf, tElse), t0) =>
+      Ite(tCond, PermAtMost(tIf, t0), PermAtMost(tElse, t0))
     case _ => createIfNonExistent(v0)
   }
 
@@ -1496,10 +1555,38 @@ object PermMin extends CondFlyweightTermFactory[(Term, Term), PermMin] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (t0, t1) if t0 == t1 => t0
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal > p1.literal) p1 else p0
+    case (t0, Ite(tCond, tIf, tElse)) =>
+      Ite(tCond, PermMin(t0, tIf), PermMin(t0, tElse))
+    case (Ite(tCond, tIf, tElse), t0) =>
+      Ite(tCond, PermMin(tIf, t0), PermMin(tElse, t0))
     case _ => createIfNonExistent(v0)
   }
 
   override def actualCreate(args: (Term, Term)): PermMin = new PermMin(args._1, args._2)
+}
+
+class PermMax private[terms] (val p0: Term, val p1: Term) extends Permissions
+  with BinaryOp[Term]
+  with ConditionalFlyweightBinaryOp[PermMax] {
+
+  utils.assertSort(p0, "Permission 1st", sorts.Perm)
+  utils.assertSort(p1, "Permission 2nd", sorts.Perm)
+
+  override lazy val toString = s"max ($p0, $p1)"
+}
+
+object PermMax extends CondFlyweightTermFactory[(Term, Term), PermMax] {
+  override def apply(v0: (Term, Term)) = v0 match {
+    case (t0, t1) if t0 == t1 => t0
+    case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal < p1.literal) p1 else p0
+    case (t0, Ite(tCond, tIf, tElse)) =>
+      Ite(tCond, PermMax(t0, tIf), PermMax(t0, tElse))
+    case (Ite(tCond, tIf, tElse), t0) =>
+      Ite(tCond, PermMax(tIf, t0), PermMax(tElse, t0))
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term)): PermMax = new PermMax(args._1, args._2)
 }
 
 /* Sequences */
@@ -2120,6 +2207,8 @@ class Combine(val p0: Term, val p1: Term) extends SnapshotTerm
   utils.assertSort(p1, "second operand", sorts.Snap)
 
   override lazy val toString = s"($p0, $p1)"
+
+  override val isDefinitelyNonTriggering: Boolean = p0.isDefinitelyNonTriggering && p1.isDefinitelyNonTriggering
 }
 
 object Combine extends CondFlyweightTermFactory[(Term, Term), Combine] {
@@ -2133,6 +2222,8 @@ class First(val p: Term) extends SnapshotTerm
     /*with PossibleTrigger*/ {
 
   utils.assertSort(p, "term", sorts.Snap)
+
+  override val isDefinitelyNonTriggering: Boolean = p.isDefinitelyNonTriggering
 }
 
 object First extends CondFlyweightTermFactory[Term, First] {
@@ -2149,6 +2240,8 @@ class Second(val p: Term) extends SnapshotTerm
     /*with PossibleTrigger*/ {
 
   utils.assertSort(p, "term", sorts.Snap)
+
+  override val isDefinitelyNonTriggering: Boolean = p.isDefinitelyNonTriggering
 }
 
 object Second extends CondFlyweightTermFactory[Term, Second] {

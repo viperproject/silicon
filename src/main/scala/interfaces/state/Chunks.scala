@@ -10,8 +10,9 @@ import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
 
-trait Chunk
-
+trait Chunk {
+  def addEquality(t1: Term, t2: Term): Chunk = this
+}
 trait ChunkIdentifer
 
 trait GeneralChunk extends Chunk {

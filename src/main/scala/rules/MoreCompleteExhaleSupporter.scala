@@ -274,20 +274,24 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val newChunks = ListBuffer[NonQuantifiedChunk]()
         var moreNeeded = true
 
-        val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v).filter(c =>
-          v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout())
-        )
-
-        val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
-          // The definitive alias and syntactic aliases should get priority, since it is always
-          // possible to consume from them
-          definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
+        val (sortedChunks, checkedDefiniteAlias) = if (relevantChunks.size < 2) {
+          (relevantChunks, None)
+        } else {
+          val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v).filter(c =>
+            v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout())
+          )
+          val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
+            // The definitive alias and syntactic aliases should get priority, since it is always
+            // possible to consume from them
+            definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
+          }
+          (relevantChunks.sortWith(sortFunction), Some(definiteAlias))
         }
 
         val additionalArgs = s.relevantQuantifiedVariables.map(_._1)
         var currentFunctionRecorder = s.functionRecorder
 
-        relevantChunks.sortWith(sortFunction) foreach { ch =>
+        sortedChunks foreach { ch =>
           if (moreNeeded) {
             val eqHelper = ch.args.zip(args).map { case (t1, t2) => t1 === t2 }
             val eq = And(eqHelper)
@@ -295,13 +299,14 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
             val takenTerm = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
             val pTakenExp = permsExp.map(pe => ast.CondExp(eqExp.get, buildMinExp(Seq(ch.permExp.get, pNeededExp.get), ast.Perm), ast.NoPerm()(pe.pos, pe.info, pe.errT))(eqExp.get.pos, eqExp.get.info, eqExp.get.errT))
-            val pTaken = if (takenTerm.isInstanceOf[PermLiteral] || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
+            val pTaken = if (true) { //(takenTerm.isInstanceOf[PermLiteral] || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
               // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
               // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
               // that already exists.
               // During function verification, we should not define macros, since they could contain result, which is not
               // defined elsewhere.
               // Also, we don't introduce a macro if the term is a straightforward literal.
+              // ME: Trying to never use macros to get more simplification.
               takenTerm
             } else {
               val pTakenArgs = additionalArgs
@@ -320,11 +325,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
+            val newChunkHasNoPerm = IsNonPositive(newChunk.perm)
+            if (newChunkHasNoPerm == False || !v.decider.check(newChunkHasNoPerm, Verifier.config.splitTimeout())) {
               newChunks.append(newChunk)
             }
 
-            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout())
+            val noMoreNeeded = pNeeded === NoPerm
+            moreNeeded = noMoreNeeded == False || !v.decider.check(noMoreNeeded, Verifier.config.splitTimeout())
           } else {
             newChunks.append(ch)
           }
@@ -342,8 +349,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val newHeap = Heap(allChunks)
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
+        val checkedDefiniteValue = checkedDefiniteAlias.map(_.map(_.snap))
 
-        summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, _, v1) => {
+        summarise(s0, relevantChunks.toSeq, resource, args, argsExp, checkedDefiniteValue, v)((s1, snap, _, _, _, v1) => {
           val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
             snap
           } else {

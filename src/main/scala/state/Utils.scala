@@ -203,6 +203,7 @@ package object utils {
       case PermLess(p0, p1) => PermLess(go(p0), go(p1))
       case PermAtMost(p0, p1) => PermAtMost(go(p0), go(p1))
       case PermMin(p0, p1) => PermMin(go(p0), go(p1))
+      case PermMax(p0, p1) => PermMax(go(p0), go(p1))
       case App(f, ts) => App(f, ts map go)
       case SeqRanged(t0, t1) => SeqRanged(go(t0), go(t1))
       case SeqSingleton(t) => SeqSingleton(go(t))

@@ -7,12 +7,14 @@
 package viper.silicon.state
 
 import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.terms.Term
 
 trait Heap {
   def values: Iterable[Chunk]
   def +(chunk: Chunk): Heap
   def +(other: Heap): Heap
   def -(chunk: Chunk): Heap
+  def addEquality(t1: Term, t2: Term): Heap
 }
 
 trait HeapFactory[H <: Heap] {
@@ -37,5 +39,10 @@ final class ListBackedHeap private[state] (chunks: Vector[Chunk])
     val (prefix, suffix) = chunks.span(_ != ch)
 
     new ListBackedHeap(prefix ++ suffix.tail)
+  }
+
+  def addEquality(t1: Term, t2: Term) = {
+    val newChunks = chunks.map(_.addEquality(t1, t2))
+    new ListBackedHeap(newChunks)
   }
 }

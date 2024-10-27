@@ -39,6 +39,10 @@
 (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
     (ite (<= p1 p2) p1 p2))
 
+; max function for permissions
+(define-fun $Perm.max ((p1 $Perm) (p2 $Perm)) Real
+    (ite (>= p1 p2) p1 p2))
+
 ; --- Sort wrappers ---
 
 ; Sort wrappers are no longer part of the static preamble. Instead, they are

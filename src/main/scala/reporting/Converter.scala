@@ -437,6 +437,7 @@ object Converter {
       case PermLess(_, _) => None
       case PermAtMost(_, _) => None
       case PermMin(_, _) => None
+      case PermMax(_, _) => None
       case _ => None
     }
   }

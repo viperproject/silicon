@@ -332,13 +332,14 @@ class TermToZ3APIConverter
       case PermIntDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermPermDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermMin(t0, t1) => {
-        /*
-        (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
-    (ite (<= p1 p2) p1 p2))
-         */
         val e0 = convert(t0).asInstanceOf[ArithExpr]
         val e1 = convert(t1).asInstanceOf[ArithExpr]
         ctx.mkITE(ctx.mkLe(e0, e1), e0, e1)
+      }
+      case PermMax(t0, t1) => {
+        val e0 = convert(t0).asInstanceOf[ArithExpr]
+        val e1 = convert(t1).asInstanceOf[ArithExpr]
+        ctx.mkITE(ctx.mkGe(e0, e1), e0, e1)
       }
       case IsValidPermVar(v) => {
         /*

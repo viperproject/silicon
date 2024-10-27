@@ -14,7 +14,7 @@ import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
-import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
+import viper.silicon.state.terms.{BuiltinEquals, FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.reporter.BranchFailureMessage
@@ -158,7 +158,12 @@ object brancher extends BranchingRules {
               }
             }
 
-            val result = fElse(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
+            val s1p = condition match {
+              case Not(BuiltinEquals(p0, p1)) =>
+                s1.addEquality(p0, p1)
+              case _ => s1
+            }
+            val result = fElse(v1.stateConsolidator(s1p).consolidateOptionally(s1p, v1), v1)
             if (wasElseExecutedOnDifferentVerifier) {
               v1.decider.resetProverOptions()
               v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
@@ -197,7 +202,14 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
-            fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
+            val s1p = condition match {
+              case BuiltinEquals(p0, p1) =>
+                s1.addEquality(p0, p1)
+              case _ => s1
+            }
+            val s1pp = v1.stateConsolidator(s1p).consolidateOptionally(s1p, v1)
+
+            fThen(s1pp, v1)
           })
         } else {
           Unreachable()

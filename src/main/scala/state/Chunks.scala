@@ -56,6 +56,10 @@ case class BasicChunk(resourceID: BaseID,
     case FieldID => s"${args.head}.$id -> $snap # $perm"
     case PredicateID => s"$id($snap; ${args.mkString(",")}) # $perm"
   }
+
+  override def addEquality(t1: Term, t2: Term) = {
+    BasicChunk(resourceID, id, args.map(_.replace(t1, t2)), argsExp, snap.replace(t1, t2), perm.replace(t1, t2), permExp)
+  }
 }
 
 sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
