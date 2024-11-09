@@ -220,7 +220,8 @@ object evaluator extends EvaluationRules {
                * quantifier in whose body field 'fa.field' was accessed)
                * which is protected by a trigger term that we currently don't have.
                */
-              v1.decider.assume(And(fvfDef.valueDefinitions), Option.when(withExp)(DebugExp.createInstance("Value definitions", isInternal_ = true)))
+              v1.decider.prover.comment("reemit")
+              //v1.decider.assume(And(fvfDef.valueDefinitions), Option.when(withExp)(DebugExp.createInstance("Value definitions", isInternal_ = true)))
               if (s1.heapDependentTriggers.contains(fa.field)){
                 val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
                 val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
@@ -919,8 +920,8 @@ object evaluator extends EvaluationRules {
                                  */
                              smDomainNeeded = true,
                              moreJoins = JoinMode.Off)
-            consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
-              val snap1 = snap.convert(sorts.Snap)
+            consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
+              val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
@@ -977,9 +978,9 @@ object evaluator extends EvaluationRules {
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(s4, acc, pve, v3)((s5, snap, v4) => {
+                    consume(s4, acc, true, pve, v3)((s5, snap, v4) => {
                       val fr6 =
-                        s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap)
+                        s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap.get)
                                            .changeDepthBy(+1)
                       val s6 = s5.copy(functionRecorder = fr6,
                                        constrainableARPs = s1.constrainableARPs)
@@ -992,14 +993,14 @@ object evaluator extends EvaluationRules {
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
                         val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true))
-                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs), debugExp)
+                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp)
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm, ePermNew)
                       val argsPairs: List[(Term, Option[ast.Exp])] = if (withExp) tArgs zip eArgsNew.get.map(Some(_)) else tArgs zip Seq.fill(tArgs.size)(None)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg)
-                      produce(s7a, toSf(snap), body, pve, v4)((s8, v5) => {
+                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(g = s7.g,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,

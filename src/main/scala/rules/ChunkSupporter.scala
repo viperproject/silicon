@@ -29,10 +29,11 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               argsExp: Option[Seq[ast.Exp]],
               perms: Term,
               permsExp: Option[ast.Exp],
+              SnapNeeded: Boolean,
               ve: VerificationError,
               v: Verifier,
               description: String)
-             (Q: (State, Heap, Term, Verifier) => VerificationResult)
+             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult
 
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
@@ -71,16 +72,17 @@ object chunkSupporter extends ChunkSupportRules {
               argsExp: Option[Seq[ast.Exp]],
               perms: Term,
               permsExp: Option[ast.Exp],
+              SnapNeeded: Boolean,
               ve: VerificationError,
               v: Verifier,
               description: String)
-             (Q: (State, Heap, Term, Verifier) => VerificationResult)
+             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consume2(s, h, resource, args, argsExp, perms, permsExp, ve, v)((s2, h2, optSnap, v2) =>
+    consume2(s, h, resource, args, argsExp, perms, permsExp, SnapNeeded, ve, v)((s2, h2, optSnap, v2) =>
       optSnap match {
         case Some(snap) =>
-          Q(s2, h2, snap.convert(sorts.Snap), v2)
+          Q(s2, h2, Some(snap.convert(sorts.Snap)), v2)
         case None =>
           /* Not having consumed anything could mean that we are in an infeasible
            * branch, or that the permission amount to consume was zero.
@@ -91,7 +93,7 @@ object chunkSupporter extends ChunkSupportRules {
            */
           val fresh = v2.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
-          Q(s3, h2, fresh, v2)
+          Q(s3, h2, Some(fresh), v2)
       })
   }
 
@@ -102,6 +104,7 @@ object chunkSupporter extends ChunkSupportRules {
                        argsExp: Option[Seq[ast.Exp]],
                        perms: Term,
                        permsExp: Option[ast.Exp],
+                       SnapNeeded: Boolean,
                        ve: VerificationError,
                        v: Verifier)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
