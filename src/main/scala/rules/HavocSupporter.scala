@@ -308,7 +308,9 @@ object havocSupporter extends SymbolicExecutionRules {
         val eqs = And(chunkArgs.zip(args).map{ case (t1, t2) => t1 === t2 })
         And(lhs, eqs)
       case HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain) =>
-        val replaceMap = inverseFunctions.qvarsToInversesOf(chunkArgs)
+        val replaceMap = inverseFunctions.qvarsToInversesOf(chunkArgs).collect {
+          case (key, values) if values.nonEmpty => key -> values.head
+        }
         And(lhs.replace(replaceMap), And(imagesOfCodomain.map(_.replace(codomainQVars, chunkArgs))))
     }
   }

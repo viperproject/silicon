@@ -38,12 +38,12 @@ case class InverseFunctions(condition: Term,
                             axiomInversesOfInvertibles: Quantification,
                             axiomInvertiblesOfInverses: Quantification,
                             qvarExps: Option[Seq[ast.LocalVarDecl]],
-                            qvarsToInverses: Map[Var, Function],
-                            qvarsToImages: Map[Var, Function]) {
+                            qvarsToInverses: Map[Var, Seq[Function]],
+                            qvarsToImages: Map[Var, Seq[Function]]) {
 
-  val inverses: Iterable[Function] = qvarsToInverses.values
+  val inverses: Iterable[Function] = qvarsToInverses.values.flatten
 
-  val images: Iterable[Function] = qvarsToImages.values
+  val images: Iterable[Function] = qvarsToImages.values.flatten
 
   val definitionalAxioms: Vector[Quantification] =
     Vector(axiomInversesOfInvertibles, axiomInvertiblesOfInverses)
@@ -53,18 +53,33 @@ case class InverseFunctions(condition: Term,
 
   def inversesOf(arguments: Seq[Term]): Seq[App] =
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
-    qvarsToInverses.values.map(inv =>
+    inverses.map(inv =>
       App(inv, additionalArguments ++ arguments)
     ).to(Seq)
 
-  def qvarsToInversesOf(argument: Term): Map[Var, App] =
+  def qvarsToInversesOf(argument: Term): Map[Var, Seq[App]] =
     qvarsToInversesOf(Seq(argument))
 
-  def qvarsToInversesOf(arguments: Seq[Term]): Map[Var, App] =
+  def qvarsToInversesOf(arguments: Seq[Term]): Map[Var, Seq[App]] =
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
     qvarsToInverses.map {
-      case (x, inv) => x -> App(inv, additionalArguments ++ arguments)
+      case (x, inv) => x -> inv.map(fn => App(fn, additionalArguments ++ arguments))
     }.to(Map)
+
+
+  def mergeInvFunctions(invs: InverseFunctions): InverseFunctions = {
+    InverseFunctions(
+      condition = True,
+      invertibles = invertibles ++ invs.invertibles,
+      invertibleExps = Some(invertibleExps.getOrElse(Seq()) ++ invs.invertibleExps.getOrElse(Seq())),
+      additionalArguments = additionalArguments,
+      axiomInversesOfInvertibles = axiomInversesOfInvertibles,
+      axiomInvertiblesOfInverses = axiomInvertiblesOfInverses,
+      qvarExps = qvarExps,
+      qvarsToInverses = qvarsToInverses ++ invs.qvarsToInverses,
+      qvarsToImages = qvarsToImages ++ invs.qvarsToImages,
+    )
+  }
 
   override lazy val toString: String = indentedToString("")
 
@@ -227,23 +242,11 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
 
   def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk]
 
-  /** Merge the snapshots of two quantified heap chunks that denote the same field locations
+  /** Merge the snapshots of two quantified heap chunks that denote the same location, i.e. whose ids and arguments
+   * are known to be equal.
    *
    * @param fr The functionRecorder to use when new snapshot maps are generated.
-   * @param field The name of the field.
-   * @param t1 The first chunk's snapshot map.
-   * @param t2 The second chunk's snapshot map.
-   * @param p1 The first chunk's permission amount, should be constrained by the domain.
-   * @param p2 The second chunk's permission amount, should be constrained by the domain.
-   * @param v The verifier to use.
-   * @return A tuple (fr, sm, def) of functionRecorder, a snapshot map sm and a term def constraining sm.
-   */
-  def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
-
-  /** Merge the snapshots of two quantified heap chunks that denote the same predicate
-   *
-   * @param fr The functionRecorder to use when new snapshot maps are generated.
-   * @param predicate The name of the predicate.
+   * @param valueFn The lookup-value-function of the two terms t1 and t2
    * @param qVars The variables over which p1 and p2 are defined
    * @param t1 The first chunk's snapshot map.
    * @param t2 The second chunk's snapshot map.
@@ -252,7 +255,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
    * @param v The verifier to use.
    * @return A tuple (fr, sm, def) of functionRecorder, a snapshot map sm and a term def constraining sm.
    */
-  def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
+  def combineSnapshotMaps(fr: FunctionRecorder, valueFn: Term => Term, qVars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
 }
 
 object quantifiedChunkSupporter extends QuantifiedChunkSupport {
@@ -334,7 +337,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         qidPrefix,
         v)
 
-    val qvarsToInversesOfCodomain = inverseFunctions.qvarsToInversesOf(codomainQVars)
+    val qvarsToInversesOfCodomain = inverseFunctions.qvarsToInversesOf(codomainQVars).collect {
+      case (key, values) if values.nonEmpty => key -> values.head
+    }
 
     val cond = And(And(imagesOfCodomain), condition.replace(qvarsToInversesOfCodomain))
     val perms = permissions.replace(qvarsToInversesOfCodomain)
@@ -1057,7 +1062,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s, resource, codomainVars, relevantChunks, v)
               val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars, s.program)
-              val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
+              val qvarsToInv = inv.qvarsToInversesOf(codomainVars).collect {
+                case (key, values) if values.nonEmpty => key -> values.head
+              }
               val condOfInv = tCond.replace(qvarsToInv)
               v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars))),
                 Option.when(withExp)(DebugExp.createInstance("Inverse Trigger", true)))
@@ -1253,7 +1260,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
-            val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
+            val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars).collect {
+              case (key, values) if values.nonEmpty => key -> values.head
+            }
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
             val argsOfInvOfLoc = tArgs.map(a => a.replace(qvarsToInvOfLoc))
@@ -1948,8 +1957,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       axInvsOfFct,
       axFctsOfInvs,
       qvarExps,
-      qvars.zip(inverseFunctions).to(Map),
-      qvars.zip(imageFunctions).filter(_._2 != null).to(Map)
+      qvars.zip(inverseFunctions).map{case (qvar, inv) => (qvar, Seq(inv))}.to(Map),
+      qvars.zip(imageFunctions).filter(_._2 != null).map{case (qvar, img) => (qvar, Seq(img))}.to(Map)
     )
     (res, imagesOfCodomains)
   }
@@ -1963,7 +1972,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       matchingChunks ++ otherChunks
     }
 
-  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+  private def findChunk2(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
         Left(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
@@ -1979,7 +1988,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case ch: QuantifiedBasicChunk if ch.id == chunk.id => Some(ch)
       case _ => None
     }
-
+    return relevantChunks.headOption
     val (receiverTerms, quantVars, cond) = lr match {
       case Left(tuple) => tuple
       case Right(singletonArguments) =>
@@ -2036,34 +2045,32 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  // Based on StateConsolidator#combineSnapshots
-  override def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
-    val lookupT1 = Lookup(field, t1, `?r`)
-    val lookupT2 = Lookup(field, t2, `?r`)
-    val (fr2, sm, smDef, triggers) = (IsPositive(p1), IsPositive(p2)) match {
-      // If we statically know that both permission values are positive we can forego the quantifier
-      case (True, True) => return (fr, t1, t1 === t2)
-      case (True, b2) => (fr, t1, Implies(b2, lookupT1 === lookupT2), Seq(Trigger(lookupT1), Trigger(lookupT2)))
-      case (b1, True) => (fr, t2, Implies(b1, lookupT2 === lookupT1), Seq(Trigger(lookupT2), Trigger(lookupT1)))
-      case (b1, b2) =>
-        /*
-         * Since it is not definitely known whether p1 and p2 are positive,
-         * we have to introduce a fresh snapshot. Note that it is not sound
-         * to use t1 or t2 and constrain it.
-         */
-        val t3 = v.decider.fresh(t1.sort, Option.when(withExp)(PUnknown()))
-        val lookupT3 = Lookup(field, t3, `?r`)
-        (fr.recordConstrainedVar(t3, And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))), t3,
-          And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2)), Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3)))
+  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+    val relevantChunks: Iterable[QuantifiedBasicChunk] = chunks.flatMap {
+      case ch: QuantifiedBasicChunk if ch.id == chunk.id => Some(ch)
+      case _ => None
     }
 
-    (fr2, sm, Forall(`?r`, smDef, triggers))
+    relevantChunks foreach { ch =>
+      val codomainQVars = chunk.quantifiedVars
+      val replacedPerm = ch.perm.replace(ch.quantifiedVars, chunk.quantifiedVars)
+      val supersetCheck = Forall(codomainQVars, Implies(IsPositive(replacedPerm), IsPositive(chunk.perm)), Nil)
+      val subsetCheck = Forall(codomainQVars, Implies(IsPositive(chunk.perm), IsPositive(replacedPerm)), Nil)
+      v.decider.prover.comment("Merging check")
+      if (v.decider.check(supersetCheck, Verifier.config.splitTimeout()) ||
+        v.decider.check(subsetCheck, Verifier.config.splitTimeout())) {
+          v.decider.prover.comment("Merging check succeded")
+          return Some(ch)
+        }
+      v.decider.prover.comment("Merging check failed")
+    }
+    None
   }
 
   // Based on StateConsolidator#combineSnapshots
-  override def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
-    val lookupT1 = PredicateLookup(predicate, t1, qVars)
-    val lookupT2 = PredicateLookup(predicate, t2, qVars)
+  override def combineSnapshotMaps(fr: FunctionRecorder, valueFn: Term => Term, qVars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
+    val lookupT1 = valueFn(t1)
+    val lookupT2 = valueFn(t2)
     val (fr2, sm, smDef, triggers) = (IsPositive(p1), IsPositive(p2)) match {
       // If we statically know that both permission values are positive we can forego the quantifier
       case (True, True) => return (fr, t1, t1 === t2)
@@ -2076,7 +2083,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          * to use t1 or t2 and constrain it.
          */
         val t3 = v.decider.fresh(t1.sort, Option.when(withExp)(PUnknown()))
-        val lookupT3 = PredicateLookup(predicate, t3, qVars)
+        val lookupT3 = valueFn(t3)
         (fr.recordConstrainedVar(t3, And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))), t3,
           And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2)), Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3)))
     }
@@ -2110,6 +2117,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             receiverTerms.zip(cInvertibles).forall(p => {
               if (cQvars.length == quantVars.length && cQvars.zip(quantVars).forall(vars => vars._1.sort == vars._2.sort)) {
                 val secondReplaced = p._2.replace(cQvars, quantVars)
+
                 v.decider.check(SimplifyingForall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout())
               } else {
                 false

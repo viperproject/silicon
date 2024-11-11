@@ -7,6 +7,7 @@
 package viper.silicon.interfaces.state
 
 import viper.silicon.resources.ResourceID
+import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
 
@@ -39,6 +40,7 @@ trait NonQuantifiedChunk extends GeneralChunk {
 trait QuantifiedChunk extends GeneralChunk {
   val quantifiedVars: Seq[Var]
   val quantifiedVarExps: Option[Seq[ast.LocalVarDecl]]
+  val invs: Option[InverseFunctions]
 
   def snapshotMap: Term
   def valueAt(arguments: Seq[Term]): Term

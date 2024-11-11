@@ -11,7 +11,7 @@ import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
-import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
+import viper.silicon.resources.{FieldID, MagicWandID, NonQuantifiedPropertyInterpreter, PredicateID, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
@@ -19,6 +19,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.Exp
 import viper.silver.parser.PUnknown
 
 import scala.annotation.unused
@@ -201,25 +202,41 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, v)
 
       Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, PermPlus(perm1, perm2), perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())), snapEq)
-    case (l@QuantifiedFieldChunk(id1, fvf1, condition1, condition1Exp,  perm1, perm1Exp, invs1, singletonRcvr1, singletonRcvr1Exp, hints1),
-          r@QuantifiedFieldChunk(_, fvf2, _, _, perm2, perm2Exp, _, _, _, hints2)) =>
-      assert(l.quantifiedVars == Seq(`?r`))
-      assert(r.quantifiedVars == Seq(`?r`))
+    case (l : QuantifiedBasicChunk, r: QuantifiedBasicChunk) =>
       // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
-      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, fvf1, fvf2, l.perm, r.perm, v)
-      val permSum = PermPlus(perm1, perm2)
-      val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
-      val bestHints = if (hints1.nonEmpty) hints1 else hints2
-      Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, condition1Exp, permSum, permSumExp, invs1, singletonRcvr1, singletonRcvr1Exp, bestHints), snapEq)
-    case (l@QuantifiedPredicateChunk(id1, qVars1, qVars1Exp, psf1, _, _, perm1, perm1Exp, _, _, _, _),
-          r@QuantifiedPredicateChunk(_, qVars2, qVars2Exp, psf2, condition2, condition2Exp, perm2, perm2Exp, invs2, singletonArgs2, singletonArgs2Exp, hints2)) =>
-      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
+      v.decider.prover.comment("Merging qp chunks")
+      v.decider.prover.comment(s"left perm: ${l.perm}")
+      v.decider.prover.comment(s"right perm: ${r.perm}")
 
-      val permSum = PermPlus(perm1.replace(qVars1, qVars2), perm2)
-      val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1.replace(qVars1Exp.get.zip(qVars2Exp.get).toMap), perm2Exp.get)())
-      Some(fr2, QuantifiedPredicateChunk(id1, qVars2, qVars2Exp, combinedSnap, condition2, condition2Exp, permSum, permSumExp, invs2, singletonArgs2, singletonArgs2Exp, hints2), snapEq)
-    case _ =>
-      None
+      val replacedPerm = r.perm.replace(r.quantifiedVars, l.quantifiedVars)
+      val replacedPermExp = r.permExp.map(p2 => p2.replace(r.quantifiedVarExps.get.zip(l.quantifiedVarExps.get).toMap))
+      val permSum = PermPlus(l.perm, replacedPerm)
+      val permSumExp = l.permExp.map(p1 => ast.PermAdd(p1, replacedPermExp.get)())
+      val bestHints = if (l.hints.nonEmpty) l.hints else r.hints
+      val condExp = l.permExp.map(_ => ast.TrueLit()())
+      val combinedInvs = (l.invs, r.invs) match{
+        case (Some(lInv), Some(rInv)) => Some(lInv.mergeInvFunctions(rInv))
+        case (Some(lInv), None) => Some(lInv)
+        case (None, Some(rInv)) => Some(rInv)
+        case (None, None) => None
+      }
+      l.resourceID match {
+        case FieldID => {
+          val valueFn: Term => Term = (sm => Lookup(l.id.toString, sm, l.quantifiedVars.head))
+            val (fr2, combinedSnap, snapEq) =
+              quantifiedChunkSupporter.combineSnapshotMaps(fr1, valueFn, l.quantifiedVars, l.snapshotMap, r.snapshotMap, l.perm, replacedPerm, v)
+          Some(fr2, QuantifiedFieldChunk(BasicChunkIdentifier(l.id.toString), combinedSnap, True, condExp, permSum,
+            permSumExp, combinedInvs, l.singletonArguments.map(s => s.head),l.singletonArgumentExps.map(s => s.head), bestHints), snapEq)
+        }
+        case PredicateID => {
+          val valueFn: Term => Term = (sm => PredicateLookup(l.id.toString, sm, l.quantifiedVars))
+          val (fr2, combinedSnap, snapEq) =
+            quantifiedChunkSupporter.combineSnapshotMaps(fr1, valueFn, l.quantifiedVars, l.snapshotMap, r.snapshotMap, l.perm, replacedPerm, v)
+          Some(fr2, QuantifiedPredicateChunk(BasicChunkIdentifier(l.id.toString), l.quantifiedVars, l.quantifiedVarExps, combinedSnap, True,
+            condExp, permSum, permSumExp, combinedInvs, l.singletonArguments, l.singletonArgumentExps, bestHints), snapEq)
+        }
+        case MagicWandID => None
+      }
   }
 
   /** Merge the snapshots of two chunks that denote the same location, i.e. whose ids and arguments
@@ -297,7 +314,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
               } else { None }
               v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), debugExp)
             } else {
-              val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
+              val chunkReceivers = chunk.invs.get.qvarsToInversesOf(chunk.quantifiedVars).values
+              // chunk.invs.get.qvarsToInverses.values.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
               val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
