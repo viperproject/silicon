@@ -1,0 +1,11 @@
+import "./nlist.vpr"
+
+method test(this: Ref)
+//requires acc(this.next)
+{
+    var x: Ref := this
+    x := x.next
+}
+
+
+

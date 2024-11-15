@@ -1,0 +1,38 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method reverse(x: Ref)
+requires list(x)
+ensures list(x)
+
+
+method test(x: Ref)
+{
+    reverse(x)
+}
+
+/*
+method test(x: Ref)
+{
+    assert acc(x.next.next)
+}
+
+method test(x: Ref)
+requires acc(x.next)
+{
+    x.next := null
+    reverse(x)
+}
+*/
+
+/*
+method test(x: Ref)
+//requires acc(x.next)
+//requires list(x.next)
+{
+    reverse(x.next)
+}
+*/

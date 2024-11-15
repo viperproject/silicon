@@ -1,0 +1,32 @@
+field next: Ref
+field val: Int
+
+predicate list(x: Ref){
+    acc(x.next) && acc(x.val) && (x.next != null ==> list(x.next))
+}
+
+method loop(this: Ref)
+//requires list(this)
+//ensures list(this)
+{
+    var x: Ref := this
+
+    //unfold list(x)
+    //package list(x) --* list(this)
+
+    while(x.next != null)
+    //invariant acc(x.next) && acc(x.val)
+    //invariant x.next != null ==> list(x.next)
+    //invariant list(x) --* list(this)
+    {
+        var x_old: Ref := x
+        x := x.next
+        //unfold list(x)
+        //package list(x) --* list(this){
+        //    fold list(x_old)
+        //    apply list(x_old) --* list(this)
+       // }
+    }
+  //  fold list(x)
+   // apply list(x) --* list(this)
+}

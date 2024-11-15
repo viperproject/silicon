@@ -1,0 +1,24 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method test(n: Int) returns (x: Ref)
+// ensures list(x)
+{
+    x := null
+    var i: Int := 0
+
+    // fold list(x)
+
+    while(i < n)
+    // invariant list(x)
+    {
+        var y: Ref := new(*)
+        y.next := x
+        x := y
+        i := i + 1
+        // fold list(x)
+    }
+}

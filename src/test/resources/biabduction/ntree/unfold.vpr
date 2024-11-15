@@ -1,0 +1,16 @@
+field l: Ref
+field r: Ref
+
+predicate tree(x: Ref){
+    x != null ==> acc(x.l) && tree(x.l) && acc(x.r) && tree(x.r)
+}
+
+
+
+method test(x: Ref)
+    requires tree(x)
+    requires x != null
+    ensures acc(x.l)
+    //ensures list(x.next)
+{
+}

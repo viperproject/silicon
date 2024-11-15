@@ -1,0 +1,26 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+/*
+method test()
+{
+    var x: Ref
+    x := null
+    //fold list(x)
+    assert list(x)
+}*/
+
+
+method test()
+{
+    var x: Ref
+    x := new(*)
+    x.next := null
+    //fold list(x.next)
+    //fold list(x)
+    //assert list(x.next)
+    assert list(x)
+}

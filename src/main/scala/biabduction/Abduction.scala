@@ -1,6 +1,5 @@
 package viper.silicon.biabduction
 
-
 import viper.silicon
 import viper.silicon.interfaces._
 import viper.silicon.resources.{FieldID, PredicateID}
@@ -12,6 +11,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{SortWrapper, Term, sorts}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.verifier.{BiAbductionQuestion, DummyReason}
 
@@ -22,7 +22,7 @@ object AbductionApplier extends RuleApplier[AbductionQuestion] {
 
 case class AbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
                              lostAccesses: Map[Exp, Term] = Map(), foundState: Seq[Exp] = Seq(),
-                             foundStmts: Seq[Stmt] = Seq()) extends BiAbductionQuestion
+                             foundStmts: Seq[Stmt] = Seq(), trigger: Option[Positioned]) extends BiAbductionQuestion
 
 /**
   * A rule for abduction. A rule is a pair of a check method and an apply method. The check method checks whether the
@@ -159,6 +159,7 @@ object AbductionFoldBase extends AbductionRule {
                   safeEval(a.loc.args.head, q.s, q.v, q.lostAccesses) {
                     case (s2, Some(t), v2) =>
                       val wildcards = s2.constrainableARPs -- s1.constrainableARPs
+                      // TODO nklose this could branch
                       predicateSupporter.fold(s1, pred, List(t), None, terms.FullPerm, None, wildcards, pve, v2) { (s3, v3) =>
                         val fold = Fold(a)()
                         Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold, s = s3, v = v3)))
@@ -212,16 +213,31 @@ object AbductionFold extends AbductionRule {
           // TODO nklose if the predicate is conditional in a weird way, then this might be wrong?
           case Some((field, chunk)) =>
             val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
-            executionFlowController.tryOrElse0(q.s, q.v) {
-              (sa, va, T) => predicateSupporter.fold(sa, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pve, va)(T)
-            } {
-              (s1: State, v1: Verifier) =>
-                val fold = Fold(a)()
-                val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, sorts.Ref))
-                val q2 = q.copy(s = s1, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
-                Q(Some(q2))
-            } { f =>
-              BiAbductionSolver.solveAbduction(q.s, q.v, f)((s3, v3) => {apply(q.copy(s = s3, v = v3))(Q)})}
+            val fargs = pred.formalArgs.map(_.localVar)
+            val eArgs = a.loc.args
+            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
+            val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
+            val pveTransformed = pve.withReasonNodeTransformed(reasonTransformer)
+            
+            val tryFold = predicateSupporter.fold(q.s, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pveTransformed, q.v) {
+              (s1, v1) =>
+                Success(Some(AbductionSuccess(s1, v1, Seq(v1.decider.pcs.duplicate()), Seq(), Seq(Fold(a)()))))
+            }
+            tryFold match {
+              case nf: NonFatalResult => 
+                // TODO nklose make sure the pcs are correct here
+                abductionUtils.getAbductionSuccesses(nf) match {
+                  case Seq(suc) =>
+                    val fold = Fold(a)()
+                    val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, sorts.Ref))
+                    val q2 = q.copy(s = suc.s, v = suc.v, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
+                    Q(Some(q2))
+                }
+              case f: Failure =>
+                BiAbductionSolver.solveAbduction(q.s, q.v, f, q.trigger){(s3, res, v3) =>
+                  apply(q.copy(s = s3, v = v3, foundState = res.state ++ q.foundState, foundStmts = res.stmts ++ q.foundStmts))(Q)}
+            }
+            
           case None => {
             // If we do not find a chunk, we recurse to try the others by calling this
             apply(q.copy(goal = g1)) {
@@ -361,17 +377,16 @@ object AbductionPackage extends AbductionRule {
 
           val packQ = q.copy(s = s1, v = v1, goal = Seq(wand.right))
           AbductionApplier.applyRules(packQ){ packRes =>
-
-            // TODO nklose we should instead not trigger
+            
             if (packRes.goal.nonEmpty) {
-              throw new Exception("Could not find proof script for package")
-            }
+              Q(None)
+            } else {
 
             val g1 = q.goal.filterNot(_ == wand)
             val stmts = q.foundStmts :+ Package(wand, Seqn(packRes.foundStmts.reverse, Seq())())()
             val pres = q.foundState ++ packRes.foundState
             Q(Some(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts, foundState = pres)))
-          }
+          }}
         })
     }
   }
@@ -393,117 +408,3 @@ object AbductionMissing extends AbductionRule {
     }
   }
 }
-
-/*
-/**
-  * Covers the rule fold-base, which removes a predicate instance from the goal if its base case is met
-  */
-object AbductionListFoldBase extends AbductionRule {
-
-  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
-    val preds = q.goal.collectFirst { case e: PredicateAccessPredicate => e }
-    preds match {
-      case None => Q(None)
-      case Some(a: PredicateAccessPredicate) =>
-        val g1 = q.goal.filterNot(_ == a)
-        safeArgEval(a.loc, q) {
-          case (s1, Some(args), v1) =>
-            if (v1.decider.check(terms.BuiltinEquals(args.head, terms.Null), Verifier.config.checkTimeout())) {
-              val fold = Fold(a)()
-              // Do we have to remove the path condition? How do we do this? Havoc/exhale?
-              Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold)))
-            } else {
-              apply(q.copy(goal = g1)) {
-                case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
-                case None => Q(None)
-              }
-            }
-          case (_, None, _) => apply(q.copy(goal = g1)) {
-            case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
-            case None => Q(None)
-          }
-        }
-    }
-  }
-}
-
-// this does not always do the right thing, see the reassign example
-// If we add list(x.next) to our goal, but x.next was assigned to in the method, then we
-// find a precondition for the original value of x.next, not for the assigned value.
-
-// We need to add the "old" chunks to the var matching?
-// Or do var matching in the context of the current state vs the old state? If so then maybe we do want goals/results as chunks?
-object AbductionListFold extends AbductionRule {
-
-  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
-    val preds = q.goal.collectFirst { case e: PredicateAccessPredicate => e }
-    preds match {
-      case None => Q(None)
-      case Some(a: PredicateAccessPredicate) =>
-        val g1 = q.goal.filterNot(_ == a)
-        val next = abductionUtils.getNextAccess(q.s.program, a.loc.args.head, a.perm)
-        checkChunk(next.loc, q) {
-          case Some(_) =>
-            val headNext = abductionUtils.getNextAccess(q.s.program, a.loc.args.head, a.perm)
-            val nextList = abductionUtils.getPredicate(q.s.program, headNext.loc, a.perm)
-            val g1: Seq[Exp] = q.goal.filterNot(_ == a) :+ nextList
-            val fold = Fold(a)()
-            consumer.consume(q.s, headNext, pve, q.v) { (s1, snap, v1) =>
-              val lost = q.lostAccesses + (headNext.loc -> SortWrapper(snap, sorts.Ref))
-              Q(Some(q.copy(s = s1, v = v1, goal = g1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost)))
-            }
-          case None => apply(q.copy(goal = g1)) {
-            case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
-            case None => Q(None)
-          }
-        }
-    }
-  }
-}
-
-
-object AbductionListUnfold extends AbductionRule {
-
-  override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
-    val acc = q.goal.collectFirst { case e: FieldAccessPredicate => e }
-    acc match {
-      case None => Q(None)
-      case Some(a: FieldAccessPredicate) =>
-        val g1 = q.goal.filterNot(a == _)
-        val pred = abductionUtils.getPredicate(q.s.program, a.loc.rcv, a.perm)
-        checkChunk(pred.loc, q) {
-          case Some(_) =>
-            val unfold = Unfold(abductionUtils.getPredicate(q.s.program, a.loc.rcv, a.perm))()
-            val nNl = NeCmp(a.loc.rcv, NullLit()())()
-            eval(q.s, nNl, pve, q.v) { case (s1, arg, v1) => {
-              val isNl = q.v.decider.check(arg, Verifier.config.checkTimeout())
-
-              // Add x != null to result if it does not hold
-              val r1 = if (isNl) q.foundState else q.foundState :+ nNl
-
-              // Exchange list(x) with list(x.next) in the state
-              // Unfold
-              unfoldPredicate(q, a.loc.rcv, a.perm) { (s1, v1) =>
-
-                // Add x != null to path condition maybe do this first?
-                produce(s1, freshSnap, nNl, pve, v1)((s2, v2) => {
-                  v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-
-                  // Remove the access chunk
-                  consumer.consume(s2, a, pve, v2)((s3, snap, v3) => {
-                    val lost = q.lostAccesses + (a.loc -> SortWrapper(snap, sorts.Ref))
-                    Q(Some(q.copy(s = s3, v = v3, goal = g1, foundState = r1, foundStmts = q.foundStmts :+ unfold, lostAccesses = lost)))
-                  })
-                })
-              }
-            }
-            }
-          case None => apply(q.copy(goal = g1)) {
-            case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
-            case None => Q(None)
-          }
-        }
-    }
-  }
-}
- */

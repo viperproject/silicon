@@ -1,0 +1,32 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method test(this: Ref, target: Ref)
+requires target != null
+//requires list(this)
+//ensures list(this)
+{
+    var x: Ref := this
+    //package list(x) --* list(this)
+
+    while(x != null)
+    //invariant list(x)
+    //invariant list(x) --* list(this)
+    {
+        var xo: Ref := x
+        //unfold list(x)
+        if(x.next == target){
+            //unfold list(x.next)
+            x.next := x.next.next
+        }
+        x := x.next
+        //package acc(list(x), write) --* acc(list(this), write) {
+        //   fold acc(list(xo), write)
+        //    apply acc(list(xo), write) --* acc(list(this), write)
+        //}
+    }
+   // apply list(x) --* list(this)
+}

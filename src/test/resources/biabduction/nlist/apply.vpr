@@ -1,0 +1,13 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method foo(this: Ref, x: Ref)
+{
+    inhale list(x) --* list(this)
+    //inhale true --* list(this)
+    //apply list(x) --* list(this)
+    assert list(this)
+}

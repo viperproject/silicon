@@ -1,0 +1,43 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+/*
+method test(x: Ref)
+    requires acc(x.next)
+    requires list(x.next)
+    ensures list(x)
+{
+}
+*/
+/*
+method test(x: Ref)
+    requires acc(x.next)
+    requires list(x.next)
+{
+    assert list(x)
+}
+*/
+
+
+method test(x: Ref, y: Ref)
+requires acc(x.next) && acc(x.next.next)
+requires list(y)
+//ensures list(x)
+{
+    x.next.next := y
+    assert list(x)
+}
+
+
+/*
+method test(x: Ref, y: Ref)
+requires acc(x.next)
+requires list(y)
+ensures list(x)
+{
+    x.next := y
+}
+*/

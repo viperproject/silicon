@@ -8,7 +8,7 @@ package viper.silicon.interfaces
 
 import viper.silicon.debugger.{DebugAxiom, DebugExp, DebugExpPrintConfiguration}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.biabduction.{BiAbductionSuccess, BiAbductionResult}
+import viper.silicon.biabduction.BiAbductionResult
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting._
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Term}
@@ -88,7 +88,7 @@ sealed abstract class NonFatalResult extends VerificationResult {
   }
 }
 
-case class Success(abductionResult: Option[BiAbductionSuccess] = None) extends NonFatalResult {
+case class Success(abductionResult: Option[BiAbductionResult] = None) extends NonFatalResult {
   override val toString = "Success"
 }
 

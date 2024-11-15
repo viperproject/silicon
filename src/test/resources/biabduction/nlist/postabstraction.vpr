@@ -1,0 +1,20 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method test(x: Ref)
+requires acc(x.next)
+{
+    var y: Ref
+    y := new(next)
+    y.next := null
+    fold list(y.next)
+    fold list(y)
+    x.next := y
+    fold list(x)
+}
+
+
+

@@ -1,0 +1,23 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method test(this: Ref)
+//requires list(this)
+//ensures list(this)
+{
+    var x: Ref := this
+    //package list(x) --* list(this)
+
+    while(x != null)
+    //invariant list(x)
+    //invariant list(x) --* list(this)
+    {
+        if(x == null){
+         assert false
+        }
+        x := x.next
+    }
+}

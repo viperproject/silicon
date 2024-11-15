@@ -1,0 +1,31 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method foo(this: Ref)
+//requires acc(this.next, write)
+{
+    var x: Ref := this.next
+    //package acc(list(x), write) --* acc(list(this), write) {
+    //    fold acc(list(this), write)
+    //}
+    assert list(x) --* list(this)
+}
+
+
+/*
+method bar(this: Ref)
+{
+    var x: Ref := this
+    inhale list(x) --* list(this)
+    inhale list(x)
+    unfold list(x)
+    x := x.next
+    package acc(list(x), write) --* acc(list(this), write) {
+        fold acc(list(this), write)
+    }
+    assert list(x) --* list(this)
+}
+*/

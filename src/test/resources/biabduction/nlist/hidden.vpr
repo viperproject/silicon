@@ -1,0 +1,16 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method test(x: Ref, y: Ref)
+requires list(x)
+requires x != null
+requires acc(y.next)
+{
+   unfold list(x)
+   y.next := x.next
+   fold list(x)
+   assert list(y.next)
+}
