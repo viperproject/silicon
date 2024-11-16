@@ -176,7 +176,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
       }
 
     val fp = new viper.silver.parser.FastParser()
-    val parsedProgram = fp.parse(content, fromPath)
+    val parsedProgram = fp.parse(content, fromPath, true)
     assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
 
     val resolver = viper.silver.parser.Resolver(parsedProgram)
