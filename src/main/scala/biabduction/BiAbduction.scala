@@ -109,11 +109,10 @@ case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), l
   def addToMethod(m: Method): Option[Method] = {
     val body = m.body.get
     val newBody = body.transform {
-      case l: While if l == loop =>
+      case l: While if l.cond == loop.cond =>
         l.copy(invs = l.invs ++ invs)(pos = l.pos, info = l.info, errT = l.errT)
       case other => other
     }
-    //val newBody = body.copy(ss = newSs)(pos = body.pos, info = body.info, errT = body.errT)
     Some(m.copy(body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
   }
 }
@@ -124,7 +123,6 @@ case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Position)
   def addToMethod(m: Method): Option[Method] = {
     Some(m.copy(posts = m.posts ++ posts)(pos = m.pos, info = m.info, errT = m.errT))
   }
-
 }
 
 case class BiAbductionFailure(s: State, v: Verifier) extends BiAbductionResult {
@@ -298,7 +296,11 @@ object abductionUtils {
   }
 
   def getContainingPredicates(f: FieldAccess, p: Program): Seq[Predicate] = {
-    p.predicates.filter(_.body.get.contains(f))
+
+    p.predicates.filter{ pred =>
+      val absAcc = f.copy(rcv = pred.formalArgs.head.localVar)(f.pos, f.info, f.errT)
+      pred.body.get.contains(absAcc)
+    }
   }
 
   def checkBc(v: Verifier, bc: Term, ignoredBcs: Seq[Term]): Boolean = {

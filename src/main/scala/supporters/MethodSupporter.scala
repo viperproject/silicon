@@ -132,12 +132,12 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
 
       val abdResult: VerificationResult = result match {
         case suc: NonFatalResult if method.body.isDefined =>
+
           // Collect all the abductions and try to generate preconditions
           val abdReses = abductionUtils.getBiAbductionSuccesses(suc)
-          
-          
-          val pres = abductionUtils.getAbductionSuccesses(suc).filter{_.state.nonEmpty}
-          
+          val pres = abductionUtils.getAbductionSuccesses(suc).collect{ case abd if abd.state.nonEmpty => abd}
+          val states = pres.map(_.state.head)
+          val triggers = pres.map(_.trigger)
           val newMethod = abdReses.foldLeft[Option[Method]](Some(method))( (m, res) => m match {
             case None => 
               None
@@ -177,7 +177,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
         consumes(s, posts, postViolated, v)(QS)
       } {
         (s1: State, _: Term, v1: Verifier) => {
-          // TODO nklose We want to do abstraction, but that might require adding folds and such...
           BiAbductionSolver.solveAbstraction(s1, v1) { (s2, framedPosts, v2) =>
             val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
             val vars = s2.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }

@@ -360,7 +360,7 @@ object executor extends ExecutionRules {
     }
   }
 
-  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp], stmt: Stmt)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp], location: Stmt)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
     if (invs.isEmpty) {
       Q(s, v)
     } else {
@@ -372,7 +372,7 @@ object executor extends ExecutionRules {
       } {
         f =>
         // There are cases where it is incorrect to abduce state here, but only some cases and it is hard to distinguish them
-        BiAbductionSolver.solveAbduction(s, v, f, Some(stmt))((s3, res, v3) => Success(Some(res)) && checkInvariants(s3, v3, invs, stmt)(Q))
+        BiAbductionSolver.solveAbduction(s, v, f, Some(location))((s3, res, v3) => Success(Some(res)) && checkInvariants(s3, v3, invs, location)(Q))
       }
     }
   }
