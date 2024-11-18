@@ -200,121 +200,16 @@ object evaluator extends EvaluationRules {
           s.copy(functionRecorder = s.functionRecorder.recordConstrainedVar(tVar, tConstraints))
            .setConstrainable(Seq(tVar), true)
         Q(s1, tVar, eVar, v)
-
-      case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
-        eval(s, fa.rcv, pve, v)((s1, tRcvr, eRcvr, v1) => {
-          val debugOldLabel = v1.getDebugOldLabel(s1)
-          val newFa = Option.when(withExp)({
-            if (s1.isEvalInOld) ast.FieldAccess(eRcvr.get, fa.field)(fa.pos, fa.info, fa.errT)
-            else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugOldLabel)(fa.pos, fa.info, fa.errT)
-          })
-          val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(fa.field.name))
-          s1.smCache.get((fa.field, relevantChunks)) match {
-            case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) if !Verifier.config.disableValueMapCaching() =>
-              /* The next assertion must be made if the FVF definition is taken from the cache;
-               * in the other case it is part of quantifiedChunkSupporter.withValue.
-               */
-              /* Re-emit definition since the previous definition could be nested under
-               * an auxiliary quantifier (resulting from the evaluation of some Silver
-               * quantifier in whose body field 'fa.field' was accessed)
-               * which is protected by a trigger term that we currently don't have.
-               */
-              v1.decider.assume(And(fvfDef.valueDefinitions), Option.when(withExp)(DebugExp.createInstance("Value definitions", isInternal_ = true)))
-              if (s1.heapDependentTriggers.contains(fa.field)){
-                val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
-                val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                v1.decider.assume(trigger, triggerExp)
-              }
-              if (s1.triggerExp) {
-                val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
-                val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
-                val s2 = s1.copy(functionRecorder = fr1)
-                val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
-                Q(s3, fvfLookup, newFa, v1)
-              } else {
-                val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
-                v1.decider.assert(toAssert) {
-                  case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
-                  case true =>
-                    val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
-                    val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
-                    val possTriggers = if (s1.heapDependentTriggers.contains(fa.field) && s1.recordPossibleTriggers)
-                      s1.possibleTriggers + (fa -> FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
-                    else
-                      s1.possibleTriggers
-                    val s2 = s1.copy(functionRecorder = fr1, possibleTriggers = possTriggers)
-                    val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
-                    Q(s3, fvfLookup, newFa, v1)}
-              }
-            case _ =>
-              if (relevantChunks.size == 1) {
-                // No need to create a summary since there is only one chunk to look at.
-                if (s1.heapDependentTriggers.contains(fa.field)) {
-                  val trigger = FieldTrigger(fa.field.name, relevantChunks.head.fvf, tRcvr)
-                  val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                  v1.decider.assume(trigger, triggerExp)
-                }
-                val (permCheck, permCheckExp) =
-                  if (s1.triggerExp) {
-                    (True, Option.when(withExp)(TrueLit()()))
-                  } else {
-                    val permVal = relevantChunks.head.perm
-                    val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
-                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
-                  }
-                v1.decider.assert(permCheck) {
-                  case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
-                  case true =>
-                    val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
-                    val fr2 =
-                      s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                    val s2 = s1.copy(functionRecorder = fr2)
-                    Q(s2, smLookup, newFa, v1)
-                }
-              } else {
-                val (s2, smDef1, pmDef1) =
-                  quantifiedChunkSupporter.heapSummarisingMaps(
-                    s = s1,
-                    resource = fa.field,
-                    codomainQVars = Seq(`?r`),
-                    relevantChunks = relevantChunks,
-                    optSmDomainDefinitionCondition = None,
-                    optQVarsInstantiations = None,
-                    v = v1)
-                if (s2.heapDependentTriggers.contains(fa.field)) {
-                  val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
-                  val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                  v1.decider.assume(trigger, triggerExp)
-                }
-                val (permCheck, permCheckExp) =
-                  if (s2.triggerExp) {
-                    (True, Option.when(withExp)(TrueLit()()))
-                  } else {
-                    val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
-                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
-                  }
-                v1.decider.assert(permCheck) {
-                  case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
-                  case true =>
-                    val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
-                    val fr2 =
-                      s2.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                        .recordFvfAndDomain(smDef1)
-                    val s3 = s2.copy(functionRecorder = fr2)
-                    Q(s3, smLookup, newFa, v1)
-                }
-              }
-              }})
-
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, eArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(s.program)
-          chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1)((s2, h2, tSnap, v2) => {
+          val lookupFunction = if (s.qpFields.contains(fa.field)) {
+            quantifiedChunkSupporter.lookup(s1, s1.h, fa, tArgs, eArgs, ve, v1) _//Lookup(fa.field.name, _:Term, tArgs.head))
+          } else {
+            chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1) _
+          }
+          lookupFunction((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             val debugOldLabel = v2.getDebugOldLabel(s3)

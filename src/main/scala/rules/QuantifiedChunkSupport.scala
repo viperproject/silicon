@@ -23,10 +23,11 @@ import viper.silicon.utils.ast.{BigAnd, buildMinExp}
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.TrueLit
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import viper.silver.verifier.{ErrorReason, PartialVerificationError}
+import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
 
 import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
@@ -1291,7 +1292,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
                     heap, ChunkIdentifier(resource, s.program))
-                val (result, s3, remainingChunks) =
+                val (result, s3, remainingChunks, untouchedChunks) =
                   quantifiedChunkSupporter.removePermissions(
                     s2,
                     relevantChunks,
@@ -1310,7 +1311,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     else None
                   val (smDef2, smCache2) =
                     quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s3, resource, formalQVars, relevantChunks, v2, optSmDomainDefinitionCondition2)
+                      s3, resource, formalQVars, relevantChunks.diff(untouchedChunks), v2, optSmDomainDefinitionCondition2)
                 val (permsTaken, permsTakenExp) = result match {
                   case Complete() => (rPerm, rPermExp)
                   case Incomplete(remaining, remainingExp) =>
@@ -1342,7 +1343,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 val substitutedAxiomInversesOfInvertibles = inverseFunctions.axiomInversesOfInvertibles.replace(formalQVars, tArgs)
                 v.decider.assume(FunctionPreconditionTransformer.transform(substitutedAxiomInversesOfInvertibles, s3.program), debugExp)
                 v.decider.assume(substitutedAxiomInversesOfInvertibles, debugExp)
-                val h2 = Heap(remainingChunks ++ otherChunks)
+                val h2 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
                 val s4 = s3.copy(smCache = smCache2,
                                  constrainableARPs = s.constrainableARPs)
                 (result, s4, h2, Some(consumedChunk))
@@ -1370,14 +1371,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   v
                 )
               permissionRemovalResult match {
-                case (Complete(), s2, remainingChunks) =>
-                  val h3 = Heap(remainingChunks ++ otherChunks)
+                case (Complete(), s2, remainingChunks, untouchedChunks) =>
+                  v.decider.prover.comment("perm removed")
+                  v.decider.prover.comment(s"remaining chunks: $remainingChunks")
+                  v.decider.prover.comment(s"untouched chunks $untouchedChunks")
+
+                  val h3 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
                   val optSmDomainDefinitionCondition2 =
                     if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
                     else None
                   val (smDef2, smCache2) =
                     quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
+                      s2, resource, formalQVars, relevantChunks.diff(untouchedChunks), v, optSmDomainDefinitionCondition2)
                   val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
                                                .recordFieldInv(inverseFunctions)
                   val s3 = s2.copy(functionRecorder = fr3,
@@ -1385,7 +1390,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                    constrainableARPs = s.constrainableARPs,
                                    smCache = smCache2)
                   Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
-                case (Incomplete(_, _), s2, _) =>
+                case (Incomplete(_, _), s2, _, _) =>
                   createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
             }
           case false =>
@@ -1429,7 +1434,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       magicWandSupporter.transfer(s, permissions, permissionsExp, failure, Seq(), v)((s1, h1, rPerm, rPermExp, v1) => {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
-        val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
+        val (result, s2, remainingChunks, untouchedChunks) = quantifiedChunkSupporter.removePermissions(
           s1,
           relevantChunks,
           codomainQVars,
@@ -1443,13 +1448,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           chunkOrderHeuristics,
           v
         )
-        val h2 = Heap(remainingChunks ++ otherChunks)
+        val h2 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
         val (smDef1, smCache1) =
           summarisingSnapshotMap(
             s2,
             resource,
             codomainQVars,
-            relevantChunks,
+            relevantChunks.diff(untouchedChunks),
             v1,
             optSmDomainDefinitionCondition = None,
             optQVarsInstantiations = Some(arguments))
@@ -1492,14 +1497,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v
       )
       result match {
-        case (Complete(), s1, remainingChunks) =>
-          val h1 = Heap(remainingChunks ++ otherChunks)
+        case (Complete(), s1, remainingChunks, untouchedChunks) =>
+          val h1 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
               s = s1,
               resource = resource,
               codomainQVars = codomainQVars,
-              relevantChunks = relevantChunks,
+              relevantChunks = relevantChunks.diff(untouchedChunks),
               optSmDomainDefinitionCondition = None,
               optQVarsInstantiations = Some(arguments),
               v = v)
@@ -1507,7 +1512,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            smCache = smCache1)
           val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
           Q(s2, h1, snap, v)
-        case (Incomplete(_, _), _, _) =>
+        case (Incomplete(_, _), _, _, _) =>
           resourceAccess match {
             case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s, "single QP consume")
             case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
@@ -1517,6 +1522,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
+  //TODO: Markus write better comment
   // TODO: Consider taking a single term λr.q(r) that maps to a permission amount,
   //       as done in my thesis
   def removePermissions(s: State,
@@ -1533,8 +1539,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         permsExp: Option[ast.Exp], // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
                         v: Verifier)
-                       : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
-
+  : (ConsumptionResult, State, Seq[QuantifiedBasicChunk], Seq[QuantifiedBasicChunk]) = {
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(rmPermRecord)
 
@@ -1550,6 +1555,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val constrainPermissions = !consumeExactRead(perms, s.constrainableARPs)
 
     var remainingChunks = Vector.empty[QuantifiedBasicChunk]
+    var untouchedChunks = Vector.empty[QuantifiedBasicChunk]
     var permsNeeded = perms
     var permsNeededExp = permsExp
     var success: ConsumptionResult = Incomplete(permsNeeded, Option.when(withExp)(ast.TrueLit()()))
@@ -1558,102 +1564,101 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val additionalArgs = s.relevantQuantifiedVariables.map(_._1)
     var currentFunctionRecorder = s.functionRecorder
-
-    val precomputedData = candidates map { ch =>
-      // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
-      // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
-      // that already exists.
-      // ME: Update: Actually, it seems better to use macros even with the API since Silicon terms can grow so large
-      // that e.g. the instantiate call in createPermissionConstraintAndDepletedCheck takes forever, before even
-      // converting to a Z3 term.
-      // During function verification, we should not define macros, since they could contain resullt, which is not
-      // defined elsewhere.
-      val declareMacro = s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
-
-      val permsProvided = ch.perm
-      val permsProvidedExp = ch.permExp
-      val permsTaken = if (declareMacro) {
-        val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
-        val permsTakenArgs = codomainQVars ++ additionalArgs
-        val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
-        val permsTakenMacro = Macro(permsTakenDecl.id, permsTakenDecl.args.map(_.sort), permsTakenDecl.body.sort)
-        currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(permsTakenDecl)
-        val permsTakenApp = App(permsTakenMacro, permsTakenArgs)
-        v.symbExLog.addMacro(permsTakenApp, permsTakenBody)
-        permsTakenApp
+    v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.beforeIteration) // TODO: Markus What is that doing?
+    candidates foreach { ch =>
+      if (success.isComplete) {
+        untouchedChunks = untouchedChunks :+ ch
       } else {
-        Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
-      }
-      val permsTakenExp = conditionExp.map(c => ast.CondExp(c, buildMinExp(Seq(permsProvidedExp.get, permsNeededExp.get), ast.Perm), ast.NoPerm()())())
+        // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
+        // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
+        // that already exists.
+        // ME: Update: Actually, it seems better to use macros even with the API since Silicon terms can grow so large
+        // that e.g. the instantiate call in createPermissionConstraintAndDepletedCheck takes forever, before even
+        // converting to a Z3 term.
+        // During function verification, we should not define macros, since they could contain resullt, which is not
+        // defined elsewhere.
+        val declareMacro = s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
 
-      permsNeeded = PermMinus(permsNeeded, permsTaken)
-      permsNeededExp = permsNeededExp.map(pn => ast.PermSub(pn, permsTakenExp.get)())
+        val permsProvided = ch.perm
+        val permsProvidedExp = ch.permExp
 
-      (ch, permsTaken, permsNeeded, permsTakenExp, permsNeededExp)
-    }
-
-    v.decider.prover.comment(s"Done precomputing, updating quantified chunks")
-    v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.beforeIteration)
-
-    var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
-
-    precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded, ithPTakenExp, ithPNeededExp) =>
-      if (success.isComplete)
-        remainingChunks = remainingChunks :+ ithChunk
-      else {
-        val (permissionConstraint, depletedCheck, permissionConstraintExp, _) =
-          createPermissionConstraintAndDepletedCheck(
-            codomainQVars, codomainQVarsExp, condition, conditionExp, optQVarValues, perms, permsExp, constrainPermissions, ithChunk, ithPTaken, ithPTakenExp, v)
-
-        if (constrainPermissions) {
-          v.decider.prover.comment(s"Constrain original permissions $perms")
-
-          v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp)
-          remainingChunks =
-            remainingChunks :+ ithChunk.permMinus(ithPTaken, ithPTakenExp)
+        val (superSetCheck, subSetCheck) = if (s.moreCompleteExhale) {
+          (True, True)
         } else {
-          v.decider.prover.comment(s"Chunk depleted?")
-          val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
-          if (!chunkDepleted) {
-            val unusedCheck = Forall(codomainQVars, ithPTaken === NoPerm, Nil)
-            val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout())
-            if (chunkUnused) {
-              remainingChunks = remainingChunks :+ ithChunk
-            } else {
-              remainingChunks =
-                remainingChunks :+ ithChunk.permMinus(ithPTaken, ithPTakenExp)
+          (Forall(codomainQVars, Implies(And(condition, IsPositive(permsNeeded)), IsPositive(permsProvided)), Nil),
+          Forall(codomainQVars, Implies(IsPositive(permsProvided), And(condition, IsPositive(permsNeeded))), Nil))
+        }
+
+        if (v.decider.check(superSetCheck, Verifier.config.checkTimeout()) ||
+          v.decider.check(subSetCheck, Verifier.config.checkTimeout())) {
+          val permsTaken = if (declareMacro) {
+            val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
+            val permsTakenArgs = codomainQVars ++ additionalArgs
+            val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
+            val permsTakenMacro = Macro(permsTakenDecl.id, permsTakenDecl.args.map(_.sort), permsTakenDecl.body.sort)
+            currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(permsTakenDecl)
+            val permsTakenApp = App(permsTakenMacro, permsTakenArgs)
+            v.symbExLog.addMacro(permsTakenApp, permsTakenBody)
+            permsTakenApp
+          } else {
+            Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
+          }
+          val permsTakenExp = conditionExp.map(c => ast.CondExp(c, buildMinExp(Seq(permsProvidedExp.get, permsNeededExp.get), ast.Perm), ast.NoPerm()())())
+
+          permsNeeded = PermMinus(permsNeeded, permsTaken)
+          permsNeededExp = permsNeededExp.map(pn => ast.PermSub(pn, permsTakenExp.get)())
+
+          val (permissionConstraint, depletedCheck, permissionConstraintExp, _) =
+            createPermissionConstraintAndDepletedCheck(
+              codomainQVars, codomainQVarsExp, condition, conditionExp, optQVarValues, perms, permsExp, constrainPermissions, ch, permsTaken, permsTakenExp, v)
+
+          if (constrainPermissions) {
+            v.decider.prover.comment(s"Constrain original permissions $perms")
+
+            v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp)
+            remainingChunks =
+              remainingChunks :+ ch.permMinus(permsTaken, permsTakenExp)
+          } else {
+            v.decider.prover.comment(s"Chunk depleted?")
+            val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
+            if (!chunkDepleted) {
+              val unusedCheck = Forall(codomainQVars, permsTaken === NoPerm, Nil)
+              val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout())
+              if (chunkUnused) {
+                untouchedChunks = untouchedChunks :+ ch
+              } else {
+                remainingChunks =
+                  remainingChunks :+ ch.permMinus(permsTaken, permsTakenExp)
+              }
             }
           }
-        }
-
-        /* The success-check inside this loop is done with a (short) timeout.
-         * Outside of the loop, the last success-check (potentially) needs to be
-         * re-done, but without a timeout. In order to make this possible,
-         * the assertion to check is recorded by tookEnoughCheck.
-         */
-        tookEnoughCheck =
-          Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm), Nil)
-
-        v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
-        success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
-          Complete()
-        } else {
-          Incomplete(ithPNeeded, ithPNeededExp)
+          val tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
+          v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
+          success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
+            Complete()
+          } else {
+            Incomplete(permsNeeded, permsNeededExp)
+          }
         }
       }
     }
-
+    /* The success-check inside this loop is done with a (short) timeout.
+     * Outside of the loop, the last success-check (potentially) needs to be
+     * re-done, but without a timeout. In order to make this possible,
+     * the assertion to check is recorded by tookEnoughCheck.
+     */
+    val tookEnoughCheck =
+      Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
     v.decider.prover.comment("Final check if taken enough permissions")
     success =
       if (success.isComplete || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */)
         Complete()
       else
         success
-
     v.decider.prover.comment("Done removing quantified permissions")
     v.symbExLog.closeScope(sepIdentifier)
-    
-    (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks)
+
+    (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks, untouchedChunks)
   }
 
   private def createPermissionConstraintAndDepletedCheck(codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
@@ -2179,5 +2184,106 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       }).toSeq
 
     hints
+  }
+
+
+  def lookup(s: State,
+             h: Heap,
+             resourceAcc: ast.ResourceAccess,
+             tArgs: Seq[Term],
+             argsExp: Option[Seq[ast.Exp]],
+             ve: VerificationError,
+             v: Verifier)
+            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+        : VerificationResult = {
+
+    executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
+        val lookupFunction =
+          if (s1.moreCompleteExhale || s1.triggerExp) lookupComplete _
+        else lookupGreedy _
+        lookupFunction(s1, resourceAcc, tArgs, argsExp, ve, v1)((s2, tSnap, v2) =>
+          QS(s2.copy(h = s.h), s2.h, tSnap, v2))
+    })(Q)
+  }
+
+  private def lookupComplete(s: State,
+                             resourceAcc: ast.ResourceAccess,
+                             args: Seq[Term],
+                             argsExp: Option[Seq[ast.Exp]],
+                             ve: VerificationError,
+                             v: Verifier)
+                    (Q: (State, Term, Verifier) => VerificationResult)
+  : VerificationResult = {
+    val resource = resourceAcc.res(s.program)
+    val id = ChunkIdentifier(resource, s.program)
+    val (relevantChunks, _) = quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, id)
+    val codomainVars =
+      resource match {
+        case _: ast.Field => Seq(`?r`)
+        case p: ast.Predicate => s.predicateFormalVarMap(p)
+        case w: ast.MagicWand =>
+          val bodyVars = w.subexpressionsToEvaluate(s.program)
+          bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
+      }
+
+    val (s1, smDef1, pmDef1) =
+          quantifiedChunkSupporter.heapSummarisingMaps(
+            s = s,
+            resource = resource,
+            codomainQVars = codomainVars,
+            relevantChunks = relevantChunks,
+            optSmDomainDefinitionCondition = None,
+            optQVarsInstantiations = None,
+            v = v)
+    val fr = s1.functionRecorder.recordFvfAndDomain(smDef1)
+    val s2 = s1.copy(functionRecorder = fr)
+    if (s2.heapDependentTriggers.contains(resource)) {
+      val trigger = ResourceTriggerFunction(resource, smDef1.sm, args, s2.program)
+      val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"qp.evalResTrgDef${v.counter(this).next()}"))
+      v.decider.assume(trigger, triggerExp)
+    }
+    if (!s2.triggerExp) {
+      val (permCheck, permCheckExp) = if (s2.triggerExp) {
+        (True, Option.when(withExp)(TrueLit()()))
+      } else {
+        val totalPermissions = ResourcePermissionLookup(resource, pmDef1.pm, args, s1.program)
+        (IsPositive(totalPermissions),
+          Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(resourceAcc)(resourceAcc.pos, resourceAcc.info, resourceAcc.errT),
+            ast.NoPerm()())(resourceAcc.pos, resourceAcc.info, resourceAcc.errT)))
+      }
+      v.decider.assert(permCheck) {
+        case false =>
+          return createFailure(ve, v, s2, permCheck, permCheckExp)
+        case _ => Q(s2, ResourceLookup(resource, smDef1.sm, args, s2.program), v)
+      }
+    } else {
+      Q(s2, ResourceLookup(resource, smDef1.sm, args, s2.program), v)
+    }
+  }
+
+  private def lookupGreedy(s: State,
+                           resourceAcc: ast.ResourceAccess,
+                           args: Seq[Term],
+                           argsExp: Option[Seq[ast.Exp]],
+                           ve: VerificationError,
+                           v: Verifier)
+                          (Q: (State, Term, Verifier) => VerificationResult)
+  : VerificationResult = {
+    val resource = resourceAcc.res(s.program)
+    val id = ChunkIdentifier(resource, s.program)
+    val (relevantChunks, _) = quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, id)
+    relevantChunks foreach { ch =>
+      val chunkPerm = ch.perm.replace(ch.quantifiedVars, args)
+      if (s.heapDependentTriggers.contains(resource)) {
+        val trigger = ResourceTriggerFunction(resource, ch.snapshotMap, args, s.program)
+        val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"qp.evalResTrgDef${v.counter(this).next()}"))
+        v.decider.assume(trigger, triggerExp)
+      }
+      val permCheck = v.decider.check(IsPositive(chunkPerm), Verifier.config.splitTimeout())
+      if (permCheck) {
+        return Q(s, ch.valueAt(args), v)
+      }
+    }
+    createFailure(ve, v, s, "looking up qp-chunk", true)
   }
 }

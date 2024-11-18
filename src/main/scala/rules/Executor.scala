@@ -409,8 +409,8 @@ object executor extends ExecutionRules {
               v2
             )
             result match {
-              case (Complete(), s3, remainingChunks) =>
-                val h3 = Heap(remainingChunks ++ otherChunks)
+              case (Complete(), s3, remainingChunks, untouchedChunks) =>
+                val h3 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
@@ -424,7 +424,7 @@ object executor extends ExecutionRules {
                 val s4 = s3.copy(h = h3 + ch)
                 val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (v.getDebugOldLabel(s4) -> magicWandSupporter.getEvalHeap(s4))) else s4
                 Q(s5, v2)
-              case (Incomplete(_, _), s3, _) =>
+              case (Incomplete(_, _), s3, _, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
