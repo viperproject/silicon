@@ -26,7 +26,7 @@ final case class PTryBlock(kw: PReserved[PTryKeyword.type], body: PStmt)(val pos
     None
   }
 
-  override def reformat(ctx: ReformatterContext): Cont = show(kw, ctx) <+> show(body, ctx)
+  override def reformat(implicit ctx: ReformatterContext): Cont = show(kw) <+> show(body)
 }
 
 final case class TryBlock(body: Stmt)
