@@ -521,18 +521,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             smDomainDefinitionCondition, /* Alternatively: codomainQVarsInDomainOfSummarisingSm */
             IsPositive(chunk.perm))
 
-        val trigger = if (Verifier.config.disableISCTriggers()) {
-          Nil
-        } else if (s.heapDependentTriggers.contains(field)){
-          Seq(Trigger(lookupSummary)) //, Trigger(lookupChunk))
-        } else {
-          Seq(Trigger(lookupSummary))
-        }
-
         Forall(
           codomainQVar,
           Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
-          trigger,
+          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
       })
@@ -624,18 +616,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
         }
 
-        val trigger = if (Verifier.config.disableISCTriggers()) {
-          Nil
-        } else if (s.heapDependentTriggers.contains(resourceIdentifier)){
-          Seq(Trigger(lookupSummary), Trigger(lookupChunk))
-        } else {
-          Seq(Trigger(lookupSummary))
-        }
-
         Forall(
           qvar,
           Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))),
-          trigger,
+          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.psmValDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
       })
@@ -828,7 +812,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             (smDef, s.smCache + (key, value))
           }
       }
-    v.decider.prover.comment("SummarizingSnapshots")
     emitSnapshotMapDefinition(s, smDef, v, optQVarsInstantiations)
 
     (smDef, smCache)
@@ -1170,7 +1153,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               eArgs: Option[Seq[ast.Exp]],
               tPerm: Term,
               ePerm: Option[ast.Exp],
-              SnapNeeded: Boolean,
+              returnSnap: Boolean,
               pve: PartialVerificationError,
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
@@ -1391,10 +1374,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               permissionRemovalResult match {
                 case (Complete(), s2, remainingChunks) =>
                   val h3 = Heap(remainingChunks ++ otherChunks)
-                  val optSmDomainDefinitionCondition2 =
-                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
-                    else None
-                  if(SnapNeeded) {
+                  if(returnSnap) {
+                    val optSmDomainDefinitionCondition2 =
+                      if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
+                      else None
                     val (smDef2, smCache2) = quantifiedChunkSupporter.summarisingSnapshotMap(
                       s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
                     val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
@@ -1425,7 +1408,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             resourceAccess: ast.ResourceAccess,
                             permissions: Term, /* p */
                             permissionsExp: Option[ast.Exp],
-                            SnapNeeded: Boolean,
+                            returnSnap: Boolean,
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
                             v: Verifier)
@@ -1517,7 +1500,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       result match {
         case (Complete(), s1, remainingChunks) =>
           val h1 = Heap(remainingChunks ++ otherChunks)
-          if (SnapNeeded) {
+          if (returnSnap) {
             val (smDef1, smCache1) =
               quantifiedChunkSupporter.summarisingSnapshotMap(
                 s = s1,

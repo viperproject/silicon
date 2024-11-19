@@ -29,7 +29,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               argsExp: Option[Seq[ast.Exp]],
               perms: Term,
               permsExp: Option[ast.Exp],
-              SnapNeeded: Boolean,
+              returnSnap: Boolean,
               ve: VerificationError,
               v: Verifier,
               description: String)
@@ -72,14 +72,14 @@ object chunkSupporter extends ChunkSupportRules {
               argsExp: Option[Seq[ast.Exp]],
               perms: Term,
               permsExp: Option[ast.Exp],
-              SnapNeeded: Boolean,
+              returnSnap: Boolean,
               ve: VerificationError,
               v: Verifier,
               description: String)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consume2(s, h, resource, args, argsExp, perms, permsExp, SnapNeeded, ve, v)((s2, h2, optSnap, v2) =>
+    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v)((s2, h2, optSnap, v2) =>
       optSnap match {
         case Some(snap) =>
           Q(s2, h2, Some(snap.convert(sorts.Snap)), v2)
@@ -104,7 +104,7 @@ object chunkSupporter extends ChunkSupportRules {
                        argsExp: Option[Seq[ast.Exp]],
                        perms: Term,
                        permsExp: Option[ast.Exp],
-                       SnapNeeded: Boolean,
+                       returnSnap: Boolean,
                        ve: VerificationError,
                        v: Verifier)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
