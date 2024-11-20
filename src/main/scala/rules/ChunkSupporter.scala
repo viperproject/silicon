@@ -83,7 +83,7 @@ object chunkSupporter extends ChunkSupportRules {
       optSnap match {
         case Some(snap) =>
           Q(s2, h2, Some(snap.convert(sorts.Snap)), v2)
-        case None =>
+        case None if returnSnap =>
           /* Not having consumed anything could mean that we are in an infeasible
            * branch, or that the permission amount to consume was zero.
            *
@@ -94,6 +94,7 @@ object chunkSupporter extends ChunkSupportRules {
           val fresh = v2.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
           Q(s3, h2, Some(fresh), v2)
+        case None => Q(s2, h2, None, v2)
       })
   }
 
@@ -114,24 +115,28 @@ object chunkSupporter extends ChunkSupportRules {
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, "chunk consume in package")
       magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _))((s1, optCh, v1) =>
-        Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
+        if(returnSnap){
+          Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1)
+        } else {
+          Q(s1, h, None, v1)
+        })
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
         if (s1.moreCompleteExhale) {
-          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, ve, v1)((s2, h2, snap2, v2) => {
+          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
         } else {
           consumeGreedy(s1, s1.h, id, args, perms, permsExp, v1) match {
             case (Complete(), s2, h2, optCh2) =>
               val snap = optCh2 match {
-                case None => None
-                case Some(ch) =>
+                case Some(ch) if returnSnap =>
                   if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
                     Some(ch.snap)
                   } else {
                     Some(Ite(IsPositive(perms), ch.snap.convert(sorts.Snap), Unit))
                   }
+                case _ => None
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
             case _ if v1.decider.checkSmoke(true) =>

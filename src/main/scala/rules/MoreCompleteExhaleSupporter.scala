@@ -203,15 +203,18 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       argsExp: Option[Seq[ast.Exp]],
                       perms: Term,
                       permsExp: Option[ast.Exp],
+                      returnSnap: Boolean,
                       ve: VerificationError,
                       v: Verifier)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
     if (!s.hackIssue387DisablePermissionConsumption)
-      actualConsumeComplete(s, h, resource, args, argsExp, perms, permsExp, ve, v)(Q)
-    else
+      actualConsumeComplete(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v)(Q)
+    else {
+      //What are we doing here? Can we reach this point with returnSnap= false?
       summariseHeapAndAssertReadAccess(s, h, resource, args, argsExp, ve, v)(Q)
+    }
   }
 
   private def summariseHeapAndAssertReadAccess(s: State,
@@ -243,6 +246,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     argsExp: Option[Seq[ast.Exp]],
                                     perms: Term,
                                     permsExp: Option[ast.Exp],
+                                    returnSnap: Boolean,
                                     ve: VerificationError,
                                     v: Verifier)
                                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
@@ -264,8 +268,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, ve, v)((s1, updatedChunks, optSnap, v2) => {
-          Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)})
+        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, returnSnap, ve, v)((s1, updatedChunks, optSnap, v2) => {
+          Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)
+        })
       } else {
         var pNeeded = perms
         var pNeededExp = permsExp
@@ -342,23 +347,36 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val newHeap = Heap(allChunks)
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
-
-        summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, _, v1) => {
-          val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
-            snap
-          } else {
-            Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
-          }
-          if (!moreNeeded) {
-            Q(s1, newHeap, Some(condSnap), v1)
-          } else {
-            v1.decider.assert(pNeeded === NoPerm) {
-              case true =>
-                Q(s1, newHeap, Some(condSnap), v1)
-              case false =>
-                createFailure(ve, v1, s1, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
+        if (returnSnap) {
+          summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, _, v1) => {
+            val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
+              snap
+            } else {
+              Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
             }
-          }})
+            if (!moreNeeded) {
+              Q(s1, newHeap, Some(condSnap), v1)
+            } else {
+              v1.decider.assert(pNeeded === NoPerm) {
+                case true =>
+                  Q(s1, newHeap, Some(condSnap), v1)
+                case false =>
+                  createFailure(ve, v1, s1, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
+              }
+            }
+          })
+        } else {
+          if (!moreNeeded) {
+            Q(s0, newHeap, None, v)
+          } else {
+            v.decider.assert(pNeeded === NoPerm) {
+              case true =>
+                Q(s0, newHeap, None, v)
+              case false =>
+                createFailure(ve, v, s0, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
+            }
+          }
+        }
       }
     }
   }
@@ -370,6 +388,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                  argsExp: Option[Seq[ast.Exp]],
                                                  perms: Term, // Expected to be constrainable. Will be assumed to equal the consumed permission amount.
                                                  permsExp: Option[ast.Exp],
+                                                 returnSnap: Boolean,
                                                  ve: VerificationError,
                                                  v: Verifier)
                                                 (Q: (State, ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
@@ -433,8 +452,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
         v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
-        summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, _, v1) =>
-          Q(s2, updatedChunks, Some(snap), v1))
+        if (returnSnap) {
+          summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, _, v1) =>
+            Q(s2, updatedChunks, Some(snap), v1))
+        } else {
+          Q(s1, updatedChunks, None, v)
+        }
       case false =>
         v.decider.finishDebugSubExp(s"consume permissions for ${resource.toString()}")
         createFailure(ve, v, s, totalPermTaken !== NoPerm, totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())()))

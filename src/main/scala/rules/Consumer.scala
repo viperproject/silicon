@@ -121,7 +121,7 @@ object consumer extends ConsumptionRules {
                          : VerificationResult = {
 
     if (tlcs.isEmpty)
-      Q(s, h, Some(Unit), v)
+      Q(s, h, if (returnSnap) Some(Unit) else None, v)
     else {
       val a = tlcs.head
       val pve = pves.head
@@ -134,9 +134,8 @@ object consumer extends ConsumptionRules {
 
             (snap1, snap2) match {
               case (Some(sn1), Some(sn2)) => Q(s2, h2, Some(Combine(sn1, sn2)), v2)
-              case (Some(_), _) => Q(s2, h2, snap1, v2) //This case and the next case should not be possible and would indicate a bug.
-              case (None, Some(_)) => Q(s2, h2, snap2, v2)
               case (None, None) => Q(s2, h2, None, v2)
+              case (_, _) =>  sys.error(s"Consume returned unexpected snapshot: ${(returnSnap, (snap1, snap2))}")
             })
         })
     }
@@ -217,7 +216,7 @@ object consumer extends ConsumptionRules {
             }),
             (s2, v2) => {
               v2.symbExLog.closeScope(uidImplies)
-              Q(s2, h, Some(Unit), v2)
+              Q(s2, h, if (returnSnap) Some(Unit) else None, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
@@ -279,7 +278,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, Some(True), v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if(returnSnap) Some(Unit) else None, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -325,7 +324,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, Some(True), v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if(returnSnap) Some(Unit) else None, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
@@ -367,7 +366,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
               insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
               v1)(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, Some(True), v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if(returnSnap) Some(Unit) else None, v1)
         }
 
       case accPred@ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
@@ -531,8 +530,8 @@ object consumer extends ConsumptionRules {
         })
 
       case _ =>
-        evalAndAssert(s, a, pve, v)((s1, t, v1) => {
-          Q(s1, h, Some(t), v1)
+        evalAndAssert(s, a, returnSnap, pve, v)((s1, t, v1) => {
+          Q(s1, h, t, v1)
         })
     }
 
@@ -575,9 +574,8 @@ object consumer extends ConsumptionRules {
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {
                 case (Some(t1), Some(t2)) => Some(Ite(And(entry1.pathConditions.branchConditions), t1, t2))
-                case (Some(t1), None) => Some(t1) //This case and the next case should not be possible and would indicate a bug.
-                case (None, Some(t2)) => Some(t2)
                 case (None, None) => None
+                case (_, _) => sys.error(s"Unexpected join data entries: $entries")
               }
             )
             (entry1.pathConditionAwareMergeWithoutConsolidation(entry2, v1), mergedData)
@@ -592,8 +590,8 @@ object consumer extends ConsumptionRules {
   }
 
 
-  private def evalAndAssert(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-                           (Q: (State, Term, Verifier) => VerificationResult)
+  private def evalAndAssert(s: State, e: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier)
+                           (Q: (State, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
 
     /* It is expected that the partially consumed heap (h in the above implementation of
@@ -633,7 +631,7 @@ object consumer extends ConsumptionRules {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
-      Q(s5, Unit, v4)
+      Q(s5, if(returnSnap) Some(Unit) else None, v4)
     })
   }
 }

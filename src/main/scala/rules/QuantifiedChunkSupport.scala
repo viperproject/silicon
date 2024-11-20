@@ -21,6 +21,7 @@ import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.{BigAnd, buildMinExp}
 import viper.silicon.utils.notNothing.NotNothing
+import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.parser.PUnknown
@@ -629,7 +630,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         Forall(
           qvar,
           And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program))),
-          Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)), // +: (relevantChunks map (chunk => Trigger(ResourceLookup(resource, chunk.snapshotMap, Seq(qvar), s.program)))),
+          Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)),
           s"qp.psmResTrgDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
       valueDefinitions :+ resourceTriggerDefinition
@@ -1350,8 +1351,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 (result, s4, h2, Some(consumedChunk))
               })((s4, optCh, v3) =>
                 optCh match {
-                  case Some(ch) => Q(s4, s4.h, Some(ch.snapshotMap.convert(sorts.Snap)), v3)
-                  case _ => Q(s4, s4.h, Some(v3.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))), v3)
+                  case Some(ch) if returnSnap => Q(s4, s4.h, Some(ch.snapshotMap.convert(sorts.Snap)), v3)
+                  case None if returnSnap =>
+                    Q(s4, s4.h, Some(freshSnap(sorts.Snap, v3)), v3) //Why do we not record this new snapshot?
+                  case _ => Q(s4, s4.h, None, v3)
                 }
               )
             } else {
@@ -1472,11 +1475,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         (result, s3, h2, Some(consumedChunk))
       })((s4, optCh, v2) =>
         optCh match {
-          case Some(ch) =>
+          case Some(ch) if returnSnap =>
             val snap = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
             Q(s4, s4.h, Some(snap), v2)
-          case _ =>
-            Q(s4, s4.h, Some(v2.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))), v2)
+          case None if returnSnap =>
+            Q(s4, s4.h, Some(freshSnap(sorts.Snap, v2)), v2) //Why do we not record this new snapshot?
+          case _ => Q(s4, s4.h, None, v2)
         }
       )
     } else {
