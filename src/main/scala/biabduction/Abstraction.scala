@@ -43,7 +43,9 @@ object AbstractionFold extends AbstractionRule {
           (s1, v1, T) =>
             // TODO nklose this can branch
             predicateSupporter.fold(s1, pred, List(chunk.args.head), None, terms.FullPerm, Some(FullPerm()()), wildcards, pve, v1)(T)
-        } { (s2, v2) => Q(Some(q.copy(s = s2, v = v2))) } {
+        } { 
+          (s2, v2) => Q(Some(q.copy(s = s2, v = v2))) 
+        } {
           _ => checkChunks(rest, q)(Q)
         }
     }

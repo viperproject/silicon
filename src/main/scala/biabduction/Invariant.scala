@@ -128,9 +128,9 @@ object LoopInvariantSolver {
 
           // Do the second pass so that we can compare the state at the end of the loop with the state at the beginning
           // Get the state at the beginning of the loop with the abduced things added
-          producer.produces(sPreInv, freshSnap, newState, pveLam, vPreInv) { (sPreAbd0, vPreAbd0) =>
+          producer.produces(sPreInv, freshSnap, newState, pveLam, vPreInv) { (sPreAbd, vPreAbd) =>
 
-            evaluator.eval(sPreAbd0, loopConExp, pve, vPreAbd0) { (sPreAbd, loopCon, _, vPreAbd) =>
+            //evaluator.eval(sPreAbd0, loopConExp, pve, vPreAbd0) { (sPreAbd, loopCon, _, vPreAbd) =>
 
               findChunks(newState.collect {
                 case loc: FieldAccessPredicate => loc.loc
@@ -140,7 +140,7 @@ object LoopInvariantSolver {
                 val allChunks = chunks.keys
                 //val fixedChunks = chunks.collect({ case (c, loc) if newStateHead.contains(loc) => c }).toSeq
 
-                BiAbductionSolver.solveAbstraction(sPreAbd.copy(h = q.preHeap.+(Heap(allChunks))), vPreAbd, Seq(loopCon)) { (newPreState, newPreAbstraction0, newPreV) =>
+                BiAbductionSolver.solveAbstraction(sPreAbd.copy(h = q.preHeap.+(Heap(allChunks))), vPreAbd) { (newPreState, newPreAbstraction0, newPreV) =>
 
                   val preTran = VarTransformer(newPreState, newPreV, preStateVars, newPreState.h)
                   val newPreAbstraction = newPreAbstraction0.map(e => preTran.transformExp(e, strict = false).get)
@@ -148,7 +148,7 @@ object LoopInvariantSolver {
                   //executionFlowController.locally(sPreAbd, vPreAbd) { (sPreAbst2, vPreAbst2) =>
                   executor.follows(sPreAbd, loopEdges, pveLam, vPreAbd, joinPoint)((sPost, vPost) => {
 
-                    BiAbductionSolver.solveAbstraction(sPost, vPost, Seq(loopCon)) { (sPostAbs, postAbstraction0, vPostAbs) =>
+                    BiAbductionSolver.solveAbstraction(sPost, vPost) { (sPostAbs, postAbstraction0, vPostAbs) =>
                       val postStateVars = sPostAbs.g.values.filter { case (v, _) => origVars.contains(v) }
                       val postTran = VarTransformer(sPostAbs, vPostAbs, postStateVars, sPostAbs.h)
                       val postAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
@@ -174,7 +174,7 @@ object LoopInvariantSolver {
                   )
                 }
               }
-            }
+            //}
           }
       })
   }

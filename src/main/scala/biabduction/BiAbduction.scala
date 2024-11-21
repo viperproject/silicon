@@ -4,6 +4,7 @@ import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.state.NonQuantifiedChunk
+import viper.silicon.rules.consumer.consumes
 import viper.silicon.rules.{executionFlowController, executor, producer}
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
@@ -11,30 +12,42 @@ import viper.silicon.utils.ast.BigAnd
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
-import viper.silver.verifier.errors.Internal
+import viper.silver.verifier.errors.{Internal, PostconditionViolated}
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{DummyReason, PartialVerificationError, VerificationError}
 
 trait BiAbductionResult {
   def s: State
+
   def v: Verifier
 }
 
-trait BiAbductionSuccess extends BiAbductionResult {
-  def addToMethod(m: Method): Option[Method]
-}
+trait BiAbductionSuccess extends BiAbductionResult
 
 // TODO nklose BiAbductionSuccess should be able to provide arbitrary transformations of methods. Then we can just
 // use this for all cases and need less dummy stuff
 
 case class AbductionSuccess(s: State, v: Verifier, pcs: Seq[PathConditionStack], state: Seq[Exp] = Seq(), stmts: Seq[Stmt] = Seq(), trigger: Option[Positioned] = None) extends BiAbductionSuccess {
 
+  private def bcsExps(pc: PathConditionStack): Set[Exp] = {
+    val prevPcs = v.decider.pcs
+    v.decider.setPcs(pc)
+    val varTrans = VarTransformer(s, v, s.g.values, s.h)
+    val bcTerms = v.decider.pcs.branchConditions
+    val bcExpOpt = bcTerms.map {
+      bc => varTrans.transformTerm(bc)
+    }
+    val bcExp = bcExpOpt.collect { case Some(e) => e }.toSet
+    v.decider.setPcs(prevPcs)
+    bcExp
+  }
+
   def addToMethod(m: Method): Option[Method] = {
     val ins = m.formalArgs.map(_.localVar)
     val preHeap = s.oldHeaps.head._2
     val inVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
     val pres = toPrecondition(inVars, preHeap)
-    pres.map{ somePres =>
+    pres.map { somePres =>
 
       val body = m.body.get
       val newBody: Seqn = trigger match {
@@ -44,7 +57,7 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: Seq[PathConditionStack],
           val loop = abductionUtils.getWhile(t.asInstanceOf[Label].invs.head, m)
           val newLoopBody = loop.body.copy(ss = loop.body.ss ++ stmts)(pos = loop.body.pos, info = loop.body.info, errT = loop.body.errT)
           val newLoop = loop.copy(body = newLoopBody)(loop.pos, loop.info, loop.errT)
-          body.transform { case stmt if stmt == loop => newLoop}
+          body.transform { case stmt if stmt == loop => newLoop }
         case Some(t: Stmt) => body.transform {
           case stmt if stmt == t => Seqn(stmts :+ t, Seq())(t.pos, t.info, t.errT)
         }
@@ -62,7 +75,7 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: Seq[PathConditionStack],
     "Abduced pres " + state.length + ", Abduced statements " + stmts.length
   }
 
-  def toPrecondition(preVars: Map[AbstractLocalVar, (Term, Option[Exp])], preHeap: Heap, ignoredBcs: Seq[Term] = Seq()): Option[Seq[Exp]] = {
+  def toPrecondition(preVars: Map[AbstractLocalVar, (Term, Option[Exp])], preHeap: Heap): Option[Seq[Exp]] = {
 
     val pres = pcs.map { pc =>
 
@@ -77,12 +90,8 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: Seq[PathConditionStack],
       if (presTransformed.contains(None)) {
         None // We could not express the state as a precondition
       } else {
-        val bcs = v.decider.pcs.branchConditions.collect {
-          case bc if !abductionUtils.checkBc(v, bc, ignoredBcs) => varTrans.transformTerm(bc)
-        }.collect { case Some(e) if
-          e != TrueLit()() => varTrans.transformExp(e).get
-        }.toSet
 
+        val bcs = bcsExps(pc).map { exp => varTrans.transformExp(exp) }.collect { case Some(e) => e }
         val presFinal = presTransformed.map { e =>
           if (bcs.isEmpty) {
             e.get
@@ -94,7 +103,7 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: Seq[PathConditionStack],
         Some(presFinal)
       }
     }
-    if(pres.contains(None)){
+    if (pres.contains(None)) {
       None
     } else {
       // TODO nklose we maybe want to combine stuff here
@@ -106,22 +115,29 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: Seq[PathConditionStack],
 case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), loop: While) extends BiAbductionSuccess {
   override def toString: String = "Successful loop invariant abduction"
 
-  def addToMethod(m: Method): Option[Method] = {
+  def addToMethod(m: Method): Method = {
     val body = m.body.get
     val newBody = body.transform {
       case l: While if l.cond == loop.cond =>
         l.copy(invs = l.invs ++ invs)(pos = l.pos, info = l.info, errT = l.errT)
       case other => other
     }
-    Some(m.copy(body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
+    m.copy(body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT)
   }
 }
 
-case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Position) extends BiAbductionSuccess {
+case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], stmts: Seq[Stmt], loc: Positioned, pcs: PathConditionStack, conds: Seq[Exp]) extends BiAbductionSuccess {
   override def toString: String = "Successful framing"
 
-  def addToMethod(m: Method): Option[Method] = {
-    Some(m.copy(posts = m.posts ++ posts)(pos = m.pos, info = m.info, errT = m.errT))
+  def addToMethod(m: Method): Method = {
+    val (newPost, stmt) = if (conds.isEmpty) {
+      (BigAnd(posts), Seqn(stmts, Seq())())
+    } else {
+      (Implies(BigAnd(conds), BigAnd(posts))(), If(BigAnd(conds), Seqn(stmts, Seq())(), Seqn(Seq(), Seq())())())
+    }
+    val body = m.body.get
+    val newBody = body.copy(ss = body.ss :+ stmt)(pos = body.pos, info = body.info, errT = body.errT)
+    m.copy(posts = m.posts :+ newPost, body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT)
   }
 }
 
@@ -183,15 +199,15 @@ object BiAbductionSolver {
         }
 
         val reses = executionFlowController.locally(s, v) { (s1, v1) =>
-          val qPre = AbductionQuestion(s1, v1, Seq(abdGoal), trigger=trigger)
+          val qPre = AbductionQuestion(s1, v1, Seq(abdGoal), trigger = trigger)
           val q = tra match {
             case Some(trafo) => trafo.f(qPre).asInstanceOf[AbductionQuestion]
             case _ => qPre
           }
-          AbductionApplier.applyRules(q){
+          AbductionApplier.applyRules(q) {
             q1 =>
               if (q1.goal.isEmpty) {
-                Success(Some(AbductionSuccess(q1.s, q1.v, Seq(q1.v.decider.pcs.duplicate()), q1.foundState, q1.foundStmts, trigger)))
+                Success(Some(AbductionSuccess(q1.s, q1.v, Seq(q1.v.decider.pcs.duplicate()), q1.foundState.reverse, q1.foundStmts.reverse, trigger)))
               } else {
                 f
               }
@@ -202,7 +218,7 @@ object BiAbductionSolver {
           case nf: NonFatalResult =>
             abductionUtils.getAbductionSuccesses(nf) match {
               case Seq(abd) =>
-                producer.produces(s, freshSnap, abd.state.reverse, _ => Internal(), v) {
+                producer.produces(s, freshSnap, abd.state, _ => Internal(), v) {
                   (s2, v2) =>
                     executor.execs(s2, abd.stmts, v2) {
                       (s3, v3) =>
@@ -210,7 +226,7 @@ object BiAbductionSolver {
                     }
                 }
               case Seq(a, b) if a.state == b.state && a.stmts == b.stmts =>
-                producer.produces(s, freshSnap, a.state.reverse, _ => Internal(), v) {
+                producer.produces(s, freshSnap, a.state, _ => Internal(), v) {
                   (s2, v2) =>
                     executor.execs(s2, a.stmts, v2) {
                       (s3, v3) =>
@@ -222,35 +238,74 @@ object BiAbductionSolver {
     }
   }
 
-
-  def solveAbstraction(s: State, v: Verifier, ignoredBcs: Seq[Term] = Seq(), fixedChunks: Seq[Chunk] = Seq())(Q: (State, Seq[Exp], Verifier) => VerificationResult): VerificationResult = {
+  // TODO this no longer handles branch conditions!
+  def solveAbstraction(s: State, v: Verifier, fixedChunks: Seq[Chunk] = Seq())(Q: (State, Seq[Exp], Verifier) => VerificationResult): VerificationResult = {
     val q = AbstractionQuestion(s, v, fixedChunks)
     AbstractionApplier.applyRules(q) { q1 =>
-      Success(Some(solveFraming(q1.s, q1.v, q1.s.g.values, ignoredBcs = ignoredBcs)))
-    } match {
-      case res: NonFatalResult =>
-        val exps = abductionUtils.getFramingSuccesses(res).head
-        Q(exps.s, exps.posts, exps.v)
+      val tra = VarTransformer(q1.s, q1.v, q1.s.g.values, q1.s.h)
+      val res = q1.s.h.values.collect { case c: NonQuantifiedChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
+      Q(q1.s, res, q1.v)
     }
   }
 
-  // This does not do abstraction, but just transforms state back into expressions.
-  def solveFraming(s: State, v: Verifier, postVars: Map[AbstractLocalVar, (Term, Option[Exp])], loc: Position = NoPosition, ignoredBcs: Seq[Term] = Seq()): FramingSuccess = {
 
-    val tra = VarTransformer(s, v, postVars, s.h)
-    val res = s.h.values.collect { case c: NonQuantifiedChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
-    val bcs = v.decider.pcs.branchConditions
-      .collect { case term: Term if !abductionUtils.checkBc(v, term, ignoredBcs) => tra.transformTerm(term) }
-      .collect { case Some(e) if e != TrueLit()() => e }.toSet
-    val posts = res.map { e =>
-      if (bcs.isEmpty) {
-        e
-      } else {
-        Implies(BigAnd(bcs), e)()
+  def solveFraming(s: State, v: Verifier, pvef: Exp => PartialVerificationError, tra: VarTransformer, loc: Positioned, knownPosts: Seq[Exp], pcs: PathConditionStack)(Q: FramingSuccess => VerificationResult): VerificationResult = {
+
+    //val tra = VarTransformer(s, v, targetVars, s.h)
+    executionFlowController.tryOrElse1[Term](s, v) { (s, v, QS) =>
+      consumes(s, knownPosts, pvef, v)(QS)
+    } { (s1: State, _: Term, v1: Verifier) =>
+      executionFlowController.locallyWithResult[Seq[Exp]](s1, v1) { (s1a, v1a, T) =>
+        BiAbductionSolver.solveAbstraction(s1a, v1a) { (s2, framedPosts, v2) =>
+          val newPosts = framedPosts.map { e => tra.transformExp(e) }.collect { case Some(e) => e }
+          T(newPosts)
+        }
+      } {
+        // We consumed all the posts and did not find any new ones. So create a fresh Framing Success with the bcs
+        case Seq() =>
+          val bcsExps = v.decider.pcs.branchConditions.map {
+            bc => tra.transformTerm(bc).get
+          }
+          Q(FramingSuccess(s1, v1, Seq(), Seq(), loc, v.decider.pcs.duplicate(), bcsExps)) // No new state or needed stmts
+        // We consumed the post conditions and found new ones. Handle the new ones and add them to the result
+        case newPosts1 =>
+          solveFraming(s1, v1, pvef, tra, loc, newPosts1, pcs) { frame =>
+            val newFrame = frame.copy(posts = frame.posts ++ newPosts1)
+            Q(newFrame)
+          }
       }
+    } {
+      // We failed to fulfill the posts. Perform abduction, add the results and try again.
+      f =>
+        BiAbductionSolver.solveAbduction(s, v, f, Some(loc))((s3, res, v3) => {
+          solveFraming(s3, v3, pvef, tra, loc, knownPosts, pcs){
+            frame =>
+              val newAbdRes = if(res.state.nonEmpty) { Success(Some(res.copy(stmts = Seq()))) } else {Success()}
+              val newFrame = frame.copy(stmts = frame.stmts ++ res.stmts)
+              newAbdRes && Q(newFrame)
+          }
+        }
+        )
     }
-    FramingSuccess(s, v, posts = posts, loc)
   }
+
+
+
+  /*/val tra = VarTransformer(s, v, targetVars, s.h)
+  val res = s.h.values.collect { case c: NonQuantifiedChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
+  val bcs = v.decider.pcs.branchConditions
+    .collect { case term: Term if !abductionUtils.checkBc(v, term, ignoredBcs) => tra.transformTerm(term) }
+    .collect { case Some(e) if e != TrueLit()() => e }.toSet
+  val posts = res.map { e =>
+    if (bcs.isEmpty) {
+      e
+    } else {
+      Implies(BigAnd(bcs), e)()
+    }
+  }
+  FramingSuccess(s, v, posts = posts, loc)
+}
+}*/
 }
 
 object abductionUtils {
@@ -297,7 +352,7 @@ object abductionUtils {
 
   def getContainingPredicates(f: FieldAccess, p: Program): Seq[Predicate] = {
 
-    p.predicates.filter{ pred =>
+    p.predicates.filter { pred =>
       val absAcc = f.copy(rcv = pred.formalArgs.head.localVar)(f.pos, f.info, f.errT)
       pred.body.get.contains(absAcc)
     }
@@ -310,6 +365,7 @@ object abductionUtils {
   val dummyEndStmt: Stmt = Label("Dummy End of method statement", Seq())()
 
   private val dummyLoopEndName = "Dummy End of loop statement"
+
   def getEndOfLoopStmt(loop: While): Label = Label(dummyLoopEndName, Seq(loop.cond))()
 
   def isEndOfLoopStmt(stmt: Stmt): Boolean = stmt match {
@@ -322,4 +378,5 @@ object abductionUtils {
       case w: While if w.cond == condition => w
     }.get
   }
+  
 }

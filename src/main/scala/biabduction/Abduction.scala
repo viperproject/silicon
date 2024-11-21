@@ -161,8 +161,10 @@ object AbductionFoldBase extends AbductionRule {
                       val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                       // TODO nklose this could branch
                       predicateSupporter.fold(s1, pred, List(t), None, terms.FullPerm, None, wildcards, pve, v2) { (s3, v3) =>
-                        val fold = Fold(a)()
-                        Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold, s = s3, v = v3)))
+                        consumer.consume(s3, a, pve, v3) { (s4, _, v4) =>
+                          val fold = Fold(a)()
+                          Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold, s = s4, v = v4)))
+                        }
                       }
                   }
                 } else {
@@ -221,7 +223,9 @@ object AbductionFold extends AbductionRule {
             
             val tryFold = predicateSupporter.fold(q.s, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pveTransformed, q.v) {
               (s1, v1) =>
-                Success(Some(AbductionSuccess(s1, v1, Seq(v1.decider.pcs.duplicate()), Seq(), Seq(Fold(a)()))))
+                consumer.consume(s1, a, pve, v1) { (s2, _, v2) =>
+                  Success(Some(AbductionSuccess(s2, v2, Seq(v2.decider.pcs.duplicate()), Seq(), Seq(Fold(a)()))))
+              }
             }
             tryFold match {
               case nf: NonFatalResult => 

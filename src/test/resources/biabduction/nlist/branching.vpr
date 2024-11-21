@@ -11,7 +11,7 @@ ensures list(x)
 method test(x: Ref, cond: Bool)
 {
     if(x.next != null){
-        reverse(x)
+        reverse(x.next)
     }
 }
 

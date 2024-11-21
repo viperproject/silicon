@@ -7,19 +7,19 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.biabduction.{AbductionSuccess, BiAbductionSolver, FramingSuccess, VarTransformer, abductionUtils}
+import viper.silicon.biabduction.BiAbductionSolver.solveFraming
+import viper.silicon.biabduction.{VarTransformer, abductionUtils}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
-import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
+import viper.silicon.rules.{executionFlowController, executor, producer}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.Term
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.{Map, toMap}
 import viper.silver.ast
-import viper.silver.ast.{Method, VirtualPosition}
+import viper.silver.ast.Method
 import viper.silver.components.StatefulComponent
 import viper.silver.reporter.AnnotationWarning
 import viper.silver.verifier.DummyNode
@@ -38,7 +38,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
 
   object methodSupporter extends MethodVerificationUnit with StatefulComponent {
 
-    import consumer._
     import executor._
     import producer._
 
@@ -109,7 +108,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
           produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
-            (executionFlowController.locally(s2a, v2)((s3, v3) => {
+
+            val wfc = executionFlowController.locally(s2a, v2)((s3, v3) => {
               val s4 = s3.copy(h = Heap())
               val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
               val sepIdentifier = symbExLog.openScope(impLog)
@@ -118,37 +118,45 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                 Success()
               })
             })
-              && {
-              executionFlowController.locally(s2a, v2)((s3, v3) => {
-                exec(s3, body, v3) { (s4, v4) => {
-                  handlePostConditions(s4, method, posts, v4)
+            val ex = executionFlowController.locally(s2a, v2)((s3, v3) => {
+              exec(s3, body, v3) { (s4, v4) => {
+                val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
+                val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
+                val vars = s4.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
+                val tra = VarTransformer(s4, v4, vars, s4.h)
+                solveFraming(s4, v4, postViolated, tra, abductionUtils.dummyEndStmt, posts, v.decider.pcs.duplicate()) {
+                  frame => Success(Some(frame))
                 }
-                }
-              })
+              }
+              }
             })
+            wfc && ex
           })
         })
 
-
       val abdResult: VerificationResult = result match {
         case suc: NonFatalResult if method.body.isDefined =>
-
+          val abdReses = abductionUtils.getAbductionSuccesses(suc)
+          abdReses.foldLeft[Option[Method]](Some(method))((m1, res) => m1.flatMap{mm => res.addToMethod(mm)})
           // Collect all the abductions and try to generate preconditions
-          val abdReses = abductionUtils.getBiAbductionSuccesses(suc)
-          val pres = abductionUtils.getAbductionSuccesses(suc).collect{ case abd if abd.state.nonEmpty => abd}
-          val states = pres.map(_.state.head)
-          val triggers = pres.map(_.trigger)
-          val newMethod = abdReses.foldLeft[Option[Method]](Some(method))( (m, res) => m match {
-            case None => 
-              None
-            case Some(mm) => 
-              res.addToMethod(mm)
-          })
-          newMethod match {
+           match {
             case None => Failure(Internal(reason = InternalReason(DummyNode, "Failed to generate preconditions from abduction results")))
             case Some(m) =>
-              val abducedMethod = m.copy(pres = m.pres.distinct, posts = m.posts.distinct)(m.pos, m.info, m.errT)
-              println("Original method: \n" + method.toString + "\nAbduced method: \n" + abducedMethod.toString)
+              val invReses = abductionUtils.getInvariantSuccesses(suc)
+              val mInv = invReses.foldLeft[Method](m)((m1, res) => res.addToMethod(m1))
+
+              val frames = abductionUtils.getFramingSuccesses(suc)
+              //val frameBcs = frames.map{frame => frame.pcs.branchConditions}
+
+              // We can remove bcs that are present in all frames
+              //val toRemove = frameBcs.reduceLeft(_ intersect _)
+
+              //val toKeep = frames.zip(frameBcs.map{frame => frame.diff(toRemove)}).toMap
+
+              val mPosts = frames.foldLeft(mInv){case (m1, frame) => frame.addToMethod(m1)}
+
+              //val abducedMethod = mPosts.copy(pres = mPosts.pres.distinct, posts = mPosts.posts.distinct)(mPosts.pos, mPosts.info, mPosts.errT)
+              println("Original method: \n" + method.toString + "\nAbduced method: \n" + mPosts.toString)
               result
           }
         case _ => result
@@ -168,24 +176,32 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
     }
 
     def stop(): Unit = {}
-
-    
-
+  }
+}
+/*
     private def handlePostConditions(s: State, method: ast.Method, posts: Seq[ast.Exp], v: Verifier): VerificationResult = {
       val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
       executionFlowController.tryOrElse1[Term](s, v) { (s, v, QS) =>
         consumes(s, posts, postViolated, v)(QS)
       } {
-        (s1: State, _: Term, v1: Verifier) => {
-          BiAbductionSolver.solveAbstraction(s1, v1) { (s2, framedPosts, v2) =>
-            val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
-            val vars = s2.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
-            val varTran = VarTransformer(s2, v2, vars, s2.h)
-            val newPosts = framedPosts.map { e => varTran.transformExp(e) }.collect { case Some(e) => e }
-            if (newPosts.isEmpty) Success()
-            else Success(Some(FramingSuccess(s2, v2, newPosts, method.pos))) && handlePostConditions(s1, method, newPosts, v1)
+        (s1: State, _: Term, v1: Verifier) =>
+          executionFlowController.locally(s1, v1) {(s1a, v1a) =>
+            val absRes = BiAbductionSolver.solveAbstraction(s1a, v1a) { (s2, framedPosts, v2) =>
+              val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
+              val vars = s2.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
+              val varTran = VarTransformer(s2, v2, vars, s2.h)
+              val newPosts = framedPosts.map { e => varTran.transformExp(e) }.collect { case Some(e) => e }
+              if(newPosts.isEmpty) {Success()} else {Success(Some(FramingSuccess(s2, v2, newPosts, method.pos)))}
+            }
+            absRes match {
+              case nf: NonFatalResult =>
+                val frs = abductionUtils.getFramingSuccesses(nf)
+                frs.foldLeft[VerificationResult](Success()){ (a, b) =>
+                  val bRes = if (b.posts.isEmpty) { Success(Some(b)) } else {Success(Some(b)) && handlePostConditions(s1, method, b.posts, v1)}
+                  a && bRes
+                }
+            }
           }
-        }
       } {
         f =>
           BiAbductionSolver.solveAbduction(s, v, f, Some(abductionUtils.dummyEndStmt))((s3, res, v3) => {
@@ -196,3 +212,4 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
     }
   }
 }
+*/
