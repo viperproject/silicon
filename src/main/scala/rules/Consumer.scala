@@ -127,7 +127,7 @@ object consumer extends ConsumptionRules {
       val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, returnSnap,  pve, v)(Q)
+        wrappedConsumeTlc(s, h, a, returnSnap, pve, v)(Q)
       else
         wrappedConsumeTlc(s, h, a, returnSnap, pve, v)((s1, h1, snap1, v1) => {
           consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1)((s2, h2, snap2, v2) =>

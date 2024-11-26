@@ -595,11 +595,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         SetIn(qvar, PredicateDomain(MagicWandIdentifier(wand, s.program).toString, sm))
     }
 
-    val resourceIdentifier = resource match {
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-      case r => r
-    }
-
     val valueDefinitions =
       relevantChunks map (chunk => {
         val lookupSummary = ResourceLookup(resource, sm, Seq(qvar), s.program)
@@ -611,11 +606,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           if (codomainQVars.nonEmpty) qvar !== Unit
           else qvar === Unit // TODO: Consider if axioms can be simplified in case codomainQVars is empty
 
-        val effectiveCondition = {
+        val effectiveCondition =
           And(
             transformedOptSmDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
             IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
-        }
 
         Forall(
           qvar,
@@ -625,6 +619,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = relevantQvars.isEmpty)
       })
 
+    val resourceIdentifier = resource match {
+      case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
+      case r => r
+    }
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
       val resourceTriggerDefinition =
         Forall(
@@ -813,6 +811,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             (smDef, s.smCache + (key, value))
           }
       }
+
     emitSnapshotMapDefinition(s, smDef, v, optQVarsInstantiations)
 
     (smDef, smCache)
@@ -1353,7 +1352,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 optCh match {
                   case Some(ch) if returnSnap => Q(s4, s4.h, Some(ch.snapshotMap.convert(sorts.Snap)), v3)
                   case None if returnSnap =>
-                    Q(s4, s4.h, Some(freshSnap(sorts.Snap, v3)), v3) //Why do we not record this new snapshot?
+                    Q(s4, s4.h, Some(freshSnap(sorts.Snap, v3)), v3)
                   case _ => Q(s4, s4.h, None, v3)
                 }
               )
@@ -1479,7 +1478,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val snap = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
             Q(s4, s4.h, Some(snap), v2)
           case None if returnSnap =>
-            Q(s4, s4.h, Some(freshSnap(sorts.Snap, v2)), v2) //Why do we not record this new snapshot?
+            Q(s4, s4.h, Some(freshSnap(sorts.Snap, v2)), v2)
           case _ => Q(s4, s4.h, None, v2)
         }
       )
