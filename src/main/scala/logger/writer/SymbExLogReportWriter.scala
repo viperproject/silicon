@@ -25,8 +25,8 @@ object SymbExLogReportWriter {
 
   private def inverseFunctionsToJSON(invs: InverseFunctions): JsValue = {
     JsArray(
-      TermWriter.toJSON(invs.axiomInversesOfInvertibles),
-      TermWriter.toJSON(invs.axiomInvertiblesOfInverses)
+      (invs.axiomInversesOfInvertibles.map(a => TermWriter.toJSON(a)) ++
+      invs.axiomInvertiblesOfInverses.map(a => TermWriter.toJSON(a))).toVector
     )
   }
 

@@ -13,7 +13,7 @@ import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{FieldID, MagicWandID, NonQuantifiedPropertyInterpreter, PredicateID, Resources}
 import viper.silicon.state._
-import viper.silicon.state.terms._
+import viper.silicon.state.terms.{Trigger, _}
 import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
@@ -80,7 +80,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
           val roundSepIdentifier = v.symbExLog.openScope(roundLog)
 
-          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
+          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, s, destChunks, newChunks, v)
 
           snapEqs foreach (t => v.decider.assume(t, Option.when(withExp)(DebugExp.createInstance("Snapshot Equations", true))))
 
@@ -132,7 +132,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
-    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, v)
+    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, s, h.values.toSeq, newH.values.toSeq, v)
 
     v.decider.assume(snapEqs, Option.when(withExp)(DebugExp.createInstance("Snapshot", isInternal_ = true)), enforceAssumption = false)
 
@@ -148,6 +148,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   }
 
   private def singleMerge(fr: FunctionRecorder,
+                          s: State,
                           destChunks: Seq[Chunk],
                           newChunks: Seq[Chunk],
                           v: Verifier)
@@ -172,9 +173,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
       findMatchingChunk(accMergedChunks, nextChunk, v) match {
         case Some(ch) =>
-          mergeChunks(fr1, ch, nextChunk, v) match {
+          mergeChunks(fr1, s, ch, nextChunk, v) match {
             case Some((fr2, newChunk, snapEq)) =>
-              (fr2, newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accNewChunks, accSnapEqs + snapEq)
+              (fr2, newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accNewChunks, accSnapEqs ++ snapEq)
             case None =>
               (fr1, nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
           }
@@ -197,22 +198,24 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
   // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)
   // and returns the merged chunk or None, if the chunks could not be merged
-  private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = (chunk1, chunk2) match {
+  private def mergeChunks(fr1: FunctionRecorder, s: State, chunk1: Chunk, chunk2: Chunk, v: Verifier): Option[(FunctionRecorder, Chunk, Seq[Term])] = (chunk1, chunk2) match {
     case (BasicChunk(rid1, id1, args1, args1Exp, snap1, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, perm2, perm2Exp)) =>
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, v)
 
-      Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, PermPlus(perm1, perm2), perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())), snapEq)
+      Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, PermPlus(perm1, perm2), perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())), Seq(snapEq))
     case (l : QuantifiedBasicChunk, r: QuantifiedBasicChunk) =>
       // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
       v.decider.prover.comment("Merging qp chunks")
       v.decider.prover.comment(s"left perm: ${l.perm}")
       v.decider.prover.comment(s"right perm: ${r.perm}")
+      //v.decider.prover.comment(s"left inv add var: ${l.invs.map(i => i.additionalArguments)}")
+      //v.decider.prover.comment(s"right inv add var: ${r.invs.map(i => i.additionalArguments)}")
 
       val replacedPerm = r.perm.replace(r.quantifiedVars, l.quantifiedVars)
       val replacedPermExp = r.permExp.map(p2 => p2.replace(r.quantifiedVarExps.get.zip(l.quantifiedVarExps.get).toMap))
       val permSum = PermPlus(l.perm, replacedPerm)
       val permSumExp = l.permExp.map(p1 => ast.PermAdd(p1, replacedPermExp.get)())
-      val bestHints = if (l.hints.nonEmpty) l.hints else r.hints
+      val combinedHints = l.hints ++ r.hints
       val condExp = l.permExp.map(_ => ast.TrueLit()())
       val combinedInvs = (l.invs, r.invs) match{
         case (Some(lInv), Some(rInv)) => Some(lInv.mergeInvFunctions(rInv))
@@ -220,24 +223,85 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         case (None, Some(rInv)) => Some(rInv)
         case (None, None) => None
       }
+      val (resource, formalQVars) = l.resourceID match {
+        case FieldID => (s.program.findField(l.id.toString), Seq(`?r`))
+        case PredicateID  => {
+          val predicate = s.program.findPredicate(l.id.toString)
+          (predicate, s.predicateFormalVarMap(predicate))
+        }
+        case MagicWandID => return None
+      }
+      val (sm, valueDefinitions, optSmDomainDefinition) = {
+        quantifiedChunkSupporter.summarise(s, Seq(l, r), formalQVars, resource , None, v)
+      }
+      val fr3 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, valueDefinitions, optSmDomainDefinition.toSeq))
+//      val fr4 = if(true) {//s.heapDependentTriggers.contains(resource)) {
+//        val heapTrigger: Term => Term = l.resourceID match {
+//          case FieldID => FieldTrigger(resource.name, _, formalQVars.head)
+//          case PredicateID | MagicWandID => PredicateTrigger(resource.name, _, formalQVars)
+//        }
+//        val resourceTriggerDefinitionLeft =
+//          Forall(formalQVars, And(heapTrigger(l.snapshotMap), heapTrigger(sm)),
+//            Trigger(heapTrigger(sm)),
+//            s"qp.ResTrgDef${v.counter(this).next()}")
+//        val resourceTriggerDefinitionRight =
+//          Forall(formalQVars, And(heapTrigger(r.snapshotMap), heapTrigger(sm)),
+//            Trigger(heapTrigger(sm)),
+//            s"qp.ResTrgDef${v.counter(this).next()}")
+//        v.decider.assume(resourceTriggerDefinitionLeft, None)
+//        v.decider.assume(resourceTriggerDefinitionRight, None)
+//        fr3.recordConstraint(resourceTriggerDefinitionLeft).recordConstraint(resourceTriggerDefinitionRight)
+//      } else {
+//        fr3
+//      }
       l.resourceID match {
         case FieldID => {
-          val valueFn: Term => Term = (sm => Lookup(l.id.toString, sm, l.quantifiedVars.head))
-            val (fr2, combinedSnap, snapEq) =
-              quantifiedChunkSupporter.combineSnapshotMaps(fr1, valueFn, l.quantifiedVars, l.snapshotMap, r.snapshotMap, l.perm, replacedPerm, v)
-          Some(fr2, QuantifiedFieldChunk(BasicChunkIdentifier(l.id.toString), combinedSnap, True, condExp, permSum,
-            permSumExp, combinedInvs, l.singletonArguments.map(s => s.head),l.singletonArgumentExps.map(s => s.head), bestHints), snapEq)
+          //val valueFn: Term => Term = (sm => Lookup(l.id.toString, sm, l.quantifiedVars.head))
+//            val (fr2, combinedSnap, snapEq) =
+//              quantifiedChunkSupporter.combineSnapshotMaps(fr1, valueFn, l.quantifiedVars, l.snapshotMap, r.snapshotMap, l.perm, replacedPerm, v)
+          //val fr3 = combineHeapTrigger(fr2, s, l, r, combinedSnap, v)
+          v.decider.prover.comment(permSum.toString)
+          //We cannot keep singleton arguments because we, don't know on which chunk we should apply them. TODO Markus: detailed explaination.
+          Some(fr3, QuantifiedFieldChunk(BasicChunkIdentifier(l.id.toString), sm, True, condExp, permSum,
+            permSumExp, combinedInvs, None, None, combinedHints), valueDefinitions)
         }
         case PredicateID => {
-          val valueFn: Term => Term = (sm => PredicateLookup(l.id.toString, sm, l.quantifiedVars))
-          val (fr2, combinedSnap, snapEq) =
-            quantifiedChunkSupporter.combineSnapshotMaps(fr1, valueFn, l.quantifiedVars, l.snapshotMap, r.snapshotMap, l.perm, replacedPerm, v)
-          Some(fr2, QuantifiedPredicateChunk(BasicChunkIdentifier(l.id.toString), l.quantifiedVars, l.quantifiedVarExps, combinedSnap, True,
-            condExp, permSum, permSumExp, combinedInvs, l.singletonArguments, l.singletonArgumentExps, bestHints), snapEq)
+          //val valueFn: Term => Term = (sm => PredicateLookup(l.id.toString, sm, l.quantifiedVars))
+//          val (fr2, combinedSnap, snapEq) =
+//            quantifiedChunkSupporter.combineSnapshotMaps(fr1, valueFn, l.quantifiedVars, l.snapshotMap, r.snapshotMap, l.perm, replacedPerm, v)
+          //val fr3 = combineHeapTrigger(fr2, s, l, r, combinedSnap, v)
+          Some(fr3, QuantifiedPredicateChunk(BasicChunkIdentifier(l.id.toString), l.quantifiedVars, l.quantifiedVarExps, sm, True,
+            condExp, permSum, permSumExp, combinedInvs, None, None, combinedHints), valueDefinitions)
         }
         case MagicWandID => None
       }
   }
+
+//  private def combineHeapTrigger(fr: FunctionRecorder, s: State, chunk1: QuantifiedBasicChunk, chunk2: QuantifiedBasicChunk, combined: Term, v: Verifier): FunctionRecorder = {
+//    val resource = chunk1.resourceID match {
+//      case FieldID => s.program.findField(chunk1.id.toString)
+//      case PredicateID | MagicWandID => s.program.findPredicate(chunk1.id.toString)
+//    }
+//    if(s.heapDependentTriggers.contains(resource)){
+//      val heapTrigger:Term => Term = chunk1.resourceID match {
+//        case FieldID => FieldTrigger(resource.name, _, chunk1.quantifiedVars.head)
+//        case PredicateID | MagicWandID => PredicateTrigger(resource.name, _, chunk1.quantifiedVars)
+//      }
+//      val resourceTriggerDefinitionLeft =
+//        Forall(chunk1.quantifiedVars, heapTrigger(chunk1.snapshotMap) === heapTrigger(combined),
+//          Trigger(heapTrigger(combined)),
+//          s"qp.ResTrgDef${v.counter(this).next()}")
+//      val resourceTriggerDefinitionRight =
+//        Forall(chunk2.quantifiedVars, heapTrigger(chunk2.snapshotMap) === heapTrigger(combined),
+//          Trigger(heapTrigger(combined)),
+//          s"qp.ResTrgDef${v.counter(this).next()}")
+//      v.decider.assume(resourceTriggerDefinitionLeft, None)
+//      v.decider.assume(resourceTriggerDefinitionRight, None)
+//      fr //.recordConstraint(resourceTriggerDefinitionLeft).recordConstraint(resourceTriggerDefinitionRight)
+//    } else {
+//      fr
+//    }
+//  }
 
   /** Merge the snapshots of two chunks that denote the same location, i.e. whose ids and arguments
     * are known to be equal.
