@@ -133,8 +133,8 @@ object consumer extends ConsumptionRules {
           consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1)((s2, h2, snap2, v2) =>
 
             (snap1, snap2) match {
-              case (Some(sn1), Some(sn2)) => Q(s2, h2, Some(Combine(sn1, sn2)), v2)
-              case (None, None) => Q(s2, h2, None, v2)
+              case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(Combine(sn1, sn2)), v2)
+              case (None, None) if !returnSnap => Q(s2, h2, None, v2)
               case (_, _) =>  sys.error(s"Consume returned unexpected snapshot: ${(returnSnap, (snap1, snap2))}")
             })
         })
@@ -278,7 +278,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if(returnSnap) Some(Unit) else None, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -324,7 +324,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if(returnSnap) Some(Unit) else None, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
@@ -366,7 +366,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
               insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
               v1)(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if(returnSnap) Some(Unit) else None, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
 
       case accPred@ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
@@ -573,8 +573,8 @@ object consumer extends ConsumptionRules {
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {
-                case (Some(t1), Some(t2)) => Some(Ite(And(entry1.pathConditions.branchConditions), t1, t2))
-                case (None, None) => None
+                case (Some(t1), Some(t2)) if returnSnap => Some(Ite(And(entry1.pathConditions.branchConditions), t1, t2))
+                case (None, None) if !returnSnap => None
                 case (_, _) => sys.error(s"Unexpected join data entries: $entries")
               }
             )
@@ -631,7 +631,7 @@ object consumer extends ConsumptionRules {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
-      Q(s5, if(returnSnap) Some(Unit) else None, v4)
+      Q(s5, if (returnSnap) Some(Unit) else None, v4)
     })
   }
 }

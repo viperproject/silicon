@@ -1376,7 +1376,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               permissionRemovalResult match {
                 case (Complete(), s2, remainingChunks) =>
                   val h3 = Heap(remainingChunks ++ otherChunks)
-                  if(returnSnap) {
+                  if (returnSnap) {
                     val optSmDomainDefinitionCondition2 =
                       if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
                       else None
