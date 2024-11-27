@@ -20,7 +20,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{Exp, Method, Position, Stmt, VirtualPosition}
+import viper.silver.ast.{Exp, Method, Positioned, Stmt}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
@@ -301,7 +301,7 @@ object executor extends ExecutionRules {
 
                 val con = executionFlowController.locally(s, v) ((s0, v0) => {
                   v0.decider.prover.comment("Loop head block: Establish invariant")
-                  checkInvariants(s0, v0, invs, whileStmt)((sLeftover, v1) => {
+                  checkInvariants(s0, v0, invs, condition)((sLeftover, v1) => {
                     v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                     phase1data.foldLeft(Success(): VerificationResult) {
                       case (result, _) if !result.continueVerification => result
@@ -335,10 +335,10 @@ object executor extends ExecutionRules {
                                 )
                               })
                               // Continue after the loop (with the new invariants)
-                              val atl = executionFlowController.locally(s4, v3)((s5, v5) => {
-                                follows(s5, outEdges, WhileFailed, v5, joinPoint)((s6, v6) => Q(s6, v6))
-                              })
-                              wde && lie && atl
+                              val atl =
+                                follows(s4, outEdges, WhileFailed, v3, joinPoint)(Q)
+
+                              wde combine lie combine atl
                             })
                           }
                         })
@@ -360,7 +360,7 @@ object executor extends ExecutionRules {
     }
   }
 
-  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp], location: Stmt)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp], location: Positioned)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
     if (invs.isEmpty) {
       Q(s, v)
     } else {
@@ -372,7 +372,8 @@ object executor extends ExecutionRules {
       } {
         f =>
         // There are cases where it is incorrect to abduce state here, but only some cases and it is hard to distinguish them
-        BiAbductionSolver.solveAbduction(s, v, f, Some(location))((s3, res, v3) => Success(Some(res)) && checkInvariants(s3, v3, invs, location)(Q))
+        BiAbductionSolver.solveAbduction(s, v, f, Some(location))((s3, res, v3) =>
+          Success(Some(res)) && checkInvariants(s3, v3, invs, location)(Q))
       }
     }
   }

@@ -114,6 +114,9 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
   def transformExp(e: Exp, strict: Boolean = true): Option[Exp] = {
     try {
       val res = e.transform {
+        case FieldAccessPredicate(fa, perm) =>
+          val newRcv = transformExp(fa.rcv).get
+          FieldAccessPredicate(FieldAccess(newRcv, fa.field)(), perm)()
         case fa@FieldAccess(target, field) =>
           safeEval(fa) match {
             // If the chunk exists in the current state, then we want to match the snap term
@@ -127,7 +130,10 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
                   val rvcExp = transformExp(target)
                   FieldAccess(rvcExp.get, field)()
 
-                // TODO nklose this maybe wrong sometimes?
+                // TODO nklose this wrong sometimes?
+                // Specifically I think if we are transforming "in-place" then this is fine,
+                // but if we are transforming "into the past" then this can be wrong because the
+                // old value of the field is not necessarily equal to the new value
                 case None =>
                   val rvcExp = transformExp(target)
                   FieldAccess(rvcExp.get, field)()

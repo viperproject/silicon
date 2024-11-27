@@ -12,8 +12,8 @@ method test(this: Ref)
     //package list(x) --* list(this)
 
     while(x != null)
-    invariant list(x)
-    invariant list(x) --* list(this)
+    //invariant list(x)
+    //invariant list(x) --* list(this)
     {
         var xo: Ref := x
         //unfold list(x)

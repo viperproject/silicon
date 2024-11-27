@@ -124,7 +124,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                 val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
                 val vars = s4.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
                 val tra = VarTransformer(s4, v4, vars, s4.h)
-                solveFraming(s4, v4, postViolated, tra, abductionUtils.dummyEndStmt, posts, v.decider.pcs.duplicate()) {
+                solveFraming(s4, v4, postViolated, tra, abductionUtils.dummyEndStmt, posts) {
                   frame => Success(Some(frame))
                 }
               }
@@ -136,8 +136,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
 
       val abdResult: VerificationResult = result match {
         case suc: NonFatalResult if method.body.isDefined =>
+          val abdFails = abductionUtils.getAbductionFailures(suc)
+          val mFail = abdFails.foldLeft(method){case (m1, fail) => fail.addToMethod(m1)}
+
           val abdReses = abductionUtils.getAbductionSuccesses(suc)
-          abdReses.foldLeft[Option[Method]](Some(method))((m1, res) => m1.flatMap{mm => res.addToMethod(mm)})
+          // TODO we are generating duplicate statements
+          // Maybe try to generate bcs and if that fails then merge?
+          val abdCases = abdReses.groupBy(res => (res.trigger, res.stmts))
+          abdReses.foldLeft[Option[Method]](Some(mFail))((m1, res) => m1.flatMap{mm => res.addToMethod(mm)})
           // Collect all the abductions and try to generate preconditions
            match {
             case None => Failure(Internal(reason = InternalReason(DummyNode, "Failed to generate preconditions from abduction results")))
@@ -153,7 +159,15 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
 
               //val toKeep = frames.zip(frameBcs.map{frame => frame.diff(toRemove)}).toMap
 
-              val mPosts = frames.foldLeft(mInv){case (m1, frame) => frame.addToMethod(m1)}
+              val frameCases = frames.groupBy(f => (f.posts, f.stmts))
+
+              val mPosts = frameCases.values.toSeq match {
+                case Seq(singleCase) => {
+                  singleCase.head.addToMethod(mInv)
+              }
+              }
+
+              //val mPosts = frames.foldLeft(mInv){case (m1, frame) => frame.addToMethod(m1)}
 
               //val abducedMethod = mPosts.copy(pres = mPosts.pres.distinct, posts = mPosts.posts.distinct)(mPosts.pos, mPosts.info, mPosts.errT)
               println("Original method: \n" + method.toString + "\nAbduced method: \n" + mPosts.toString)
