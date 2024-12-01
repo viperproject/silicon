@@ -200,7 +200,7 @@ object State {
                      triggerExp2,
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
-                     `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
+                     `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
                      ssCache2, `assertReadAccessOnly1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
@@ -218,6 +218,11 @@ object State {
             val ssCache3 = ssCache1 ++ ssCache2
             val moreCompleteExhale3 = moreCompleteExhale || moreCompleteExhale2
 
+            assert(conservedPcs1.length == conservedPcs2.length)
+            val conservedPcs3 = conservedPcs1
+              .zip(conservedPcs1)
+              .map({ case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct })
+
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
@@ -226,7 +231,8 @@ object State {
                     ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3,
-                    moreCompleteExhale = moreCompleteExhale3)
+                    moreCompleteExhale = moreCompleteExhale3,
+                    conservedPcs = conservedPcs3)
 
           case _ =>
             val err = new StringBuilder()

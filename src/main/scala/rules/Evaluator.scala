@@ -920,8 +920,8 @@ object evaluator extends EvaluationRules {
                              smDomainNeeded = true,
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts()) s2.assertReadAccessOnly else true)
-            consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
-              val snap1 = snap.convert(sorts.Snap)
+            consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
+              val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
@@ -978,9 +978,9 @@ object evaluator extends EvaluationRules {
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(s4, acc, pve, v3)((s5, snap, v4) => {
+                    consume(s4, acc, true, pve, v3)((s5, snap, v4) => {
                       val fr6 =
-                        s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap)
+                        s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap.get)
                                            .changeDepthBy(+1)
                       val s6 = s5.copy(functionRecorder = fr6,
                                        constrainableARPs = s1.constrainableARPs)
@@ -993,14 +993,14 @@ object evaluator extends EvaluationRules {
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
                         val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true))
-                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs), debugExp)
+                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp)
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm, ePermNew)
                       val argsPairs: List[(Term, Option[ast.Exp])] = if (withExp) tArgs zip eArgsNew.get.map(Some(_)) else tArgs zip Seq.fill(tArgs.size)(None)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg)
-                      produce(s7a, toSf(snap), body, pve, v4)((s8, v5) => {
+                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(g = s7.g,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,
@@ -1031,7 +1031,7 @@ object evaluator extends EvaluationRules {
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
-        consume(s, eAss, pve, v)((s2, _, v2) => {
+        consume(s, eAss, false, pve, v)((s2, _, v2) => {
           val s3 = s2.copy(g = s.g, h = s.h)
           eval(s3, eIn, pve, v2)(Q)
         })
@@ -1685,7 +1685,7 @@ object evaluator extends EvaluationRules {
           Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._2.get)), ast.EqCmp(joinExp.get, entry.data._2.get)())())))
 
 
-        var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) =>sAcc.merge(entry.s))
+        var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
         sJoined = sJoined.copy(functionRecorder = sJoined.functionRecorder.recordPathSymbol(joinSymbol))
 
         joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew)}
