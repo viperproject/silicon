@@ -11,6 +11,7 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.rules.functionSupporter
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
@@ -2612,6 +2613,11 @@ object utils {
    */
   def cartesianProduct[A](xs: Iterable[Iterable[A]]): Seq[Seq[A]] =
     xs.foldLeft(Seq(Seq.empty[A])){(x, y) => for (a <- x; b <- y) yield a :+ b}
+
+  def makeAllLimited(t: Term) = t.transform {
+    case app@App(fun: HeapDepFun, _) =>
+      app.copy(applicable = functionSupporter.limitedVersion(fun))
+  }()
 }
 
 object implicits {

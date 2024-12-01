@@ -21,6 +21,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms.utils.makeAllLimited
 import viper.silicon.utils.ast._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
@@ -1348,10 +1349,31 @@ object evaluator extends EvaluationRules {
       case (s2, ts1, es1New1, Some((ts2, es2New1, tTriggers, (tAuxGlobal, tAux), eAuxExps, additionalPossibleTriggers))) =>
         val s3 = s.copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
                 .preserveAfterLocalEvaluation(s2)
-        Q(s3, tVars, Option.when(withExp)(varPairs map (e => ast.LocalVarDecl(e._2.get.name, e._2.get.typ)(e._2.get.pos, e._2.get.info, e._2.get.errT))), ts1, es1New1, Some((ts2, es2New1, tTriggers, (tAuxGlobal, tAux), Option.when(withExp)((eAuxExps.get._1, eAuxExps.get._2)))), v)
+        val triggerTerms = tTriggers.flatMap(_.p)
+        val triggerTermFuncs = triggerTerms.flatMap{
+          case App(f: HeapDepFun, _) => Some(f)
+          case _ => None
+        }.toSet
+        val ts2TriggersReplaced = replaceTriggersIn(triggerTerms, ts2)
+        val tAuxTriggersReplaced = replaceTriggersIn(triggerTerms, tAux)
+        val tAuxGlobalTriggersReplaced = replaceTriggersIn(triggerTerms, tAuxGlobal)
+        Q(s3, tVars, Option.when(withExp)(varPairs map (e => ast.LocalVarDecl(e._2.get.name, e._2.get.typ)(e._2.get.pos, e._2.get.info, e._2.get.errT))), ts1, es1New1, Some((ts2TriggersReplaced, es2New1, tTriggers, (tAuxGlobalTriggersReplaced, tAuxTriggersReplaced), Option.when(withExp)((eAuxExps.get._1, eAuxExps.get._2)))), v)
       case (s2, ts1, es1New1, None) =>
         Q(s2, tVars, Option.when(withExp)(varPairs map (e => ast.LocalVarDecl(e._2.get.name, e._2.get.typ)(e._2.get.pos, e._2.get.info, e._2.get.errT))), ts1, es1New1, None, v)
     }
+  }
+
+  private def replaceTriggersIn[T <: Term](triggerTerms: Seq[Term], replaceIn: Seq[T]) : Seq[T] = {
+    val triggerTermFuncs = triggerTerms.flatMap {
+      case App(f: HeapDepFun, _) => Some(f)
+      case _ => None
+    }.toSet
+
+    replaceIn.map(t => {
+      t.transform {
+        case app@App(f: HeapDepFun, _) if triggerTermFuncs.contains(f) && triggerTerms.contains(makeAllLimited(app)) => makeAllLimited(app)
+      }()
+    })
   }
 
   private def evalImplies(s: State,
@@ -1563,22 +1585,10 @@ object evaluator extends EvaluationRules {
                          (Q: (State, Seq[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    def transformPotentialFuncApp(t: Term) = t match {
-      case app@App(fun: HeapDepFun, _) =>
-        /** Heap-dependent functions that are used as tTriggerSets should be used
-          * in the limited version, because it allows for more instantiations.
-          * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
-          *
-          */
-        app.copy(applicable = functionSupporter.limitedVersion(fun))
-      case other =>
-        other
-    }
-
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map {
         case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
-          val cachedTrigger = s.possibleTriggers.get(pt).map(t => transformPotentialFuncApp(t))
+          val cachedTrigger = s.possibleTriggers.get(pt).map(t => makeAllLimited(t))
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
         case e => (None, Some(e))
       }.unzip match {
@@ -1647,7 +1657,7 @@ object evaluator extends EvaluationRules {
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
-        Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
+        Q(s, cachedTriggerTerms ++ remainingTriggerTerms.map(t => makeAllLimited(t)), v)
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringVerification(Seq(

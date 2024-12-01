@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.utils.makeAllLimited
 import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
 trait ExpressionTranslator {
@@ -91,11 +92,7 @@ trait ExpressionTranslator {
 
         /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]] */
         val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
-          f(trigger) match {
-            case app @ App(fun: HeapDepFun, _) =>
-              app.copy(applicable = functionSupporter.limitedVersion(fun))
-            case other => other
-          }
+          makeAllLimited(f(trigger))
         )))
         val weight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
           case Some(w) =>
@@ -117,10 +114,14 @@ trait ExpressionTranslator {
             case _ => None
           }
         }
+        val triggerTerms = translatedTriggers.flatMap(_.p)
+        val translatedBody = f(body).transform{
+          case app@App(_: HeapDepFun, _) if triggerTerms.contains(makeAllLimited(app)) => makeAllLimited(app)
+        }()
 
         Quantification(qantOp,
                        vars map (v => Var(Identifier(v.name), toSort(v.typ), false)),
-                       f(body),
+                       translatedBody,
                        translatedTriggers,
                        "",
                        false,
