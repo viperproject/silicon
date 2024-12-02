@@ -406,13 +406,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         })
         } else {
           if (!moreNeeded) {
-            Q(s, newHeap, None, v)
+            Q(s0, newHeap, None, v)
           } else {
             v.decider.assert(pNeeded === NoPerm) {
               case true =>
-                Q(s, newHeap, None, v)
+                Q(s0, newHeap, None, v)
               case false =>
-                createFailure(ve, v, s, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
+                createFailure(ve, v, s0, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
             }
           }
         }
