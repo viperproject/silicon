@@ -236,16 +236,16 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
-    if (!s.hackIssue387DisablePermissionConsumption)
+    if (!s.assertReadAccessOnly)
       actualConsumeComplete(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v)(Q)
-    else {
-      summariseHeapAndAssertReadAccess(s, h, resource, args, argsExp, returnSnap, ve, v)(Q)
-    }
+    else
+      summariseHeapAndAssertReadAccess(s, h, resource, perms, args, argsExp, returnSnap, ve, v)(Q)
   }
 
   private def summariseHeapAndAssertReadAccess(s: State,
                                                h: Heap,
                                                resource: ast.Resource,
+                                               perm: Term,
                                                args: Seq[Term],
                                                argsExp: Option[Seq[ast.Exp]],
                                                returnSnap: Boolean,
@@ -256,9 +256,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     val id = ChunkIdentifier(resource, s.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
+
     if (returnSnap) {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
-        v.decider.assert(IsPositive(permSum)) {
+        v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum))) {
           case true =>
             Q(s1, h, Some(snap), v1)
           case false =>
@@ -266,7 +267,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         })
     } else {
       val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp, v)
-      v.decider.assert(IsPositive(permSum)) {
+      v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum))) {
         case true =>
           Q(s1, h, None, v)
         case false =>
@@ -377,7 +378,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
-          val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties)
+          val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
         }
         val newHeap = Heap(allChunks)

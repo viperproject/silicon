@@ -17,7 +17,7 @@ import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.{And, Ite, NoPerm}
+import viper.silicon.state.terms.{And, Ite}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.BigAnd
@@ -64,7 +64,7 @@ final case class State(g: Store = Store(),
                        exhaleExt: Boolean = false,
 
                        ssCache: SsCache = Map.empty,
-                       hackIssue387DisablePermissionConsumption: Boolean = false,
+                       assertReadAccessOnly: Boolean = false,
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
@@ -86,6 +86,10 @@ final case class State(g: Store = Store(),
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
     currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
+  }
+
+  val mayAssumeUpperBounds: Boolean = {
+    currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrePermAmounts()
   }
 
   val isLastRetry: Boolean = retryLevel == 0
@@ -172,7 +176,7 @@ object State {
                  partiallyConsumedHeap1,
                  permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
-                 ssCache1, hackIssue387DisablePermissionConsumption1,
+                 ssCache1, assertReadAccessOnly1,
                  qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
                  moreCompleteExhale, moreJoins) =>
@@ -197,7 +201,7 @@ object State {
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
                      `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
-                     ssCache2, `hackIssue387DisablePermissionConsumption1`,
+                     ssCache2, `assertReadAccessOnly1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
                      moreCompleteExhale2, `moreJoins`) =>
@@ -328,7 +332,7 @@ object State {
       partiallyConsumedHeap1,
       permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
       reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
-      ssCache1, hackIssue387DisablePermissionConsumption1,
+      ssCache1, assertReadAccessOnly1,
       qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
       moreCompleteExhale, moreJoins) =>
@@ -352,7 +356,7 @@ object State {
           partiallyConsumedHeap2,
           `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
           reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
-          ssCache2, `hackIssue387DisablePermissionConsumption1`,
+          ssCache2, `assertReadAccessOnly1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
           moreCompleteExhale2, `moreJoins`) =>

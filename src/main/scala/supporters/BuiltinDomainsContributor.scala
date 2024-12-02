@@ -180,7 +180,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
 
     val resolver = viper.silver.parser.Resolver(parsedProgram)
-    val resolved = resolver.run.get
+    val resolved = resolver.run(false).get
     val translator = viper.silver.parser.Translator(resolved)
     val program = translator.translate.get
 
