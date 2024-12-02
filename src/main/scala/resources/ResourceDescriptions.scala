@@ -6,6 +6,8 @@
 
 package viper.silicon.resources
 
+import scala.annotation.unused
+
 /**
   * A resource description contains the assumptions that are added at several points during verificaton.
   * <ul>
@@ -24,8 +26,8 @@ trait ResourceDescription {
 }
 
 abstract class BasicDescription extends ResourceDescription {
-  override def instanceProperties(withPermUpperBounds: Boolean) = Seq(permAtLeastZero)
-  override def delayedProperties(withPermUpperBounds: Boolean) = Seq(valNeqImpliesLocNeq)
+  override def instanceProperties(@unused withPermUpperBounds: Boolean) = Seq(permAtLeastZero)
+  override def delayedProperties(@unused withPermUpperBounds: Boolean) = Seq(valNeqImpliesLocNeq)
 
   def permAtLeastZero: Property = {
     val description = "Permissions are non-negative"
