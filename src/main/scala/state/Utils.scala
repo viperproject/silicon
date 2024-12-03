@@ -159,9 +159,9 @@ package object utils {
       case Not(t) => Not(go(t))
       case Or(ts) => Or(ts map go : _*)
       case And(ts) => And(ts map go : _*)
-      case Implies(t0, t1) => Implies(go(t0), go(t1))
+      case Implies(t0, t1) => Implies.createNoR(go(t0), go(t1))
       case Iff(t0, t1) => Iff(go(t0), go(t1))
-      case Ite(t0, t1, t2) => Ite(go(t0), go(t1), go(t2))
+      case Ite(t0, t1, t2) => Ite.createNoR(go(t0), go(t1), go(t2))
       case BuiltinEquals(t0, t1) =>
         val t0New = go(t0)
         val t1New = go(t1)

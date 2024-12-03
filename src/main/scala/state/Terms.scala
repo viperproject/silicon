@@ -699,6 +699,17 @@ object SimplifyingForall {
       // This assumes that every sort is non-empty, which should be a safe assumption, since otherwise, declaring a
       // variable of that sort would also already be unsound.
       False
+    case Implies(c, b) =>
+      val eqs = Ite.getEqualities(c)
+      val qvarDefs = qvars.map(qv => eqs.find(e => e.p0 == qv || e.p1 == qv))
+      if (qvarDefs.forall(_.isDefined) && qvarDefs.distinct.length == qvarDefs.length) {
+        val qvarMap: scala.collection.immutable.Map[Term, Term] = qvars.zip(qvarDefs.map(_.get)).map(qd => (qd._1, if (qd._2.p0 == qd._1) qd._2.p1 else qd._2.p0)).toMap
+        val newBody = Ite.replace(b, qvarMap)
+        val newCond = Ite.replace(c, qvarMap)
+        Implies.createNoR(newCond, newBody)
+      } else {
+        Forall(qvars, tBody, triggers)
+      }
     case _ =>
       if (qvars.isEmpty) {
         tBody
@@ -1028,15 +1039,51 @@ class Implies(val p0: Term, val p1: Term) extends BooleanTerm
 }
 
 object Implies extends CondFlyweightTermFactory[(Term, Term), Implies] {
-  @tailrec
+
   override def apply(v0: (Term, Term)): Term = v0 match {
     case (True, e1) => e1
     case (False, _) => True
     case (_, True) => True
-    case (e0, Implies(e10, e11)) => Implies(And(e0, e10), e11)
+    case (e0, Implies(e10, e11)) =>
+      val e0t = Ite.replaceT(e0, e10)
+      Implies.createNoR(And(e0t, e10), e11)
+    case (e0, e1) if e0 == e1 => True
+    case (c, e1) =>
+      val eqs = Ite.getEqualities(c)
+      val tlcs = c.topLevelConjuncts
+      if (true) {
+        val eqMap: scala.collection.immutable.Map[Term, Term] = (tlcs.map(_ -> True)).toMap ++ eqs.map(eq => eq.p0 -> eq.p1).toMap
+        createNoR(c, Ite.replace(e1, eqMap))
+      } else {
+        createIfNonExistent(v0)
+      }
+    case (e0, e1) => createIfNonExistent(e0, e1)
+  }
+
+  def createNoR(v0: (Term, Term)): Term = v0 match {
+    case (True, e1) => e1
+    case (False, _) => True
+    case (_, True) => True
+    case (e0, Implies(e10, e11)) =>
+      val e0t = Ite.replaceT(e0, e10)
+      Implies.createNoR(And(e0t, e10), e11)
     case (e0, e1) if e0 == e1 => True
     case (e0, e1) => createIfNonExistent(e0, e1)
   }
+
+  /*
+  case (c, e1, e2) =>
+    val eqs = getEqualities(c)
+    val tlcs = c.topLevelConjuncts
+    if (true) {
+      val eqMap: scala.collection.immutable.Map[Term, Term] = (tlcs.map(_ -> True)).toMap ++ eqs.map(eq => eq.p0 -> eq.p1).toMap
+      val eqFalseMap: scala.collection.immutable.Map[Term, Term] = Map(c -> False)
+      createNoR(c, replace(e1, eqMap), replace(e2, eqFalseMap))
+    } else {
+      createIfNonExistent(v0)
+    }
+
+   */
 
   override def actualCreate(args: (Term, Term)): Implies = new Implies(args._1, args._2)
 }
@@ -1078,16 +1125,50 @@ object Ite extends CondFlyweightTermFactory[(Term, Term, Term), Ite] {
     case (e0, False, True) => Not(e0)
     case (c, e1, e2) =>
       val eqs = getEqualities(c)
-      if (eqs.nonEmpty) {
-        val eqMap: scala.collection.immutable.Map[Term, Term] = eqs.map(eq => eq.p0 -> eq.p1).toMap
-        val eqFalseMap: scala.collection.immutable.Map[Term, Term] = eqs.flatMap(eq => {
-          Seq(eq -> False, eq.flip() -> False)
-        }).toMap
-        createIfNonExistent(c, replace(e1, eqMap), replace(e2, eqFalseMap))
+      val tlcs = c.topLevelConjuncts
+      if (true) {
+        val eqMap: scala.collection.immutable.Map[Term, Term] = (tlcs.map(_ -> True)).toMap ++ eqs.map(eq => eq.p0 -> eq.p1).toMap
+        val eqFalseMap: scala.collection.immutable.Map[Term, Term] = Map(c -> False)
+        createNoR(c, replace(e1, eqMap), replace(e2, eqFalseMap))
       } else {
         createIfNonExistent(v0)
       }
     case _ => createIfNonExistent(v0)
+  }
+
+  def createNoR(v0: (Term, Term, Term)) = v0 match {
+    case (_, e1, e2) if e1 == e2 => e1
+    case (True, e1, _) => e1
+    case (False, _, e2) => e2
+    case (e0, True, False) => e0
+    case (e0, False, True) => Not(e0)
+    case _ => createIfNonExistent(v0)
+  }
+
+  def replace(t: Term, assumption: Term): (Term, Term) = {
+    val eqs = getEqualities(assumption)
+    val tlcs = assumption.topLevelConjuncts
+    if (true) {
+      val eqMap: scala.collection.immutable.Map[Term, Term] = tlcs.map(tlc => tlc -> True).toMap ++ eqs.map(eq => eq.p0 -> eq.p1).toMap
+      val eqFalseMap: scala.collection.immutable.Map[Term, Term] = Map(assumption -> False)
+      val tTrue = replace(t, eqMap)
+      val tFalse = replace(t, eqFalseMap)
+      (tTrue, tFalse)
+    } else {
+      (t, t)
+    }
+  }
+
+  def replaceT(t: Term, assumption: Term): Term = {
+    val eqs = getEqualities(assumption)
+    val tlcs = assumption.topLevelConjuncts
+    if (true) {
+      val eqMap: scala.collection.immutable.Map[Term, Term] = tlcs.map(tlc => tlc -> True).toMap ++ eqs.map(eq => eq.p0 -> eq.p1).toMap
+      val tTrue = replace(t, eqMap)
+      tTrue
+    } else {
+      t
+    }
   }
 
   def replace(t: Term, rps: scala.collection.immutable.Map[Term, Term]): Term = {
@@ -1164,8 +1245,12 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Conditio
 object BuiltinEquals extends CondFlyweightTermFactory[(Term, Term), BuiltinEquals] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (p0, p1) if p0 == p1 && p0.isDefinitelyNonTriggering && p1.isDefinitelyNonTriggering => True
-    case (p0, Ite(c, t1, t2)) => Ite(c, BuiltinEquals(p0, t1), BuiltinEquals(p0, t2))
-    case (Ite(c, t1, t2), p0) => Ite(c, BuiltinEquals(t1, p0), BuiltinEquals(t2, p0))
+    case (p0, Ite(c, t1, t2)) =>
+      val (p0t, p0f) = Ite.replace(p0, c)
+      Ite.createNoR(c, BuiltinEquals(p0t, t1), BuiltinEquals(p0f, t2))
+    case (Ite(c, t1, t2), p0) =>
+      val (p0t, p0f) = Ite.replace(p0, c)
+      Ite.createNoR(c, BuiltinEquals(t1, p0t), BuiltinEquals(t2, p0f))
     case (p0: PermLiteral, p1: PermLiteral) =>
       // NOTE: The else-case (False) is only justified because permission literals are stored in a normal form
       // such that two literals are semantically equivalent iff they are syntactically equivalent.
@@ -1332,12 +1417,16 @@ object WildcardSimplifyingPermTimes extends ((Term, Term) => Term) {
     case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
     case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
     case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
-    case (Ite(c, t1, t2), t3) => Ite(c, WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    case (Ite(c, t1, t2), t3) =>
+      val (t3t, t3f) = Ite.replace(t3, c)
+      Ite.createNoR(c, WildcardSimplifyingPermTimes(t1, t3t), WildcardSimplifyingPermTimes(t2, t3f))
     case (PermPlus(t1, t2), t3) => PermPlus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
     case (t1, PermPlus(t2, t3)) => PermPlus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
     case (PermMinus(t1, t2), t3) => PermMinus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
     case (t1, PermMinus(t2, t3)) => PermMinus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
-    case (t1, Ite(c, t2, t3)) => Ite(c, WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) =>
+      val (t1t, t1f) = Ite.replace(t1, c)
+      Ite.createNoR(c, WildcardSimplifyingPermTimes(t1t, t2), WildcardSimplifyingPermTimes(t1f, t3))
     case _ => PermTimes(t0, t1)
   }
 }
@@ -1349,12 +1438,16 @@ object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
     case (NoPerm, _) => NoPerm
     case (_, NoPerm) => NoPerm
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
-    case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
+    case (Ite(c, t1, t2), t3) =>
+      val (t3t, t3f) = Ite.replace(t3, c)
+      Ite.createNoR(c, PermTimes(t1, t3t), PermTimes(t2, t3f))
     case (PermPlus(t1, t2), t3) => PermPlus(PermTimes(t1, t3), PermTimes(t2, t3))
     case (t1, PermPlus(t2, t3)) => PermPlus(PermTimes(t1, t2), PermTimes(t1, t3))
     case (PermMinus(t1, t2), t3) => PermMinus(PermTimes(t1, t3), PermTimes(t2, t3))
     case (t1, PermMinus(t2, t3)) => PermMinus(PermTimes(t1, t2), PermTimes(t1, t3))
-    case (t1, Ite(c, t2, t3)) => Ite(c, PermTimes(t1, t2), PermTimes(t1, t3))
+    case (t1, Ite(c, t2, t3)) =>
+      val (t1t, t1f) = Ite.replace(t1, c)
+      Ite.createNoR(c, PermTimes(t1t, t2), PermTimes(t1f, t3))
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -1442,8 +1535,12 @@ object PermPlus extends CondFlyweightTermFactory[(Term, Term), PermPlus] {
     case (FractionPerm(n1, d1), FractionPerm(n2, d2)) if d1 == d2 => FractionPerm(Plus(n1, n2), d1)
     case (PermMinus(t00, t01), t1) if t01 == t1 => t00
     case (t0, PermMinus(t10, t11)) if t11 == t0 => t10
-    case (Ite(c, t1, t2), t3) => Ite(c, PermPlus(t1, t3), PermPlus(t2, t3))
-    case (t1, Ite(c, t2, t3)) => Ite(c, PermPlus(t1, t2), PermPlus(t1, t3))
+    case (Ite(c, t1, t2), t3) =>
+      val (t3t, t3f) = Ite.replace(t3, c)
+      Ite.createNoR(c, PermPlus(t1, t3t), PermPlus(t2, t3f))
+    case (t1, Ite(c, t2, t3)) =>
+      val (t1t, t1f) = Ite.replace(t1, c)
+      Ite.createNoR(c, PermPlus(t1t, t2), PermPlus(t1f, t3))
     case (PermMin(t0, t1), t2) => PermMin(PermPlus(t0, t2), PermPlus(t1, t2))
     case (PermMax(t0, t1), t2) => PermMax(PermPlus(t0, t2), PermPlus(t1, t2))
     case (t0, PermMax(t1, t2)) => PermMax(PermPlus(t0, t1), PermPlus(t0, t2))
@@ -1481,8 +1578,12 @@ object PermMinus extends CondFlyweightTermFactory[(Term, Term), PermMinus] {
     case (PermMinus(t0, t1), t2) => PermMinus(t0, PermPlus(t1, t2))
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
-    case (Ite(c, t1, t2), t3) => Ite(c, PermMinus(t1, t3), PermMinus(t2, t3))
-    case (t1, Ite(c, t2, t3)) => Ite(c, PermMinus(t1, t2), PermMinus(t1, t3))
+    case (Ite(c, t1, t2), t3) =>
+      val (t3t, t3f) = Ite.replace(t3, c)
+      Ite.createNoR(c, PermMinus(t1, t3t), PermMinus(t2, t3f))
+    case (t1, Ite(c, t2, t3)) =>
+      val (t1t, t1f) = Ite.replace(t1, c)
+      Ite.createNoR(c, PermMinus(t1t, t2), PermMinus(t1f, t3))
     case (PermMin(p0, p1), p2) => PermMin(PermMinus(p0, p2), PermMinus(p1, p2))
     case (t0, PermMin(t1, t2)) => PermMax(PermMinus(t0, t1), PermMinus(t0, t2))
     case (PermMax(p0, p1), p2) => PermMax(PermMinus(p0, p2), PermMinus(p1, p2))
@@ -1510,9 +1611,11 @@ object PermLess extends CondFlyweightTermFactory[(Term, Term), PermLess] {
       case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal < p1.literal) True else False
 
       case (t0, Ite(tCond, tIf, tElse)) =>
-        Ite(tCond, PermLess(t0, tIf), PermLess(t0, tElse))
+        val (t0t, t0f) = Ite.replace(t0, tCond)
+        Ite.createNoR(tCond, PermLess(t0t, tIf), PermLess(t0f, tElse))
       case (Ite(tCond, tIf, tElse), t0) =>
-        Ite(tCond, PermLess(tIf, t0), PermLess(tElse, t0))
+        val (t0t, t0f) = Ite.replace(t0, tCond)
+        Ite.createNoR(tCond, PermLess(tIf, t0t), PermLess(tElse, t0f))
 
       case _ => createIfNonExistent(v0)
     }
@@ -1532,9 +1635,11 @@ object PermAtMost extends CondFlyweightTermFactory[(Term, Term), PermAtMost] {
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal <= p1.literal) True else False
     case (t0, t1) if t0 == t1 => True
     case (t0, Ite(tCond, tIf, tElse)) =>
-      Ite(tCond, PermAtMost(t0, tIf), PermAtMost(t0, tElse))
+      val (t0t, t0f) = Ite.replace(t0, tCond)
+      Ite.createNoR(tCond, PermAtMost(t0t, tIf), PermAtMost(t0f, tElse))
     case (Ite(tCond, tIf, tElse), t0) =>
-      Ite(tCond, PermAtMost(tIf, t0), PermAtMost(tElse, t0))
+      val (t0t, t0f) = Ite.replace(t0, tCond)
+      Ite(tCond, PermAtMost(tIf, t0t), PermAtMost(tElse, t0f))
     case _ => createIfNonExistent(v0)
   }
 
@@ -1556,9 +1661,11 @@ object PermMin extends CondFlyweightTermFactory[(Term, Term), PermMin] {
     case (t0, t1) if t0 == t1 => t0
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal > p1.literal) p1 else p0
     case (t0, Ite(tCond, tIf, tElse)) =>
-      Ite(tCond, PermMin(t0, tIf), PermMin(t0, tElse))
+      val (t0t, t0f) = Ite.replace(t0, tCond)
+      Ite.createNoR(tCond, PermMin(t0t, tIf), PermMin(t0f, tElse))
     case (Ite(tCond, tIf, tElse), t0) =>
-      Ite(tCond, PermMin(tIf, t0), PermMin(tElse, t0))
+      val (t0t, t0f) = Ite.replace(t0, tCond)
+      Ite.createNoR(tCond, PermMin(tIf, t0t), PermMin(tElse, t0f))
     case _ => createIfNonExistent(v0)
   }
 
@@ -1580,9 +1687,11 @@ object PermMax extends CondFlyweightTermFactory[(Term, Term), PermMax] {
     case (t0, t1) if t0 == t1 => t0
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal < p1.literal) p1 else p0
     case (t0, Ite(tCond, tIf, tElse)) =>
-      Ite(tCond, PermMax(t0, tIf), PermMax(t0, tElse))
+      val (t0t, t0f) = Ite.replace(t0, tCond)
+      Ite.createNoR(tCond, PermMax(t0t, tIf), PermMax(t0f, tElse))
     case (Ite(tCond, tIf, tElse), t0) =>
-      Ite(tCond, PermMax(tIf, t0), PermMax(tElse, t0))
+      val (t0t, t0f) = Ite.replace(t0, tCond)
+      Ite.createNoR(tCond, PermMax(tIf, t0t), PermMax(tElse, t0f))
     case _ => createIfNonExistent(v0)
   }
 
