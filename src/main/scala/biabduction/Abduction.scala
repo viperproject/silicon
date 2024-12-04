@@ -224,7 +224,7 @@ object AbductionFold extends AbductionRule {
             val tryFold = predicateSupporter.fold(q.s, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pveTransformed, q.v) {
               (s1, v1) =>
                 consumer.consume(s1, a, pve, v1) { (s2, _, v2) =>
-                  Success(Some(AbductionSuccess(s2, v2, Seq(v2.decider.pcs.duplicate()), Seq(), Seq(Fold(a)()))))
+                  Success(Some(AbductionSuccess(s2, v2, v2.decider.pcs.duplicate(), Seq(), Seq(Fold(a)()))))
               }
             }
             tryFold match {

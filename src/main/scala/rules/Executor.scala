@@ -271,7 +271,7 @@ object executor extends ExecutionRules {
             val sBody = s.copy(g = gBody, h = Heap())
 
             val invReses = executionFlowController.locally(s, v) ((sAbd, vAbd) =>
-              LoopInvariantSolver.solveLoopInvariants(sAbd, vAbd, sAbd.g.values.keys.toSeq, block, otherEdges, joinPoint)
+              LoopInvariantSolver.solveLoopInvariants(sAbd, vAbd, sAbd.g.values.keys.toSeq, block, otherEdges, joinPoint, vAbd.decider.pcs.branchConditions)
             ) 
             
             invReses match {
@@ -281,7 +281,7 @@ object executor extends ExecutionRules {
               case nfr: NonFatalResult => {
 
                 val (foundInvs, invSuc) = abductionUtils.getInvariantSuccesses(nfr) match {
-                  case Seq(invSuc) => (invSuc.invs.distinct, Success(Some(LoopInvariantSuccess(s, v, invSuc.invs.distinct, invSuc.loop))))
+                  case Seq(invSuc) => (invSuc.invs.distinct, Success(Some(LoopInvariantSuccess(s, v, invSuc.invs.distinct, invSuc.loop, v.decider.pcs.duplicate()))))
                   case Seq() => (Seq(), Success())
                 }
                 val invs = existingInvs ++ foundInvs

@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.biabduction.BiAbductionSolver.solveFraming
+import viper.silicon.biabduction.BiAbductionSolver.{resolveAbductionResults, resolveFramingResults, resolveLoopInvResults, solveFraming}
 import viper.silicon.biabduction.{VarTransformer, abductionUtils}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
@@ -120,12 +120,12 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
             })
             val ex = executionFlowController.locally(s2a, v2)((s3, v3) => {
               exec(s3, body, v3) { (s4, v4) => {
-                val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
                 val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
                 val vars = s4.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
                 val tra = VarTransformer(s4, v4, vars, s4.h)
                 solveFraming(s4, v4, postViolated, tra, abductionUtils.dummyEndStmt, posts) {
-                  frame => Success(Some(frame))
+                  frame => Success(Some(frame.copy(s = s4, v = v4))
+                  )
                 }
               }
               }
@@ -137,40 +137,16 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
       val abdResult: VerificationResult = result match {
         case suc: NonFatalResult if method.body.isDefined =>
           val abdFails = abductionUtils.getAbductionFailures(suc)
-          val mFail = abdFails.foldLeft(method){case (m1, fail) => fail.addToMethod(m1)}
+          
+          val mFail = abdFails.foldLeft(method) { case (m1, fail) => fail.addToMethod(m1) }
+          val mAbd = resolveAbductionResults(mFail, suc)
+          val mInv = mAbd.flatMap(m2 => resolveLoopInvResults(m2, suc))
+          val mFrame = mInv.flatMap(someM => resolveFramingResults(someM, suc))
 
-          val abdReses = abductionUtils.getAbductionSuccesses(suc)
-          // TODO we are generating duplicate statements
-          // Maybe try to generate bcs and if that fails then merge?
-          val abdCases = abdReses.groupBy(res => (res.trigger, res.stmts))
-          abdReses.foldLeft[Option[Method]](Some(mFail))((m1, res) => m1.flatMap{mm => res.addToMethod(mm)})
-          // Collect all the abductions and try to generate preconditions
-           match {
-            case None => Failure(Internal(reason = InternalReason(DummyNode, "Failed to generate preconditions from abduction results")))
+          mFrame match {
+            case None => Failure(Internal(reason = InternalReason(DummyNode, "Resolving Biabduction results failed")))
             case Some(m) =>
-              val invReses = abductionUtils.getInvariantSuccesses(suc)
-              val mInv = invReses.foldLeft[Method](m)((m1, res) => res.addToMethod(m1))
-
-              val frames = abductionUtils.getFramingSuccesses(suc)
-              //val frameBcs = frames.map{frame => frame.pcs.branchConditions}
-
-              // We can remove bcs that are present in all frames
-              //val toRemove = frameBcs.reduceLeft(_ intersect _)
-
-              //val toKeep = frames.zip(frameBcs.map{frame => frame.diff(toRemove)}).toMap
-
-              val frameCases = frames.groupBy(f => (f.posts, f.stmts))
-
-              val mPosts = frameCases.values.toSeq match {
-                case Seq(singleCase) => {
-                  singleCase.head.addToMethod(mInv)
-              }
-              }
-
-              //val mPosts = frames.foldLeft(mInv){case (m1, frame) => frame.addToMethod(m1)}
-
-              //val abducedMethod = mPosts.copy(pres = mPosts.pres.distinct, posts = mPosts.posts.distinct)(mPosts.pos, mPosts.info, mPosts.errT)
-              println("Original method: \n" + method.toString + "\nAbduced method: \n" + mPosts.toString)
+              println("Original method: \n" + method.toString + "\nAbduced method: \n" + m.toString)
               result
           }
         case _ => result
@@ -192,6 +168,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
     def stop(): Unit = {}
   }
 }
+
 /*
     private def handlePostConditions(s: State, method: ast.Method, posts: Seq[ast.Exp], v: Verifier): VerificationResult = {
       val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
