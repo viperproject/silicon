@@ -61,8 +61,12 @@ case class ProofObligation(s: State,
   private def chunkString(c: Chunk): String = {
     val res = c match {
       case bc: BasicChunk =>
+        val snapExpString = bc.snapExp match {
+          case Some(e) => s" -> ${Simplifier.simplify(e, true)}"
+          case _ => ""
+        }
         bc.resourceID match {
-          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${Simplifier.simplify(bc.permExp.get, true)})"
+          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${Simplifier.simplify(bc.permExp.get, true)})$snapExpString"
           case PredicateID => s"acc(${bc.id}(${bc.argsExp.mkString(", ")}), ${Simplifier.simplify(bc.permExp.get, true)})"
         }
       case mwc: MagicWandChunk =>
@@ -321,7 +325,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         obl.copy(timeout = Some(timeoutInt))
       }
     } catch {
-      case e: NumberFormatException =>
+      case _: NumberFormatException =>
         println("Invalid timeout value.")
         obl
     }

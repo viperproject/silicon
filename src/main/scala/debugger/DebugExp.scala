@@ -8,9 +8,8 @@ package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.PathConditions
-import viper.silicon.state.terms.{And, Exists, Forall, Implies, Quantification, Term, Trigger, True, Var}
+import viper.silicon.state.terms.{And, Exists, Forall, Implies, Quantification, Term, Trigger, Var}
 import viper.silver.ast
-import viper.silver.ast.TrueLit
 import viper.silver.ast.utility.Simplifier
 
 import scala.collection.mutable

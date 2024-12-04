@@ -18,7 +18,7 @@ class DebugParser extends FastParser {
     ((pp: (Position, Position)) => PVersionedIdnUseExp(name = parts(0), version = parts(1))(pp))
   }.pos
 
-  def debugOldLabel[$: P]: P[String] = (StringIn("debug") ~~ CharIn("@") ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!.opaque("debugOldLabel")
+  def debugOldLabel[$: P]: P[String] = (StringIn("debug") ~~ CharIn("@") ~~ CharIn("0-9", "A-Z", "a-z", "#$_.:").repX).!.opaque("debugOldLabel")
 
   def debugOldLabelUse[$: P]: P[PVersionedIdnUseExp] = P(debugOldLabel).map { case id =>
     val parts = id.split("@")

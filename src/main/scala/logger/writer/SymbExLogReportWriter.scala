@@ -31,7 +31,7 @@ object SymbExLogReportWriter {
   }
 
   private def heapChunkToJSON(chunk: Chunk) = chunk match {
-    case BasicChunk(PredicateID, id, args, _, snap, perm, _) =>
+    case BasicChunk(PredicateID, id, args, _, snap, _, perm, _) =>
       JsObject(
         "type" -> JsString("basic_predicate_chunk"),
         "predicate" -> JsString(id.toString),
@@ -40,7 +40,7 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case BasicChunk(FieldID, id, Seq(receiver), _, snap, perm, _) =>
+    case BasicChunk(FieldID, id, Seq(receiver), _, snap, _, perm, _) =>
       JsObject(
         "type" -> JsString("basic_field_chunk"),
         "field" -> JsString(id.toString),

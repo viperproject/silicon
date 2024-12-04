@@ -36,8 +36,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                             relevantChunks: Seq[NonQuantifiedChunk],
                             resource: ast.Resource,
                             args: Seq[Term],
-                            argsExp: Option[Seq[ast.Exp]],
-                            v: Verifier)
+                            argsExp: Option[Seq[ast.Exp]])
   : (State, Term, Option[ast.Exp]) = {
     Verifier.config.mapCache(s.ssCache.get((resource, relevantChunks, args))) match {
       case Some((_, _ ,_permissionSum, _permissionSumExp)) =>
@@ -102,8 +101,6 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     relevantChunks.foreach(ch => {
       val argumentEqualities =
         And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
-      val argumentEqualitiesExp =
-        Option.when(withExp)(BigAnd(ch.argsExp.get.zip(argsExp.get).map { case (e1, e2) => ast.EqCmp(e1, e2)() }))
 
       summarisingSnapshotDefinitions :+=
         Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
@@ -144,7 +141,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     summarisingSnapshotDefinitions =
       summarisingSnapshotDefinitions map (_.replace(`?s`, summarisingSnapshot))
 
-    val (_, permissionSum, permissionSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp, v)
+    val (_, permissionSum, permissionSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
 
     val ssc1 = s.ssCache + ((resource, relevantChunks, args) -> (Some(taggedSummarisingSnapshot), Some(summarisingSnapshotDefinitions), permissionSum, permissionSumExp))
     val s1 = s.copy(ssCache = ssc1)
@@ -265,7 +262,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
         })
     } else {
-      val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp, v)
+      val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
       v.decider.assert(IsPositive(permSum)) {
         case true =>
           Q(s1, h, None, v)
