@@ -135,7 +135,8 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
   override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
 }
 
-case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Exp)],
+case class SiliconDebuggingFailureContext(branchConditions: Seq[Term],
+                                          branchConditionExps: Seq[(ast.Exp, ast.Exp)],
                                           counterExample: Option[Counterexample],
                                           reasonUnknown: Option[String],
                                           state: Option[State],
