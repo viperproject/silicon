@@ -1981,11 +1981,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
         Left(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
       case qfc: QuantifiedFieldChunk if qfc.singletonArguments.isDefined =>
-        Right(qfc.singletonArguments.get)
+        Right(qfc.singletonArguments.get, qfc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
         Left(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.singletonArguments.isDefined =>
-        Right(qpc.singletonArguments.get)
+        Right(qpc.singletonArguments.get, qpc.condition)
       case _ => return None
     }
     val relevantChunks: Iterable[QuantifiedBasicChunk] = chunks.flatMap {
@@ -1995,19 +1995,25 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val (receiverTerms, quantVars, cond) = lr match {
       case Left(tuple) => tuple
-      case Right(singletonArguments) =>
+      case Right((singletonArguments, cond)) =>
         return relevantChunks.find { ch =>
           val chunkInfo = ch match {
             case qfc: QuantifiedFieldChunk if qfc.singletonArguments.isDefined =>
-              Some(qfc.singletonArguments.get)
+              Some(qfc.singletonArguments.get, qfc.condition)
             case qpc: QuantifiedPredicateChunk if qpc.singletonArguments.isDefined =>
-              Some(qpc.singletonArguments.get)
+              Some(qpc.singletonArguments.get, qpc.condition)
             case _ => None
           }
           chunkInfo match {
-            case Some(cSingletonArguments) =>
+            case Some((cSingletonArguments, cCond)) =>
+
               val equalityTerm = And(singletonArguments.zip(cSingletonArguments).map { case (a, b) => a === b })
-              val result = v.decider.check(equalityTerm, Verifier.config.checkTimeout())
+              // The conditions of two chunks with the same receivers can differ if they originate from separate branches
+              // that were joined. In such cases, additional conjuncts might have been added to the conditions.
+              // Hence, we need to compare the conditions for equality in addition to verifying that the receivers match.
+              val equalityCond = And(cond.replace(chunk.quantifiedVars, singletonArguments),
+                cCond.replace(ch.quantifiedVars, cSingletonArguments))
+              val result = v.decider.check(And(equalityCond, equalityTerm), Verifier.config.checkTimeout())
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Chunks alias", true))
