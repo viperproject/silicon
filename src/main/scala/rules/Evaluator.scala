@@ -1562,22 +1562,10 @@ object evaluator extends EvaluationRules {
                          (Q: (State, Seq[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    def transformPotentialFuncApp(t: Term) = t match {
-      case app@App(fun: HeapDepFun, _) =>
-        /** Heap-dependent functions that are used as tTriggerSets should be used
-          * in the limited version, because it allows for more instantiations.
-          * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
-          *
-          */
-        app.copy(applicable = functionSupporter.limitedVersion(fun))
-      case other =>
-        other
-    }
-
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map {
         case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
-          val cachedTrigger = s.possibleTriggers.get(pt).map(t => transformPotentialFuncApp(t))
+          val cachedTrigger = s.possibleTriggers.get(pt)
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
         case e => (None, Some(e))
       }.unzip match {

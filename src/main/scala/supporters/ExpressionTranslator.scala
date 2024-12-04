@@ -89,14 +89,7 @@ trait ExpressionTranslator {
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
 
-        /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]] */
-        val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
-          f(trigger) match {
-            case app @ App(fun: HeapDepFun, _) =>
-              app.copy(applicable = functionSupporter.limitedVersion(fun))
-            case other => other
-          }
-        )))
+        val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger => f(trigger))))
         val weight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
           case Some(w) =>
             if (w.weight >= 0) {
