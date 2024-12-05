@@ -49,10 +49,18 @@ trait Verifier {
   def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > errorsReportedSoFar.get()
     || Verifier.config.numberOfErrorsToReport() == 0);
 
+  /**
+    * Returns debug labels for 1) the given heap (will reuse an existing one if one already exists), independently of
+    * the position of the current expression, and 2) the current expression in the given heap.
+    * @param s the current state
+    * @param pos the position of the current expression
+    * @param h the heap to consider, if not the heap from state s
+    * @return a pair containing the label of the given heap, and the label of the current expression in the given heap
+    */
   def getDebugOldLabel(s: State, pos: ast.Position, h: Option[Heap] = None): (String, String) = {
     val posString = pos match {
       case column: ast.HasLineColumn => s"l:${column.line + 1}.${column.column + 1}"
-      case _ => s"line:unknown"
+      case _ => s"l:unknown"
     }
     val heap = h match {
       case Some(heap) => heap
