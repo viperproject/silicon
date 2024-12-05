@@ -96,7 +96,7 @@ trait SymbolicExecutionRules {
 
     if (Verifier.config.enableDebugging()){
       val assumptions = v.decider.pcs.assumptionExps
-      res.failureContexts = Seq(SiliconDebuggingFailureContext(v.decider.pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get),
+      res.failureContexts = Seq(SiliconDebuggingFailureContext(v.decider.pcs.branchConditions, v.decider.pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get),
         counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
         v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get))
     } else {
