@@ -8,9 +8,8 @@ package viper.silicon.debugger
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.PathConditions
-import viper.silicon.state.terms.{And, Exists, Forall, Implies, Quantification, Term, Trigger, True, Var}
+import viper.silicon.state.terms.{And, Exists, Forall, Implies, Quantification, Term, Trigger, Var}
 import viper.silver.ast
-import viper.silver.ast.TrueLit
 import viper.silver.ast.utility.Simplifier
 
 import scala.collection.mutable
@@ -139,9 +138,10 @@ class DebugExp(val id: Int,
     }
   }
 
-  def getTopLevelString(currDepth: Int): String = {
-    val delimiter = if (finalExp.isDefined && description.isDefined) ": " else ""
-    "\n\t" + ("\t"*currDepth) + "[" + id + "] " + description.getOrElse("") + delimiter + finalExp.getOrElse("")
+  def getTopLevelString(currDepth: Int, config: DebugExpPrintConfiguration): String = {
+    val toDisplay = if (config.printInternalTermRepresentation) term else finalExp
+    val delimiter = if (toDisplay.isDefined && description.isDefined) ": " else ""
+    "\n\t" + ("\t"*currDepth) + "[" + id + "] " + description.getOrElse("") + delimiter + toDisplay.getOrElse("")
   }
 
 
@@ -149,7 +149,7 @@ class DebugExp(val id: Int,
     if (isInternal_ && !config.isPrintInternalEnabled){
       return ""
     }
-    getTopLevelString(currDepth) + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
+    getTopLevelString(currDepth, config) + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
   }
 
   def getExpWithId(id: Int, visited: mutable.HashSet[DebugExp]): Option[DebugExp] = {
@@ -198,7 +198,7 @@ class ImplicationDebugExp(id: Int,
       }
 
       if (children.nonEmpty) {
-        getTopLevelString(currDepth) + " ==> " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
+        getTopLevelString(currDepth, config) + " ==> " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
       } else {
         "true"
       }
@@ -231,7 +231,7 @@ class QuantifiedDebugExp(id: Int,
     if (qvars.nonEmpty) {
       "\n\t" + ("\t"*currDepth) + "[" + id + "] " + (if (quantifier == "QA") "forall" else "exists") + " " + qvars.mkString(", ") + " :: " + childrenToString(currDepth, math.max(maxDepth, config.nodeToHierarchyLevelMap.getOrElse(id, 0)), config)
     } else {
-      getTopLevelString(currDepth)
+      getTopLevelString(currDepth, config)
     }
   }
 }
@@ -243,6 +243,7 @@ class DebugExpPrintConfiguration {
   var printHierarchyLevel: Int = 2
   var nodeToHierarchyLevelMap: Map[Int, Int] = Map.empty
   var isPrintAxiomsEnabled: Boolean = false
+  var printInternalTermRepresentation: Boolean = false
 
   def setPrintHierarchyLevel(level: String): Unit ={
     printHierarchyLevel = level match {
