@@ -280,8 +280,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     while (true) {
       println(s"\nEnter 'q' to quit, 'z' to zoom in on (i.e., show all children of) an assumption, " +
         s"'r' to reset the proof obligation, 'ra' to remove assumptions, 'af' to add free assumptions, " +
-        s"'ap' prove additional assumptions, 'p' to execute proof, 'c' to change print configuration, " +
-        s"'s' to change the SMT solver, 't' to change the timeout")
+        s"'ap' prove additional assumptions, 'e' to evaluate an expression, 'p' to execute proof, " +
+        s"'c' to change print configuration, 's' to change the SMT solver, 't' to change the timeout")
       try {
         val userInput = readLine()
         userInput.toLowerCase match {
@@ -306,6 +306,8 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
           //  obl = chooseAssertion(obl)
           //  println(s"Current obligation:\n$obl")
           //  assertProofObligation(obl)
+          case "e" | "eval" =>
+            obl = evalExpr(obl)
           case "p" | "prove" =>
             assertProofObligation(obl)
           case "c" | "config" =>
@@ -399,11 +401,30 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     if (userInput.isEmpty || userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
-      val assumptionE = translateStringToExp(userInput, obl)
-      evalAssumption(assumptionE, obl, free, obl.v) match {
+      val assumptionE = translateStringToExp(userInput, obl, true)
+      evalAssumption(assumptionE, obl, true, free, obl.v) match {
         case Some((resS, resT, resE, evalAssumptions)) =>
           val allAssumptions = obl.assumptionsExp ++ evalAssumptions + DebugExp.createInstance(assumptionE, resE).withTerm(resT)
           obl.copy(s = resS, assumptionsExp = allAssumptions)
+        case None =>
+          obl
+      }
+    }
+  }
+
+  private def evalExpr(obl: ProofObligation): ProofObligation = {
+    println(s"Enter the expression you want to evaluate:")
+    val userInput = readLine()
+    if (userInput.isEmpty || userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
+      obl
+    } else {
+      val assumptionE = translateStringToExp(userInput, obl, false)
+      evalAssumption(assumptionE, obl, false, false, obl.v) match {
+        case Some((resS, resT, resE, evalAssumptions)) =>
+          println("Evaluation successful!")
+          println("Result: " + resE.toString)
+          println("Internal result term:" + resT.toString)
+          obl.copy(s = resS)
         case None =>
           obl
       }
@@ -416,7 +437,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     if (userInput.equalsIgnoreCase("s") || userInput.equalsIgnoreCase("skip")) {
       obl
     } else {
-      val assertionE = translateStringToExp(userInput, obl)
+      val assertionE = translateStringToExp(userInput, obl, true)
       var resT: Term = null
       var resE: ast.Exp = null
       var resV: Verifier = null
@@ -436,7 +457,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
-  private def translateStringToExp(str: String, obl: ProofObligation): ast.Exp ={
+  private def translateStringToExp(str: String, obl: ProofObligation, expectBool: Boolean): ast.Exp ={
     def parseToPExp(): PExp = {
       try {
         val fp = new DebugParser()
@@ -453,7 +474,10 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     def typecheckPExp(pexp: PExp): Unit = {
       try {
         obl.resolver.typechecker.names.check(pexp, None, obl.resolver.typechecker.curMember)
-        obl.resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
+        if (expectBool)
+          obl.resolver.typechecker.check(pexp, PPrimitiv(PReserved(PKw.Bool)((NoPosition, NoPosition)))())
+        else
+          obl.resolver.typechecker.checkTopTyped(pexp, None)
       } catch {
         case e: Throwable => println(s"Error while typechecking $str: ${e.getMessage}")
           throw e
@@ -480,7 +504,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     translatePExp(pexp)
   }
 
-  private def evalAssumption(e: ast.Exp, obl: ProofObligation, isFree: Boolean, v: Verifier): Option[(State, Term, ast.Exp, InsertionOrderedSet[DebugExp])] = {
+  private def evalAssumption(e: ast.Exp, obl: ProofObligation, assume: Boolean, isFree: Boolean, v: Verifier): Option[(State, Term, ast.Exp, InsertionOrderedSet[DebugExp])] = {
     var resT: Term = null
     var resS: State = null
     var resE: ast.Exp = null
@@ -499,10 +523,12 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
 
     verificationResult match {
       case Success() =>
-        val proved = isFree || resV.decider.prover.assert(resT, None)
+        val proved = !assume || isFree || resV.decider.prover.assert(resT, None)
         if (proved) {
-          println("Assumption was added successfully!")
-          resV.asInstanceOf[WorkerVerifier].decider.debuggerAssume(Seq(resT), null)
+          if (assume) {
+            println("Assumption was added successfully!")
+            resV.asInstanceOf[WorkerVerifier].decider.debuggerAssume(Seq(resT), null)
+          }
           Some((resS, resT, resE, evalPcs.assumptionExps))
         } else {
           println("Fail! Could not prove assumption. Skipping")

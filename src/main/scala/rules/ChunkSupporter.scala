@@ -47,7 +47,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier)
-            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+            (Q: (State, Heap, Term, Option[ast.Exp], Verifier) => VerificationResult)
             : VerificationResult
 
   def findChunk[CH <: NonQuantifiedChunk: ClassTag]
@@ -222,15 +222,15 @@ object chunkSupporter extends ChunkSupportRules {
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier)
-            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+            (Q: (State, Heap, Term, Option[ast.Exp], Verifier) => VerificationResult)
             : VerificationResult = {
 
-    executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
+    executionFlowController.tryOrFail3[Heap, Term, Option[ast.Exp]](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
         if (s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
         else lookupGreedy _
-      lookupFunction(s1, s1.h, resource, args, argsExp, ve, v1)((s2, tSnap, v2) =>
-        QS(s2.copy(h = s.h), s2.h, tSnap, v2))
+      lookupFunction(s1, s1.h, resource, args, argsExp, ve, v1)((s2, tSnap, eSnap, v2) =>
+        QS(s2.copy(h = s.h), s2.h, tSnap, eSnap, v2))
     })(Q)
   }
 
@@ -241,14 +241,14 @@ object chunkSupporter extends ChunkSupportRules {
                            argsExp: Option[Seq[ast.Exp]],
                            ve: VerificationError,
                            v: Verifier)
-                          (Q: (State, Term, Verifier) => VerificationResult)
+                          (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                           : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
     val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
     findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
-        Q(s, ch.snap, v)
+        Q(s, ch.snap, ch.snapExp, v)
       case _ if v.decider.checkSmoke(true) =>
         Success() // TODO: Mark branch as dead?
       case _ =>

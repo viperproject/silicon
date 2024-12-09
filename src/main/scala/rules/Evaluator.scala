@@ -314,15 +314,20 @@ object evaluator extends EvaluationRules {
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, eArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(s.program)
-          chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1)((s2, h2, tSnap, v2) => {
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1)((s2, h2, tSnap, eSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
-            val (debugHeapName, debugLabel) = v2.getDebugOldLabel(s3, fa.pos)
-            val newFa = Option.when(withExp)({
-              if (s3.isEvalInOld) ast.FieldAccess(eArgs.get.head, fa.field)(e.pos, e.info, e.errT)
-              else ast.DebugLabelledOld(ast.FieldAccess(eArgs.get.head, fa.field)(), debugLabel)(e.pos, e.info, e.errT)
-            })
-            val s4 = if (Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s3))) else s3
+            val (newFa, s4) = if (withExp && eSnap.isEmpty) {
+              val (debugHeapName, debugLabel) = v2.getDebugOldLabel(s3, fa.pos)
+              val newFa = Option.when(withExp)({
+                if (s3.isEvalInOld) ast.FieldAccess(eArgs.get.head, fa.field)(e.pos, e.info, e.errT)
+                else ast.DebugLabelledOld(ast.FieldAccess(eArgs.get.head, fa.field)(), debugLabel)(e.pos, e.info, e.errT)
+              })
+              val s4 = if (Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s3))) else s3
+              (newFa, s4)
+            } else {
+              (eSnap, s3)
+            }
             Q(s4, tSnap, newFa, v1)
           })
         })

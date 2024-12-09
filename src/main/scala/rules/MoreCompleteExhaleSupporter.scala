@@ -197,7 +197,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                      argsExp: Option[Seq[ast.Exp]],
                      ve: VerificationError,
                      v: Verifier)
-                    (Q: (State, Term, Verifier) => VerificationResult)
+                    (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                     : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
@@ -213,7 +213,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
         v.decider.assert(IsPositive(permSum)) {
           case true =>
-            Q(s1, snap, v1)
+            Q(s1, snap, None, v1)
           case false =>
             createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
         })

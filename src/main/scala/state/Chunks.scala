@@ -231,6 +231,7 @@ case class MagicWandChunk(id: MagicWandIdentifier,
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   override val resourceID = MagicWandID
+  override val snapExp = None
 
   override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
     withPerm(Ite(newCond, perm, NoPerm), newCondExp.map(nce => ast.CondExp(nce, permExp.get, ast.NoPerm()())()))

@@ -29,6 +29,7 @@ trait NonQuantifiedChunk extends GeneralChunk {
   val args: Seq[Term]
   val argsExp: Option[Seq[ast.Exp]]
   val snap: Term
+  val snapExp: Option[ast.Exp]
   override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): NonQuantifiedChunk
   override def permMinus(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
   override def permPlus(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
