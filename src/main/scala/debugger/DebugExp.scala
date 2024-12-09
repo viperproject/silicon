@@ -12,10 +12,11 @@ import viper.silicon.state.terms.{And, Exists, Forall, Implies, Quantification, 
 import viper.silver.ast
 import viper.silver.ast.utility.Simplifier
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
 object DebugExp {
-  private var idCounter: Int = 0
+  private var idCounter: AtomicInteger = new AtomicInteger(0)
 
   def createInstance(description: Option[String],
                      originalExp: Option[ast.Exp],
@@ -27,8 +28,7 @@ object DebugExp {
 
     val originalExpSimplified = originalExp.map(Simplifier.simplify(_, true))
     val finalExpSimplified = finalExp.map(Simplifier.simplify(_, true))
-    val debugExp = new DebugExp(idCounter, description, originalExpSimplified, finalExpSimplified, term, isInternal_, children)
-    idCounter += 1
+    val debugExp = new DebugExp(idCounter.getAndIncrement(), description, originalExpSimplified, finalExpSimplified, term, isInternal_, children)
     debugExp
   }
 
@@ -68,8 +68,7 @@ object DebugExp {
                                 isInternal_ : Boolean,
                                 children: InsertionOrderedSet[DebugExp]
                                ): ImplicationDebugExp = {
-    val debugExp = new ImplicationDebugExp(idCounter, description, originalExp.map(Simplifier.simplify(_, true)), finalExp.map(Simplifier.simplify(_, true)), term, isInternal_, children)
-    idCounter += 1
+    val debugExp = new ImplicationDebugExp(idCounter.getAndIncrement(), description, originalExp.map(Simplifier.simplify(_, true)), finalExp.map(Simplifier.simplify(_, true)), term, isInternal_, children)
     debugExp
   }
 
@@ -82,8 +81,7 @@ object DebugExp {
                                triggers: Seq[ast.Trigger],
                                tTriggers: Seq[Trigger]
                               ): QuantifiedDebugExp ={
-    val debugExp = new QuantifiedDebugExp(idCounter, description, isInternal_, children, quantifier, qvars, tQvars, triggers, tTriggers)
-    idCounter += 1
+    val debugExp = new QuantifiedDebugExp(idCounter.getAndIncrement(), description, isInternal_, children, quantifier, qvars, tQvars, triggers, tTriggers)
     debugExp
   }
 }
