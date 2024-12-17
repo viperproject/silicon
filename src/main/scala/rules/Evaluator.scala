@@ -205,13 +205,13 @@ object evaluator extends EvaluationRules {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(s.program)
           val lookupFunction = if (s.qpFields.contains(fa.field)) {
-            quantifiedChunkSupporter.lookup(s1, s1.h, fa, tArgs, eArgs, ve, v1) _//Lookup(fa.field.name, _:Term, tArgs.head))
+            quantifiedChunkSupporter.lookup(s1, fa, tArgs, eArgs, ve, v1) _//Lookup(fa.field.name, _:Term, tArgs.head))
           } else {
-            chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1) _
+            chunkSupporter.lookup(s1, resource, tArgs, eArgs, ve, v1) _
           }
-          lookupFunction((s2, h2, tSnap, v2) => {
+          lookupFunction((s2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
-            val s3 = s2.copy(h = h2, functionRecorder = fr)
+            val s3 = s2.copy(functionRecorder = fr)
             val debugOldLabel = v2.getDebugOldLabel(s3)
             val newFa = Option.when(withExp)({
               if (s3.isEvalInOld) ast.FieldAccess(eArgs.get.head, fa.field)(e.pos, e.info, e.errT)

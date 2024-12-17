@@ -1969,6 +1969,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
   override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+    return None
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
         Left(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
@@ -2188,22 +2189,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
 
   def lookup(s: State,
-             h: Heap,
              resourceAcc: ast.ResourceAccess,
              tArgs: Seq[Term],
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier)
-            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+            (Q: (State, Term, Verifier) => VerificationResult)
         : VerificationResult = {
-
-    executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
         val lookupFunction =
-          if (s1.moreCompleteExhale || s1.triggerExp) lookupComplete _
-        else lookupGreedy _
-        lookupFunction(s1, resourceAcc, tArgs, argsExp, ve, v1)((s2, tSnap, v2) =>
-          QS(s2.copy(h = s.h), s2.h, tSnap, v2))
-    })(Q)
+          if (s.moreCompleteExhale || s.triggerExp) lookupComplete _
+          else lookupGreedy _
+        lookupFunction(s, resourceAcc, tArgs, argsExp, ve, v)((s2, tSnap, v2) =>
+          Q(s2, tSnap, v2))
   }
 
   private def lookupComplete(s: State,
@@ -2280,10 +2277,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(trigger, triggerExp)
       }
       val permCheck = v.decider.check(IsPositive(chunkPerm), Verifier.config.splitTimeout())
+      //TODO debug exp
       if (permCheck) {
         return Q(s, ch.valueAt(args), v)
       }
     }
-    createFailure(ve, v, s, "looking up qp-chunk", true)
+    // cannot find single chunk with enough permissions
+    v.decider.prover.comment("Could not find single chunk with permission and default to complete lookup")
+    lookupComplete(s, resourceAcc, args, argsExp, ve, v)((s2, tSnap, v2) =>
+      Q(s2, tSnap, v2))
   }
 }

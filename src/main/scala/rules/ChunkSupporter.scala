@@ -40,13 +40,12 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              : VerificationResult
 
   def lookup(s: State,
-             h: Heap,
              resource: ast.Resource,
              args: Seq[Term],
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier)
-            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+            (Q: (State, Term, Verifier) => VerificationResult)
             : VerificationResult
 
   def findChunk[CH <: NonQuantifiedChunk: ClassTag]
@@ -208,21 +207,20 @@ object chunkSupporter extends ChunkSupportRules {
   }
 
   def lookup(s: State,
-             h: Heap,
              resource: ast.Resource,
              args: Seq[Term],
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier)
-            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+            (Q: (State, Term, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
+    executionFlowController.tryOrFail1[Term](s, v)((s1, v1, QS) => {
       val lookupFunction =
         if (s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
         else lookupGreedy _
       lookupFunction(s1, s1.h, resource, args, argsExp, ve, v1)((s2, tSnap, v2) =>
-        QS(s2.copy(h = s.h), s2.h, tSnap, v2))
+        QS(s2, tSnap, v2))
     })(Q)
   }
 
