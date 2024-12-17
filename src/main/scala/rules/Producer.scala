@@ -20,7 +20,9 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.LocalVarDecl
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
 
 trait ProductionRules extends SymbolicExecutionRules {
@@ -375,7 +377,7 @@ object producer extends ProductionRules {
         evals(s, bodyVars, _ => pve, v)((s1, args, bodyVarsNew, v1) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
-          v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          v1.decider.prover.comment("Definitional axioms for singleton-SM's value1")
           val definitionalAxiomMark = v1.decider.setPathConditionMark()
           val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
           v1.decider.assumeDefinition(smValueDef, debugExp)

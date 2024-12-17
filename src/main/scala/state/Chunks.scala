@@ -64,8 +64,8 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
   override def permMinus(perm: Term, permExp: Option[ast.Exp]): QuantifiedBasicChunk
   override def permPlus(perm: Term, permExp: Option[ast.Exp]): QuantifiedBasicChunk
   override def withSnapshotMap(snap: Term): QuantifiedBasicChunk
-  def singletonArguments: Option[Seq[Term]]
-  def singletonArgumentExps: Option[Seq[ast.Exp]]
+  def singletonArguments: Seq[Seq[Term]]
+  def singletonArgumentExps: Seq[Seq[ast.Exp]]
   def hints: Seq[Term]
 }
 
@@ -81,8 +81,8 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 permValue: Term,
                                 permValueExp: Option[ast.Exp],
                                 invs: Option[InverseFunctions],
-                                singletonRcvr: Option[Term],
-                                singletonRcvrExp: Option[ast.Exp],
+                                singletonRcvr: Seq[Seq[Term]],
+                                singletonRcvrExp: Seq[Seq[ast.Exp]],
                                 hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
@@ -97,9 +97,9 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
   override val quantifiedVarExps = if (Verifier.config.enableDebugging()) Some(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())) else None
 
   override def snapshotMap: Term = fvf
-  override def singletonArguments: Option[Seq[Term]] = singletonRcvr.map(Seq(_))
+  override def singletonArguments: Seq[Seq[Term]] = singletonRcvr
 
-  override def singletonArgumentExps: Option[Seq[ast.Exp]] = singletonRcvrExp.map(Seq(_))
+  override def singletonArgumentExps: Seq[Seq[ast.Exp]] = singletonRcvrExp
 
   def valueAt(rcvr: Term): Term = Lookup(id.name, fvf, rcvr)
 
@@ -132,8 +132,8 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     permValue: Term,
                                     permValueExp: Option[ast.Exp],
                                     invs: Option[InverseFunctions],
-                                    singletonArgs: Option[Seq[Term]],
-                                    singletonArgExps: Option[Seq[ast.Exp]],
+                                    singletonArgs: Seq[Seq[Term]],
+                                    singletonArgExps: Seq[Seq[ast.Exp]],
                                     hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
@@ -145,8 +145,8 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
   override val permExp = conditionExp.map(c => ast.CondExp(c, permValueExp.get, ast.NoPerm()())())
 
   override def snapshotMap: Term = psf
-  override def singletonArguments: Option[Seq[Term]] = singletonArgs
-  override def singletonArgumentExps: Option[Seq[ast.Exp]] = singletonArgExps
+  override def singletonArguments: Seq[Seq[Term]] = singletonArgs
+  override def singletonArgumentExps: Seq[Seq[ast.Exp]] = singletonArgExps
 
   override def valueAt(args: Seq[Term]) = PredicateLookup(id.name, psf, args)
 
@@ -171,8 +171,8 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     perm: Term,
                                     permExp: Option[ast.Exp],
                                     invs: Option[InverseFunctions],
-                                    singletonArgs: Option[Seq[Term]],
-                                    singletonArgExps: Option[Seq[ast.Exp]],
+                                    singletonArgs: Seq[Seq[Term]],
+                                    singletonArgExps: Seq[Seq[ast.Exp]],
                                     hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
@@ -182,8 +182,8 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
   override val resourceID = MagicWandID
 
   override def snapshotMap: Term = wsf
-  override def singletonArguments: Option[Seq[Term]] = singletonArgs
-  override def singletonArgumentExps: Option[Seq[ast.Exp]] = singletonArgExps
+  override def singletonArguments: Seq[Seq[Term]] = singletonArgs
+  override def singletonArgumentExps: Seq[Seq[ast.Exp]] = singletonArgExps
 
   override def valueAt(args: Seq[Term]) = PredicateLookup(id.toString, wsf, args)
 
