@@ -24,7 +24,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
   // TODO: simplify once singleton quantified chunks are not used anymore
   private val nonQuantifiedChunks = heap.flatMap {
     case c: NonQuantifiedChunk => Some(c)
-    case c: QuantifiedBasicChunk if c.singletonArguments.isDefined => Some(c)
+    case c: QuantifiedBasicChunk if c.singletonArguments.length == 1 => Some(c)
     case _ => None
   }
 
@@ -42,7 +42,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
 
   // TODO: remove once singleton quantified chunks are not used anymore
   def buildPathConditionForChunk(chunk: QuantifiedBasicChunk, property: Property): (Term, Option[ast.Exp]) = {
-    require(chunk.singletonArguments.isDefined)
+    require(chunk.singletonArguments.length == 1)
     val info = Info(Map(This() -> chunk), chunk.resourceID)
     buildPathCondition(property.expression, info)
   }
@@ -81,9 +81,9 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
           (c.perm, None)
       // TODO: remove once singleton quantified chunks are not used anymore
       case c: QuantifiedBasicChunk =>
-        val permTerm = c.perm.replace(c.quantifiedVars, c.singletonArguments.get)
+        val permTerm = c.perm.replace(c.quantifiedVars, c.singletonArguments.head)
         if (withExp)
-          (permTerm, Some(replaceVarsInExp(c.permExp.get, c.quantifiedVarExps.get.map(_.name), c.singletonArgumentExps.get)))
+          (permTerm, Some(replaceVarsInExp(c.permExp.get, c.quantifiedVarExps.get.map(_.name), c.singletonArgumentExps.head)))
         else
           (permTerm, None)
     }
@@ -99,9 +99,9 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
       // TODO: remove once singleton quantified chunks are not used anymore
       case c: QuantifiedBasicChunk =>
         if (Verifier.config.enableDebugging())
-          (c.valueAt(c.singletonArguments.get), Some(c.singletonArgumentExps.get.head))
+          (c.valueAt(c.singletonArguments.head), Some(c.singletonArgumentExps.head.head))
         else
-          (c.valueAt(c.singletonArguments.get), None)
+          (c.valueAt(c.singletonArguments.head), None)
     }
   }
 
@@ -110,7 +110,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk => (c.args, c.argsExp)
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => (c.singletonArguments.get, Option.when(withExp)(c.singletonArgumentExps.get))
+      case c: QuantifiedBasicChunk => (c.singletonArguments.head, Option.when(withExp)(c.singletonArgumentExps.head))
     }
   }
 

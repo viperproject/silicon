@@ -58,7 +58,7 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case QuantifiedFieldChunk(id, fvf, condition, _, perm, _, invs, receiver, _, hints) =>
+    case QuantifiedFieldChunk(id, fvf, condition, _, perm, _, invs, receivers, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_field_chunk"),
         "field" -> JsString(id.toString),
@@ -66,7 +66,7 @@ object SymbExLogReportWriter {
         "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "receiver" -> receiver.map(TermWriter.toJSON).getOrElse(JsNull),
+        "receivers" -> JsArray(receivers.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
@@ -79,7 +79,7 @@ object SymbExLogReportWriter {
         "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
+        "singleton_args" -> JsArray(singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
@@ -91,7 +91,7 @@ object SymbExLogReportWriter {
         "wand_snap_function" -> TermWriter.toJSON(wsf),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
+        "singleton_args" -> JsArray(singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 

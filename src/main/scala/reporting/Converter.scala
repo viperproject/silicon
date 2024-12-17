@@ -359,7 +359,7 @@ object Converter {
         val fieldname = c.id.name 
        
         try { // many things can go wrong but if they do, we cannot infer anything anyways
-          val recvsort = c.singletonRcvr.get.sort
+          val recvsort = c.singletonRcvr.head.head.sort
           val receivers = (0 to 10).map(x => VarEntry(s"$$Ref!val!$x", recvsort))
           val recv = VarEntry("$Ref!val!0", sorts.Ref)
           val fieldsort = c.fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
