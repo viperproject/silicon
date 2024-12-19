@@ -203,10 +203,10 @@ object evaluator extends EvaluationRules {
 
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, eRcvr, v1) => {
-          val debugOldLabel = v1.getDebugOldLabel(s1)
+          val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fa.pos)
           val newFa = Option.when(withExp)({
             if (s1.isEvalInOld) ast.FieldAccess(eRcvr.get, fa.field)(fa.pos, fa.info, fa.errT)
-            else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugOldLabel)(fa.pos, fa.info, fa.errT)
+            else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugLabel)(fa.pos, fa.info, fa.errT)
           })
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(fa.field.name))
@@ -230,7 +230,7 @@ object evaluator extends EvaluationRules {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                 val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
                 val s2 = s1.copy(functionRecorder = fr1)
-                val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
+                val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2))) else s2
                 Q(s3, fvfLookup, newFa, v1)
               } else {
                 val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
@@ -245,7 +245,7 @@ object evaluator extends EvaluationRules {
                     else
                       s1.possibleTriggers
                     val s2 = s1.copy(functionRecorder = fr1, possibleTriggers = possTriggers)
-                    val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s2))) else s2
+                    val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2))) else s2
                     Q(s3, fvfLookup, newFa, v1)}
               }
             case _ =>
@@ -317,12 +317,12 @@ object evaluator extends EvaluationRules {
           chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
-            val debugOldLabel = v2.getDebugOldLabel(s3)
+            val (debugHeapName, debugLabel) = v2.getDebugOldLabel(s3, fa.pos)
             val newFa = Option.when(withExp)({
               if (s3.isEvalInOld) ast.FieldAccess(eArgs.get.head, fa.field)(e.pos, e.info, e.errT)
-              else ast.DebugLabelledOld(ast.FieldAccess(eArgs.get.head, fa.field)(), debugOldLabel)(e.pos, e.info, e.errT)
+              else ast.DebugLabelledOld(ast.FieldAccess(eArgs.get.head, fa.field)(), debugLabel)(e.pos, e.info, e.errT)
             })
-            val s4 = if (Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
+            val s4 = if (Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s3))) else s3
             Q(s4, tSnap, newFa, v1)
           })
         })
@@ -340,11 +340,15 @@ object evaluator extends EvaluationRules {
           Q(s1, t0, e0New.map(ast.Old(_)(e.pos, e.info, e.errT)), v1))
 
       case old@ast.DebugLabelledOld(e0, lbl) =>
-        s.oldHeaps.get(lbl) match {
+        val heapName = if (lbl.contains("#"))
+          lbl.substring(0, lbl.indexOf("#"))
+        else
+          lbl
+        s.oldHeaps.get(heapName) match {
           case None =>
-            createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, lbl)(old.pos, old.info, old.errT)), v, s, "labelled state reached")
+            createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, heapName)(old.pos, old.info, old.errT)), v, s, "labelled state reached")
           case _ =>
-            evalInOldState(s, lbl, e0, pve, v)((s1, t0, _, v1) =>
+            evalInOldState(s, heapName, e0, pve, v)((s1, t0, _, v1) =>
               Q(s1, t0, Some(old), v1))
         }
 
@@ -581,9 +585,11 @@ object evaluator extends EvaluationRules {
                   }
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
-                  val exp = Option.when(withExp)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resacc)(), v1.getDebugOldLabel(s2))(), ast.FullPerm()())())
+                  val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, resacc.pos, Some(h))
+                  val exp = Option.when(withExp)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resacc)(), debugLabel)(), ast.FullPerm()())())
                   v1.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)))
-                  (s2, currentPermAmount)
+                  val s3 = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> h)) else s2
+                  (s3, currentPermAmount)
 
                 case predicate: ast.Predicate =>
                   val (relevantChunks, _) =
@@ -1104,7 +1110,6 @@ object evaluator extends EvaluationRules {
             val assertExpNew = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
             v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
               case true =>
-                val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
                 val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
                 v1.decider.assert(Less(t1, SeqLength(t0))) {
                   case true =>
