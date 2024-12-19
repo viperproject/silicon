@@ -1017,7 +1017,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
             val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
             val interpreter = new QuantifiedPropertyInterpreter
-            resourceDescription.instanceProperties.foreach (property => {
+            resourceDescription.instanceProperties(s.mayAssumeUpperBounds).foreach (property => {
               v.decider.prover.comment(property.description)
               val (pcsForChunk, pcsForChunkExp) = interpreter.buildPathConditionForChunk(
                 chunk = ch,
@@ -1105,7 +1105,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
-    val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
+    val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
     pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
 
     val resourceIdentifier = resource match {
@@ -1530,6 +1530,37 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
+  def assertReadPermission(s: State,
+                           candidates: Seq[QuantifiedBasicChunk],
+                           codomainQVars: Seq[Var],
+                           condition: Term,
+                           perms: Term,
+                           permsExp: Option[ast.Exp],
+                           v: Verifier)
+                          : ConsumptionResult = {
+
+    var permsAvailable: Term = NoPerm
+    var permsAvailableExp: Option[ast.Exp] = Option.when(withExp)(ast.NoPerm()())
+
+
+    for (ch <- candidates) {
+      permsAvailable = PermPlus(permsAvailable, ch.perm)
+      permsAvailableExp = permsAvailableExp.map(pae => ast.PermAdd(pae, permsExp.get)())
+    }
+
+    val tookEnoughCheck =
+      Forall(codomainQVars, Implies(condition, Implies(Greater(perms, NoPerm), Greater(permsAvailable, NoPerm))), Nil)
+
+    // final check
+    val result =
+      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */ )
+        Complete()
+      else
+        Incomplete(PermMinus(permsAvailable, perms), permsAvailableExp.map(pa => ast.PermSub(pa, permsExp.get)()))
+
+    result
+  }
+
   // TODO: Consider taking a single term λr.q(r) that maps to a permission amount,
   //       as done in my thesis
   def removePermissions(s: State,
@@ -1561,6 +1592,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       else chunkOrderHeuristic(relevantChunks)
 
     val constrainPermissions = !consumeExactRead(perms, s.constrainableARPs)
+    if (s.assertReadAccessOnly) {
+      val result = assertReadPermission(s, candidates, codomainQVars, condition, perms, permsExp, v)
+      return (result, s, relevantChunks)
+    }
+
 
     var remainingChunks = Vector.empty[QuantifiedBasicChunk]
     var permsNeeded = perms
