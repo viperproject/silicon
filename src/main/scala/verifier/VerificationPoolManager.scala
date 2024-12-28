@@ -10,6 +10,7 @@ import java.util.concurrent._
 import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
 import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
 import viper.silicon.Config
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.ProverLike
@@ -26,6 +27,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     def emit(content: String): Unit = workerVerifiers foreach (_.decider.prover.emit(content))
     override def emit(contents: Iterable[String]): Unit = workerVerifiers foreach (_.decider.prover.emit(contents))
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))
+    override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxioms(terms, description))
     def declare(decl: Decl): Unit =  workerVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = workerVerifiers foreach (_.decider.prover.comment(content))
 
@@ -83,7 +85,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
 
   private object workerVerifierPoolableObjectFactory extends BasePooledObjectFactory[WorkerVerifier] {
     def create(): WorkerVerifier = {
-      val worker = new WorkerVerifier(mainVerifier, mainVerifier.nextUniqueVerifierId(), mainVerifier.reporter)
+      val worker = new WorkerVerifier(mainVerifier, mainVerifier.nextUniqueVerifierId(), mainVerifier.reporter, Verifier.config.enableDebugging())
       workerVerifiers = worker +: workerVerifiers
 
       worker
@@ -100,7 +102,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     val thread = Thread.currentThread()
     if (thread.isInstanceOf[WorkerBorrowingForkJoinWorkerThread]){
       new WorkerAwareForkJoinTask(task).fork
-    }else{
+    } else {
       threadPool.submit(new WorkerAwareForkJoinTask(task))
     }
   }

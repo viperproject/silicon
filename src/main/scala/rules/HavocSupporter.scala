@@ -6,18 +6,20 @@
 
 package viper.silicon.rules
 
+import viper.silicon.debugger.DebugExp
+import viper.silicon.Map
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
-import viper.silicon.Map
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
-import viper.silicon.state.terms._
 import viper.silicon.state._
+import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.{`?r`, `?s`}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.verifier.errors.{QuasihavocFailed, HavocallFailed}
+import viper.silver.parser.PUnknown
+import viper.silver.verifier.errors.{HavocallFailed, QuasihavocFailed}
 import viper.silver.verifier.reasons.QuasihavocallNotInjective
 
 object havocSupporter extends SymbolicExecutionRules {
@@ -46,8 +48,8 @@ object havocSupporter extends SymbolicExecutionRules {
     // If there is no havoc condition, use True as the condition
     val lhsExpr = havoc.lhs.getOrElse(ast.TrueLit()(havoc.pos))
 
-    eval(s, lhsExpr, pve, v)((s0, lhsTerm, v0) => {
-      evals(s0, resourceArgs(s0, havoc.exp), _ => pve, v0)((s1, tRcvrs, v1) => {
+    eval(s, lhsExpr, pve, v)((s0, lhsTerm, _, v0) => {
+      evals(s0, resourceArgs(s0, havoc.exp), _ => pve, v0)((s1, tRcvrs, _, v1) => {
         val resource = havoc.exp.res(s1.program)
 
         // Call the havoc helper function, which returns a new set of chunks, some of
@@ -104,12 +106,12 @@ object havocSupporter extends SymbolicExecutionRules {
       pve   = pve,
       v     = v)
     {
-      case (s1, tVars, Seq(tCond), Some((tArgs, Seq(), _)), v1) =>
+      case (s1, tVars, eVars, Seq(tCond), _, Some((tArgs, eArgs, Seq(), _, _)), v1) =>
         // Seq() represents an empty list of Triggers
-        // TODO: unnamed argument is (tAuxGlobal, tAux). How should these be handled?
+        // TODO: unnamed arguments are (tAuxGlobal, tAux) and (auxGlobalsExp, auxNonGlobalsExp). How should these be handled?
 
         val resource = eRsc.res(s1.program)
-        val codomainQVars = getCodomainQVars(s1, resource, v1)
+        val (codomainQVars, codomainQVarsExp) = getCodomainQVars(s1, resource, v1)
 
         // Verify that the function z --> (e1(z), ..., en(z)) is injective
         val receiverInjectivityCheck =
@@ -125,23 +127,29 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
+        val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance("QP receiver injectivity check is well-defined", true))
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp)
         v.decider.assert(receiverInjectivityCheck) {
-          case false => createFailure(pve dueTo notInjectiveReason, v, s1)
+          case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
           case true =>
             // Generate the inverse axioms
             val (inverseFunctions, imagesOfCodomain) = quantifiedChunkSupporter.getFreshInverseFunctions(
               qvars = tVars,
+              qvarExps = eVars,
               condition = tCond,
               invertibles = tArgs,
+              invertibleExps = eArgs,
               codomainQVars = codomainQVars,
+              codomainQVarExps = codomainQVarsExp,
               additionalInvArgs = Seq(), // There are no additional quantified vars
+              additionalInvArgExps = Option.when(withExp)(Seq()),
               userProvidedTriggers = None,
               qidPrefix = qid,
               v = v1
             )
-            v.decider.prover.comment("Definitional axioms for havocall inverse functions")
-            v.decider.assume(inverseFunctions.definitionalAxioms)
+            val comment = "Definitional axioms for havocall inverse functions"
+            v.decider.prover.comment(comment)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
             // which may be havocked. Since we are executing a Havocall statement, we wrap
@@ -154,7 +162,7 @@ object havocSupporter extends SymbolicExecutionRules {
 
             Q(s1.copy(h = Heap(newChunks)), v1)
         }
-      case (s1, _, _, None, v1) => Q(s1, v1)
+      case (s1, _, _, _, _, None, v1) => Q(s1, v1)
     }
   }
 
@@ -181,10 +189,17 @@ object havocSupporter extends SymbolicExecutionRules {
     val id = ChunkIdentifier(resource, s.program)
     val (relevantChunks, otherChunks) = chunkSupporter.splitHeap[NonQuantifiedChunk](s.h, id)
 
-    val newChunks = relevantChunks.map { ch =>
-      val havockedSnap = freshSnap(ch.snap.sort, v)
-      val cond = replacementCond(lhs, ch.args, condInfo)
-      ch.withSnap(Ite(cond, havockedSnap, ch.snap))
+    val newChunks = relevantChunks.map {
+      case ch: MagicWandChunk =>
+        val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
+        val cond = replacementCond(lhs, ch.args, condInfo)
+        val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
+        ch.withSnap(magicWandSnapshot, None)
+
+      case ch =>
+        val havockedSnap = freshSnap(ch.snap.sort, v)
+        val cond = replacementCond(lhs, ch.args, condInfo)
+        ch.withSnap(Ite(cond, havockedSnap, ch.snap), None)
     }
     otherChunks ++ newChunks
   }
@@ -228,7 +243,7 @@ object havocSupporter extends SymbolicExecutionRules {
 
     // Get the sequence of quantified variables (r1, ..., rn). For fields, this is the same
     // as aggregateQVar.
-    val codomainQVars = getCodomainQVars(s, resource, v)
+    val (codomainQVars, _) = getCodomainQVars(s, resource, v)
 
     val cond = replacementCond(lhs, codomainQVars, condInfo)
 
@@ -264,7 +279,8 @@ object havocSupporter extends SymbolicExecutionRules {
       )
 
       v.decider.prover.comment("axiomatized snapshot map after havoc")
-      v.decider.assume(newAxiom)
+      val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
+      v.decider.assume(newAxiom, debugExp)
 
       ch.withSnapshotMap(newSm)
     }
@@ -314,15 +330,18 @@ object havocSupporter extends SymbolicExecutionRules {
   }
 
   // Get the variables that we must quantify over for each resource type
-  private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): Seq[Var] = {
+  private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): (Seq[Var], Option[Seq[ast.LocalVarDecl]]) = {
       eRsc match {
-        case _: ast.Field => Seq(`?r`)
+        case _: ast.Field => (Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())))
         case p: ast.Predicate =>
-          s.predicateFormalVarMap(s.program.findPredicate(p.name))
+          val predicate = s.program.findPredicate(p.name)
+          (s.predicateFormalVarMap(s.program.findPredicate(p.name)), Option.when(withExp)(predicate.formalArgs))
         case w: ast.MagicWand =>
           val bodyVars = w.subexpressionsToEvaluate(s.program)
-          bodyVars.indices.toList.map(i =>
-              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
+          (bodyVars.indices.toList.map(i =>
+              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false)),
+            Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
+            )
     }
   }
 

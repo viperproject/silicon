@@ -128,6 +128,7 @@ class TermToZ3APIConverter
 
       case sorts.FieldPermFunction() => ctx.mkUninterpretedSort("$FPM") // text("$FPM")
       case sorts.PredicatePermFunction() => ctx.mkUninterpretedSort("$PPM") // text("$PPM")
+      case sorts.MagicWandSnapFunction => ctx.mkUninterpretedSort("$MWSF")
     }
     sortCache.update(s, res)
     res
@@ -159,6 +160,7 @@ class TermToZ3APIConverter
 
       case sorts.FieldPermFunction() => Some(ctx.mkSymbol("$FPM")) // text("$FPM")
       case sorts.PredicatePermFunction() => Some(ctx.mkSymbol("$PPM")) // text("$PPM")
+      case sorts.MagicWandSnapFunction => Some(ctx.mkSymbol("$MWSF"))
     }
   }
 
@@ -245,7 +247,7 @@ class TermToZ3APIConverter
               val substituted = body.replace(vars, fapp.args)
               val res = convert(substituted)
               res
-            }else {
+            } else {
               createApp(convertId(fapp.applicable.id), fapp.args, fapp.sort)
             }
           }
@@ -269,7 +271,7 @@ class TermToZ3APIConverter
           val weightValue = weight.getOrElse(1)
           if (quant == Forall) {
             ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
-          }else{
+          } else {
             ctx.mkExists(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }
         }
@@ -444,6 +446,8 @@ class TermToZ3APIConverter
 
       case Let(bindings, body) =>
         convert(body.replace(bindings))
+
+      case MWSFLookup(mwsf, snap) => createApp("MWSF_apply", Seq(mwsf, snap), sorts.Snap)
 
       case _: MagicWandChunkTerm
          | _: Quantification =>

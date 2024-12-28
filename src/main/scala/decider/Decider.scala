@@ -6,22 +6,26 @@
 
 package viper.silicon.decider
 
-import scala.reflect.{ClassTag, classTag}
 import com.typesafe.scalalogging.Logger
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.{DependencyNotFoundError, Model}
+import viper.silicon.debugger.DebugExp
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
-import viper.silicon.state.terms._
+import viper.silicon.state.terms.{Term, _}
+import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silver.ast
+import viper.silver.ast.{LocalVarWithVersion, NoPosition}
+import viper.silver.components.StatefulComponent
+import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
+import viper.silver.verifier.{DependencyNotFoundError, Model}
 
 import scala.collection.immutable.HashSet
+import scala.reflect.{ClassTag, classTag}
 import scala.collection.mutable
 
 /*
@@ -29,25 +33,39 @@ import scala.collection.mutable
  */
 
 trait Decider {
+  def functionDecls: Set[FunctionDecl]
+
+  def macroDecls: Vector[MacroDecl]
   def prover: Prover
   def setProverOptions(options: Map[String, String]): Unit
   def getProverOptions(): Map[String, String]
   def resetProverOptions(): Unit
+  def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError]
 
   def pcs: PathConditionStack
+
+  def debugVariableTypes: Map[String, PType]
 
   def pushScope(): Unit
   def popScope(): Unit
 
   def checkSmoke(isAssert: Boolean = false): Boolean
 
-  def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit
+  def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
   def setPathConditionMark(): Mark
 
-  def assume(t: Term): Unit
-  def assumeDefinition(t: Term): Unit
-  def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
-  def assume(ts: Iterable[Term]): Unit
+  def finishDebugSubExp(description : String): Unit
+
+  def startDebugSubExp(): Unit
+
+  def assume(t: Term, e: ast.Exp, finalExp: ast.Exp): Unit
+  def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit
+  def assume(t: Term, debugExp: Option[DebugExp]): Unit
+  def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit
+  def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit
+  def assume(assumptions: Iterable[(Term, Option[DebugExp])]): Unit
+  def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
+  def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
 
   def check(t: Term, timeout: Int): Boolean
 
@@ -57,13 +75,13 @@ trait Decider {
    */
   def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
 
-  def fresh(id: String, sort: Sort): Var
+  def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl
 
-  def fresh(sort: Sort): Var
-  def fresh(v: ast.AbstractLocalVar): Var
-  def freshARP(id: String = "$k"): (Var, Term)
+  def fresh(sort: Sort, pType: Option[PType]): Var
+  def fresh(v: ast.AbstractLocalVar): (Var, Option[ast.LocalVarWithVersion])
+  def freshARP(id: String = "$k"): (Var, Term, Option[ast.LocalVarWithVersion])
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
   def generateModel(): Unit
@@ -78,10 +96,8 @@ trait Decider {
   // slower, so this tradeoff seems worth it.
   def freshFunctions: Set[FunctionDecl]
   def freshMacros: Vector[MacroDecl]
-  def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toStack: Boolean): Unit
-  def declareAndRecordAsFreshMacros(functions: Seq[MacroDecl], toStack: Boolean): Unit
-  def pushSymbolStack(): Unit
-  def popSymbolStack(): (Set[FunctionDecl], Seq[MacroDecl])
+  def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl]): Unit
+  def declareAndRecordAsFreshMacros(functions: Seq[MacroDecl]): Unit
   def setPcs(other: PathConditionStack): Unit
 
   def statistics(): Map[String, String]
@@ -92,6 +108,8 @@ trait Decider {
  */
 
 trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
+
+  val debugMode: Boolean
   def logger: Logger
   def symbolConverter: SymbolConverter
   def termConverter: TermToSMTLib2Converter
@@ -106,16 +124,20 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private var _declaredFreshFunctions: Set[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
     private var _declaredFreshMacros: Vector[MacroDecl] = _
-
-    private var _freshFunctionStack: Stack[mutable.HashSet[FunctionDecl]] = _
-    private var _freshMacroStack: Stack[mutable.ListBuffer[MacroDecl]] = _
+    private var _declaredFreshMacroNames: Set[String] = _ /* contains names of _declaredFreshMacros for faster lookup */
 
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
+    private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
+    
+    def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
+    def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
 
     def prover: Prover = _prover
 
     def pcs: PathConditionStack = pathConditions
+
+    var debugVariableTypes : Map[String, PType] = Map.empty
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */
@@ -141,10 +163,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         getProver(Z3ProverStdIO.name)
     }
 
-    private def createProver(): Option[DependencyNotFoundError] = {
-      _prover = getProver(Verifier.config.prover())
+    def createProver(proverName: String, userArgsString: Option[String]): Option[DependencyNotFoundError] = {
+      _prover = getProver(proverName)
 
-      _prover.start() /* Cannot query prover version otherwise */
+      _prover.start(userArgsString) /* Cannot query prover version otherwise */
 
       val proverVersion = _prover.version()
       // One can pass some options. This allows to check whether they have been received.
@@ -192,9 +214,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       pathConditions = new LayeredPathConditionStack()
       _declaredFreshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
       _declaredFreshMacros = Vector.empty
-      _freshMacroStack = Stack.empty
-      _freshFunctionStack = Stack.empty
-      createProver()
+      _declaredFreshMacroNames = HashSet.empty
+      createProver(Verifier.config.prover(), Verifier.config.proverArgs)
     }
 
     def reset(): Unit = {
@@ -202,8 +223,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       pathConditions = new LayeredPathConditionStack()
       _declaredFreshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
       _declaredFreshMacros = Vector.empty
-      _freshMacroStack = Stack.empty
-      _freshFunctionStack = Stack.empty
+      _declaredFreshMacroNames = HashSet.empty
+      _proverOptions = Map.empty
     }
 
     def stop(): Unit = {
@@ -228,31 +249,96 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit = {
+    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit = {
       pathConditions.setCurrentBranchCondition(t, te)
-      assume(InsertionOrderedSet(Seq(t)))
+      assume(t, Option.when(te._2.isDefined)(te._1), te._2)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()
 
     /* Assuming facts */
 
-    def assume(t: Term): Unit = {
-      assume(InsertionOrderedSet(Seq(t)), false)
+    def startDebugSubExp(): Unit = {
+      if (debugMode) {
+        pathConditions.startDebugSubExp()
+      }
     }
 
-    override def assumeDefinition(t: Term): Unit =
-      assume(InsertionOrderedSet(Seq(t)), false, true)
+    def finishDebugSubExp(description: String): Unit = {
+      if (debugMode) {
+        pathConditions.finishDebugSubExp(description)
+      }
+    }
 
-    def assume(terms: Iterable[Term]): Unit =
-      assume(InsertionOrderedSet(terms), false)
+    def addDebugExp(e: DebugExp): Unit = {
+      if (debugMode) {
+        pathConditions.addDebugExp(e)
+      }
+    }
 
-    def assume(terms: InsertionOrderedSet[Term], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit = {
+    def assume(t: Term, e : ast.Exp, finalExp : ast.Exp): Unit = {
+      assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e, finalExp)))), false, false)
+    }
+
+    def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit = {
+      if (finalExp.isDefined) {
+        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), false, false)
+      } else {
+        assume(assumptions=InsertionOrderedSet((t, None)), false, false)
+      }
+    }
+
+    def assume(t: Term, debugExp: Option[DebugExp]): Unit = {
+      assume(InsertionOrderedSet(Seq((t, debugExp))), false)
+    }
+
+    def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit = {
+      assume(InsertionOrderedSet(Seq((t, debugExp))), enforceAssumption=false, isDefinition=true)
+    }
+
+    def assume(assumptions: Iterable[(Term, Option[DebugExp])]): Unit =
+      assume(InsertionOrderedSet(assumptions), false)
+
+    def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit = {
+      val filteredAssumptions =
+        if (enforceAssumption) assumptions
+        else assumptions filterNot (a => isKnownToBeTrue(a._1))
+
+
+      if (debugMode) {
+        filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
+      }
+
+      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(filteredAssumptions map (_._1), isDefinition=isDefinition)
+    }
+
+    def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit = {
+      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions))
+      if (debugMode) {
+        debugExps.get foreach (e => addDebugExp(e))
+      }
+    }
+
+    def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms, isDefinition)
+      if (debugMode && filteredTerms.nonEmpty) {
+        addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
+      }
+
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms))
+    }
+
+    def debuggerAssume(terms: Iterable[Term], de: DebugExp) = {
+      terms.foreach(t => {
+        if (!_debuggerAssumedTerms.contains(t)) {
+          _debuggerAssumedTerms += t
+          prover.assume(t)
+          //TODODELETEtermSources.put(t, de)
+        }
+      })
     }
 
     private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], isDefinition: Boolean = false) = {
@@ -339,18 +425,29 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function =
       prover_fresh[Fun](id, argSorts, resultSort, false)
 
-    def fresh(id: String, sort: Sort): Var = prover_fresh[Var](id, Nil, sort, false)
+    def fresh(id: String, sort: Sort, pType: Option[PType]): Var = {
+      val term = prover_fresh[Var](id, Nil, sort, false)
+      if (debugMode) debugVariableTypes += (term.id.name -> pType.get)
+      term
+    }
 
-    def fresh(s: Sort): Var = prover_fresh[Var]("$t", Nil, s, false)
+    def fresh(s: Sort, pType: Option[PType]): Var = {
+      val term = prover_fresh[Var]("$t", Nil, s, false)
+      if (debugMode) debugVariableTypes += (term.id.name -> pType.get)
+      term
+    }
 
-    def fresh(v: ast.AbstractLocalVar): Var =
-      prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ), false)
+    def fresh(v: ast.AbstractLocalVar): (Var, Option[ast.LocalVarWithVersion]) = {
+      val withExp = debugMode
+      val term = fresh(v.name, symbolConverter.toSort(v.typ), Option.when(withExp)(extractPTypeFromExp(v)))
+      (term, Option.when(withExp)(LocalVarWithVersion(simplifyVariableName(term.id.name), v.typ)(v.pos, v.info, v.errT)))
+    }
 
-    def freshARP(id: String = "$k"): (Var, Term) = {
+    def freshARP(id: String = "$k"): (Var, Term, Option[ast.LocalVarWithVersion]) = {
       val permVar = prover_fresh[Var](id, Nil, sorts.Perm, true)
       val permVarConstraints = IsReadPermVar(permVar)
-
-      (permVar, permVarConstraints)
+      if (debugMode) debugVariableTypes += (permVar.id.name -> PPrimitiv(PReserved(PKw.Perm)((NoPosition, NoPosition)))())
+      (permVar, permVarConstraints, Option.when(debugMode)(LocalVarWithVersion(simplifyVariableName(permVar.id.name), ast.Perm)()))
     }
 
     def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl = {
@@ -360,7 +457,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       prover.declare(macroDecl)
 
       _declaredFreshMacros = _declaredFreshMacros :+ macroDecl /* [BRANCH-PARALLELISATION] */
-      _freshMacroStack.foreach(l => l.append(macroDecl))
+      _declaredFreshMacroNames = _declaredFreshMacroNames + name.name
 
       macroDecl
     }
@@ -398,7 +495,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val decl = FunctionDecl(fun)
       _declaredFreshFunctions = _declaredFreshFunctions + decl /* [BRANCH-PARALLELISATION] */
-      _freshFunctionStack.foreach(s => s.add(decl))
 
       fun
     }
@@ -408,55 +504,23 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def freshFunctions: Set[FunctionDecl] = _declaredFreshFunctions
     def freshMacros: Vector[MacroDecl] = _declaredFreshMacros
 
-    def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl], toSymbolStack: Boolean): Unit = {
-      if (!toSymbolStack) {
-        for (f <- functions) {
-          if (!_declaredFreshFunctions.contains(f))
-            prover.declare(f)
-
+    def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl]): Unit = {
+      for (f <- functions) {
+        if (!_declaredFreshFunctions.contains(f)) {
+          prover.declare(f)
           _declaredFreshFunctions = _declaredFreshFunctions + f
-        }
-      } else {
-        for (f <- functions) {
-          if (!_declaredFreshFunctions.contains(f))
-            prover.declare(f)
-
-          _declaredFreshFunctions = _declaredFreshFunctions + f
-          _freshFunctionStack.foreach(s => s.add(f))
         }
       }
     }
 
-    def declareAndRecordAsFreshMacros(macros: Seq[MacroDecl], toStack: Boolean): Unit = {
-      if (!toStack) {
-        for (m <- macros) {
-          if (!_declaredFreshMacros.contains(m)) {
-            prover.declare(m)
-            _declaredFreshMacros = _declaredFreshMacros.appended(m)
-          }
-        }
-      } else {
-        for (m <- macros) {
-          if (!_declaredFreshMacros.contains(m)) {
-            prover.declare(m)
-            _declaredFreshMacros = _declaredFreshMacros.appended(m)
-          }
-          _freshMacroStack.foreach(l => l.append(m))
+    def declareAndRecordAsFreshMacros(macros: Seq[MacroDecl]): Unit = {
+      for (m <- macros) {
+        if (!_declaredFreshMacroNames.contains(m.id.name)) {
+          prover.declare(m)
+          _declaredFreshMacros = _declaredFreshMacros.appended(m)
+          _declaredFreshMacroNames = _declaredFreshMacroNames + m.id.name
         }
       }
-    }
-
-    def pushSymbolStack(): Unit = {
-      _freshFunctionStack = _freshFunctionStack.prepended(mutable.HashSet())
-      _freshMacroStack = _freshMacroStack.prepended(mutable.ListBuffer())
-    }
-
-    def popSymbolStack(): (Set[FunctionDecl], Seq[MacroDecl]) = {
-      val funcDecls = _freshFunctionStack.head.toSet
-      _freshFunctionStack = _freshFunctionStack.tail
-      val macroDecls = _freshMacroStack.head.toSeq
-      _freshMacroStack = _freshMacroStack.tail
-      (funcDecls, macroDecls)
     }
 
     /* Misc */

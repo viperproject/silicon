@@ -6,12 +6,18 @@
 
 package viper.silicon.rules
 
+import viper.silicon.debugger.DebugExp
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
 import viper.silicon.state.terms.{And, Or, Term}
+import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+
+import scala.annotation.unused
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
   // Instead of merging states by calling State.merge,
@@ -22,12 +28,13 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
     v.stateConsolidator(s).consolidate(res, v)
   }
 
-  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
+  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], @unused v: Verifier): State = {
     State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
   }
 }
 
 trait JoiningRules extends SymbolicExecutionRules {
+
   def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
@@ -37,7 +44,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 
 object joiner extends JoiningRules {
   def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
-                 (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
+                 (block: (State, Verifier, (State, D,  Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
                  : VerificationResult = {
@@ -88,16 +95,21 @@ object joiner extends JoiningRules {
         val (sJoined, dataJoined) = merge(entries)
 
         var feasibleBranches: List[Term] = Nil
+        var feasibleBranchesExp: Option[List[ast.Exp]] = Option.when(withExp)(Nil)
+        var feasibleBranchesExpNew: Option[List[ast.Exp]] = Option.when(withExp)(Nil)
 
         entries foreach (entry => {
           val pcs = entry.pathConditions.conditionalized
-          v.decider.prover.comment("Joined path conditions")
-          v.decider.assume(pcs)
+          val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
+          val comment = "Joined path conditions"
+          v.decider.prover.comment(comment)
+          v.decider.assume(pcs, Option.when(withExp)(DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp.get))), enforceAssumption = false)
           feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
+          feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
+          feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)
         })
         // Assume we are in a feasible branch
-        v.decider.assume(Or(feasibleBranches))
-
+        v.decider.assume(Or(feasibleBranches), Option.when(withExp)(DebugExp.createInstance(Some("Feasible Branches"), feasibleBranchesExp.map(BigOr(_)), feasibleBranchesExpNew.map(BigOr(_)), InsertionOrderedSet.empty)))
         Q(sJoined, dataJoined, v)
       }
     }

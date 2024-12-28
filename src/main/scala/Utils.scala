@@ -6,20 +6,23 @@
 
 package viper.silicon
 
-import scala.annotation.implicitNotFound
-import scala.collection.immutable.ArraySeq
+import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 import viper.silver
+import viper.silver.ast.utility.Triggers.TriggerGenerationWithAddAndSubtract
+import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.SourcePNodeInfo
 import viper.silver.components.StatefulComponent
-import viper.silver.verifier.{VerificationError, errors}
+import viper.silver.parser.{PExp, PType, PUnknown, PUnnamedTypedDeclaration}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
-import viper.silver.ast.utility.rewriter.Traverse
-import viper.silicon.state.terms.{Sort, Term, Var}
-import viper.silicon.verifier.Verifier
-import viper.silver.ast.utility.Triggers.TriggerGenerationWithAddAndSubtract
+import viper.silver.verifier.{VerificationError, errors}
+
+import scala.annotation.implicitNotFound
+import scala.collection.immutable.ArraySeq
 
 package object utils {
-  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort)
+  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort, Option.when(Verifier.config.enableDebugging())(PUnknown()))
   def toSf(t: Term): (Sort, Verifier) => Term = (sort, _) => t.convert(sort)
 
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
@@ -131,6 +134,59 @@ package object utils {
                     (e0: silver.ast.Exp, e1: silver.ast.Exp) => silver.ast.Or(e0, e1)(e0.pos, e0.info),
                      silver.ast.FalseLit()(emptyPos))
 
+    def removeKnownToBeTrueExp(exps: List[silver.ast.Exp], terms: List[Term]): List[silver.ast.Exp] = {
+      exps.zip(terms).filter(t => t._2 != True).map(e => e._1)
+    }
+
+    def simplifyVariableName(str: String) : String = {
+      str.substring(0, str.lastIndexOf("@"))
+    }
+
+    def replaceVarsInExp(e: silver.ast.Exp, varNames: Seq[String], replacements: Seq[silver.ast.Exp]): silver.ast.Exp = {
+      silver.utility.Sanitizer.replaceFreeVariablesInExpression(e, varNames.zip(replacements).toMap, Set())
+    }
+
+    def extractPTypeFromStmt(stmt: silver.ast.Stmt): PType = {
+      stmt.info.getUniqueInfo[SourcePNodeInfo] match {
+        case Some(info) =>
+          val sourceNode = info.sourcePNode
+          sourceNode match {
+            case decl: PUnnamedTypedDeclaration => decl.typ
+            case _ => PUnknown()
+          }
+        case _ => PUnknown()
+      }
+    }
+
+    def extractPTypeFromExp(exp: silver.ast.Exp): PType = {
+      exp.info.getUniqueInfo[SourcePNodeInfo] match {
+        case Some(info) =>
+          val sourceNode = info.sourcePNode
+          sourceNode match {
+            case e: PExp => e.typ
+            case d: PUnnamedTypedDeclaration => d.typ
+            case _ => PUnknown()
+          }
+        case _ => PUnknown()
+      }
+    }
+
+    def buildMinExp(exps: Seq[silver.ast.Exp], typ: silver.ast.Type): silver.ast.Exp = {
+      exps match {
+        case Seq(e) => e
+        case Seq(e0, e1) => silver.ast.DebugPermMin(e0, e1)(e0.pos, e0.info)
+        case exps if exps.length > 2 => silver.ast.DebugPermMin(exps.head, buildMinExp(exps.tail, typ))(exps.head.pos, exps.head.info)
+      }
+    }
+
+    def buildQuantExp(quantifier: Quantifier, vars: Seq[silver.ast.LocalVarDecl], eBody: silver.ast.Exp, eTrigger: Seq[silver.ast.Trigger]): silver.ast.Exp = {
+      quantifier match {
+        case Forall => silver.ast.Forall(vars, eTrigger, eBody)(eBody.pos, eBody.info, eBody.errT)
+        case Exists => silver.ast.Exists(vars, eTrigger, eBody)(eBody.pos, eBody.info, eBody.errT)
+      }
+    }
+
+
     /** Note: be aware of Silver issue #95!*/
     def rewriteRangeContains(program: silver.ast.Program): silver.ast.Program =
       program.transform({
@@ -211,7 +267,7 @@ package object utils {
     def toUnambiguousShortString(resource: silver.ast.Resource): String = {
       resource match {
         case l: silver.ast.Location => l.name
-        case m: silver.ast.MagicWand => m.toString()
+        case m: silver.ast.MagicWand => m.toString
         case m@silver.ast.MagicWandOp => s"${silver.ast.MagicWandOp.op}@${sourceLineColumn(m)}"
       }
     }
@@ -222,6 +278,7 @@ package object utils {
     case class ViperEmbedding(embeddedSort: Sort) extends silver.ast.ExtensionType {
       def substitute(typVarsMap: Predef.Map[silver.ast.TypeVar, silver.ast.Type]): silver.ast.Type = this
       def isConcrete: Boolean = true
+      override def toString: String = s"ViperEmbedding(sorts.$embeddedSort)"
     }
   }
 

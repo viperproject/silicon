@@ -11,7 +11,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
-class DeciderAssumeRecord(val terms: InsertionOrderedSet[Term]) extends DataRecord {
+class DeciderAssumeRecord(val terms: Iterable[Term]) extends DataRecord {
   val value: ast.Node = null
   val state: State = null
   val pcs: InsertionOrderedSet[Term] = null
