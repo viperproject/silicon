@@ -1,0 +1,22 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+  field value: Int
+  predicate inv(this: Ref) { acc(this.value, write) }
+  function get(this: Ref): Int
+    requires acc(inv(this), write)
+  { (unfolding acc(inv(this), write) in this.value) }
+  method set(this: Ref, newval: Int)
+    requires acc(inv(this), write)
+    ensures acc(inv(this), write) && ((get(this)) == (newval))
+  {
+    unfold acc(inv(this), write)
+    this.value := newval
+    fold acc(inv(this), write)
+  }
+  method test(this: Ref)
+    requires acc(inv(this), write)
+  {
+    set(this, 3);
+    set(this, 4);
+  }

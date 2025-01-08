@@ -1,0 +1,36 @@
+import "examples-16.2.vpr"
+
+// Exercise 16.8
+/**
+ * This method is an extension of the CoffeeMaker code from 16.2. It removes
+ * the grinder from a given CoffeeMaker and returns it. The CoffeeMaker
+ * receives a new grinder without any beans inside. The state of the removed 
+ * grinder is maintained. The harness tests its functionality.
+ */
+method CoffeemakerRemoveGrinder(this: Ref) returns (grinder: Ref)
+    requires CoffeeMaker(this)
+    ensures CoffeeMaker(this)
+    ensures Grinder(grinder)
+    ensures unfolding CoffeeMaker(this) in !getHasBeans(this.CMGrinder)
+    ensures getHasBeans(grinder) == old(unfolding CoffeeMaker(this) in getHasBeans(this.CMGrinder))
+{
+    unfold CoffeeMaker(this)
+    grinder := this.CMGrinder
+    this.CMGrinder := GrinderConstructor()
+    fold CoffeeMaker(this)
+}
+
+method RemoveGrinderHarness()
+{
+    var cm: Ref := CoffeeMakerConstructor()
+    var grinder: Ref := CoffeemakerRemoveGrinder(cm)
+    CoffeeMakerRestock(cm)
+    GrinderAddBeans(grinder)
+}
+
+// Exercise 16.9
+/**
+ * This exercise wants to add representation sets to the basic implementation
+ * from 16.0. Because representation sets are not needed with Viper predicates,
+ * we do not need to solve this exercise.
+ */

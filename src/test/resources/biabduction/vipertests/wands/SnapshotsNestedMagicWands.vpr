@@ -1,0 +1,59 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/216/)
+field f: Int
+field g: Int
+
+predicate Cell(x: Ref) {
+    acc(x.f)
+}
+
+method test0(x: Ref)
+requires acc(x.f) && acc(x.g)
+ensures acc(x.f) && acc(x.g) && x.f == old(x.f) && x.g == old(x.g) {
+    package true --* acc(x.f) && (true --* acc(x.g)) {
+        package (true --* acc(x.g))
+    }
+    apply true --* acc(x.f) && (true --* acc(x.g))
+    apply true --* acc(x.g)
+}
+
+method test1(x: Ref)
+requires acc(x.f)
+ensures acc(x.f) && x.f == old(x.f) {
+    package true --* (true --* acc(x.f)) {
+        package true --* acc(x.f)
+    }
+    apply true --* (true --* acc(x.f))
+    apply true --* acc(x.f)
+}
+
+method test2(x: Ref)
+requires acc(x.f) && acc(x.g)
+ensures acc(x.f) && acc(x.g) && x.f == old(x.f) && x.g == old(x.g) {
+    package acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && (acc(x.g) --* acc(x.g)) {
+        package (acc(x.g) --* acc(x.g))
+    }
+    apply acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && (acc(x.g) --* acc(x.g))
+    apply acc(x.g) --* acc(x.g)
+}
+
+method test3(x: Ref)
+requires acc(x.f)
+ensures acc(x.f) && x.f == old(x.f) {
+    package acc(x.f) --* acc(x.f) {
+        package true --* true
+    }
+    apply acc(x.f) --* acc(x.f)
+}
+
+method test4(x: Ref)
+requires acc(x.f)
+ensures acc(x.f) && x.f == old(x.f) {
+    package true --* acc(x.f)
+    package true --* acc(x.f) {
+        apply true --* acc(x.f)
+    }
+    apply true --* acc(x.f)
+}

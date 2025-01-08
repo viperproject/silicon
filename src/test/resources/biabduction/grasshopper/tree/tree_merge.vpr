@@ -1,0 +1,23 @@
+import "./tree.vpr"
+
+method merge(leftT: Ref, rightT: Ref) returns (res: Ref)
+requires tree(leftT) && tree(rightT)
+ensures tree(res)
+{
+    if(leftT == null){
+        res := rightT
+    } else {
+        if(rightT == null){
+            res := leftT
+        } else {
+            var left_new: Ref
+            var root: Ref
+            left_new, root := extract_max(leftT)
+            unfold tree(root)
+            root.left := left_new
+            root.right := rightT
+            fold tree(root)
+            res := root
+        }
+    }
+}

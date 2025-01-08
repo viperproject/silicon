@@ -1,0 +1,660 @@
+domain MirrorDomain  {
+  
+  function mirror_simple$f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1: Snap$struct$m_Route,
+  _2: Int): Int 
+  
+  function mirror_simple$f_length__$TY$__Snap$struct$m_Route$$int$(_1: Snap$struct$m_Route): Int 
+}
+
+domain Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_  {
+  
+  function discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(self: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_): Int 
+  
+  function Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(self: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_): Snap$struct$m_Route 
+}
+
+domain Snap$struct$m_Point  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0: Int,
+  _1: Int): Snap$struct$m_Point 
+  
+  function Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self: Snap$struct$m_Point): Int 
+  
+  function Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self: Snap$struct$m_Point): Int 
+  
+  axiom Snap$struct$m_Point$0$injectivity {
+    (forall _l_0: Int, _l_1: Int, _r_0: Int, _r_1: Int ::
+      { cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_l_0,
+      _l_1), cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_r_0,
+      _r_1) }
+      cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_l_0,
+      _l_1) ==
+      cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_r_0,
+      _r_1) ==>
+      _l_0 == _r_0 && _l_1 == _r_1)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$x$axiom {
+    (forall _0: Int, _1: Int ::
+      { Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) }
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) ==
+      _0)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$x$valid {
+    (forall self: Snap$struct$m_Point ::
+      { Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) }
+      -2147483648 <=
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) &&
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) <=
+      2147483647)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$y$axiom {
+    (forall _0: Int, _1: Int ::
+      { Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) }
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) ==
+      _1)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$y$valid {
+    (forall self: Snap$struct$m_Point ::
+      { Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) }
+      -2147483648 <=
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) &&
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) <=
+      2147483647)
+  }
+}
+
+domain Snap$struct$m_Route  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0: Snap$struct$m_Point,
+  _1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_): Snap$struct$m_Route 
+  
+  function Snap$struct$m_Route$0$field$f$current__$TY$__Snap$struct$m_Route$Snap$struct$m_Point(self: Snap$struct$m_Route): Snap$struct$m_Point 
+  
+  function Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self: Snap$struct$m_Route): Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ 
+  
+  axiom Snap$struct$m_Route$0$injectivity {
+    (forall _l_0: Snap$struct$m_Point, _l_1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_,
+    _r_0: Snap$struct$m_Point, _r_1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ ::
+      { cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_l_0,
+      _l_1), cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_r_0,
+      _r_1) }
+      cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_l_0,
+      _l_1) ==
+      cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_r_0,
+      _r_1) ==>
+      _l_0 == _r_0 && _l_1 == _r_1)
+  }
+  
+  axiom Snap$struct$m_Route$0$field$f$current$axiom {
+    (forall _0: Snap$struct$m_Point, _1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ ::
+      { Snap$struct$m_Route$0$field$f$current__$TY$__Snap$struct$m_Route$Snap$struct$m_Point(cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0,
+      _1)) }
+      Snap$struct$m_Route$0$field$f$current__$TY$__Snap$struct$m_Route$Snap$struct$m_Point(cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0,
+      _1)) ==
+      _0)
+  }
+  
+  axiom Snap$struct$m_Route$0$field$f$rest$axiom {
+    (forall _0: Snap$struct$m_Point, _1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ ::
+      { Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0,
+      _1)) }
+      Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0,
+      _1)) ==
+      _1)
+  }
+}
+
+domain FloatDomain24e8 interpretation (SMTLIB: "(_ FloatingPoint 8 24)", Boogie: "float24e8") {
+  
+  function f32_from_bv(a: BitVectorDomain32): FloatDomain24e8 interpretation "(_ to_fp 8 24)"
+  
+  function f32_fp_add(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.add RNE"
+  
+  function f32_fp_sub(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.sub RNE"
+  
+  function f32_fp_mul(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.mul RNE"
+  
+  function f32_fp_div(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.div RNE"
+  
+  function f32_fp_min(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.min"
+  
+  function f32_fp_max(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.max"
+  
+  function f32_fp_eq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.eq"
+  
+  function f32_fp_leq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.leq"
+  
+  function f32_fp_geq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.geq"
+  
+  function f32_fp_lt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.lt"
+  
+  function f32_fp_gt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.gt"
+  
+  function f32_fp_neg(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.neg"
+  
+  function f32_fp_abs(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.abs"
+  
+  function f32_fp_is_zero(a: FloatDomain24e8): Bool interpretation "fp.isZero"
+  
+  function f32_fp_is_infinite(a: FloatDomain24e8): Bool interpretation "fp.isInfinite"
+  
+  function f32_fp_is_nan(a: FloatDomain24e8): Bool interpretation "fp.isNaN"
+  
+  function f32_fp_is_negative(a: FloatDomain24e8): Bool interpretation "fp.isNegative"
+  
+  function f32_fp_is_positive(a: FloatDomain24e8): Bool interpretation "fp.isPositive"
+}
+
+domain FloatDomain52e12 interpretation (SMTLIB: "(_ FloatingPoint 12 52)", Boogie: "float52e12") {
+  
+  function f64_from_bv(a: BitVectorDomain64): FloatDomain52e12 interpretation "(_ to_fp 12 52)"
+  
+  function f64_fp_add(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.add RNE"
+  
+  function f64_fp_sub(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.sub RNE"
+  
+  function f64_fp_mul(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.mul RNE"
+  
+  function f64_fp_div(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.div RNE"
+  
+  function f64_fp_min(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.min"
+  
+  function f64_fp_max(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.max"
+  
+  function f64_fp_eq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.eq"
+  
+  function f64_fp_leq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.leq"
+  
+  function f64_fp_geq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.geq"
+  
+  function f64_fp_lt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.lt"
+  
+  function f64_fp_gt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.gt"
+  
+  function f64_fp_neg(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.neg"
+  
+  function f64_fp_abs(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.abs"
+  
+  function f64_fp_is_zero(a: FloatDomain52e12): Bool interpretation "fp.isZero"
+  
+  function f64_fp_is_infinite(a: FloatDomain52e12): Bool interpretation "fp.isInfinite"
+  
+  function f64_fp_is_nan(a: FloatDomain52e12): Bool interpretation "fp.isNaN"
+  
+  function f64_fp_is_negative(a: FloatDomain52e12): Bool interpretation "fp.isNegative"
+  
+  function f64_fp_is_positive(a: FloatDomain52e12): Bool interpretation "fp.isPositive"
+  
+  function f64_fp_typ(a: FloatDomain52e12): Bool interpretation "fp.typ"
+}
+
+domain BitVectorDomain8 interpretation (SMTLIB: "(_ BitVec 8)", Boogie: "bv8") {
+  
+  function bv8_from_int(i: Int): BitVectorDomain8 interpretation "(_ int2bv 8)"
+  
+  function bv8_to_int(i: BitVectorDomain8): Int interpretation "(_ bv2int 8)"
+  
+  function bv8_and(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvand"
+  
+  function bv8_or(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvor"
+  
+  function bv8_xor(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvxor"
+  
+  function bv8_add(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvadd"
+  
+  function bv8_sub(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvsub"
+  
+  function bv8_mul(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvmul"
+  
+  function bv8_udiv(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvudiv"
+  
+  function bv8_shl(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvshl"
+  
+  function bv8_lshr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvlshr"
+  
+  function bv8_ashr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvashr"
+  
+  function bv8_not(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvnot"
+  
+  function bv8_neg(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvneg"
+}
+
+domain BitVectorDomain16 interpretation (SMTLIB: "(_ BitVec 16)", Boogie: "bv16") {
+  
+  function bv16_from_int(i: Int): BitVectorDomain16 interpretation "(_ int2bv 16)"
+  
+  function bv16_to_int(i: BitVectorDomain16): Int interpretation "(_ bv2int 16)"
+  
+  function bv16_and(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvand"
+  
+  function bv16_or(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvor"
+  
+  function bv16_xor(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvxor"
+  
+  function bv16_add(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvadd"
+  
+  function bv16_sub(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvsub"
+  
+  function bv16_mul(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvmul"
+  
+  function bv16_udiv(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvudiv"
+  
+  function bv16_shl(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvshl"
+  
+  function bv16_lshr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvlshr"
+  
+  function bv16_ashr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvashr"
+  
+  function bv16_not(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvnot"
+  
+  function bv16_neg(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvneg"
+}
+
+domain BitVectorDomain32 interpretation (SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  
+  function bv32_from_int(i: Int): BitVectorDomain32 interpretation "(_ int2bv 32)"
+  
+  function bv32_to_int(i: BitVectorDomain32): Int interpretation "(_ bv2int 32)"
+  
+  function bv32_and(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvand"
+  
+  function bv32_or(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvor"
+  
+  function bv32_xor(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvxor"
+  
+  function bv32_add(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvadd"
+  
+  function bv32_sub(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvsub"
+  
+  function bv32_mul(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvmul"
+  
+  function bv32_udiv(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvudiv"
+  
+  function bv32_shl(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvshl"
+  
+  function bv32_lshr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvlshr"
+  
+  function bv32_ashr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvashr"
+  
+  function bv32_not(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvnot"
+  
+  function bv32_neg(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvneg"
+}
+
+domain BitVectorDomain64 interpretation (SMTLIB: "(_ BitVec 64)", Boogie: "bv64") {
+  
+  function bv64_from_int(i: Int): BitVectorDomain64 interpretation "(_ int2bv 64)"
+  
+  function bv64_to_int(i: BitVectorDomain64): Int interpretation "(_ bv2int 64)"
+  
+  function bv64_and(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvand"
+  
+  function bv64_or(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvor"
+  
+  function bv64_xor(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvxor"
+  
+  function bv64_add(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvadd"
+  
+  function bv64_sub(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvsub"
+  
+  function bv64_mul(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvmul"
+  
+  function bv64_udiv(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvudiv"
+  
+  function bv64_shl(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvshl"
+  
+  function bv64_lshr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvlshr"
+  
+  function bv64_ashr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvashr"
+  
+  function bv64_not(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvnot"
+  
+  function bv64_neg(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvneg"
+}
+
+domain BitVectorDomain128 interpretation (SMTLIB: "(_ BitVec 128)", Boogie: "bv128") {
+  
+  function bv128_from_int(i: Int): BitVectorDomain128 interpretation "(_ int2bv 128)"
+  
+  function bv128_to_int(i: BitVectorDomain128): Int interpretation "(_ bv2int 128)"
+  
+  function bv128_and(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvand"
+  
+  function bv128_or(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvor"
+  
+  function bv128_xor(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvxor"
+  
+  function bv128_add(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvadd"
+  
+  function bv128_sub(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvsub"
+  
+  function bv128_mul(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvmul"
+  
+  function bv128_udiv(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvudiv"
+  
+  function bv128_shl(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvshl"
+  
+  function bv128_lshr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvlshr"
+  
+  function bv128_ashr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvashr"
+  
+  function bv128_not(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvnot"
+  
+  function bv128_neg(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvneg"
+}
+
+field f$current: Ref
+
+field f$rest: Ref
+
+field f$x: Ref
+
+field f$y: Ref
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach__$TY$__$int$$$int$(): Int
+  requires false
+
+
+function f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1: Snap$struct$m_Route,
+  _2: Int): Int
+  requires true
+  requires 0 <= _2 && _2 < f_length__$TY$__Snap$struct$m_Route$$int$(_1)
+  ensures true
+  ensures [result ==
+    mirror_simple$f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1, _2),
+    true]
+{
+  (_2 != 0 ?
+    (discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1)) ==
+    0 ?
+      builtin$unreach__$TY$__$int$$$int$() :
+      f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1)),
+      _2 - 1)) :
+    Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(Snap$struct$m_Route$0$field$f$current__$TY$__Snap$struct$m_Route$Snap$struct$m_Point(_1)))
+}
+
+function f_length__$TY$__Snap$struct$m_Route$$int$(_1: Snap$struct$m_Route): Int
+  requires true
+  requires true
+  ensures result > 0
+  ensures [result ==
+    mirror_simple$f_length__$TY$__Snap$struct$m_Route$$int$(_1),
+    true]
+{
+  (discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1)) ==
+  0 ?
+    1 :
+    1 +
+    f_length__$TY$__Snap$struct$m_Route$$int$(Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1))))
+}
+
+function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_
+  requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
+
+
+function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self: Ref): Snap$struct$m_Point
+  requires acc(struct$m_Point(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point((unfolding acc(struct$m_Point(self), read$()) in
+    (unfolding acc(i32(self.f$x), read$()) in self.f$x.val_int)), (unfolding acc(struct$m_Point(self), read$()) in
+    (unfolding acc(i32(self.f$y), read$()) in self.f$y.val_int)))
+}
+
+function snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(self: Ref): Snap$struct$m_Route
+  requires acc(struct$m_Route(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route((unfolding acc(struct$m_Route(self), read$()) in
+    snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self.f$current)),
+  (unfolding acc(struct$m_Route(self), read$()) in
+    snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self.f$rest)))
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self: Ref) 
+
+predicate struct$m_Point(self: Ref) {
+  acc(self.f$x, write) &&
+  (acc(i32(self.f$x), write) &&
+  (acc(self.f$y, write) && acc(i32(self.f$y), write)))
+}
+
+predicate struct$m_Route(self: Ref) {
+  acc(self.f$current, write) &&
+  (acc(struct$m_Point(self.f$current), write) &&
+  (acc(self.f$rest, write) &&
+  acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self.f$rest), write)))
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+method m_shift_nth_x() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var _old$l3$0: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  
+  label start
+  // ========== start ==========
+  // Def path: "routes::shift_nth_x"
+  // Span: tests/verify/pass/quick/routes.rs:69:1: 72:2 (#0)
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  // Preconditions:
+  inhale acc(_1.val_ref, write) &&
+    (acc(struct$m_Route(_1.val_ref), write) &&
+    (acc(i32(_2), write) && acc(i32(_3), write)))
+  inhale true
+  inhale 0 <= (unfolding acc(i32(_2), write) in _2.val_int) &&
+    (unfolding acc(i32(_2), write) in _2.val_int) <
+    f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_1.val_ref))
+  label pre
+  // ========== bb0 ==========
+  __t0 := true
+  // [mir] StorageLive(_4)
+  // [mir] StorageLive(_5)
+  // [mir] _5 = &mut (*_1)
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _1.val_ref
+  label l0
+  // [mir] StorageLive(_6)
+  // [mir] _6 = _2
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  unfold acc(i32(_2), write)
+  _6.val_int := _2.val_int
+  label l1
+  // [mir] _4 = borrow_nth(move _5, move _6) -> [return: bb1, unwind: bb3]
+  label l2
+  assert 0 <= _6.val_int &&
+    _6.val_int <
+    f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_5.val_ref))
+  assert true
+  fold acc(i32(_6), write)
+  exhale acc(_5.val_ref, write) &&
+    (acc(struct$m_Route(_5.val_ref), write) && acc(i32(_6), write))
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write) && acc(struct$m_Point(_4.val_ref), write)
+  inhale true
+  inhale (unfolding acc(struct$m_Point(_4.val_ref), write) in
+      (unfolding acc(i32(_4.val_ref.f$x), write) in
+        _4.val_ref.f$x.val_int ==
+        old[l2](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_5.val_ref),
+        _6.val_int))))
+  label l3
+  // ========== bb1 ==========
+  __t1 := true
+  // [mir] StorageDead(_6)
+  // [mir] StorageDead(_5)
+  // [mir] FakeRead(ForLet(None), _4)
+  // [mir] StorageLive(_7)
+  // [mir] StorageLive(_8)
+  // [mir] _8 = &mut (*_4)
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_ref, write)
+  _8.val_ref := _4.val_ref
+  label l4
+  // [mir] StorageLive(_9)
+  // [mir] _9 = _3
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_int, write)
+  unfold acc(i32(_3), write)
+  _9.val_int := _3.val_int
+  label l5
+  // [mir] _7 = shift_x(move _8, move _9) -> [return: bb2, unwind: bb3]
+  label l6
+  assert true
+  fold acc(i32(_9), write)
+  exhale acc(_8.val_ref, write) &&
+    (acc(struct$m_Point(_8.val_ref), write) && acc(i32(_9), write))
+  _7 := builtin$havoc_ref()
+  inhale acc(struct$m_Point(old[l6](_8.val_ref)), write)
+  inhale acc(tuple0$(_7), write)
+  inhale true
+  inhale (unfolding acc(struct$m_Point(old[l6](_8.val_ref)), write) in
+      (unfolding acc(i32(old[l6](_8.val_ref).f$y), write) in
+        (unfolding acc(i32(old[l6](_8.val_ref).f$x), write) in
+          old[l6](_8.val_ref).f$x.val_int ==
+          old[l6]((unfolding acc(struct$m_Point(_8.val_ref), write) in
+            (unfolding acc(i32(_8.val_ref.f$x), write) in
+              _8.val_ref.f$x.val_int))) +
+          old[l6](_9.val_int) &&
+          old[l6](_8.val_ref).f$y.val_int ==
+          old[l6]((unfolding acc(struct$m_Point(_8.val_ref), write) in
+            (unfolding acc(i32(_8.val_ref.f$y), write) in
+              _8.val_ref.f$y.val_int))))))
+  label l7
+  // ========== l8 ==========
+  // MIR edge bb1 --> bb2
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L5,L1,L6,L7,L0,)
+
+  if (__t0 && (__t1 && __t1)) {
+    // expire loan L6
+    _old$l3$0 := _4.val_ref
+    inhale acc(DeadBorrowToken$(6), write) &&
+      acc(struct$m_Point(_old$l3$0), write) --*
+      acc(struct$m_Route(old[l2](_5.val_ref)), write) &&
+      (f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref))) ==
+      old[l2](f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_5.val_ref))) &&
+      (f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref)),
+      old[l2](_6.val_int)) ==
+      old[lhs]((unfolding acc(struct$m_Point(_old$l3$0), write) in
+        (unfolding acc(i32(_old$l3$0.f$x), write) in _old$l3$0.f$x.val_int))) &&
+      (forall _0_quant_0: Int ::!(0 <= _0_quant_0) ||
+        (!(_0_quant_0 <
+        f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref)))) ||
+        (!(_0_quant_0 == old[l2](_6.val_int)) ==>
+        f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref)),
+        _0_quant_0) ==
+        old[l2](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_5.val_ref),
+        _0_quant_0)))))))
+    inhale acc(DeadBorrowToken$(6), write)
+    apply acc(DeadBorrowToken$(6), write) &&
+      acc(struct$m_Point(_old$l3$0), write) --*
+      acc(struct$m_Route(old[l2](_5.val_ref)), write) &&
+      (f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref))) ==
+      old[l2](f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_5.val_ref))) &&
+      (f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref)),
+      old[l2](_6.val_int)) ==
+      old[lhs]((unfolding acc(struct$m_Point(_old$l3$0), write) in
+        (unfolding acc(i32(_old$l3$0.f$x), write) in _old$l3$0.f$x.val_int))) &&
+      (forall _0_quant_0: Int ::!(0 <= _0_quant_0) ||
+        (!(_0_quant_0 <
+        f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref)))) ||
+        (!(_0_quant_0 == old[l2](_6.val_int)) ==>
+        f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref)),
+        _0_quant_0) ==
+        old[l2](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_5.val_ref),
+        _0_quant_0)))))))
+  }
+  // ========== bb2 ==========
+  __t2 := true
+  // [mir] StorageDead(_9)
+  // [mir] StorageDead(_8)
+  // [mir] StorageDead(_7)
+  // [mir] _0 = const ()
+  // [mir] StorageDead(_4)
+  // [mir] return
+  // ========== return ==========
+  // Target of any 'return' statement.
+  // Exhale postcondition
+  label l10
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  // obtain acc(struct$m_Route(_1.val_ref), write)
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  fold acc(tuple0$(_0), write)
+  // obtain acc(tuple0$(_0), write)
+  // Assert possible strengthening
+  // Assert functional specification of postcondition
+  assert f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_old$pre$0)) ==
+    old[pre](f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_1.val_ref))) &&
+    (f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_old$pre$0),
+    old[pre]((unfolding acc(i32(_2), write) in _2.val_int))) ==
+    old[pre](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_1.val_ref),
+    (unfolding acc(i32(_2), write) in _2.val_int))) +
+    old[pre]((unfolding acc(i32(_3), write) in _3.val_int)) &&
+    (forall _0_quant_0: Int ::!(0 <= _0_quant_0) ||
+      (!(_0_quant_0 <
+      f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_old$pre$0))) ||
+      (!(_0_quant_0 ==
+      old[pre]((unfolding acc(i32(_2), write) in _2.val_int))) ==>
+      f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_old$pre$0),
+      _0_quant_0) ==
+      old[pre](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_1.val_ref),
+      _0_quant_0))))))
+  // Assert type invariants
+  assert true
+  // Exhale permissions of postcondition (1/3)
+  exhale acc(struct$m_Route(_old$pre$0), write)
+  // Exhale permissions of postcondition (2/3)
+  exhale acc(tuple0$(_0), write)
+  // Exhale permissions of postcondition (3/3)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

@@ -215,6 +215,7 @@ object AbductionFold extends AbductionRule {
           // TODO nklose if the predicate is conditional in a weird way, then this might be wrong?
           case Some((field, chunk)) =>
             val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
+            
             val fargs = pred.formalArgs.map(_.localVar)
             val eArgs = a.loc.args
             val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
@@ -371,6 +372,7 @@ object AbductionApply extends AbductionRule {
   }
 }
 
+// TODO nklose this should actually do a package after simulating it. Then we do not have issues with the correct state at the end
 object AbductionPackage extends AbductionRule {
 
   override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {

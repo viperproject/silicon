@@ -1,0 +1,75 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field v: Int
+field n: Ref
+
+predicate List(this: Ref) {
+	acc(this.v) && acc(this.n) && (this.n != null ==> acc(List(this.n)))
+}
+
+function sum_rec(this: Ref): Int
+	requires acc(List(this))
+{ unfolding List(this) in (this.v + (this.n == null ? 0 : sum_rec(this.n))) }
+
+method sum_it(ys: Ref) returns (sum: Int)
+  requires ys != null
+	requires acc(List(ys))
+	ensures acc(List(ys))
+	ensures sum == old(sum_rec(ys))
+{
+  var xs: Ref
+  xs := ys
+  sum := 0
+
+  /* ghost */ var oldsum_xs: Int
+              oldsum_xs := sum_rec(xs)
+
+  package
+    ((xs != null) ==> (acc(List(xs)) && sum_rec(xs) == oldsum_xs))
+      --*
+    (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+
+  while (xs != null)
+    invariant ((xs != null) ==> acc(List(xs)))
+    invariant sum == (old(sum_rec(ys)) - (xs == null ? 0 : sum_rec(xs)));
+    invariant
+      ((xs != null) ==> (acc(List(xs)) && sum_rec(xs) == oldsum_xs))
+        --*
+      (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+  {
+    assume oldsum_xs == sum_rec(xs)
+      /* [Malte] I think that it is crucial that oldsum_xs is assigned to at
+       *         least once in the loop, because it will otherwise still have
+       *         the value that it had outside of the loop (a Sil/Silicon feature).
+       *         If so, then the assume in here is unsound because xs changes in
+       *         every loop iteration.
+       */
+
+    /* ghost */ var prev_xs: Ref
+                prev_xs := xs
+
+    unfold List(xs)
+    sum := sum + (xs.v)
+    xs := xs.n;
+
+  /* ghost */ var oldoldsum_xs: Int
+              oldoldsum_xs := oldsum_xs
+
+    if (xs != null) {
+      oldsum_xs := sum_rec(xs)
+    }
+
+    package
+      ((xs != null) ==> (acc(List(xs)) && sum_rec(xs) == oldsum_xs))
+        --* (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))) {
+            fold List(prev_xs)
+            apply ((prev_xs != null) ==> (acc(List(prev_xs)) && sum_rec(prev_xs) == oldoldsum_xs)) --* (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+          }
+  }
+
+  apply
+    ((xs != null) ==> (acc(List(xs)) && sum_rec(xs) == oldsum_xs))
+      --*
+    (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+}

@@ -1,0 +1,62 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* This example shows how our approach to magic wands can be used to
+ * prove the property
+ *
+ *   A * B --* C   <==>   A --* B --* C
+ *
+ * We prove both directions independently, both proofs require nested
+ * ghost operations. In the "<==" case (method uncurry()) we get to
+ * assume the hypothetical LHS A * B while showing the overall wand
+ * A * B --* C, and we can therefore subsequently apply the outer and
+ * inner wand that we were given (A --* B --* C), which suffices to
+ * show the RHS C.
+ *
+ * The "==>" case is more involved. An initial idea might be to
+ * package the inner wand B --* C first, followed by the outer wand
+ * A --* B --* C. However, the sequence of statements
+ *   package B --* C
+ *   package A --* B --* C
+ * is doomed to fail because, given only the hypothetical state B, we
+ * won't be able to show C in the first statement (note that we
+ * cannot apply A * B --* C to get C, because we lack A).
+ * The solution is using a packaging-expression nested into a package
+ * statement, which yields two hypothetical states (the first
+ * satisfying A, the second B), which in turn enables us to apply the
+ * given wand A * B --* C.
+ */
+
+/* The predicates are abstract (no bodies) - in principle, these represent any self-framing assertion */
+predicate P()
+predicate Q()
+predicate R()
+
+/* Define short-hands for the sake of readability */
+define A acc(P())
+define B acc(Q())
+define C acc(R())
+
+/* A --* B --* C  ==>  A * B --* C */
+method uncurry() 
+  requires A --* (B --* C)
+  ensures A && B --* C
+{
+  package (A && B) --* C {
+      apply A --* (B --* C)
+      apply B --* C
+  }
+}
+
+/* A * B --* C  ==>  A --* B --* C */
+method curry()
+  requires A && B --* C
+  ensures A --* (B --* C)
+{
+  package (A) --* B --* C {
+      package (B --* C) {
+          apply A && B --* C
+      }
+
+  }
+}

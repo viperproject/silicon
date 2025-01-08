@@ -1,0 +1,90 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+field g: Int
+field unrelatedField: Int
+
+method unrelated(this: Ref)
+    requires acc(this.unrelatedField, write)
+    ensures acc(this.unrelatedField, write)
+{}
+
+predicate valid(this: Ref, b: Bool) {
+    b ? acc(this.f, write) : acc(this.g, write)
+}
+
+method t1(this: Ref, b: Bool)
+    requires acc(this.unrelatedField, write)
+    requires acc(valid(this, b), write)
+    ensures acc(valid(this, b), write)
+{
+    unfold acc(valid(this, b), write)
+    if (b) {
+        this.f := 1
+    } else {
+        this.g := 2
+    }
+    fold acc(valid(this, b), write)
+    unrelated(this)
+}
+
+method t2(this: Ref)
+    requires acc(this.unrelatedField, write)
+    requires acc(this.f, write)
+    ensures acc(valid(this, true), write)
+{
+    fold acc(valid(this, true), write)
+    unrelated(this)
+}
+
+method t2b(this: Ref)
+    requires acc(this.f, write)
+    ensures acc(valid(this, true), write)
+{
+    //:: ExpectedOutput(fold.failed:insufficient.permission)
+    fold acc(valid(this, false), write)
+}
+
+method t3(this: Ref, b: Bool)
+    requires acc(this.unrelatedField, write)
+    requires acc(valid(this, b), write)
+    requires acc(valid(this, !b), write)
+    //:: UnexpectedOutput(not.wellformed:insufficient.permission, /silicon/issue/36/)
+    requires (unfolding acc(valid(this, false), write) in ((this.g) == 2))
+    ensures acc(valid(this, b), write)
+    ensures acc(valid(this, !b), write)
+    ensures (unfolding acc(valid(this, false), write) in ((this.g) == 2))
+{
+    unfold acc(valid(this, true), write)
+    this.f := 1
+    fold acc(valid(this, true), write)
+}
+
+method t3a(this: Ref, b: Bool)
+    requires acc(this.unrelatedField, write)
+    requires acc(valid(this, b), write)
+    requires acc(valid(this, !b), write)
+    //:: UnexpectedOutput(not.wellformed:insufficient.permission, /silicon/issue/36/)
+    requires (unfolding acc(valid(this, false), write) in ((this.g) == 2))
+    ensures acc(valid(this, b), write)
+    ensures acc(valid(this, !b), write)
+    ensures (unfolding acc(valid(this, false), write) in ((this.g) == 2))
+{
+    unfold acc(valid(this, true), write)
+    this.f := 1
+    fold acc(valid(this, true), write)
+    unrelated(this)
+}
+
+method t3b(this: Ref, b: Bool)
+    requires acc(valid(this, b), write)
+    requires acc(valid(this, !b), write)
+{
+    //:: UnexpectedOutput(unfold.failed:insufficient.permission, /silicon/issue/36/)
+    unfold acc(valid(this, true), write)
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
+    //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/36/)
+    this.g := 1
+}

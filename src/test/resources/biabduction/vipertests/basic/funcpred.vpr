@@ -1,0 +1,35 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field value: Int
+field next: Ref
+field f: Int
+
+function itemat(node: Ref, i: Int): Int
+    requires acc(valid(node), wildcard) && i >= 0
+{
+    unfolding acc(valid(node), wildcard) in ((i == 0 || node.next == null) ? node.value : itemat(node.next, i-1))
+}
+
+predicate valid(this: Ref) {
+    acc(this.next, write) &&
+    acc(this.value, write) &&
+    ((this.next != null) ==> acc(valid(this.next), write))
+}
+
+method a(this: Ref)
+    requires acc(valid(this), write) && acc(this.f, write)
+    ensures acc(valid(this), write)
+{
+    unfold acc(valid(this), write)
+    this.value := 1
+    fold acc(valid(this), write)
+    void(this)
+    assert itemat(this, 0) == 1
+}
+
+method void(this: Ref)
+    requires acc(this.f, write)
+    ensures acc(this.f, write)
+{}

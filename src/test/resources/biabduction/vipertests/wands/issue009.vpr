@@ -1,0 +1,26 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Ref
+
+predicate P(x: Ref) { acc(x.f) && acc(x.f.f) }
+predicate Q(y: Ref) { acc(y.f) }
+
+method test01(z: Ref)
+  requires acc(P(z))
+{
+  package (acc(P(z))) --* acc(z.f) && acc(Q(z.f)) {
+      unfold acc(P(z))
+      fold acc(Q(z.f))
+  }
+}
+
+//method test02(z: Ref)
+//  requires true --* acc(z.f) && acc(z.f.f)
+//{
+//  package true
+//            --*
+//          applying (true --* acc(z.f) && acc(z.f.f)) in
+//          folding acc(Q(z.f)) in
+//          acc(z.f) && acc(Q(z.f))
+//}

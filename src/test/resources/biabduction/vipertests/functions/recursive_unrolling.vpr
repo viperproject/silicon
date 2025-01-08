@@ -1,0 +1,51 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field next: Ref
+
+predicate node(this: Ref) {
+  acc(this.next) && (this.next != null ==> acc(node(this.next)))
+}
+
+function length(this: Ref): Int
+  requires acc(node(this))
+  ensures  result > 0
+{
+  1 + unfolding acc(node(this)) in
+          this.next == null ? 0 : length(this.next)
+}
+
+method test01() {
+  var n1: Ref; n1 := new(next)
+  n1.next := null
+  fold acc(node(n1))
+
+  var n2: Ref; n2 := new(next)
+  n2.next := n1
+  fold acc(node(n2))
+
+  var n3: Ref; n3 := new(next)
+  n3.next := n2
+  fold acc(node(n3))
+
+  var n4: Ref; n4 := new(next)
+  n4.next := n3
+  fold acc(node(n4))
+
+  var n5: Ref; n5 := new(next)
+  n5.next := n4
+  fold acc(node(n5))
+
+  assert length(n5) == 5
+}
+
+method test02(n4: Ref)
+  requires acc(node(n4)) && length(n4) == 4
+{
+  unfold acc(node(n4))
+  unfold acc(node(n4.next))
+  unfold acc(node(n4.next.next))
+  unfold acc(node(n4.next.next.next))
+
+  assert n4.next.next.next.next == null
+}

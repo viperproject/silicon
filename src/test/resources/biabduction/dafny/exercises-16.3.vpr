@@ -1,0 +1,16 @@
+// Exercise 16.10
+/**
+ * Skipped because it concerns representation sets only.
+ */
+
+// Exercise 16.11
+/**
+ * The current implementation already supports the desired functionality 
+ * because we do not need representation sets.
+ */
+
+// Exercise 16.12
+/**
+ * You may also use the VSCode IDE with the Viper extension to get IDE
+ * functionality and support for your Viper programs.
+ */

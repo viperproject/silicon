@@ -1,0 +1,3680 @@
+domain MirrorDomain  {
+  
+  function mirror_simple$f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(_1: Snap$struct$m_VecCandidates): Int 
+  
+  function mirror_simple$f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(_1: Snap$struct$m_VecVecWrapperI32,
+  _2: Int, _3: Int): Int 
+  
+  function mirror_simple$f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(_1: Snap$struct$m_VecWrapperI32I32): Int 
+  
+  function mirror_simple$f_size__$TY$__$int$(): Int 
+  
+  function mirror_simple$f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$bool$(_1: Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_): Bool 
+}
+
+domain Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_  {
+  
+  function discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self: Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_): Int 
+  
+  function cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(): Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_ 
+  
+  function cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0: Snap$struct$m_Board): Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_ 
+  
+  function Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board(self: Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_): Snap$struct$m_Board 
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$discriminant_range {
+    (forall self: Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_ ::
+      { discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self) }
+      0 <=
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self) &&
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self) <=
+      1)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$0$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_()) ==
+    0
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$injectivity {
+    (forall _l_0: Snap$struct$m_Board, _r_0: Snap$struct$m_Board ::
+      { cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_l_0),
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_r_0) }
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_l_0) ==
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$discriminant_axiom {
+    (forall _0: Snap$struct$m_Board ::
+      { cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0) }
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0)) ==
+      1)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$field$f$0$axiom {
+    (forall _0: Snap$struct$m_Board ::
+      { Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0)) }
+      Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_  {
+  
+  function discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(self: Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_): Int 
+  
+  function cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(): Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_ 
+  
+  function cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_0: Snap$tuple2$i32$struct$m_Point): Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_ 
+  
+  function Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(self: Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_): Snap$tuple2$i32$struct$m_Point 
+  
+  axiom Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$discriminant_range {
+    (forall self: Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_ ::
+      { discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(self) }
+      0 <=
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(self) &&
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(self) <=
+      1)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$0$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_()) ==
+    0
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$injectivity {
+    (forall _l_0: Snap$tuple2$i32$struct$m_Point, _r_0: Snap$tuple2$i32$struct$m_Point ::
+      { cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_l_0),
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_r_0) }
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_l_0) ==
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$discriminant_axiom {
+    (forall _0: Snap$tuple2$i32$struct$m_Point ::
+      { cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_0) }
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_0)) ==
+      1)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0$axiom {
+    (forall _0: Snap$tuple2$i32$struct$m_Point ::
+      { Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_0)) }
+      Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_Board  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_0: Snap$struct$m_VecVecWrapperI32): Snap$struct$m_Board 
+  
+  function Snap$struct$m_Board$0$field$f$field__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32(self: Snap$struct$m_Board): Snap$struct$m_VecVecWrapperI32 
+  
+  axiom Snap$struct$m_Board$0$injectivity {
+    (forall _l_0: Snap$struct$m_VecVecWrapperI32, _r_0: Snap$struct$m_VecVecWrapperI32 ::
+      { cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_l_0),
+      cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_r_0) }
+      cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_l_0) ==
+      cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$struct$m_Board$0$field$f$field$axiom {
+    (forall _0: Snap$struct$m_VecVecWrapperI32 ::
+      { Snap$struct$m_Board$0$field$f$field__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32(cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_0)) }
+      Snap$struct$m_Board$0$field$f$field__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32(cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_Point  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0: Int,
+  _1: Int): Snap$struct$m_Point 
+  
+  function Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self: Snap$struct$m_Point): Int 
+  
+  function Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self: Snap$struct$m_Point): Int 
+  
+  axiom Snap$struct$m_Point$0$injectivity {
+    (forall _l_0: Int, _l_1: Int, _r_0: Int, _r_1: Int ::
+      { cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_l_0,
+      _l_1), cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_r_0,
+      _r_1) }
+      cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_l_0,
+      _l_1) ==
+      cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_r_0,
+      _r_1) ==>
+      _l_0 == _r_0 && _l_1 == _r_1)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$x$axiom {
+    (forall _0: Int, _1: Int ::
+      { Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) }
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) ==
+      _0)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$x$valid {
+    (forall self: Snap$struct$m_Point ::
+      { Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) }
+      -2147483648 <=
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) &&
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) <=
+      2147483647)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$y$axiom {
+    (forall _0: Int, _1: Int ::
+      { Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) }
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) ==
+      _1)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$y$valid {
+    (forall self: Snap$struct$m_Point ::
+      { Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) }
+      -2147483648 <=
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) &&
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) <=
+      2147483647)
+  }
+}
+
+domain Snap$struct$m_VecCandidates  {
+  
+  function cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates(_0: Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global): Snap$struct$m_VecCandidates 
+  
+  function Snap$struct$m_VecCandidates$0$field$f$v__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self: Snap$struct$m_VecCandidates): Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global 
+  
+  axiom Snap$struct$m_VecCandidates$0$injectivity {
+    (forall _l_0: Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global,
+    _r_0: Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global ::
+      { cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates(_l_0),
+      cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates(_r_0) }
+      cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates(_l_0) ==
+      cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$struct$m_VecCandidates$0$field$f$v$axiom {
+    (forall _0: Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global ::
+      { Snap$struct$m_VecCandidates$0$field$f$v__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates(_0)) }
+      Snap$struct$m_VecCandidates$0$field$f$v__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_VecVecWrapperI32  {
+  
+  function cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32(_0: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global): Snap$struct$m_VecVecWrapperI32 
+  
+  function Snap$struct$m_VecVecWrapperI32$0$field$f$v__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self: Snap$struct$m_VecVecWrapperI32): Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global 
+  
+  axiom Snap$struct$m_VecVecWrapperI32$0$injectivity {
+    (forall _l_0: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global,
+    _r_0: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global ::
+      { cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32(_l_0),
+      cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32(_r_0) }
+      cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32(_l_0) ==
+      cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$struct$m_VecVecWrapperI32$0$field$f$v$axiom {
+    (forall _0: Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global ::
+      { Snap$struct$m_VecVecWrapperI32$0$field$f$v__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32(_0)) }
+      Snap$struct$m_VecVecWrapperI32$0$field$f$v__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_VecWrapperI32I32  {
+  
+  function cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32(_0: Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global): Snap$struct$m_VecWrapperI32I32 
+  
+  function Snap$struct$m_VecWrapperI32I32$0$field$f$v__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self: Snap$struct$m_VecWrapperI32I32): Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global 
+  
+  axiom Snap$struct$m_VecWrapperI32I32$0$injectivity {
+    (forall _l_0: Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global,
+    _r_0: Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global ::
+      { cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32(_l_0),
+      cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32(_r_0) }
+      cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32(_l_0) ==
+      cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$struct$m_VecWrapperI32I32$0$field$f$v$axiom {
+    (forall _0: Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global ::
+      { Snap$struct$m_VecWrapperI32I32$0$field$f$v__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32(_0)) }
+      Snap$struct$m_VecWrapperI32I32$0$field$f$v__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global  {
+  
+  
+}
+
+domain Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global  {
+  
+  
+}
+
+domain Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global  {
+  
+  
+}
+
+domain Snap$tuple2$i32$struct$m_Point  {
+  
+  function cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_0: Int,
+  _1: Snap$struct$m_Point): Snap$tuple2$i32$struct$m_Point 
+  
+  function Snap$tuple2$i32$struct$m_Point$0$field$tuple_0__$TY$__Snap$tuple2$i32$struct$m_Point$$int$(self: Snap$tuple2$i32$struct$m_Point): Int 
+  
+  function Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(self: Snap$tuple2$i32$struct$m_Point): Snap$struct$m_Point 
+  
+  axiom Snap$tuple2$i32$struct$m_Point$0$injectivity {
+    (forall _l_0: Int, _l_1: Snap$struct$m_Point, _r_0: Int, _r_1: Snap$struct$m_Point ::
+      { cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_l_0,
+      _l_1), cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_r_0,
+      _r_1) }
+      cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_l_0,
+      _l_1) ==
+      cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_r_0,
+      _r_1) ==>
+      _l_0 == _r_0 && _l_1 == _r_1)
+  }
+  
+  axiom Snap$tuple2$i32$struct$m_Point$0$field$tuple_0$axiom {
+    (forall _0: Int, _1: Snap$struct$m_Point ::
+      { Snap$tuple2$i32$struct$m_Point$0$field$tuple_0__$TY$__Snap$tuple2$i32$struct$m_Point$$int$(cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_0,
+      _1)) }
+      Snap$tuple2$i32$struct$m_Point$0$field$tuple_0__$TY$__Snap$tuple2$i32$struct$m_Point$$int$(cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_0,
+      _1)) ==
+      _0)
+  }
+  
+  axiom Snap$tuple2$i32$struct$m_Point$0$field$tuple_0$valid {
+    (forall self: Snap$tuple2$i32$struct$m_Point ::
+      { Snap$tuple2$i32$struct$m_Point$0$field$tuple_0__$TY$__Snap$tuple2$i32$struct$m_Point$$int$(self) }
+      -2147483648 <=
+      Snap$tuple2$i32$struct$m_Point$0$field$tuple_0__$TY$__Snap$tuple2$i32$struct$m_Point$$int$(self) &&
+      Snap$tuple2$i32$struct$m_Point$0$field$tuple_0__$TY$__Snap$tuple2$i32$struct$m_Point$$int$(self) <=
+      2147483647)
+  }
+  
+  axiom Snap$tuple2$i32$struct$m_Point$0$field$tuple_1$axiom {
+    (forall _0: Int, _1: Snap$struct$m_Point ::
+      { Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_0,
+      _1)) }
+      Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point(_0,
+      _1)) ==
+      _1)
+  }
+}
+
+domain FloatDomain24e8 interpretation (SMTLIB: "(_ FloatingPoint 8 24)", Boogie: "float24e8") {
+  
+  function f32_from_bv(a: BitVectorDomain32): FloatDomain24e8 interpretation "(_ to_fp 8 24)"
+  
+  function f32_fp_add(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.add RNE"
+  
+  function f32_fp_sub(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.sub RNE"
+  
+  function f32_fp_mul(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.mul RNE"
+  
+  function f32_fp_div(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.div RNE"
+  
+  function f32_fp_min(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.min"
+  
+  function f32_fp_max(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.max"
+  
+  function f32_fp_eq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.eq"
+  
+  function f32_fp_leq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.leq"
+  
+  function f32_fp_geq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.geq"
+  
+  function f32_fp_lt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.lt"
+  
+  function f32_fp_gt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.gt"
+  
+  function f32_fp_neg(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.neg"
+  
+  function f32_fp_abs(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.abs"
+  
+  function f32_fp_is_zero(a: FloatDomain24e8): Bool interpretation "fp.isZero"
+  
+  function f32_fp_is_infinite(a: FloatDomain24e8): Bool interpretation "fp.isInfinite"
+  
+  function f32_fp_is_nan(a: FloatDomain24e8): Bool interpretation "fp.isNaN"
+  
+  function f32_fp_is_negative(a: FloatDomain24e8): Bool interpretation "fp.isNegative"
+  
+  function f32_fp_is_positive(a: FloatDomain24e8): Bool interpretation "fp.isPositive"
+}
+
+domain FloatDomain52e12 interpretation (SMTLIB: "(_ FloatingPoint 12 52)", Boogie: "float52e12") {
+  
+  function f64_from_bv(a: BitVectorDomain64): FloatDomain52e12 interpretation "(_ to_fp 12 52)"
+  
+  function f64_fp_add(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.add RNE"
+  
+  function f64_fp_sub(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.sub RNE"
+  
+  function f64_fp_mul(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.mul RNE"
+  
+  function f64_fp_div(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.div RNE"
+  
+  function f64_fp_min(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.min"
+  
+  function f64_fp_max(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.max"
+  
+  function f64_fp_eq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.eq"
+  
+  function f64_fp_leq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.leq"
+  
+  function f64_fp_geq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.geq"
+  
+  function f64_fp_lt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.lt"
+  
+  function f64_fp_gt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.gt"
+  
+  function f64_fp_neg(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.neg"
+  
+  function f64_fp_abs(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.abs"
+  
+  function f64_fp_is_zero(a: FloatDomain52e12): Bool interpretation "fp.isZero"
+  
+  function f64_fp_is_infinite(a: FloatDomain52e12): Bool interpretation "fp.isInfinite"
+  
+  function f64_fp_is_nan(a: FloatDomain52e12): Bool interpretation "fp.isNaN"
+  
+  function f64_fp_is_negative(a: FloatDomain52e12): Bool interpretation "fp.isNegative"
+  
+  function f64_fp_is_positive(a: FloatDomain52e12): Bool interpretation "fp.isPositive"
+  
+  function f64_fp_typ(a: FloatDomain52e12): Bool interpretation "fp.typ"
+}
+
+domain BitVectorDomain8 interpretation (SMTLIB: "(_ BitVec 8)", Boogie: "bv8") {
+  
+  function bv8_from_int(i: Int): BitVectorDomain8 interpretation "(_ int2bv 8)"
+  
+  function bv8_to_int(i: BitVectorDomain8): Int interpretation "(_ bv2int 8)"
+  
+  function bv8_and(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvand"
+  
+  function bv8_or(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvor"
+  
+  function bv8_xor(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvxor"
+  
+  function bv8_add(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvadd"
+  
+  function bv8_sub(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvsub"
+  
+  function bv8_mul(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvmul"
+  
+  function bv8_udiv(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvudiv"
+  
+  function bv8_shl(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvshl"
+  
+  function bv8_lshr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvlshr"
+  
+  function bv8_ashr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvashr"
+  
+  function bv8_not(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvnot"
+  
+  function bv8_neg(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvneg"
+}
+
+domain BitVectorDomain16 interpretation (SMTLIB: "(_ BitVec 16)", Boogie: "bv16") {
+  
+  function bv16_from_int(i: Int): BitVectorDomain16 interpretation "(_ int2bv 16)"
+  
+  function bv16_to_int(i: BitVectorDomain16): Int interpretation "(_ bv2int 16)"
+  
+  function bv16_and(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvand"
+  
+  function bv16_or(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvor"
+  
+  function bv16_xor(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvxor"
+  
+  function bv16_add(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvadd"
+  
+  function bv16_sub(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvsub"
+  
+  function bv16_mul(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvmul"
+  
+  function bv16_udiv(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvudiv"
+  
+  function bv16_shl(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvshl"
+  
+  function bv16_lshr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvlshr"
+  
+  function bv16_ashr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvashr"
+  
+  function bv16_not(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvnot"
+  
+  function bv16_neg(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvneg"
+}
+
+domain BitVectorDomain32 interpretation (SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  
+  function bv32_from_int(i: Int): BitVectorDomain32 interpretation "(_ int2bv 32)"
+  
+  function bv32_to_int(i: BitVectorDomain32): Int interpretation "(_ bv2int 32)"
+  
+  function bv32_and(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvand"
+  
+  function bv32_or(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvor"
+  
+  function bv32_xor(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvxor"
+  
+  function bv32_add(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvadd"
+  
+  function bv32_sub(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvsub"
+  
+  function bv32_mul(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvmul"
+  
+  function bv32_udiv(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvudiv"
+  
+  function bv32_shl(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvshl"
+  
+  function bv32_lshr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvlshr"
+  
+  function bv32_ashr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvashr"
+  
+  function bv32_not(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvnot"
+  
+  function bv32_neg(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvneg"
+}
+
+domain BitVectorDomain64 interpretation (SMTLIB: "(_ BitVec 64)", Boogie: "bv64") {
+  
+  function bv64_from_int(i: Int): BitVectorDomain64 interpretation "(_ int2bv 64)"
+  
+  function bv64_to_int(i: BitVectorDomain64): Int interpretation "(_ bv2int 64)"
+  
+  function bv64_and(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvand"
+  
+  function bv64_or(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvor"
+  
+  function bv64_xor(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvxor"
+  
+  function bv64_add(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvadd"
+  
+  function bv64_sub(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvsub"
+  
+  function bv64_mul(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvmul"
+  
+  function bv64_udiv(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvudiv"
+  
+  function bv64_shl(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvshl"
+  
+  function bv64_lshr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvlshr"
+  
+  function bv64_ashr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvashr"
+  
+  function bv64_not(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvnot"
+  
+  function bv64_neg(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvneg"
+}
+
+domain BitVectorDomain128 interpretation (SMTLIB: "(_ BitVec 128)", Boogie: "bv128") {
+  
+  function bv128_from_int(i: Int): BitVectorDomain128 interpretation "(_ int2bv 128)"
+  
+  function bv128_to_int(i: BitVectorDomain128): Int interpretation "(_ bv2int 128)"
+  
+  function bv128_and(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvand"
+  
+  function bv128_or(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvor"
+  
+  function bv128_xor(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvxor"
+  
+  function bv128_add(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvadd"
+  
+  function bv128_sub(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvsub"
+  
+  function bv128_mul(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvmul"
+  
+  function bv128_udiv(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvudiv"
+  
+  function bv128_shl(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvshl"
+  
+  function bv128_lshr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvlshr"
+  
+  function bv128_ashr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvashr"
+  
+  function bv128_not(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvnot"
+  
+  function bv128_neg(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvneg"
+}
+
+field discriminant: Int
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$field: Ref
+
+field f$v: Ref
+
+field f$x: Ref
+
+field f$y: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(_1: Snap$struct$m_VecCandidates): Int
+  requires true
+  requires true
+  ensures result >= 0
+  ensures 0 <= result
+  ensures [result ==
+    mirror_simple$f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(_1),
+    true]
+
+
+function f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(_1: Snap$struct$m_VecVecWrapperI32,
+  _2: Int, _3: Int): Int
+  requires true
+  requires 0 <= _2 && _2 < f_size__$TY$__$int$() &&
+    (0 <= _3 && _3 < f_size__$TY$__$int$())
+  ensures true
+  ensures [result ==
+    mirror_simple$f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(_1,
+    _2, _3),
+    true]
+
+
+function f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(_1: Snap$struct$m_VecWrapperI32I32): Int
+  requires true
+  requires true
+  ensures result >= 0
+  ensures 0 <= result
+  ensures [result ==
+    mirror_simple$f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(_1),
+    true]
+
+
+function f_size__$TY$__$int$(): Int
+  requires true
+  requires true
+  ensures result == 8
+  ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
+
+
+function f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$bool$(_1: Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_): Bool
+  requires true
+  requires true
+  ensures true
+  ensures [result ==
+    mirror_simple$f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$bool$(_1),
+    true]
+{
+  !(discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(_1) ==
+  0) ==>
+  (!(0 <=
+  Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(_1)))) ==>
+  false) &&
+  (0 <=
+  Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(_1))) ==>
+  (!(Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(_1))) <
+  f_size__$TY$__$int$()) ==>
+  false) &&
+  (Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(_1))) <
+  f_size__$TY$__$int$() ==>
+  0 <=
+  Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(_1))) &&
+  (0 <=
+  Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(_1))) ==>
+  Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(Snap$tuple2$i32$struct$m_Point$0$field$tuple_1__$TY$__Snap$tuple2$i32$struct$m_Point$Snap$struct$m_Point(Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point(_1))) <
+  f_size__$TY$__$int$())))
+}
+
+function m_std$$option$$Option$_beg_$struct$m_Board$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self: Ref): Int
+  requires acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+  ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(self)) ==
+    result
+{
+  (unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$()) in
+    self.discriminant)
+}
+
+function m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(self: Ref): Int
+  requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+  ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self)) ==
+    result
+{
+  (unfolding acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$()) in
+    self.discriminant)
+}
+
+function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_
+  requires acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$())
+{
+  ((unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$()) in
+    self.discriminant) ==
+  1 ?
+    cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_((unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$()) in
+      (unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(self.enum_Some), read$()) in
+        snap$__$TY$__Snap$struct$m_Board$struct$m_Board$Snap$struct$m_Board(self.enum_Some.f$0)))) :
+    cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_())
+}
+
+function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_
+  requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
+{
+  ((unfolding acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$()) in
+    self.discriminant) ==
+  1 ?
+    cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$tuple2$i32$struct$m_Point$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_((unfolding acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$()) in
+      (unfolding acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(self.enum_Some), read$()) in
+        snap$__$TY$__Snap$tuple2$i32$struct$m_Point$tuple2$i32$struct$m_Point$Snap$tuple2$i32$struct$m_Point(self.enum_Some.f$0)))) :
+    cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_())
+}
+
+function snap$__$TY$__Snap$struct$m_Board$struct$m_Board$Snap$struct$m_Board(self: Ref): Snap$struct$m_Board
+  requires acc(struct$m_Board(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board((unfolding acc(struct$m_Board(self), read$()) in
+    snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(self.f$field)))
+}
+
+function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self: Ref): Snap$struct$m_Point
+  requires acc(struct$m_Point(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point((unfolding acc(struct$m_Point(self), read$()) in
+    (unfolding acc(i32(self.f$x), read$()) in self.f$x.val_int)), (unfolding acc(struct$m_Point(self), read$()) in
+    (unfolding acc(i32(self.f$y), read$()) in self.f$y.val_int)))
+}
+
+function snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(self: Ref): Snap$struct$m_VecCandidates
+  requires acc(struct$m_VecCandidates(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates((unfolding acc(struct$m_VecCandidates(self), read$()) in
+    snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self.f$v)))
+}
+
+function snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(self: Ref): Snap$struct$m_VecVecWrapperI32
+  requires acc(struct$m_VecVecWrapperI32(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32((unfolding acc(struct$m_VecVecWrapperI32(self), read$()) in
+    snap$__$TY$__Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self.f$v)))
+}
+
+function snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(self: Ref): Snap$struct$m_VecWrapperI32I32
+  requires acc(struct$m_VecWrapperI32I32(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32((unfolding acc(struct$m_VecWrapperI32I32(self), read$()) in
+    snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self.f$v)))
+}
+
+function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global
+  requires acc(struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self), read$())
+
+
+function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global
+  requires acc(struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self), read$())
+
+
+function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global
+  requires acc(struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self), read$())
+
+
+function snap$__$TY$__Snap$tuple2$i32$struct$m_Point$tuple2$i32$struct$m_Point$Snap$tuple2$i32$struct$m_Point(self: Ref): Snap$tuple2$i32$struct$m_Point
+  requires acc(tuple2$i32$struct$m_Point(self), read$())
+{
+  cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point((unfolding acc(tuple2$i32$struct$m_Point(self), read$()) in
+    (unfolding acc(i32(self.tuple_0), read$()) in self.tuple_0.val_int)), (unfolding acc(tuple2$i32$struct$m_Point(self), read$()) in
+    snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self.tuple_1)))
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_std$$option$$Option$_beg_$struct$m_Board$_end_(self: Ref) {
+  acc(self.discriminant, write) &&
+  (0 <= self.discriminant && self.discriminant <= 1 &&
+  (acc(self.enum_Some, write) &&
+  acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(self.enum_Some), write)))
+}
+
+predicate m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(struct$m_Board(self.f$0), write)
+}
+
+predicate m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self: Ref) {
+  acc(self.discriminant, write) &&
+  (0 <= self.discriminant && self.discriminant <= 1 &&
+  (acc(self.enum_Some, write) &&
+  acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(self.enum_Some), write)))
+}
+
+predicate m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(tuple2$i32$struct$m_Point(self.f$0), write)
+}
+
+predicate struct$m_Board(self: Ref) {
+  acc(self.f$field, write) &&
+  acc(struct$m_VecVecWrapperI32(self.f$field), write)
+}
+
+predicate struct$m_Point(self: Ref) {
+  acc(self.f$x, write) &&
+  (acc(i32(self.f$x), write) &&
+  (acc(self.f$y, write) && acc(i32(self.f$y), write)))
+}
+
+predicate struct$m_VecCandidates(self: Ref) {
+  acc(self.f$v, write) &&
+  acc(struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self.f$v), write)
+}
+
+predicate struct$m_VecVecWrapperI32(self: Ref) {
+  acc(self.f$v, write) &&
+  acc(struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self.f$v), write)
+}
+
+predicate struct$m_VecWrapperI32I32(self: Ref) {
+  acc(self.f$v, write) &&
+  acc(struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self.f$v), write)
+}
+
+predicate struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self: Ref) 
+
+predicate struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self: Ref) 
+
+predicate struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self: Ref) 
+
+predicate tuple0$(self: Ref) 
+
+predicate tuple2$i32$i32(self: Ref) 
+
+predicate tuple2$i32$struct$m_Point(self: Ref) {
+  acc(self.tuple_0, write) &&
+  (acc(i32(self.tuple_0), write) &&
+  (acc(self.tuple_1, write) && acc(struct$m_Point(self.tuple_1), write)))
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+method m_knights_tour() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var __t39: Bool
+  var __t40: Bool
+  var __t41: Bool
+  var __t42: Bool
+  var __t43: Bool
+  var __t44: Bool
+  var __t45: Bool
+  var __t46: Bool
+  var __t47: Bool
+  var __t48: Bool
+  var __t49: Bool
+  var __t50: Bool
+  var __t51: Bool
+  var __t52: Bool
+  var __t53: Bool
+  var __t54: Bool
+  var __t55: Bool
+  var __t56: Bool
+  var __t57: Bool
+  var __t58: Bool
+  var __t59: Bool
+  var __t60: Bool
+  var __t61: Bool
+  var __t62: Bool
+  var __t63: Bool
+  var __t64: Bool
+  var __t65: Bool
+  var __t66: Bool
+  var __t67: Bool
+  var __t68: Bool
+  var __t69: Bool
+  var __t70: Bool
+  var __t71: Bool
+  var __t72: Bool
+  var __t73: Bool
+  var __t74: Bool
+  var __t75: Bool
+  var __t76: Bool
+  var __t77: Bool
+  var __t78: Bool
+  var __t79: Bool
+  var __t80: Bool
+  var __t81: Bool
+  var __t82: Bool
+  var __t83: Bool
+  var __t84: Bool
+  var __t85: Bool
+  var __t86: Bool
+  var __t87: Bool
+  var __t88: Bool
+  var __t89: Bool
+  var __t90: Bool
+  var __t91: Bool
+  var __t92: Bool
+  var __t93: Bool
+  var __t94: Bool
+  var __t95: Bool
+  var __t96: Bool
+  var __t97: Bool
+  var __t98: Bool
+  var __t99: Bool
+  var __t100: Bool
+  var __t101: Bool
+  var __t102: Bool
+  var __t103: Bool
+  var __t104: Bool
+  var __t105: Bool
+  var __t106: Bool
+  var __t107: Bool
+  var __t108: Bool
+  var __t109: Bool
+  var __t110: Bool
+  var __t111: Bool
+  var __t112: Int
+  var __t113: Bool
+  var __t114: Bool
+  var __t115: Bool
+  var __t116: Bool
+  var __t117: Bool
+  var __t118: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Int
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _23: Ref
+  var _25: Ref
+  var _29: Ref
+  var _32: Ref
+  var _33: Ref
+  var _34: Ref
+  var _35: Ref
+  var _36: Int
+  var _37: Int
+  var _38: Ref
+  var _40: Ref
+  var _42: Ref
+  var _46: Ref
+  var _51: Ref
+  var _55: Ref
+  var _58: Ref
+  var _59: Ref
+  var _60: Int
+  var _61: Ref
+  var _62: Ref
+  var _63: Ref
+  var _64: Ref
+  var _66: Ref
+  var _67: Ref
+  var _68: Ref
+  var _69: Ref
+  var _70: Ref
+  var _71: Ref
+  var _72: Ref
+  var _73: Ref
+  var _74: Ref
+  var _75: Ref
+  var _76: Ref
+  var _77: Ref
+  var _78: Ref
+  var _79: Ref
+  var _80: Int
+  var _81: Int
+  var _82: Ref
+  var _86: Ref
+  var _87: Ref
+  var _88: Int
+  var _89: Int
+  var _90: Ref
+  var _91: Ref
+  var _92: Ref
+  var _93: Ref
+  var _94: Ref
+  var _95: Ref
+  var _97: Ref
+  var _99: Ref
+  var _103: Ref
+  var _108: Ref
+  var _111: Int
+  var _112: Ref
+  var _113: Ref
+  var _114: Ref
+  var _115: Int
+  var _117: Ref
+  var _118: Int
+  var _119: Int
+  var _120: Ref
+  var _121: Ref
+  var _122: Ref
+  var _123: Ref
+  var _124: Ref
+  var _125: Ref
+  var _126: Int
+  var _127: Int
+  var _128: Ref
+  var _133: Int
+  var _134: Ref
+  var _135: Ref
+  var _136: Ref
+  var _137: Ref
+  var _138: Ref
+  var _139: Ref
+  var _140: Ref
+  var _141: Ref
+  var _142: Ref
+  var _143: Ref
+  var _144: Int
+  var _145: Ref
+  var _146: Ref
+  var _147: Ref
+  var _148: Ref
+  var _149: Ref
+  var _150: Ref
+  var _154: Ref
+  var _156: Ref
+  
+  label start
+  // ========== start ==========
+  // Def path: "Knights_tour::knights_tour"
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:236:1: 301:2 (#0)
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  __t31 := false
+  __t32 := false
+  __t33 := false
+  __t34 := false
+  __t35 := false
+  __t36 := false
+  __t37 := false
+  __t38 := false
+  __t39 := false
+  __t40 := false
+  __t41 := false
+  __t42 := false
+  __t43 := false
+  __t44 := false
+  __t45 := false
+  __t46 := false
+  __t47 := false
+  __t48 := false
+  __t49 := false
+  __t50 := false
+  __t51 := false
+  __t52 := false
+  __t53 := false
+  __t54 := false
+  __t55 := false
+  __t56 := false
+  __t57 := false
+  __t58 := false
+  __t59 := false
+  __t60 := false
+  __t61 := false
+  __t62 := false
+  __t63 := false
+  __t64 := false
+  __t65 := false
+  __t66 := false
+  __t67 := false
+  __t68 := false
+  __t69 := false
+  __t70 := false
+  __t71 := false
+  __t72 := false
+  __t73 := false
+  __t74 := false
+  __t75 := false
+  __t76 := false
+  __t77 := false
+  __t78 := false
+  __t79 := false
+  __t80 := false
+  __t81 := false
+  __t82 := false
+  // Preconditions:
+  inhale acc(i32(_1), write) && acc(i32(_2), write)
+  inhale true
+  inhale 0 <= (unfolding acc(i32(_1), write) in _1.val_int) &&
+    ((unfolding acc(i32(_1), write) in _1.val_int) < f_size__$TY$__$int$() &&
+    (0 <= (unfolding acc(i32(_2), write) in _2.val_int) &&
+    (unfolding acc(i32(_2), write) in _2.val_int) < f_size__$TY$__$int$()))
+  label pre
+  // ========== bb0 ==========
+  __t0 := true
+  // [mir] StorageLive(_3)
+  // [mir] _3 = Board::new() -> [return: bb1, unwind: bb95]
+  label l0
+  _3 := builtin$havoc_ref()
+  inhale acc(struct$m_Board(_3), write)
+  inhale true
+  label l1
+  // ========== bb1 ==========
+  __t1 := true
+  // [mir] FakeRead(ForLet(None), _3)
+  // [mir] StorageLive(_4)
+  // [mir] StorageLive(_5)
+  // [mir] _5 = _1
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_int, write)
+  unfold acc(i32(_1), write)
+  _5.val_int := _1.val_int
+  label l2
+  // [mir] StorageLive(_6)
+  // [mir] _6 = _2
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  unfold acc(i32(_2), write)
+  _6.val_int := _2.val_int
+  label l3
+  // [mir] _4 = Point { x: move _5, y: move _6 }
+  _4 := builtin$havoc_ref()
+  inhale acc(struct$m_Point(_4), write)
+  unfold acc(struct$m_Point(_4), write)
+  _4.f$x := _5
+  label l4
+  _4.f$y := _6
+  label l5
+  // [mir] StorageDead(_6)
+  // [mir] StorageDead(_5)
+  // [mir] FakeRead(ForLet(None), _4)
+  // [mir] StorageLive(_7)
+  // [mir] _7 = const 1_i32
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_int, write)
+  _7.val_int := 1
+  // [mir] FakeRead(ForLet(None), _7)
+  // [mir] StorageLive(_8)
+  // [mir] _8 = const false
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_bool, write)
+  _8.val_bool := false
+  // [mir] FakeRead(ForLet(None), _8)
+  // [mir] StorageLive(_9)
+  // [mir] StorageLive(_10)
+  // [mir] _10 = &mut (_3.0: VecVecWrapperI32)
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  unfold acc(struct$m_Board(_3), write)
+  _10.val_ref := _3.f$field
+  label l6
+  // [mir] StorageLive(_11)
+  // [mir] _11 = (_4.0: i32)
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_int, write)
+  _11.val_int := _4.f$x.val_int
+  label l7
+  // [mir] StorageLive(_12)
+  // [mir] _12 = (_4.1: i32)
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_int, write)
+  _12.val_int := _4.f$y.val_int
+  label l8
+  // [mir] StorageLive(_13)
+  // [mir] _13 = _7
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_int, write)
+  _13.val_int := _7.val_int
+  label l9
+  // [mir] _9 = VecVecWrapperI32::store(move _10, move _11, move _12, move _13) -> [return: bb2, unwind: bb94]
+  label l10
+  assert 0 <= _11.val_int && _11.val_int < f_size__$TY$__$int$() &&
+    (0 <= _12.val_int && _12.val_int < f_size__$TY$__$int$())
+  assert true
+  fold acc(i32(_11), write)
+  fold acc(i32(_12), write)
+  fold acc(i32(_13), write)
+  exhale acc(_10.val_ref, write) &&
+    (acc(struct$m_VecVecWrapperI32(_10.val_ref), write) &&
+    (acc(i32(_11), write) && (acc(i32(_12), write) && acc(i32(_13), write))))
+  _9 := builtin$havoc_ref()
+  inhale acc(struct$m_VecVecWrapperI32(old[l10](_10.val_ref)), write)
+  inhale acc(tuple0$(_9), write)
+  inhale true
+  inhale f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(old[l10](_10.val_ref)),
+    old[l10](_11.val_int), old[l10](_12.val_int)) ==
+    old[l10](_13.val_int) &&
+    (forall _0_quant_0: Int, _1_quant_0: Int ::!(0 <= _0_quant_0) ||
+      (!(_0_quant_0 < f_size__$TY$__$int$()) ||
+      (_0_quant_0 == old[l10](_11.val_int) ||
+      (!(0 <= _1_quant_0) ||
+      (!(_1_quant_0 < f_size__$TY$__$int$()) ||
+      (!(_1_quant_0 == old[l10](_12.val_int)) ==>
+      f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(old[l10](_10.val_ref)),
+      _0_quant_0, _1_quant_0) ==
+      old[l10](f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(_10.val_ref),
+      _0_quant_0, _1_quant_0))))))))
+  label l11
+  // ========== l12 ==========
+  // MIR edge bb1 --> bb2
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L31,L0,)
+
+  // ========== bb2 ==========
+  __t2 := true
+  // [mir] StorageDead(_13)
+  // [mir] StorageDead(_12)
+  // [mir] StorageDead(_11)
+  // [mir] StorageDead(_10)
+  // [mir] StorageDead(_9)
+  // [mir] _14 = CheckedAdd(_7, const 1_i32)
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.tuple_0, write)
+  inhale acc(_14.tuple_0.val_int, write)
+  inhale acc(_14.tuple_1, write)
+  inhale acc(_14.tuple_1.val_bool, write)
+  _14.tuple_0.val_int := _7.val_int + 1
+  _14.tuple_1.val_bool := false
+  // [mir] assert(!move (_14.1: bool), "attempt to compute `{} + {}`, which would overflow", _7, const 1_i32) -> [success: bb3, unwind: bb94]
+  __t83 := _14.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  assert !__t83
+  // ========== bb3 ==========
+  __t3 := true
+  // [mir] _7 = move (_14.0: i32)
+  _7 := _14.tuple_0
+  label l13
+  // [mir] StorageLive(_15)
+  // [mir] StorageLive(_16)
+  // [mir] _16 = _7
+  _16 := builtin$havoc_int()
+  _16 := _7.val_int
+  label l14
+  // [mir] StorageLive(_17)
+  // [mir] StorageLive(_18)
+  // [mir] _18 = size() -> [return: bb4, unwind: bb94]
+  label l15
+  _18 := builtin$havoc_ref()
+  inhale acc(i32(_18), write)
+  inhale (unfolding acc(i32(_18), write) in _18.val_int) ==
+    f_size__$TY$__$int$()
+  // ========== bb4 ==========
+  __t4 := true
+  // [mir] StorageLive(_19)
+  // [mir] _19 = size() -> [return: bb5, unwind: bb94]
+  label l16
+  _19 := builtin$havoc_ref()
+  inhale acc(i32(_19), write)
+  inhale (unfolding acc(i32(_19), write) in _19.val_int) ==
+    f_size__$TY$__$int$()
+  // ========== bb5 ==========
+  __t5 := true
+  // [mir] _20 = CheckedMul(_18, _19)
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.tuple_0, write)
+  inhale acc(_20.tuple_0.val_int, write)
+  inhale acc(_20.tuple_1, write)
+  inhale acc(_20.tuple_1.val_bool, write)
+  unfold acc(i32(_18), write)
+  unfold acc(i32(_19), write)
+  _20.tuple_0.val_int := _18.val_int * _19.val_int
+  _20.tuple_1.val_bool := false
+  // [mir] assert(!move (_20.1: bool), "attempt to compute `{} * {}`, which would overflow", move _18, move _19) -> [success: bb6, unwind: bb94]
+  __t84 := _20.tuple_1.val_bool
+  // Rust assertion: attempt to multiply with overflow
+  assert !__t84
+  // ========== bb6 ==========
+  __t6 := true
+  // [mir] _17 = move (_20.0: i32)
+  _17 := _20.tuple_0
+  label l17
+  // [mir] StorageDead(_19)
+  // [mir] StorageDead(_18)
+  // [mir] _15 = Le(move _16, move _17)
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_bool, write)
+  _15.val_bool := _16 <= _17.val_int
+  // [mir] StorageDead(_17)
+  // [mir] StorageDead(_16)
+  // [mir] FakeRead(ForLet(None), _15)
+  // [mir] StorageLive(_21)
+  // [mir] goto -> bb7
+  // ========== loop7_start ==========
+  // ========== loop7_group1_bb7 ==========
+  // This is a loop head
+  __t7 := true
+  // [mir] falseUnwind -> [real: bb8, unwind: bb94]
+  // ========== loop7_group1_bb8 ==========
+  __t8 := true
+  // [mir] StorageLive(_23)
+  // [mir] _23 = _15
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := _15.val_bool
+  label l18
+  // [mir] switchInt(move _23) -> [0: bb85, otherwise: bb9]
+  __t85 := _23.val_bool
+  if (__t85) {
+    goto bb1
+  }
+  goto bb0
+  
+  label bb0
+  // ========== l19 ==========
+  // MIR edge bb8 --> bb85
+  goto loop7_group3_bb18
+  
+  label bb1
+  // ========== l20 ==========
+  // MIR edge bb8 --> bb9
+  // ========== loop7_group2_bb9 ==========
+  __t9 := true
+  // [mir] StorageLive(_24)
+  // [mir] StorageLive(_25)
+  // [mir] _25 = const false
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := false
+  // [mir] switchInt(move _25) -> [0: bb11, otherwise: bb10]
+  __t86 := _25.val_bool
+  // Ignore default target bb10, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_inv_pre ==========
+  // Assert and exhale the loop body invariant (loop head: bb7)
+  fold acc(bool(_8), write)
+  // obtain acc(bool(_8), write)
+  fold acc(i32(_4.f$y), write)
+  fold acc(i32(_4.f$x), write)
+  fold acc(struct$m_Point(_4), write)
+  // obtain acc(struct$m_Point(_4), write)
+  fold acc(i32(_7), write)
+  // obtain acc(i32(_7), write)
+  fold acc(bool(_15), write)
+  // obtain acc(bool(_15), write)
+  fold acc(struct$m_Board(_3), write)
+  // obtain acc(struct$m_Board(_3), write)
+  assert 0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) <
+    f_size__$TY$__$int$())
+  assert true
+  exhale acc(bool(_8), write) &&
+    (acc(struct$m_Point(_4), write) &&
+    (acc(i32(_7), write) &&
+    (acc(bool(_15), write) && acc(struct$m_Board(_3), write))))
+  _103 := builtin$havoc_ref()
+  _108 := builtin$havoc_ref()
+  _111 := builtin$havoc_int()
+  _112 := builtin$havoc_ref()
+  _113 := builtin$havoc_ref()
+  _114 := builtin$havoc_ref()
+  _115 := builtin$havoc_int()
+  _117 := builtin$havoc_ref()
+  _118 := builtin$havoc_int()
+  _119 := builtin$havoc_int()
+  _120 := builtin$havoc_ref()
+  _121 := builtin$havoc_ref()
+  _122 := builtin$havoc_ref()
+  _123 := builtin$havoc_ref()
+  _124 := builtin$havoc_ref()
+  _125 := builtin$havoc_ref()
+  _126 := builtin$havoc_int()
+  _127 := builtin$havoc_int()
+  _128 := builtin$havoc_ref()
+  _133 := builtin$havoc_int()
+  _134 := builtin$havoc_ref()
+  _135 := builtin$havoc_ref()
+  _136 := builtin$havoc_ref()
+  _137 := builtin$havoc_ref()
+  _138 := builtin$havoc_ref()
+  _139 := builtin$havoc_ref()
+  _140 := builtin$havoc_ref()
+  _141 := builtin$havoc_ref()
+  _142 := builtin$havoc_ref()
+  _143 := builtin$havoc_ref()
+  _144 := builtin$havoc_int()
+  _145 := builtin$havoc_ref()
+  _146 := builtin$havoc_ref()
+  _147 := builtin$havoc_ref()
+  _148 := builtin$havoc_ref()
+  _149 := builtin$havoc_ref()
+  _15 := builtin$havoc_ref()
+  _150 := builtin$havoc_ref()
+  _23 := builtin$havoc_ref()
+  _25 := builtin$havoc_ref()
+  _29 := builtin$havoc_ref()
+  _32 := builtin$havoc_ref()
+  _33 := builtin$havoc_ref()
+  _34 := builtin$havoc_ref()
+  _35 := builtin$havoc_ref()
+  _36 := builtin$havoc_int()
+  _37 := builtin$havoc_int()
+  _38 := builtin$havoc_ref()
+  _4 := builtin$havoc_ref()
+  _40 := builtin$havoc_ref()
+  _42 := builtin$havoc_ref()
+  _46 := builtin$havoc_ref()
+  _51 := builtin$havoc_ref()
+  _55 := builtin$havoc_ref()
+  _58 := builtin$havoc_ref()
+  _59 := builtin$havoc_ref()
+  _60 := builtin$havoc_int()
+  _61 := builtin$havoc_ref()
+  _62 := builtin$havoc_ref()
+  _63 := builtin$havoc_ref()
+  _64 := builtin$havoc_ref()
+  _66 := builtin$havoc_ref()
+  _67 := builtin$havoc_ref()
+  _68 := builtin$havoc_ref()
+  _69 := builtin$havoc_ref()
+  _7 := builtin$havoc_ref()
+  _70 := builtin$havoc_ref()
+  _71 := builtin$havoc_ref()
+  _72 := builtin$havoc_ref()
+  _73 := builtin$havoc_ref()
+  _74 := builtin$havoc_ref()
+  _75 := builtin$havoc_ref()
+  _76 := builtin$havoc_ref()
+  _77 := builtin$havoc_ref()
+  _78 := builtin$havoc_ref()
+  _79 := builtin$havoc_ref()
+  _80 := builtin$havoc_int()
+  _81 := builtin$havoc_int()
+  _82 := builtin$havoc_ref()
+  _86 := builtin$havoc_ref()
+  _87 := builtin$havoc_ref()
+  _88 := builtin$havoc_int()
+  _89 := builtin$havoc_int()
+  _90 := builtin$havoc_ref()
+  _91 := builtin$havoc_ref()
+  _92 := builtin$havoc_ref()
+  _93 := builtin$havoc_ref()
+  _94 := builtin$havoc_ref()
+  _95 := builtin$havoc_ref()
+  _97 := builtin$havoc_ref()
+  _99 := builtin$havoc_ref()
+  __t10 := builtin$havoc_bool()
+  __t100 := builtin$havoc_bool()
+  __t101 := builtin$havoc_bool()
+  __t102 := builtin$havoc_bool()
+  __t103 := builtin$havoc_bool()
+  __t104 := builtin$havoc_bool()
+  __t105 := builtin$havoc_bool()
+  __t106 := builtin$havoc_bool()
+  __t107 := builtin$havoc_bool()
+  __t108 := builtin$havoc_bool()
+  __t109 := builtin$havoc_bool()
+  __t11 := builtin$havoc_bool()
+  __t110 := builtin$havoc_bool()
+  __t111 := builtin$havoc_bool()
+  __t112 := builtin$havoc_int()
+  __t113 := builtin$havoc_bool()
+  __t114 := builtin$havoc_bool()
+  __t115 := builtin$havoc_bool()
+  __t116 := builtin$havoc_bool()
+  __t117 := builtin$havoc_bool()
+  __t12 := builtin$havoc_bool()
+  __t13 := builtin$havoc_bool()
+  __t14 := builtin$havoc_bool()
+  __t15 := builtin$havoc_bool()
+  __t16 := builtin$havoc_bool()
+  __t17 := builtin$havoc_bool()
+  __t18 := builtin$havoc_bool()
+  __t19 := builtin$havoc_bool()
+  __t20 := builtin$havoc_bool()
+  __t21 := builtin$havoc_bool()
+  __t22 := builtin$havoc_bool()
+  __t23 := builtin$havoc_bool()
+  __t24 := builtin$havoc_bool()
+  __t25 := builtin$havoc_bool()
+  __t26 := builtin$havoc_bool()
+  __t27 := builtin$havoc_bool()
+  __t28 := builtin$havoc_bool()
+  __t29 := builtin$havoc_bool()
+  __t30 := builtin$havoc_bool()
+  __t31 := builtin$havoc_bool()
+  __t32 := builtin$havoc_bool()
+  __t33 := builtin$havoc_bool()
+  __t34 := builtin$havoc_bool()
+  __t35 := builtin$havoc_bool()
+  __t36 := builtin$havoc_bool()
+  __t37 := builtin$havoc_bool()
+  __t38 := builtin$havoc_bool()
+  __t39 := builtin$havoc_bool()
+  __t40 := builtin$havoc_bool()
+  __t41 := builtin$havoc_bool()
+  __t42 := builtin$havoc_bool()
+  __t43 := builtin$havoc_bool()
+  __t44 := builtin$havoc_bool()
+  __t45 := builtin$havoc_bool()
+  __t46 := builtin$havoc_bool()
+  __t47 := builtin$havoc_bool()
+  __t48 := builtin$havoc_bool()
+  __t49 := builtin$havoc_bool()
+  __t50 := builtin$havoc_bool()
+  __t51 := builtin$havoc_bool()
+  __t52 := builtin$havoc_bool()
+  __t53 := builtin$havoc_bool()
+  __t54 := builtin$havoc_bool()
+  __t55 := builtin$havoc_bool()
+  __t56 := builtin$havoc_bool()
+  __t57 := builtin$havoc_bool()
+  __t58 := builtin$havoc_bool()
+  __t59 := builtin$havoc_bool()
+  __t60 := builtin$havoc_bool()
+  __t61 := builtin$havoc_bool()
+  __t62 := builtin$havoc_bool()
+  __t63 := builtin$havoc_bool()
+  __t64 := builtin$havoc_bool()
+  __t65 := builtin$havoc_bool()
+  __t66 := builtin$havoc_bool()
+  __t67 := builtin$havoc_bool()
+  __t68 := builtin$havoc_bool()
+  __t69 := builtin$havoc_bool()
+  __t7 := builtin$havoc_bool()
+  __t70 := builtin$havoc_bool()
+  __t71 := builtin$havoc_bool()
+  __t72 := builtin$havoc_bool()
+  __t73 := builtin$havoc_bool()
+  __t74 := builtin$havoc_bool()
+  __t8 := builtin$havoc_bool()
+  __t87 := builtin$havoc_bool()
+  __t88 := builtin$havoc_bool()
+  __t89 := builtin$havoc_bool()
+  __t9 := builtin$havoc_bool()
+  __t90 := builtin$havoc_bool()
+  __t91 := builtin$havoc_bool()
+  __t92 := builtin$havoc_bool()
+  __t93 := builtin$havoc_bool()
+  __t94 := builtin$havoc_bool()
+  __t95 := builtin$havoc_bool()
+  __t96 := builtin$havoc_bool()
+  __t97 := builtin$havoc_bool()
+  __t98 := builtin$havoc_bool()
+  __t99 := builtin$havoc_bool()
+  // ========== loop7_inv_post_perm ==========
+  // Inhale the loop permissions invariant of block bb7
+  inhale acc(bool(_8), write) &&
+    (acc(struct$m_Point(_4), write) &&
+    (acc(i32(_7), write) &&
+    (acc(bool(_15), write) && acc(struct$m_Board(_3), write))))
+  inhale true
+  // ========== loop7_group2a_bb7 ==========
+  // This is a loop head
+  __t7 := true
+  // [mir] falseUnwind -> [real: bb8, unwind: bb94]
+  // ========== loop7_group2a_bb8 ==========
+  __t8 := true
+  // [mir] StorageLive(_23)
+  // [mir] _23 = _15
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  unfold acc(bool(_15), write)
+  _23.val_bool := _15.val_bool
+  label l21
+  // [mir] switchInt(move _23) -> [0: bb85, otherwise: bb9]
+  __t87 := _23.val_bool
+  if (__t87) {
+    goto bb2
+  }
+  goto l12
+  
+  label bb2
+  // ========== l23 ==========
+  // MIR edge bb8 --> bb9
+  // ========== loop7_group2b_bb9 ==========
+  __t9 := true
+  // [mir] StorageLive(_24)
+  // [mir] StorageLive(_25)
+  // [mir] _25 = const false
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := false
+  // [mir] switchInt(move _25) -> [0: bb11, otherwise: bb10]
+  __t88 := _25.val_bool
+  // Ignore default target bb10, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_inv_post_fnspc ==========
+  // Inhale the loop fnspec invariant of block bb7
+  inhale 0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) <
+    f_size__$TY$__$int$())
+  // ========== loop7_group3_bb11 ==========
+  __t10 := true
+  // [mir] _24 = const ()
+  // [mir] goto -> bb12
+  // ========== loop7_group3_bb12 ==========
+  __t11 := true
+  // [mir] StorageDead(_25)
+  // [mir] StorageDead(_24)
+  // [mir] StorageLive(_28)
+  // [mir] StorageLive(_29)
+  // [mir] _29 = const false
+  _29 := builtin$havoc_ref()
+  inhale acc(_29.val_bool, write)
+  _29.val_bool := false
+  // [mir] switchInt(move _29) -> [0: bb14, otherwise: bb13]
+  __t89 := _29.val_bool
+  // Ignore default target bb13, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_bb14 ==========
+  __t12 := true
+  // [mir] _28 = const ()
+  // [mir] goto -> bb15
+  // ========== loop7_group3_bb15 ==========
+  __t13 := true
+  // [mir] StorageDead(_29)
+  // [mir] StorageDead(_28)
+  // [mir] StorageLive(_32)
+  // [mir] _32 = VecCandidates::new() -> [return: bb16, unwind: bb94]
+  label l24
+  _32 := builtin$havoc_ref()
+  inhale acc(struct$m_VecCandidates(_32), write)
+  inhale true
+  inhale f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_32)) ==
+    0
+  label l25
+  // ========== loop7_group3_bb16 ==========
+  __t14 := true
+  // [mir] FakeRead(ForLet(None), _32)
+  // [mir] StorageLive(_33)
+  // [mir] _33 = moves() -> [return: bb17, unwind: bb93]
+  label l26
+  _33 := builtin$havoc_ref()
+  inhale acc(struct$m_VecWrapperI32I32(_33), write)
+  inhale true
+  label l27
+  // ========== loop7_group3_bb17 ==========
+  __t15 := true
+  // [mir] FakeRead(ForLet(None), _33)
+  // [mir] StorageLive(_34)
+  // [mir] _34 = const 0_usize
+  _34 := builtin$havoc_ref()
+  inhale acc(_34.val_int, write)
+  _34.val_int := 0
+  // [mir] FakeRead(ForLet(None), _34)
+  // [mir] StorageLive(_35)
+  // [mir] StorageLive(_36)
+  // [mir] _36 = _34
+  _36 := builtin$havoc_int()
+  _36 := _34.val_int
+  label l28
+  // [mir] StorageLive(_37)
+  // [mir] StorageLive(_38)
+  // [mir] _38 = &_33
+  _38 := builtin$havoc_ref()
+  inhale acc(_38.val_ref, write)
+  _38.val_ref := _33
+  exhale acc(struct$m_VecWrapperI32I32(_33), write - read$())
+  inhale acc(struct$m_VecWrapperI32I32(_38.val_ref), read$())
+  label l29
+  // [mir] _37 = VecWrapperI32I32::len(move _38) -> [return: bb18, unwind: bb92]
+  label l30
+  _37 := builtin$havoc_int()
+  inhale _37 >= 0
+  inhale _37 ==
+    f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(_38.val_ref))
+  // transfer perm _38.val_ref --> old[l30](_38.val_ref) // unchecked: false
+  // ========== l31 ==========
+  // MIR edge bb17 --> bb18
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L43,L3,)
+
+  if (__t15 && __t15) {
+    // expire loan L3
+    // transfer perm old[l30](_38.val_ref) --> old[l29](_38.val_ref) // unchecked: false
+    exhale acc(struct$m_VecWrapperI32I32(old[l29](_38.val_ref)), read$())
+    inhale acc(struct$m_VecWrapperI32I32(_33), write - read$())
+  }
+  // ========== loop7_group3_bb18 ==========
+  __t16 := true
+  // [mir] StorageDead(_38)
+  // [mir] _35 = Lt(move _36, move _37)
+  _35 := builtin$havoc_ref()
+  inhale acc(_35.val_bool, write)
+  inhale _37 >= 0
+  _35.val_bool := _36 < _37
+  // [mir] StorageDead(_37)
+  // [mir] StorageDead(_36)
+  // [mir] FakeRead(ForLet(None), _35)
+  // [mir] StorageLive(_39)
+  // [mir] goto -> bb19
+  // ========== loop7_group3_loop19_start ==========
+  // ========== loop7_group3_loop19_group1_bb19 ==========
+  // This is a loop head
+  __t17 := true
+  // [mir] falseUnwind -> [real: bb20, unwind: bb92]
+  // ========== loop7_group3_loop19_group1_bb20 ==========
+  __t18 := true
+  // [mir] StorageLive(_40)
+  // [mir] _40 = _35
+  _40 := builtin$havoc_ref()
+  inhale acc(_40.val_bool, write)
+  _40.val_bool := _35.val_bool
+  label l32
+  // [mir] switchInt(move _40) -> [0: bb46, otherwise: bb21]
+  __t90 := _40.val_bool
+  if (__t90) {
+    goto bb4
+  }
+  goto bb3
+  
+  label bb3
+  // ========== l33 ==========
+  // MIR edge bb20 --> bb46
+  goto l20
+  
+  label bb4
+  // ========== l34 ==========
+  // MIR edge bb20 --> bb21
+  // ========== loop7_group3_loop19_group2_bb21 ==========
+  __t19 := true
+  // [mir] StorageLive(_41)
+  // [mir] StorageLive(_42)
+  // [mir] _42 = const false
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.val_bool, write)
+  _42.val_bool := false
+  // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
+  __t91 := _42.val_bool
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop19_inv_pre ==========
+  // Assert and exhale the loop body invariant (loop head: bb19)
+  fold acc(usize(_34), write)
+  // obtain acc(usize(_34), write)
+  fold acc(bool(_35), write)
+  // obtain acc(bool(_35), write)
+  // obtain acc(struct$m_VecWrapperI32I32(_33), write)
+  // obtain acc(struct$m_Point(_4), write)
+  // obtain acc(struct$m_Board(_3), write)
+  // obtain acc(struct$m_VecCandidates(_32), write)
+  assert 0 <= (unfolding acc(usize(_34), write) in _34.val_int) &&
+    ((unfolding acc(usize(_34), write) in _34.val_int) <
+    f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(_33)) &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) <
+    f_size__$TY$__$int$())))
+  assert true
+  exhale acc(usize(_34), write) &&
+    (acc(bool(_35), write) &&
+    (acc(struct$m_VecWrapperI32I32(_33), write) &&
+    (acc(struct$m_Point(_4), write) &&
+    (acc(struct$m_Board(_3), write) &&
+    acc(struct$m_VecCandidates(_32), write)))))
+  _34 := builtin$havoc_ref()
+  _40 := builtin$havoc_ref()
+  _42 := builtin$havoc_ref()
+  _46 := builtin$havoc_ref()
+  _51 := builtin$havoc_ref()
+  _55 := builtin$havoc_ref()
+  _58 := builtin$havoc_ref()
+  _59 := builtin$havoc_ref()
+  _60 := builtin$havoc_int()
+  _61 := builtin$havoc_ref()
+  _62 := builtin$havoc_ref()
+  _63 := builtin$havoc_ref()
+  _64 := builtin$havoc_ref()
+  _66 := builtin$havoc_ref()
+  _67 := builtin$havoc_ref()
+  _68 := builtin$havoc_ref()
+  _69 := builtin$havoc_ref()
+  _70 := builtin$havoc_ref()
+  _71 := builtin$havoc_ref()
+  _72 := builtin$havoc_ref()
+  _73 := builtin$havoc_ref()
+  _74 := builtin$havoc_ref()
+  _75 := builtin$havoc_ref()
+  _76 := builtin$havoc_ref()
+  _77 := builtin$havoc_ref()
+  _78 := builtin$havoc_ref()
+  _79 := builtin$havoc_ref()
+  _80 := builtin$havoc_int()
+  _81 := builtin$havoc_int()
+  _82 := builtin$havoc_ref()
+  __t100 := builtin$havoc_bool()
+  __t17 := builtin$havoc_bool()
+  __t18 := builtin$havoc_bool()
+  __t19 := builtin$havoc_bool()
+  __t20 := builtin$havoc_bool()
+  __t21 := builtin$havoc_bool()
+  __t22 := builtin$havoc_bool()
+  __t23 := builtin$havoc_bool()
+  __t24 := builtin$havoc_bool()
+  __t25 := builtin$havoc_bool()
+  __t26 := builtin$havoc_bool()
+  __t27 := builtin$havoc_bool()
+  __t28 := builtin$havoc_bool()
+  __t29 := builtin$havoc_bool()
+  __t30 := builtin$havoc_bool()
+  __t31 := builtin$havoc_bool()
+  __t32 := builtin$havoc_bool()
+  __t33 := builtin$havoc_bool()
+  __t34 := builtin$havoc_bool()
+  __t35 := builtin$havoc_bool()
+  __t36 := builtin$havoc_bool()
+  __t37 := builtin$havoc_bool()
+  __t38 := builtin$havoc_bool()
+  __t39 := builtin$havoc_bool()
+  __t92 := builtin$havoc_bool()
+  __t93 := builtin$havoc_bool()
+  __t94 := builtin$havoc_bool()
+  __t95 := builtin$havoc_bool()
+  __t96 := builtin$havoc_bool()
+  __t97 := builtin$havoc_bool()
+  __t98 := builtin$havoc_bool()
+  __t99 := builtin$havoc_bool()
+  // ========== loop7_group3_loop19_inv_post_perm ==========
+  // Inhale the loop permissions invariant of block bb19
+  inhale acc(usize(_34), write) &&
+    (acc(bool(_35), write) &&
+    (acc(struct$m_VecWrapperI32I32(_33), write) &&
+    (acc(struct$m_Point(_4), write) &&
+    (acc(struct$m_Board(_3), write) &&
+    acc(struct$m_VecCandidates(_32), write)))))
+  inhale true
+  // ========== loop7_group3_loop19_group2a_bb19 ==========
+  // This is a loop head
+  __t17 := true
+  // [mir] falseUnwind -> [real: bb20, unwind: bb92]
+  // ========== loop7_group3_loop19_group2a_bb20 ==========
+  __t18 := true
+  // [mir] StorageLive(_40)
+  // [mir] _40 = _35
+  _40 := builtin$havoc_ref()
+  inhale acc(_40.val_bool, write)
+  unfold acc(bool(_35), write)
+  _40.val_bool := _35.val_bool
+  label l35
+  // [mir] switchInt(move _40) -> [0: bb46, otherwise: bb21]
+  __t92 := _40.val_bool
+  if (__t92) {
+    goto bb6
+  }
+  goto bb5
+  
+  label bb5
+  // ========== l36 ==========
+  // MIR edge bb20 --> bb46
+  goto end_of_method
+  
+  label bb6
+  // ========== l37 ==========
+  // MIR edge bb20 --> bb21
+  // ========== loop7_group3_loop19_group2b_bb21 ==========
+  __t19 := true
+  // [mir] StorageLive(_41)
+  // [mir] StorageLive(_42)
+  // [mir] _42 = const false
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.val_bool, write)
+  _42.val_bool := false
+  // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
+  __t93 := _42.val_bool
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop19_inv_post_fnspc ==========
+  // Inhale the loop fnspec invariant of block bb19
+  inhale 0 <= (unfolding acc(usize(_34), write) in _34.val_int) &&
+    ((unfolding acc(usize(_34), write) in _34.val_int) <
+    f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(_33)) &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) <
+    f_size__$TY$__$int$())))
+  // ========== loop7_group3_loop19_group3_bb23 ==========
+  __t20 := true
+  // [mir] _41 = const ()
+  // [mir] goto -> bb24
+  // ========== loop7_group3_loop19_group3_bb24 ==========
+  __t21 := true
+  // [mir] StorageDead(_42)
+  // [mir] StorageDead(_41)
+  // [mir] StorageLive(_45)
+  // [mir] StorageLive(_46)
+  // [mir] _46 = const false
+  _46 := builtin$havoc_ref()
+  inhale acc(_46.val_bool, write)
+  _46.val_bool := false
+  // [mir] switchInt(move _46) -> [0: bb26, otherwise: bb25]
+  __t94 := _46.val_bool
+  // Ignore default target bb25, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop19_group3_bb26 ==========
+  __t22 := true
+  // [mir] _45 = const ()
+  // [mir] goto -> bb27
+  // ========== loop7_group3_loop19_group3_bb27 ==========
+  __t23 := true
+  // [mir] StorageDead(_46)
+  // [mir] StorageDead(_45)
+  // [mir] StorageLive(_50)
+  // [mir] StorageLive(_51)
+  // [mir] _51 = const false
+  _51 := builtin$havoc_ref()
+  inhale acc(_51.val_bool, write)
+  _51.val_bool := false
+  // [mir] switchInt(move _51) -> [0: bb29, otherwise: bb28]
+  __t95 := _51.val_bool
+  // Ignore default target bb28, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop19_group3_bb29 ==========
+  __t24 := true
+  // [mir] _50 = const ()
+  // [mir] goto -> bb30
+  // ========== loop7_group3_loop19_group3_bb30 ==========
+  __t25 := true
+  // [mir] StorageDead(_51)
+  // [mir] StorageDead(_50)
+  // [mir] StorageLive(_54)
+  // [mir] StorageLive(_55)
+  // [mir] _55 = const false
+  _55 := builtin$havoc_ref()
+  inhale acc(_55.val_bool, write)
+  _55.val_bool := false
+  // [mir] switchInt(move _55) -> [0: bb32, otherwise: bb31]
+  __t96 := _55.val_bool
+  // Ignore default target bb31, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop19_group3_bb32 ==========
+  __t26 := true
+  // [mir] _54 = const ()
+  // [mir] goto -> bb33
+  // ========== loop7_group3_loop19_group3_bb33 ==========
+  __t27 := true
+  // [mir] StorageDead(_55)
+  // [mir] StorageDead(_54)
+  // [mir] StorageLive(_58)
+  // [mir] StorageLive(_59)
+  // [mir] _59 = &mut _33
+  _59 := builtin$havoc_ref()
+  inhale acc(_59.val_ref, write)
+  _59.val_ref := _33
+  label l38
+  // [mir] StorageLive(_60)
+  // [mir] _60 = _34
+  _60 := builtin$havoc_int()
+  unfold acc(usize(_34), write)
+  _60 := _34.val_int
+  label l39
+  // [mir] _58 = VecWrapperI32I32::lookup(move _59, move _60) -> [return: bb34, unwind: bb92]
+  label l40
+  assert 0 <= _60 &&
+    _60 <
+    f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(_59.val_ref))
+  assert true
+  assert _60 >= 0
+  exhale acc(_59.val_ref, write) &&
+    (acc(struct$m_VecWrapperI32I32(_59.val_ref), write) && _60 >= 0)
+  _58 := builtin$havoc_ref()
+  inhale acc(struct$m_VecWrapperI32I32(old[l40](_59.val_ref)), write)
+  inhale acc(tuple2$i32$i32(_58), write)
+  inhale true
+  label l41
+  // ========== l42 ==========
+  // MIR edge bb33 --> bb34
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L30,L9,)
+
+  // ========== loop7_group3_loop19_group3_bb34 ==========
+  __t28 := true
+  // [mir] StorageDead(_60)
+  // [mir] StorageDead(_59)
+  // [mir] FakeRead(ForLet(None), _58)
+  // [mir] StorageLive(_61)
+  // [mir] StorageLive(_62)
+  // [mir] _62 = &mut _4
+  _62 := builtin$havoc_ref()
+  inhale acc(_62.val_ref, write)
+  _62.val_ref := _4
+  label l43
+  // [mir] StorageLive(_63)
+  // [mir] StorageLive(_64)
+  // [mir] _64 = &mut _58
+  _64 := builtin$havoc_ref()
+  inhale acc(_64.val_ref, write)
+  _64.val_ref := _58
+  label l44
+  // [mir] _63 = &mut (*_64)
+  _63 := builtin$havoc_ref()
+  inhale acc(_63.val_ref, write)
+  _63.val_ref := _64.val_ref
+  label l45
+  // [mir] _61 = Point::mov(move _62, move _63) -> [return: bb35, unwind: bb92]
+  label l46
+  assert true
+  exhale acc(_62.val_ref, write) &&
+    (acc(struct$m_Point(_62.val_ref), write) &&
+    (acc(_63.val_ref, write) && acc(tuple2$i32$i32(_63.val_ref), write)))
+  _61 := builtin$havoc_ref()
+  inhale acc(struct$m_Point(old[l46](_62.val_ref)), write) &&
+    acc(tuple2$i32$i32(old[l46](_63.val_ref)), write)
+  inhale acc(struct$m_Point(_61), write)
+  inhale true
+  inhale (unfolding acc(struct$m_Point(old[l46](_62.val_ref)), write) in
+      (unfolding acc(i32(old[l46](_62.val_ref).f$y), write) in
+        (unfolding acc(i32(old[l46](_62.val_ref).f$x), write) in
+          old[l46](_62.val_ref).f$x.val_int ==
+          old[l46]((unfolding acc(struct$m_Point(_62.val_ref), write) in
+            (unfolding acc(i32(_62.val_ref.f$x), write) in
+              _62.val_ref.f$x.val_int))) &&
+          old[l46](_62.val_ref).f$y.val_int ==
+          old[l46]((unfolding acc(struct$m_Point(_62.val_ref), write) in
+            (unfolding acc(i32(_62.val_ref.f$y), write) in
+              _62.val_ref.f$y.val_int))))))
+  label l47
+  // ========== l48 ==========
+  // MIR edge bb34 --> bb35
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L36,L35,L12,L11,L10,)
+
+  // ========== loop7_group3_loop19_group3_bb35 ==========
+  __t29 := true
+  // [mir] StorageDead(_63)
+  // [mir] StorageDead(_62)
+  // [mir] FakeRead(ForLet(None), _61)
+  // [mir] StorageDead(_64)
+  // [mir] StorageLive(_65)
+  // [mir] StorageLive(_66)
+  // [mir] StorageLive(_67)
+  // [mir] _67 = &mut _3
+  _67 := builtin$havoc_ref()
+  inhale acc(_67.val_ref, write)
+  _67.val_ref := _3
+  label l49
+  // [mir] StorageLive(_68)
+  // [mir] StorageLive(_69)
+  // [mir] _69 = &mut _61
+  _69 := builtin$havoc_ref()
+  inhale acc(_69.val_ref, write)
+  _69.val_ref := _61
+  label l50
+  // [mir] _68 = Point::clone(move _69) -> [return: bb36, unwind: bb92]
+  label l51
+  assert true
+  exhale acc(_69.val_ref, write) && acc(struct$m_Point(_69.val_ref), write)
+  _68 := builtin$havoc_ref()
+  inhale acc(struct$m_Point(old[l51](_69.val_ref)), write)
+  inhale acc(struct$m_Point(_68), write)
+  inhale true
+  inhale (unfolding acc(struct$m_Point(old[l51](_69.val_ref)), write) in
+      (unfolding acc(i32(old[l51](_69.val_ref).f$y), write) in
+        (unfolding acc(i32(old[l51](_69.val_ref).f$x), write) in
+          (unfolding acc(struct$m_Point(_68), write) in
+            (unfolding acc(i32(_68.f$y), write) in
+              (unfolding acc(i32(_68.f$x), write) in
+                _68.f$x.val_int ==
+                old[l51]((unfolding acc(struct$m_Point(_69.val_ref), write) in
+                  (unfolding acc(i32(_69.val_ref.f$x), write) in
+                    _69.val_ref.f$x.val_int))) &&
+                (_68.f$y.val_int ==
+                old[l51]((unfolding acc(struct$m_Point(_69.val_ref), write) in
+                  (unfolding acc(i32(_69.val_ref.f$y), write) in
+                    _69.val_ref.f$y.val_int))) &&
+                (old[l51](_69.val_ref).f$x.val_int ==
+                old[l51]((unfolding acc(struct$m_Point(_69.val_ref), write) in
+                  (unfolding acc(i32(_69.val_ref.f$x), write) in
+                    _69.val_ref.f$x.val_int))) &&
+                old[l51](_69.val_ref).f$y.val_int ==
+                old[l51]((unfolding acc(struct$m_Point(_69.val_ref), write) in
+                  (unfolding acc(i32(_69.val_ref.f$y), write) in
+                    _69.val_ref.f$y.val_int)))))))))))
+  label l52
+  // ========== l53 ==========
+  // MIR edge bb35 --> bb36
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L32,L14,)
+
+  // ========== loop7_group3_loop19_group3_bb36 ==========
+  __t30 := true
+  // [mir] StorageDead(_69)
+  // [mir] _66 = Board::available(move _67, move _68) -> [return: bb37, unwind: bb92]
+  label l54
+  assert true
+  exhale acc(_67.val_ref, write) &&
+    (acc(struct$m_Board(_67.val_ref), write) &&
+    acc(struct$m_Point(_68), write))
+  _66 := builtin$havoc_ref()
+  inhale acc(struct$m_Board(old[l54](_67.val_ref)), write)
+  inhale acc(bool(_66), write)
+  inhale true
+  inhale (unfolding acc(bool(_66), write) in _66.val_bool) ==>
+    0 <=
+    old[l54]((unfolding acc(struct$m_Point(_68), write) in
+      (unfolding acc(i32(_68.f$x), write) in _68.f$x.val_int))) &&
+    (old[l54]((unfolding acc(struct$m_Point(_68), write) in
+      (unfolding acc(i32(_68.f$x), write) in _68.f$x.val_int))) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    old[l54]((unfolding acc(struct$m_Point(_68), write) in
+      (unfolding acc(i32(_68.f$y), write) in _68.f$y.val_int))) &&
+    old[l54]((unfolding acc(struct$m_Point(_68), write) in
+      (unfolding acc(i32(_68.f$y), write) in _68.f$y.val_int))) <
+    f_size__$TY$__$int$()))
+  label l55
+  // ========== l56 ==========
+  // MIR edge bb36 --> bb37
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L39,L13,)
+
+  // ========== loop7_group3_loop19_group3_bb37 ==========
+  __t31 := true
+  // [mir] StorageDead(_68)
+  // [mir] StorageDead(_67)
+  // [mir] switchInt(move _66) -> [0: bb42, otherwise: bb38]
+  unfold acc(bool(_66), write)
+  __t97 := _66.val_bool
+  if (!__t97) {
+    goto loop7_group1_bb7
+  }
+  goto loop7_start
+  
+  label l12
+  // ========== l22 ==========
+  // MIR edge bb8 --> bb85
+  goto end_of_method
+  
+  label l19
+  // ========== l81 ==========
+  // MIR edge bb20 --> bb46
+  // ========== l156 ==========
+  // drop Acc(_64.val_ref, write) (Acc(_64.val_ref, write))
+  // drop Acc(_51.val_bool, write) (Acc(_51.val_bool, write))
+  // drop Acc(_80.val_int, write) (Acc(_80.val_int, write))
+  // drop Acc(_79.tuple_1.val_bool, write) (Acc(_79.tuple_1.val_bool, write))
+  // drop Acc(old[l77](_82.val_ref), write) (Acc(old[l77](_82.val_ref), write))
+  // drop Acc(_82.val_ref, write) (Acc(_82.val_ref, write))
+  // drop Acc(_66.val_bool, write) (Acc(_66.val_bool, write))
+  // drop Acc(_79.tuple_0, write) (Acc(_79.tuple_0, write))
+  // drop Acc(_81.val_int, write) (Acc(_81.val_int, write))
+  // drop Acc(_46.val_bool, write) (Acc(_46.val_bool, write))
+  // drop Acc(_42.val_bool, write) (Acc(_42.val_bool, write))
+  // drop Acc(_55.val_bool, write) (Acc(_55.val_bool, write))
+  // drop Pred(_58, write) (Pred(_58, write))
+  // drop Acc(_79.tuple_1, write) (Acc(_79.tuple_1, write))
+  goto l20
+  
+  label l20
+  // ========== loop7_group3_bb46 ==========
+  __t40 := true
+  // [mir] StorageLive(_84)
+  // [mir] _39 = const ()
+  // [mir] StorageDead(_84)
+  // [mir] StorageDead(_40)
+  // [mir] StorageDead(_39)
+  // [mir] StorageLive(_86)
+  // [mir] _86 = const 0_usize
+  _86 := builtin$havoc_ref()
+  inhale acc(_86.val_int, write)
+  _86.val_int := 0
+  // [mir] FakeRead(ForLet(None), _86)
+  // [mir] StorageLive(_87)
+  // [mir] StorageLive(_88)
+  // [mir] _88 = _86
+  _88 := builtin$havoc_int()
+  _88 := _86.val_int
+  label l83
+  // [mir] StorageLive(_89)
+  // [mir] StorageLive(_90)
+  // [mir] _90 = &_32
+  _90 := builtin$havoc_ref()
+  inhale acc(_90.val_ref, write)
+  _90.val_ref := _32
+  exhale acc(struct$m_VecCandidates(_32), write - read$())
+  inhale acc(struct$m_VecCandidates(_90.val_ref), read$())
+  label l84
+  // [mir] _89 = VecCandidates::len(move _90) -> [return: bb48, unwind: bb92]
+  label l85
+  _89 := builtin$havoc_int()
+  inhale _89 >= 0
+  inhale _89 ==
+    f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_90.val_ref))
+  // transfer perm _90.val_ref --> old[l85](_90.val_ref) // unchecked: false
+  // ========== l86 ==========
+  // MIR edge bb46 --> bb48
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L38,L19,)
+
+  if (__t40 && __t40) {
+    // expire loan L19
+    // transfer perm old[l85](_90.val_ref) --> old[l84](_90.val_ref) // unchecked: false
+    exhale acc(struct$m_VecCandidates(old[l84](_90.val_ref)), read$())
+    inhale acc(struct$m_VecCandidates(_32), write - read$())
+  }
+  // ========== loop7_group3_bb48 ==========
+  __t41 := true
+  // [mir] StorageDead(_90)
+  // [mir] _87 = Lt(move _88, move _89)
+  _87 := builtin$havoc_ref()
+  inhale acc(_87.val_bool, write)
+  inhale _89 >= 0
+  _87.val_bool := _88 < _89
+  // [mir] StorageDead(_89)
+  // [mir] StorageDead(_88)
+  // [mir] FakeRead(ForLet(None), _87)
+  // [mir] StorageLive(_91)
+  // [mir] _91 = std::option::Option::<(i32, Point)>::None
+  _91 := builtin$havoc_ref()
+  inhale acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
+  inhale m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(_91) ==
+    0
+  // [mir] FakeRead(ForLet(None), _91)
+  // [mir] StorageLive(_92)
+  // [mir] StorageLive(_93)
+  // [mir] _93 = size() -> [return: bb49, unwind: bb92]
+  label l87
+  _93 := builtin$havoc_ref()
+  inhale acc(i32(_93), write)
+  inhale (unfolding acc(i32(_93), write) in _93.val_int) ==
+    f_size__$TY$__$int$()
+  // ========== loop7_group3_bb49 ==========
+  __t42 := true
+  // [mir] StorageLive(_94)
+  // [mir] _94 = size() -> [return: bb50, unwind: bb92]
+  label l88
+  _94 := builtin$havoc_ref()
+  inhale acc(i32(_94), write)
+  inhale (unfolding acc(i32(_94), write) in _94.val_int) ==
+    f_size__$TY$__$int$()
+  // ========== loop7_group3_bb50 ==========
+  __t43 := true
+  // [mir] _95 = CheckedMul(_93, _94)
+  _95 := builtin$havoc_ref()
+  inhale acc(_95.tuple_0, write)
+  inhale acc(_95.tuple_0.val_int, write)
+  inhale acc(_95.tuple_1, write)
+  inhale acc(_95.tuple_1.val_bool, write)
+  unfold acc(i32(_93), write)
+  unfold acc(i32(_94), write)
+  _95.tuple_0.val_int := _93.val_int * _94.val_int
+  _95.tuple_1.val_bool := false
+  // [mir] assert(!move (_95.1: bool), "attempt to compute `{} * {}`, which would overflow", move _93, move _94) -> [success: bb51, unwind: bb92]
+  __t101 := _95.tuple_1.val_bool
+  // Rust assertion: attempt to multiply with overflow
+  assert !__t101
+  // ========== loop7_group3_bb51 ==========
+  __t44 := true
+  // [mir] _92 = move (_95.0: i32)
+  _92 := _95.tuple_0
+  label l89
+  // [mir] StorageDead(_94)
+  // [mir] StorageDead(_93)
+  // [mir] FakeRead(ForLet(None), _92)
+  // [mir] StorageLive(_96)
+  // [mir] goto -> bb52
+  // ========== loop7_group3_loop52_start ==========
+  // ========== loop7_group3_loop52_group1_bb52 ==========
+  // This is a loop head
+  __t45 := true
+  // [mir] falseUnwind -> [real: bb53, unwind: bb92]
+  // ========== loop7_group3_loop52_group1_bb53 ==========
+  __t46 := true
+  // [mir] StorageLive(_97)
+  // [mir] _97 = _87
+  _97 := builtin$havoc_ref()
+  inhale acc(_97.val_bool, write)
+  _97.val_bool := _87.val_bool
+  label l90
+  // [mir] switchInt(move _97) -> [0: bb70, otherwise: bb54]
+  __t102 := _97.val_bool
+  if (__t102) {
+    goto loop7_inv_pre
+  }
+  goto loop7_group2_bb9
+  
+  label l22
+  // ========== loop7_group3_loop52_group3_bb67 ==========
+  __t57 := true
+  // [mir] StorageDead(_117)
+  // [mir] StorageDead(_116)
+  // [mir] _125 = CheckedAdd(_86, const 1_usize)
+  _125 := builtin$havoc_ref()
+  inhale acc(_125.tuple_0, write)
+  inhale acc(_125.tuple_0.val_int, write)
+  inhale acc(_125.tuple_1, write)
+  inhale acc(_125.tuple_1.val_bool, write)
+  _125.tuple_0.val_int := _86.val_int + 1
+  _125.tuple_1.val_bool := false
+  // [mir] assert(!move (_125.1: bool), "attempt to compute `{} + {}`, which would overflow", _86, const 1_usize) -> [success: bb68, unwind: bb92]
+  __t109 := _125.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  assert !__t109
+  // ========== loop7_group3_loop52_group3_bb68 ==========
+  __t58 := true
+  // [mir] _86 = move (_125.0: usize)
+  _86 := _125.tuple_0
+  label l115
+  // [mir] StorageLive(_126)
+  // [mir] _126 = _86
+  _126 := builtin$havoc_int()
+  _126 := _86.val_int
+  label l116
+  // [mir] StorageLive(_127)
+  // [mir] StorageLive(_128)
+  // [mir] _128 = &_32
+  _128 := builtin$havoc_ref()
+  inhale acc(_128.val_ref, write)
+  _128.val_ref := _32
+  exhale acc(struct$m_VecCandidates(_32), write - read$())
+  inhale acc(struct$m_VecCandidates(_128.val_ref), read$())
+  label l117
+  // [mir] _127 = VecCandidates::len(move _128) -> [return: bb69, unwind: bb92]
+  label l118
+  _127 := builtin$havoc_int()
+  inhale _127 >= 0
+  inhale _127 ==
+    f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_128.val_ref))
+  // transfer perm _128.val_ref --> old[l118](_128.val_ref) // unchecked: false
+  // ========== l119 ==========
+  // MIR edge bb68 --> bb69
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L41,L25,)
+
+  if (__t58 && __t58) {
+    // expire loan L25
+    // transfer perm old[l118](_128.val_ref) --> old[l117](_128.val_ref) // unchecked: false
+    exhale acc(struct$m_VecCandidates(old[l117](_128.val_ref)), read$())
+    inhale acc(struct$m_VecCandidates(_32), write - read$())
+  }
+  // ========== loop7_group3_loop52_group3_bb69 ==========
+  __t59 := true
+  // [mir] StorageDead(_128)
+  // [mir] _87 = Lt(move _126, move _127)
+  inhale _127 >= 0
+  _87.val_bool := _126 < _127
+  // [mir] StorageDead(_127)
+  // [mir] StorageDead(_126)
+  // [mir] _22 = const ()
+  // [mir] StorageDead(_112)
+  // [mir] StorageDead(_111)
+  // [mir] StorageDead(_97)
+  // [mir] goto -> bb52
+  // ========== loop7_group3_loop52_group4_bb52 ==========
+  // This is a loop head
+  __t45 := true
+  // [mir] falseUnwind -> [real: bb53, unwind: bb92]
+  // ========== loop7_group3_loop52_group4_bb53 ==========
+  __t46 := true
+  // [mir] StorageLive(_97)
+  // [mir] _97 = _87
+  _97 := builtin$havoc_ref()
+  inhale acc(_97.val_bool, write)
+  _97.val_bool := _87.val_bool
+  label l120
+  // [mir] switchInt(move _97) -> [0: bb70, otherwise: bb54]
+  __t110 := _97.val_bool
+  if (__t110) {
+    goto l34
+  }
+  goto l23
+  
+  label l23
+  // ========== l121 ==========
+  // MIR edge bb53 --> bb70
+  // ========== l159 ==========
+  // drop Acc(_113.tuple_0.val_int, write) (Acc(_113.tuple_0.val_int, write))
+  // drop Acc(_125.tuple_0, write) (Acc(_125.tuple_0, write))
+  // drop Acc(_113.tuple_1, write) (Acc(_113.tuple_1, write))
+  // drop Acc(_111.val_int, write) (Acc(_111.val_int, write))
+  // drop Acc(_99.val_bool, write) (Acc(_99.val_bool, write))
+  // drop Acc(_128.val_ref, write) (Acc(_128.val_ref, write))
+  // drop Acc(_126.val_int, write) (Acc(_126.val_int, write))
+  // drop Acc(_108.val_bool, write) (Acc(_108.val_bool, write))
+  // drop Acc(_118.val_int, write) (Acc(_118.val_int, write))
+  // drop Acc(old[l117](_128.val_ref), write) (Acc(old[l117](_128.val_ref), write))
+  // drop Acc(_117.val_bool, write) (Acc(_117.val_bool, write))
+  // drop Acc(_119.val_int, write) (Acc(_119.val_int, write))
+  // drop Acc(_103.val_bool, write) (Acc(_103.val_bool, write))
+  // drop Acc(_125.tuple_1.val_bool, write) (Acc(_125.tuple_1.val_bool, write))
+  // drop Acc(_127.val_int, write) (Acc(_127.val_int, write))
+  // drop Acc(_113.tuple_0, write) (Acc(_113.tuple_0, write))
+  // drop Acc(_125.tuple_1, write) (Acc(_125.tuple_1, write))
+  goto loop7_group2b_bb9
+  
+  label l31
+  // ========== l146 ==========
+  // MIR edge bb8 --> bb85
+  // ========== l163 ==========
+  // drop Acc(_88.val_int, write) (Acc(_88.val_int, write))
+  // drop Acc(_40.val_bool, write) (Acc(_40.val_bool, write))
+  // drop Acc(_148.tuple_1.val_bool, write) (Acc(_148.tuple_1.val_bool, write))
+  // drop Acc(_145.val_int, write) (Acc(_145.val_int, write))
+  // drop Acc(_36.val_int, write) (Acc(_36.val_int, write))
+  // drop Acc(_147.val_int, write) (Acc(_147.val_int, write))
+  // drop Acc(old[l84](_90.val_ref), write) (Acc(old[l84](_90.val_ref), write))
+  // drop Acc(_94.val_int, write) (Acc(_94.val_int, write))
+  // drop Acc(_146.val_int, write) (Acc(_146.val_int, write))
+  // drop Acc(_141.tuple_1.val_bool, write) (Acc(_141.tuple_1.val_bool, write))
+  // drop Acc(_38.val_ref, write) (Acc(_38.val_ref, write))
+  // drop Acc(_35.val_bool, write) (Acc(_35.val_bool, write))
+  // drop Acc(_92.val_int, write) (Acc(_92.val_int, write))
+  // drop Acc(_90.val_ref, write) (Acc(_90.val_ref, write))
+  // drop Acc(_144.val_int, write) (Acc(_144.val_int, write))
+  // drop Acc(old[l29](_38.val_ref), write) (Acc(old[l29](_38.val_ref), write))
+  // drop Acc(_93.val_int, write) (Acc(_93.val_int, write))
+  // drop Acc(_148.tuple_0, write) (Acc(_148.tuple_0, write))
+  // drop Acc(_95.tuple_0, write) (Acc(_95.tuple_0, write))
+  // drop Acc(_95.tuple_1.val_bool, write) (Acc(_95.tuple_1.val_bool, write))
+  // drop Acc(_89.val_int, write) (Acc(_89.val_int, write))
+  // drop Acc(_143.val_bool, write) (Acc(_143.val_bool, write))
+  // drop Acc(_97.val_bool, write) (Acc(_97.val_bool, write))
+  // drop Acc(_133.val_int, write) (Acc(_133.val_int, write))
+  // drop Acc(_25.val_bool, write) (Acc(_25.val_bool, write))
+  // drop Acc(_29.val_bool, write) (Acc(_29.val_bool, write))
+  // drop Acc(_37.val_int, write) (Acc(_37.val_int, write))
+  // drop Acc(_87.val_bool, write) (Acc(_87.val_bool, write))
+  // drop Acc(_141.tuple_0, write) (Acc(_141.tuple_0, write))
+  // drop Acc(_86.val_int, write) (Acc(_86.val_int, write))
+  // drop Acc(_34.val_int, write) (Acc(_34.val_int, write))
+  // drop Pred(_33, write) (Pred(_33, write))
+  // drop Pred(_32, write) (Pred(_32, write))
+  // drop Pred(_136, write) (Pred(_136, write))
+  // drop Acc(_141.tuple_1, write) (Acc(_141.tuple_1, write))
+  // drop Acc(_95.tuple_1, write) (Acc(_95.tuple_1, write))
+  // drop Acc(_148.tuple_1, write) (Acc(_148.tuple_1, write))
+  goto loop7_group3_bb18
+  
+  label l33
+  // ========== l147 ==========
+  // MIR edge bb8 --> bb9
+  // ========== loop7_group5_bb9 ==========
+  __t9 := true
+  // [mir] StorageLive(_24)
+  // [mir] StorageLive(_25)
+  // [mir] _25 = const false
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := false
+  // [mir] switchInt(move _25) -> [0: bb11, otherwise: bb10]
+  __t117 := _25.val_bool
+  // Ignore default target bb10, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_end_body ==========
+  // Assert and exhale the loop body invariant (loop head: bb7)
+  fold acc(bool(_8), write)
+  // obtain acc(bool(_8), write)
+  fold acc(i32(_4.f$y), write)
+  fold acc(i32(_4.f$x), write)
+  fold acc(struct$m_Point(_4), write)
+  // obtain acc(struct$m_Point(_4), write)
+  fold acc(i32(_7), write)
+  // obtain acc(i32(_7), write)
+  fold acc(bool(_15), write)
+  // obtain acc(bool(_15), write)
+  fold acc(struct$m_Board(_3), write)
+  // obtain acc(struct$m_Board(_3), write)
+  assert 0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) <
+    f_size__$TY$__$int$())
+  assert true
+  exhale acc(bool(_8), write) &&
+    (acc(struct$m_Point(_4), write) &&
+    (acc(i32(_7), write) &&
+    (acc(bool(_15), write) && acc(struct$m_Board(_3), write))))
+  inhale false
+  goto end_of_method
+  
+  label l34
+  // ========== l122 ==========
+  // MIR edge bb53 --> bb54
+  // ========== loop7_group3_loop52_group5_bb54 ==========
+  __t47 := true
+  // [mir] StorageLive(_98)
+  // [mir] StorageLive(_99)
+  // [mir] _99 = const false
+  _99 := builtin$havoc_ref()
+  inhale acc(_99.val_bool, write)
+  _99.val_bool := false
+  // [mir] switchInt(move _99) -> [0: bb56, otherwise: bb55]
+  __t111 := _99.val_bool
+  // Ignore default target bb55, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop52_end_body ==========
+  // Assert and exhale the loop body invariant (loop head: bb52)
+  fold acc(i32(_92), write)
+  // obtain acc(i32(_92), write)
+  // obtain acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
+  fold acc(usize(_86), write)
+  // obtain acc(usize(_86), write)
+  fold acc(bool(_87), write)
+  // obtain acc(bool(_87), write)
+  // obtain acc(struct$m_VecCandidates(_32), write)
+  assert 0 <= (unfolding acc(usize(_86), write) in _86.val_int) &&
+    ((unfolding acc(usize(_86), write) in _86.val_int) <
+    f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_32)) &&
+    f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$bool$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91)))
+  assert true
+  exhale acc(i32(_92), write) &&
+    (acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write) &&
+    (acc(usize(_86), write) &&
+    (acc(bool(_87), write) && acc(struct$m_VecCandidates(_32), write))))
+  inhale false
+  goto end_of_method
+  
+  label loop7_group1_bb7
+  // ========== l58 ==========
+  // MIR edge bb37 --> bb42
+  // ========== loop7_group3_loop19_group3_bb42 ==========
+  __t36 := true
+  // [mir] _65 = const ()
+  // [mir] goto -> bb43
+  // ========== l155 ==========
+  // drop Pred(_61, write) (Pred(_61, write))
+  goto loop7_group1_bb8
+  
+  label loop7_group1_bb8
+  // ========== loop7_group3_loop19_group3_bb43 ==========
+  __t37 := true
+  // [mir] StorageDead(_66)
+  // [mir] StorageDead(_65)
+  // [mir] _79 = CheckedAdd(_34, const 1_usize)
+  _79 := builtin$havoc_ref()
+  inhale acc(_79.tuple_0, write)
+  inhale acc(_79.tuple_0.val_int, write)
+  inhale acc(_79.tuple_1, write)
+  inhale acc(_79.tuple_1.val_bool, write)
+  _79.tuple_0.val_int := _34.val_int + 1
+  _79.tuple_1.val_bool := false
+  // [mir] assert(!move (_79.1: bool), "attempt to compute `{} + {}`, which would overflow", _34, const 1_usize) -> [success: bb44, unwind: bb92]
+  __t98 := _79.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  assert !__t98
+  // ========== loop7_group3_loop19_group3_bb44 ==========
+  __t38 := true
+  // [mir] _34 = move (_79.0: usize)
+  _34 := _79.tuple_0
+  label l75
+  // [mir] StorageLive(_80)
+  // [mir] _80 = _34
+  _80 := builtin$havoc_int()
+  _80 := _34.val_int
+  label l76
+  // [mir] StorageLive(_81)
+  // [mir] StorageLive(_82)
+  // [mir] _82 = &_33
+  _82 := builtin$havoc_ref()
+  inhale acc(_82.val_ref, write)
+  _82.val_ref := _33
+  exhale acc(struct$m_VecWrapperI32I32(_33), write - read$())
+  inhale acc(struct$m_VecWrapperI32I32(_82.val_ref), read$())
+  label l77
+  // [mir] _81 = VecWrapperI32I32::len(move _82) -> [return: bb45, unwind: bb92]
+  label l78
+  _81 := builtin$havoc_int()
+  inhale _81 >= 0
+  inhale _81 ==
+    f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(_82.val_ref))
+  // transfer perm _82.val_ref --> old[l78](_82.val_ref) // unchecked: false
+  // ========== l79 ==========
+  // MIR edge bb44 --> bb45
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L40,L18,)
+
+  if (__t38 && __t38) {
+    // expire loan L18
+    // transfer perm old[l78](_82.val_ref) --> old[l77](_82.val_ref) // unchecked: false
+    exhale acc(struct$m_VecWrapperI32I32(old[l77](_82.val_ref)), read$())
+    inhale acc(struct$m_VecWrapperI32I32(_33), write - read$())
+  }
+  // ========== loop7_group3_loop19_group3_bb45 ==========
+  __t39 := true
+  // [mir] StorageDead(_82)
+  // [mir] _35 = Lt(move _80, move _81)
+  inhale _81 >= 0
+  _35.val_bool := _80 < _81
+  // [mir] StorageDead(_81)
+  // [mir] StorageDead(_80)
+  // [mir] _22 = const ()
+  // [mir] StorageDead(_61)
+  // [mir] StorageDead(_58)
+  // [mir] StorageDead(_40)
+  // [mir] goto -> bb19
+  // ========== loop7_group3_loop19_group4_bb19 ==========
+  // This is a loop head
+  __t17 := true
+  // [mir] falseUnwind -> [real: bb20, unwind: bb92]
+  // ========== loop7_group3_loop19_group4_bb20 ==========
+  __t18 := true
+  // [mir] StorageLive(_40)
+  // [mir] _40 = _35
+  _40 := builtin$havoc_ref()
+  inhale acc(_40.val_bool, write)
+  _40.val_bool := _35.val_bool
+  label l80
+  // [mir] switchInt(move _40) -> [0: bb46, otherwise: bb21]
+  __t99 := _40.val_bool
+  if (__t99) {
+    goto loop7_group3_loop19_group2_bb21
+  }
+  goto l19
+  
+  label loop7_group2_bb9
+  // ========== l91 ==========
+  // MIR edge bb53 --> bb70
+  goto loop7_group2b_bb9
+  
+  label loop7_group2a_bb7
+  // ========== l105 ==========
+  // MIR edge bb64 --> bb65
+  // ========== loop7_group3_loop52_group3_bb65 ==========
+  __t55 := true
+  // [mir] StorageLive(_120)
+  // [mir] _120 = _111
+  _120 := builtin$havoc_ref()
+  inhale acc(_120.val_int, write)
+  _120.val_int := _111
+  label l107
+  // [mir] _92 = move _120
+  _92 := _120
+  label l108
+  // [mir] StorageDead(_120)
+  // [mir] StorageLive(_121)
+  // [mir] StorageLive(_122)
+  // [mir] StorageLive(_123)
+  // [mir] _123 = _111
+  _123 := builtin$havoc_ref()
+  inhale acc(_123.val_int, write)
+  _123.val_int := _111
+  label l109
+  // [mir] StorageLive(_124)
+  // [mir] _124 = move _112
+  _124 := _112
+  label l110
+  // [mir] _122 = (move _123, move _124)
+  _122 := builtin$havoc_ref()
+  inhale acc(tuple2$i32$struct$m_Point(_122), write)
+  unfold acc(tuple2$i32$struct$m_Point(_122), write)
+  _122.tuple_0 := _123
+  label l111
+  _122.tuple_1 := _124
+  label l112
+  // [mir] StorageDead(_124)
+  // [mir] StorageDead(_123)
+  // [mir] _121 = std::option::Option::<(i32, Point)>::Some(move _122)
+  _121 := builtin$havoc_ref()
+  inhale acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_121), write)
+  inhale m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(_121) ==
+    1
+  // downcast _121 to enum_Some
+
+  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_121), write)
+  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_121.enum_Some), write)
+  _121.enum_Some.f$0 := _122
+  label l113
+  // [mir] StorageDead(_122)
+  // [mir] _91 = move _121
+  _91 := _121
+  label l114
+  // [mir] StorageDead(_121)
+  // [mir] _116 = const ()
+  // [mir] goto -> bb67
+  // ========== l157 ==========
+  fold acc(i32(_91.enum_Some.f$0.tuple_0), write)
+  fold acc(tuple2$i32$struct$m_Point(_91.enum_Some.f$0), write)
+  fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_91.enum_Some), write)
+  fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
+  goto l22
+  
+  label loop7_group2a_bb8
+  // ========== l106 ==========
+  // MIR edge bb64 --> bb66
+  // ========== loop7_group3_loop52_group3_bb66 ==========
+  __t56 := true
+  // [mir] _116 = const ()
+  // [mir] goto -> bb67
+  // ========== l158 ==========
+  // drop Pred(_112, write) (Pred(_112, write))
+  goto l22
+  
+  label loop7_group2b_bb9
+  // ========== loop7_group3_bb70 ==========
+  __t60 := true
+  // [mir] StorageLive(_130)
+  // [mir] _96 = const ()
+  // [mir] StorageDead(_130)
+  // [mir] StorageDead(_97)
+  // [mir] StorageDead(_96)
+  // [mir] StorageLive(_132)
+  // [mir] FakeRead(ForMatchedPlace(None), _91)
+  // [mir] _133 = discriminant(_91)
+  _133 := builtin$havoc_int()
+  _133 := m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(_91)
+  // [mir] switchInt(move _133) -> [0: bb71, 1: bb72, otherwise: bb47]
+  __t112 := _133
+  // Ignore default target bb47, as the compiler marked it as unreachable.
+  if (__t112 == 0) {
+    goto loop7_group3_bb12
+  }
+  goto loop7_group3_bb11
+  
+  label loop7_group3_bb11
+  // ========== l123 ==========
+  // MIR edge bb70 --> bb72
+  // ========== loop7_group3_bb72 ==========
+  __t61 := true
+  // [mir] falseEdge -> [real: bb73, imaginary: bb71]
+  // ========== loop7_group3_bb73 ==========
+  __t62 := true
+  // [mir] StorageLive(_134)
+  // [mir] _134 = move (((_91 as Some).0: (i32, Point)).1: Point)
+  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
+  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_91.enum_Some), write)
+  unfold acc(tuple2$i32$struct$m_Point(_91.enum_Some.f$0), write)
+  _134 := _91.enum_Some.f$0.tuple_1
+  label l125
+  // [mir] StorageLive(_135)
+  // [mir] _135 = move _134
+  _135 := _134
+  label l126
+  // [mir] _4 = move _135
+  _4 := _135
+  label l127
+  // [mir] StorageDead(_135)
+  // [mir] _132 = const ()
+  // [mir] StorageDead(_134)
+  // [mir] goto -> bb74
+  // ========== l160 ==========
+  // drop Acc(_91[enum_Some], write) (Pred(_91[enum_Some].f$0.tuple_1, write))
+  // drop Acc(_91.discriminant, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
+  // drop Acc(_91[enum_Some].f$0.tuple_0, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
+  // drop Acc(_91[enum_Some].f$0.tuple_1, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
+  // drop Acc(_91[enum_Some].f$0, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
+  // drop Pred(_91[enum_Some].f$0.tuple_0, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
+  unfold acc(bool(_8), write)
+  goto loop7_group3_bb14
+  
+  label loop7_group3_bb12
+  // ========== l124 ==========
+  // MIR edge bb70 --> bb71
+  // ========== loop7_group3_bb71 ==========
+  __t63 := true
+  // [mir] _8 = const true
+  unfold acc(bool(_8), write)
+  _8.val_bool := true
+  // [mir] _132 = const ()
+  // [mir] goto -> bb74
+  // ========== l161 ==========
+  // drop Pred(_91, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
+  goto loop7_group3_bb14
+  
+  label loop7_group3_bb14
+  // ========== loop7_group3_bb74 ==========
+  __t64 := true
+  // [mir] StorageDead(_132)
+  // [mir] StorageLive(_136)
+  // [mir] StorageLive(_137)
+  // [mir] _137 = &mut (_3.0: VecVecWrapperI32)
+  _137 := builtin$havoc_ref()
+  inhale acc(_137.val_ref, write)
+  unfold acc(struct$m_Board(_3), write)
+  _137.val_ref := _3.f$field
+  label l128
+  // [mir] StorageLive(_138)
+  // [mir] _138 = (_4.0: i32)
+  _138 := builtin$havoc_ref()
+  inhale acc(_138.val_int, write)
+  unfold acc(struct$m_Point(_4), write)
+  unfold acc(i32(_4.f$x), write)
+  _138.val_int := _4.f$x.val_int
+  label l129
+  // [mir] StorageLive(_139)
+  // [mir] _139 = (_4.1: i32)
+  _139 := builtin$havoc_ref()
+  inhale acc(_139.val_int, write)
+  unfold acc(i32(_4.f$y), write)
+  _139.val_int := _4.f$y.val_int
+  label l130
+  // [mir] StorageLive(_140)
+  // [mir] _140 = _7
+  _140 := builtin$havoc_ref()
+  inhale acc(_140.val_int, write)
+  unfold acc(i32(_7), write)
+  _140.val_int := _7.val_int
+  label l131
+  // [mir] _136 = VecVecWrapperI32::store(move _137, move _138, move _139, move _140) -> [return: bb75, unwind: bb92]
+  label l132
+  assert 0 <= _138.val_int && _138.val_int < f_size__$TY$__$int$() &&
+    (0 <= _139.val_int && _139.val_int < f_size__$TY$__$int$())
+  assert true
+  fold acc(i32(_138), write)
+  fold acc(i32(_139), write)
+  fold acc(i32(_140), write)
+  exhale acc(_137.val_ref, write) &&
+    (acc(struct$m_VecVecWrapperI32(_137.val_ref), write) &&
+    (acc(i32(_138), write) &&
+    (acc(i32(_139), write) && acc(i32(_140), write))))
+  _136 := builtin$havoc_ref()
+  inhale acc(struct$m_VecVecWrapperI32(old[l132](_137.val_ref)), write)
+  inhale acc(tuple0$(_136), write)
+  inhale true
+  inhale f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(old[l132](_137.val_ref)),
+    old[l132](_138.val_int), old[l132](_139.val_int)) ==
+    old[l132](_140.val_int) &&
+    (forall _0_quant_0: Int, _1_quant_0: Int ::!(0 <= _0_quant_0) ||
+      (!(_0_quant_0 < f_size__$TY$__$int$()) ||
+      (_0_quant_0 == old[l132](_138.val_int) ||
+      (!(0 <= _1_quant_0) ||
+      (!(_1_quant_0 < f_size__$TY$__$int$()) ||
+      (!(_1_quant_0 == old[l132](_139.val_int)) ==>
+      f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(old[l132](_137.val_ref)),
+      _0_quant_0, _1_quant_0) ==
+      old[l132](f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(_137.val_ref),
+      _0_quant_0, _1_quant_0))))))))
+  label l133
+  // ========== l134 ==========
+  // MIR edge bb74 --> bb75
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L34,L26,)
+
+  // ========== loop7_group3_bb75 ==========
+  __t65 := true
+  // [mir] StorageDead(_140)
+  // [mir] StorageDead(_139)
+  // [mir] StorageDead(_138)
+  // [mir] StorageDead(_137)
+  // [mir] StorageDead(_136)
+  // [mir] _141 = CheckedAdd(_7, const 1_i32)
+  _141 := builtin$havoc_ref()
+  inhale acc(_141.tuple_0, write)
+  inhale acc(_141.tuple_0.val_int, write)
+  inhale acc(_141.tuple_1, write)
+  inhale acc(_141.tuple_1.val_bool, write)
+  _141.tuple_0.val_int := _7.val_int + 1
+  _141.tuple_1.val_bool := false
+  // [mir] assert(!move (_141.1: bool), "attempt to compute `{} + {}`, which would overflow", _7, const 1_i32) -> [success: bb76, unwind: bb92]
+  __t113 := _141.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  assert !__t113
+  // ========== loop7_group3_bb76 ==========
+  __t66 := true
+  // [mir] _7 = move (_141.0: i32)
+  _7 := _141.tuple_0
+  label l135
+  // [mir] StorageLive(_142)
+  // [mir] StorageLive(_143)
+  // [mir] StorageLive(_144)
+  // [mir] _144 = _7
+  _144 := builtin$havoc_int()
+  _144 := _7.val_int
+  label l136
+  // [mir] StorageLive(_145)
+  // [mir] StorageLive(_146)
+  // [mir] _146 = size() -> [return: bb80, unwind: bb92]
+  label l137
+  _146 := builtin$havoc_ref()
+  inhale acc(i32(_146), write)
+  inhale (unfolding acc(i32(_146), write) in _146.val_int) ==
+    f_size__$TY$__$int$()
+  // ========== loop7_group3_bb80 ==========
+  __t67 := true
+  // [mir] StorageLive(_147)
+  // [mir] _147 = size() -> [return: bb81, unwind: bb92]
+  label l138
+  _147 := builtin$havoc_ref()
+  inhale acc(i32(_147), write)
+  inhale (unfolding acc(i32(_147), write) in _147.val_int) ==
+    f_size__$TY$__$int$()
+  // ========== loop7_group3_bb81 ==========
+  __t68 := true
+  // [mir] _148 = CheckedMul(_146, _147)
+  _148 := builtin$havoc_ref()
+  inhale acc(_148.tuple_0, write)
+  inhale acc(_148.tuple_0.val_int, write)
+  inhale acc(_148.tuple_1, write)
+  inhale acc(_148.tuple_1.val_bool, write)
+  unfold acc(i32(_146), write)
+  unfold acc(i32(_147), write)
+  _148.tuple_0.val_int := _146.val_int * _147.val_int
+  _148.tuple_1.val_bool := false
+  // [mir] assert(!move (_148.1: bool), "attempt to compute `{} * {}`, which would overflow", move _146, move _147) -> [success: bb82, unwind: bb92]
+  __t114 := _148.tuple_1.val_bool
+  // Rust assertion: attempt to multiply with overflow
+  assert !__t114
+  // ========== loop7_group3_bb82 ==========
+  __t69 := true
+  // [mir] _145 = move (_148.0: i32)
+  _145 := _148.tuple_0
+  label l139
+  // [mir] StorageDead(_147)
+  // [mir] StorageDead(_146)
+  // [mir] _143 = Le(move _144, move _145)
+  _143 := builtin$havoc_ref()
+  inhale acc(_143.val_bool, write)
+  _143.val_bool := _144 <= _145.val_int
+  // [mir] StorageDead(_145)
+  // [mir] StorageDead(_144)
+  // [mir] switchInt(move _143) -> [0: bb77, otherwise: bb78]
+  __t115 := _143.val_bool
+  if (!__t115) {
+    goto loop7_group3_bb16
+  }
+  goto loop7_group3_bb15
+  
+  label loop7_group3_bb15
+  // ========== l140 ==========
+  // MIR edge bb82 --> bb78
+  // ========== loop7_group3_bb78 ==========
+  __t70 := true
+  // [mir] StorageLive(_149)
+  // [mir] StorageLive(_150)
+  // [mir] _150 = _8
+  _150 := builtin$havoc_ref()
+  inhale acc(_150.val_bool, write)
+  _150.val_bool := _8.val_bool
+  label l142
+  // [mir] _149 = Not(move _150)
+  _149 := builtin$havoc_ref()
+  inhale acc(_149.val_bool, write)
+  _149.val_bool := !_150.val_bool
+  // [mir] StorageDead(_150)
+  // [mir] _142 = move _149
+  _142 := _149
+  label l143
+  // [mir] goto -> bb79
+  // ========== l162 ==========
+  // drop Acc(_150.val_bool, write) (Acc(_150.val_bool, write))
+  goto loop7_group3_bb17
+  
+  label loop7_group3_bb16
+  // ========== l141 ==========
+  // MIR edge bb82 --> bb77
+  // ========== loop7_group3_bb77 ==========
+  __t71 := true
+  // [mir] _142 = const false
+  _142 := builtin$havoc_ref()
+  inhale acc(_142.val_bool, write)
+  _142.val_bool := false
+  // [mir] goto -> bb79
+  goto loop7_group3_bb17
+  
+  label loop7_group3_bb17
+  // ========== loop7_group3_bb79 ==========
+  __t72 := true
+  // [mir] StorageDead(_149)
+  // [mir] StorageDead(_143)
+  // [mir] _15 = move _142
+  _15 := _142
+  label l144
+  // [mir] StorageDead(_142)
+  // [mir] _22 = const ()
+  // [mir] StorageDead(_92)
+  // [mir] StorageDead(_91)
+  // [mir] StorageDead(_87)
+  // [mir] StorageDead(_86)
+  // [mir] StorageDead(_35)
+  // [mir] StorageDead(_34)
+  // [mir] drop(_33) -> [return: bb83, unwind: bb93]
+  // ========== loop7_group3_bb83 ==========
+  __t73 := true
+  // [mir] StorageDead(_33)
+  // [mir] drop(_32) -> [return: bb84, unwind: bb94]
+  // ========== loop7_group3_bb84 ==========
+  __t74 := true
+  // [mir] StorageDead(_32)
+  // [mir] StorageDead(_23)
+  // [mir] goto -> bb7
+  // ========== loop7_group4_bb7 ==========
+  // This is a loop head
+  __t7 := true
+  // [mir] falseUnwind -> [real: bb8, unwind: bb94]
+  // ========== loop7_group4_bb8 ==========
+  __t8 := true
+  // [mir] StorageLive(_23)
+  // [mir] _23 = _15
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := _15.val_bool
+  label l145
+  // [mir] switchInt(move _23) -> [0: bb85, otherwise: bb9]
+  __t116 := _23.val_bool
+  if (__t116) {
+    goto l33
+  }
+  goto l31
+  
+  label loop7_group3_bb18
+  // ========== bb85 ==========
+  __t76 := true
+  // [mir] StorageLive(_152)
+  // [mir] _21 = const ()
+  // [mir] StorageDead(_152)
+  // [mir] StorageDead(_23)
+  // [mir] StorageDead(_21)
+  // [mir] StorageLive(_154)
+  // [mir] _154 = _8
+  _154 := builtin$havoc_ref()
+  inhale acc(_154.val_bool, write)
+  _154.val_bool := _8.val_bool
+  label l148
+  // [mir] switchInt(move _154) -> [0: bb87, otherwise: bb86]
+  __t118 := _154.val_bool
+  if (!__t118) {
+    goto loop7_group3_loop19_group1_bb19
+  }
+  goto loop7_group3_loop19_start
+  
+  label loop7_group3_loop19_group1_bb19
+  // ========== l150 ==========
+  // MIR edge bb85 --> bb87
+  // ========== bb87 ==========
+  __t79 := true
+  // [mir] StorageLive(_156)
+  // [mir] _156 = move _3
+  _156 := _3
+  label l151
+  // [mir] _0 = std::option::Option::<Board>::Some(move _156)
+  _0 := builtin$havoc_ref()
+  inhale acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
+  inhale m_std$$option$$Option$_beg_$struct$m_Board$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(_0) ==
+    1
+  // downcast _0 to enum_Some
+
+  unfold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
+  unfold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(_0.enum_Some), write)
+  _0.enum_Some.f$0 := _156
+  label l152
+  // [mir] drop(_156) -> [return: bb88, unwind: bb94]
+  // ========== bb88 ==========
+  __t80 := true
+  // [mir] StorageDead(_156)
+  // [mir] StorageDead(_154)
+  // [mir] StorageDead(_15)
+  // [mir] StorageDead(_8)
+  // [mir] StorageDead(_7)
+  // [mir] StorageDead(_4)
+  // [mir] drop(_3) -> [return: bb90, unwind: bb95]
+  // ========== bb90 ==========
+  __t81 := true
+  // [mir] StorageDead(_3)
+  // [mir] goto -> bb91
+  // ========== l165 ==========
+  fold acc(struct$m_Board(_0.enum_Some.f$0), write)
+  fold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(_0.enum_Some), write)
+  fold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
+  goto loop7_group3_loop19_group1_bb20
+  
+  label loop7_group3_loop19_group1_bb20
+  // ========== bb91 ==========
+  __t82 := true
+  // [mir] return
+  // ========== return ==========
+  // Target of any 'return' statement.
+  // Exhale postcondition
+  label l154
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  // Fold the result
+  // obtain acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
+  // Assert possible strengthening
+  // Assert functional specification of postcondition
+  // Assert type invariants
+  assert true
+  // Exhale permissions of postcondition (1/3)
+  // Exhale permissions of postcondition (2/3)
+  exhale acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
+  // Exhale permissions of postcondition (3/3)
+  goto end_of_method
+  
+  label loop7_group3_loop19_group2_bb21
+  // ========== l82 ==========
+  // MIR edge bb20 --> bb21
+  // ========== loop7_group3_loop19_group5_bb21 ==========
+  __t19 := true
+  // [mir] StorageLive(_41)
+  // [mir] StorageLive(_42)
+  // [mir] _42 = const false
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.val_bool, write)
+  _42.val_bool := false
+  // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
+  __t100 := _42.val_bool
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop19_end_body ==========
+  // Assert and exhale the loop body invariant (loop head: bb19)
+  fold acc(usize(_34), write)
+  // obtain acc(usize(_34), write)
+  fold acc(bool(_35), write)
+  // obtain acc(bool(_35), write)
+  // obtain acc(struct$m_VecWrapperI32I32(_33), write)
+  // obtain acc(struct$m_Point(_4), write)
+  // obtain acc(struct$m_Board(_3), write)
+  // obtain acc(struct$m_VecCandidates(_32), write)
+  assert 0 <= (unfolding acc(usize(_34), write) in _34.val_int) &&
+    ((unfolding acc(usize(_34), write) in _34.val_int) <
+    f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(_33)) &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) &&
+    (unfolding acc(struct$m_Point(_4), write) in
+      (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) <
+    f_size__$TY$__$int$())))
+  assert true
+  exhale acc(usize(_34), write) &&
+    (acc(bool(_35), write) &&
+    (acc(struct$m_VecWrapperI32I32(_33), write) &&
+    (acc(struct$m_Point(_4), write) &&
+    (acc(struct$m_Board(_3), write) &&
+    acc(struct$m_VecCandidates(_32), write)))))
+  inhale false
+  goto end_of_method
+  
+  label loop7_group3_loop19_start
+  // ========== l149 ==========
+  // MIR edge bb85 --> bb86
+  // ========== bb86 ==========
+  __t77 := true
+  // [mir] _0 = std::option::Option::<Board>::None
+  _0 := builtin$havoc_ref()
+  inhale acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
+  inhale m_std$$option$$Option$_beg_$struct$m_Board$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(_0) ==
+    0
+  // [mir] StorageDead(_154)
+  // [mir] StorageDead(_15)
+  // [mir] StorageDead(_8)
+  // [mir] StorageDead(_7)
+  // [mir] StorageDead(_4)
+  // [mir] drop(_3) -> [return: bb89, unwind: bb95]
+  // ========== bb89 ==========
+  __t78 := true
+  // [mir] StorageDead(_3)
+  // [mir] goto -> bb91
+  // ========== l164 ==========
+  // drop Pred(_3.f$field, write) (Pred(_3.f$field, write))
+  // drop Acc(_3.f$field, write) (Acc(_3.f$field, write))
+  goto loop7_group3_loop19_group1_bb20
+  
+  label loop7_inv_post_fnspc
+  // ========== l95 ==========
+  // MIR edge bb53 --> bb54
+  // ========== loop7_group3_loop52_group2b_bb54 ==========
+  __t47 := true
+  // [mir] StorageLive(_98)
+  // [mir] StorageLive(_99)
+  // [mir] _99 = const false
+  _99 := builtin$havoc_ref()
+  inhale acc(_99.val_bool, write)
+  _99.val_bool := false
+  // [mir] switchInt(move _99) -> [0: bb56, otherwise: bb55]
+  __t105 := _99.val_bool
+  // Ignore default target bb55, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop52_inv_post_fnspc ==========
+  // Inhale the loop fnspec invariant of block bb52
+  inhale 0 <= (unfolding acc(usize(_86), write) in _86.val_int) &&
+    ((unfolding acc(usize(_86), write) in _86.val_int) <
+    f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_32)) &&
+    f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$bool$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91)))
+  // ========== loop7_group3_loop52_group3_bb56 ==========
+  __t48 := true
+  // [mir] _98 = const ()
+  // [mir] goto -> bb57
+  // ========== loop7_group3_loop52_group3_bb57 ==========
+  __t49 := true
+  // [mir] StorageDead(_99)
+  // [mir] StorageDead(_98)
+  // [mir] StorageLive(_102)
+  // [mir] StorageLive(_103)
+  // [mir] _103 = const false
+  _103 := builtin$havoc_ref()
+  inhale acc(_103.val_bool, write)
+  _103.val_bool := false
+  // [mir] switchInt(move _103) -> [0: bb59, otherwise: bb58]
+  __t106 := _103.val_bool
+  // Ignore default target bb58, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop52_group3_bb59 ==========
+  __t50 := true
+  // [mir] _102 = const ()
+  // [mir] goto -> bb60
+  // ========== loop7_group3_loop52_group3_bb60 ==========
+  __t51 := true
+  // [mir] StorageDead(_103)
+  // [mir] StorageDead(_102)
+  // [mir] StorageLive(_107)
+  // [mir] StorageLive(_108)
+  // [mir] _108 = const false
+  _108 := builtin$havoc_ref()
+  inhale acc(_108.val_bool, write)
+  _108.val_bool := false
+  // [mir] switchInt(move _108) -> [0: bb62, otherwise: bb61]
+  __t107 := _108.val_bool
+  // Ignore default target bb61, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop52_group3_bb62 ==========
+  __t52 := true
+  // [mir] _107 = const ()
+  // [mir] goto -> bb63
+  // ========== loop7_group3_loop52_group3_bb63 ==========
+  __t53 := true
+  // [mir] StorageDead(_108)
+  // [mir] StorageDead(_107)
+  // [mir] StorageLive(_113)
+  // [mir] StorageLive(_114)
+  // [mir] _114 = &mut _32
+  _114 := builtin$havoc_ref()
+  inhale acc(_114.val_ref, write)
+  _114.val_ref := _32
+  label l96
+  // [mir] StorageLive(_115)
+  // [mir] _115 = _86
+  _115 := builtin$havoc_int()
+  unfold acc(usize(_86), write)
+  _115 := _86.val_int
+  label l97
+  // [mir] _113 = VecCandidates::lookup(move _114, move _115) -> [return: bb64, unwind: bb92]
+  label l98
+  assert 0 <= _115 &&
+    _115 <
+    f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_114.val_ref))
+  assert true
+  assert _115 >= 0
+  exhale acc(_114.val_ref, write) &&
+    (acc(struct$m_VecCandidates(_114.val_ref), write) && _115 >= 0)
+  _113 := builtin$havoc_ref()
+  inhale acc(struct$m_VecCandidates(old[l98](_114.val_ref)), write)
+  inhale acc(tuple2$i32$struct$m_Point(_113), write)
+  inhale true
+  inhale 0 <=
+    (unfolding acc(tuple2$i32$struct$m_Point(_113), write) in
+      (unfolding acc(struct$m_Point(_113.tuple_1), write) in
+        (unfolding acc(i32(_113.tuple_1.f$x), write) in
+          _113.tuple_1.f$x.val_int))) &&
+    (unfolding acc(tuple2$i32$struct$m_Point(_113), write) in
+      (unfolding acc(struct$m_Point(_113.tuple_1), write) in
+        (unfolding acc(i32(_113.tuple_1.f$x), write) in
+          _113.tuple_1.f$x.val_int))) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    (unfolding acc(tuple2$i32$struct$m_Point(_113), write) in
+      (unfolding acc(struct$m_Point(_113.tuple_1), write) in
+        (unfolding acc(i32(_113.tuple_1.f$y), write) in
+          _113.tuple_1.f$y.val_int))) &&
+    (unfolding acc(tuple2$i32$struct$m_Point(_113), write) in
+      (unfolding acc(struct$m_Point(_113.tuple_1), write) in
+        (unfolding acc(i32(_113.tuple_1.f$y), write) in
+          _113.tuple_1.f$y.val_int))) <
+    f_size__$TY$__$int$())
+  label l99
+  // ========== l100 ==========
+  // MIR edge bb63 --> bb64
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L42,L24,)
+
+  // ========== loop7_group3_loop52_group3_bb64 ==========
+  __t54 := true
+  // [mir] StorageDead(_115)
+  // [mir] StorageDead(_114)
+  // [mir] PlaceMention(_113)
+  // [mir] StorageLive(_111)
+  // [mir] _111 = (_113.0: i32)
+  _111 := builtin$havoc_int()
+  unfold acc(tuple2$i32$struct$m_Point(_113), write)
+  unfold acc(i32(_113.tuple_0), write)
+  _111 := _113.tuple_0.val_int
+  label l101
+  // [mir] StorageLive(_112)
+  // [mir] _112 = move (_113.1: Point)
+  _112 := _113.tuple_1
+  label l102
+  // [mir] StorageDead(_113)
+  // [mir] StorageLive(_116)
+  // [mir] StorageLive(_117)
+  // [mir] StorageLive(_118)
+  // [mir] _118 = _92
+  _118 := builtin$havoc_int()
+  unfold acc(i32(_92), write)
+  _118 := _92.val_int
+  label l103
+  // [mir] StorageLive(_119)
+  // [mir] _119 = _111
+  _119 := builtin$havoc_int()
+  _119 := _111
+  label l104
+  // [mir] _117 = Gt(move _118, move _119)
+  _117 := builtin$havoc_ref()
+  inhale acc(_117.val_bool, write)
+  _117.val_bool := _118 > _119
+  // [mir] StorageDead(_119)
+  // [mir] StorageDead(_118)
+  // [mir] switchInt(move _117) -> [0: bb66, otherwise: bb65]
+  __t108 := _117.val_bool
+  if (!__t108) {
+    goto loop7_group2a_bb8
+  }
+  goto loop7_group2a_bb7
+  
+  label loop7_inv_post_perm
+  // ========== l94 ==========
+  // MIR edge bb53 --> bb70
+  goto end_of_method
+  
+  label loop7_inv_pre
+  // ========== l92 ==========
+  // MIR edge bb53 --> bb54
+  // ========== loop7_group3_loop52_group2_bb54 ==========
+  __t47 := true
+  // [mir] StorageLive(_98)
+  // [mir] StorageLive(_99)
+  // [mir] _99 = const false
+  _99 := builtin$havoc_ref()
+  inhale acc(_99.val_bool, write)
+  _99.val_bool := false
+  // [mir] switchInt(move _99) -> [0: bb56, otherwise: bb55]
+  __t103 := _99.val_bool
+  // Ignore default target bb55, as it is only used by Prusti to type-check a loop invariant.
+  // ========== loop7_group3_loop52_inv_pre ==========
+  // Assert and exhale the loop body invariant (loop head: bb52)
+  fold acc(i32(_92), write)
+  // obtain acc(i32(_92), write)
+  // obtain acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
+  fold acc(usize(_86), write)
+  // obtain acc(usize(_86), write)
+  fold acc(bool(_87), write)
+  // obtain acc(bool(_87), write)
+  // obtain acc(struct$m_VecCandidates(_32), write)
+  assert 0 <= (unfolding acc(usize(_86), write) in _86.val_int) &&
+    ((unfolding acc(usize(_86), write) in _86.val_int) <
+    f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_32)) &&
+    f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$bool$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91)))
+  assert true
+  exhale acc(i32(_92), write) &&
+    (acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write) &&
+    (acc(usize(_86), write) &&
+    (acc(bool(_87), write) && acc(struct$m_VecCandidates(_32), write))))
+  _103 := builtin$havoc_ref()
+  _108 := builtin$havoc_ref()
+  _111 := builtin$havoc_int()
+  _112 := builtin$havoc_ref()
+  _113 := builtin$havoc_ref()
+  _114 := builtin$havoc_ref()
+  _115 := builtin$havoc_int()
+  _117 := builtin$havoc_ref()
+  _118 := builtin$havoc_int()
+  _119 := builtin$havoc_int()
+  _120 := builtin$havoc_ref()
+  _121 := builtin$havoc_ref()
+  _122 := builtin$havoc_ref()
+  _123 := builtin$havoc_ref()
+  _124 := builtin$havoc_ref()
+  _125 := builtin$havoc_ref()
+  _126 := builtin$havoc_int()
+  _127 := builtin$havoc_int()
+  _128 := builtin$havoc_ref()
+  _86 := builtin$havoc_ref()
+  _91 := builtin$havoc_ref()
+  _92 := builtin$havoc_ref()
+  _97 := builtin$havoc_ref()
+  _99 := builtin$havoc_ref()
+  __t104 := builtin$havoc_bool()
+  __t105 := builtin$havoc_bool()
+  __t106 := builtin$havoc_bool()
+  __t107 := builtin$havoc_bool()
+  __t108 := builtin$havoc_bool()
+  __t109 := builtin$havoc_bool()
+  __t110 := builtin$havoc_bool()
+  __t111 := builtin$havoc_bool()
+  __t45 := builtin$havoc_bool()
+  __t46 := builtin$havoc_bool()
+  __t47 := builtin$havoc_bool()
+  __t48 := builtin$havoc_bool()
+  __t49 := builtin$havoc_bool()
+  __t50 := builtin$havoc_bool()
+  __t51 := builtin$havoc_bool()
+  __t52 := builtin$havoc_bool()
+  __t53 := builtin$havoc_bool()
+  __t54 := builtin$havoc_bool()
+  __t55 := builtin$havoc_bool()
+  __t56 := builtin$havoc_bool()
+  __t57 := builtin$havoc_bool()
+  __t58 := builtin$havoc_bool()
+  __t59 := builtin$havoc_bool()
+  // ========== loop7_group3_loop52_inv_post_perm ==========
+  // Inhale the loop permissions invariant of block bb52
+  inhale acc(i32(_92), write) &&
+    (acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write) &&
+    (acc(usize(_86), write) &&
+    (acc(bool(_87), write) && acc(struct$m_VecCandidates(_32), write))))
+  inhale true
+  // ========== loop7_group3_loop52_group2a_bb52 ==========
+  // This is a loop head
+  __t45 := true
+  // [mir] falseUnwind -> [real: bb53, unwind: bb92]
+  // ========== loop7_group3_loop52_group2a_bb53 ==========
+  __t46 := true
+  // [mir] StorageLive(_97)
+  // [mir] _97 = _87
+  _97 := builtin$havoc_ref()
+  inhale acc(_97.val_bool, write)
+  unfold acc(bool(_87), write)
+  _97.val_bool := _87.val_bool
+  label l93
+  // [mir] switchInt(move _97) -> [0: bb70, otherwise: bb54]
+  __t104 := _97.val_bool
+  if (__t104) {
+    goto loop7_inv_post_fnspc
+  }
+  goto loop7_inv_post_perm
+  
+  label loop7_start
+  // ========== l57 ==========
+  // MIR edge bb37 --> bb38
+  // ========== loop7_group3_loop19_group3_bb38 ==========
+  __t32 := true
+  // [mir] StorageLive(_70)
+  // [mir] StorageLive(_71)
+  // [mir] _71 = &mut _3
+  _71 := builtin$havoc_ref()
+  inhale acc(_71.val_ref, write)
+  _71.val_ref := _3
+  label l59
+  // [mir] StorageLive(_72)
+  // [mir] StorageLive(_73)
+  // [mir] _73 = &mut _61
+  _73 := builtin$havoc_ref()
+  inhale acc(_73.val_ref, write)
+  _73.val_ref := _61
+  label l60
+  // [mir] _72 = Point::clone(move _73) -> [return: bb39, unwind: bb92]
+  label l61
+  assert true
+  exhale acc(_73.val_ref, write) && acc(struct$m_Point(_73.val_ref), write)
+  _72 := builtin$havoc_ref()
+  inhale acc(struct$m_Point(old[l61](_73.val_ref)), write)
+  inhale acc(struct$m_Point(_72), write)
+  inhale true
+  inhale (unfolding acc(struct$m_Point(old[l61](_73.val_ref)), write) in
+      (unfolding acc(i32(old[l61](_73.val_ref).f$y), write) in
+        (unfolding acc(i32(old[l61](_73.val_ref).f$x), write) in
+          (unfolding acc(struct$m_Point(_72), write) in
+            (unfolding acc(i32(_72.f$y), write) in
+              (unfolding acc(i32(_72.f$x), write) in
+                _72.f$x.val_int ==
+                old[l61]((unfolding acc(struct$m_Point(_73.val_ref), write) in
+                  (unfolding acc(i32(_73.val_ref.f$x), write) in
+                    _73.val_ref.f$x.val_int))) &&
+                (_72.f$y.val_int ==
+                old[l61]((unfolding acc(struct$m_Point(_73.val_ref), write) in
+                  (unfolding acc(i32(_73.val_ref.f$y), write) in
+                    _73.val_ref.f$y.val_int))) &&
+                (old[l61](_73.val_ref).f$x.val_int ==
+                old[l61]((unfolding acc(struct$m_Point(_73.val_ref), write) in
+                  (unfolding acc(i32(_73.val_ref.f$x), write) in
+                    _73.val_ref.f$x.val_int))) &&
+                old[l61](_73.val_ref).f$y.val_int ==
+                old[l61]((unfolding acc(struct$m_Point(_73.val_ref), write) in
+                  (unfolding acc(i32(_73.val_ref.f$y), write) in
+                    _73.val_ref.f$y.val_int)))))))))))
+  label l62
+  // ========== l63 ==========
+  // MIR edge bb38 --> bb39
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L29,L16,)
+
+  // ========== loop7_group3_loop19_group3_bb39 ==========
+  __t33 := true
+  // [mir] StorageDead(_73)
+  // [mir] _70 = Board::count_degree(move _71, move _72) -> [return: bb40, unwind: bb92]
+  label l64
+  assert true
+  exhale acc(_71.val_ref, write) &&
+    (acc(struct$m_Board(_71.val_ref), write) &&
+    acc(struct$m_Point(_72), write))
+  _70 := builtin$havoc_ref()
+  inhale acc(struct$m_Board(old[l64](_71.val_ref)), write)
+  inhale acc(i32(_70), write)
+  inhale true
+  label l65
+  // ========== l66 ==========
+  // MIR edge bb39 --> bb40
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L37,L15,)
+
+  // ========== loop7_group3_loop19_group3_bb40 ==========
+  __t34 := true
+  // [mir] StorageDead(_72)
+  // [mir] StorageDead(_71)
+  // [mir] FakeRead(ForLet(None), _70)
+  // [mir] StorageLive(_74)
+  // [mir] StorageLive(_75)
+  // [mir] _75 = &mut _32
+  _75 := builtin$havoc_ref()
+  inhale acc(_75.val_ref, write)
+  _75.val_ref := _32
+  label l67
+  // [mir] StorageLive(_76)
+  // [mir] StorageLive(_77)
+  // [mir] _77 = _70
+  _77 := builtin$havoc_ref()
+  inhale acc(_77.val_int, write)
+  unfold acc(i32(_70), write)
+  _77.val_int := _70.val_int
+  label l68
+  // [mir] StorageLive(_78)
+  // [mir] _78 = move _61
+  _78 := _61
+  label l69
+  // [mir] _76 = (move _77, move _78)
+  _76 := builtin$havoc_ref()
+  inhale acc(tuple2$i32$struct$m_Point(_76), write)
+  unfold acc(tuple2$i32$struct$m_Point(_76), write)
+  _76.tuple_0 := _77
+  label l70
+  _76.tuple_1 := _78
+  label l71
+  // [mir] StorageDead(_78)
+  // [mir] StorageDead(_77)
+  // [mir] _74 = VecCandidates::push(move _75, move _76) -> [return: bb41, unwind: bb92]
+  label l72
+  assert 0 <=
+    (unfolding acc(struct$m_Point(_76.tuple_1), write) in
+      (unfolding acc(i32(_76.tuple_1.f$x), write) in
+        _76.tuple_1.f$x.val_int)) &&
+    (unfolding acc(struct$m_Point(_76.tuple_1), write) in
+      (unfolding acc(i32(_76.tuple_1.f$x), write) in
+        _76.tuple_1.f$x.val_int)) <
+    f_size__$TY$__$int$() &&
+    (0 <=
+    (unfolding acc(struct$m_Point(_76.tuple_1), write) in
+      (unfolding acc(i32(_76.tuple_1.f$y), write) in
+        _76.tuple_1.f$y.val_int)) &&
+    (unfolding acc(struct$m_Point(_76.tuple_1), write) in
+      (unfolding acc(i32(_76.tuple_1.f$y), write) in
+        _76.tuple_1.f$y.val_int)) <
+    f_size__$TY$__$int$())
+  assert true
+  fold acc(i32(_76.tuple_0), write)
+  fold acc(tuple2$i32$struct$m_Point(_76), write)
+  exhale acc(_75.val_ref, write) &&
+    (acc(struct$m_VecCandidates(_75.val_ref), write) &&
+    acc(tuple2$i32$struct$m_Point(_76), write))
+  _74 := builtin$havoc_ref()
+  inhale acc(struct$m_VecCandidates(old[l72](_75.val_ref)), write)
+  inhale acc(tuple0$(_74), write)
+  inhale true
+  inhale f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(old[l72](_75.val_ref))) ==
+    old[l72](f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_75.val_ref))) +
+    1
+  label l73
+  // ========== l74 ==========
+  // MIR edge bb40 --> bb41
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L33,L17,)
+
+  // ========== loop7_group3_loop19_group3_bb41 ==========
+  __t35 := true
+  // [mir] StorageDead(_76)
+  // [mir] StorageDead(_75)
+  // [mir] StorageDead(_74)
+  // [mir] _65 = const ()
+  // [mir] StorageDead(_70)
+  // [mir] goto -> bb43
+  // ========== l153 ==========
+  // drop Acc(_70.val_int, write) (Acc(_70.val_int, write))
+  // drop Pred(_74, write) (Pred(_74, write))
+  goto loop7_group1_bb8
+  
+  label return
+  // ========== bb47 ==========
+  __t75 := true
+  // [mir] unreachable
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

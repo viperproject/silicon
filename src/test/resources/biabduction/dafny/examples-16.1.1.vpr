@@ -1,0 +1,128 @@
+adt Category {
+    Identifier()
+    Number()
+    Operator()
+    Whitespace()
+    Error()
+    End()
+}
+
+function Is(ch: Int, cat: Category): Bool
+    requires !cat.isEnd
+    requires 0 <= ch <= 127
+{
+    (cat.isWhitespace) ? ch == 32 || ch == 9 || ch == 13 || ch == 10 : // " \t\r\n"
+    (cat.isIdentifier) ? 65 <= ch <= 90 || 97 <= ch <= 122           : // 'A' <= ch <= 'Z' || 'a' <= ch <= 'z'
+    (cat.isNumber)     ? 48 <= ch <= 57                              : // '0' <= ch <= '9'
+    (cat.isOperator)   ? ch == 43 || ch == 45 || ch == 42 || ch == 47 || ch == 37 || ch == 33 || 
+                         ch == 61 || ch == 62 || ch == 60 || ch == 126 || ch == 94 || ch == 38 || 
+                         ch == 124                                   : // "+-*/%!=><=~^&|"
+                         !Is(ch, Identifier()) && !Is(ch, Number()) && !Is(ch, Operator()) && 
+                         !Is(ch, Whitespace()) // error case
+}
+
+field source: Seq[Int]
+field n: Int
+
+predicate Tokenizer(this: Ref)
+{
+    acc(this.source) && 
+    acc(this.n) && 0 <= this.n <= |this.source| &&
+    forall i: Int :: 0 <= i < |this.source| ==> 0 <= this.source[i] <= 127
+}
+
+
+function getSource(this: Ref): Seq[Int]
+    requires Tokenizer(this)
+    ensures forall i: Int :: 0 <= i < |result| ==> 0 <= result[i] <= 127
+{
+    unfolding Tokenizer(this) in
+    this.source
+}
+
+function getN(this: Ref): Int
+    requires Tokenizer(this)
+    ensures 0 <= result <= |getSource(this)|
+{
+    unfolding Tokenizer(this) in
+    this.n
+}
+
+method Read(this: Ref) returns (cat: Category, p: Int, token: Seq[Int]) 
+    requires Tokenizer(this)
+    ensures 0 <= p
+    ensures Tokenizer(this)
+    ensures getSource(this) == old(getSource(this))
+    ensures !cat.isWhitespace
+    ensures old(getN(this)) <= p <= getN(this) <= |getSource(this)|
+    ensures cat.isEnd <==> p == |getSource(this)|
+    ensures cat.isEnd || cat.isError <==> p == getN(this)
+    ensures forall i: Int :: old(getN(this)) <= i < p ==> 
+        Is(getSource(this)[i], Whitespace())
+    ensures forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+    ensures p < getN(this) ==> getN(this) == |getSource(this)| || !Is(getSource(this)[getN(this)], cat)
+    ensures !cat.isError ==> token == getSource(this)[p..getN(this)]
+{
+    // skip whitespace
+    while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], Whitespace()))
+        invariant Tokenizer(this)
+        invariant getSource(this) == old(getSource(this))
+        invariant old(getN(this)) <= getN(this) <= |getSource(this)|
+        invariant forall i: Int :: old(getN(this)) <= i < getN(this) ==> Is(getSource(this)[i], Whitespace())
+    {
+        unfold Tokenizer(this)
+        this.n := this.n + 1
+        fold Tokenizer(this)
+    }
+    p := getN(this)
+    // determine syntactic category
+    var return: Bool := false
+    if (getN(this) == |getSource(this)|)
+    {
+        cat := End()
+        token := Seq()
+        return := true
+    }
+    elseif (Is(getSource(this)[getN(this)], Identifier()))
+    {
+        cat := Identifier()
+    }
+    elseif (Is(getSource(this)[getN(this)], Number()))
+    {
+        cat := Number()
+    }
+    elseif (Is(getSource(this)[getN(this)], Operator()))
+    {
+        cat := Operator()
+    }
+    else
+    {
+        cat := Error()
+        token := Seq()
+        return := true
+    }
+    // read token
+    if (!return)
+    {
+        var start: Int := getN(this)
+        unfold Tokenizer(this)
+        this.n := this.n + 1
+        fold Tokenizer(this)
+        while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], cat))
+            invariant Tokenizer(this)
+            invariant getSource(this) == old(getSource(this))
+            invariant p <= getN(this) <= |getSource(this)|
+            invariant forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+        {
+            unfold Tokenizer(this)
+            this.n := this.n + 1
+            fold Tokenizer(this)
+        }
+        token := getSource(this)[start..getN(this)]
+    }    
+}
+        
+
+
+
+    

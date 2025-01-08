@@ -368,7 +368,7 @@ object executor extends ExecutionRules {
         (s1, v1, QS) =>
           consumes(s1, invs, LoopInvariantNotPreserved, v1)(QS)
       } {
-        (s1, _, v1) => Q(s1, v1)
+        (s2, _, v2) => Q(s2, v2)
       } {
         f =>
         // There are cases where it is incorrect to abduce state here, but only some cases and it is hard to distinguish them

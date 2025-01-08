@@ -9,6 +9,8 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
 
+import scala.annotation.tailrec
+
 case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap) {
 
   //val pve: PartialVerificationError = Internal()
@@ -31,11 +33,14 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
       t -> directTargets.collectFirst { case ((t1, _), e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
     }.collect { case (t2, Some(e)) => t2 -> e }.toMap
 
-    resolveChunks(directAliases, targetHeap.values.collect { case c: BasicChunk
+    val chunksToResolve = targetHeap.values.collect { case c: BasicChunk
       if c.resourceID == FieldID && !(directAliases.contains(c.args.head) && directAliases.contains(c.snap)) => c
-    }.toSeq, allTerms.filter(!directAliases.contains(_)))
+    }.toSeq
+
+    resolveChunks(directAliases, chunksToResolve, allTerms.filter(!directAliases.contains(_)))
   }
 
+  @tailrec
   private def resolveChunks(currentMatches: Map[Term, Exp], remainingChunks: Seq[BasicChunk], remainingTerms: Seq[Term]): Map[Term, Exp] = {
     remainingChunks.collectFirst { case c if currentMatches.contains(c.args.head) => c } match {
       case None => currentMatches
@@ -51,7 +56,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     t match {
       case t if matches.contains(t) => matches.get(t)
       case BuiltinEquals(t1, t2) => (transformTerm(t1), transformTerm(t2)) match {
-        case (Some(e1), Some(e2)) => 
+        case (Some(e1), Some(e2)) =>
           Some(EqCmp(e1, e2)())
         case _ => None
       }
@@ -59,11 +64,24 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
       case terms.FullPerm => Some(FullPerm()())
       case terms.Null => Some(NullLit()())
       case terms.Not(BuiltinEquals(t1, t2)) => (transformTerm(t1), transformTerm(t2)) match {
-        case (Some(e1), Some(e2)) => 
+        case (Some(e1), Some(e2)) =>
           Some(NeCmp(e1, e2)())
         case _ => None
       }
+      case terms.True => Some(TrueLit()())
       case _ => None
+    }
+  }
+
+  def transformState(s: State): Seq[Exp] = {
+
+    val transformed = s.h.values.collect { case c: NonQuantifiedChunk => transformChunk(c) }.collect { case Some(e) => e }.toSeq
+    transformed.filter {
+      case _: FieldAccessPredicate => true
+      case _ => false
+    } ++ transformed.filter {
+      case _: FieldAccessPredicate => false
+      case _ => true
     }
   }
 
@@ -82,7 +100,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
         val rcvs = mwc.args.map(a => a -> transformTerm(a)).toMap
         if (rcvs.values.toSeq.contains(None)) None else {
           val shape = mwc.id.ghostFreeWand
-          val expBindings = mwc.bindings.collect { case (lv, (term, _)) if rcvs.contains(term) => lv -> rcvs(term).get}
+          val expBindings = mwc.bindings.collect { case (lv, (term, _)) if rcvs.contains(term) => lv -> rcvs(term).get }
           val instantiated = shape.replace(expBindings)
           Some(instantiated)
           //Some(abductionUtils.getPredicate(s.program, rcv.get, transformTerm(b.perm).get))

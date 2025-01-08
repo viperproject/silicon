@@ -1,0 +1,215 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* 
+ * The performance of silicon used to depend on the disjunction order in the following predicate
+ * Compare disjunction_fast_20.vpr
+ */
+
+field val: Int
+
+predicate Slow(this: Ref) {
+    acc(this.val) && 
+        ((((((((((((((((((((this.val == 0 || this.val == 1) || this.val == 2) || this.val == 3) || this.val == 4) || this.val == 5) || this.val == 6) || this.val == 7) || this.val == 8) || this.val == 9) || this.val == 10) || this.val == 11) || this.val == 12) || this.val == 13) || this.val == 14) || this.val == 15) || this.val == 16) || this.val == 17) || this.val == 18) || this.val == 19) || true)
+}
+
+method havoc() returns (res:Int)
+
+method test(this: Ref)
+    requires Slow(this)
+    ensures Slow(this)
+{
+    unfold Slow(this)
+    var tmp: Int
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+    unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    fold Slow(this)
+
+}
+
+
+

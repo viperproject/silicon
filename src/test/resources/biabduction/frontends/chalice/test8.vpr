@@ -1,0 +1,46 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+  field value: Int
+  field next: Ref
+  predicate inv(this: Ref) { acc(this.value, write) }
+  predicate tinv(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(tinv(this.next), write)) }
+  function get(this: Ref): Int
+    requires acc(tinv(this), write)
+  { (unfolding acc(tinv(this), write) in this.value) }
+  method fufu(this: Ref)
+    requires acc(this.value, write)
+  {
+    fold acc(inv(this), write)
+    unfold acc(inv(this), write)
+    fold acc(inv(this), write)
+    unfold acc(inv(this), write)
+  }
+  method fuf(this: Ref)
+    requires acc(this.value, write)
+  {
+    fold acc(inv(this), write)
+    unfold acc(inv(this), write)
+    fold acc(inv(this), write)
+  }
+  method uf(this: Ref)
+    requires acc(inv(this), write)
+  {
+    unfold acc(inv(this), write)
+    fold acc(inv(this), write)
+  }
+  method fu(this: Ref)
+    requires acc(this.value, write)
+  {
+    fold acc(inv(this), write)
+    unfold acc(inv(this), write)
+  }
+  method t(this: Ref)
+    requires acc(tinv(this), write) && (unfolding acc(tinv(this), write) in ((this.next) != (null)))
+    ensures acc(tinv(this), write) && (unfolding acc(tinv(this), write) in ((this.next) != (null)))
+  {
+    unfold acc(tinv(this), write)
+    unfold acc(tinv(this.next), write)
+    fold acc(tinv(this.next), write)
+    fold acc(tinv(this), write)
+  }

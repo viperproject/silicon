@@ -1,0 +1,139 @@
+//import "examples-16.0.vpr"
+field checksumData: Int
+
+// Exercise 16.3
+/**
+ * This is a quick implementation of the ChecksumMachine with an additional
+ * field ocs, which is an optional checksum value. The checksum value will only
+ * be computed if it is not already present in the ocs field. If a checksum is
+ * present, it will be returned instead of recomputing it. When the 
+ * checksumData value changes, the ocs field will be reset to None. This avoids
+ * an additional computation of the checksum value because we would have to 
+ * check if the ocs value is still correct.
+ * Because the implementation is a variation of already seen and explained code,
+ * we will not go into detail about the individual code sections.
+ */
+adt Option[T] {
+    Some(value: T)
+    None()
+}
+
+field ocs: Option[Int]
+
+predicate ChecksumMachineOCS(this: Ref) 
+{
+    acc(this.checksumData) && 0 <= this.checksumData &&
+    acc(this.ocs)
+}
+
+method ChecksumMachineOCSConstructor() returns (this: Ref)
+    ensures ChecksumMachineOCS(this)
+    ensures unfolding ChecksumMachineOCS(this) in this.checksumData == 0
+    ensures unfolding ChecksumMachineOCS(this) in this.ocs.isNone
+{
+    this := new(checksumData, ocs)
+    this.checksumData := 0
+    this.ocs := None()
+    fold ChecksumMachineOCS(this)
+}
+
+method AppendOCS(this: Ref, d: Int)
+    requires ChecksumMachineOCS(this)
+    requires 0 <= d
+    ensures ChecksumMachineOCS(this)
+    ensures unfolding ChecksumMachineOCS(this) in this.checksumData == old(unfolding ChecksumMachineOCS(this) in this.checksumData) + d
+    ensures unfolding ChecksumMachineOCS(this) in this.ocs.isNone
+{
+    unfold ChecksumMachineOCS(this)
+    this.checksumData := this.checksumData + d
+    this.ocs := None()
+    fold ChecksumMachineOCS(this)
+}
+
+method ChecksumOCS(this: Ref) returns (checksum: Int)
+    requires ChecksumMachineOCS(this)
+    //requires unfolding ChecksumMachineOCS(this) in this.ocs.isNone || this.ocs.value == Hash(this.checksumData)
+    ensures ChecksumMachineOCS(this)
+    ensures unfolding ChecksumMachineOCS(this) in this.checksumData == old(unfolding ChecksumMachineOCS(this) in this.checksumData)
+    //ensures unfolding ChecksumMachineOCS(this) in checksum == Hash(this.checksumData)
+    ensures unfolding ChecksumMachineOCS(this) in this.ocs == Some(checksum)
+{
+    unfold ChecksumMachineOCS(this)
+    if (this.ocs.isNone)
+    {
+        this.ocs := Some(this.checksumData % 137)
+    }
+    checksum := this.ocs.value
+    fold ChecksumMachineOCS(this)
+}
+
+// Exercise 16.4
+/**
+ * This is a simple implementation of a ledger system, where we can deposit and
+ * withdraw a value. All transactions are stored in a sequence and the balance
+ * is the sum of all transactions. The balance cannot be negative.
+ * At the time of writing the Silicon symbolic execution backend is unable to 
+ * verify the presented code, while the Carbon condition generation backend is 
+ * able to verify the presented code.
+ */
+/* function Sum(s: Seq[Int]): Int
+{
+    (|s| == 0) ? 0 : s[0] + Sum(s[1..])
+}
+
+field LedgerTransactions: Seq[Int]
+field LedgerBalance: Int
+
+predicate Ledger(this: Ref)
+{
+    acc(this.LedgerTransactions) &&
+    acc(this.LedgerBalance) && 0 <= this.LedgerBalance &&
+    this.LedgerBalance == Sum(this.LedgerTransactions)
+}
+
+method LedgerConstructor() returns (this: Ref)
+    ensures Ledger(this)
+    ensures unfolding Ledger(this) in this.LedgerTransactions == Seq()
+    ensures unfolding Ledger(this) in this.LedgerBalance == 0
+{
+    this := new(LedgerTransactions, LedgerBalance)
+    this.LedgerTransactions := Seq()
+    this.LedgerBalance := 0
+    fold Ledger(this)
+}
+
+method LedgerDeposit(this: Ref, n: Int)
+    requires Ledger(this)
+    requires 0 <= n
+    ensures Ledger(this)
+    ensures unfolding Ledger(this) in this.LedgerTransactions == Seq(n) ++ old(unfolding Ledger(this) in this.LedgerTransactions)
+    ensures unfolding Ledger(this) in this.LedgerBalance == n + old(unfolding Ledger(this) in this.LedgerBalance)
+{
+    unfold Ledger(this)
+    this.LedgerTransactions := Seq(n) ++ this.LedgerTransactions
+    this.LedgerBalance := this.LedgerBalance + n
+    fold Ledger(this)
+}
+
+method LedgerWithdraw(this: Ref, n: Int)
+    requires Ledger(this)
+    requires 0 <= n
+    requires unfolding Ledger(this) in n <= this.LedgerBalance
+    ensures Ledger(this)
+    ensures unfolding Ledger(this) in this.LedgerTransactions == Seq(-n) ++ old(unfolding Ledger(this) in this.LedgerTransactions)
+    ensures unfolding Ledger(this) in this.LedgerBalance == old(unfolding Ledger(this) in this.LedgerBalance) - n
+{
+    unfold Ledger(this)
+    this.LedgerTransactions := Seq(-n) ++ this.LedgerTransactions
+    this.LedgerBalance := this.LedgerBalance - n
+    fold Ledger(this)
+}
+
+method LedgerTestHarness()
+{
+    var l: Ref := LedgerConstructor()
+    LedgerDeposit(l, 100)
+    LedgerDeposit(l, 200)
+    LedgerWithdraw(l, 50)
+    assert unfolding Ledger(l) in l.LedgerBalance == 250
+} */

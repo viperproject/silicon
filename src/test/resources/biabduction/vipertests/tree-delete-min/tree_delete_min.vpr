@@ -1,0 +1,93 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+/* This example shows how magic wands can be used to specify the
+ * imperative version of challenge 3 from the VerifyThis@FM2012
+ * verification competition. Method tree_delete_min below is an
+ * iterative implementation of the removal of the minimal element
+ * in a binary search tree.
+ *
+ * The example contains two assertions (marked with "TODO") that
+ * help overcoming an incompleteness with respect to sequences.
+ *
+ * At present, this example uses syntax which is only supported
+ * by the default Viper verifier (Silicon).
+ */
+
+field v: Int
+field l: Ref
+field r: Ref
+
+predicate Tree(x: Ref) {
+  x == null
+    ? true
+    :    acc(x.v)
+      && acc(x.l) && acc(Tree(x.l))
+      && acc(x.r) && acc(Tree(x.r))
+}
+
+function val(x: Ref): Int
+  requires x != null && acc(Tree(x))
+{ unfolding acc(Tree(x)) in x.v }
+
+function vals(x: Ref): Seq[Int]
+  requires acc(Tree(x))
+{ x == null ? Seq[Int]() : unfolding acc(Tree(x)) in vals(x.l) ++ Seq(x.v) ++ vals(x.r) }
+
+/* Deletes the minimal element of a binary tree, assuming that the
+ * tree is a binary search tree (which, for simplicity, is not made
+ * explicit in the definition of predicate Tree).
+ */
+method tree_delete_min(x: Ref) returns (z: Ref)
+  requires x != null && acc(Tree(x))
+  ensures acc(Tree(z))                  /* POST1 */
+  ensures vals(z) == old(vals(x))[1..]  /* POST2 */
+{
+  var p: Ref := x
+  var plvs: Seq[Int]
+
+  define A acc(p.l) && acc(Tree(p.l)) && vals(p.l) == plvs[1..]
+  define B acc(Tree(x)) && vals(x) == old(vals(x))[1..]
+
+  unfold acc(Tree(p))
+  plvs := vals(p.l)
+
+  if (p.l == null) {
+    z := p.r
+
+    assert vals(x.l) == Seq[Int]() /* TODO: Required by Silicon for POST2 */
+  } else {
+    package (A) --* B {
+        fold acc(Tree(p))
+    }
+
+    while (unfolding acc(Tree(p.l)) in p.l.l != null)
+      invariant p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
+      invariant plvs == vals(p.l)
+      invariant A --* B
+    {
+      var oldP: Ref := p
+      var oldPlvs: Seq[Int] := plvs
+
+      unfold acc(Tree(p.l))
+      p := p.l
+      plvs := vals(p.l)
+
+      package (A) --* B {
+          fold Tree(p)
+          apply (acc(oldP.l) && acc(Tree(oldP.l)) && vals(oldP.l) == oldPlvs[1..]) --*
+          (acc(Tree(x)) && vals(x) == old(vals(x))[1..])
+      }
+    }
+
+    unfold acc(Tree(p.l))
+    assert vals(p.l.l) == Seq[Int]() /* TODO: Required by Silicon for POST2 */
+
+    p.l := p.l.r
+
+    apply A --* B
+
+    z := x
+  }
+}

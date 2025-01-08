@@ -1,0 +1,137 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field data: Seq[Int];  // the storage
+field first: Int;      // index of the first element in the queue
+field len: Int;        // number of elements in the queue
+
+predicate Valid(this: Ref) {
+    acc(this.data, write) && acc(this.first, write) && acc(this.len, write) &&
+    0 <= this.first && 0 <= this.len &&
+    (|this.data| == 0 ==> this.len == 0 && this.first == 0) &&
+    (|this.data| > 0 ==> this.len <= |this.data| && this.first < |this.data|)
+}
+
+function Contents(this: Ref): Seq[Int]
+    requires acc(Valid(this), wildcard)
+  {
+    unfolding acc(Valid(this), wildcard) in
+     |this.data| == 0 ? Seq[Int]()
+                  : (this.first + this.len <= |this.data| ? this.data[this.first..this.first+this.len]
+                                           : this.data[this.first..] ++ this.data[..this.first+this.len-|this.data|])
+  }
+
+function Capacity(this: Ref): Int
+    requires acc(Valid(this), wildcard)
+  {
+    unfolding acc(Valid(this), wildcard) in |this.data|
+  }
+
+  method Create(this: Ref, n: Int)
+    requires 0 <= n;
+    requires acc(this.data, write) && acc(this.first, write) && acc(this.len, write);
+    ensures acc(Valid(this), write);
+    ensures Contents(this) == Seq[Int]() && Capacity(this) == n;
+  {
+    // simulate creating an array of length n
+    var i: Int;
+    i := n;
+    this.data := Seq[Int]();
+    while(0 < i)
+      invariant acc(this.data, write) && 0 <= i && |this.data| == n - i;
+    {
+      this.data := this.data ++ Seq(0);
+      i := i - 1;
+    }
+    this.first := 0;
+    this.len := 0;
+    fold acc(Valid(this), write);
+  }
+
+method Clear(this: Ref)
+    requires acc(Valid(this), write);
+    ensures acc(Valid(this), write);
+    ensures Contents(this) == Seq[Int]() && Capacity(this) == old(Capacity(this));
+  {
+    unfold acc(Valid(this), write);
+    this.len := 0;
+    fold acc(Valid(this), write);
+  }
+
+method Head(this: Ref) returns (x: Int)
+    requires acc(Valid(this), wildcard);
+    requires Contents(this) != Seq[Int]();
+    ensures acc(Valid(this), wildcard);
+    ensures Contents(this) == old(Contents(this)) && x == Contents(this)[0];
+    ensures Capacity(this) == old(Capacity(this));
+  {
+    unfold acc(Valid(this), wildcard);
+    x := this.data[this.first];
+    fold acc(Valid(this), wildcard);
+  }
+
+  function HeadF(this: Ref): Int
+    requires acc(Valid(this), wildcard);
+    requires Contents(this) != Seq[Int]();
+    ensures result == Contents(this)[0];
+  {
+    unfolding acc(Valid(this), wildcard) in this.data[this.first]
+  }
+
+    method Push(this: Ref, x: Int)
+    requires acc(Valid(this), write);
+    requires |Contents(this)| != Capacity(this);
+    ensures acc(Valid(this), write);
+    ensures Contents(this) == old(Contents(this)) ++ Seq(x);
+    ensures Capacity(this) == old(Capacity(this));
+  {
+    unfold acc(Valid(this), write);
+    var nextEmpty: Int;
+    if (this.first + this.len < |this.data|)
+    {
+      nextEmpty := this.first + this.len;
+    }
+    else
+    {
+      nextEmpty := this.first + this.len - |this.data|;
+    }
+    this.data := this.data[..nextEmpty] ++ Seq(x) ++  this.data[nextEmpty+1..];
+    this.len := this.len + 1;
+    fold acc(Valid(this), write);
+  }
+
+    method Pop(this: Ref) returns (x: Int)
+    requires acc(Valid(this), write);
+    requires Contents(this) != Seq(1)[1..];
+    ensures acc(Valid(this), write);
+    ensures x == old(Contents(this))[0] && Contents(this) == old(Contents(this))[1..] && Capacity(this) == old(Capacity(this));
+  {
+    unfold acc(Valid(this), write);
+    x := this.data[this.first];
+    if(this.first + 1 == |this.data|)
+    {
+      this.first := 0;
+    }
+    else
+    {
+      this.first := this.first + 1;
+    }
+    this.len := this.len - 1;
+    fold acc(Valid(this), write);
+  }
+
+  method TestHarness(x: Int, y: Int, z: Int)
+  {
+    var b: Ref;
+    b := new(*);
+    Create(b, 2);
+    Push(b, x);
+    Push(b, y);
+    var h: Int;
+    h := Pop(b);  assert h == x;
+    Push(b, z);
+    h := Pop(b);  assert h == y;
+    h := Pop(b);  assert h == z;
+    assert Capacity(b) == 2;
+  }
+

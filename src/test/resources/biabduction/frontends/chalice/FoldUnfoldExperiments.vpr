@@ -1,0 +1,39 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+  field x: Int
+  field y: Int
+
+  predicate X(this: Ref) { acc(this.x, write) }
+
+  predicate Y(this: Ref) { acc(this.y, write) }
+
+  function getX(this: Ref): Int
+    requires acc(X(this), write)
+  { unfolding acc(X(this), write) in this.x }
+
+  function getY(this: Ref): Int
+    requires acc(Y(this), write)
+  { unfolding acc(Y(this), write) in this.y }
+
+  method setX(this: Ref, v: Int)
+    requires acc(X(this), write)
+    ensures acc(X(this), write) && getX(this) == v
+  {
+    unfold acc(X(this), write)
+    this.x := v
+    fold acc(X(this), write)
+  }
+
+  method check(this: Ref)
+    requires acc(this.x, write) && acc(this.y, write)
+    ensures acc(this.y, write) && this.y == 2
+    ensures acc(X(this), write) && getX(this) == 3
+  {
+    this.x := 1
+    this.y := 2
+    fold acc(X(this), write)
+    fold acc(Y(this), write)
+    setX(this, 3);
+    unfold acc(Y(this), write)
+  }

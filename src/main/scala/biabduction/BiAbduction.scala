@@ -6,7 +6,7 @@ import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
 import viper.silicon.rules.consumer.consumes
 import viper.silicon.rules.{executionFlowController, executor, producer}
 import viper.silicon.state._
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{Term, True}
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
@@ -79,10 +79,11 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
   def getStatements(bcExps: Seq[Option[Exp]]): Option[Seq[Stmt]] = {
     if (stmts.isEmpty) {
       Some(Seq())
-    } else if (bcExps.contains(None)) {
-      None
+      // TODO nklose we are over approximating here, this is probably wrong in general but good in practise
+    //} else if (bcExps.contains(None)) {
+    //  None
     } else {
-      val con = BigAnd(bcExps.map { case Some(e) => e })
+      val con = BigAnd(bcExps.collect { case Some(e) => e })
       con match {
         case _: TrueLit => Some(stmts)
         case _ => Some(Seq(If(con, Seqn(stmts, Seq())(), Seqn(Seq(), Seq())())()))
@@ -153,21 +154,27 @@ case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), l
 case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], stmts: Seq[Stmt], loc: Positioned, pcs: PathConditionStack, varTran: VarTransformer) extends BiAbductionSuccess {
   override def toString: String = "Successful framing"
 
-  def getBcExps(bcsTerms: Seq[Term]): Option[Exp] = {
-    val varTrans = VarTransformer(s, v, s.g.values, s.h)
+  def getBcExps(bcsTerms: Seq[Term], targetVars: Map[AbstractLocalVar, (Term, Option[Exp])]): Option[Exp] = {
+    val varTrans = VarTransformer(s, v, targetVars, s.h)
     val bcExps = bcsTerms.map { t => varTrans.transformTerm(t) }
+
+    // TODO this is possibly unsound but better in practise
+    Some(BigAnd(bcExps.collect { case Some(e) => e }))
+    /*
     if (bcExps.contains(None)) {
       None
     } else {
       Some(BigAnd(bcExps.map { case Some(e) => e }))
-    }
+    }*/
   }
 
 
   def addToMethod(m: Method, bcs: Seq[Term]): Option[Method] = {
     val prevPcs = v.decider.pcs
     v.decider.setPcs(pcs)
-    val bcExpsOpt = getBcExps(bcs)
+    val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
+    val vars = s.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
+    val bcExpsOpt = getBcExps(bcs, vars)
     v.decider.setPcs(prevPcs)
 
     bcExpsOpt.flatMap { bcExps =>
@@ -307,8 +314,7 @@ object BiAbductionSolver {
   def solveAbstraction(s: State, v: Verifier, fixedChunks: Seq[Chunk] = Seq())(Q: (State, Seq[Exp], Verifier) => VerificationResult): VerificationResult = {
     val q = AbstractionQuestion(s, v, fixedChunks)
     AbstractionApplier.applyRules(q) { q1 =>
-      val tra = VarTransformer(q1.s, q1.v, q1.s.g.values, q1.s.h)
-      val res = q1.s.h.values.collect { case c: NonQuantifiedChunk => tra.transformChunk(c) }.collect { case Some(e) => e }.toSeq
+      val res = VarTransformer(q1.s, q1.v, q1.s.g.values, q1.s.h).transformState(q1.s)
       Q(q1.s, res, q1.v)
     }
   }
@@ -358,7 +364,7 @@ object BiAbductionSolver {
     val abdReses = abductionUtils.getAbductionSuccesses(nf)
     val abdCases = abdReses.groupBy(res => (res.trigger, res.stmts, res.state)).flatMap {
       case (_, reses) =>
-        val unjoined = reses.map(res => (Seq(res), res.pcs.branchConditions))
+        val unjoined = reses.map(res => (Seq(res), res.pcs.branchConditions.distinct.filter(_ != True)))
         val joined = abductionUtils.joinBcs(unjoined)
         joined.map {
           case (reses, pcs) =>
@@ -373,21 +379,27 @@ object BiAbductionSolver {
     val frames = abductionUtils.getFramingSuccesses(nf)
     val frameCases = frames.groupBy(f => (f.posts, f.stmts)).flatMap {
       case (_, frs) =>
-        val unjoined = frs.map(fr => (Seq(fr), fr.pcs.branchConditions))
+        val unjoined = frs.map(fr => (Seq(fr), fr.pcs.branchConditions.distinct.filter(_ != True)))
         val joined = abductionUtils.joinBcs(unjoined)
         joined.map {
           case (frs, pcs) =>
             frs.head -> pcs
         }
     }
-    frameCases.foldLeft[Option[Method]](Some(m))((m1, res) => m1.flatMap { mm => res._1.addToMethod(mm, res._2) })
+
+    // We get a framing result for every branch that reaches the end. So we can remove bcs that hold in every case, as they
+    // are guaranteed to hold.
+    val allTerms = frameCases.values
+    val alwaysTerms = allTerms.head.filter {t => allTerms.forall(_.contains(t))}
+
+    frameCases.foldLeft[Option[Method]](Some(m))((m1, res) => m1.flatMap { mm => res._1.addToMethod(mm, res._2.diff(alwaysTerms)) })
   }
 
   def resolveLoopInvResults(m: Method, nf: NonFatalResult): Option[Method] = {
     val invs = abductionUtils.getInvariantSuccesses(nf)
     val invCases = invs.groupBy(inv => (inv.loop, inv.invs)).flatMap {
       case (_, invs) =>
-        val unjoined = invs.map(inv => (Seq(inv), inv.pcs.branchConditions))
+        val unjoined = invs.map(inv => (Seq(inv), inv.pcs.branchConditions.distinct.filter(_ != True)))
         val joined = abductionUtils.joinBcs(unjoined)
         joined.map {
           case (invs, pcs) =>
@@ -508,4 +520,5 @@ object abductionUtils {
       case _ => None
     }
   }
+
 }

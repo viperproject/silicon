@@ -1,0 +1,147 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f) && acc(this.g)
+}
+
+function sum(p: Ref): Int
+  requires acc(Pair(p))
+{ unfolding acc(Pair(p)) in (p.f) + (p.g) }
+
+method test01(x: Ref)
+  requires acc(x.f)
+  ensures acc(x.f)
+{
+  var w: Int := x.f
+  package acc(x.f) && x.f == w --* acc(x.f) && x.f == old(x.f)
+
+  apply acc(x.f) && x.f == old(x.f) --* acc(x.f) && x.f == w
+}
+
+method test02(x: Ref)
+  requires acc(x.f)
+  ensures acc(x.f)
+{
+  var w: Int := x.f
+  package acc(x.f) && x.f == w --* acc(x.f) && x.f == old(x.f)
+
+  x.f := 0
+
+  //:: ExpectedOutput(apply.failed:assertion.false)
+  apply acc(x.f) && x.f == w --* acc(x.f) && x.f == old(x.f)
+}
+
+method test03(x: Ref)
+  requires acc(x.f)
+  requires let a == (x.f) in acc(x.f) && x.f == a --* acc(x.f) && x.f == a
+{
+  var w: Int := x.f
+  apply acc(x.f) && x.f == w --* acc(x.f) && x.f == old(x.f)
+}
+
+method test04(x: Ref)
+  requires acc(x.f)
+  requires let a == (x.f) in acc(x.f) && x.f == a --* acc(x.f) && x.f == 0
+{
+  var w: Int := x.f
+  x.f := 0
+  //:: ExpectedOutput(apply.failed:assertion.false)
+  apply acc(x.f) && x.f == w --* acc(x.f) && x.f == 0
+}
+
+method test05(x: Ref, y: Ref)
+  requires acc(Pair(x))
+  requires let a == (sum(x)) in acc(Pair(x)) && sum(x) == a --* acc(y.f)
+  ensures acc(y.f)
+{
+  unfold acc(Pair(x))
+  fold acc(Pair(x))
+
+  var w: Int := sum(x)
+  apply acc(Pair(x)) && sum(x) == w --* acc(y.f)
+}
+
+method test07(x: Ref, y: Ref)
+  requires acc(Pair(x))
+  requires let a == (sum(x)) in acc(Pair(x)) && sum(x) == a --* acc(y.f)
+  ensures acc(y.f)
+{
+  unfold acc(Pair(x))
+  x.f := x.g
+  fold acc(Pair(x))
+
+  //:: ExpectedOutput(apply.failed:assertion.false)
+  apply acc(Pair(x)) && sum(x) == old(sum(x)) --* acc(y.f)
+}
+
+method test08(x: Ref)
+  requires acc(x.f) && acc(x.g)
+{
+  define A acc(x.f)
+  define B acc(Pair(x)) && sum(x) == (old[lhs](x.f) + old(x.g))
+
+  package (A) --* B {
+      fold acc(Pair(x))
+  }
+  apply A --* B
+
+  unfold acc(Pair(x))
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test10(b: Bool, x: Ref)
+  requires x != null
+  requires acc(x.f)
+{
+  x.f := 1
+  var w: Int := x.f
+  package acc(x.f) && x.f == w - 1 --* acc(x.f) && x.f == 0
+
+  exhale acc(x.f) && x.f == 0 --* acc(x.f) && x.f == 0
+
+  w := x.f
+  package acc(x.f) && x.f == w - 1 --* acc(x.f) && x.f == 0
+
+  x.f := 10
+
+  //:: ExpectedOutput(exhale.failed:wand.not.found)
+  exhale acc(x.f) && x.f == 10 --* acc(x.f) && x.f == 0
+}
+
+method test11(b: Bool, x: Ref)
+  requires x != null
+  requires acc(x.f)
+{
+  var w: Int := x.f
+  package acc(x.f) && x.f > w --* acc(x.f)
+
+  x.f := x.f + 1
+  apply acc(x.f) && x.f > w --* acc(x.f)
+
+  w := x.f
+  package acc(x.f) && x.f > w --* acc(x.f)
+
+  x.f := x.f + 1
+  w := x.f
+
+  //:: ExpectedOutput(exhale.failed:wand.not.found)
+  exhale acc(x.f) && x.f > w --* acc(x.f)
+}
+
+method test12(x: Ref, y: Ref)
+  requires acc(Pair(x))
+  requires let a == (sum(x)) in acc(Pair(x)) && sum(x) == a --* acc(y.f)
+{
+  var w: Int := sum(x)
+
+  //:: ExpectedOutput(package.failed:insufficient.permission)
+  package (acc(Pair(x)) && sum(x) == w) --* acc(y.f) && acc(y.g) {
+      apply acc(Pair(x)) && sum(x) == w --* acc(y.f)
+  }
+}

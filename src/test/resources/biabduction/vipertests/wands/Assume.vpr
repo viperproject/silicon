@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+field next: Ref
+field hasNext: Bool
+
+predicate LinkedList(x: Ref) {
+    acc(x.val) && acc(x.next) && acc(x.hasNext) && (x.hasNext ==> LinkedList(x.next))
+}
+
+method test0(x: Ref)
+requires LinkedList(x)
+ensures LinkedList(x)
+{
+    package LinkedList(x) --* acc(x.next) && LinkedList(x.next) {
+        unfold LinkedList(x)
+        assume x.hasNext
+    }
+}

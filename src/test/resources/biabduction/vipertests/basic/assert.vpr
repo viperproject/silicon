@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field test: Bool
+
+method t1(b: Bool, d: Int, r: Ref) returns ()
+    //requires acc(r.test, write)
+    //ensures acc(r.test, write)
+{
+    r.test := b
+    assert b == (r.test)
+}

@@ -1,0 +1,25 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field next: Ref
+
+predicate TrueListNode(x: Ref) {
+    acc(x.next) && x.next != null && acc(x.next.next)
+}
+
+function getNext(x: Ref): Ref
+requires TrueListNode(x) {
+    unfolding TrueListNode(x) in x.next
+}
+
+method test0(x: Ref)
+requires acc(x.next){
+    var n: Ref
+    n := new(next)
+    x.next := n
+    package true --* TrueListNode(x) && getNext(x) == n {
+        var tmp: Ref := n
+        assert acc(x.next) && x.next == tmp
+        fold TrueListNode(x)
+    }
+}

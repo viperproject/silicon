@@ -1,0 +1,232 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field root1 : Ref
+
+predicate valid1(this: Ref) {
+		acc(this.root1,write)
+	&& (this.root1!=null ==> acc(valid(this.root1),write))
+	&& (this.root1!=null ==> acc(this.root1.parent,write))
+	&& (this.root1!=null ==> this.root1.parent==null)
+	&& (this.root1!=null ==> acc(this.root1.root,1/2))
+	&& (this.root1!=null ==> this.root1.root==(this.root1))
+}
+
+
+method init(this: Ref)
+	requires acc(this.root1,write);
+	ensures acc(valid1(this),write);
+{
+	this.root1 := null;
+	fold acc(valid1(this),write);
+}
+
+method has(this:Ref, k : Int) returns (b : Bool)
+	requires acc(valid1(this),write);
+	ensures acc(valid1(this),write);
+{
+var n : Ref
+var end : Bool
+var p : Ref
+var q : Ref
+var r : Ref
+	unfold acc(valid1(this),write);
+	if (this.root1==null){
+		b := false;
+		fold acc(valid1(this),write);
+	}else{
+		n := this.root1
+		b := false;
+		end := false;
+		fold acc(udParentValid(n),write);
+		while (!end)
+			invariant acc(this.root1,write);
+			invariant this.root1 != null && acc(this.root1.parent,1/2);
+			invariant n!=null;
+			invariant acc(valid(n),write);
+			invariant acc(n.root,4/10);
+			invariant acc(udParentValid(n),write);
+			invariant unfolding acc(valid(n),write) in n.root==(this.root1);
+			invariant this.root1!=null;
+		{
+			unfold acc(valid(n),write);
+			unfold acc(validRest(n),write);
+
+			if (n.key==k){
+				b := true;
+				fold acc(validRest(n),write);
+				fold acc(valid(n),write);
+				end := true;
+			}else{
+				if (n.key<k){
+					if (n.left==null){
+						end := true;
+						fold acc(validRest(n),write);
+						fold acc(valid(n),write);
+					}else{
+						p := n;
+						unfold acc(leftValid(p),write);
+						n := p.left;
+						p.leftDown := true;
+						fold acc(leftOpen(p),write);
+						fold acc(udValid(p),write);
+						fold acc(udParentValid(n),write);
+					}
+				}else{
+					if (n.right==null){
+						end := true;
+						fold acc(validRest(n),write);
+						fold acc(valid(n),write);
+					}else{
+						q := n;
+						unfold acc(rightValid(q),write);
+						n := q.right;
+						q.leftDown := false;
+						fold acc(rightOpen(q),write);
+						fold acc(udValid(q),write);
+						fold acc(udParentValid(n),write);
+					}
+				}
+			}
+		}
+					end := false;
+					while (!end)
+						invariant acc(this.root1,write);
+						invariant this.root1 != null && acc(this.root1.parent,1/2);
+						invariant n!=null;
+						invariant acc(valid(n),write);
+						invariant acc(udParentValid(n),write);
+						invariant acc(n.root,4/10);
+						invariant unfolding acc(valid(n),write) in n.root==(this.root1);
+						invariant this.root1!=null;
+						invariant end==>unfolding acc(udParentValid(n),write) in n.parent==null;
+					{
+						unfold acc(udParentValid(n),write);
+						r := n.parent;
+						if (r==null){
+							end := true;
+							fold acc(udParentValid(n),write);
+						}else{
+							unfold acc(udValid(r),write);
+							if (r.left==n){
+								unfold acc(leftOpen(r),write);
+								fold   acc(leftValid(r),write);
+							}else{
+								unfold acc(rightOpen(r),write);
+								fold   acc(rightValid(r),write);
+							}
+							fold acc(validRest(r),write);
+							fold acc(valid(r),write);
+							n:=r;
+						}
+					}
+					unfold acc(udParentValid(n),write);
+					fold acc(valid1(this),write);
+
+	}
+}
+
+
+
+
+// next class
+field key    : Int
+field left   : Ref
+field right  : Ref
+field parent : Ref
+
+field leftDown : Bool
+field root : Ref
+
+predicate valid(this: Ref){
+		acc(validRest(this),write)
+	&& acc(leftValid(this),write)
+	&& acc(rightValid(this),write)
+}
+
+predicate validRest(this: Ref){
+		acc(this.key   ,write)
+	&& acc(this.root,    3/10)
+	&& acc(this.left  ,3/4)
+	&& acc(this.right ,3/4)
+	&& acc(this.leftDown,write)
+	&& (this.right!=(this.left) || this.right==null)
+}
+
+predicate rightValid(this: Ref){
+		acc(this.right ,1/4)
+	&& acc(this.root,1/10)
+	&& (this.right!=null ==> acc(valid(this.right),write))
+	&& (this.right!=null ==> acc(this.right.parent,write))
+	&& (this.right!=null ==> this.right.parent==this)
+	&& (this.right!=null ==> acc(this.right.root,1/2))
+	&& (this.right!=null ==> this.right.root==(this.root))
+}
+predicate leftValid(this: Ref){
+		acc(this.left  ,1/4)
+	&& acc(this.root,1/10)
+	&& (this.left!=null ==> acc(valid(this.left),write))
+	&& (this.left!=null ==> acc(this.left.parent,write))
+	&& (this.left!=null ==> this.left.parent == this)
+	&& (this.left!=null ==> acc(this.left.root,1/2))
+	&& (this.left!=null ==> this.left.root == (this.root))
+}
+
+predicate leftOpen(this: Ref){
+		acc(this.left  ,1/4)
+	&& acc(this.root,1/10)
+	&& (this.left!=null ==> acc(this.left.parent,1/2))
+	&& (this.left!=null ==> this.left.parent==this)
+}
+
+predicate rightOpen(this: Ref){
+		acc(this.right  ,1/4)
+	&& acc(this.root,1/10)
+	&& (this.right!=null ==> acc(this.right.parent,1/2))
+	&& (this.right!=null ==> this.right.parent==this)
+}
+
+predicate udParentValid(this: Ref) {
+		acc(this.parent,1/2)
+	&& acc(this.root,1/10)
+	&& (this.parent!=null ==> acc(udValid(this.parent),write))
+	&& (this.parent!=null ==> acc(this.parent.leftDown,1/2))
+	&& (this.parent!=null ==> acc(this.parent.left,1/2))
+	&& (this.parent!=null ==> ( this.parent.leftDown <==> this.parent.left==this))
+	&& (this.parent!=null ==> acc(this.parent.right,1/2))
+	&& (this.parent!=null ==> (!(this.parent.leftDown)<==>this.parent.right==this))
+	&& (this.parent!=null ==> acc(this.parent.root,1/2))
+	&& (this.parent!=null ==> this.root==(this.parent.root))
+	&& (this.parent==null ==> this.root==this)
+}
+
+predicate udValid(this: Ref){
+		acc(this.key   ,write)
+	&& acc(this.leftDown,1/2)
+	&& acc(this.left  ,1/4)
+	&& acc(this.right ,1/4)
+	&& acc(this.root ,1/5)
+	&& ( this.leftDown ==> acc(rightValid(this),write))
+	&& ( this.leftDown ==> acc(leftOpen(this),write)  )
+	&& ((this.leftDown ==> false) ==> acc(leftValid(this),write) )
+	&& ((this.leftDown ==> false) ==> acc(rightOpen(this),write) )
+	&& acc(udParentValid(this),write)
+}
+
+method init_2(this:Ref, k : Int)
+	requires acc(this.key   ,write);
+	requires acc(this.left  ,write);
+	requires acc(this.right ,write);
+	requires acc(this.leftDown ,write);
+	requires acc(this.root,     write);
+	ensures acc(valid(this),write);
+{
+	this.left   := null;
+	this.right  := null;
+	this.key    := k;
+
+	fold acc(leftValid(this),write);
+	fold acc(rightValid(this),write);
+	fold acc(validRest(this),write);
+	fold acc(valid(this),write);
+}

@@ -1,0 +1,12 @@
+field onext: Ref
+field down: Ref
+
+field inext: Ref
+
+predicate OuterNode(x: Ref) {
+    x != null ==> acc(x.onext) && acc(x.down) && OuterNode(x.onext) && InnerNode(x.down)
+}
+
+predicate InnerNode(x: Ref) {
+    x != null ==> acc(x.inext) && InnerNode(x.inext)
+}

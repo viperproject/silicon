@@ -1,0 +1,58 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* These tests are intended to test Silicon's internal concept of 'snapshots'. */
+
+field f: Int
+field g: Bool
+
+method test1(x: Ref, b: Bool)
+  requires b ? acc(x.f) : acc(x.g)
+  ensures b ? acc(x.f) && x.f == 0 : acc(x.g) && x.g
+{
+  if (b) {
+    x.f := 0
+  } else {
+    x.g := true
+  }
+}
+
+predicate P(x: Ref, b: Bool) {
+  b ? acc(x.f) : acc(x.g)
+}
+
+method test2(x: Ref, b: Bool)
+  requires acc(P(x, b))
+  ensures b ? acc(x.f) : acc(x.g)
+{
+  unfold acc(P(x, b))
+
+  if (b) {
+    x.f := x.f + 1
+  } else {
+    x.g := !x.g
+  }
+}
+
+function fun(x: Ref, b: Bool): Bool
+  requires b ? acc(x.f) : acc(x.g)
+{ b ? x.f != 0 : !x.g }
+
+method test3(x: Ref, b: Bool)
+  requires acc(P(x, b))
+  ensures acc(P(x, b))
+{
+  unfold acc(P(x, b))
+
+  var c: Bool := fun(x, b)
+
+  if (b) {
+    x.f := x.f + 1
+    c := fun(x, b)
+  } else {
+    x.g := !x.g
+    c := fun(x, b)
+  }
+
+  fold acc(P(x, b))
+}

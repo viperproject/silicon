@@ -1,0 +1,766 @@
+domain MirrorDomain  {
+  
+  function mirror_simple$f_length__$TY$__Snap$struct$m_Route$$int$(_1: Snap$struct$m_Route): Int 
+}
+
+domain Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_  {
+  
+  function discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(self: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_): Int 
+  
+  function cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(): Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ 
+  
+  function cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_0: Snap$struct$m_Route): Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ 
+  
+  function Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(self: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_): Snap$struct$m_Route 
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$discriminant_range {
+    (forall self: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ ::
+      { discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(self) }
+      0 <=
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(self) &&
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(self) <=
+      1)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$0$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_()) ==
+    0
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$injectivity {
+    (forall _l_0: Snap$struct$m_Route, _r_0: Snap$struct$m_Route ::
+      { cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_l_0),
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_r_0) }
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_l_0) ==
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$discriminant_axiom {
+    (forall _0: Snap$struct$m_Route ::
+      { cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_0) }
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_0)) ==
+      1)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$field$f$0$axiom {
+    (forall _0: Snap$struct$m_Route ::
+      { Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_0)) }
+      Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_Point  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0: Int,
+  _1: Int): Snap$struct$m_Point 
+  
+  function Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self: Snap$struct$m_Point): Int 
+  
+  function Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self: Snap$struct$m_Point): Int 
+  
+  axiom Snap$struct$m_Point$0$injectivity {
+    (forall _l_0: Int, _l_1: Int, _r_0: Int, _r_1: Int ::
+      { cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_l_0,
+      _l_1), cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_r_0,
+      _r_1) }
+      cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_l_0,
+      _l_1) ==
+      cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_r_0,
+      _r_1) ==>
+      _l_0 == _r_0 && _l_1 == _r_1)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$x$axiom {
+    (forall _0: Int, _1: Int ::
+      { Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) }
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) ==
+      _0)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$x$valid {
+    (forall self: Snap$struct$m_Point ::
+      { Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) }
+      -2147483648 <=
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) &&
+      Snap$struct$m_Point$0$field$f$x__$TY$__Snap$struct$m_Point$$int$(self) <=
+      2147483647)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$y$axiom {
+    (forall _0: Int, _1: Int ::
+      { Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) }
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point(_0,
+      _1)) ==
+      _1)
+  }
+  
+  axiom Snap$struct$m_Point$0$field$f$y$valid {
+    (forall self: Snap$struct$m_Point ::
+      { Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) }
+      -2147483648 <=
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) &&
+      Snap$struct$m_Point$0$field$f$y__$TY$__Snap$struct$m_Point$$int$(self) <=
+      2147483647)
+  }
+}
+
+domain Snap$struct$m_Route  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0: Snap$struct$m_Point,
+  _1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_): Snap$struct$m_Route 
+  
+  function Snap$struct$m_Route$0$field$f$current__$TY$__Snap$struct$m_Route$Snap$struct$m_Point(self: Snap$struct$m_Route): Snap$struct$m_Point 
+  
+  function Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self: Snap$struct$m_Route): Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ 
+  
+  axiom Snap$struct$m_Route$0$injectivity {
+    (forall _l_0: Snap$struct$m_Point, _l_1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_,
+    _r_0: Snap$struct$m_Point, _r_1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ ::
+      { cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_l_0,
+      _l_1), cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_r_0,
+      _r_1) }
+      cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_l_0,
+      _l_1) ==
+      cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_r_0,
+      _r_1) ==>
+      _l_0 == _r_0 && _l_1 == _r_1)
+  }
+  
+  axiom Snap$struct$m_Route$0$field$f$current$axiom {
+    (forall _0: Snap$struct$m_Point, _1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ ::
+      { Snap$struct$m_Route$0$field$f$current__$TY$__Snap$struct$m_Route$Snap$struct$m_Point(cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0,
+      _1)) }
+      Snap$struct$m_Route$0$field$f$current__$TY$__Snap$struct$m_Route$Snap$struct$m_Point(cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0,
+      _1)) ==
+      _0)
+  }
+  
+  axiom Snap$struct$m_Route$0$field$f$rest$axiom {
+    (forall _0: Snap$struct$m_Point, _1: Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_ ::
+      { Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0,
+      _1)) }
+      Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(_0,
+      _1)) ==
+      _1)
+  }
+}
+
+domain FloatDomain24e8 interpretation (SMTLIB: "(_ FloatingPoint 8 24)", Boogie: "float24e8") {
+  
+  function f32_from_bv(a: BitVectorDomain32): FloatDomain24e8 interpretation "(_ to_fp 8 24)"
+  
+  function f32_fp_add(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.add RNE"
+  
+  function f32_fp_sub(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.sub RNE"
+  
+  function f32_fp_mul(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.mul RNE"
+  
+  function f32_fp_div(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.div RNE"
+  
+  function f32_fp_min(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.min"
+  
+  function f32_fp_max(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.max"
+  
+  function f32_fp_eq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.eq"
+  
+  function f32_fp_leq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.leq"
+  
+  function f32_fp_geq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.geq"
+  
+  function f32_fp_lt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.lt"
+  
+  function f32_fp_gt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.gt"
+  
+  function f32_fp_neg(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.neg"
+  
+  function f32_fp_abs(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.abs"
+  
+  function f32_fp_is_zero(a: FloatDomain24e8): Bool interpretation "fp.isZero"
+  
+  function f32_fp_is_infinite(a: FloatDomain24e8): Bool interpretation "fp.isInfinite"
+  
+  function f32_fp_is_nan(a: FloatDomain24e8): Bool interpretation "fp.isNaN"
+  
+  function f32_fp_is_negative(a: FloatDomain24e8): Bool interpretation "fp.isNegative"
+  
+  function f32_fp_is_positive(a: FloatDomain24e8): Bool interpretation "fp.isPositive"
+}
+
+domain FloatDomain52e12 interpretation (SMTLIB: "(_ FloatingPoint 12 52)", Boogie: "float52e12") {
+  
+  function f64_from_bv(a: BitVectorDomain64): FloatDomain52e12 interpretation "(_ to_fp 12 52)"
+  
+  function f64_fp_add(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.add RNE"
+  
+  function f64_fp_sub(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.sub RNE"
+  
+  function f64_fp_mul(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.mul RNE"
+  
+  function f64_fp_div(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.div RNE"
+  
+  function f64_fp_min(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.min"
+  
+  function f64_fp_max(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.max"
+  
+  function f64_fp_eq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.eq"
+  
+  function f64_fp_leq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.leq"
+  
+  function f64_fp_geq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.geq"
+  
+  function f64_fp_lt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.lt"
+  
+  function f64_fp_gt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.gt"
+  
+  function f64_fp_neg(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.neg"
+  
+  function f64_fp_abs(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.abs"
+  
+  function f64_fp_is_zero(a: FloatDomain52e12): Bool interpretation "fp.isZero"
+  
+  function f64_fp_is_infinite(a: FloatDomain52e12): Bool interpretation "fp.isInfinite"
+  
+  function f64_fp_is_nan(a: FloatDomain52e12): Bool interpretation "fp.isNaN"
+  
+  function f64_fp_is_negative(a: FloatDomain52e12): Bool interpretation "fp.isNegative"
+  
+  function f64_fp_is_positive(a: FloatDomain52e12): Bool interpretation "fp.isPositive"
+  
+  function f64_fp_typ(a: FloatDomain52e12): Bool interpretation "fp.typ"
+}
+
+domain BitVectorDomain8 interpretation (SMTLIB: "(_ BitVec 8)", Boogie: "bv8") {
+  
+  function bv8_from_int(i: Int): BitVectorDomain8 interpretation "(_ int2bv 8)"
+  
+  function bv8_to_int(i: BitVectorDomain8): Int interpretation "(_ bv2int 8)"
+  
+  function bv8_and(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvand"
+  
+  function bv8_or(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvor"
+  
+  function bv8_xor(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvxor"
+  
+  function bv8_add(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvadd"
+  
+  function bv8_sub(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvsub"
+  
+  function bv8_mul(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvmul"
+  
+  function bv8_udiv(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvudiv"
+  
+  function bv8_shl(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvshl"
+  
+  function bv8_lshr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvlshr"
+  
+  function bv8_ashr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvashr"
+  
+  function bv8_not(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvnot"
+  
+  function bv8_neg(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvneg"
+}
+
+domain BitVectorDomain16 interpretation (SMTLIB: "(_ BitVec 16)", Boogie: "bv16") {
+  
+  function bv16_from_int(i: Int): BitVectorDomain16 interpretation "(_ int2bv 16)"
+  
+  function bv16_to_int(i: BitVectorDomain16): Int interpretation "(_ bv2int 16)"
+  
+  function bv16_and(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvand"
+  
+  function bv16_or(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvor"
+  
+  function bv16_xor(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvxor"
+  
+  function bv16_add(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvadd"
+  
+  function bv16_sub(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvsub"
+  
+  function bv16_mul(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvmul"
+  
+  function bv16_udiv(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvudiv"
+  
+  function bv16_shl(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvshl"
+  
+  function bv16_lshr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvlshr"
+  
+  function bv16_ashr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvashr"
+  
+  function bv16_not(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvnot"
+  
+  function bv16_neg(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvneg"
+}
+
+domain BitVectorDomain32 interpretation (SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  
+  function bv32_from_int(i: Int): BitVectorDomain32 interpretation "(_ int2bv 32)"
+  
+  function bv32_to_int(i: BitVectorDomain32): Int interpretation "(_ bv2int 32)"
+  
+  function bv32_and(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvand"
+  
+  function bv32_or(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvor"
+  
+  function bv32_xor(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvxor"
+  
+  function bv32_add(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvadd"
+  
+  function bv32_sub(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvsub"
+  
+  function bv32_mul(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvmul"
+  
+  function bv32_udiv(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvudiv"
+  
+  function bv32_shl(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvshl"
+  
+  function bv32_lshr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvlshr"
+  
+  function bv32_ashr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvashr"
+  
+  function bv32_not(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvnot"
+  
+  function bv32_neg(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvneg"
+}
+
+domain BitVectorDomain64 interpretation (SMTLIB: "(_ BitVec 64)", Boogie: "bv64") {
+  
+  function bv64_from_int(i: Int): BitVectorDomain64 interpretation "(_ int2bv 64)"
+  
+  function bv64_to_int(i: BitVectorDomain64): Int interpretation "(_ bv2int 64)"
+  
+  function bv64_and(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvand"
+  
+  function bv64_or(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvor"
+  
+  function bv64_xor(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvxor"
+  
+  function bv64_add(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvadd"
+  
+  function bv64_sub(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvsub"
+  
+  function bv64_mul(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvmul"
+  
+  function bv64_udiv(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvudiv"
+  
+  function bv64_shl(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvshl"
+  
+  function bv64_lshr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvlshr"
+  
+  function bv64_ashr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvashr"
+  
+  function bv64_not(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvnot"
+  
+  function bv64_neg(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvneg"
+}
+
+domain BitVectorDomain128 interpretation (SMTLIB: "(_ BitVec 128)", Boogie: "bv128") {
+  
+  function bv128_from_int(i: Int): BitVectorDomain128 interpretation "(_ int2bv 128)"
+  
+  function bv128_to_int(i: BitVectorDomain128): Int interpretation "(_ bv2int 128)"
+  
+  function bv128_and(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvand"
+  
+  function bv128_or(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvor"
+  
+  function bv128_xor(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvxor"
+  
+  function bv128_add(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvadd"
+  
+  function bv128_sub(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvsub"
+  
+  function bv128_mul(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvmul"
+  
+  function bv128_udiv(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvudiv"
+  
+  function bv128_shl(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvshl"
+  
+  function bv128_lshr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvlshr"
+  
+  function bv128_ashr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvashr"
+  
+  function bv128_not(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvnot"
+  
+  function bv128_neg(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvneg"
+}
+
+field discriminant: Int
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$current: Ref
+
+field f$rest: Ref
+
+field f$x: Ref
+
+field f$y: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach__$TY$__$int$$$int$(): Int
+  requires false
+
+
+function f_length__$TY$__Snap$struct$m_Route$$int$(_1: Snap$struct$m_Route): Int
+  requires true
+  requires true
+  ensures result > 0
+  ensures [result ==
+    mirror_simple$f_length__$TY$__Snap$struct$m_Route$$int$(_1),
+    true]
+{
+  (discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1)) ==
+  0 ?
+    1 :
+    1 +
+    f_length__$TY$__Snap$struct$m_Route$$int$(Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route(Snap$struct$m_Route$0$field$f$rest__$TY$__Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1))))
+}
+
+function m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(self: Ref): Int
+  requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+  ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self)) ==
+    result
+{
+  (unfolding acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$()) in
+    self.discriminant)
+}
+
+function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_
+  requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
+{
+  ((unfolding acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$()) in
+    self.discriminant) ==
+  1 ?
+    cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_((unfolding acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$()) in
+      (unfolding acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(self.enum_Some), read$()) in
+        (unfolding acc(struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(self.enum_Some.f$0), read$()) in
+          snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(self.enum_Some.f$0.val_ref))))) :
+    cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_())
+}
+
+function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self: Ref): Snap$struct$m_Point
+  requires acc(struct$m_Point(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point((unfolding acc(struct$m_Point(self), read$()) in
+    (unfolding acc(i32(self.f$x), read$()) in self.f$x.val_int)), (unfolding acc(struct$m_Point(self), read$()) in
+    (unfolding acc(i32(self.f$y), read$()) in self.f$y.val_int)))
+}
+
+function snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(self: Ref): Snap$struct$m_Route
+  requires acc(struct$m_Route(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route((unfolding acc(struct$m_Route(self), read$()) in
+    snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self.f$current)),
+  (unfolding acc(struct$m_Route(self), read$()) in
+    snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self.f$rest)))
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self: Ref) {
+  acc(self.discriminant, write) &&
+  (0 <= self.discriminant && self.discriminant <= 1 &&
+  (acc(self.enum_Some, write) &&
+  acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(self.enum_Some), write)))
+}
+
+predicate m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(self: Ref) {
+  acc(self.f$0, write) &&
+  acc(struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(self.f$0), write)
+}
+
+predicate struct$m_Point(self: Ref) {
+  acc(self.f$x, write) &&
+  (acc(i32(self.f$x), write) &&
+  (acc(self.f$y, write) && acc(i32(self.f$y), write)))
+}
+
+predicate struct$m_Route(self: Ref) {
+  acc(self.f$current, write) &&
+  (acc(struct$m_Point(self.f$current), write) &&
+  (acc(self.f$rest, write) &&
+  acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self.f$rest), write)))
+}
+
+predicate struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(self: Ref) {
+  acc(self.val_ref, write) && acc(struct$m_Route(self.val_ref), write)
+}
+
+method m_get_nth_x() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Int
+  var __t12: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Int
+  var _5: Int
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Int
+  var _10: Ref
+  
+  label start
+  // ========== start ==========
+  // Def path: "routes::get_nth_x"
+  // Span: tests/verify/pass/quick/routes.rs:33:1: 40:2 (#0)
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  // Preconditions:
+  inhale acc(_1.val_ref, write) &&
+    (acc(struct$m_Route(_1.val_ref), read$()) && acc(i32(_2), write))
+  inhale 0 <= (unfolding acc(i32(_2), write) in _2.val_int) &&
+    (unfolding acc(i32(_2), write) in _2.val_int) <
+    f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_1.val_ref))
+  label pre
+  // ========== bb0 ==========
+  __t0 := true
+  // [mir] StorageLive(_3)
+  // [mir] StorageLive(_4)
+  // [mir] _4 = _2
+  _4 := builtin$havoc_int()
+  unfold acc(i32(_2), write)
+  _4 := _2.val_int
+  label l0
+  // [mir] _3 = Eq(move _4, const 0_i32)
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_bool, write)
+  _3.val_bool := _4 == 0
+  // [mir] StorageDead(_4)
+  // [mir] switchInt(move _3) -> [0: bb2, otherwise: bb1]
+  __t10 := _3.val_bool
+  if (__t10) {
+    goto bb1
+  }
+  goto bb0
+  
+  label bb0
+  // ========== l1 ==========
+  // MIR edge bb0 --> bb2
+  // ========== bb2 ==========
+  __t2 := true
+  // [mir] FakeRead(ForMatchedPlace(None), ((*_1).1: std::option::Option<std::boxed::Box<Route>>))
+  // [mir] _5 = discriminant(((*_1).1: std::option::Option<std::boxed::Box<Route>>))
+  _5 := builtin$havoc_int()
+  unfold acc(struct$m_Route(_1.val_ref), read$())
+  _5 := m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(_1.val_ref.f$rest)
+  // [mir] switchInt(move _5) -> [0: bb3, 1: bb4, otherwise: bb5]
+  __t11 := _5
+  // Ignore default target bb5, as the compiler marked it as unreachable.
+  if (__t11 == 0) {
+    goto l2
+  }
+  goto l1
+  
+  label bb1
+  // ========== l2 ==========
+  // MIR edge bb0 --> bb1
+  // ========== bb1 ==========
+  __t1 := true
+  // [mir] _0 = (((*_1).0: Point).0: i32)
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_int, write)
+  unfold acc(struct$m_Route(_1.val_ref), read$())
+  unfold acc(struct$m_Point(_1.val_ref.f$current), read$())
+  unfold acc(i32(_1.val_ref.f$current.f$x), read$())
+  _0.val_int := _1.val_ref.f$current.f$x.val_int
+  label l3
+  // [mir] goto -> bb9
+  goto bb2
+  
+  label bb2
+  // ========== bb9 ==========
+  __t8 := true
+  // [mir] StorageDead(_3)
+  // [mir] return
+  // ========== return ==========
+  // Target of any 'return' statement.
+  // Exhale postcondition
+  label l14
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  fold acc(i32(_1.val_ref.f$current.f$x), read$())
+  fold acc(struct$m_Point(_1.val_ref.f$current), read$())
+  fold acc(struct$m_Route(_1.val_ref), read$())
+  // obtain acc(struct$m_Route(_1.val_ref), write)
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  fold acc(i32(_0), write)
+  // obtain acc(i32(_0), write)
+  // Assert possible strengthening
+  // Assert functional specification of postcondition
+  // Assert type invariants
+  // Exhale permissions of postcondition (1/3)
+  exhale acc(struct$m_Route(_old$pre$0), read$())
+  // Exhale permissions of postcondition (2/3)
+  exhale acc(i32(_0), write)
+  // Exhale permissions of postcondition (3/3)
+  goto end_of_method
+  
+  label l1
+  // ========== l4 ==========
+  // MIR edge bb2 --> bb4
+  // ========== bb4 ==========
+  __t4 := true
+  // [mir] falseEdge -> [real: bb6, imaginary: bb3]
+  // ========== bb6 ==========
+  __t5 := true
+  // [mir] StorageLive(_6)
+  // [mir] _6 = &(*((((*_1).1: std::option::Option<std::boxed::Box<Route>>) as Some).0: std::boxed::Box<Route>))
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  unfold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1.val_ref.f$rest), read$())
+  unfold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(_1.val_ref.f$rest.enum_Some), read$())
+  unfold acc(struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(_1.val_ref.f$rest.enum_Some.f$0), read$())
+  _6.val_ref := _1.val_ref.f$rest.enum_Some.f$0.val_ref
+  inhale acc(struct$m_Route(_6.val_ref), read$())
+  label l6
+  // [mir] StorageLive(_7)
+  // [mir] _7 = &(*_6)
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _6.val_ref
+  inhale acc(struct$m_Route(_7.val_ref), read$())
+  label l7
+  // [mir] StorageLive(_8)
+  // [mir] StorageLive(_9)
+  // [mir] _9 = _2
+  _9 := builtin$havoc_int()
+  _9 := _2.val_int
+  label l8
+  // [mir] _10 = CheckedSub(_9, const 1_i32)
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.tuple_0, write)
+  inhale acc(_10.tuple_0.val_int, write)
+  inhale acc(_10.tuple_1, write)
+  inhale acc(_10.tuple_1.val_bool, write)
+  _10.tuple_0.val_int := _9 - 1
+  _10.tuple_1.val_bool := false
+  // [mir] assert(!move (_10.1: bool), "attempt to compute `{} - {}`, which would overflow", move _9, const 1_i32) -> [success: bb7, unwind: bb10]
+  __t12 := _10.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  assert !__t12
+  // ========== bb7 ==========
+  __t6 := true
+  // [mir] _8 = move (_10.0: i32)
+  _8 := _10.tuple_0
+  label l9
+  // [mir] StorageDead(_9)
+  // [mir] _0 = get_nth_x(move _7, move _8) -> [return: bb8, unwind: bb10]
+  label l10
+  assert 0 <= _8.val_int &&
+    _8.val_int <
+    f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_7.val_ref))
+  fold acc(i32(_8), write)
+  exhale acc(_7.val_ref, write) && acc(i32(_8), write)
+  _0 := builtin$havoc_ref()
+  inhale acc(i32(_0), write)
+  // transfer perm _7.val_ref --> old[l10](_7.val_ref) // unchecked: true
+  label l11
+  // ========== l12 ==========
+  // MIR edge bb7 --> bb8
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L5,L4,L3,)
+
+  if (__t5 && __t6) {
+    // expire loan L4
+    // transfer perm old[l10](_7.val_ref) --> old[l7](_7.val_ref) // unchecked: false
+    exhale acc(struct$m_Route(old[l7](_7.val_ref)), read$())
+  }
+  if (__t5 && (__t5 && __t6)) {
+    // expire loan L3
+    exhale acc(struct$m_Route(_6.val_ref), read$())
+  }
+  // ========== bb8 ==========
+  __t7 := true
+  // [mir] StorageDead(_8)
+  // [mir] StorageDead(_7)
+  // [mir] StorageDead(_6)
+  // [mir] goto -> bb9
+  // ========== l13 ==========
+  fold acc(struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(_1.val_ref.f$rest.enum_Some.f$0), read$())
+  fold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(_1.val_ref.f$rest.enum_Some), read$())
+  fold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1.val_ref.f$rest), read$())
+  unfold acc(i32(_0), write)
+  // drop Acc(_5.val_int, write) (Acc(_5.val_int, write))
+  // drop Acc(_10.tuple_1.val_bool, write) (Acc(_10.tuple_1.val_bool, write))
+  // drop Acc(_6.val_ref, write) (Acc(_6.val_ref, write))
+  unfold acc(struct$m_Point(_1.val_ref.f$current), read$())
+  unfold acc(i32(_1.val_ref.f$current.f$x), read$())
+  // drop Acc(_9.val_int, write) (Acc(_9.val_int, write))
+  // drop Acc(_10.tuple_0, write) (Acc(_10.tuple_0, write))
+  // drop Acc(_10.tuple_1, write) (Acc(_10.tuple_1, write))
+  goto bb2
+  
+  label l2
+  // ========== l5 ==========
+  // MIR edge bb2 --> bb3
+  // ========== bb3 ==========
+  __t9 := true
+  // [mir] StorageLive(_11)
+  // [mir] _11 = core::panicking::panic(const "internal error: entered unreachable code") -> bb10
+  // Rust panic - const "internal error: entered unreachable code"
+  assert false
+  goto end_of_method
+  
+  label return
+  // ========== bb5 ==========
+  __t3 := true
+  // [mir] unreachable
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

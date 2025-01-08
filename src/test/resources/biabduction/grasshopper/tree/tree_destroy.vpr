@@ -1,0 +1,42 @@
+import "./tree.vpr"
+
+method destroy(root: Ref)
+requires tree(root)
+{
+    if(root != null){
+        var remaining: Ref := new(*)
+        remaining.tNext := null
+        remaining.elem := root
+        fold tList(remaining.tNext)
+        fold tList(remaining)
+
+        while(remaining != null)
+        invariant tList(remaining)
+        {
+            unfold tList(remaining)
+            var current: Ref := remaining.elem
+            if(current != null){
+
+                unfold tree(current)
+
+                var lNode: Ref := new(*)
+                var rNode: Ref := new(*)
+                lNode.elem := current.left
+                rNode.elem := current.right
+
+                rNode.tNext := remaining.tNext
+                lNode.tNext := rNode
+                remaining.tNext := lNode
+
+                free(current)
+
+                fold tList(rNode)
+                fold tList(lNode)
+            }
+            remaining := remaining.tNext
+        }
+    }    
+}
+
+method free(root: Ref)
+requires acc(root.left) && acc(root.right)

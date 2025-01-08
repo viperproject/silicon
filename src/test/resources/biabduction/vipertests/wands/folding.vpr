@@ -1,0 +1,107 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f, write) && acc(this.g, write)
+}
+
+function sum(p: Ref): Int
+  requires acc(Pair(p), write)
+{
+  unfolding acc(Pair(p), write) in (p.f) + (p.g)
+}
+
+//method test06() {
+//  var p: Ref
+//  p := new(f, g)
+//
+//  p.g := 0;
+//
+//  package
+//    //:: ExpectedOutput(wand.not.wellformed)
+//    (acc(p.f, write) && p.f > 0)
+//      --*
+//    folding acc(Pair(p), write) in (sum(p) > 0) // rhs is not self-framing
+//}
+
+method test00(p: Ref)
+  requires acc(Pair(p))
+  requires sum(p) > 0
+{
+  package true --* acc(Pair(p), write) && sum(p) > 0
+}
+
+//method test01() {
+//  var p: Ref
+//  p := new(f, g)
+//
+//  p.g := 0;
+//
+//  package
+//    (acc(p.f, write) && p.f > 0)
+//      --*
+//    folding acc(Pair(p), write) in (acc(Pair(p), write) && sum(p) > 0)
+//
+////  assert acc(p.f, write)
+////  //:: ExpectedOutput(assert.failed:insufficient.permission)
+////  assert acc(p.g, write)
+//}
+
+//method test02()
+//{
+//  var p: Ref
+//  p := new(f, g)
+//
+//  p.g := -1;
+//
+//  //:: ExpectedOutput(package.failed:assertion.false)
+//  package
+//    (acc(p.f, write) && p.f > 0)
+//      --*
+//    folding acc(Pair(p), write) in (acc(Pair(p), write) && sum(p) > 0)
+//}
+//
+//method test03() {
+//  var p: Ref
+//  p := new(f, g)
+//
+//  exhale acc(p.g, 1/2)
+//
+//  //:: ExpectedOutput(package.failed:insufficient.permission)
+//  package
+//    (acc(p.f, write) && p.f > 0)
+//      --*
+//    folding acc(Pair(p), write) in (acc(Pair(p), write) && sum(p) > 0)
+//}
+//
+//method test04(p: Ref)
+//  requires (acc(p.f, write) && p.f > 0) --* (acc(Pair(p), write) && sum(p) > 0)
+//  requires acc(p.f, write)
+//{
+//  p.f := 1
+//  apply (acc(p.f, write) && p.f > 0) --* (acc(Pair(p), write) && sum(p) > 0)
+//
+//  assert acc(Pair(p), write) && sum(p) > 0
+//  //:: ExpectedOutput(assert.failed:insufficient.permission)
+//  assert acc(p.f, write)
+//}
+//
+//method test05() {
+//  var p: Ref
+//  p := new(f, g)
+//
+//  p.g := 0;
+//
+//  package
+//    (acc(p.f, write) && p.f > 0)
+//      --*
+//    folding acc(Pair(p), write) in (acc(Pair(p), write) && sum(p) > 0)
+//
+//  test04(p)
+//
+//  //:: ExpectedOutput(assert.failed:wand.not.found)
+//  assert (acc(p.f, write) && p.f > 0) --* (acc(Pair(p), write) && sum(p) > 0)
+//}

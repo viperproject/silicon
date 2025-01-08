@@ -1,0 +1,2115 @@
+domain $Map[U, V]  {
+  
+  function Map_keys(m: $Map[U, V]): Set[U] 
+  
+  function Map_card(m: $Map[U, V]): Int 
+  
+  function Map_lookup(m: $Map[U, V], u: U): V 
+  
+  function Map_values(m: $Map[U, V]): Set[V] 
+  
+  function Map_empty(): $Map[U, V] 
+  
+  function Map_build(m: $Map[U, V], u: U, v: V): $Map[U, V] 
+  
+  function Map_equal(m1: $Map[U, V], m2: $Map[U, V]): Bool 
+  
+  function Map_disjoint(m1: $Map[U, V], m2: $Map[U, V]): Bool 
+  
+  function Map_union(m1: $Map[U, V], m2: $Map[U, V]): $Map[U, V] 
+  
+  axiom Map_card_non_neg {
+    (forall m: $Map[U, V] ::
+      { (Map_card(m): Int) }
+      0 <= (Map_card(m): Int))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: $Map[U, V] ::
+      { |(Map_keys(m): Set[U])| }
+      |(Map_keys(m): Set[U])| == (Map_card(m): Int))
+  }
+  
+  axiom Map_values_def {
+    (forall m: $Map[U, V], v: V ::
+      { (v in (Map_values(m): Set[V])) }
+      (v in (Map_values(m): Set[V])) ==
+      (exists u: U :: (u in (Map_keys(m): Set[U])) &&
+        v == (Map_lookup(m, u): V)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U ::
+      { (u in (Map_keys((Map_empty(): $Map[U, V])): Set[U])) }
+      !((u in (Map_keys((Map_empty(): $Map[U, V])): Set[U]))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: $Map[U, V] ::
+      { (Map_card(m): Int) }
+      ((Map_card(m): Int) == 0) == (m == (Map_empty(): $Map[U, V])) &&
+      ((Map_card(m): Int) != 0 ==>
+      (exists u: U :: (u in (Map_keys(m): Set[U])))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: $Map[U, V], u1: U, u2: U, v: V ::
+      { (u2 in (Map_keys((Map_build(m, u1, v): $Map[U, V])): Set[U])) }
+      (u2 == u1 ==>
+      (u2 in (Map_keys((Map_build(m, u1, v): $Map[U, V])): Set[U])) &&
+      (Map_lookup((Map_build(m, u1, v): $Map[U, V]), u1): V) == v) &&
+      (u2 != u1 ==>
+      (u2 in (Map_keys((Map_build(m, u1, v): $Map[U, V])): Set[U])) ==
+      (u2 in (Map_keys(m): Set[U])) &&
+      (Map_lookup((Map_build(m, u1, v): $Map[U, V]), u2): V) ==
+      (Map_lookup(m, u2): V)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: $Map[U, V], u: U, v: V ::
+      { (Map_card((Map_build(m, u, v): $Map[U, V])): Int) }
+      (u in (Map_keys(m): Set[U])) ==>
+      (Map_card((Map_build(m, u, v): $Map[U, V])): Int) ==
+      (Map_card(m): Int))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: $Map[U, V], u: U, v: V ::
+      { (Map_card((Map_build(m, u, v): $Map[U, V])): Int) }
+      !((u in (Map_keys(m): Set[U]))) ==>
+      (Map_card((Map_build(m, u, v): $Map[U, V])): Int) ==
+      (Map_card(m): Int) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: $Map[U, V], m2: $Map[U, V] ::
+      { (Map_equal(m1, m2): Bool) }
+      (Map_equal(m1, m2): Bool) ==
+      (forall u: U ::
+        { (u in (Map_keys(m1): Set[U])) }
+        { (u in (Map_keys(m2): Set[U])) }
+        (u in (Map_keys(m1): Set[U])) == (u in (Map_keys(m2): Set[U]))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: $Map[U, V], m2: $Map[U, V] ::
+      { (Map_equal(m1, m2): Bool) }
+      (Map_equal(m1, m2): Bool) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: $Map[U, V], m2: $Map[U, V] ::
+      { (Map_disjoint(m1, m2): Bool) }
+      (Map_disjoint(m1, m2): Bool) ==
+      (forall u: U ::
+        { (u in (Map_keys(m1): Set[U])) }
+        { (u in (Map_keys(m2): Set[U])) }
+        !((u in (Map_keys(m1): Set[U]))) ||
+        !((u in (Map_keys(m2): Set[U])))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: $Map[U, V], m2: $Map[U, V], u: U ::
+      { (u in (Map_keys((Map_union(m1, m2): $Map[U, V])): Set[U])) }
+      { (u in ((Map_keys(m1): Set[U]) union (Map_keys(m2): Set[U]))) }
+      (Map_disjoint(m1, m2): Bool) ==>
+      (u in (Map_keys((Map_union(m1, m2): $Map[U, V])): Set[U])) ==
+      (u in ((Map_keys(m1): Set[U]) union (Map_keys(m2): Set[U]))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: $Map[U, V], m2: $Map[U, V], u: U ::
+      { (Map_lookup((Map_union(m1, m2): $Map[U, V]), u): V) }
+      (Map_disjoint(m1, m2): Bool) && (u in (Map_keys(m1): Set[U])) ==>
+      (Map_lookup((Map_union(m1, m2): $Map[U, V]), u): V) ==
+      (Map_lookup(m1, u): V))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: $Map[U, V], m2: $Map[U, V], u: U ::
+      { (Map_lookup((Map_union(m1, m2): $Map[U, V]), u): V) }
+      (Map_disjoint(m1, m2): Bool) && (u in (Map_keys(m2): Set[U])) ==>
+      (Map_lookup((Map_union(m1, m2): $Map[U, V]), u): V) ==
+      (Map_lookup(m2, u): V))
+  }
+}
+
+domain trigger_functions  {
+  
+  function IncDec_state_T(r: Ref, lvl: Int, x: Ref): Bool 
+}
+
+domain interferenceReference_Domain  {
+  
+  function IncDec_interferenceReference_df($p0: Int, r: Ref, lvl: Int, x: Ref): Bool 
+}
+
+domain interferenceSet_Domain  {
+  
+  function IncDec_interferenceSet_df($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int] 
+}
+
+domain atomicity_context_Domain  {
+  
+  function IncDec_atomicity_context_df(r: Ref, lvl: Int, x: Ref): Bool 
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $memcell_$val: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int ::(n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int ::0 <= n == (n in result))
+
+
+function IncDec_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+  ensures [IncDec_atomicity_context_df(r, lvl, x), true]
+
+
+function IncDec_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(IncDec_interferenceContext_fp(r, lvl, x), write)
+  ensures [(forall $_m: Int ::
+      { ($_m in result) }
+      ($_m in result) ==>
+      ($_m in IncDec_interferenceSet_df($p0, r, lvl, x))),
+    true]
+
+
+function IncDec_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
+  requires acc(IncDec_interferenceContext_fp(r, lvl, x), write)
+  ensures [IncDec_interferenceReference_df($p0, r, lvl, x), true]
+
+
+function IncDec_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(IncDec_sk_fp(), write)
+
+
+function IncDec_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(IncDec_sk_fp(), write)
+
+
+function IncDec_state(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(IncDec(r, lvl, x), write)
+  ensures [IncDec_state_T(r, lvl, x), true]
+{
+  (unfolding acc(IncDec(r, lvl, x), write) in x.$memcell_$val)
+}
+
+predicate IncDec_INC($r: Ref) 
+
+predicate IncDec_DEC($r: Ref) 
+
+predicate IncDec_atomicity_context_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate IncDec_interferenceContext_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate IncDec_sk_fp() 
+
+predicate IncDec(r: Ref, lvl: Int, x: Ref) {
+  acc(x.$memcell_$val, write) && true
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_IncDec()
+
+
+method ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+
+
+method makeCounter(lvl: Int, r: Ref) returns (ret: Ref)
+  requires lvl >= 0
+  ensures acc(IncDec(r, lvl, ret), write) && (lvl >= 0 && true) &&
+    acc(IncDec_INC(r), write) &&
+    acc(IncDec_DEC(r), write)
+{
+  var v: Ref
+  var w: Int
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  
+  // ------- inhale BEGIN ------------
+  
+  inhale acc(v.$memcell_$val, write) && true
+  w := v.$memcell_$val
+  
+  // ------- inhale END --------------
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  v.$memcell_$val := 0
+  
+  // ------- heap-write END ----------
+  
+  
+  // ------- Stabilising regions IncDec (after heap-write@30.3) BEGIN 
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+  $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+        { ($$_m in IncDec_interferenceSet_df(1, $r, $lvl, $x)) }
+        none < old[pre_stabilize0](perm(IncDec($r, $lvl, $x))) ==>
+        ($$_m in IncDec_interferenceSet_hf(1, $r, $lvl, $x)) ==
+        ((none < perm($r.$diamond) &&
+        none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+        ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+        ($$_m == old[pre_stabilize0](IncDec_state($r, $lvl, $x)) ||
+        (IncDec_sk_$_action_n($r, $lvl, $x) ==
+        old[pre_stabilize0](IncDec_state($r, $lvl, $x)) &&
+        IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+        IncDec_sk_$_action_n($r, $lvl, $x) <
+        IncDec_sk_$_action_m($r, $lvl, $x) &&
+        true ||
+        IncDec_sk_$_action_n($r, $lvl, $x) ==
+        old[pre_stabilize0](IncDec_state($r, $lvl, $x)) &&
+        IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+        IncDec_sk_$_action_m($r, $lvl, $x) <
+        IncDec_sk_$_action_n($r, $lvl, $x) &&
+        true ||
+        IncDec_sk_$_action_n($r, $lvl, $x) ==
+        old[pre_stabilize0](IncDec_state($r, $lvl, $x)) &&
+        IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+        true &&
+        (true && true))))))
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize0](perm(IncDec($r, $lvl, $x))) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_interferenceSet_hf(1, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize0](perm(IncDec($r, $lvl, $x))) ==>
+      IncDec_interferenceReference_hf(1, $r, $lvl, $x) ==
+      old[pre_stabilize0](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after heap-write@30.3) END 
+  
+  
+  // ------- assign BEGIN ------------
+  
+  ret := v
+  
+  // ------- assign END --------------
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  inhale acc(IncDec_INC(r), write) && acc(IncDec_DEC(r), write)
+  
+  // ------- inhale END --------------
+  
+  
+  // ------- fold BEGIN --------------
+  
+  fold acc(IncDec(r, lvl, ret), write)
+  assert lvl >= 0 && IncDec_state(r, lvl, ret) == 0
+  
+  // ------- fold END ----------------
+  
+}
+
+method increment(r: Ref, lvl: Int, x: Ref, k: Int) returns (ret: Int)
+  requires acc(IncDec(r, lvl, x), write) &&
+    (lvl >= 0 && IncDec_state(r, lvl, x) == IncDec_state(r, lvl, x)) &&
+    acc(IncDec_INC(r), write) &&
+    k > 0
+  requires (IncDec_state(r, lvl, x) in IntSet())
+  ensures acc(IncDec(r, lvl, x), write) &&
+    (lvl >= 0 &&
+    IncDec_state(r, lvl, x) == old(IncDec_state(r, lvl, x)) + k) &&
+    acc(IncDec_INC(r), write)
+{
+  var b: Bool
+  var v: Int
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  var $_levelVar_3: Int
+  var $_levelVar_4: Int
+  var $_levelVar_5: Int
+  var $_levelVar_6: Int
+  var $_levelVar_7: Int
+  var $_levelVar_8: Int
+  var $_levelVar_9: Int
+  var $_levelVar_10: Int
+  var $_levelVar_11: Int
+  var $_levelVar_12: Int
+  inhale $_levelVar_1 >= 0 && $_levelVar_1 > lvl
+  assert $_levelVar_1 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  inhale IncDec_interferenceSet_hf(1, r, lvl, x) == IntSet()
+  inhale IncDec_interferenceReference_hf(1, r, lvl, x) ==
+    old(IncDec_state(r, lvl, x))
+  
+  // ------- make-atomic BEGIN -------
+  
+  var loopVar0: Bool
+  exhale acc(IncDec_INC(r), write)
+  exhale acc(IncDec(r, lvl, x), write)
+  
+  // ------- Stabilising regions IncDec (stabilizing frame before make-atomic) BEGIN 
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize](perm(IncDec($r, $lvl, $x))) ==>
+      (none < perm($r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+      (IncDec_state($r, $lvl, $x) ==
+      old[pre_stabilize](IncDec_state($r, $lvl, $x)) ||
+      (IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_n($r, $lvl, $x) <
+      IncDec_sk_$_action_m($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) <
+      IncDec_sk_$_action_n($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      true &&
+      (true && true))))
+  
+  // ------- Stabilising regions IncDec (stabilizing frame before make-atomic) END 
+  
+  $_levelVar_2 := lvl
+  assert perm(IncDec_atomicity_context_fp(r, lvl, x)) == none
+  inhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+  inhale IncDec_atomicity_context_hf(r, lvl, x) ==
+    IncDec_interferenceSet_hf(1, r, lvl, x)
+  label preWhile0
+  loopVar0 := true
+  while (loopVar0)
+    invariant !loopVar0 ==>
+      acc(IncDec(r, lvl, x), write) &&
+      (lvl >= 0 &&
+      IncDec_state(r, lvl, x) == old(IncDec_state(r, lvl, x)) + k) &&
+      acc(IncDec_INC(r), write) 
+  {
+    inhale acc(IncDec_sk_fp(), write)
+    
+    // no init required
+    
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+        $lvl, $x), write))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_atomicity_context_fp($r,
+        $lvl, $x), old[preWhile0](perm(IncDec_atomicity_context_fp($r, $lvl,
+        $x)))))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref ::
+        { IncDec_atomicity_context_df($r, $lvl, $x) }
+        none <
+        old[preWhile0](perm(IncDec_atomicity_context_fp($r, $lvl, $x))) ==>
+        IncDec_atomicity_context_hf($r, $lvl, $x) ==
+        old[preWhile0](IncDec_atomicity_context_hf($r, $lvl, $x)))
+    inhale acc(IncDec(r, lvl, x), write)
+    inhale acc(r.$diamond, write)
+    
+    // ------- Stabilising regions IncDec (before atomic) BEGIN 
+    
+    label pre_stabilize2
+    
+    // Stabilising single instance of region IncDec
+    quasihavoc IncDec(r, lvl, x)
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (none < perm(r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp(r, lvl, x)) ==>
+      (IncDec_state(r, lvl, x) in IncDec_atomicity_context_hf(r, lvl, x))) &&
+      (IncDec_state(r, lvl, x) ==
+      old[pre_stabilize2](IncDec_state(r, lvl, x)) ||
+      (IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize2](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == IncDec_state(r, lvl, x) &&
+      IncDec_sk_$_action_n(r, lvl, x) < IncDec_sk_$_action_m(r, lvl, x) &&
+      true ||
+      IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize2](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == IncDec_state(r, lvl, x) &&
+      IncDec_sk_$_action_m(r, lvl, x) < IncDec_sk_$_action_n(r, lvl, x) &&
+      true ||
+      IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize2](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == IncDec_state(r, lvl, x) &&
+      true &&
+      (true && true)))
+    
+    // ------- Stabilising regions IncDec (before atomic) END 
+    
+    assert acc(IncDec(r, lvl, x), write)
+    
+    // ------- Stabilising regions IncDec (infer context for open-region) BEGIN 
+    
+    label pre_stabilize3
+    
+    // Stabilising single instance of region IncDec
+    quasihavoc IncDec_interferenceContext_fp(r, lvl, x)
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forall $$_m: Int ::
+        { ($$_m in IncDec_interferenceSet_df(2, r, lvl, x)) }
+        ($$_m in IncDec_interferenceSet_hf(2, r, lvl, x)) ==
+        ((none < perm(r.$diamond) &&
+        none < perm(IncDec_atomicity_context_fp(r, lvl, x)) ==>
+        ($$_m in IncDec_atomicity_context_hf(r, lvl, x))) &&
+        ($$_m == old[pre_stabilize3](IncDec_state(r, lvl, x)) ||
+        (IncDec_sk_$_action_n(r, lvl, x) ==
+        old[pre_stabilize3](IncDec_state(r, lvl, x)) &&
+        IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+        IncDec_sk_$_action_n(r, lvl, x) < IncDec_sk_$_action_m(r, lvl, x) &&
+        true ||
+        IncDec_sk_$_action_n(r, lvl, x) ==
+        old[pre_stabilize3](IncDec_state(r, lvl, x)) &&
+        IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+        IncDec_sk_$_action_m(r, lvl, x) < IncDec_sk_$_action_n(r, lvl, x) &&
+        true ||
+        IncDec_sk_$_action_n(r, lvl, x) ==
+        old[pre_stabilize3](IncDec_state(r, lvl, x)) &&
+        IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+        true &&
+        (true && true)))))
+    quasihavoc IncDec(r, lvl, x)
+    inhale (IncDec_state(r, lvl, x) in
+      IncDec_interferenceSet_hf(2, r, lvl, x))
+    
+    // havoc performed by other front resource
+    
+    inhale IncDec_interferenceReference_hf(2, r, lvl, x) ==
+      old[pre_stabilize3](IncDec_state(r, lvl, x))
+    
+    // ------- Stabilising regions IncDec (infer context for open-region) END 
+    
+    
+    // ------- open-region BEGIN -------
+    
+    label pre_open_region0
+    assert $_levelVar_1 > lvl
+    $_levelVar_3 := lvl
+    unfold acc(IncDec(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    // ------- heap-read BEGIN ---------
+    
+    v := x.$memcell_$val
+    
+    // ------- heap-read END -----------
+    
+    fold acc(IncDec(r, lvl, x), write)
+    assert IncDec_state(r, lvl, x) ==
+      old[pre_open_region0](IncDec_state(r, lvl, x))
+    $_levelVar_4 := $_levelVar_1
+    
+    // ------- open-region END ---------
+    
+    
+    // ------- Stabilising regions IncDec (after open-region@54.7) BEGIN 
+    
+    label pre_stabilize4
+    
+    // Stabilising all instances of region IncDec
+    quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+    $$lvl, $$x)
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+          { ($$_m in IncDec_interferenceSet_df(3, $r, $lvl, $x)) }
+          none < old[pre_stabilize4](perm(IncDec($r, $lvl, $x))) ==>
+          ($$_m in IncDec_interferenceSet_hf(3, $r, $lvl, $x)) ==
+          ((none < perm($r.$diamond) &&
+          none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+          ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+          ($$_m == old[pre_stabilize4](IncDec_state($r, $lvl, $x)) ||
+          (IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize4](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          IncDec_sk_$_action_n($r, $lvl, $x) <
+          IncDec_sk_$_action_m($r, $lvl, $x) &&
+          true ||
+          IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize4](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          IncDec_sk_$_action_m($r, $lvl, $x) <
+          IncDec_sk_$_action_n($r, $lvl, $x) &&
+          true ||
+          IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize4](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          true &&
+          (true && true))))))
+    quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+        old[pre_stabilize4](perm(IncDec($r, $lvl, $x))) ==>
+        (IncDec_state($r, $lvl, $x) in
+        IncDec_interferenceSet_hf(3, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+        old[pre_stabilize4](perm(IncDec($r, $lvl, $x))) ==>
+        IncDec_interferenceReference_hf(3, $r, $lvl, $x) ==
+        old[pre_stabilize4](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions IncDec (after open-region@54.7) END 
+    
+    
+    // ------- update-region BEGIN -----
+    
+    exhale acc(r.$diamond, write)
+    label pre_region_update0
+    assert $_levelVar_4 > lvl
+    $_levelVar_5 := lvl
+    exhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+    unfold acc(IncDec(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    exhale acc(IncDec(r, lvl, x), perm(IncDec(r, lvl, x)))
+    
+    // ------- call:CAS BEGIN ----------
+    
+    assert true
+    label pre_call0
+    assert $_levelVar_5 >= 0
+    assert true
+    exhale acc(x.$memcell_$val, write) && true
+    b := havoc_Bool()
+    inhale (old[pre_call0](x.$memcell_$val) == v ?
+        b && (acc(x.$memcell_$val, write) && x.$memcell_$val == v + k) :
+        !b &&
+        (acc(x.$memcell_$val, write) &&
+        x.$memcell_$val == old[pre_call0](x.$memcell_$val)))
+    
+    // ------- call:CAS END ------------
+    
+    fold acc(IncDec(r, lvl, x), write)
+    if (IncDec_state(r, lvl, x) !=
+    old[pre_region_update0](IncDec_state(r, lvl, x))) {
+      inhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
+      r.$stepFrom_int := old[pre_region_update0](IncDec_state(r, lvl, x))
+      r.$stepTo_int := IncDec_state(r, lvl, x)
+    } else {
+      inhale acc(r.$diamond, write)
+    }
+    inhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+    inhale IncDec_atomicity_context_hf(r, lvl, x) ==
+      old[pre_region_update0](IncDec_atomicity_context_hf(r, lvl, x))
+    $_levelVar_6 := $_levelVar_4
+    
+    // ------- update-region END -------
+    
+    
+    // ------- Stabilising regions IncDec (after update-region@58.7) BEGIN 
+    
+    label pre_stabilize5
+    
+    // Stabilising all instances of region IncDec
+    quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+    $$lvl, $$x)
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+          { ($$_m in IncDec_interferenceSet_df(4, $r, $lvl, $x)) }
+          none < old[pre_stabilize5](perm(IncDec($r, $lvl, $x))) ==>
+          ($$_m in IncDec_interferenceSet_hf(4, $r, $lvl, $x)) ==
+          ((none < perm($r.$diamond) &&
+          none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+          ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+          ($$_m == old[pre_stabilize5](IncDec_state($r, $lvl, $x)) ||
+          (IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize5](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          IncDec_sk_$_action_n($r, $lvl, $x) <
+          IncDec_sk_$_action_m($r, $lvl, $x) &&
+          true ||
+          IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize5](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          IncDec_sk_$_action_m($r, $lvl, $x) <
+          IncDec_sk_$_action_n($r, $lvl, $x) &&
+          true ||
+          IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize5](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          true &&
+          (true && true))))))
+    quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+        old[pre_stabilize5](perm(IncDec($r, $lvl, $x))) ==>
+        (IncDec_state($r, $lvl, $x) in
+        IncDec_interferenceSet_hf(4, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+        old[pre_stabilize5](perm(IncDec($r, $lvl, $x))) ==>
+        IncDec_interferenceReference_hf(4, $r, $lvl, $x) ==
+        old[pre_stabilize5](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions IncDec (after update-region@58.7) END 
+    
+    
+    // ------- while BEGIN -------------
+    
+    label preWhile
+    while (!b)
+      invariant acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) &&
+        k > 0
+      invariant (!b ? acc(r.$diamond, write) : true)
+      invariant (b ?
+          acc(r.$stepFrom_int, write) && r.$stepFrom_int == v &&
+          (acc(r.$stepTo_int, write) && r.$stepTo_int == v + k) :
+          true) 
+    {
+      inhale acc(IncDec_sk_fp(), write)
+      
+      // no init required
+      
+      inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+          $lvl, $x), write))
+      inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_atomicity_context_fp($r,
+          $lvl, $x), old[preWhile](perm(IncDec_atomicity_context_fp($r, $lvl,
+          $x)))))
+      inhale (forall $r: Ref, $lvl: Int, $x: Ref ::
+          { IncDec_atomicity_context_df($r, $lvl, $x) }
+          none <
+          old[preWhile](perm(IncDec_atomicity_context_fp($r, $lvl, $x))) ==>
+          IncDec_atomicity_context_hf($r, $lvl, $x) ==
+          old[preWhile](IncDec_atomicity_context_hf($r, $lvl, $x)))
+      assert acc(IncDec(r, lvl, x), write)
+      
+      // ------- Stabilising regions IncDec (infer context for open-region) BEGIN 
+      
+      label pre_stabilize6
+      
+      // Stabilising single instance of region IncDec
+      quasihavoc IncDec_interferenceContext_fp(r, lvl, x)
+      exhale acc(IncDec_sk_fp(), write)
+      inhale acc(IncDec_sk_fp(), write)
+      inhale (forall $$_m: Int ::
+          { ($$_m in IncDec_interferenceSet_df(5, r, lvl, x)) }
+          ($$_m in IncDec_interferenceSet_hf(5, r, lvl, x)) ==
+          ((none < perm(r.$diamond) &&
+          none < perm(IncDec_atomicity_context_fp(r, lvl, x)) ==>
+          ($$_m in IncDec_atomicity_context_hf(r, lvl, x))) &&
+          ($$_m == old[pre_stabilize6](IncDec_state(r, lvl, x)) ||
+          (IncDec_sk_$_action_n(r, lvl, x) ==
+          old[pre_stabilize6](IncDec_state(r, lvl, x)) &&
+          IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+          IncDec_sk_$_action_n(r, lvl, x) < IncDec_sk_$_action_m(r, lvl, x) &&
+          true ||
+          IncDec_sk_$_action_n(r, lvl, x) ==
+          old[pre_stabilize6](IncDec_state(r, lvl, x)) &&
+          IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+          IncDec_sk_$_action_m(r, lvl, x) < IncDec_sk_$_action_n(r, lvl, x) &&
+          true ||
+          IncDec_sk_$_action_n(r, lvl, x) ==
+          old[pre_stabilize6](IncDec_state(r, lvl, x)) &&
+          IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+          true &&
+          (true && true)))))
+      quasihavoc IncDec(r, lvl, x)
+      inhale (IncDec_state(r, lvl, x) in
+        IncDec_interferenceSet_hf(5, r, lvl, x))
+      
+      // havoc performed by other front resource
+      
+      inhale IncDec_interferenceReference_hf(5, r, lvl, x) ==
+        old[pre_stabilize6](IncDec_state(r, lvl, x))
+      
+      // ------- Stabilising regions IncDec (infer context for open-region) END 
+      
+      
+      // ------- open-region BEGIN -------
+      
+      label pre_open_region
+      assert $_levelVar_6 > lvl
+      $_levelVar_7 := lvl
+      unfold acc(IncDec(r, lvl, x), write)
+      
+      // no interference context translation needed
+      
+      
+      // ------- heap-read BEGIN ---------
+      
+      v := x.$memcell_$val
+      
+      // ------- heap-read END -----------
+      
+      fold acc(IncDec(r, lvl, x), write)
+      assert IncDec_state(r, lvl, x) ==
+        old[pre_open_region](IncDec_state(r, lvl, x))
+      $_levelVar_8 := $_levelVar_6
+      
+      // ------- open-region END ---------
+      
+      
+      // ------- Stabilising regions IncDec (after open-region@54.7) BEGIN 
+      
+      label pre_stabilize7
+      
+      // Stabilising all instances of region IncDec
+      quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+      $$lvl, $$x)
+      exhale acc(IncDec_sk_fp(), write)
+      inhale acc(IncDec_sk_fp(), write)
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+            { ($$_m in IncDec_interferenceSet_df(6, $r, $lvl, $x)) }
+            none < old[pre_stabilize7](perm(IncDec($r, $lvl, $x))) ==>
+            ($$_m in IncDec_interferenceSet_hf(6, $r, $lvl, $x)) ==
+            ((none < perm($r.$diamond) &&
+            none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+            ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+            ($$_m == old[pre_stabilize7](IncDec_state($r, $lvl, $x)) ||
+            (IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize7](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            IncDec_sk_$_action_n($r, $lvl, $x) <
+            IncDec_sk_$_action_m($r, $lvl, $x) &&
+            true ||
+            IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize7](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            IncDec_sk_$_action_m($r, $lvl, $x) <
+            IncDec_sk_$_action_n($r, $lvl, $x) &&
+            true ||
+            IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize7](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            true &&
+            (true && true))))))
+      quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+          old[pre_stabilize7](perm(IncDec($r, $lvl, $x))) ==>
+          (IncDec_state($r, $lvl, $x) in
+          IncDec_interferenceSet_hf(6, $r, $lvl, $x)))
+      
+      // havoc performed by other front resource
+      
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+          old[pre_stabilize7](perm(IncDec($r, $lvl, $x))) ==>
+          IncDec_interferenceReference_hf(6, $r, $lvl, $x) ==
+          old[pre_stabilize7](IncDec_state($r, $lvl, $x)))
+      
+      // ------- Stabilising regions IncDec (after open-region@54.7) END 
+      
+      
+      // ------- update-region BEGIN -----
+      
+      exhale acc(r.$diamond, write)
+      label pre_region_update
+      assert $_levelVar_8 > lvl
+      $_levelVar_9 := lvl
+      exhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+      unfold acc(IncDec(r, lvl, x), write)
+      
+      // no interference context translation needed
+      
+      exhale acc(IncDec(r, lvl, x), perm(IncDec(r, lvl, x)))
+      
+      // ------- call:CAS BEGIN ----------
+      
+      assert true
+      label pre_call
+      assert $_levelVar_9 >= 0
+      assert true
+      exhale acc(x.$memcell_$val, write) && true
+      b := havoc_Bool()
+      inhale (old[pre_call](x.$memcell_$val) == v ?
+          b && (acc(x.$memcell_$val, write) && x.$memcell_$val == v + k) :
+          !b &&
+          (acc(x.$memcell_$val, write) &&
+          x.$memcell_$val == old[pre_call](x.$memcell_$val)))
+      
+      // ------- call:CAS END ------------
+      
+      fold acc(IncDec(r, lvl, x), write)
+      if (IncDec_state(r, lvl, x) !=
+      old[pre_region_update](IncDec_state(r, lvl, x))) {
+        inhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
+        r.$stepFrom_int := old[pre_region_update](IncDec_state(r, lvl, x))
+        r.$stepTo_int := IncDec_state(r, lvl, x)
+      } else {
+        inhale acc(r.$diamond, write)
+      }
+      inhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+      inhale IncDec_atomicity_context_hf(r, lvl, x) ==
+        old[pre_region_update](IncDec_atomicity_context_hf(r, lvl, x))
+      $_levelVar_10 := $_levelVar_8
+      
+      // ------- update-region END -------
+      
+      
+      // ------- Stabilising regions IncDec (after update-region@58.7) BEGIN 
+      
+      label pre_stabilize8
+      
+      // Stabilising all instances of region IncDec
+      quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+      $$lvl, $$x)
+      exhale acc(IncDec_sk_fp(), write)
+      inhale acc(IncDec_sk_fp(), write)
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+            { ($$_m in IncDec_interferenceSet_df(7, $r, $lvl, $x)) }
+            none < old[pre_stabilize8](perm(IncDec($r, $lvl, $x))) ==>
+            ($$_m in IncDec_interferenceSet_hf(7, $r, $lvl, $x)) ==
+            ((none < perm($r.$diamond) &&
+            none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+            ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+            ($$_m == old[pre_stabilize8](IncDec_state($r, $lvl, $x)) ||
+            (IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize8](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            IncDec_sk_$_action_n($r, $lvl, $x) <
+            IncDec_sk_$_action_m($r, $lvl, $x) &&
+            true ||
+            IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize8](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            IncDec_sk_$_action_m($r, $lvl, $x) <
+            IncDec_sk_$_action_n($r, $lvl, $x) &&
+            true ||
+            IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize8](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            true &&
+            (true && true))))))
+      quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+          old[pre_stabilize8](perm(IncDec($r, $lvl, $x))) ==>
+          (IncDec_state($r, $lvl, $x) in
+          IncDec_interferenceSet_hf(7, $r, $lvl, $x)))
+      
+      // havoc performed by other front resource
+      
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+          old[pre_stabilize8](perm(IncDec($r, $lvl, $x))) ==>
+          IncDec_interferenceReference_hf(7, $r, $lvl, $x) ==
+          old[pre_stabilize8](IncDec_state($r, $lvl, $x)))
+      
+      // ------- Stabilising regions IncDec (after update-region@58.7) END 
+      
+      assert $_levelVar_10 == $_levelVar_6
+    }
+    $_levelVar_11 := $_levelVar_6
+    
+    // ------- while END ---------------
+    
+    
+    // ------- assign BEGIN ------------
+    
+    ret := v
+    
+    // ------- assign END --------------
+    
+    
+    // ------- Havocking regions IncDec (after atomic) BEGIN 
+    
+    label pre_havoc0
+    
+    // Havocking single instance of region IncDec
+    quasihavocall $r: Ref, $lvl: Int, $x: Ref :: IncDec($r, $lvl, $x)
+    
+    // ------- Havocking regions IncDec (after atomic) END 
+    
+    assert (r.$stepFrom_int in IncDec_atomicity_context_hf(r, lvl, x))
+    assert r.$stepFrom_int == r.$stepTo_int ||
+      r.$stepFrom_int < r.$stepTo_int
+    inhale IncDec_state(r, lvl, x) == r.$stepTo_int
+    inhale old(IncDec_state(r, lvl, x)) == r.$stepFrom_int
+    inhale acc(IncDec_INC(r), write)
+    exhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
+    assert $_levelVar_11 == $_levelVar_1
+    loopVar0 := false
+  }
+  $_levelVar_12 := $_levelVar_1
+  exhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+  
+  // ------- make-atomic END ---------
+  
+}
+
+method decrement(r: Ref, lvl: Int, x: Ref, k: Int) returns (ret: Int)
+  requires acc(IncDec(r, lvl, x), write) &&
+    (lvl >= 0 && IncDec_state(r, lvl, x) == IncDec_state(r, lvl, x)) &&
+    acc(IncDec_DEC(r), write) &&
+    k > 0
+  requires (IncDec_state(r, lvl, x) in IntSet())
+  ensures acc(IncDec(r, lvl, x), write) &&
+    (lvl >= 0 &&
+    IncDec_state(r, lvl, x) == old(IncDec_state(r, lvl, x)) - k) &&
+    acc(IncDec_DEC(r), write)
+{
+  var b: Bool
+  var v: Int
+  var $_levelVar_13: Int
+  var $_levelVar_14: Int
+  var $_levelVar_15: Int
+  var $_levelVar_16: Int
+  var $_levelVar_17: Int
+  var $_levelVar_18: Int
+  var $_levelVar_19: Int
+  var $_levelVar_20: Int
+  var $_levelVar_21: Int
+  var $_levelVar_22: Int
+  var $_levelVar_23: Int
+  var $_levelVar_24: Int
+  inhale $_levelVar_13 >= 0 && $_levelVar_13 > lvl
+  assert $_levelVar_13 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  inhale IncDec_interferenceSet_hf(7, r, lvl, x) == IntSet()
+  inhale IncDec_interferenceReference_hf(7, r, lvl, x) ==
+    old(IncDec_state(r, lvl, x))
+  
+  // ------- make-atomic BEGIN -------
+  
+  var loopVar: Bool
+  exhale acc(IncDec_DEC(r), write)
+  exhale acc(IncDec(r, lvl, x), write)
+  
+  // ------- Stabilising regions IncDec (stabilizing frame before make-atomic) BEGIN 
+  
+  label pre_stabilize9
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize9](perm(IncDec($r, $lvl, $x))) ==>
+      (none < perm($r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+      (IncDec_state($r, $lvl, $x) ==
+      old[pre_stabilize9](IncDec_state($r, $lvl, $x)) ||
+      (IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize9](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_n($r, $lvl, $x) <
+      IncDec_sk_$_action_m($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize9](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) <
+      IncDec_sk_$_action_n($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize9](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      true &&
+      (true && true))))
+  
+  // ------- Stabilising regions IncDec (stabilizing frame before make-atomic) END 
+  
+  $_levelVar_14 := lvl
+  assert perm(IncDec_atomicity_context_fp(r, lvl, x)) == none
+  inhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+  inhale IncDec_atomicity_context_hf(r, lvl, x) ==
+    IncDec_interferenceSet_hf(7, r, lvl, x)
+  label preWhile2
+  loopVar := true
+  while (loopVar)
+    invariant !loopVar ==>
+      acc(IncDec(r, lvl, x), write) &&
+      (lvl >= 0 &&
+      IncDec_state(r, lvl, x) == old(IncDec_state(r, lvl, x)) - k) &&
+      acc(IncDec_DEC(r), write) 
+  {
+    inhale acc(IncDec_sk_fp(), write)
+    
+    // no init required
+    
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+        $lvl, $x), write))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_atomicity_context_fp($r,
+        $lvl, $x), old[preWhile2](perm(IncDec_atomicity_context_fp($r, $lvl,
+        $x)))))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref ::
+        { IncDec_atomicity_context_df($r, $lvl, $x) }
+        none <
+        old[preWhile2](perm(IncDec_atomicity_context_fp($r, $lvl, $x))) ==>
+        IncDec_atomicity_context_hf($r, $lvl, $x) ==
+        old[preWhile2](IncDec_atomicity_context_hf($r, $lvl, $x)))
+    inhale acc(IncDec(r, lvl, x), write)
+    inhale acc(r.$diamond, write)
+    
+    // ------- Stabilising regions IncDec (before atomic) BEGIN 
+    
+    label pre_stabilize10
+    
+    // Stabilising single instance of region IncDec
+    quasihavoc IncDec(r, lvl, x)
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (none < perm(r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp(r, lvl, x)) ==>
+      (IncDec_state(r, lvl, x) in IncDec_atomicity_context_hf(r, lvl, x))) &&
+      (IncDec_state(r, lvl, x) ==
+      old[pre_stabilize10](IncDec_state(r, lvl, x)) ||
+      (IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize10](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == IncDec_state(r, lvl, x) &&
+      IncDec_sk_$_action_n(r, lvl, x) < IncDec_sk_$_action_m(r, lvl, x) &&
+      true ||
+      IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize10](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == IncDec_state(r, lvl, x) &&
+      IncDec_sk_$_action_m(r, lvl, x) < IncDec_sk_$_action_n(r, lvl, x) &&
+      true ||
+      IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize10](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == IncDec_state(r, lvl, x) &&
+      true &&
+      (true && true)))
+    
+    // ------- Stabilising regions IncDec (before atomic) END 
+    
+    assert acc(IncDec(r, lvl, x), write)
+    
+    // ------- Stabilising regions IncDec (infer context for open-region) BEGIN 
+    
+    label pre_stabilize11
+    
+    // Stabilising single instance of region IncDec
+    quasihavoc IncDec_interferenceContext_fp(r, lvl, x)
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forall $$_m: Int ::
+        { ($$_m in IncDec_interferenceSet_df(8, r, lvl, x)) }
+        ($$_m in IncDec_interferenceSet_hf(8, r, lvl, x)) ==
+        ((none < perm(r.$diamond) &&
+        none < perm(IncDec_atomicity_context_fp(r, lvl, x)) ==>
+        ($$_m in IncDec_atomicity_context_hf(r, lvl, x))) &&
+        ($$_m == old[pre_stabilize11](IncDec_state(r, lvl, x)) ||
+        (IncDec_sk_$_action_n(r, lvl, x) ==
+        old[pre_stabilize11](IncDec_state(r, lvl, x)) &&
+        IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+        IncDec_sk_$_action_n(r, lvl, x) < IncDec_sk_$_action_m(r, lvl, x) &&
+        true ||
+        IncDec_sk_$_action_n(r, lvl, x) ==
+        old[pre_stabilize11](IncDec_state(r, lvl, x)) &&
+        IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+        IncDec_sk_$_action_m(r, lvl, x) < IncDec_sk_$_action_n(r, lvl, x) &&
+        true ||
+        IncDec_sk_$_action_n(r, lvl, x) ==
+        old[pre_stabilize11](IncDec_state(r, lvl, x)) &&
+        IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+        true &&
+        (true && true)))))
+    quasihavoc IncDec(r, lvl, x)
+    inhale (IncDec_state(r, lvl, x) in
+      IncDec_interferenceSet_hf(8, r, lvl, x))
+    
+    // havoc performed by other front resource
+    
+    inhale IncDec_interferenceReference_hf(8, r, lvl, x) ==
+      old[pre_stabilize11](IncDec_state(r, lvl, x))
+    
+    // ------- Stabilising regions IncDec (infer context for open-region) END 
+    
+    
+    // ------- open-region BEGIN -------
+    
+    label pre_open_region2
+    assert $_levelVar_13 > lvl
+    $_levelVar_15 := lvl
+    unfold acc(IncDec(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    // ------- heap-read BEGIN ---------
+    
+    v := x.$memcell_$val
+    
+    // ------- heap-read END -----------
+    
+    fold acc(IncDec(r, lvl, x), write)
+    assert IncDec_state(r, lvl, x) ==
+      old[pre_open_region2](IncDec_state(r, lvl, x))
+    $_levelVar_16 := $_levelVar_13
+    
+    // ------- open-region END ---------
+    
+    
+    // ------- Stabilising regions IncDec (after open-region@83.7) BEGIN 
+    
+    label pre_stabilize12
+    
+    // Stabilising all instances of region IncDec
+    quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+    $$lvl, $$x)
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+          { ($$_m in IncDec_interferenceSet_df(9, $r, $lvl, $x)) }
+          none < old[pre_stabilize12](perm(IncDec($r, $lvl, $x))) ==>
+          ($$_m in IncDec_interferenceSet_hf(9, $r, $lvl, $x)) ==
+          ((none < perm($r.$diamond) &&
+          none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+          ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+          ($$_m == old[pre_stabilize12](IncDec_state($r, $lvl, $x)) ||
+          (IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize12](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          IncDec_sk_$_action_n($r, $lvl, $x) <
+          IncDec_sk_$_action_m($r, $lvl, $x) &&
+          true ||
+          IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize12](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          IncDec_sk_$_action_m($r, $lvl, $x) <
+          IncDec_sk_$_action_n($r, $lvl, $x) &&
+          true ||
+          IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize12](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          true &&
+          (true && true))))))
+    quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+        old[pre_stabilize12](perm(IncDec($r, $lvl, $x))) ==>
+        (IncDec_state($r, $lvl, $x) in
+        IncDec_interferenceSet_hf(9, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+        old[pre_stabilize12](perm(IncDec($r, $lvl, $x))) ==>
+        IncDec_interferenceReference_hf(9, $r, $lvl, $x) ==
+        old[pre_stabilize12](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions IncDec (after open-region@83.7) END 
+    
+    
+    // ------- update-region BEGIN -----
+    
+    exhale acc(r.$diamond, write)
+    label pre_region_update2
+    assert $_levelVar_16 > lvl
+    $_levelVar_17 := lvl
+    exhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+    unfold acc(IncDec(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    exhale acc(IncDec(r, lvl, x), perm(IncDec(r, lvl, x)))
+    
+    // ------- call:CAS BEGIN ----------
+    
+    assert true
+    label pre_call2
+    assert $_levelVar_17 >= 0
+    assert true
+    exhale acc(x.$memcell_$val, write) && true
+    b := havoc_Bool()
+    inhale (old[pre_call2](x.$memcell_$val) == v ?
+        b && (acc(x.$memcell_$val, write) && x.$memcell_$val == v - k) :
+        !b &&
+        (acc(x.$memcell_$val, write) &&
+        x.$memcell_$val == old[pre_call2](x.$memcell_$val)))
+    
+    // ------- call:CAS END ------------
+    
+    fold acc(IncDec(r, lvl, x), write)
+    if (IncDec_state(r, lvl, x) !=
+    old[pre_region_update2](IncDec_state(r, lvl, x))) {
+      inhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
+      r.$stepFrom_int := old[pre_region_update2](IncDec_state(r, lvl, x))
+      r.$stepTo_int := IncDec_state(r, lvl, x)
+    } else {
+      inhale acc(r.$diamond, write)
+    }
+    inhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+    inhale IncDec_atomicity_context_hf(r, lvl, x) ==
+      old[pre_region_update2](IncDec_atomicity_context_hf(r, lvl, x))
+    $_levelVar_18 := $_levelVar_16
+    
+    // ------- update-region END -------
+    
+    
+    // ------- Stabilising regions IncDec (after update-region@87.7) BEGIN 
+    
+    label pre_stabilize13
+    
+    // Stabilising all instances of region IncDec
+    quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+    $$lvl, $$x)
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+          { ($$_m in IncDec_interferenceSet_df(10, $r, $lvl, $x)) }
+          none < old[pre_stabilize13](perm(IncDec($r, $lvl, $x))) ==>
+          ($$_m in IncDec_interferenceSet_hf(10, $r, $lvl, $x)) ==
+          ((none < perm($r.$diamond) &&
+          none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+          ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+          ($$_m == old[pre_stabilize13](IncDec_state($r, $lvl, $x)) ||
+          (IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize13](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          IncDec_sk_$_action_n($r, $lvl, $x) <
+          IncDec_sk_$_action_m($r, $lvl, $x) &&
+          true ||
+          IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize13](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          IncDec_sk_$_action_m($r, $lvl, $x) <
+          IncDec_sk_$_action_n($r, $lvl, $x) &&
+          true ||
+          IncDec_sk_$_action_n($r, $lvl, $x) ==
+          old[pre_stabilize13](IncDec_state($r, $lvl, $x)) &&
+          IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+          true &&
+          (true && true))))))
+    quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+        old[pre_stabilize13](perm(IncDec($r, $lvl, $x))) ==>
+        (IncDec_state($r, $lvl, $x) in
+        IncDec_interferenceSet_hf(10, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    inhale (forperm
+        $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+        old[pre_stabilize13](perm(IncDec($r, $lvl, $x))) ==>
+        IncDec_interferenceReference_hf(10, $r, $lvl, $x) ==
+        old[pre_stabilize13](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions IncDec (after update-region@87.7) END 
+    
+    
+    // ------- while BEGIN -------------
+    
+    label preWhile3
+    while (!b)
+      invariant acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) &&
+        k > 0
+      invariant (!b ? acc(r.$diamond, write) : true)
+      invariant (b ?
+          acc(r.$stepFrom_int, write) && r.$stepFrom_int == v &&
+          (acc(r.$stepTo_int, write) && r.$stepTo_int == v - k) :
+          true) 
+    {
+      inhale acc(IncDec_sk_fp(), write)
+      
+      // no init required
+      
+      inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+          $lvl, $x), write))
+      inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_atomicity_context_fp($r,
+          $lvl, $x), old[preWhile3](perm(IncDec_atomicity_context_fp($r, $lvl,
+          $x)))))
+      inhale (forall $r: Ref, $lvl: Int, $x: Ref ::
+          { IncDec_atomicity_context_df($r, $lvl, $x) }
+          none <
+          old[preWhile3](perm(IncDec_atomicity_context_fp($r, $lvl, $x))) ==>
+          IncDec_atomicity_context_hf($r, $lvl, $x) ==
+          old[preWhile3](IncDec_atomicity_context_hf($r, $lvl, $x)))
+      assert acc(IncDec(r, lvl, x), write)
+      
+      // ------- Stabilising regions IncDec (infer context for open-region) BEGIN 
+      
+      label pre_stabilize14
+      
+      // Stabilising single instance of region IncDec
+      quasihavoc IncDec_interferenceContext_fp(r, lvl, x)
+      exhale acc(IncDec_sk_fp(), write)
+      inhale acc(IncDec_sk_fp(), write)
+      inhale (forall $$_m: Int ::
+          { ($$_m in IncDec_interferenceSet_df(11, r, lvl, x)) }
+          ($$_m in IncDec_interferenceSet_hf(11, r, lvl, x)) ==
+          ((none < perm(r.$diamond) &&
+          none < perm(IncDec_atomicity_context_fp(r, lvl, x)) ==>
+          ($$_m in IncDec_atomicity_context_hf(r, lvl, x))) &&
+          ($$_m == old[pre_stabilize14](IncDec_state(r, lvl, x)) ||
+          (IncDec_sk_$_action_n(r, lvl, x) ==
+          old[pre_stabilize14](IncDec_state(r, lvl, x)) &&
+          IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+          IncDec_sk_$_action_n(r, lvl, x) < IncDec_sk_$_action_m(r, lvl, x) &&
+          true ||
+          IncDec_sk_$_action_n(r, lvl, x) ==
+          old[pre_stabilize14](IncDec_state(r, lvl, x)) &&
+          IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+          IncDec_sk_$_action_m(r, lvl, x) < IncDec_sk_$_action_n(r, lvl, x) &&
+          true ||
+          IncDec_sk_$_action_n(r, lvl, x) ==
+          old[pre_stabilize14](IncDec_state(r, lvl, x)) &&
+          IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+          true &&
+          (true && true)))))
+      quasihavoc IncDec(r, lvl, x)
+      inhale (IncDec_state(r, lvl, x) in
+        IncDec_interferenceSet_hf(11, r, lvl, x))
+      
+      // havoc performed by other front resource
+      
+      inhale IncDec_interferenceReference_hf(11, r, lvl, x) ==
+        old[pre_stabilize14](IncDec_state(r, lvl, x))
+      
+      // ------- Stabilising regions IncDec (infer context for open-region) END 
+      
+      
+      // ------- open-region BEGIN -------
+      
+      label pre_open_region3
+      assert $_levelVar_18 > lvl
+      $_levelVar_19 := lvl
+      unfold acc(IncDec(r, lvl, x), write)
+      
+      // no interference context translation needed
+      
+      
+      // ------- heap-read BEGIN ---------
+      
+      v := x.$memcell_$val
+      
+      // ------- heap-read END -----------
+      
+      fold acc(IncDec(r, lvl, x), write)
+      assert IncDec_state(r, lvl, x) ==
+        old[pre_open_region3](IncDec_state(r, lvl, x))
+      $_levelVar_20 := $_levelVar_18
+      
+      // ------- open-region END ---------
+      
+      
+      // ------- Stabilising regions IncDec (after open-region@83.7) BEGIN 
+      
+      label pre_stabilize15
+      
+      // Stabilising all instances of region IncDec
+      quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+      $$lvl, $$x)
+      exhale acc(IncDec_sk_fp(), write)
+      inhale acc(IncDec_sk_fp(), write)
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+            { ($$_m in IncDec_interferenceSet_df(12, $r, $lvl, $x)) }
+            none < old[pre_stabilize15](perm(IncDec($r, $lvl, $x))) ==>
+            ($$_m in IncDec_interferenceSet_hf(12, $r, $lvl, $x)) ==
+            ((none < perm($r.$diamond) &&
+            none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+            ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+            ($$_m == old[pre_stabilize15](IncDec_state($r, $lvl, $x)) ||
+            (IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize15](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            IncDec_sk_$_action_n($r, $lvl, $x) <
+            IncDec_sk_$_action_m($r, $lvl, $x) &&
+            true ||
+            IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize15](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            IncDec_sk_$_action_m($r, $lvl, $x) <
+            IncDec_sk_$_action_n($r, $lvl, $x) &&
+            true ||
+            IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize15](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            true &&
+            (true && true))))))
+      quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+          old[pre_stabilize15](perm(IncDec($r, $lvl, $x))) ==>
+          (IncDec_state($r, $lvl, $x) in
+          IncDec_interferenceSet_hf(12, $r, $lvl, $x)))
+      
+      // havoc performed by other front resource
+      
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+          old[pre_stabilize15](perm(IncDec($r, $lvl, $x))) ==>
+          IncDec_interferenceReference_hf(12, $r, $lvl, $x) ==
+          old[pre_stabilize15](IncDec_state($r, $lvl, $x)))
+      
+      // ------- Stabilising regions IncDec (after open-region@83.7) END 
+      
+      
+      // ------- update-region BEGIN -----
+      
+      exhale acc(r.$diamond, write)
+      label pre_region_update3
+      assert $_levelVar_20 > lvl
+      $_levelVar_21 := lvl
+      exhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+      unfold acc(IncDec(r, lvl, x), write)
+      
+      // no interference context translation needed
+      
+      exhale acc(IncDec(r, lvl, x), perm(IncDec(r, lvl, x)))
+      
+      // ------- call:CAS BEGIN ----------
+      
+      assert true
+      label pre_call3
+      assert $_levelVar_21 >= 0
+      assert true
+      exhale acc(x.$memcell_$val, write) && true
+      b := havoc_Bool()
+      inhale (old[pre_call3](x.$memcell_$val) == v ?
+          b && (acc(x.$memcell_$val, write) && x.$memcell_$val == v - k) :
+          !b &&
+          (acc(x.$memcell_$val, write) &&
+          x.$memcell_$val == old[pre_call3](x.$memcell_$val)))
+      
+      // ------- call:CAS END ------------
+      
+      fold acc(IncDec(r, lvl, x), write)
+      if (IncDec_state(r, lvl, x) !=
+      old[pre_region_update3](IncDec_state(r, lvl, x))) {
+        inhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
+        r.$stepFrom_int := old[pre_region_update3](IncDec_state(r, lvl, x))
+        r.$stepTo_int := IncDec_state(r, lvl, x)
+      } else {
+        inhale acc(r.$diamond, write)
+      }
+      inhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+      inhale IncDec_atomicity_context_hf(r, lvl, x) ==
+        old[pre_region_update3](IncDec_atomicity_context_hf(r, lvl, x))
+      $_levelVar_22 := $_levelVar_20
+      
+      // ------- update-region END -------
+      
+      
+      // ------- Stabilising regions IncDec (after update-region@87.7) BEGIN 
+      
+      label pre_stabilize16
+      
+      // Stabilising all instances of region IncDec
+      quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+      $$lvl, $$x)
+      exhale acc(IncDec_sk_fp(), write)
+      inhale acc(IncDec_sk_fp(), write)
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+            { ($$_m in IncDec_interferenceSet_df(13, $r, $lvl, $x)) }
+            none < old[pre_stabilize16](perm(IncDec($r, $lvl, $x))) ==>
+            ($$_m in IncDec_interferenceSet_hf(13, $r, $lvl, $x)) ==
+            ((none < perm($r.$diamond) &&
+            none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+            ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+            ($$_m == old[pre_stabilize16](IncDec_state($r, $lvl, $x)) ||
+            (IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize16](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            IncDec_sk_$_action_n($r, $lvl, $x) <
+            IncDec_sk_$_action_m($r, $lvl, $x) &&
+            true ||
+            IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize16](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            IncDec_sk_$_action_m($r, $lvl, $x) <
+            IncDec_sk_$_action_n($r, $lvl, $x) &&
+            true ||
+            IncDec_sk_$_action_n($r, $lvl, $x) ==
+            old[pre_stabilize16](IncDec_state($r, $lvl, $x)) &&
+            IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+            true &&
+            (true && true))))))
+      quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+          old[pre_stabilize16](perm(IncDec($r, $lvl, $x))) ==>
+          (IncDec_state($r, $lvl, $x) in
+          IncDec_interferenceSet_hf(13, $r, $lvl, $x)))
+      
+      // havoc performed by other front resource
+      
+      inhale (forperm
+          $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+          old[pre_stabilize16](perm(IncDec($r, $lvl, $x))) ==>
+          IncDec_interferenceReference_hf(13, $r, $lvl, $x) ==
+          old[pre_stabilize16](IncDec_state($r, $lvl, $x)))
+      
+      // ------- Stabilising regions IncDec (after update-region@87.7) END 
+      
+      assert $_levelVar_22 == $_levelVar_18
+    }
+    $_levelVar_23 := $_levelVar_18
+    
+    // ------- while END ---------------
+    
+    
+    // ------- assign BEGIN ------------
+    
+    ret := v
+    
+    // ------- assign END --------------
+    
+    
+    // ------- Havocking regions IncDec (after atomic) BEGIN 
+    
+    label pre_havoc
+    
+    // Havocking single instance of region IncDec
+    quasihavocall $r: Ref, $lvl: Int, $x: Ref :: IncDec($r, $lvl, $x)
+    
+    // ------- Havocking regions IncDec (after atomic) END 
+    
+    assert (r.$stepFrom_int in IncDec_atomicity_context_hf(r, lvl, x))
+    assert r.$stepFrom_int == r.$stepTo_int ||
+      r.$stepTo_int < r.$stepFrom_int
+    inhale IncDec_state(r, lvl, x) == r.$stepTo_int
+    inhale old(IncDec_state(r, lvl, x)) == r.$stepFrom_int
+    inhale acc(IncDec_DEC(r), write)
+    exhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
+    assert $_levelVar_23 == $_levelVar_13
+    loopVar := false
+  }
+  $_levelVar_24 := $_levelVar_13
+  exhale acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+  
+  // ------- make-atomic END ---------
+  
+}
+
+method read(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
+  requires acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true)
+  ensures acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true)
+{
+  var $_levelVar_25: Int
+  var $_levelVar_26: Int
+  var $_levelVar_27: Int
+  inhale $_levelVar_25 >= 0 && $_levelVar_25 > lvl
+  assert $_levelVar_25 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  assert acc(IncDec(r, lvl, x), write)
+  
+  // ------- Stabilising regions IncDec (infer context for open-region) BEGIN 
+  
+  label pre_stabilize17
+  
+  // Stabilising single instance of region IncDec
+  quasihavoc IncDec_interferenceContext_fp(r, lvl, x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forall $$_m: Int ::
+      { ($$_m in IncDec_interferenceSet_df(14, r, lvl, x)) }
+      ($$_m in IncDec_interferenceSet_hf(14, r, lvl, x)) ==
+      ((none < perm(r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp(r, lvl, x)) ==>
+      ($$_m in IncDec_atomicity_context_hf(r, lvl, x))) &&
+      ($$_m == old[pre_stabilize17](IncDec_state(r, lvl, x)) ||
+      (IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize17](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+      IncDec_sk_$_action_n(r, lvl, x) < IncDec_sk_$_action_m(r, lvl, x) &&
+      true ||
+      IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize17](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+      IncDec_sk_$_action_m(r, lvl, x) < IncDec_sk_$_action_n(r, lvl, x) &&
+      true ||
+      IncDec_sk_$_action_n(r, lvl, x) ==
+      old[pre_stabilize17](IncDec_state(r, lvl, x)) &&
+      IncDec_sk_$_action_m(r, lvl, x) == $$_m &&
+      true &&
+      (true && true)))))
+  quasihavoc IncDec(r, lvl, x)
+  inhale (IncDec_state(r, lvl, x) in
+    IncDec_interferenceSet_hf(14, r, lvl, x))
+  
+  // havoc performed by other front resource
+  
+  inhale IncDec_interferenceReference_hf(14, r, lvl, x) ==
+    old[pre_stabilize17](IncDec_state(r, lvl, x))
+  
+  // ------- Stabilising regions IncDec (infer context for open-region) END 
+  
+  
+  // ------- open-region BEGIN -------
+  
+  label pre_open_region4
+  assert $_levelVar_25 > lvl
+  $_levelVar_26 := lvl
+  unfold acc(IncDec(r, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  ret := x.$memcell_$val
+  
+  // ------- heap-read END -----------
+  
+  fold acc(IncDec(r, lvl, x), write)
+  assert IncDec_state(r, lvl, x) ==
+    old[pre_open_region4](IncDec_state(r, lvl, x))
+  $_levelVar_27 := $_levelVar_25
+  
+  // ------- open-region END ---------
+  
+  
+  // ------- Stabilising regions IncDec (after open-region@101.3) BEGIN 
+  
+  label pre_stabilize18
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec_interferenceContext_fp($$r,
+  $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int ::
+        { ($$_m in IncDec_interferenceSet_df(15, $r, $lvl, $x)) }
+        none < old[pre_stabilize18](perm(IncDec($r, $lvl, $x))) ==>
+        ($$_m in IncDec_interferenceSet_hf(15, $r, $lvl, $x)) ==
+        ((none < perm($r.$diamond) &&
+        none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+        ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+        ($$_m == old[pre_stabilize18](IncDec_state($r, $lvl, $x)) ||
+        (IncDec_sk_$_action_n($r, $lvl, $x) ==
+        old[pre_stabilize18](IncDec_state($r, $lvl, $x)) &&
+        IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+        IncDec_sk_$_action_n($r, $lvl, $x) <
+        IncDec_sk_$_action_m($r, $lvl, $x) &&
+        true ||
+        IncDec_sk_$_action_n($r, $lvl, $x) ==
+        old[pre_stabilize18](IncDec_state($r, $lvl, $x)) &&
+        IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+        IncDec_sk_$_action_m($r, $lvl, $x) <
+        IncDec_sk_$_action_n($r, $lvl, $x) &&
+        true ||
+        IncDec_sk_$_action_n($r, $lvl, $x) ==
+        old[pre_stabilize18](IncDec_state($r, $lvl, $x)) &&
+        IncDec_sk_$_action_m($r, $lvl, $x) == $$_m &&
+        true &&
+        (true && true))))))
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize18](perm(IncDec($r, $lvl, $x))) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_interferenceSet_hf(15, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize18](perm(IncDec($r, $lvl, $x))) ==>
+      IncDec_interferenceReference_hf(15, $r, $lvl, $x) ==
+      old[pre_stabilize18](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after open-region@101.3) END 
+  
+}
+
+method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
+  requires acc(x.$memcell_$val, write) && true
+  ensures (old(x.$memcell_$val) == now ?
+      ret && (acc(x.$memcell_$val, write) && x.$memcell_$val == thn) :
+      !ret &&
+      (acc(x.$memcell_$val, write) &&
+      x.$memcell_$val == old(x.$memcell_$val)))
+
+
+method $_IncDec_interpretation_stability_check(r: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  inhale acc(x.$memcell_$val, write) && true
+  
+  // ------- Stabilising regions IncDec (check stability of region interpretation) BEGIN 
+  
+  label pre_stabilize19
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize19](perm(IncDec($r, $lvl, $x))) ==>
+      (none < perm($r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+      (IncDec_state($r, $lvl, $x) ==
+      old[pre_stabilize19](IncDec_state($r, $lvl, $x)) ||
+      (IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize19](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_n($r, $lvl, $x) <
+      IncDec_sk_$_action_m($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize19](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) <
+      IncDec_sk_$_action_n($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize19](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      true &&
+      (true && true))))
+  
+  // ------- Stabilising regions IncDec (check stability of region interpretation) END 
+  
+  assert acc(x.$memcell_$val, write) && true
+}
+
+method $_IncDec_action_transitivity_check()
+{
+  var INC: Bool
+  var DEC: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_1_x: Int
+  var $_action_m_1_x: Int
+  var $_action_n_2_x: Int
+  var $_action_m_2_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var $_action_n_1_y: Int
+  var $_action_m_1_y: Int
+  var $_action_n_2_y: Int
+  var $_action_m_2_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState ||
+    $_action_n_0_x == aState && $_action_m_0_x == bState &&
+    $_action_n_0_x < $_action_m_0_x &&
+    INC ||
+    $_action_n_1_x == aState && $_action_m_1_x == bState &&
+    $_action_m_1_x < $_action_n_1_x &&
+    DEC ||
+    $_action_n_2_x == aState && $_action_m_2_x == bState && true &&
+    (INC && DEC)
+  inhale bState == cState ||
+    $_action_n_0_y == bState && $_action_m_0_y == cState &&
+    $_action_n_0_y < $_action_m_0_y &&
+    INC ||
+    $_action_n_1_y == bState && $_action_m_1_y == cState &&
+    $_action_m_1_y < $_action_n_1_y &&
+    DEC ||
+    $_action_n_2_y == bState && $_action_m_2_y == cState && true &&
+    (INC && DEC)
+  assert aState == cState ||
+    aState == aState && cState == cState && aState < cState && INC ||
+    aState == aState && cState == cState && cState < aState && DEC ||
+    aState == aState && cState == cState && true && (INC && DEC)
+}
+
+method $_makeCounter_condition_stability_precondition_check(lvl: Int, r: Ref,
+  ret: Ref)
+  requires lvl >= 0
+{
+  var $_levelVar_29: Int
+  var v: Ref
+  inhale $_levelVar_29 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) BEGIN 
+  
+  label pre_stabilize20
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize20](perm(IncDec($r, $lvl, $x))) ==>
+      (none < perm($r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+      (IncDec_state($r, $lvl, $x) ==
+      old[pre_stabilize20](IncDec_state($r, $lvl, $x)) ||
+      (IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize20](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_n($r, $lvl, $x) <
+      IncDec_sk_$_action_m($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize20](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) <
+      IncDec_sk_$_action_n($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize20](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      true &&
+      (true && true))))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) END 
+  
+  assert lvl >= 0
+}
+
+method $_increment_condition_stability_precondition_check(r: Ref, lvl: Int,
+  x: Ref, k: Int, ret: Int)
+  requires acc(IncDec(r, lvl, x), write) &&
+    (lvl >= 0 && IncDec_state(r, lvl, x) == IncDec_state(r, lvl, x)) &&
+    acc(IncDec_INC(r), write) &&
+    k > 0
+{
+  var $_levelVar_30: Int
+  var b: Bool
+  var v: Int
+  inhale $_levelVar_30 >= 0 && $_levelVar_30 > lvl
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  inhale IncDec_interferenceSet_hf(15, r, lvl, x) == IntSet()
+  inhale IncDec_interferenceReference_hf(15, r, lvl, x) ==
+    old(IncDec_state(r, lvl, x))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) BEGIN 
+  
+  label pre_stabilize21
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize21](perm(IncDec($r, $lvl, $x))) ==>
+      (none < perm($r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+      (IncDec_state($r, $lvl, $x) ==
+      old[pre_stabilize21](IncDec_state($r, $lvl, $x)) ||
+      (IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize21](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_n($r, $lvl, $x) <
+      IncDec_sk_$_action_m($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize21](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) <
+      IncDec_sk_$_action_n($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize21](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      true &&
+      (true && true))))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) END 
+  
+  assert acc(IncDec(r, lvl, x), write) &&
+    (lvl >= 0 && IncDec_state(r, lvl, x) == IncDec_state(r, lvl, x)) &&
+    acc(IncDec_INC(r), write) &&
+    k > 0
+}
+
+method $_decrement_condition_stability_precondition_check(r: Ref, lvl: Int,
+  x: Ref, k: Int, ret: Int)
+  requires acc(IncDec(r, lvl, x), write) &&
+    (lvl >= 0 && IncDec_state(r, lvl, x) == IncDec_state(r, lvl, x)) &&
+    acc(IncDec_DEC(r), write) &&
+    k > 0
+{
+  var $_levelVar_31: Int
+  var b: Bool
+  var v: Int
+  inhale $_levelVar_31 >= 0 && $_levelVar_31 > lvl
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  inhale IncDec_interferenceSet_hf(15, r, lvl, x) == IntSet()
+  inhale IncDec_interferenceReference_hf(15, r, lvl, x) ==
+    old(IncDec_state(r, lvl, x))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) BEGIN 
+  
+  label pre_stabilize22
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize22](perm(IncDec($r, $lvl, $x))) ==>
+      (none < perm($r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+      (IncDec_state($r, $lvl, $x) ==
+      old[pre_stabilize22](IncDec_state($r, $lvl, $x)) ||
+      (IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize22](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_n($r, $lvl, $x) <
+      IncDec_sk_$_action_m($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize22](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) <
+      IncDec_sk_$_action_n($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize22](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      true &&
+      (true && true))))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) END 
+  
+  assert acc(IncDec(r, lvl, x), write) &&
+    (lvl >= 0 && IncDec_state(r, lvl, x) == IncDec_state(r, lvl, x)) &&
+    acc(IncDec_DEC(r), write) &&
+    k > 0
+}
+
+method $_read_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref,
+  ret: Int)
+  requires acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true)
+{
+  var $_levelVar_32: Int
+  inhale $_levelVar_32 >= 0 && $_levelVar_32 > lvl
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref ::acc(IncDec_interferenceContext_fp($r,
+      $lvl, $x), write))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) BEGIN 
+  
+  label pre_stabilize23
+  
+  // Stabilising all instances of region IncDec
+  quasihavocall $$r: Ref, $$lvl: Int, $$x: Ref :: IncDec($$r, $$lvl, $$x)
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm
+      $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none <
+      old[pre_stabilize23](perm(IncDec($r, $lvl, $x))) ==>
+      (none < perm($r.$diamond) &&
+      none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==>
+      (IncDec_state($r, $lvl, $x) in
+      IncDec_atomicity_context_hf($r, $lvl, $x))) &&
+      (IncDec_state($r, $lvl, $x) ==
+      old[pre_stabilize23](IncDec_state($r, $lvl, $x)) ||
+      (IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize23](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_n($r, $lvl, $x) <
+      IncDec_sk_$_action_m($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize23](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) <
+      IncDec_sk_$_action_n($r, $lvl, $x) &&
+      true ||
+      IncDec_sk_$_action_n($r, $lvl, $x) ==
+      old[pre_stabilize23](IncDec_state($r, $lvl, $x)) &&
+      IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) &&
+      true &&
+      (true && true))))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) END 
+  
+  assert acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true)
+}

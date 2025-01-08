@@ -1,0 +1,745 @@
+domain MirrorDomain  {
+  
+  function mirror_simple$f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1: Snap$struct$m_VecWrapperI32): Int 
+}
+
+domain Snap$struct$m_VecWrapperI32  {
+  
+  function cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32(_0: Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global): Snap$struct$m_VecWrapperI32 
+  
+  function Snap$struct$m_VecWrapperI32$0$field$f$v__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self: Snap$struct$m_VecWrapperI32): Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global 
+  
+  axiom Snap$struct$m_VecWrapperI32$0$injectivity {
+    (forall _l_0: Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global,
+    _r_0: Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global ::
+      { cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32(_l_0),
+      cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32(_r_0) }
+      cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32(_l_0) ==
+      cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$struct$m_VecWrapperI32$0$field$f$v$axiom {
+    (forall _0: Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global ::
+      { Snap$struct$m_VecWrapperI32$0$field$f$v__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32(_0)) }
+      Snap$struct$m_VecWrapperI32$0$field$f$v__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global  {
+  
+  
+}
+
+domain FloatDomain24e8 interpretation (SMTLIB: "(_ FloatingPoint 8 24)", Boogie: "float24e8") {
+  
+  function f32_from_bv(a: BitVectorDomain32): FloatDomain24e8 interpretation "(_ to_fp 8 24)"
+  
+  function f32_fp_add(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.add RNE"
+  
+  function f32_fp_sub(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.sub RNE"
+  
+  function f32_fp_mul(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.mul RNE"
+  
+  function f32_fp_div(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.div RNE"
+  
+  function f32_fp_min(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.min"
+  
+  function f32_fp_max(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.max"
+  
+  function f32_fp_eq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.eq"
+  
+  function f32_fp_leq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.leq"
+  
+  function f32_fp_geq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.geq"
+  
+  function f32_fp_lt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.lt"
+  
+  function f32_fp_gt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.gt"
+  
+  function f32_fp_neg(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.neg"
+  
+  function f32_fp_abs(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.abs"
+  
+  function f32_fp_is_zero(a: FloatDomain24e8): Bool interpretation "fp.isZero"
+  
+  function f32_fp_is_infinite(a: FloatDomain24e8): Bool interpretation "fp.isInfinite"
+  
+  function f32_fp_is_nan(a: FloatDomain24e8): Bool interpretation "fp.isNaN"
+  
+  function f32_fp_is_negative(a: FloatDomain24e8): Bool interpretation "fp.isNegative"
+  
+  function f32_fp_is_positive(a: FloatDomain24e8): Bool interpretation "fp.isPositive"
+}
+
+domain FloatDomain52e12 interpretation (SMTLIB: "(_ FloatingPoint 12 52)", Boogie: "float52e12") {
+  
+  function f64_from_bv(a: BitVectorDomain64): FloatDomain52e12 interpretation "(_ to_fp 12 52)"
+  
+  function f64_fp_add(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.add RNE"
+  
+  function f64_fp_sub(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.sub RNE"
+  
+  function f64_fp_mul(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.mul RNE"
+  
+  function f64_fp_div(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.div RNE"
+  
+  function f64_fp_min(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.min"
+  
+  function f64_fp_max(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.max"
+  
+  function f64_fp_eq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.eq"
+  
+  function f64_fp_leq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.leq"
+  
+  function f64_fp_geq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.geq"
+  
+  function f64_fp_lt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.lt"
+  
+  function f64_fp_gt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.gt"
+  
+  function f64_fp_neg(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.neg"
+  
+  function f64_fp_abs(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.abs"
+  
+  function f64_fp_is_zero(a: FloatDomain52e12): Bool interpretation "fp.isZero"
+  
+  function f64_fp_is_infinite(a: FloatDomain52e12): Bool interpretation "fp.isInfinite"
+  
+  function f64_fp_is_nan(a: FloatDomain52e12): Bool interpretation "fp.isNaN"
+  
+  function f64_fp_is_negative(a: FloatDomain52e12): Bool interpretation "fp.isNegative"
+  
+  function f64_fp_is_positive(a: FloatDomain52e12): Bool interpretation "fp.isPositive"
+  
+  function f64_fp_typ(a: FloatDomain52e12): Bool interpretation "fp.typ"
+}
+
+domain BitVectorDomain8 interpretation (SMTLIB: "(_ BitVec 8)", Boogie: "bv8") {
+  
+  function bv8_from_int(i: Int): BitVectorDomain8 interpretation "(_ int2bv 8)"
+  
+  function bv8_to_int(i: BitVectorDomain8): Int interpretation "(_ bv2int 8)"
+  
+  function bv8_and(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvand"
+  
+  function bv8_or(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvor"
+  
+  function bv8_xor(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvxor"
+  
+  function bv8_add(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvadd"
+  
+  function bv8_sub(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvsub"
+  
+  function bv8_mul(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvmul"
+  
+  function bv8_udiv(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvudiv"
+  
+  function bv8_shl(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvshl"
+  
+  function bv8_lshr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvlshr"
+  
+  function bv8_ashr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvashr"
+  
+  function bv8_not(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvnot"
+  
+  function bv8_neg(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvneg"
+}
+
+domain BitVectorDomain16 interpretation (SMTLIB: "(_ BitVec 16)", Boogie: "bv16") {
+  
+  function bv16_from_int(i: Int): BitVectorDomain16 interpretation "(_ int2bv 16)"
+  
+  function bv16_to_int(i: BitVectorDomain16): Int interpretation "(_ bv2int 16)"
+  
+  function bv16_and(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvand"
+  
+  function bv16_or(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvor"
+  
+  function bv16_xor(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvxor"
+  
+  function bv16_add(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvadd"
+  
+  function bv16_sub(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvsub"
+  
+  function bv16_mul(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvmul"
+  
+  function bv16_udiv(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvudiv"
+  
+  function bv16_shl(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvshl"
+  
+  function bv16_lshr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvlshr"
+  
+  function bv16_ashr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvashr"
+  
+  function bv16_not(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvnot"
+  
+  function bv16_neg(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvneg"
+}
+
+domain BitVectorDomain32 interpretation (SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  
+  function bv32_from_int(i: Int): BitVectorDomain32 interpretation "(_ int2bv 32)"
+  
+  function bv32_to_int(i: BitVectorDomain32): Int interpretation "(_ bv2int 32)"
+  
+  function bv32_and(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvand"
+  
+  function bv32_or(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvor"
+  
+  function bv32_xor(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvxor"
+  
+  function bv32_add(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvadd"
+  
+  function bv32_sub(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvsub"
+  
+  function bv32_mul(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvmul"
+  
+  function bv32_udiv(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvudiv"
+  
+  function bv32_shl(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvshl"
+  
+  function bv32_lshr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvlshr"
+  
+  function bv32_ashr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvashr"
+  
+  function bv32_not(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvnot"
+  
+  function bv32_neg(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvneg"
+}
+
+domain BitVectorDomain64 interpretation (SMTLIB: "(_ BitVec 64)", Boogie: "bv64") {
+  
+  function bv64_from_int(i: Int): BitVectorDomain64 interpretation "(_ int2bv 64)"
+  
+  function bv64_to_int(i: BitVectorDomain64): Int interpretation "(_ bv2int 64)"
+  
+  function bv64_and(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvand"
+  
+  function bv64_or(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvor"
+  
+  function bv64_xor(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvxor"
+  
+  function bv64_add(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvadd"
+  
+  function bv64_sub(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvsub"
+  
+  function bv64_mul(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvmul"
+  
+  function bv64_udiv(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvudiv"
+  
+  function bv64_shl(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvshl"
+  
+  function bv64_lshr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvlshr"
+  
+  function bv64_ashr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvashr"
+  
+  function bv64_not(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvnot"
+  
+  function bv64_neg(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvneg"
+}
+
+domain BitVectorDomain128 interpretation (SMTLIB: "(_ BitVec 128)", Boogie: "bv128") {
+  
+  function bv128_from_int(i: Int): BitVectorDomain128 interpretation "(_ int2bv 128)"
+  
+  function bv128_to_int(i: BitVectorDomain128): Int interpretation "(_ bv2int 128)"
+  
+  function bv128_and(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvand"
+  
+  function bv128_or(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvor"
+  
+  function bv128_xor(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvxor"
+  
+  function bv128_add(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvadd"
+  
+  function bv128_sub(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvsub"
+  
+  function bv128_mul(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvmul"
+  
+  function bv128_udiv(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvudiv"
+  
+  function bv128_shl(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvshl"
+  
+  function bv128_lshr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvlshr"
+  
+  function bv128_ashr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvashr"
+  
+  function bv128_not(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvnot"
+  
+  function bv128_neg(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvneg"
+}
+
+field f$v: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1: Snap$struct$m_VecWrapperI32): Int
+  requires true
+  requires true
+  ensures result >= 0
+  ensures 0 <= result
+  ensures [result ==
+    mirror_simple$f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1),
+    true]
+
+
+function snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(self: Ref): Snap$struct$m_VecWrapperI32
+  requires acc(struct$m_VecWrapperI32(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32((unfolding acc(struct$m_VecWrapperI32(self), read$()) in
+    snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self.f$v)))
+}
+
+function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global
+  requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
+
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate struct$m_VecWrapperI32(self: Ref) {
+  acc(self.f$v, write) &&
+  acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self.f$v), write)
+}
+
+predicate struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self: Ref) 
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+method m_test() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var _1: Ref
+  var _2: Ref
+  var _5: Ref
+  var _6: Int
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  
+  label start
+  // ========== start ==========
+  // Def path: "Knuth_shuffle::test"
+  // Span: tests/verify/pass/rosetta/Knuth_shuffle.rs:108:1: 119:2 (#0)
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  // Preconditions:
+  label pre
+  // ========== bb0 ==========
+  __t0 := true
+  // [mir] StorageLive(_1)
+  // [mir] _1 = VecWrapperI32::new() -> [return: bb1, unwind: bb13]
+  label l0
+  _1 := builtin$havoc_ref()
+  inhale acc(struct$m_VecWrapperI32(_1), write)
+  inhale true
+  inhale f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_1)) ==
+    0
+  label l1
+  // ========== bb1 ==========
+  __t1 := true
+  // [mir] FakeRead(ForLet(None), _1)
+  // [mir] StorageLive(_2)
+  // [mir] _2 = const 0_i32
+  _2 := builtin$havoc_ref()
+  inhale acc(_2.val_int, write)
+  _2.val_int := 0
+  // [mir] FakeRead(ForLet(None), _2)
+  // [mir] StorageLive(_3)
+  // [mir] goto -> bb2
+  // ========== loop2_start ==========
+  // ========== loop2_group1_bb2 ==========
+  // This is a loop head
+  __t2 := true
+  // [mir] falseUnwind -> [real: bb3, unwind: bb12]
+  // ========== loop2_group1_bb3 ==========
+  __t3 := true
+  // [mir] StorageLive(_5)
+  // [mir] StorageLive(_6)
+  // [mir] _6 = _2
+  _6 := builtin$havoc_int()
+  _6 := _2.val_int
+  label l2
+  // [mir] _5 = Lt(move _6, const 10_i32)
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_bool, write)
+  _5.val_bool := _6 < 10
+  // [mir] StorageDead(_6)
+  // [mir] switchInt(move _5) -> [0: bb7, otherwise: bb4]
+  __t12 := _5.val_bool
+  if (__t12) {
+    goto bb0
+  }
+  goto return
+  
+  label bb0
+  // ========== l4 ==========
+  // MIR edge bb3 --> bb4
+  // ========== loop2_inv_pre ==========
+  // Assert and exhale the loop body invariant (loop head: bb2)
+  fold acc(i32(_2), write)
+  // obtain acc(i32(_2), write)
+  // obtain acc(struct$m_VecWrapperI32(_1), write)
+  assert true
+  exhale acc(i32(_2), write) && acc(struct$m_VecWrapperI32(_1), write)
+  _10 := builtin$havoc_ref()
+  _2 := builtin$havoc_ref()
+  _5 := builtin$havoc_ref()
+  _6 := builtin$havoc_int()
+  _7 := builtin$havoc_ref()
+  _8 := builtin$havoc_ref()
+  _9 := builtin$havoc_ref()
+  __t13 := builtin$havoc_bool()
+  __t14 := builtin$havoc_bool()
+  __t15 := builtin$havoc_bool()
+  __t2 := builtin$havoc_bool()
+  __t3 := builtin$havoc_bool()
+  __t4 := builtin$havoc_bool()
+  __t5 := builtin$havoc_bool()
+  __t6 := builtin$havoc_bool()
+  // ========== loop2_inv_post_perm ==========
+  // Inhale the loop permissions invariant of block bb2
+  inhale acc(i32(_2), write) && acc(struct$m_VecWrapperI32(_1), write)
+  inhale true
+  // ========== loop2_group2a_bb2 ==========
+  // This is a loop head
+  __t2 := true
+  // [mir] falseUnwind -> [real: bb3, unwind: bb12]
+  // ========== loop2_group2a_bb3 ==========
+  __t3 := true
+  // [mir] StorageLive(_5)
+  // [mir] StorageLive(_6)
+  // [mir] _6 = _2
+  _6 := builtin$havoc_int()
+  unfold acc(i32(_2), write)
+  _6 := _2.val_int
+  label l5
+  // [mir] _5 = Lt(move _6, const 10_i32)
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_bool, write)
+  _5.val_bool := _6 < 10
+  // [mir] StorageDead(_6)
+  // [mir] switchInt(move _5) -> [0: bb7, otherwise: bb4]
+  __t13 := _5.val_bool
+  if (__t13) {
+    goto loop2_start
+  }
+  goto bb1
+  
+  label bb1
+  // ========== l6 ==========
+  // MIR edge bb3 --> bb7
+  goto end_of_method
+  
+  label l3
+  // ========== l16 ==========
+  // MIR edge bb3 --> bb4
+  // ========== loop2_end_body ==========
+  // Assert and exhale the loop body invariant (loop head: bb2)
+  fold acc(i32(_2), write)
+  // obtain acc(i32(_2), write)
+  // obtain acc(struct$m_VecWrapperI32(_1), write)
+  assert true
+  exhale acc(i32(_2), write) && acc(struct$m_VecWrapperI32(_1), write)
+  inhale false
+  goto end_of_method
+  
+  label loop2_group1_bb2
+  // ========== l15 ==========
+  // MIR edge bb3 --> bb7
+  // ========== l32 ==========
+  // drop Acc(_10.tuple_0, write) (Acc(_10.tuple_0, write))
+  // drop Acc(_10.tuple_1.val_bool, write) (Acc(_10.tuple_1.val_bool, write))
+  // drop Pred(_7, write) (Pred(_7, write))
+  // drop Acc(_10.tuple_1, write) (Acc(_10.tuple_1, write))
+  goto loop2_group1_bb3
+  
+  label loop2_group1_bb3
+  // ========== bb7 ==========
+  __t7 := true
+  // [mir] StorageLive(_12)
+  // [mir] _3 = const ()
+  // [mir] StorageDead(_12)
+  // [mir] StorageDead(_5)
+  // [mir] StorageDead(_3)
+  // [mir] StorageLive(_14)
+  // [mir] StorageLive(_15)
+  // [mir] StorageLive(_16)
+  // [mir] _16 = &mut _1
+  _16 := builtin$havoc_ref()
+  inhale acc(_16.val_ref, write)
+  _16.val_ref := _1
+  label l17
+  // [mir] _15 = &mut (*_16)
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _16.val_ref
+  label l18
+  // [mir] _14 = print_vector_before(move _15) -> [return: bb8, unwind: bb12]
+  label l19
+  assert true
+  exhale acc(_15.val_ref, write) &&
+    acc(struct$m_VecWrapperI32(_15.val_ref), write)
+  _14 := builtin$havoc_ref()
+  inhale acc(struct$m_VecWrapperI32(old[l19](_15.val_ref)), write)
+  inhale acc(tuple0$(_14), write)
+  inhale true
+  label l20
+  // ========== l21 ==========
+  // MIR edge bb7 --> bb8
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L10,L2,L1,)
+
+  // ========== bb8 ==========
+  __t8 := true
+  // [mir] StorageDead(_15)
+  // [mir] StorageDead(_16)
+  // [mir] StorageDead(_14)
+  // [mir] StorageLive(_17)
+  // [mir] StorageLive(_18)
+  // [mir] StorageLive(_19)
+  // [mir] _19 = &mut _1
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_ref, write)
+  _19.val_ref := _1
+  label l22
+  // [mir] _18 = &mut (*_19)
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_ref, write)
+  _18.val_ref := _19.val_ref
+  label l23
+  // [mir] _17 = knuth_shuffle(move _18) -> [return: bb9, unwind: bb12]
+  label l24
+  assert true
+  exhale acc(_18.val_ref, write) &&
+    acc(struct$m_VecWrapperI32(_18.val_ref), write)
+  _17 := builtin$havoc_ref()
+  inhale acc(struct$m_VecWrapperI32(old[l24](_18.val_ref)), write)
+  inhale acc(tuple0$(_17), write)
+  inhale true
+  label l25
+  // ========== l26 ==========
+  // MIR edge bb8 --> bb9
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L9,L4,L3,)
+
+  // ========== bb9 ==========
+  __t9 := true
+  // [mir] StorageDead(_18)
+  // [mir] StorageDead(_19)
+  // [mir] StorageDead(_17)
+  // [mir] StorageLive(_20)
+  // [mir] StorageLive(_21)
+  // [mir] StorageLive(_22)
+  // [mir] _22 = &mut _1
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_ref, write)
+  _22.val_ref := _1
+  label l27
+  // [mir] _21 = &mut (*_22)
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_ref, write)
+  _21.val_ref := _22.val_ref
+  label l28
+  // [mir] _20 = print_vector_after(move _21) -> [return: bb10, unwind: bb12]
+  label l29
+  assert true
+  exhale acc(_21.val_ref, write) &&
+    acc(struct$m_VecWrapperI32(_21.val_ref), write)
+  _20 := builtin$havoc_ref()
+  inhale acc(struct$m_VecWrapperI32(old[l29](_21.val_ref)), write)
+  inhale acc(tuple0$(_20), write)
+  inhale true
+  label l30
+  // ========== l31 ==========
+  // MIR edge bb9 --> bb10
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L11,L6,L5,)
+
+  // ========== bb10 ==========
+  __t10 := true
+  // [mir] StorageDead(_21)
+  // [mir] StorageDead(_22)
+  // [mir] StorageDead(_20)
+  // [mir] _0 = const ()
+  // [mir] StorageDead(_2)
+  // [mir] drop(_1) -> [return: bb11, unwind: bb13]
+  // ========== bb11 ==========
+  __t11 := true
+  // [mir] StorageDead(_1)
+  // [mir] return
+  // ========== return ==========
+  // Target of any 'return' statement.
+  // Exhale postcondition
+  label l33
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  // Fold the result
+  fold acc(tuple0$(_0), write)
+  // obtain acc(tuple0$(_0), write)
+  // Assert possible strengthening
+  // Assert functional specification of postcondition
+  // Assert type invariants
+  assert true
+  // Exhale permissions of postcondition (1/3)
+  // Exhale permissions of postcondition (2/3)
+  exhale acc(tuple0$(_0), write)
+  // Exhale permissions of postcondition (3/3)
+  goto end_of_method
+  
+  label loop2_start
+  // ========== l7 ==========
+  // MIR edge bb3 --> bb4
+  // ========== loop2_inv_post_fnspc ==========
+  // Inhale the loop fnspec invariant of block bb2
+  // ========== loop2_group3_bb4 ==========
+  __t4 := true
+  // [mir] StorageLive(_7)
+  // [mir] StorageLive(_8)
+  // [mir] _8 = &mut _1
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_ref, write)
+  _8.val_ref := _1
+  label l8
+  // [mir] StorageLive(_9)
+  // [mir] _9 = _2
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_int, write)
+  _9.val_int := _2.val_int
+  label l9
+  // [mir] _7 = VecWrapperI32::push(move _8, move _9) -> [return: bb5, unwind: bb12]
+  label l10
+  assert true
+  fold acc(i32(_9), write)
+  exhale acc(_8.val_ref, write) &&
+    (acc(struct$m_VecWrapperI32(_8.val_ref), write) && acc(i32(_9), write))
+  _7 := builtin$havoc_ref()
+  inhale acc(struct$m_VecWrapperI32(old[l10](_8.val_ref)), write)
+  inhale acc(tuple0$(_7), write)
+  inhale true
+  inhale f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(old[l10](_8.val_ref))) ==
+    old[l10](f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_8.val_ref))) +
+    1
+  label l11
+  // ========== l12 ==========
+  // MIR edge bb4 --> bb5
+  // Expire borrows
+  // expire_borrows ReborrowingDAG(L12,L0,)
+
+  // ========== loop2_group3_bb5 ==========
+  __t5 := true
+  // [mir] StorageDead(_9)
+  // [mir] StorageDead(_8)
+  // [mir] StorageDead(_7)
+  // [mir] _10 = CheckedAdd(_2, const 1_i32)
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.tuple_0, write)
+  inhale acc(_10.tuple_0.val_int, write)
+  inhale acc(_10.tuple_1, write)
+  inhale acc(_10.tuple_1.val_bool, write)
+  _10.tuple_0.val_int := _2.val_int + 1
+  _10.tuple_1.val_bool := false
+  // [mir] assert(!move (_10.1: bool), "attempt to compute `{} + {}`, which would overflow", _2, const 1_i32) -> [success: bb6, unwind: bb12]
+  __t14 := _10.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  assert !__t14
+  // ========== loop2_group3_bb6 ==========
+  __t6 := true
+  // [mir] _2 = move (_10.0: i32)
+  _2 := _10.tuple_0
+  label l13
+  // [mir] _4 = const ()
+  // [mir] StorageDead(_5)
+  // [mir] goto -> bb2
+  // ========== loop2_group4_bb2 ==========
+  // This is a loop head
+  __t2 := true
+  // [mir] falseUnwind -> [real: bb3, unwind: bb12]
+  // ========== loop2_group4_bb3 ==========
+  __t3 := true
+  // [mir] StorageLive(_5)
+  // [mir] StorageLive(_6)
+  // [mir] _6 = _2
+  _6 := builtin$havoc_int()
+  _6 := _2.val_int
+  label l14
+  // [mir] _5 = Lt(move _6, const 10_i32)
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_bool, write)
+  _5.val_bool := _6 < 10
+  // [mir] StorageDead(_6)
+  // [mir] switchInt(move _5) -> [0: bb7, otherwise: bb4]
+  __t15 := _5.val_bool
+  if (__t15) {
+    goto l3
+  }
+  goto loop2_group1_bb2
+  
+  label return
+  // ========== l3 ==========
+  // MIR edge bb3 --> bb7
+  goto loop2_group1_bb3
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

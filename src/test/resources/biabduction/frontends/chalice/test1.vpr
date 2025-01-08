@@ -1,0 +1,45 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+  field value: Int
+  field next: Ref
+  predicate inv(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(inv(this.next), write)) }
+  function get(this: Ref): Int
+    requires acc(inv(this), write)
+  { (unfolding acc(inv(this), write) in this.value) }
+  method foo(this: Ref)
+    requires acc(inv(this), write) && (unfolding acc(inv(this), write) in ((this.next) != (null)))
+    ensures acc(inv(this), write) && (unfolding acc(inv(this), write) in ((this.next) != (null)))
+  {
+    unfold acc(inv(this), write)
+    this.value := 0
+    unfold acc(inv(this.next), write)
+    this.next.value := 1
+    fold acc(inv(this.next), write)
+    assert ((get(this.next)) == (1))
+    assert ((this.value) == (0))
+    fold acc(inv(this), write)
+    assert ((get(this)) == (0))
+    assert (unfolding acc(inv(this), write) in ((this.next) != (null)) && ((get(this.next)) == (1)))
+    assert (unfolding acc(inv(this), write) in ((get(this.next)) == (1)))
+  }
+  method goo(this: Ref, a: Ref, b: Ref, c: Bool)
+    requires ((a) != (null)) && ((b) != (null)) && acc(inv(a), write) && acc(inv(b), write)
+  {
+    var z: Ref
+    unfold acc(inv(a), write)
+    unfold acc(inv(b), write)
+    a.value := 0
+    b.value := 1
+    if (c) {
+      z := a
+    } else {
+      z := b
+    }
+    fold acc(inv(z), write)
+    assert c ==> acc(inv(a), write) && ((get(a)) == (0))
+    assert !c ==> acc(inv(b), write) && ((get(b)) == (1))
+    unfold acc(inv(z), write)
+    assert ((a.value) == (0))
+    assert ((b.value) == (1))
+  }

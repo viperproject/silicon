@@ -1,0 +1,19 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+  field n: Ref
+  predicate P(this: Ref) { acc(this.n, write) && (((this.n) != (null)) ==> acc(P(this.n), write)) }
+  function length(this: Ref): Int
+    requires acc(P(this), write)
+    ensures result >= 1
+  { (unfolding acc(P(this), write) in 1 + (((this.n) == (null)) ? 0 : length(this.n))) }
+  method test(this: Ref, node: Ref)
+    requires ((node) != (null))
+    requires acc(P(node), write)
+  {
+    assert (length(node) >= 1)
+    //assert (unfolding acc(node.P(), rd) in (((node.n) == (null))) ==> ((length(node)) == (1)))
+    //assert (unfolding acc(node.P(), rd) in (((node.n) != (null))) ==> ((length(node)) > 1))
+    //assert ((length(node)) == (1)) ==> (unfolding acc(node.P(), rd) in ((node.n) == (null)))
+    //assert ((length(node)) == (1)) <==> (unfolding acc(node.P(), rd) in ((node.n) == (null)))
+  }

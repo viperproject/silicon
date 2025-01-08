@@ -1,0 +1,19 @@
+
+field checksumData: Int
+
+predicate ChecksumMachine(this: Ref)
+{
+    acc(this.checksumData) && 0 <= this.checksumData 
+}
+
+
+method ChecksumMachineConstructor() returns (this: Ref)
+    ensures ChecksumMachine(this)
+    //ensures unfolding ChecksumMachine(this) in this.checksumData == 0
+{
+    this := new(checksumData)
+    this.checksumData := 0
+    fold ChecksumMachine(this)
+}
+
+

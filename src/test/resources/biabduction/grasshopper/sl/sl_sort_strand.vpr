@@ -1,0 +1,120 @@
+import "sl.vpr"
+
+method merge(a: Ref, b: Ref) returns (res: Ref)
+requires list(a) && list(b)
+ensures list(res)
+
+method pull_strands(lst: Ref) returns (sorted: Ref, rest: Ref)
+requires list(lst) && lst != null
+ensures list(sorted)
+ensures list(rest)
+{
+    
+    var prev: Ref
+    
+    unfold list(lst)
+    var curr: Ref := lst.next
+
+    sorted := lst
+    sorted.next := null
+    var curr_sorted: Ref := sorted
+
+    package list(sorted) --* list(sorted)
+
+
+    while(curr != null && unfolding list(curr) in curr.data >= curr_sorted.data)
+    invariant list(curr)
+    invariant acc(curr_sorted.next) && acc(curr_sorted.data)
+    invariant list(curr_sorted) --* list(sorted)
+    {
+        prev := curr
+        unfold list(curr)
+        curr := curr.next
+
+        var prev_sorted: Ref := curr_sorted
+        prev.next := null
+        curr_sorted.next := prev
+        curr_sorted := prev
+        package list(curr_sorted) --* list(sorted){
+            fold list(prev_sorted)
+            apply list(prev_sorted) --* list(sorted)
+        }
+    }
+
+    rest := curr
+
+    if(rest != null){
+        
+        prev := rest
+        package list(prev) --* list(rest)
+        unfold list(prev)
+        curr := curr.next
+
+        while(curr != null)
+        invariant list(prev) --* list(rest)
+        invariant acc(prev.next) && acc(prev.data)
+        invariant prev.next == curr
+        invariant list(curr)
+        invariant acc(curr_sorted.next) && acc(curr_sorted.data)
+        invariant list(curr_sorted) --* list(sorted)
+        {
+            unfold list(curr)
+            
+            if(curr.data >= curr_sorted.data){
+                var old_prev: Ref := prev
+                var old_curr: Ref := curr
+                var old_curr_sorted: Ref := curr_sorted
+
+                curr := curr.next
+                curr_sorted.next := old_curr
+                curr_sorted := old_curr
+                old_curr.next := null
+                prev.next := curr
+                assert acc(prev.next)
+
+                package list(curr_sorted) --* list(sorted){
+                    fold list(old_curr_sorted)
+                    apply list(old_curr_sorted) --* list(sorted)
+                }
+            } else {
+                var prev_prev: Ref := prev
+                prev := curr
+                curr := curr.next
+                package list(prev) --* list(rest){
+                    fold list(prev_prev)
+                    apply list(prev_prev) --* list(rest)
+                }
+            }
+        }
+
+        fold list(prev)
+        apply list(prev) --* list(rest)
+
+
+    }
+
+    if(rest == null){
+        fold list(rest)
+    }
+
+    curr_sorted.next := null
+    fold list(curr_sorted.next)
+    fold list(curr_sorted)
+    apply list(curr_sorted) --* list(sorted)
+}
+
+method strand_sort(x: Ref) returns (res: Ref)
+requires list(x)
+ensures list(res)
+{
+    res := null
+    fold list(res)
+    var lst: Ref := x
+    while(lst != null)
+    invariant list(lst) && list(res)
+    {
+        var new_sorted: Ref
+        new_sorted, lst := pull_strands(lst)
+        res := merge(res, new_sorted)
+    }
+}

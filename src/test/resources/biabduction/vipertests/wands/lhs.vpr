@@ -1,0 +1,36 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/102/)
+
+field f: Int
+field g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f) && acc(this.g)
+}
+
+function sum(p: Ref): Int
+  requires acc(Pair(p))
+{ unfolding Pair(p) in p.f + p.g }
+
+method test1(p: Ref)
+  requires acc(p.f)
+  requires acc(p.g)
+{
+  p.f := 10
+
+  package (acc(p.g)) --* acc(Pair(p)) && sum(p) == 10 + old[lhs](p.g) {
+      fold Pair(p)
+  }
+  // TODO: package acc(p.g) --* folding Pair(p) in sum(p) == 10 + lhs(p.g)  must be rejected!
+}
+
+method test2(p: Ref)
+  requires acc(p.g)
+  requires acc(p.g) --* acc(Pair(p)) && sum(p) == 10 + old[lhs](p.g)
+{
+  p.g := 3
+  apply acc(p.g) --* acc(Pair(p)) && sum(p) == 10 + old[lhs](p.g)
+  assert sum(p) == 13
+}

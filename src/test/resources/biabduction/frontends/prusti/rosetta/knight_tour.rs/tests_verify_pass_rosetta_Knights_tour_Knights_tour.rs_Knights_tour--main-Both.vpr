@@ -1,0 +1,663 @@
+domain MirrorDomain  {
+  
+  function mirror_simple$f_size__$TY$__$int$(): Int 
+}
+
+domain Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_  {
+  
+  function discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self: Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_): Int 
+  
+  function cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(): Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_ 
+  
+  function cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0: Snap$struct$m_Board): Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_ 
+  
+  function Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board(self: Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_): Snap$struct$m_Board 
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$discriminant_range {
+    (forall self: Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_ ::
+      { discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self) }
+      0 <=
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self) &&
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self) <=
+      1)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$0$discriminant_axiom {
+    discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_()) ==
+    0
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$injectivity {
+    (forall _l_0: Snap$struct$m_Board, _r_0: Snap$struct$m_Board ::
+      { cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_l_0),
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_r_0) }
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_l_0) ==
+      cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$discriminant_axiom {
+    (forall _0: Snap$struct$m_Board ::
+      { cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0) }
+      discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0)) ==
+      1)
+  }
+  
+  axiom Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$field$f$0$axiom {
+    (forall _0: Snap$struct$m_Board ::
+      { Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0)) }
+      Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$1$field$f$0__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board(cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_Board  {
+  
+  function cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_0: Snap$struct$m_VecVecWrapperI32): Snap$struct$m_Board 
+  
+  function Snap$struct$m_Board$0$field$f$field__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32(self: Snap$struct$m_Board): Snap$struct$m_VecVecWrapperI32 
+  
+  axiom Snap$struct$m_Board$0$injectivity {
+    (forall _l_0: Snap$struct$m_VecVecWrapperI32, _r_0: Snap$struct$m_VecVecWrapperI32 ::
+      { cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_l_0),
+      cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_r_0) }
+      cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_l_0) ==
+      cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_r_0) ==>
+      _l_0 == _r_0)
+  }
+  
+  axiom Snap$struct$m_Board$0$field$f$field$axiom {
+    (forall _0: Snap$struct$m_VecVecWrapperI32 ::
+      { Snap$struct$m_Board$0$field$f$field__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32(cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_0)) }
+      Snap$struct$m_Board$0$field$f$field__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32(cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board(_0)) ==
+      _0)
+  }
+}
+
+domain Snap$struct$m_VecVecWrapperI32  {
+  
+  
+}
+
+domain FloatDomain24e8 interpretation (SMTLIB: "(_ FloatingPoint 8 24)", Boogie: "float24e8") {
+  
+  function f32_from_bv(a: BitVectorDomain32): FloatDomain24e8 interpretation "(_ to_fp 8 24)"
+  
+  function f32_fp_add(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.add RNE"
+  
+  function f32_fp_sub(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.sub RNE"
+  
+  function f32_fp_mul(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.mul RNE"
+  
+  function f32_fp_div(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.div RNE"
+  
+  function f32_fp_min(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.min"
+  
+  function f32_fp_max(a: FloatDomain24e8, b: FloatDomain24e8): FloatDomain24e8 interpretation "fp.max"
+  
+  function f32_fp_eq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.eq"
+  
+  function f32_fp_leq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.leq"
+  
+  function f32_fp_geq(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.geq"
+  
+  function f32_fp_lt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.lt"
+  
+  function f32_fp_gt(a: FloatDomain24e8, b: FloatDomain24e8): Bool interpretation "fp.gt"
+  
+  function f32_fp_neg(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.neg"
+  
+  function f32_fp_abs(a: FloatDomain24e8): FloatDomain24e8 interpretation "fp.abs"
+  
+  function f32_fp_is_zero(a: FloatDomain24e8): Bool interpretation "fp.isZero"
+  
+  function f32_fp_is_infinite(a: FloatDomain24e8): Bool interpretation "fp.isInfinite"
+  
+  function f32_fp_is_nan(a: FloatDomain24e8): Bool interpretation "fp.isNaN"
+  
+  function f32_fp_is_negative(a: FloatDomain24e8): Bool interpretation "fp.isNegative"
+  
+  function f32_fp_is_positive(a: FloatDomain24e8): Bool interpretation "fp.isPositive"
+}
+
+domain FloatDomain52e12 interpretation (SMTLIB: "(_ FloatingPoint 12 52)", Boogie: "float52e12") {
+  
+  function f64_from_bv(a: BitVectorDomain64): FloatDomain52e12 interpretation "(_ to_fp 12 52)"
+  
+  function f64_fp_add(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.add RNE"
+  
+  function f64_fp_sub(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.sub RNE"
+  
+  function f64_fp_mul(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.mul RNE"
+  
+  function f64_fp_div(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.div RNE"
+  
+  function f64_fp_min(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.min"
+  
+  function f64_fp_max(a: FloatDomain52e12, b: FloatDomain52e12): FloatDomain52e12 interpretation "fp.max"
+  
+  function f64_fp_eq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.eq"
+  
+  function f64_fp_leq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.leq"
+  
+  function f64_fp_geq(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.geq"
+  
+  function f64_fp_lt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.lt"
+  
+  function f64_fp_gt(a: FloatDomain52e12, b: FloatDomain52e12): Bool interpretation "fp.gt"
+  
+  function f64_fp_neg(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.neg"
+  
+  function f64_fp_abs(a: FloatDomain52e12): FloatDomain52e12 interpretation "fp.abs"
+  
+  function f64_fp_is_zero(a: FloatDomain52e12): Bool interpretation "fp.isZero"
+  
+  function f64_fp_is_infinite(a: FloatDomain52e12): Bool interpretation "fp.isInfinite"
+  
+  function f64_fp_is_nan(a: FloatDomain52e12): Bool interpretation "fp.isNaN"
+  
+  function f64_fp_is_negative(a: FloatDomain52e12): Bool interpretation "fp.isNegative"
+  
+  function f64_fp_is_positive(a: FloatDomain52e12): Bool interpretation "fp.isPositive"
+  
+  function f64_fp_typ(a: FloatDomain52e12): Bool interpretation "fp.typ"
+}
+
+domain BitVectorDomain8 interpretation (SMTLIB: "(_ BitVec 8)", Boogie: "bv8") {
+  
+  function bv8_from_int(i: Int): BitVectorDomain8 interpretation "(_ int2bv 8)"
+  
+  function bv8_to_int(i: BitVectorDomain8): Int interpretation "(_ bv2int 8)"
+  
+  function bv8_and(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvand"
+  
+  function bv8_or(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvor"
+  
+  function bv8_xor(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvxor"
+  
+  function bv8_add(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvadd"
+  
+  function bv8_sub(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvsub"
+  
+  function bv8_mul(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvmul"
+  
+  function bv8_udiv(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvudiv"
+  
+  function bv8_shl(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvshl"
+  
+  function bv8_lshr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvlshr"
+  
+  function bv8_ashr(a: BitVectorDomain8, b: BitVectorDomain8): BitVectorDomain8 interpretation "bvashr"
+  
+  function bv8_not(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvnot"
+  
+  function bv8_neg(a: BitVectorDomain8): BitVectorDomain8 interpretation "bvneg"
+}
+
+domain BitVectorDomain16 interpretation (SMTLIB: "(_ BitVec 16)", Boogie: "bv16") {
+  
+  function bv16_from_int(i: Int): BitVectorDomain16 interpretation "(_ int2bv 16)"
+  
+  function bv16_to_int(i: BitVectorDomain16): Int interpretation "(_ bv2int 16)"
+  
+  function bv16_and(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvand"
+  
+  function bv16_or(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvor"
+  
+  function bv16_xor(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvxor"
+  
+  function bv16_add(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvadd"
+  
+  function bv16_sub(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvsub"
+  
+  function bv16_mul(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvmul"
+  
+  function bv16_udiv(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvudiv"
+  
+  function bv16_shl(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvshl"
+  
+  function bv16_lshr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvlshr"
+  
+  function bv16_ashr(a: BitVectorDomain16, b: BitVectorDomain16): BitVectorDomain16 interpretation "bvashr"
+  
+  function bv16_not(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvnot"
+  
+  function bv16_neg(a: BitVectorDomain16): BitVectorDomain16 interpretation "bvneg"
+}
+
+domain BitVectorDomain32 interpretation (SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  
+  function bv32_from_int(i: Int): BitVectorDomain32 interpretation "(_ int2bv 32)"
+  
+  function bv32_to_int(i: BitVectorDomain32): Int interpretation "(_ bv2int 32)"
+  
+  function bv32_and(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvand"
+  
+  function bv32_or(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvor"
+  
+  function bv32_xor(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvxor"
+  
+  function bv32_add(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvadd"
+  
+  function bv32_sub(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvsub"
+  
+  function bv32_mul(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvmul"
+  
+  function bv32_udiv(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvudiv"
+  
+  function bv32_shl(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvshl"
+  
+  function bv32_lshr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvlshr"
+  
+  function bv32_ashr(a: BitVectorDomain32, b: BitVectorDomain32): BitVectorDomain32 interpretation "bvashr"
+  
+  function bv32_not(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvnot"
+  
+  function bv32_neg(a: BitVectorDomain32): BitVectorDomain32 interpretation "bvneg"
+}
+
+domain BitVectorDomain64 interpretation (SMTLIB: "(_ BitVec 64)", Boogie: "bv64") {
+  
+  function bv64_from_int(i: Int): BitVectorDomain64 interpretation "(_ int2bv 64)"
+  
+  function bv64_to_int(i: BitVectorDomain64): Int interpretation "(_ bv2int 64)"
+  
+  function bv64_and(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvand"
+  
+  function bv64_or(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvor"
+  
+  function bv64_xor(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvxor"
+  
+  function bv64_add(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvadd"
+  
+  function bv64_sub(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvsub"
+  
+  function bv64_mul(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvmul"
+  
+  function bv64_udiv(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvudiv"
+  
+  function bv64_shl(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvshl"
+  
+  function bv64_lshr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvlshr"
+  
+  function bv64_ashr(a: BitVectorDomain64, b: BitVectorDomain64): BitVectorDomain64 interpretation "bvashr"
+  
+  function bv64_not(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvnot"
+  
+  function bv64_neg(a: BitVectorDomain64): BitVectorDomain64 interpretation "bvneg"
+}
+
+domain BitVectorDomain128 interpretation (SMTLIB: "(_ BitVec 128)", Boogie: "bv128") {
+  
+  function bv128_from_int(i: Int): BitVectorDomain128 interpretation "(_ int2bv 128)"
+  
+  function bv128_to_int(i: BitVectorDomain128): Int interpretation "(_ bv2int 128)"
+  
+  function bv128_and(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvand"
+  
+  function bv128_or(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvor"
+  
+  function bv128_xor(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvxor"
+  
+  function bv128_add(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvadd"
+  
+  function bv128_sub(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvsub"
+  
+  function bv128_mul(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvmul"
+  
+  function bv128_udiv(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvudiv"
+  
+  function bv128_shl(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvshl"
+  
+  function bv128_lshr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvlshr"
+  
+  function bv128_ashr(a: BitVectorDomain128, b: BitVectorDomain128): BitVectorDomain128 interpretation "bvashr"
+  
+  function bv128_not(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvnot"
+  
+  function bv128_neg(a: BitVectorDomain128): BitVectorDomain128 interpretation "bvneg"
+}
+
+field discriminant: Int
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$field: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_int: Int
+
+function f_size__$TY$__$int$(): Int
+  requires true
+  requires true
+  ensures result == 8
+  ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
+
+
+function m_std$$option$$Option$_beg_$struct$m_Board$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self: Ref): Int
+  requires acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+  ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(self)) ==
+    result
+{
+  (unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$()) in
+    self.discriminant)
+}
+
+function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_
+  requires acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$())
+{
+  ((unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$()) in
+    self.discriminant) ==
+  1 ?
+    cons$1$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$struct$m_Board$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_((unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$()) in
+      (unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(self.enum_Some), read$()) in
+        snap$__$TY$__Snap$struct$m_Board$struct$m_Board$Snap$struct$m_Board(self.enum_Some.f$0)))) :
+    cons$0$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_())
+}
+
+function snap$__$TY$__Snap$struct$m_Board$struct$m_Board$Snap$struct$m_Board(self: Ref): Snap$struct$m_Board
+  requires acc(struct$m_Board(self), read$())
+{
+  cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board((unfolding acc(struct$m_Board(self), read$()) in
+    snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(self.f$field)))
+}
+
+function snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(self: Ref): Snap$struct$m_VecVecWrapperI32
+  requires acc(struct$m_VecVecWrapperI32(self), read$())
+
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_std$$option$$Option$_beg_$struct$m_Board$_end_(self: Ref) {
+  acc(self.discriminant, write) &&
+  (0 <= self.discriminant && self.discriminant <= 1 &&
+  (acc(self.enum_Some, write) &&
+  acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(self.enum_Some), write)))
+}
+
+predicate m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(struct$m_Board(self.f$0), write)
+}
+
+predicate struct$m_Board(self: Ref) {
+  acc(self.f$field, write) &&
+  acc(struct$m_VecVecWrapperI32(self.f$field), write)
+}
+
+predicate struct$m_VecVecWrapperI32(self: Ref) 
+
+predicate tuple0$(self: Ref) 
+
+predicate tuple2$i32$i32(self: Ref) {
+  acc(self.tuple_0, write) &&
+  (acc(i32(self.tuple_0), write) &&
+  (acc(self.tuple_1, write) && acc(i32(self.tuple_1), write)))
+}
+
+method m_main() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var _aux_havoc_i32: Ref
+  var __t12: Int
+  var _1: Int
+  var _2: Int
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Int
+  var _12: Ref
+  var _13: Ref
+  
+  label start
+  // ========== start ==========
+  // Def path: "Knights_tour::main"
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:323:1: 333:2 (#0)
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  // Preconditions:
+  label pre
+  // ========== bb0 ==========
+  __t0 := true
+  // [mir] StorageLive(_3)
+  // [mir] _3 = (const 3_i32, const 1_i32)
+  _3 := builtin$havoc_ref()
+  inhale acc(tuple2$i32$i32(_3), write)
+  _aux_havoc_i32 := builtin$havoc_ref()
+  unfold acc(tuple2$i32$i32(_3), write)
+  _3.tuple_0 := _aux_havoc_i32
+  inhale acc(_3.tuple_0.val_int, write)
+  _3.tuple_0.val_int := 3
+  _aux_havoc_i32 := builtin$havoc_ref()
+  _3.tuple_1 := _aux_havoc_i32
+  inhale acc(_3.tuple_1.val_int, write)
+  _3.tuple_1.val_int := 1
+  // [mir] PlaceMention(_3)
+  // [mir] StorageLive(_1)
+  // [mir] _1 = (_3.0: i32)
+  _1 := builtin$havoc_int()
+  _1 := _3.tuple_0.val_int
+  label l0
+  // [mir] StorageLive(_2)
+  // [mir] _2 = (_3.1: i32)
+  _2 := builtin$havoc_int()
+  _2 := _3.tuple_1.val_int
+  label l1
+  // [mir] StorageDead(_3)
+  // [mir] StorageLive(_4)
+  // [mir] _4 = print_board_size() -> [return: bb1, unwind: bb15]
+  label l2
+  _4 := builtin$havoc_ref()
+  inhale acc(tuple0$(_4), write)
+  inhale true
+  label l3
+  // ========== bb1 ==========
+  __t1 := true
+  // [mir] StorageDead(_4)
+  // [mir] StorageLive(_5)
+  // [mir] StorageLive(_6)
+  // [mir] _6 = _1
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  _6.val_int := _1
+  label l4
+  // [mir] StorageLive(_7)
+  // [mir] _7 = _2
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_int, write)
+  _7.val_int := _2
+  label l5
+  // [mir] _5 = print_starting_position(move _6, move _7) -> [return: bb2, unwind: bb15]
+  label l6
+  assert true
+  fold acc(i32(_6), write)
+  fold acc(i32(_7), write)
+  exhale acc(i32(_6), write) && acc(i32(_7), write)
+  _5 := builtin$havoc_ref()
+  inhale acc(tuple0$(_5), write)
+  inhale true
+  label l7
+  // ========== bb2 ==========
+  __t2 := true
+  // [mir] StorageDead(_7)
+  // [mir] StorageDead(_6)
+  // [mir] StorageDead(_5)
+  // [mir] StorageLive(_8)
+  // [mir] StorageLive(_9)
+  // [mir] _9 = _1
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_int, write)
+  _9.val_int := _1
+  label l8
+  // [mir] StorageLive(_10)
+  // [mir] _10 = _2
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_int, write)
+  _10.val_int := _2
+  label l9
+  // [mir] _8 = knights_tour(move _9, move _10) -> [return: bb3, unwind: bb15]
+  label l10
+  assert 0 <= _9.val_int &&
+    (_9.val_int < f_size__$TY$__$int$() &&
+    (0 <= _10.val_int && _10.val_int < f_size__$TY$__$int$()))
+  assert true
+  fold acc(i32(_10), write)
+  fold acc(i32(_9), write)
+  exhale acc(i32(_9), write) && acc(i32(_10), write)
+  _8 := builtin$havoc_ref()
+  inhale acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_8), write)
+  inhale true
+  label l11
+  // ========== bb3 ==========
+  __t3 := true
+  // [mir] StorageDead(_10)
+  // [mir] StorageDead(_9)
+  // [mir] FakeRead(ForMatchedPlace(None), _8)
+  // [mir] _11 = discriminant(_8)
+  _11 := builtin$havoc_int()
+  _11 := m_std$$option$$Option$_beg_$struct$m_Board$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(_8)
+  // [mir] switchInt(move _11) -> [0: bb4, 1: bb5, otherwise: bb6]
+  __t12 := _11
+  // Ignore default target bb6, as the compiler marked it as unreachable.
+  if (__t12 == 0) {
+    goto bb1
+  }
+  goto bb0
+  
+  label bb0
+  // ========== l12 ==========
+  // MIR edge bb3 --> bb5
+  // ========== bb5 ==========
+  __t5 := true
+  // [mir] falseEdge -> [real: bb7, imaginary: bb4]
+  // ========== bb7 ==========
+  __t6 := true
+  // [mir] StorageLive(_12)
+  // [mir] _12 = move ((_8 as Some).0: Board)
+  unfold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_8), write)
+  unfold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(_8.enum_Some), write)
+  _12 := _8.enum_Some.f$0
+  label l14
+  // [mir] StorageLive(_13)
+  // [mir] _13 = move _12
+  _13 := _12
+  label l15
+  // [mir] _0 = print_board(move _13) -> [return: bb8, unwind: bb12]
+  label l16
+  assert true
+  exhale acc(struct$m_Board(_13), write)
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  inhale true
+  label l17
+  // ========== bb8 ==========
+  __t7 := true
+  // [mir] StorageDead(_13)
+  // [mir] drop(_12) -> [return: bb9, unwind: bb14]
+  // ========== bb9 ==========
+  __t8 := true
+  // [mir] StorageDead(_12)
+  // [mir] goto -> bb10
+  // ========== l20 ==========
+  // drop Acc(_8[enum_Some], write) (Pred(_8[enum_Some].f$0, write))
+  // drop Acc(_8[enum_Some].f$0, write) (Pred(_8[enum_Some].f$0, write))
+  // drop Acc(_8.discriminant, write) (Pred(_8[enum_Some].f$0, write))
+  goto bb2
+  
+  label bb1
+  // ========== l13 ==========
+  // MIR edge bb3 --> bb4
+  // ========== bb4 ==========
+  __t9 := true
+  // [mir] _0 = print_fail() -> [return: bb10, unwind: bb14]
+  label l18
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  inhale true
+  label l19
+  // ========== l22 ==========
+  // drop Pred(_8, write) (Pred(_8[enum_Some].f$0, write))
+  goto bb2
+  
+  label bb2
+  // ========== bb10 ==========
+  __t10 := true
+  // [mir] StorageDead(_2)
+  // [mir] StorageDead(_1)
+  // [mir] drop(_8) -> [return: bb11, unwind: bb15]
+  // ========== bb11 ==========
+  __t11 := true
+  // [mir] StorageDead(_8)
+  // [mir] return
+  // ========== return ==========
+  // Target of any 'return' statement.
+  // Exhale postcondition
+  label l21
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  // Fold the result
+  // obtain acc(tuple0$(_0), write)
+  // Assert possible strengthening
+  // Assert functional specification of postcondition
+  // Assert type invariants
+  assert true
+  // Exhale permissions of postcondition (1/3)
+  // Exhale permissions of postcondition (2/3)
+  exhale acc(tuple0$(_0), write)
+  // Exhale permissions of postcondition (3/3)
+  goto end_of_method
+  
+  label return
+  // ========== bb6 ==========
+  __t4 := true
+  // [mir] unreachable
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

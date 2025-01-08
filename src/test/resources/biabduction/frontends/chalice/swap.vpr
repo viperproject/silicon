@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+  method m(this: Ref, a: Int, b: Int) returns (x: Int, y: Int)
+    ensures ((x) == (a)) && ((y) == (b))
+  {
+    x := a
+    y := b
+  }
+  field F: Int
+  field G: Int
+  method n(this: Ref)
+    requires acc(this.F, write) && acc(this.G, write)
+    ensures acc(this.F, write) && acc(this.G, write)
+    ensures ((this.F) == (old(this.G))) && ((this.G) == (old(this.F)))
+  {
+    var tmp: Int := this.F
+    this.F := this.G
+    this.G := tmp
+  }

@@ -1,0 +1,4287 @@
+domain ShStruct2[T0, T1]  {
+  
+  function ShStructget1of2(x: ShStruct2[T0, T1]): T1 
+  
+  function ShStructget0of2(x: ShStruct2[T0, T1]): T0 
+  
+  function ShStructrev1of2(v1: T1): ShStruct2[T0, T1] 
+  
+  function ShStructrev0of2(v0: T0): ShStruct2[T0, T1] 
+  
+  axiom {
+    (forall x: ShStruct2[T0, T1] ::
+      { (ShStructget1of2(x): T1) }
+      (ShStructrev1of2((ShStructget1of2(x): T1)): ShStruct2[T0, T1]) == x)
+  }
+  
+  axiom {
+    (forall x: ShStruct2[T0, T1], y: ShStruct2[T0, T1] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of2(x): T0) == (ShStructget0of2(y): T0) &&
+      (ShStructget1of2(x): T1) == (ShStructget1of2(y): T1)))
+  }
+  
+  axiom {
+    (forall x: ShStruct2[T0, T1] ::
+      { (ShStructget0of2(x): T0) }
+      (ShStructrev0of2((ShStructget0of2(x): T0)): ShStruct2[T0, T1]) == x)
+  }
+}
+
+domain Emb_2_Interfaceempty_interface$$$$_E_$$$  {
+  
+  
+}
+
+domain Emb_2_Interfaceempty_interface$$$_S_$$$  {
+  
+  
+}
+
+domain ShStruct0  {
+  
+  axiom {
+    (forall x: ShStruct0, y: ShStruct0 ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) == true)
+  }
+}
+
+domain Emb_4_Interfaceempty_interface$$$$_E_$$$  {
+  
+  
+}
+
+domain ShStruct1[T0]  {
+  
+  function ShStructget0of1(x: ShStruct1[T0]): T0 
+  
+  function ShStructrev0of1(v0: T0): ShStruct1[T0] 
+  
+  axiom {
+    (forall x: ShStruct1[T0] ::
+      { (ShStructget0of1(x): T0) }
+      (ShStructrev0of1((ShStructget0of1(x): T0)): ShStruct1[T0]) == x)
+  }
+  
+  axiom {
+    (forall x: ShStruct1[T0], y: ShStruct1[T0] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of1(x): T0) == (ShStructget0of1(y): T0)))
+  }
+}
+
+domain ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]  {
+  
+  function ShStructget4of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T4 
+  
+  function ShStructget10of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T10 
+  
+  function ShStructrev4of17(v4: T4): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev10of17(v10: T10): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev13of17(v13: T13): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructget5of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T5 
+  
+  function ShStructrev0of17(v0: T0): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev2of17(v2: T2): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructget6of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T6 
+  
+  function ShStructrev1of17(v1: T1): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev15of17(v15: T15): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructget7of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T7 
+  
+  function ShStructrev14of17(v14: T14): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructget8of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T8 
+  
+  function ShStructrev7of17(v7: T7): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructget2of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T2 
+  
+  function ShStructget11of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T11 
+  
+  function ShStructrev12of17(v12: T12): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev11of17(v11: T11): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructget3of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T3 
+  
+  function ShStructrev9of17(v9: T9): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev8of17(v8: T8): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev5of17(v5: T5): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev3of17(v3: T3): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructget16of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T16 
+  
+  function ShStructget14of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T14 
+  
+  function ShStructget13of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T13 
+  
+  function ShStructrev16of17(v16: T16): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructrev6of17(v6: T6): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] 
+  
+  function ShStructget9of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T9 
+  
+  function ShStructget12of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T12 
+  
+  function ShStructget0of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T0 
+  
+  function ShStructget1of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T1 
+  
+  function ShStructget15of17(x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]): T15 
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget10of17(x): T10) }
+      (ShStructrev10of17((ShStructget10of17(x): T10)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget1of17(x): T1) }
+      (ShStructrev1of17((ShStructget1of17(x): T1)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget2of17(x): T2) }
+      (ShStructrev2of17((ShStructget2of17(x): T2)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget16of17(x): T16) }
+      (ShStructrev16of17((ShStructget16of17(x): T16)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget8of17(x): T8) }
+      (ShStructrev8of17((ShStructget8of17(x): T8)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget3of17(x): T3) }
+      (ShStructrev3of17((ShStructget3of17(x): T3)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget12of17(x): T12) }
+      (ShStructrev12of17((ShStructget12of17(x): T12)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget7of17(x): T7) }
+      (ShStructrev7of17((ShStructget7of17(x): T7)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget11of17(x): T11) }
+      (ShStructrev11of17((ShStructget11of17(x): T11)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16],
+    y: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of17(x): T0) == (ShStructget0of17(y): T0) &&
+      (ShStructget1of17(x): T1) == (ShStructget1of17(y): T1) &&
+      (ShStructget2of17(x): T2) == (ShStructget2of17(y): T2) &&
+      (ShStructget3of17(x): T3) == (ShStructget3of17(y): T3) &&
+      (ShStructget4of17(x): T4) == (ShStructget4of17(y): T4) &&
+      (ShStructget5of17(x): T5) == (ShStructget5of17(y): T5) &&
+      (ShStructget6of17(x): T6) == (ShStructget6of17(y): T6) &&
+      (ShStructget7of17(x): T7) == (ShStructget7of17(y): T7) &&
+      (ShStructget8of17(x): T8) == (ShStructget8of17(y): T8) &&
+      (ShStructget9of17(x): T9) == (ShStructget9of17(y): T9) &&
+      (ShStructget10of17(x): T10) == (ShStructget10of17(y): T10) &&
+      (ShStructget11of17(x): T11) == (ShStructget11of17(y): T11) &&
+      (ShStructget12of17(x): T12) == (ShStructget12of17(y): T12) &&
+      (ShStructget13of17(x): T13) == (ShStructget13of17(y): T13) &&
+      (ShStructget14of17(x): T14) == (ShStructget14of17(y): T14) &&
+      (ShStructget15of17(x): T15) == (ShStructget15of17(y): T15) &&
+      (ShStructget16of17(x): T16) == (ShStructget16of17(y): T16)))
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget5of17(x): T5) }
+      (ShStructrev5of17((ShStructget5of17(x): T5)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget4of17(x): T4) }
+      (ShStructrev4of17((ShStructget4of17(x): T4)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget6of17(x): T6) }
+      (ShStructrev6of17((ShStructget6of17(x): T6)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget15of17(x): T15) }
+      (ShStructrev15of17((ShStructget15of17(x): T15)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget9of17(x): T9) }
+      (ShStructrev9of17((ShStructget9of17(x): T9)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget0of17(x): T0) }
+      (ShStructrev0of17((ShStructget0of17(x): T0)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget14of17(x): T14) }
+      (ShStructrev14of17((ShStructget14of17(x): T14)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] ::
+      { (ShStructget13of17(x): T13) }
+      (ShStructrev13of17((ShStructget13of17(x): T13)): ShStruct17[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]) ==
+      x)
+  }
+}
+
+domain Types  {
+  
+  unique function HostNone_cd675838_T_Types_tag(): Int 
+  
+  unique function bigEndian_72f0d887_T_Types_tag(): Int 
+  
+  function tag_Types(t: Types): Int 
+  
+  function Y$8f734176_14a7fb6d__Types(): Types 
+  
+  unique function nil_Types_tag(): Int 
+  
+  function rawPath_a6ceb89d_T_Types(): Types 
+  
+  function SCMPDestinationUnreachable_840d9458_T_Types(): Types 
+  
+  unique function nilDecodeFeedback_b41831d7_T_Types_tag(): Int 
+  
+  function Path_c6e60a1d_T_Types(): Types 
+  
+  unique function Y$49c4c25f_d3743b4f__Types_tag(): Int 
+  
+  unique function HopByHopExtnSkipper_840d9458_T_Types_tag(): Int 
+  
+  unique function IA_cd675838_T_Types_tag(): Int 
+  
+  unique function Y$558431e4_a6ceb89d__Types_tag(): Int 
+  
+  unique function LayerType_b41831d7_T_Types_tag(): Int 
+  
+  function string_Types(): Types 
+  
+  unique function Path_c385169_T_Types_tag(): Int 
+  
+  function HostNone_cd675838_T_Types(): Types 
+  
+  unique function Y$6914870a_b41831d7__Types_tag(): Int 
+  
+  function SCMPTypeCode_840d9458_T_Types(): Types 
+  
+  function Payload_b41831d7_T_Types(): Types 
+  
+  function Y$17800ab4_b41831d7__Types(): Types 
+  
+  function nil_Types(): Types 
+  
+  unique function Y$17800ab4_b41831d7__Types_tag(): Int 
+  
+  unique function HostIPv6_cd675838_T_Types_tag(): Int 
+  
+  function IPAddr_5c610647_T_Types(): Types 
+  
+  function uint16_Types(): Types 
+  
+  unique function Path_c6e60a1d_T_Types_tag(): Int 
+  
+  unique function int_Types_tag(): Int 
+  
+  unique function SCMP_840d9458_T_Types_tag(): Int 
+  
+  function SCMPEcho_840d9458_T_Types(): Types 
+  
+  unique function HopByHopExtn_840d9458_T_Types_tag(): Int 
+  
+  function AddrType_840d9458_T_Types(): Types 
+  
+  function Y$68d3cee9_b41831d7__Types(): Types 
+  
+  function Y$60c7bddc_b41831d7__Types(): Types 
+  
+  function SCMPExternalInterfaceDown_840d9458_T_Types(): Types 
+  
+  function SCMPTraceroute_840d9458_T_Types(): Types 
+  
+  unique function Y$3191b69e_b41831d7__Types_tag(): Int 
+  
+  function nilDecodeFeedback_b41831d7_T_Types(): Types 
+  
+  function SCMPPacketTooBig_840d9458_T_Types(): Types 
+  
+  function SCION_840d9458_T_Types(): Types 
+  
+  unique function Y$60c7bddc_b41831d7__Types_tag(): Int 
+  
+  unique function SCION_840d9458_T_Types_tag(): Int 
+  
+  unique function SCMPCode_840d9458_T_Types_tag(): Int 
+  
+  unique function Raw_daeaf66a_T_Types_tag(): Int 
+  
+  unique function uint16_Types_tag(): Int 
+  
+  function AS_cd675838_T_Types(): Types 
+  
+  function slice_Types(p0: Types): Types 
+  
+  unique function HostSVC_cd675838_T_Types_tag(): Int 
+  
+  function Y$49c4c25f_d3743b4f__Types(): Types 
+  
+  function integer_Types(): Types 
+  
+  function bigEndian_72f0d887_T_Types(): Types 
+  
+  function empty_interface_Types(): Types 
+  
+  function LayerType_b41831d7_T_Types(): Types 
+  
+  unique function SCMPType_840d9458_T_Types_tag(): Int 
+  
+  unique function byte_Types_tag(): Int 
+  
+  unique function SCMPInternalConnectivityDown_840d9458_T_Types_tag(): Int 
+  
+  unique function Y$b28ae4_ac87dd1d__Types_tag(): Int 
+  
+  function Y$53a71dc3_5c610647__Types(): Types 
+  
+  function HopByHopExtnSkipper_840d9458_T_Types(): Types 
+  
+  unique function EndToEndExtn_840d9458_T_Types_tag(): Int 
+  
+  function SCMP_840d9458_T_Types(): Types 
+  
+  function Raw_daeaf66a_T_Types(): Types 
+  
+  function L4ProtocolType_840d9458_T_Types(): Types 
+  
+  unique function SCMPTraceroute_840d9458_T_Types_tag(): Int 
+  
+  unique function integer_Types_tag(): Int 
+  
+  unique function rawPath_a6ceb89d_T_Types_tag(): Int 
+  
+  unique function SCMPParameterProblem_840d9458_T_Types_tag(): Int 
+  
+  function comparableType_Types(t: Types): Bool 
+  
+  function UDPAddr_5c610647_T_Types(): Types 
+  
+  unique function AddrType_840d9458_T_Types_tag(): Int 
+  
+  function SCMPParameterProblem_840d9458_T_Types(): Types 
+  
+  unique function Y$8f734176_14a7fb6d__Types_tag(): Int 
+  
+  unique function littleEndian_72f0d887_T_Types_tag(): Int 
+  
+  unique function Decoded_daeaf66a_T_Types_tag(): Int 
+  
+  unique function SCMPExternalInterfaceDown_840d9458_T_Types_tag(): Int 
+  
+  unique function Y$9127f611_b41831d7__Types_tag(): Int 
+  
+  unique function pointer_Types_tag(): Int 
+  
+  unique function L4ProtocolType_840d9458_T_Types_tag(): Int 
+  
+  function Decoded_daeaf66a_T_Types(): Types 
+  
+  unique function IPAddr_5c610647_T_Types_tag(): Int 
+  
+  function Path_c385169_T_Types(): Types 
+  
+  function Y$c2e55be_72f0d887__Types(): Types 
+  
+  function BFD_6416454f_T_Types(): Types 
+  
+  function pointer_Types(p0: Types): Types 
+  
+  unique function HostIPv4_cd675838_T_Types_tag(): Int 
+  
+  unique function string_Types_tag(): Int 
+  
+  unique function slice_Types_tag(): Int 
+  
+  unique function Y$53a71dc3_5c610647__Types_tag(): Int 
+  
+  function Y$febd64e7_b41831d7__Types(): Types 
+  
+  function Path_4cddb96f_T_Types(): Types 
+  
+  unique function Y$c2e55be_72f0d887__Types_tag(): Int 
+  
+  function SCMPCode_840d9458_T_Types(): Types 
+  
+  function Y$558431e4_a6ceb89d__Types(): Types 
+  
+  function Y$3191b69e_b41831d7__Types(): Types 
+  
+  unique function Y$68d3cee9_b41831d7__Types_tag(): Int 
+  
+  function EndToEndExtnSkipper_840d9458_T_Types(): Types 
+  
+  unique function SCMPPacketTooBig_840d9458_T_Types_tag(): Int 
+  
+  function SCMPInternalConnectivityDown_840d9458_T_Types(): Types 
+  
+  function behavioral_subtype_Types(l: Types, r: Types): Bool 
+  
+  function Y$9127f611_b41831d7__Types(): Types 
+  
+  unique function SCMPDestinationUnreachable_840d9458_T_Types_tag(): Int 
+  
+  function IA_cd675838_T_Types(): Types 
+  
+  unique function Y$9c78df5f_b41831d7__Types_tag(): Int 
+  
+  function Y$b28ae4_ac87dd1d__Types(): Types 
+  
+  unique function Y$35202e5_cd675838__Types_tag(): Int 
+  
+  function HostSVC_cd675838_T_Types(): Types 
+  
+  function HostIPv6_cd675838_T_Types(): Types 
+  
+  function Y$35202e5_cd675838__Types(): Types 
+  
+  function littleEndian_72f0d887_T_Types(): Types 
+  
+  function HostIPv4_cd675838_T_Types(): Types 
+  
+  function Y$6914870a_b41831d7__Types(): Types 
+  
+  unique function UDPAddr_5c610647_T_Types_tag(): Int 
+  
+  function EndToEndExtn_840d9458_T_Types(): Types 
+  
+  unique function BFD_6416454f_T_Types_tag(): Int 
+  
+  function SCMPType_840d9458_T_Types(): Types 
+  
+  unique function Payload_b41831d7_T_Types_tag(): Int 
+  
+  unique function Y$febd64e7_b41831d7__Types_tag(): Int 
+  
+  unique function empty_interface_Types_tag(): Int 
+  
+  unique function EndToEndExtnSkipper_840d9458_T_Types_tag(): Int 
+  
+  unique function Path_4cddb96f_T_Types_tag(): Int 
+  
+  function int_Types(): Types 
+  
+  function Y$9c78df5f_b41831d7__Types(): Types 
+  
+  function HopByHopExtn_840d9458_T_Types(): Types 
+  
+  unique function AS_cd675838_T_Types_tag(): Int 
+  
+  function byte_Types(): Types 
+  
+  unique function SCMPEcho_840d9458_T_Types_tag(): Int 
+  
+  unique function SCMPTypeCode_840d9458_T_Types_tag(): Int 
+  
+  function get_0_pointer_Types(t: Types): Types 
+  
+  axiom {
+    (forall x0: Types ::
+      { pointer_Types(x0) }
+      get_0_pointer_Types(pointer_Types(x0)) == x0)
+  }
+  
+  axiom {
+    tag_Types(rawPath_a6ceb89d_T_Types()) == rawPath_a6ceb89d_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(SCION_840d9458_T_Types()) == SCION_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(HostSVC_cd675838_T_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(HostSVC_cd675838_T_Types()) == HostSVC_cd675838_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$c2e55be_72f0d887__Types()) ==
+    Y$c2e55be_72f0d887__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$3191b69e_b41831d7__Types()) ==
+    Y$3191b69e_b41831d7__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(IA_cd675838_T_Types()) == IA_cd675838_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Y$49c4c25f_d3743b4f__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(Y$35202e5_cd675838__Types()) ==
+    Y$35202e5_cd675838__Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Y$b28ae4_ac87dd1d__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(Path_c6e60a1d_T_Types()) == Path_c6e60a1d_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Y$c2e55be_72f0d887__Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(rawPath_a6ceb89d_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Path_c385169_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Decoded_daeaf66a_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(nil_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(SCMPDestinationUnreachable_840d9458_T_Types()) ==
+    true
+  }
+  
+  axiom {
+    tag_Types(SCMP_840d9458_T_Types()) == SCMP_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(SCMPInternalConnectivityDown_840d9458_T_Types()) ==
+    SCMPInternalConnectivityDown_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$53a71dc3_5c610647__Types()) ==
+    Y$53a71dc3_5c610647__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(byte_Types()) == byte_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Path_c6e60a1d_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(SCMPExternalInterfaceDown_840d9458_T_Types()) ==
+    true
+  }
+  
+  axiom {
+    comparableType_Types(string_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(littleEndian_72f0d887_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(LayerType_b41831d7_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(HopByHopExtn_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Y$68d3cee9_b41831d7__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(Raw_daeaf66a_T_Types()) == Raw_daeaf66a_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$9127f611_b41831d7__Types()) ==
+    Y$9127f611_b41831d7__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(AS_cd675838_T_Types()) == AS_cd675838_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(int_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(Y$68d3cee9_b41831d7__Types()) ==
+    Y$68d3cee9_b41831d7__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(nilDecodeFeedback_b41831d7_T_Types()) ==
+    nilDecodeFeedback_b41831d7_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(EndToEndExtn_840d9458_T_Types()) ==
+    EndToEndExtn_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(IA_cd675838_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Y$6914870a_b41831d7__Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(SCMPPacketTooBig_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Y$3191b69e_b41831d7__Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(byte_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(SCMPExternalInterfaceDown_840d9458_T_Types()) ==
+    SCMPExternalInterfaceDown_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$b28ae4_ac87dd1d__Types()) == Y$b28ae4_ac87dd1d__Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(IPAddr_5c610647_T_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(HostIPv6_cd675838_T_Types()) ==
+    HostIPv6_cd675838_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(HopByHopExtn_840d9458_T_Types()) ==
+    HopByHopExtn_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(SCMPCode_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(SCMPInternalConnectivityDown_840d9458_T_Types()) ==
+    true
+  }
+  
+  axiom {
+    comparableType_Types(nilDecodeFeedback_b41831d7_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(AddrType_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(UDPAddr_5c610647_T_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(SCMPPacketTooBig_840d9458_T_Types()) ==
+    SCMPPacketTooBig_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    (forall p0: Types ::
+      { pointer_Types(p0) }
+      tag_Types(pointer_Types(p0)) == pointer_Types_tag())
+  }
+  
+  axiom {
+    tag_Types(SCMPCode_840d9458_T_Types()) ==
+    SCMPCode_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(integer_Types()) == integer_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Raw_daeaf66a_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Y$9c78df5f_b41831d7__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(LayerType_b41831d7_T_Types()) ==
+    LayerType_b41831d7_T_Types_tag()
+  }
+  
+  axiom {
+    (forall a: Types ::
+      { behavioral_subtype_Types(a, a) }
+      behavioral_subtype_Types(a, a))
+  }
+  
+  axiom {
+    comparableType_Types(SCMPType_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    (forall a: Types, b: Types, c: Types ::
+      { behavioral_subtype_Types(a, b), behavioral_subtype_Types(b, c) }
+      behavioral_subtype_Types(a, b) && behavioral_subtype_Types(b, c) ==>
+      behavioral_subtype_Types(a, c))
+  }
+  
+  axiom {
+    tag_Types(Y$febd64e7_b41831d7__Types()) ==
+    Y$febd64e7_b41831d7__Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(HostNone_cd675838_T_Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(HostIPv6_cd675838_T_Types()) == false
+  }
+  
+  axiom {
+    (forall p0: Types ::
+      { comparableType_Types(slice_Types(p0)) }
+      comparableType_Types(slice_Types(p0)) == false)
+  }
+  
+  axiom {
+    tag_Types(Path_c385169_T_Types()) == Path_c385169_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Y$febd64e7_b41831d7__Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(Y$8f734176_14a7fb6d__Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(uint16_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(HostNone_cd675838_T_Types()) ==
+    HostNone_cd675838_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(UDPAddr_5c610647_T_Types()) == UDPAddr_5c610647_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Payload_b41831d7_T_Types()) == Payload_b41831d7_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(EndToEndExtn_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(SCMPType_840d9458_T_Types()) ==
+    SCMPType_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(EndToEndExtnSkipper_840d9458_T_Types()) ==
+    EndToEndExtnSkipper_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(AS_cd675838_T_Types()) == true
+  }
+  
+  axiom {
+    (forall p0: Types ::
+      { comparableType_Types(pointer_Types(p0)) }
+      comparableType_Types(pointer_Types(p0)) == true)
+  }
+  
+  axiom {
+    comparableType_Types(SCMPParameterProblem_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(HostIPv4_cd675838_T_Types()) ==
+    HostIPv4_cd675838_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(HopByHopExtnSkipper_840d9458_T_Types()) ==
+    HopByHopExtnSkipper_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$6914870a_b41831d7__Types()) ==
+    Y$6914870a_b41831d7__Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(L4ProtocolType_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Y$558431e4_a6ceb89d__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(nil_Types()) == nil_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(string_Types()) == string_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Decoded_daeaf66a_T_Types()) == Decoded_daeaf66a_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(bigEndian_72f0d887_T_Types()) ==
+    bigEndian_72f0d887_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(L4ProtocolType_840d9458_T_Types()) ==
+    L4ProtocolType_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$49c4c25f_d3743b4f__Types()) ==
+    Y$49c4c25f_d3743b4f__Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Y$9127f611_b41831d7__Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(HostIPv4_cd675838_T_Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(Y$17800ab4_b41831d7__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(SCMPTypeCode_840d9458_T_Types()) ==
+    SCMPTypeCode_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(SCMPDestinationUnreachable_840d9458_T_Types()) ==
+    SCMPDestinationUnreachable_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$17800ab4_b41831d7__Types()) ==
+    Y$17800ab4_b41831d7__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$558431e4_a6ceb89d__Types()) ==
+    Y$558431e4_a6ceb89d__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(BFD_6416454f_T_Types()) == BFD_6416454f_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Y$60c7bddc_b41831d7__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(uint16_Types()) == uint16_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(BFD_6416454f_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(SCMPEcho_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(EndToEndExtnSkipper_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(SCION_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(int_Types()) == int_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(SCMPTypeCode_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Path_4cddb96f_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(SCMPTraceroute_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    (forall a: Types ::
+      { behavioral_subtype_Types(a, empty_interface_Types()) }
+      behavioral_subtype_Types(a, empty_interface_Types()))
+  }
+  
+  axiom {
+    (forall p0: Types ::
+      { slice_Types(p0) }
+      tag_Types(slice_Types(p0)) == slice_Types_tag())
+  }
+  
+  axiom {
+    comparableType_Types(SCMP_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(Y$53a71dc3_5c610647__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(AddrType_840d9458_T_Types()) ==
+    AddrType_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(SCMPParameterProblem_840d9458_T_Types()) ==
+    SCMPParameterProblem_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(littleEndian_72f0d887_T_Types()) ==
+    littleEndian_72f0d887_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(bigEndian_72f0d887_T_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(empty_interface_Types()) == empty_interface_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(IPAddr_5c610647_T_Types()) == IPAddr_5c610647_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(Y$35202e5_cd675838__Types()) == false
+  }
+  
+  axiom {
+    tag_Types(SCMPTraceroute_840d9458_T_Types()) ==
+    SCMPTraceroute_840d9458_T_Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$60c7bddc_b41831d7__Types()) ==
+    Y$60c7bddc_b41831d7__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Y$9c78df5f_b41831d7__Types()) ==
+    Y$9c78df5f_b41831d7__Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(integer_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(Y$8f734176_14a7fb6d__Types()) ==
+    Y$8f734176_14a7fb6d__Types_tag()
+  }
+  
+  axiom {
+    tag_Types(Path_4cddb96f_T_Types()) == Path_4cddb96f_T_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(HopByHopExtnSkipper_840d9458_T_Types()) == true
+  }
+  
+  axiom {
+    comparableType_Types(empty_interface_Types()) == false
+  }
+  
+  axiom {
+    comparableType_Types(Payload_b41831d7_T_Types()) == false
+  }
+  
+  axiom {
+    tag_Types(SCMPEcho_840d9458_T_Types()) ==
+    SCMPEcho_840d9458_T_Types_tag()
+  }
+}
+
+domain Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$  {
+  
+  
+}
+
+domain Emb_1_Intbyte$$$_S_$$$  {
+  
+  
+}
+
+domain Emb_2_Intuint8$$$_S_$$$  {
+  
+  
+}
+
+domain Slice[T]  {
+  
+  function sarray(s: Slice[T]): ShArray[T] 
+  
+  function scap(s: Slice[T]): Int 
+  
+  function soffset(s: Slice[T]): Int 
+  
+  function smake(a: ShArray[T], o: Int, l: Int, c: Int): Slice[T] 
+  
+  function slen(s: Slice[T]): Int 
+  
+  axiom deconstructor_over_constructor_array {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (sarray((smake(a, o, l, c): Slice[T])): ShArray[T]) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (sarray((smake(a, o, l, c): Slice[T])): ShArray[T]) == a)
+  }
+  
+  axiom {
+    (forall s: Slice[T] ::
+      { (soffset(s): Int), (scap(s): Int) }
+      { (ShArraylen((sarray(s): ShArray[T])): Int) }
+      (soffset(s): Int) + (scap(s): Int) <=
+      (ShArraylen((sarray(s): ShArray[T])): Int))
+  }
+  
+  axiom deconstructor_over_constructor_len {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (slen((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (slen((smake(a, o, l, c): Slice[T])): Int) == l)
+  }
+  
+  axiom {
+    (forall s: Slice[T] :: { (slen(s): Int) } 0 <= (slen(s): Int))
+  }
+  
+  axiom {
+    (forall s: Slice[T] ::
+      { (slen(s): Int) }
+      { (scap(s): Int) }
+      (slen(s): Int) <= (scap(s): Int))
+  }
+  
+  axiom {
+    (forall s: Slice[T] :: { (soffset(s): Int) } 0 <= (soffset(s): Int))
+  }
+  
+  axiom deconstructor_over_constructor_offset {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (soffset((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (soffset((smake(a, o, l, c): Slice[T])): Int) == o)
+  }
+  
+  axiom deconstructor_over_constructor_cap {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (scap((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (scap((smake(a, o, l, c): Slice[T])): Int) == c)
+  }
+  
+  axiom {
+    (forall s: Slice[T] ::
+      { (sarray(s): ShArray[T]) }
+      { (soffset(s): Int) }
+      { (slen(s): Int) }
+      { (scap(s): Int) }
+      s ==
+      (smake((sarray(s): ShArray[T]), (soffset(s): Int), (slen(s): Int), (scap(s): Int)): Slice[T]))
+  }
+}
+
+domain ShStruct6[T0, T1, T2, T3, T4, T5]  {
+  
+  function ShStructget1of6(x: ShStruct6[T0, T1, T2, T3, T4, T5]): T1 
+  
+  function ShStructget0of6(x: ShStruct6[T0, T1, T2, T3, T4, T5]): T0 
+  
+  function ShStructrev3of6(v3: T3): ShStruct6[T0, T1, T2, T3, T4, T5] 
+  
+  function ShStructrev4of6(v4: T4): ShStruct6[T0, T1, T2, T3, T4, T5] 
+  
+  function ShStructget5of6(x: ShStruct6[T0, T1, T2, T3, T4, T5]): T5 
+  
+  function ShStructget3of6(x: ShStruct6[T0, T1, T2, T3, T4, T5]): T3 
+  
+  function ShStructget2of6(x: ShStruct6[T0, T1, T2, T3, T4, T5]): T2 
+  
+  function ShStructrev0of6(v0: T0): ShStruct6[T0, T1, T2, T3, T4, T5] 
+  
+  function ShStructrev2of6(v2: T2): ShStruct6[T0, T1, T2, T3, T4, T5] 
+  
+  function ShStructrev1of6(v1: T1): ShStruct6[T0, T1, T2, T3, T4, T5] 
+  
+  function ShStructrev5of6(v5: T5): ShStruct6[T0, T1, T2, T3, T4, T5] 
+  
+  function ShStructget4of6(x: ShStruct6[T0, T1, T2, T3, T4, T5]): T4 
+  
+  axiom {
+    (forall x: ShStruct6[T0, T1, T2, T3, T4, T5] ::
+      { (ShStructget3of6(x): T3) }
+      (ShStructrev3of6((ShStructget3of6(x): T3)): ShStruct6[T0, T1, T2, T3, T4, T5]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct6[T0, T1, T2, T3, T4, T5] ::
+      { (ShStructget1of6(x): T1) }
+      (ShStructrev1of6((ShStructget1of6(x): T1)): ShStruct6[T0, T1, T2, T3, T4, T5]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct6[T0, T1, T2, T3, T4, T5], y: ShStruct6[T0, T1, T2, T3, T4, T5] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of6(x): T0) == (ShStructget0of6(y): T0) &&
+      (ShStructget1of6(x): T1) == (ShStructget1of6(y): T1) &&
+      (ShStructget2of6(x): T2) == (ShStructget2of6(y): T2) &&
+      (ShStructget3of6(x): T3) == (ShStructget3of6(y): T3) &&
+      (ShStructget4of6(x): T4) == (ShStructget4of6(y): T4) &&
+      (ShStructget5of6(x): T5) == (ShStructget5of6(y): T5)))
+  }
+  
+  axiom {
+    (forall x: ShStruct6[T0, T1, T2, T3, T4, T5] ::
+      { (ShStructget0of6(x): T0) }
+      (ShStructrev0of6((ShStructget0of6(x): T0)): ShStruct6[T0, T1, T2, T3, T4, T5]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct6[T0, T1, T2, T3, T4, T5] ::
+      { (ShStructget2of6(x): T2) }
+      (ShStructrev2of6((ShStructget2of6(x): T2)): ShStruct6[T0, T1, T2, T3, T4, T5]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct6[T0, T1, T2, T3, T4, T5] ::
+      { (ShStructget5of6(x): T5) }
+      (ShStructrev5of6((ShStructget5of6(x): T5)): ShStruct6[T0, T1, T2, T3, T4, T5]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct6[T0, T1, T2, T3, T4, T5] ::
+      { (ShStructget4of6(x): T4) }
+      (ShStructrev4of6((ShStructget4of6(x): T4)): ShStruct6[T0, T1, T2, T3, T4, T5]) ==
+      x)
+  }
+}
+
+domain ShArray[T]  {
+  
+  function ShArrayloc(a: ShArray[T], i: Int): T 
+  
+  function ShArraysecond(r: T): Int 
+  
+  function ShArrayfirst(r: T): ShArray[T] 
+  
+  function ShArraylen(a: ShArray[T]): Int 
+  
+  axiom {
+    (forall a: ShArray[T] ::
+      { (ShArraylen(a): Int) }
+      (ShArraylen(a): Int) >= 0)
+  }
+  
+  axiom {
+    (forall a: ShArray[T], i: Int ::
+      { (ShArrayloc(a, i): T) }
+      0 <= i && i < (ShArraylen(a): Int) ==>
+      (ShArrayfirst((ShArrayloc(a, i): T)): ShArray[T]) == a &&
+      (ShArraysecond((ShArrayloc(a, i): T)): Int) == i)
+  }
+}
+
+domain ShStruct5[T0, T1, T2, T3, T4]  {
+  
+  function ShStructget4of5(x: ShStruct5[T0, T1, T2, T3, T4]): T4 
+  
+  function ShStructget0of5(x: ShStruct5[T0, T1, T2, T3, T4]): T0 
+  
+  function ShStructrev3of5(v3: T3): ShStruct5[T0, T1, T2, T3, T4] 
+  
+  function ShStructrev1of5(v1: T1): ShStruct5[T0, T1, T2, T3, T4] 
+  
+  function ShStructrev4of5(v4: T4): ShStruct5[T0, T1, T2, T3, T4] 
+  
+  function ShStructget1of5(x: ShStruct5[T0, T1, T2, T3, T4]): T1 
+  
+  function ShStructrev2of5(v2: T2): ShStruct5[T0, T1, T2, T3, T4] 
+  
+  function ShStructget3of5(x: ShStruct5[T0, T1, T2, T3, T4]): T3 
+  
+  function ShStructrev0of5(v0: T0): ShStruct5[T0, T1, T2, T3, T4] 
+  
+  function ShStructget2of5(x: ShStruct5[T0, T1, T2, T3, T4]): T2 
+  
+  axiom {
+    (forall x: ShStruct5[T0, T1, T2, T3, T4] ::
+      { (ShStructget4of5(x): T4) }
+      (ShStructrev4of5((ShStructget4of5(x): T4)): ShStruct5[T0, T1, T2, T3, T4]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct5[T0, T1, T2, T3, T4] ::
+      { (ShStructget1of5(x): T1) }
+      (ShStructrev1of5((ShStructget1of5(x): T1)): ShStruct5[T0, T1, T2, T3, T4]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct5[T0, T1, T2, T3, T4], y: ShStruct5[T0, T1, T2, T3, T4] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of5(x): T0) == (ShStructget0of5(y): T0) &&
+      (ShStructget1of5(x): T1) == (ShStructget1of5(y): T1) &&
+      (ShStructget2of5(x): T2) == (ShStructget2of5(y): T2) &&
+      (ShStructget3of5(x): T3) == (ShStructget3of5(y): T3) &&
+      (ShStructget4of5(x): T4) == (ShStructget4of5(y): T4)))
+  }
+  
+  axiom {
+    (forall x: ShStruct5[T0, T1, T2, T3, T4] ::
+      { (ShStructget3of5(x): T3) }
+      (ShStructrev3of5((ShStructget3of5(x): T3)): ShStruct5[T0, T1, T2, T3, T4]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct5[T0, T1, T2, T3, T4] ::
+      { (ShStructget2of5(x): T2) }
+      (ShStructrev2of5((ShStructget2of5(x): T2)): ShStruct5[T0, T1, T2, T3, T4]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct5[T0, T1, T2, T3, T4] ::
+      { (ShStructget0of5(x): T0) }
+      (ShStructrev0of5((ShStructget0of5(x): T0)): ShStruct5[T0, T1, T2, T3, T4]) ==
+      x)
+  }
+}
+
+domain Tuple2[T0, T1]  {
+  
+  function tuple2(t0: T0, t1: T1): Tuple2[T0, T1] 
+  
+  function get0of2(p: Tuple2[T0, T1]): T0 
+  
+  function get1of2(p: Tuple2[T0, T1]): T1 
+  
+  axiom getter_over_tuple2 {
+    (forall t0: T0, t1: T1 ::
+      { (tuple2(t0, t1): Tuple2[T0, T1]) }
+      (get0of2((tuple2(t0, t1): Tuple2[T0, T1])): T0) == t0 &&
+      (get1of2((tuple2(t0, t1): Tuple2[T0, T1])): T1) == t1)
+  }
+  
+  axiom tuple2_over_getter {
+    (forall p: Tuple2[T0, T1] ::
+      { (get0of2(p): T0) }
+      { (get1of2(p): T1) }
+      (tuple2((get0of2(p): T0), (get1of2(p): T1)): Tuple2[T0, T1]) == p)
+  }
+}
+
+domain ShStruct4[T0, T1, T2, T3]  {
+  
+  function ShStructrev1of4(v1: T1): ShStruct4[T0, T1, T2, T3] 
+  
+  function ShStructget0of4(x: ShStruct4[T0, T1, T2, T3]): T0 
+  
+  function ShStructget2of4(x: ShStruct4[T0, T1, T2, T3]): T2 
+  
+  function ShStructget3of4(x: ShStruct4[T0, T1, T2, T3]): T3 
+  
+  function ShStructrev3of4(v3: T3): ShStruct4[T0, T1, T2, T3] 
+  
+  function ShStructrev2of4(v2: T2): ShStruct4[T0, T1, T2, T3] 
+  
+  function ShStructget1of4(x: ShStruct4[T0, T1, T2, T3]): T1 
+  
+  function ShStructrev0of4(v0: T0): ShStruct4[T0, T1, T2, T3] 
+  
+  axiom {
+    (forall x: ShStruct4[T0, T1, T2, T3] ::
+      { (ShStructget1of4(x): T1) }
+      (ShStructrev1of4((ShStructget1of4(x): T1)): ShStruct4[T0, T1, T2, T3]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct4[T0, T1, T2, T3] ::
+      { (ShStructget3of4(x): T3) }
+      (ShStructrev3of4((ShStructget3of4(x): T3)): ShStruct4[T0, T1, T2, T3]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct4[T0, T1, T2, T3] ::
+      { (ShStructget0of4(x): T0) }
+      (ShStructrev0of4((ShStructget0of4(x): T0)): ShStruct4[T0, T1, T2, T3]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct4[T0, T1, T2, T3], y: ShStruct4[T0, T1, T2, T3] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of4(x): T0) == (ShStructget0of4(y): T0) &&
+      (ShStructget1of4(x): T1) == (ShStructget1of4(y): T1) &&
+      (ShStructget2of4(x): T2) == (ShStructget2of4(y): T2) &&
+      (ShStructget3of4(x): T3) == (ShStructget3of4(y): T3)))
+  }
+  
+  axiom {
+    (forall x: ShStruct4[T0, T1, T2, T3] ::
+      { (ShStructget2of4(x): T2) }
+      (ShStructrev2of4((ShStructget2of4(x): T2)): ShStruct4[T0, T1, T2, T3]) ==
+      x)
+  }
+}
+
+domain ShStruct3[T0, T1, T2]  {
+  
+  function ShStructget2of3(x: ShStruct3[T0, T1, T2]): T2 
+  
+  function ShStructrev1of3(v1: T1): ShStruct3[T0, T1, T2] 
+  
+  function ShStructrev2of3(v2: T2): ShStruct3[T0, T1, T2] 
+  
+  function ShStructget0of3(x: ShStruct3[T0, T1, T2]): T0 
+  
+  function ShStructget1of3(x: ShStruct3[T0, T1, T2]): T1 
+  
+  function ShStructrev0of3(v0: T0): ShStruct3[T0, T1, T2] 
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2], y: ShStruct3[T0, T1, T2] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of3(x): T0) == (ShStructget0of3(y): T0) &&
+      (ShStructget1of3(x): T1) == (ShStructget1of3(y): T1) &&
+      (ShStructget2of3(x): T2) == (ShStructget2of3(y): T2)))
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget1of3(x): T1) }
+      (ShStructrev1of3((ShStructget1of3(x): T1)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget0of3(x): T0) }
+      (ShStructrev0of3((ShStructget0of3(x): T0)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget2of3(x): T2) }
+      (ShStructrev2of3((ShStructget2of3(x): T2)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+}
+
+domain Emb_3_Intuint8$$$_S_$$$  {
+  
+  
+}
+
+domain Tuple0  {
+  
+  
+}
+
+domain Emb_6_Intbyte$$$_S_$$$  {
+  
+  
+}
+
+domain Emb_4_Interfaceempty_interface$$$_S_$$$  {
+  
+  
+}
+
+domain Equality[T]  {
+  
+  function eq(l: T, r: T): Bool 
+  
+  axiom {
+    (forall l: T, r: T ::
+      { (eq(l, r): Bool) }
+      (eq(l, r): Bool) == (l == r))
+  }
+}
+
+domain ComparableInterfaceDomain  {
+  
+  function comparableInterface(i: Tuple2[Ref, Types]): Bool 
+  
+  axiom {
+    (forall i: Tuple2[Ref, Types] ::
+      { comparableInterface(i) }
+      comparableType_Types((get1of2(i): Types)) ==> comparableInterface(i))
+  }
+}
+
+domain Poly[T]  {
+  
+  function box_Poly(x: T): Ref 
+  
+  function unbox_Poly(y: Ref): T 
+  
+  axiom {
+    (forall x: T ::
+      { (box_Poly(x): Ref) }
+      (unbox_Poly((box_Poly(x): Ref)): T) == x)
+  }
+}
+
+domain String  {
+  
+  unique function stringLit61646472(): Int 
+  
+  unique function stringLit65326520657874656e73696f6e206d757374206e6f7420636f6d65206265666f7265207468652048424820657874656e73696f6e(): Int 
+  
+  unique function stringLit5765646e6573646179(): Int 
+  
+  unique function stringLit5468757273646179(): Int 
+  
+  unique function stringLit556e6b6e6f776e4e65787448647254797065(): Int 
+  
+  unique function stringLit496e76616c6964536f7572636541646472657373(): Int 
+  
+  unique function stringLit45787465726e616c496e74657266616365446f776e(): Int 
+  
+  unique function stringLit736f757263652061646472657373206d697373696e67(): Int 
+  
+  unique function stringLit6970(): Int 
+  
+  unique function stringLit756e737570706f72746564206164647265737320747970652f6c656e67746820636f6d62696e6174696f6e(): Int 
+  
+  unique function stringLit556e6b6e6f776e486f704279486f704f7074696f6e(): Int 
+  
+  unique function stringLit696e76616c696420657874656e73696f6e206865616465722e20(): Int 
+  
+  unique function stringLit7061636b65742069732073686f72746572207468616e2074686520636f6d6d6f6e20686561646572206c656e677468(): Int 
+  
+  unique function stringLit44657374696e6174696f6e556e726561636861626c65(): Int 
+  
+  unique function stringLit62756666657220746f6f2073686f7274(): Int 
+  
+  unique function stringLit5472616365726f7574655265706c79(): Int 
+  
+  unique function stringLit496e76616c6964457874656e73696f6e486561646572(): Int 
+  
+  unique function stringLit5343494f4e20686561646572206d697373696e67(): Int 
+  
+  unique function stringLit616464724864724c656e(): Int 
+  
+  unique function stringLit6d696e696e756d5f6c65677468(): Int 
+  
+  unique function stringLit4e6f6e65(): Int 
+  
+  unique function stringLit4f63746f626572(): Int 
+  
+  unique function stringLit5061746845787069726564(): Int 
+  
+  unique function stringLit4563686f5265706c79(): Int 
+  
+  unique function stringLit6864724279746573(): Int 
+  
+  unique function stringLit496e76616c6964486f704669656c644d4143(): Int 
+  
+  unique function stringLit65326520657874656e73696f6e206d757374206e6f74206265207265706561746564(): Int 
+  
+  unique function stringLit496e76616c69645365676d656e744368616e6765(): Int 
+  
+  unique function stringLit5061636b6574546f6f426967(): Int 
+  
+  unique function stringLit62696e6172792e4c6974746c65456e6469616e(): Int 
+  
+  unique function stringLit424644(): Int 
+  
+  unique function stringLit556e6b6e6f776e486f704669656c64456772657373496e74657266616365(): Int 
+  
+  unique function stringLit696e76616c696420657874656e73696f6e206865616465722e204c656e677468202564206c657373207468616e2032(): Int 
+  
+  unique function stringLit496e76616c69645061636b657453697a65(): Int 
+  
+  unique function stringLit5472616365726f75746552657175657374(): Int 
+  
+  unique function stringLit556e6b6e6f776e5061746854797065(): Int 
+  
+  unique function stringLit257328257329(): Int 
+  
+  unique function stringLit696e76616c6964206865616465722c206e6567617469766520706174684c656e(): Int 
+  
+  function strLen(id: Int): Int 
+  
+  function strConcat(l: Int, r: Int): Int 
+  
+  unique function stringLit456e6432456e64(): Int 
+  
+  unique function stringLit4c6974746c65456e6469616e(): Int 
+  
+  unique function stringLit4d6179(): Int 
+  
+  unique function stringLit486f704279486f70(): Int 
+  
+  unique function stringLit686561646572206c656e6774682065786365656473206d6178696d756d(): Int 
+  
+  unique function stringLit6d6178(): Int 
+  
+  unique function stringLit4a616e75617279(): Int 
+  
+  unique function stringLit417072696c(): Int 
+  
+  unique function stringLit4c656e677468202564206c657373207468616e20737065636966696564206c656e677468202564(): Int 
+  
+  unique function stringLit256428256429(): Int 
+  
+  unique function stringLit4a756e65(): Int 
+  
+  unique function stringLit467269646179(): Int 
+  
+  unique function stringLit506172616d6574657250726f626c656d(): Int 
+  
+  unique function stringLit63616e206e6f742063616c63756c61746520636865636b73756d20776974686f7574205343494f4e20686561646572(): Int 
+  
+  unique function stringLit53657074656d626572(): Int 
+  
+  unique function stringLit64657374696e6174696f6e2061646472657373206d697373696e67(): Int 
+  
+  unique function stringLit496e7465726e616c436f6e6e6563746976697479446f776e(): Int 
+  
+  unique function stringLit68626820657874656e73696f6e206d757374206e6f74206265207265706561746564(): Int 
+  
+  unique function stringLit426967456e6469616e(): Int 
+  
+  unique function stringLit417567757374(): Int 
+  
+  unique function stringLit4665627275617279(): Int 
+  
+  unique function stringLit446563656d626572(): Int 
+  
+  unique function stringLit5343494f4e20657874656e73696f6e2061637475616c206c656e677468206d757374206265206d756c7469706c65206f662034(): Int 
+  
+  unique function stringLit556e6b6e6f776e41646472657373466f726d6174(): Int 
+  
+  unique function stringLit496e76616c6964436f6d6d6f6e486561646572(): Int 
+  
+  unique function stringLit6c656e(): Int 
+  
+  unique function stringLit53756e646179(): Int 
+  
+  unique function stringLit556e6b6e6f776e5343494f4e56657273696f6e(): Int 
+  
+  unique function stringLit6d696e696d756d(): Int 
+  
+  unique function stringLit4e6f6e4c6f63616c44656c6976657279(): Int 
+  
+  unique function stringLit554e4b4e4f574e2028256429(): Int 
+  
+  unique function stringLit436d644864724c656e(): Int 
+  
+  unique function stringLit5361747572646179(): Int 
+  
+  unique function stringLit6578706563746564(): Int 
+  
+  unique function stringLit686561646572206c656e677468206973206e6f7420616e20696e7465676572206d756c7469706c65206f66206c696e65206c656e677468(): Int 
+  
+  unique function stringLit257328436f64653a20256429(): Int 
+  
+  unique function stringLit6d696e(): Int 
+  
+  unique function stringLit70726f76696465642062756666657220697320746f6f20736d616c6c(): Int 
+  
+  unique function stringLit4572726f6e656f75734865616465724669656c64(): Int 
+  
+  unique function stringLit466c6f7749445265717569726564(): Int 
+  
+  unique function stringLit4d6f6e646179(): Int 
+  
+  unique function stringLit4a756c79(): Int 
+  
+  unique function stringLit756470(): Int 
+  
+  unique function stringLit4563686f52657175657374(): Int 
+  
+  unique function stringLit(): Int 
+  
+  unique function stringLit756e737570706f727465642061646472657373(): Int 
+  
+  unique function stringLit496e76616c696450617468(): Int 
+  
+  unique function stringLit54756573646179(): Int 
+  
+  unique function stringLit544350(): Int 
+  
+  unique function stringLit4e6f76656d626572(): Int 
+  
+  unique function stringLit556e6b6e6f776e456e64546f456e644f7074696f6e(): Int 
+  
+  unique function stringLit74797065(): Int 
+  
+  unique function stringLit496e76616c696441646472657373486561646572(): Int 
+  
+  unique function stringLit2573282564295c6e5061796c6f61643a202573(): Int 
+  
+  unique function stringLit53434d50(): Int 
+  
+  unique function stringLit556e6b6e6f776e486f704669656c64496e6772657373496e74657266616365(): Int 
+  
+  unique function stringLit4f7074696f6e206e6f7420666f756e64(): Int 
+  
+  unique function stringLit4d61726368(): Int 
+  
+  unique function stringLit53434d50206c61796572206c656e677468206973206c657373207468656e2034206279746573(): Int 
+  
+  unique function stringLit61637475616c(): Int 
+  
+  unique function stringLit62696e6172792e426967456e6469616e(): Int 
+  
+  unique function stringLit554450(): Int 
+  
+  unique function stringLit496e76616c696444657374696e6174696f6e41646472657373(): Int 
+  
+  axiom {
+    strLen(stringLit5061746845787069726564()) == 11
+  }
+  
+  axiom {
+    strLen(stringLit74797065()) == 4
+  }
+  
+  axiom {
+    strLen(stringLit6578706563746564()) == 8
+  }
+  
+  axiom {
+    strLen(stringLit756470()) == 3
+  }
+  
+  axiom {
+    strLen(stringLit436d644864724c656e()) == 9
+  }
+  
+  axiom {
+    strLen(stringLit62696e6172792e426967456e6469616e()) == 16
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c696441646472657373486561646572()) == 20
+  }
+  
+  axiom {
+    strLen(stringLit257328436f64653a20256429()) == 12
+  }
+  
+  axiom {
+    strLen(stringLit4563686f52657175657374()) == 11
+  }
+  
+  axiom {
+    strLen(stringLit65326520657874656e73696f6e206d757374206e6f74206265207265706561746564()) ==
+    34
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c6964457874656e73696f6e486561646572()) == 22
+  }
+  
+  axiom {
+    strLen(stringLit686561646572206c656e6774682065786365656473206d6178696d756d()) ==
+    29
+  }
+  
+  axiom {
+    strLen(stringLit4d61726368()) == 5
+  }
+  
+  axiom {
+    strLen(stringLit467269646179()) == 6
+  }
+  
+  axiom {
+    strLen(stringLit696e76616c696420657874656e73696f6e206865616465722e204c656e677468202564206c657373207468616e2032()) ==
+    47
+  }
+  
+  axiom {
+    strLen(stringLit61637475616c()) == 6
+  }
+  
+  axiom {
+    strLen(stringLit62696e6172792e4c6974746c65456e6469616e()) == 19
+  }
+  
+  axiom {
+    strLen(stringLit70726f76696465642062756666657220697320746f6f20736d616c6c()) ==
+    28
+  }
+  
+  axiom {
+    strLen(stringLit554450()) == 3
+  }
+  
+  axiom {
+    strLen(stringLit426967456e6469616e()) == 9
+  }
+  
+  axiom {
+    strLen(stringLit696e76616c6964206865616465722c206e6567617469766520706174684c656e()) ==
+    32
+  }
+  
+  axiom {
+    strLen(stringLit63616e206e6f742063616c63756c61746520636865636b73756d20776974686f7574205343494f4e20686561646572()) ==
+    47
+  }
+  
+  axiom {
+    strLen(stringLit53434d50206c61796572206c656e677468206973206c657373207468656e2034206279746573()) ==
+    38
+  }
+  
+  axiom {
+    strLen(stringLit4a616e75617279()) == 7
+  }
+  
+  axiom {
+    strLen(stringLit4d6179()) == 3
+  }
+  
+  axiom {
+    strLen(stringLit756e737570706f727465642061646472657373()) == 19
+  }
+  
+  axiom {
+    strLen(stringLit4f63746f626572()) == 7
+  }
+  
+  axiom {
+    strLen(stringLit4c656e677468202564206c657373207468616e20737065636966696564206c656e677468202564()) ==
+    39
+  }
+  
+  axiom {
+    strLen(stringLit44657374696e6174696f6e556e726561636861626c65()) == 22
+  }
+  
+  axiom {
+    strLen(stringLit496e7465726e616c436f6e6e6563746976697479446f776e()) ==
+    24
+  }
+  
+  axiom {
+    strLen(stringLit556e6b6e6f776e486f704669656c64456772657373496e74657266616365()) ==
+    30
+  }
+  
+  axiom {
+    strLen(stringLit466c6f7749445265717569726564()) == 14
+  }
+  
+  axiom {
+    strLen(stringLit4a756c79()) == 4
+  }
+  
+  axiom {
+    strLen(stringLit424644()) == 3
+  }
+  
+  axiom {
+    strLen(stringLit486f704279486f70()) == 8
+  }
+  
+  axiom {
+    strLen(stringLit5343494f4e20657874656e73696f6e2061637475616c206c656e677468206d757374206265206d756c7469706c65206f662034()) ==
+    51
+  }
+  
+  axiom {
+    strLen(stringLit53434d50()) == 4
+  }
+  
+  axiom {
+    strLen(stringLit556e6b6e6f776e5061746854797065()) == 15
+  }
+  
+  axiom {
+    strLen(stringLit456e6432456e64()) == 7
+  }
+  
+  axiom {
+    strLen(stringLit5361747572646179()) == 8
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c6964436f6d6d6f6e486561646572()) == 19
+  }
+  
+  axiom {
+    strLen(stringLit556e6b6e6f776e5343494f4e56657273696f6e()) == 19
+  }
+  
+  axiom {
+    strLen(stringLit446563656d626572()) == 8
+  }
+  
+  axiom {
+    (forall l: Int, r: Int ::
+      { strLen(strConcat(l, r)) }
+      strLen(strConcat(l, r)) == strLen(l) + strLen(r))
+  }
+  
+  axiom {
+    strLen(stringLit5468757273646179()) == 8
+  }
+  
+  axiom {
+    strLen(stringLit6970()) == 2
+  }
+  
+  axiom {
+    strLen(stringLit62756666657220746f6f2073686f7274()) == 16
+  }
+  
+  axiom {
+    strLen(stringLit554e4b4e4f574e2028256429()) == 12
+  }
+  
+  axiom {
+    strLen(stringLit68626820657874656e73696f6e206d757374206e6f74206265207265706561746564()) ==
+    34
+  }
+  
+  axiom {
+    strLen(stringLit5472616365726f7574655265706c79()) == 15
+  }
+  
+  axiom {
+    strLen(stringLit64657374696e6174696f6e2061646472657373206d697373696e67()) ==
+    27
+  }
+  
+  axiom {
+    strLen(stringLit256428256429()) == 6
+  }
+  
+  axiom {
+    strLen(stringLit7061636b65742069732073686f72746572207468616e2074686520636f6d6d6f6e20686561646572206c656e677468()) ==
+    47
+  }
+  
+  axiom {
+    strLen(stringLit65326520657874656e73696f6e206d757374206e6f7420636f6d65206265666f7265207468652048424820657874656e73696f6e()) ==
+    52
+  }
+  
+  axiom {
+    strLen(stringLit53657074656d626572()) == 9
+  }
+  
+  axiom {
+    strLen(stringLit4563686f5265706c79()) == 9
+  }
+  
+  axiom {
+    strLen(stringLit5061636b6574546f6f426967()) == 12
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c696450617468()) == 11
+  }
+  
+  axiom {
+    strLen(stringLit556e6b6e6f776e486f704669656c64496e6772657373496e74657266616365()) ==
+    31
+  }
+  
+  axiom {
+    strLen(stringLit2573282564295c6e5061796c6f61643a202573()) == 19
+  }
+  
+  axiom {
+    strLen(stringLit257328257329()) == 6
+  }
+  
+  axiom {
+    strLen(stringLit4665627275617279()) == 8
+  }
+  
+  axiom {
+    strLen(stringLit417072696c()) == 5
+  }
+  
+  axiom {
+    strLen(stringLit696e76616c696420657874656e73696f6e206865616465722e20()) ==
+    26
+  }
+  
+  axiom {
+    strLen(stringLit4f7074696f6e206e6f7420666f756e64()) == 16
+  }
+  
+  axiom {
+    strLen(stringLit686561646572206c656e677468206973206e6f7420616e20696e7465676572206d756c7469706c65206f66206c696e65206c656e677468()) ==
+    55
+  }
+  
+  axiom {
+    strLen(stringLit53756e646179()) == 6
+  }
+  
+  axiom {
+    strLen(stringLit45787465726e616c496e74657266616365446f776e()) == 21
+  }
+  
+  axiom {
+    strLen(stringLit4e6f76656d626572()) == 8
+  }
+  
+  axiom {
+    strLen(stringLit556e6b6e6f776e41646472657373466f726d6174()) == 20
+  }
+  
+  axiom {
+    strLen(stringLit54756573646179()) == 7
+  }
+  
+  axiom {
+    strLen(stringLit4d6f6e646179()) == 6
+  }
+  
+  axiom {
+    strLen(stringLit556e6b6e6f776e456e64546f456e644f7074696f6e()) == 21
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c696444657374696e6174696f6e41646472657373()) ==
+    25
+  }
+  
+  axiom {
+    strLen(stringLit6d696e()) == 3
+  }
+  
+  axiom {
+    strLen(stringLit6d6178()) == 3
+  }
+  
+  axiom {
+    strLen(stringLit4e6f6e4c6f63616c44656c6976657279()) == 16
+  }
+  
+  axiom {
+    strLen(stringLit5472616365726f75746552657175657374()) == 17
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c6964536f7572636541646472657373()) == 20
+  }
+  
+  axiom {
+    strLen(stringLit()) == 0
+  }
+  
+  axiom {
+    strLen(stringLit556e6b6e6f776e486f704279486f704f7074696f6e()) == 21
+  }
+  
+  axiom {
+    strLen(stringLit616464724864724c656e()) == 10
+  }
+  
+  axiom {
+    strLen(stringLit4572726f6e656f75734865616465724669656c64()) == 20
+  }
+  
+  axiom {
+    strLen(stringLit4a756e65()) == 4
+  }
+  
+  axiom {
+    strLen(stringLit417567757374()) == 6
+  }
+  
+  axiom {
+    strLen(stringLit61646472()) == 4
+  }
+  
+  axiom {
+    strLen(stringLit4c6974746c65456e6469616e()) == 12
+  }
+  
+  axiom {
+    strLen(stringLit4e6f6e65()) == 4
+  }
+  
+  axiom {
+    strLen(stringLit6d696e696d756d()) == 7
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c69645061636b657453697a65()) == 17
+  }
+  
+  axiom {
+    strLen(stringLit736f757263652061646472657373206d697373696e67()) == 22
+  }
+  
+  axiom {
+    strLen(stringLit6c656e()) == 3
+  }
+  
+  axiom {
+    strLen(stringLit756e737570706f72746564206164647265737320747970652f6c656e67746820636f6d62696e6174696f6e()) ==
+    43
+  }
+  
+  axiom {
+    (forall str: Int :: { strLen(str) } 0 <= strLen(str))
+  }
+  
+  axiom {
+    strLen(stringLit5343494f4e20686561646572206d697373696e67()) == 20
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c6964486f704669656c644d4143()) == 18
+  }
+  
+  axiom {
+    strLen(stringLit556e6b6e6f776e4e65787448647254797065()) == 18
+  }
+  
+  axiom {
+    strLen(stringLit5765646e6573646179()) == 9
+  }
+  
+  axiom {
+    strLen(stringLit544350()) == 3
+  }
+  
+  axiom {
+    strLen(stringLit6d696e696e756d5f6c65677468()) == 13
+  }
+  
+  axiom {
+    strLen(stringLit506172616d6574657250726f626c656d()) == 16
+  }
+  
+  axiom {
+    strLen(stringLit496e76616c69645365676d656e744368616e6765()) == 20
+  }
+  
+  axiom {
+    strLen(stringLit6864724279746573()) == 8
+  }
+}
+
+domain PolyAdditionalAxioms  {
+  
+  axiom {
+    (forall y: Tuple2[Ref, Types] ::
+      { (unbox_Poly((get0of2(y): Ref)): Tuple0) }
+      (get1of2(y): Types) == nilDecodeFeedback_b41831d7_T_Types() ==>
+      (box_Poly((unbox_Poly((get0of2(y): Ref)): Tuple0)): Ref) ==
+      (get0of2(y): Ref))
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct3[ShStruct2[Ref, Ref], Ref, Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct3[ShStruct2[Ref, Ref], Ref, Ref])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Tuple2[Ref, Types] ::
+      { (unbox_Poly((get0of2(y): Ref)): Tuple0) }
+      (get1of2(y): Types) == Path_4cddb96f_T_Types() ==>
+      (box_Poly((unbox_Poly((get0of2(y): Ref)): Tuple0)): Ref) ==
+      (get0of2(y): Ref))
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct0) }
+      (box_Poly((unbox_Poly(y): ShStruct0)): Ref) == y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): Int) }
+      (box_Poly((unbox_Poly(y): Int)): Ref) == y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]) }
+      (box_Poly((unbox_Poly(y): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct3[Ref, Ref, Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct3[Ref, Ref, Ref])): Ref) == y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct1[ShStruct2[Ref, Ref]]) }
+      (box_Poly((unbox_Poly(y): ShStruct1[ShStruct2[Ref, Ref]])): Ref) == y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct1[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]]) }
+      (box_Poly((unbox_Poly(y): ShStruct1[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct2[Ref, Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct2[Ref, Ref])): Ref) == y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct5[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct5[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): Slice[Ref]) }
+      (box_Poly((unbox_Poly(y): Slice[Ref])): Ref) == y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct2[ShStruct2[Ref, Ref], Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct2[ShStruct2[Ref, Ref], Ref])): Ref) ==
+      y)
+  }
+  
+  axiom {
+    (forall y: Ref ::
+      { (unbox_Poly(y): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref]) }
+      (box_Poly((unbox_Poly(y): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref) ==
+      y)
+  }
+}
+
+field Intuint16$$$$_E_$$$: Int
+
+field Bool$$$$_E_$$$: Bool
+
+field SliceIntbyte$$$_S_$$$$$$$_E_$$$: Slice[Ref]
+
+field Intuint32$$$$_E_$$$: Int
+
+field SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$: Slice[Ref]
+
+field PointerDefinedSCION_840d9458_T$$$_S_$$$$$$$_E_$$$: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+
+field SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$: Slice[Ref]
+
+field Intuint64$$$$_E_$$$: Int
+
+field DefinedPath_a6ceb89d_T$$$$_E_$$$: Tuple2[Ref, Types]
+
+field DefinedSCMPTypeCode_840d9458_T$$$$_E_$$$: Int
+
+field Intuint8$$$$_E_$$$: Int
+
+field DefinedType_a6ceb89d_T$$$$_E_$$$: Int
+
+field PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$: ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]
+
+field SliceDefinedHopField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$: Slice[ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]
+
+field PointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$$_E_$$$: ShStruct5[Ref, Ref, Ref, Ref, Emb_2_Intuint8$$$_S_$$$]
+
+field Interfaceempty_interface$$$$_E_$$$: Tuple2[Ref, Types]
+
+field SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$: Slice[Ref]
+
+field SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$: Slice[ShStruct4[Ref, Ref, Ref, Ref]]
+
+field PointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$$_E_$$$: ShStruct5[Ref, Ref, Ref, Ref, Emb_2_Intuint8$$$_S_$$$]
+
+field DefinedAddrType_840d9458_T$$$$_E_$$$: Int
+
+field DefinedIA_cd675838_T$$$$_E_$$$: Int
+
+field Intbyte$$$$_E_$$$: Int
+
+field Intint$$$$_E_$$$: Int
+
+field DefinedL4ProtocolType_840d9458_T$$$$_E_$$$: Int
+
+// decreases _
+function sliceDefault_Intbyte$$$_S_$$$(): Slice[Ref]
+  ensures (soffset(result): Int) == 0
+  ensures (slen(result): Int) == 0
+  ensures (scap(result): Int) == 0
+  ensures (sarray(result): ShArray[Ref]) ==
+    unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(arrayNil_1_Intbyte$$$_S_$$$()))
+
+
+// decreases _
+function shStructDefault_$CurrINFA_Intuint8$$$_S_$$$_CurrHFA_Intuint8$$$_S_$$$_SegLenA_Array3Intuint8$$$_S_$$$$$$_S_$$$$(): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$]
+  ensures (ShStructget0of3(result): Ref) == null &&
+    (ShStructget1of3(result): Ref) == null &&
+    (ShStructget2of3(result): Emb_3_Intuint8$$$_S_$$$) ==
+    box_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(arrayNil_3_Intuint8$$$_S_$$$())
+
+
+// decreases 
+function addrHdrLenAbstractionLeak_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]): Int
+  requires acc((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard) &&
+    acc((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard)
+  requires Has3Bits_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+    Has3Bits_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$)
+  ensures 0 <= result
+{
+  2 * 8 +
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) +
+  Length_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$)
+}
+
+// decreases 
+function assertArg2_ShStruct2_ShStruct3_ShStruct3_RefRefEmb_3_Intuint8$$$_S_$$$RefRefRef(b: Bool,
+  y: ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]
+  requires b
+{
+  y
+}
+
+// decreases _
+function Len_daeaf66a_PMBase(s_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]): Int
+  requires acc(Mem_daeaf66a_PMBase(s_V0), wildcard)
+  ensures result >= 4
+  ensures result ==
+    (unfolding acc(Mem_daeaf66a_PMBase(s_V0), wildcard) in
+      4 + (ShStructget1of3(s_V0): Ref).Intint$$$$_E_$$$ * 8 +
+      (ShStructget2of3(s_V0): Ref).Intint$$$$_E_$$$ * 12)
+{
+  (unfolding acc(Mem_daeaf66a_PMBase(s_V0), wildcard) in
+    4 + (ShStructget1of3(s_V0): Ref).Intint$$$$_E_$$$ * 8 +
+    (ShStructget2of3(s_V0): Ref).Intint$$$$_E_$$$ * 12)
+}
+
+// decreases _
+function unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(y: Emb_4_Interfaceempty_interface$$$_S_$$$): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 4 ||
+    result == arrayNil_4_Interfaceempty_interface$$$_S_$$$()
+  ensures box_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+    y
+
+
+// decreases _
+function box_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_4_Interfaceempty_interface$$$_S_$$$
+  requires (ShArraylen(x): Int) == 4 ||
+    x == arrayNil_4_Interfaceempty_interface$$$_S_$$$()
+  ensures unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+    x
+
+
+// decreases 
+function assertArg2_ShStruct4_ShStruct2_RefRefRefRefRef(b: Bool, y: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]
+  requires b
+{
+  y
+}
+
+// decreases 
+function Length_840d9458_MAddrType(tl_V0: Int): Int
+  ensures result == 4 * (1 + BitAnd3_ca158f5e_F(tl_V0))
+  ensures tl_V0 == 0 ==> result == 4
+  ensures tl_V0 == 4 ==> result == 4
+  ensures tl_V0 == 3 ==> result == 4 * 4
+{
+  4 * (1 + intBitwiseAnd(tl_V0, 3))
+}
+
+// decreases _
+function Len_c385169_PMPath(o_V0: ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]],
+  ubuf_V0: Slice[Ref]): Int
+  ensures result == 32
+{
+  32
+}
+
+// decreases 
+function getPathPure_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
+  pathType_V0: Int): Tuple2[Ref, Types]
+  requires 0 <= pathType_V0 && pathType_V0 < 256
+  requires acc((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, wildcard) &&
+    acc((ShStructget16of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, wildcard)
+  requires !((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$ ==
+    sliceDefault_DefinedPath_a6ceb89d_T$$$_S_$$$())
+  requires acc(PathPoolMemExceptOne_840d9458_F((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$,
+    (ShStructget16of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, pathType_V0), wildcard)
+{
+  (pathType_V0 <
+  (slen((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int) ?
+    (unfolding acc(PathPoolMemExceptOne_840d9458_F((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$,
+      (ShStructget16of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, pathType_V0), wildcard) in
+      (ShArrayloc((sarray((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+      sadd((soffset((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+      pathType_V0)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$) :
+    (ShStructget16of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$)
+}
+
+// decreases _
+function arrayNil_1_Intbyte$$$_S_$$$(): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1
+  ensures (forall idx: Int ::
+      { (ShArrayloc(result, idx): Ref) }
+      (ShArrayloc(result, idx): Ref) == null)
+
+
+// decreases _
+function arrayNil_3_Intuint8$$$_S_$$$(): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1
+  ensures (forall idx: Int ::
+      { (ShArrayloc(result, idx): Ref) }
+      (ShArrayloc(result, idx): Ref) == null)
+
+
+// decreases 
+function assertArg2_Tuple0(b: Bool, y: Tuple0): Tuple0
+  requires b
+{
+  y
+}
+
+// decreases 
+function PointerDefinedPath_c6e60a1d_T$$$_S_$$$$$$$_E_$$$_Len_c6e60a1d_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(p_V0: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref],
+  ubuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard)
+  ensures result >= 0
+{
+  Len_c6e60a1d_PMPath(p_V0, ubuf_V0)
+}
+
+// decreases _
+function box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_2_Interfaceempty_interface$$$_S_$$$
+  requires (ShArraylen(x): Int) == 2 ||
+    x == arrayNil_2_Interfaceempty_interface$$$_S_$$$()
+  ensures unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+    x
+
+
+// decreases _
+function intBitwiseOr(left: Int, right: Int): Int
+
+
+// decreases _
+function shStructDefault_$BaseA_DefinedBase_daeaf66a_T$$$_S_$$$_RawA_SliceIntbyte$$$_S_$$$$$$_S_$$$$(): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]
+  ensures (ShStructget0of2(result): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]) ==
+    shStructDefault_$PathMetaA_DefinedMetaHdr_daeaf66a_T$$$_S_$$$_NumINFA_Intint$$$_S_$$$_NumHopsA_Intint$$$_S_$$$$() &&
+    (ShStructget1of2(result): Ref) == null
+
+
+// decreases _
+function box_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_3_Intuint8$$$_S_$$$
+  requires (ShArraylen(x): Int) == 3 || x == arrayNil_3_Intuint8$$$_S_$$$()
+  ensures unbox_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(result) == x
+
+
+// decreases _
+function intBitwiseAnd(left: Int, right: Int): Int
+
+
+// decreases 
+function UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types]): Slice[Ref]
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), wildcard)
+
+
+// decreases _
+function shStructDefault_$ContentsA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PayloadA_SliceIntbyte$$$_S_$$$$$$_S_$$$$(): ShStruct2[Ref, Ref]
+  ensures (ShStructget0of2(result): Ref) == null &&
+    (ShStructget1of2(result): Ref) == null
+
+
+// decreases 
+function BitAnd3_ca158f5e_F(b_V0: Int): Int
+  ensures 0 <= intBitwiseAnd(b_V0, 3) && intBitwiseAnd(b_V0, 3) <= 3
+  ensures b_V0 == 0 ==> result == 0
+  ensures b_V0 == 3 ==> result == 3
+  ensures b_V0 == 4 ==> result == 0
+  ensures result == intBitwiseAnd(b_V0, 3)
+
+
+// decreases _
+function shStructDefault_$PathMetaA_DefinedMetaHdr_daeaf66a_T$$$_S_$$$_NumINFA_Intint$$$_S_$$$_NumHopsA_Intint$$$_S_$$$$(): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]
+  ensures (ShStructget0of3(result): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$]) ==
+    shStructDefault_$CurrINFA_Intuint8$$$_S_$$$_CurrHFA_Intuint8$$$_S_$$$_SegLenA_Array3Intuint8$$$_S_$$$$$$_S_$$$$() &&
+    (ShStructget1of3(result): Ref) == null &&
+    (ShStructget2of3(result): Ref) == null
+
+
+// decreases _
+function intShiftLeft(left: Int, right: Int): Int
+  requires right >= 0
+
+
+// decreases 
+function assertArg2_ShStruct3_ShStruct4_RefRefRefRefShStruct6_RefRefRefRefRefEmb_6_Intbyte$$$_S_$$$ShStruct6_RefRefRefRefRefEmb_6_Intbyte$$$_S_$$$(b: Bool,
+  y: ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]
+  requires b
+{
+  y
+}
+
+// decreases _
+function shStructDefault_$BaseLayerA_DefinedBaseLayer_840d9458_T$$$_S_$$$_VersionA_Intuint8$$$_S_$$$_TrafficClassA_Intuint8$$$_S_$$$_FlowIDA_Intuint32$$$_S_$$$_NextHdrA_DefinedL4ProtocolType_840d9458_T$$$_S_$$$_HdrLenA_Intuint8$$$_S_$$$_PayloadLenA_Intuint16$$$_S_$$$_PathTypeA_DefinedType_a6ceb89d_T$$$_S_$$$_DstAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_SrcAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_DstIAA_DefinedIA_cd675838_T$$$_S_$$$_SrcIAA_DefinedIA_cd675838_T$$$_S_$$$_RawDstAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_RawSrcAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PathA_DefinedPath_a6ceb89d_T$$$_S_$$$_pathPoolA_SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$_S_$$$_pathPoolRawA_DefinedPath_a6ceb89d_T$$$_S_$$$$(): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+  ensures (ShStructget0of17(result): ShStruct2[Ref, Ref]) ==
+    shStructDefault_$ContentsA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PayloadA_SliceIntbyte$$$_S_$$$$$$_S_$$$$() &&
+    (ShStructget1of17(result): Ref) == null &&
+    (ShStructget2of17(result): Ref) == null &&
+    (ShStructget3of17(result): Ref) == null &&
+    (ShStructget4of17(result): Ref) == null &&
+    (ShStructget5of17(result): Ref) == null &&
+    (ShStructget6of17(result): Ref) == null &&
+    (ShStructget7of17(result): Ref) == null &&
+    (ShStructget8of17(result): Ref) == null &&
+    (ShStructget9of17(result): Ref) == null &&
+    (ShStructget10of17(result): Ref) == null &&
+    (ShStructget11of17(result): Ref) == null &&
+    (ShStructget12of17(result): Ref) == null &&
+    (ShStructget13of17(result): Ref) == null &&
+    (ShStructget14of17(result): Ref) == null &&
+    (ShStructget15of17(result): Ref) == null &&
+    (ShStructget16of17(result): Ref) == null
+
+
+function ssliceFromArray_Ref(a: ShArray[Ref], i: Int, j: Int): Slice[Ref]
+  requires 0 <= i
+  requires i <= j
+  requires j <= (ShArraylen(a): Int)
+  ensures (soffset(result): Int) == i
+  ensures (slen(result): Int) == j - i
+  ensures (scap(result): Int) == (ShArraylen(a): Int) - i
+  ensures (sarray(result): ShArray[Ref]) == a
+
+
+// decreases _
+function Len_c6e60a1d_PMPath(p_V0: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref],
+  ubuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard)
+  ensures !hasScionPath_c6e60a1d_PMPath(p_V0, ubuf_V0) ==> result == 16
+  ensures hasScionPath_c6e60a1d_PMPath(p_V0, ubuf_V0) ==>
+    result ==
+    16 +
+    (unfolding acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+      ubuf_V0), wildcard) in
+      Len_daeaf66a_PMRaw((ShStructget3of4(p_V0): Ref).PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$,
+      ssliceFromSlice_Ref(ubuf_V0, 16, (slen(ubuf_V0): Int))))
+
+
+// decreases 
+function Has3Bits_840d9458_MAddrType(a_V0: Int): Bool
+{
+  0 <= a_V0 && a_V0 <= 7
+}
+
+// decreases _
+function arrayNil_2_Interfaceempty_interface$$$_S_$$$(): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1
+  ensures (forall idx: Int ::
+      { (ShArrayloc(result, idx): Ref) }
+      (ShArrayloc(result, idx): Ref) == null)
+
+
+// decreases _
+function ssliceFromSlice_Ref(s: Slice[Ref], i: Int, j: Int): Slice[Ref]
+  requires 0 <= i
+  requires i <= j
+  requires j <= (scap(s): Int)
+  ensures (soffset(result): Int) == (soffset(s): Int) + i
+  ensures (slen(result): Int) == j - i
+  ensures (scap(result): Int) == (scap(s): Int) - i
+  ensures (sarray(result): ShArray[Ref]) == (sarray(s): ShArray[Ref])
+
+
+// decreases _
+function Len_daeaf66a_PMRaw(s_V0: ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref],
+  buf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+    buf_V0), wildcard)
+  ensures (unfolding acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+      buf_V0), wildcard) in
+      result ==
+      Len_daeaf66a_PMBase((ShStructget0of2(s_V0): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])))
+  ensures result >= 0
+{
+  (unfolding acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+    buf_V0), wildcard) in
+    Len_daeaf66a_PMBase((ShStructget0of2(s_V0): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])))
+}
+
+// decreases _
+function unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(y: Emb_2_Interfaceempty_interface$$$_S_$$$): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 2 ||
+    result == arrayNil_2_Interfaceempty_interface$$$_S_$$$()
+  ensures box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+    y
+
+
+// decreases 
+function PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMRaw_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(s_V0: ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref],
+  buf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+    buf_V0), wildcard)
+  ensures result >= 0
+{
+  Len_daeaf66a_PMRaw(s_V0, buf_V0)
+}
+
+// decreases 
+function AddrHdrLenNoAbstractionLeak_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
+  ubuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard)
+  ensures 0 <= result
+{
+  (unfolding acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard) in
+    (unfolding acc(HeaderMem_840d9458_PMSCION(s_V0, ssliceFromSlice_Ref(ubuf_V0,
+      12, (slen(ubuf_V0): Int))), wildcard) in
+      2 * 8 +
+      Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) +
+      Length_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$)))
+}
+
+// decreases _
+function typeOfInterface_Y$558431e4_a6ceb89d_(itf: Tuple2[Ref, Types]): Types
+  ensures result == (get1of2(itf): Types)
+  ensures behavioral_subtype_Types(result, Y$558431e4_a6ceb89d__Types())
+
+
+// decreases _
+function sliceDefault_DefinedPath_a6ceb89d_T$$$_S_$$$(): Slice[Ref]
+  ensures (soffset(result): Int) == 0
+  ensures (slen(result): Int) == 0
+  ensures (scap(result): Int) == 0
+  ensures (sarray(result): ShArray[Ref]) ==
+    unbox_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(box_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$()))
+
+
+// decreases _
+function unbox_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(y: Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1 ||
+    result == arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$()
+  ensures box_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(result) ==
+    y
+
+
+// decreases 
+function assertArg2_ShStruct2_RefRef(b: Bool, y: ShStruct2[Ref, Ref]): ShStruct2[Ref, Ref]
+  requires b
+{
+  y
+}
+
+// decreases 
+function IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf: Tuple2[Ref, Types]): Bool
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf), wildcard)
+
+
+// decreases _
+function box_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$
+  requires (ShArraylen(x): Int) == 1 ||
+    x == arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$()
+  ensures unbox_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(result) ==
+    x
+
+
+function HasOneHopPath_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
+  ub_V0: Slice[Ref]): Bool
+  requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ub_V0), wildcard)
+{
+  (unfolding acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ub_V0), wildcard) in
+    typeOfInterface_Y$558431e4_a6ceb89d_((ShStructget14of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$) ==
+    pointer_Types(Path_c385169_T_Types()))
+}
+
+// decreases _
+function unbox_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(y: Emb_4_Interfaceempty_interface$$$$_E_$$$): Seq[Tuple2[Ref, Types]]
+  ensures |result| == 4
+  ensures box_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+    y
+
+
+// decreases _
+function arrayNil_4_Interfaceempty_interface$$$_S_$$$(): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1
+  ensures (forall idx: Int ::
+      { (ShArrayloc(result, idx): Ref) }
+      (ShArrayloc(result, idx): Ref) == null)
+
+
+// decreases 
+function PointerDefinedPath_c385169_T$$$_S_$$$$$$$_E_$$$_Len_c385169_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(o_V0: ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]],
+  ubuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(o_V0): Ref), pointer_Types(Path_c385169_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard)
+  ensures result >= 0
+{
+  Len_c385169_PMPath(o_V0, ubuf_V0)
+}
+
+// decreases 
+function getNumHops_daeaf66a_PMBase(b_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]): Int
+  requires acc(Mem_daeaf66a_PMBase(b_V0), wildcard)
+  ensures 0 <= result
+{
+  (unfolding acc(Mem_daeaf66a_PMBase(b_V0), wildcard) in
+    (ShStructget2of3(b_V0): Ref).Intint$$$$_E_$$$)
+}
+
+// decreases 
+function getNumINF_daeaf66a_PMBase(b_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]): Int
+  requires acc(Mem_daeaf66a_PMBase(b_V0), wildcard)
+  ensures 0 <= result && result <= 3
+{
+  (unfolding acc(Mem_daeaf66a_PMBase(b_V0), wildcard) in
+    (ShStructget1of3(b_V0): Ref).Intint$$$$_E_$$$)
+}
+
+// decreases _
+function Len_4cddb96f_MPath(o_V0: Tuple0, underlyingBuf_V0: Slice[Ref]): Int
+  ensures 0 <= result
+{
+  0
+}
+
+// decreases _
+function box_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(x: Seq[Tuple2[Ref, Types]]): Emb_4_Interfaceempty_interface$$$$_E_$$$
+  requires |x| == 4
+  ensures unbox_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+    x
+
+
+// decreases _
+function box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(x: Seq[Tuple2[Ref, Types]]): Emb_2_Interfaceempty_interface$$$$_E_$$$
+  requires |x| == 2
+  ensures unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+    x
+
+
+// decreases _
+function unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(y: Emb_2_Interfaceempty_interface$$$$_E_$$$): Seq[Tuple2[Ref, Types]]
+  ensures |result| == 2
+  ensures box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+    y
+
+
+// decreases _
+function Len_a6ceb89d_PMrawPath(p_V0: ShStruct2[Ref, Ref], underlyingBuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(rawPath_a6ceb89d_T_Types())): Tuple2[Ref, Types]),
+    underlyingBuf_V0), wildcard)
+  ensures result >= 0
+{
+  (unfolding acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(rawPath_a6ceb89d_T_Types())): Tuple2[Ref, Types]),
+    underlyingBuf_V0), wildcard) in
+    (slen((ShStructget0of2(p_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int))
+}
+
+// decreases _
+function Len_a6ceb89d_SY$558431e4_a6ceb89d_$itfcopy$fallback(thisItf: Tuple2[Ref, Types],
+  underlyingBuf_V0: Slice[Ref]): Int
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), wildcard)
+  ensures (get1of2(thisItf): Types) == Path_4cddb96f_T_Types() ==>
+    result ==
+    DefinedPath_4cddb96f_T$$$$_E_$$$_Len_4cddb96f_MPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): Tuple0),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(Decoded_daeaf66a_T_Types()) ==>
+    result ==
+    PointerDefinedDecoded_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMDecoded_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(Path_c385169_T_Types()) ==>
+    result ==
+    PointerDefinedPath_c385169_T$$$_S_$$$$$$$_E_$$$_Len_c385169_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(Path_c6e60a1d_T_Types()) ==>
+    result ==
+    PointerDefinedPath_c6e60a1d_T$$$_S_$$$$$$$_E_$$$_Len_c6e60a1d_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(Raw_daeaf66a_T_Types()) ==>
+    result ==
+    PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMRaw_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(rawPath_a6ceb89d_T_Types()) ==>
+    result ==
+    PointerDefinedrawPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$_Len_a6ceb89d_PMrawPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[Ref, Ref]),
+    underlyingBuf_V0)
+  ensures result >= 0
+
+
+// decreases _
+function arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$(): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1
+  ensures (forall idx: Int ::
+      { (ShArrayloc(result, idx): Ref) }
+      (ShArrayloc(result, idx): Ref) == null)
+
+
+// decreases 
+function hasScionPath_c6e60a1d_PMPath(p_V0: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref],
+  buf_V0: Slice[Ref]): Bool
+  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+    buf_V0), wildcard)
+  ensures result ==
+    (unfolding acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+      buf_V0), wildcard) in
+      !((ShStructget3of4(p_V0): Ref).PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$ ==
+      shStructDefault_$BaseA_DefinedBase_daeaf66a_T$$$_S_$$$_RawA_SliceIntbyte$$$_S_$$$$$$_S_$$$$()))
+{
+  (unfolding acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+    buf_V0), wildcard) in
+    !((ShStructget3of4(p_V0): Ref).PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$BaseA_DefinedBase_daeaf66a_T$$$_S_$$$_RawA_SliceIntbyte$$$_S_$$$$$$_S_$$$$()))
+}
+
+function sadd(left: Int, right: Int): Int
+  ensures result == left + right
+{
+  left + right
+}
+
+// decreases 
+function pathPoolInitialized_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]): Bool
+  requires acc((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, wildcard)
+{
+  !((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$ ==
+  sliceDefault_DefinedPath_a6ceb89d_T$$$_S_$$$())
+}
+
+// decreases 
+function PointerDefinedrawPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$_Len_a6ceb89d_PMrawPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(p_V0: ShStruct2[Ref, Ref],
+  underlyingBuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(rawPath_a6ceb89d_T_Types())): Tuple2[Ref, Types]),
+    underlyingBuf_V0), wildcard)
+  ensures result >= 0
+{
+  Len_a6ceb89d_PMrawPath(p_V0, underlyingBuf_V0)
+}
+
+// decreases 
+function Len_a6ceb89d_SY$558431e4_a6ceb89d_(thisItf: Tuple2[Ref, Types], underlyingBuf_V0: Slice[Ref]): Int
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), wildcard)
+  ensures (get1of2(thisItf): Types) == Path_4cddb96f_T_Types() ==>
+    result ==
+    DefinedPath_4cddb96f_T$$$$_E_$$$_Len_4cddb96f_MPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): Tuple0),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(Decoded_daeaf66a_T_Types()) ==>
+    result ==
+    PointerDefinedDecoded_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMDecoded_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(Path_c385169_T_Types()) ==>
+    result ==
+    PointerDefinedPath_c385169_T$$$_S_$$$$$$$_E_$$$_Len_c385169_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(Path_c6e60a1d_T_Types()) ==>
+    result ==
+    PointerDefinedPath_c6e60a1d_T$$$_S_$$$$$$$_E_$$$_Len_c6e60a1d_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(Raw_daeaf66a_T_Types()) ==>
+    result ==
+    PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMRaw_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]),
+    underlyingBuf_V0)
+  ensures (get1of2(thisItf): Types) ==
+    pointer_Types(rawPath_a6ceb89d_T_Types()) ==>
+    result ==
+    PointerDefinedrawPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$_Len_a6ceb89d_PMrawPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[Ref, Ref]),
+    underlyingBuf_V0)
+  ensures result >= 0
+{
+  (true ?
+    Len_a6ceb89d_SY$558431e4_a6ceb89d_$itfcopy$fallback(thisItf, underlyingBuf_V0) :
+    (typeOfInterface_Y$558431e4_a6ceb89d_(thisItf) ==
+    pointer_Types(rawPath_a6ceb89d_T_Types()) ?
+      Len_a6ceb89d_PMrawPath(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$558431e4_a6ceb89d_(thisItf),
+      pointer_Types(rawPath_a6ceb89d_T_Types())), (unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[Ref, Ref])),
+      underlyingBuf_V0) :
+      (typeOfInterface_Y$558431e4_a6ceb89d_(thisItf) ==
+      pointer_Types(Raw_daeaf66a_T_Types()) ?
+        Len_daeaf66a_PMRaw(assertArg2_ShStruct2_ShStruct3_ShStruct3_RefRefEmb_3_Intuint8$$$_S_$$$RefRefRef(behavioral_subtype_Types(typeOfInterface_Y$558431e4_a6ceb89d_(thisItf),
+        pointer_Types(Raw_daeaf66a_T_Types())), (unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])),
+        underlyingBuf_V0) :
+        (typeOfInterface_Y$558431e4_a6ceb89d_(thisItf) ==
+        pointer_Types(Path_c6e60a1d_T_Types()) ?
+          Len_c6e60a1d_PMPath(assertArg2_ShStruct4_ShStruct2_RefRefRefRefRef(behavioral_subtype_Types(typeOfInterface_Y$558431e4_a6ceb89d_(thisItf),
+          pointer_Types(Path_c6e60a1d_T_Types())), (unbox_Poly((get0of2(thisItf): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])),
+          underlyingBuf_V0) :
+          (typeOfInterface_Y$558431e4_a6ceb89d_(thisItf) ==
+          pointer_Types(Path_c385169_T_Types()) ?
+            Len_c385169_PMPath(assertArg2_ShStruct3_ShStruct4_RefRefRefRefShStruct6_RefRefRefRefRefEmb_6_Intbyte$$$_S_$$$ShStruct6_RefRefRefRefRefEmb_6_Intbyte$$$_S_$$$(behavioral_subtype_Types(typeOfInterface_Y$558431e4_a6ceb89d_(thisItf),
+            pointer_Types(Path_c385169_T_Types())), (unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]])),
+            underlyingBuf_V0) :
+            (typeOfInterface_Y$558431e4_a6ceb89d_(thisItf) ==
+            pointer_Types(Decoded_daeaf66a_T_Types()) ?
+              Len_daeaf66a_PMDecoded(assertArg2_ShStruct3_ShStruct3_ShStruct3_RefRefEmb_3_Intuint8$$$_S_$$$RefRefRefRef(behavioral_subtype_Types(typeOfInterface_Y$558431e4_a6ceb89d_(thisItf),
+              pointer_Types(Decoded_daeaf66a_T_Types())), (unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])),
+              underlyingBuf_V0) :
+              (typeOfInterface_Y$558431e4_a6ceb89d_(thisItf) ==
+              Path_4cddb96f_T_Types() ?
+                Len_4cddb96f_MPath(assertArg2_Tuple0(behavioral_subtype_Types(typeOfInterface_Y$558431e4_a6ceb89d_(thisItf),
+                Path_4cddb96f_T_Types()), (unbox_Poly((get0of2(thisItf): Ref)): Tuple0)),
+                underlyingBuf_V0) :
+                Len_a6ceb89d_SY$558431e4_a6ceb89d_$itfcopy$fallback(thisItf,
+                underlyingBuf_V0))))))))
+}
+
+// decreases _
+function unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(y: Emb_1_Intbyte$$$_S_$$$): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 1 ||
+    result == arrayNil_1_Intbyte$$$_S_$$$()
+  ensures box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == y
+
+
+// decreases _
+function box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_1_Intbyte$$$_S_$$$
+  requires (ShArraylen(x): Int) == 1 || x == arrayNil_1_Intbyte$$$_S_$$$()
+  ensures unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == x
+
+
+// decreases 
+function PointerDefinedDecoded_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMDecoded_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(d_V0: ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref],
+  ubuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard)
+  ensures result >= 0
+{
+  Len_daeaf66a_PMDecoded(d_V0, ubuf_V0)
+}
+
+// decreases 
+function AddrHdrLen_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
+  ubuf_V0: Slice[Ref], insideSlayers_V0: Bool): Int
+  requires insideSlayers_V0 ==>
+    acc((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard) &&
+    acc((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard)
+  requires insideSlayers_V0 ==>
+    Has3Bits_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+    Has3Bits_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$)
+  requires !insideSlayers_V0 ==>
+    acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard)
+  ensures insideSlayers_V0 ==>
+    result == addrHdrLenAbstractionLeak_840d9458_PMSCION(s_V0)
+  ensures !insideSlayers_V0 ==>
+    result == AddrHdrLenNoAbstractionLeak_840d9458_PMSCION(s_V0, ubuf_V0)
+  ensures 0 <= result
+
+
+// decreases 
+function assertArg2_ShStruct3_ShStruct3_ShStruct3_RefRefEmb_3_Intuint8$$$_S_$$$RefRefRefRef(b: Bool,
+  y: ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]
+  requires b
+{
+  y
+}
+
+// decreases _
+function Len_daeaf66a_PMDecoded(d_V0: ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref],
+  ubuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard)
+  ensures (unfolding acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+      ubuf_V0), wildcard) in
+      result ==
+      Len_daeaf66a_PMBase((ShStructget0of3(d_V0): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])))
+  ensures result >= 0
+{
+  (unfolding acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), wildcard) in
+    Len_daeaf66a_PMBase((ShStructget0of3(d_V0): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])))
+}
+
+// decreases 
+function DefinedPath_4cddb96f_T$$$$_E_$$$_Len_4cddb96f_MPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(o_V0: Tuple0,
+  underlyingBuf_V0: Slice[Ref]): Int
+  requires acc(dynamic_pred_6((tuple2((box_Poly(o_V0): Ref), Path_4cddb96f_T_Types()): Tuple2[Ref, Types]),
+    underlyingBuf_V0), wildcard)
+  ensures result >= 0
+{
+  Len_4cddb96f_MPath(o_V0, underlyingBuf_V0)
+}
+
+// decreases _
+function unbox_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(y: Emb_3_Intuint8$$$_S_$$$): ShArray[Ref]
+  ensures (ShArraylen(result): Int) == 3 ||
+    result == arrayNil_3_Intuint8$$$_S_$$$()
+  ensures box_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(result) == y
+
+
+predicate dynamic_pred_0(i: Tuple2[Ref, Types], x0: Slice[Ref]) {
+  ((get1of2(i): Types) == pointer_Types(EndToEndExtn_840d9458_T_Types()) ?
+    acc(Mem_840d9458_PMextnBase((ShStructget0of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]),
+    x0), write) &&
+    acc((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$, write) &&
+    ((forall i_V1: Int ::
+      { (ShArrayloc((sarray((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+      sadd((soffset((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int),
+      i_V1)): Ref) }
+      0 <= i_V1 &&
+      i_V1 <
+      (slen((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int) ==>
+      acc((ShArrayloc((sarray((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+      sadd((soffset((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int),
+      i_V1)): Ref).PointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$$_E_$$$, write)) &&
+    (forall i_V1: Int ::
+      { (ShArrayloc((sarray((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+      sadd((soffset((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int),
+      i_V1)): Ref) }
+      0 <= i_V1 &&
+      i_V1 <
+      (slen((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int) ==>
+      acc(Mem_840d9458_PMEndToEndOption((ShArrayloc((sarray((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+      sadd((soffset((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int),
+      i_V1)): Ref).PointerDefinedEndToEndOption_840d9458_T$$$_S_$$$$$$$_E_$$$,
+      i_V1), write))) :
+    ((get1of2(i): Types) ==
+    pointer_Types(EndToEndExtnSkipper_840d9458_T_Types()) ?
+      acc(Mem_840d9458_PMextnBase((ShStructget0of1((unbox_Poly((get0of2(i): Ref)): ShStruct1[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]])): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]),
+      x0), write) :
+      ((get1of2(i): Types) ==
+      pointer_Types(HopByHopExtn_840d9458_T_Types()) ?
+        acc(Mem_840d9458_PMextnBase((ShStructget0of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]),
+        x0), write) &&
+        acc((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$, write) &&
+        ((forall i_V1: Int ::
+          { (ShArrayloc((sarray((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+          sadd((soffset((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int),
+          i_V1)): Ref) }
+          0 <= i_V1 &&
+          i_V1 <
+          (slen((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int) ==>
+          acc((ShArrayloc((sarray((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+          sadd((soffset((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int),
+          i_V1)): Ref).PointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$$_E_$$$, write)) &&
+        (forall i_V1: Int ::
+          { (ShArrayloc((sarray((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+          sadd((soffset((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int),
+          i_V1)): Ref) }
+          0 <= i_V1 &&
+          i_V1 <
+          (slen((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int) ==>
+          acc(Mem_840d9458_PMHopByHopOption((ShArrayloc((sarray((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): ShArray[Ref]),
+          sadd((soffset((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref], Ref])): Ref).SlicePointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$_S_$$$$$$$_E_$$$): Int),
+          i_V1)): Ref).PointerDefinedHopByHopOption_840d9458_T$$$_S_$$$$$$$_E_$$$,
+          i_V1), write))) :
+        ((get1of2(i): Types) ==
+        pointer_Types(HopByHopExtnSkipper_840d9458_T_Types()) ?
+          acc(Mem_840d9458_PMextnBase((ShStructget0of1((unbox_Poly((get0of2(i): Ref)): ShStruct1[ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]])): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]),
+          x0), write) :
+          ((get1of2(i): Types) == pointer_Types(SCION_840d9458_T_Types()) ?
+            acc((ShStructget1of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$, write) &&
+            acc((ShStructget2of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$, write) &&
+            acc((ShStructget3of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint32$$$$_E_$$$, write) &&
+            acc((ShStructget4of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedL4ProtocolType_840d9458_T$$$$_E_$$$, write) &&
+            acc((ShStructget5of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$, write) &&
+            acc((ShStructget6of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint16$$$$_E_$$$, write) &&
+            acc((ShStructget7of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedType_a6ceb89d_T$$$$_E_$$$, write) &&
+            acc((ShStructget8of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, 1 /
+            2) &&
+            Has3Bits_840d9458_MAddrType((ShStructget8of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+            acc((ShStructget9of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, 1 /
+            2) &&
+            Has3Bits_840d9458_MAddrType((ShStructget9of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+            0 <=
+            (ShStructget5of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$ &&
+            0 <=
+            12 +
+            AddrHdrLen_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]),
+            sliceDefault_Intbyte$$$_S_$$$(), true) &&
+            (ShStructget5of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$ *
+            4 <=
+            (slen(x0): Int) &&
+            12 +
+            AddrHdrLen_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]),
+            sliceDefault_Intbyte$$$_S_$$$(), true) <=
+            (ShStructget5of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$ *
+            4 &&
+            acc((ShStructget14of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, write) &&
+            !((ShStructget14of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$ ==
+            (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+            acc(dynamic_pred_6((ShStructget14of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$,
+            ssliceFromSlice_Ref(x0, 12 +
+            AddrHdrLen_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]),
+            sliceDefault_Intbyte$$$_S_$$$(), true), (ShStructget5of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$ *
+            4)), write) &&
+            (let fn$$0 ==
+              ((ShStructget0of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): ShStruct2[Ref, Ref])) in
+              acc((ShStructget0of2(fn$$0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, write) &&
+              acc((ShStructget1of2(fn$$0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, write)) &&
+            (ShStructget0of2((ShStructget0of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): ShStruct2[Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
+            ssliceFromSlice_Ref(x0, 0, (ShStructget5of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$ *
+            4) &&
+            (ShStructget1of2((ShStructget0of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): ShStruct2[Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
+            ssliceFromSlice_Ref(x0, (ShStructget5of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$ *
+            4, (slen(x0): Int)) &&
+            12 <= (slen(x0): Int) &&
+            acc(HeaderMem_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]),
+            ssliceFromSlice_Ref(x0, 12, (slen(x0): Int))), write) &&
+            0 <=
+            (ShStructget7of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedType_a6ceb89d_T$$$$_E_$$$ &&
+            (ShStructget7of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedType_a6ceb89d_T$$$$_E_$$$ <
+            256 &&
+            acc((ShStructget15of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, write) &&
+            acc((ShStructget16of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, write) &&
+            (!pathPoolInitialized_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])) ==>
+            acc(PathPoolMem_840d9458_F((ShStructget15of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$,
+            (ShStructget16of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$), write)) &&
+            (pathPoolInitialized_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])) ==>
+            !((ShStructget15of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$ ==
+            sliceDefault_DefinedPath_a6ceb89d_T$$$_S_$$$()) &&
+            !((ShStructget16of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$ ==
+            (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+            acc(PathPoolMemExceptOne_840d9458_F((ShStructget15of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$,
+            (ShStructget16of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$,
+            (ShStructget7of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedType_a6ceb89d_T$$$$_E_$$$), write) &&
+            (ShStructget14of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$ ==
+            getPathPure_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]),
+            (ShStructget7of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedType_a6ceb89d_T$$$$_E_$$$)) &&
+            (typeOfInterface_Y$558431e4_a6ceb89d_((ShStructget14of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$) ==
+            pointer_Types(Path_c385169_T_Types()) ==>
+            12 +
+            AddrHdrLen_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]),
+            sliceDefault_Intbyte$$$_S_$$$(), true) +
+            Len_a6ceb89d_SY$558431e4_a6ceb89d_((ShStructget14of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$,
+            ssliceFromSlice_Ref(x0, 12 +
+            AddrHdrLen_840d9458_PMSCION((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]),
+            sliceDefault_Intbyte$$$_S_$$$(), true), (ShStructget5of17((unbox_Poly((get0of2(i): Ref)): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref])): Ref).Intuint8$$$$_E_$$$ *
+            4)) <=
+            (slen(x0): Int)) :
+            ((get1of2(i): Types) == pointer_Types(SCMP_840d9458_T_Types()) ?
+              acc((ShStructget1of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).DefinedSCMPTypeCode_840d9458_T$$$$_E_$$$, write) &&
+              acc((ShStructget2of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).Intuint16$$$$_E_$$$, write) &&
+              acc(Mem_840d9458_PMBaseLayer((ShStructget0of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): ShStruct2[Ref, Ref]),
+              x0, 4), write) &&
+              acc((ShStructget3of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).PointerDefinedSCION_840d9458_T$$$_S_$$$$$$$_E_$$$, write) &&
+              (!((ShStructget3of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).PointerDefinedSCION_840d9458_T$$$_S_$$$$$$$_E_$$$ ==
+              shStructDefault_$BaseLayerA_DefinedBaseLayer_840d9458_T$$$_S_$$$_VersionA_Intuint8$$$_S_$$$_TrafficClassA_Intuint8$$$_S_$$$_FlowIDA_Intuint32$$$_S_$$$_NextHdrA_DefinedL4ProtocolType_840d9458_T$$$_S_$$$_HdrLenA_Intuint8$$$_S_$$$_PayloadLenA_Intuint16$$$_S_$$$_PathTypeA_DefinedType_a6ceb89d_T$$$_S_$$$_DstAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_SrcAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_DstIAA_DefinedIA_cd675838_T$$$_S_$$$_SrcIAA_DefinedIA_cd675838_T$$$_S_$$$_RawDstAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_RawSrcAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PathA_DefinedPath_a6ceb89d_T$$$_S_$$$_pathPoolA_SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$_S_$$$_pathPoolRawA_DefinedPath_a6ceb89d_T$$$_S_$$$$()) ==>
+              acc(ChecksumMem_840d9458_PMSCION((ShStructget3of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).PointerDefinedSCION_840d9458_T$$$_S_$$$$$$$_E_$$$), write)) :
+              ((get1of2(i): Types) ==
+              pointer_Types(SCMPDestinationUnreachable_840d9458_T_Types()) ?
+                acc(Mem_840d9458_PMBaseLayer((ShStructget0of1((unbox_Poly((get0of2(i): Ref)): ShStruct1[ShStruct2[Ref, Ref]])): ShStruct2[Ref, Ref]),
+                x0, 4), write) :
+                ((get1of2(i): Types) ==
+                pointer_Types(SCMPEcho_840d9458_T_Types()) ?
+                  acc((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct2[Ref, Ref], Ref, Ref])): Ref).Intuint16$$$$_E_$$$, write) &&
+                  acc((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct2[Ref, Ref], Ref, Ref])): Ref).Intuint16$$$$_E_$$$, write) &&
+                  acc(Mem_840d9458_PMBaseLayer((ShStructget0of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct2[Ref, Ref], Ref, Ref])): ShStruct2[Ref, Ref]),
+                  x0, 4), write) :
+                  ((get1of2(i): Types) ==
+                  pointer_Types(SCMPExternalInterfaceDown_840d9458_T_Types()) ?
+                    acc((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct2[Ref, Ref], Ref, Ref])): Ref).DefinedIA_cd675838_T$$$$_E_$$$, write) &&
+                    acc((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct2[Ref, Ref], Ref, Ref])): Ref).Intuint64$$$$_E_$$$, write) &&
+                    acc(Mem_840d9458_PMBaseLayer((ShStructget0of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct2[Ref, Ref], Ref, Ref])): ShStruct2[Ref, Ref]),
+                    x0, 16), write) :
+                    ((get1of2(i): Types) ==
+                    pointer_Types(SCMPInternalConnectivityDown_840d9458_T_Types()) ?
+                      acc((ShStructget1of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).DefinedIA_cd675838_T$$$$_E_$$$, write) &&
+                      acc((ShStructget2of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).Intuint64$$$$_E_$$$, write) &&
+                      acc((ShStructget3of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).Intuint64$$$$_E_$$$, write) &&
+                      acc(Mem_840d9458_PMBaseLayer((ShStructget0of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): ShStruct2[Ref, Ref]),
+                      x0, 24), write) :
+                      ((get1of2(i): Types) ==
+                      pointer_Types(SCMPPacketTooBig_840d9458_T_Types()) ?
+                        acc((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct2[Ref, Ref], Ref])): Ref).Intuint16$$$$_E_$$$, write) &&
+                        acc(Mem_840d9458_PMBaseLayer((ShStructget0of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct2[Ref, Ref], Ref])): ShStruct2[Ref, Ref]),
+                        x0, 4), write) :
+                        ((get1of2(i): Types) ==
+                        pointer_Types(SCMPParameterProblem_840d9458_T_Types()) ?
+                          acc((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct2[Ref, Ref], Ref])): Ref).Intuint16$$$$_E_$$$, write) &&
+                          acc(Mem_840d9458_PMBaseLayer((ShStructget0of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct2[Ref, Ref], Ref])): ShStruct2[Ref, Ref]),
+                          x0, 4), write) :
+                          ((get1of2(i): Types) ==
+                          pointer_Types(SCMPTraceroute_840d9458_T_Types()) ?
+                            acc((ShStructget1of5((unbox_Poly((get0of2(i): Ref)): ShStruct5[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref])): Ref).Intuint16$$$$_E_$$$, write) &&
+                            acc((ShStructget2of5((unbox_Poly((get0of2(i): Ref)): ShStruct5[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref])): Ref).Intuint16$$$$_E_$$$, write) &&
+                            acc((ShStructget3of5((unbox_Poly((get0of2(i): Ref)): ShStruct5[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref])): Ref).DefinedIA_cd675838_T$$$$_E_$$$, write) &&
+                            acc((ShStructget4of5((unbox_Poly((get0of2(i): Ref)): ShStruct5[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref])): Ref).Intuint64$$$$_E_$$$, write) &&
+                            acc(Mem_840d9458_PMBaseLayer((ShStructget0of5((unbox_Poly((get0of2(i): Ref)): ShStruct5[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref])): ShStruct2[Ref, Ref]),
+                            x0, 20), write) :
+                            ((get1of2(i): Types) ==
+                            Payload_b41831d7_T_Types() ?
+                              x0 ==
+                              (unbox_Poly((get0of2(i): Ref)): Slice[Ref]) :
+                              acc(dynamic_pred_0_unknown(i, x0), write)))))))))))))))
+}
+
+predicate Mem_daeaf66a_PMBase(b_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]) {
+  acc((ShStructget1of3(b_V0): Ref).Intint$$$$_E_$$$, write) &&
+  acc((ShStructget2of3(b_V0): Ref).Intint$$$$_E_$$$, write) &&
+  acc((ShStructget0of3((ShStructget0of3(b_V0): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$])): Ref).Intuint8$$$$_E_$$$, write) &&
+  acc((ShStructget1of3((ShStructget0of3(b_V0): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$])): Ref).Intuint8$$$$_E_$$$, write) &&
+  acc((ShArrayloc(unbox_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref((ShStructget2of3((ShStructget0of3(b_V0): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$])): Emb_3_Intuint8$$$_S_$$$)),
+  0): Ref).Intuint8$$$$_E_$$$, write) &&
+  acc((ShArrayloc(unbox_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref((ShStructget2of3((ShStructget0of3(b_V0): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$])): Emb_3_Intuint8$$$_S_$$$)),
+  1): Ref).Intuint8$$$$_E_$$$, write) &&
+  acc((ShArrayloc(unbox_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref((ShStructget2of3((ShStructget0of3(b_V0): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$])): Emb_3_Intuint8$$$_S_$$$)),
+  2): Ref).Intuint8$$$$_E_$$$, write) &&
+  0 <= (ShStructget1of3(b_V0): Ref).Intint$$$$_E_$$$ &&
+  (ShStructget1of3(b_V0): Ref).Intint$$$$_E_$$$ <= 3 &&
+  0 <= (ShStructget2of3(b_V0): Ref).Intint$$$$_E_$$$ &&
+  (0 < (ShStructget1of3(b_V0): Ref).Intint$$$$_E_$$$ ==>
+  0 < (ShStructget2of3(b_V0): Ref).Intint$$$$_E_$$$)
+}
+
+predicate HeaderMem_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
+  ubuf_V0: Slice[Ref]) {
+  acc((ShStructget10of17(s_V0): Ref).DefinedIA_cd675838_T$$$$_E_$$$, write) &&
+  acc((ShStructget11of17(s_V0): Ref).DefinedIA_cd675838_T$$$$_E_$$$, write) &&
+  acc((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, 1 /
+  2) &&
+  Has3Bits_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+  acc((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, 1 /
+  2) &&
+  Has3Bits_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+  addrHdrLenAbstractionLeak_840d9458_PMSCION(s_V0) <= (slen(ubuf_V0): Int) &&
+  AddrHdrLen_840d9458_PMSCION(s_V0, sliceDefault_Intbyte$$$_S_$$$(), true) ==
+  addrHdrLenAbstractionLeak_840d9458_PMSCION(s_V0) &&
+  AddrHdrLen_840d9458_PMSCION(s_V0, sliceDefault_Intbyte$$$_S_$$$(), true) <=
+  (slen(ubuf_V0): Int) &&
+  0 <
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+  0 <
+  Length_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+  0 < 2 * 8 &&
+  2 * 8 <
+  2 * 8 +
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+  2 * 8 +
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) <
+  2 * 8 +
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) +
+  Length_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+  2 * 8 +
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) +
+  Length_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) <=
+  (slen(ubuf_V0): Int) &&
+  acc((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, write) &&
+  acc((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, write) &&
+  (ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
+  ssliceFromSlice_Ref(ubuf_V0, 2 * 8, 2 * 8 +
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$)) &&
+  (ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
+  ssliceFromSlice_Ref(ubuf_V0, 2 * 8 +
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$),
+  2 * 8 +
+  Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) +
+  Length_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$))
+}
+
+predicate AbsSlice_Bytes_e630ae22_F(s_V0: Slice[Ref], start_V0: Int, end_V0: Int) {
+  0 <= start_V0 && start_V0 <= end_V0 && end_V0 <= (scap(s_V0): Int) &&
+  (forall i_V1: Int ::
+    { (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int), i_V1)): Ref) }
+    start_V0 <= i_V1 && i_V1 < end_V0 ==>
+    acc((ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+    i_V1)): Ref).Intbyte$$$$_E_$$$, write))
+}
+
+predicate PathPoolMemExceptOne_840d9458_F(pathPool_V0: Slice[Ref], pathPoolRaw_V0: Tuple2[Ref, Types],
+  pathType_V0: Int) {
+  !(pathPool_V0 == sliceDefault_DefinedPath_a6ceb89d_T$$$_S_$$$()) &&
+  (slen(pathPool_V0): Int) == 4 &&
+  (acc((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  0)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, write) &&
+  !((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  0)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$ ==
+  (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  typeOfInterface_Y$558431e4_a6ceb89d_((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]),
+  sadd((soffset(pathPool_V0): Int), 0)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$) ==
+  Path_4cddb96f_T_Types()) &&
+  acc((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  2)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, write) &&
+  !((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  2)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$ ==
+  (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  typeOfInterface_Y$558431e4_a6ceb89d_((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]),
+  sadd((soffset(pathPool_V0): Int), 2)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$) ==
+  pointer_Types(Path_c385169_T_Types()) &&
+  (!(pathType_V0 == 2) ==>
+  acc(dynamic_pred_2((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  2)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$), write)) &&
+  acc((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  1)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, write) &&
+  !((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  1)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$ ==
+  (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  typeOfInterface_Y$558431e4_a6ceb89d_((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]),
+  sadd((soffset(pathPool_V0): Int), 1)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$) ==
+  pointer_Types(Raw_daeaf66a_T_Types()) &&
+  (!(pathType_V0 == 1) ==>
+  acc(dynamic_pred_2((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  1)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$), write)) &&
+  acc((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  3)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, write) &&
+  !((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  3)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$ ==
+  (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  typeOfInterface_Y$558431e4_a6ceb89d_((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]),
+  sadd((soffset(pathPool_V0): Int), 3)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$) ==
+  pointer_Types(Path_c6e60a1d_T_Types()) &&
+  (!(pathType_V0 == 3) ==>
+  acc(dynamic_pred_2((ShArrayloc((sarray(pathPool_V0): ShArray[Ref]), sadd((soffset(pathPool_V0): Int),
+  3)): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$), write)) &&
+  !(pathPoolRaw_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  (pathType_V0 < (slen(pathPool_V0): Int) ==>
+  acc(dynamic_pred_2(pathPoolRaw_V0), write))
+}
+
+predicate dynamic_pred_6(i: Tuple2[Ref, Types], x0: Slice[Ref]) {
+  ((get1of2(i): Types) == Path_4cddb96f_T_Types() ?
+    (slen(x0): Int) == 0 :
+    ((get1of2(i): Types) == pointer_Types(Path_4cddb96f_T_Types()) ?
+      (let fn$$0 ==
+        ((unbox_Poly((get0of2(i): Ref)): ShStruct0)) in
+        true) &&
+      (slen(x0): Int) == 0 :
+      ((get1of2(i): Types) == pointer_Types(rawPath_a6ceb89d_T_Types()) ?
+        (let fn$$1 ==
+          ((unbox_Poly((get0of2(i): Ref)): ShStruct2[Ref, Ref])) in
+          acc((ShStructget0of2(fn$$1): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, write) &&
+          acc((ShStructget1of2(fn$$1): Ref).DefinedType_a6ceb89d_T$$$$_E_$$$, write)) &&
+        (ShStructget0of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
+        x0 :
+        ((get1of2(i): Types) == pointer_Types(Path_c385169_T_Types()) ?
+          (let fn$$2 ==
+            ((ShStructget0of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]])): ShStruct4[Ref, Ref, Ref, Ref])) in
+            acc((ShStructget0of4(fn$$2): Ref).Bool$$$$_E_$$$, write) &&
+            acc((ShStructget1of4(fn$$2): Ref).Bool$$$$_E_$$$, write) &&
+            acc((ShStructget2of4(fn$$2): Ref).Intuint16$$$$_E_$$$, write) &&
+            acc((ShStructget3of4(fn$$2): Ref).Intuint32$$$$_E_$$$, write)) &&
+          acc(Mem_a6ceb89d_PMHopField((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]])): ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$])), write) &&
+          acc(Mem_a6ceb89d_PMHopField((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]])): ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$])), write) &&
+          32 <= (slen(x0): Int) :
+          ((get1of2(i): Types) == pointer_Types(Path_c6e60a1d_T_Types()) ?
+            (let fn$$3 ==
+              ((ShStructget0of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): ShStruct2[Ref, Ref])) in
+              acc((ShStructget0of2(fn$$3): Ref).Intuint32$$$$_E_$$$, write) &&
+              acc((ShStructget1of2(fn$$3): Ref).Intuint32$$$$_E_$$$, write)) &&
+            acc((ShStructget1of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, write) &&
+            acc(AbsSlice_Bytes_e630ae22_F((ShStructget1of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
+            0, (slen((ShStructget1of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), write) &&
+            acc((ShStructget2of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, write) &&
+            acc(AbsSlice_Bytes_e630ae22_F((ShStructget2of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
+            0, (slen((ShStructget2of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), write) &&
+            acc((ShStructget3of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$, write) &&
+            !((ShStructget3of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$ ==
+            shStructDefault_$BaseA_DefinedBase_daeaf66a_T$$$_S_$$$_RawA_SliceIntbyte$$$_S_$$$$$$_S_$$$$()) &&
+            16 <= (slen(x0): Int) &&
+            acc(dynamic_pred_6((tuple2((box_Poly((ShStructget3of4((unbox_Poly((get0of2(i): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref])): Ref).PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$): Ref),
+            pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]), ssliceFromSlice_Ref(x0,
+            16, (slen(x0): Int))), write) :
+            ((get1of2(i): Types) ==
+            pointer_Types(Decoded_daeaf66a_T_Types()) ?
+              acc(Mem_daeaf66a_PMBase((ShStructget0of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])), write) &&
+              acc((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, write) &&
+              getNumINF_daeaf66a_PMBase((ShStructget0of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])) <=
+              3 &&
+              (slen((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int) ==
+              getNumINF_daeaf66a_PMBase((ShStructget0of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])) &&
+              ((forall i_V1: Int ::
+                { (ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V1)): ShStruct4[Ref, Ref, Ref, Ref]) }
+                0 <= i_V1 &&
+                i_V1 <
+                (slen((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int) &&
+                (let fn$$4 ==
+                  ((ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                  sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                  i_V1)): ShStruct4[Ref, Ref, Ref, Ref])) in
+                  true) ==>
+                acc((ShStructget0of4((ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V1)): ShStruct4[Ref, Ref, Ref, Ref])): Ref).Bool$$$$_E_$$$, write)) &&
+              (forall i_V1: Int ::
+                { (ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V1)): ShStruct4[Ref, Ref, Ref, Ref]) }
+                0 <= i_V1 &&
+                i_V1 <
+                (slen((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int) &&
+                (let fn$$4 ==
+                  ((ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                  sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                  i_V1)): ShStruct4[Ref, Ref, Ref, Ref])) in
+                  true) ==>
+                acc((ShStructget1of4((ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V1)): ShStruct4[Ref, Ref, Ref, Ref])): Ref).Bool$$$$_E_$$$, write)) &&
+              (forall i_V1: Int ::
+                { (ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V1)): ShStruct4[Ref, Ref, Ref, Ref]) }
+                0 <= i_V1 &&
+                i_V1 <
+                (slen((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int) &&
+                (let fn$$4 ==
+                  ((ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                  sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                  i_V1)): ShStruct4[Ref, Ref, Ref, Ref])) in
+                  true) ==>
+                acc((ShStructget2of4((ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V1)): ShStruct4[Ref, Ref, Ref, Ref])): Ref).Intuint16$$$$_E_$$$, write)) &&
+              (forall i_V1: Int ::
+                { (ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V1)): ShStruct4[Ref, Ref, Ref, Ref]) }
+                0 <= i_V1 &&
+                i_V1 <
+                (slen((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int) &&
+                (let fn$$4 ==
+                  ((ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                  sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                  i_V1)): ShStruct4[Ref, Ref, Ref, Ref])) in
+                  true) ==>
+                acc((ShStructget3of4((ShArrayloc((sarray((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct4[Ref, Ref, Ref, Ref]]),
+                sadd((soffset((ShStructget1of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedInfoField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V1)): ShStruct4[Ref, Ref, Ref, Ref])): Ref).Intuint32$$$$_E_$$$, write))) &&
+              acc((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedHopField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, write) &&
+              (slen((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedHopField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int) ==
+              getNumHops_daeaf66a_PMBase((ShStructget0of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])) &&
+              (forall i_V2: Int ::
+                { (ShArrayloc((sarray((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedHopField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]),
+                sadd((soffset((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedHopField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V2)): ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]) }
+                0 <= i_V2 &&
+                i_V2 <
+                (slen((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedHopField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int) ==>
+                acc(Mem_a6ceb89d_PMHopField((ShArrayloc((sarray((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedHopField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): ShArray[ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]),
+                sadd((soffset((ShStructget2of3((unbox_Poly((get0of2(i): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref])): Ref).SliceDefinedHopField_a6ceb89d_T$$$_S_$$$$$$$_E_$$$): Int),
+                i_V2)): ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$])), write)) :
+              ((get1of2(i): Types) == pointer_Types(Raw_daeaf66a_T_Types()) ?
+                acc(Mem_daeaf66a_PMBase((ShStructget0of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])), write) &&
+                acc((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, write) &&
+                (slen((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) <=
+                (slen(x0): Int) &&
+                (ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
+                ssliceFromSlice_Ref(x0, 0, (slen((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)) &&
+                (slen((ShStructget1of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
+                Len_daeaf66a_PMBase((ShStructget0of2((unbox_Poly((get0of2(i): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref])): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])) :
+                acc(dynamic_pred_6_unknown(i, x0), write))))))))
+}
+
+predicate dynamic_pred_0_unknown(i: Tuple2[Ref, Types], x0: Slice[Ref]) 
+
+predicate ChecksumMem_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]) 
+
+predicate Mem_840d9458_PMHopByHopOption(o_V0: ShStruct5[Ref, Ref, Ref, Ref, Emb_2_Intuint8$$$_S_$$$],
+  _2325_V0: Int) 
+
+predicate Mem_a6ceb89d_PMHopField(h_V0: ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]) 
+
+predicate Mem_840d9458_PMEndToEndOption(e_V0: ShStruct5[Ref, Ref, Ref, Ref, Emb_2_Intuint8$$$_S_$$$],
+  _2372_V0: Int) 
+
+predicate PathPoolMem_840d9458_F(pathPool_V0: Slice[Ref], pathPoolRaw_V0: Tuple2[Ref, Types]) 
+
+predicate ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf: Tuple2[Ref, Types]) 
+
+predicate dynamic_pred_6_unknown(i: Tuple2[Ref, Types], x0: Slice[Ref]) 
+
+predicate dynamic_pred_2(i: Tuple2[Ref, Types]) 
+
+predicate Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types]) 
+
+predicate Mem_840d9458_PMextnBase(e_V0: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref],
+  ubuf_V0: Slice[Ref]) 
+
+predicate Mem_840d9458_PMBaseLayer(b_V0: ShStruct2[Ref, Ref], ub_V0: Slice[Ref],
+  breakPoint_V0: Int) 
+
+predicate MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types],
+  ub_V0: Slice[Ref]) 
+
+// decreases 
+method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
+  b_V0: Tuple2[Ref, Types], opts_V0: Tuple2[Bool, Bool], ubuf_V0: Slice[Ref])
+  returns (e_V0: Tuple2[Ref, Types])
+  requires !(get0of2(opts_V0): Bool)
+  requires !(b_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+    acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
+  requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), 1 / 4)
+  requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
+  ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
+  ensures acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), 1 / 4)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
+  ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+    HasOneHopPath_840d9458_PMSCION(s_V0, ubuf_V0) ==>
+    (slen(UBuf_b41831d7_SY$3e1378f2_b41831d7_(b_V0)): Int) ==
+    old((slen(UBuf_b41831d7_SY$3e1378f2_b41831d7_(b_V0)): Int)) +
+    (unfolding acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+      ubuf_V0), wildcard) in
+      12 +
+      AddrHdrLen_840d9458_PMSCION(s_V0, sliceDefault_Intbyte$$$_S_$$$(), true) +
+      Len_a6ceb89d_SY$558431e4_a6ceb89d_((ShStructget14of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$,
+      ssliceFromSlice_Ref(ubuf_V0, 12 +
+      AddrHdrLen_840d9458_PMSCION(s_V0, sliceDefault_Intbyte$$$_S_$$$(), true),
+      (ShStructget5of17(s_V0): Ref).Intuint8$$$$_E_$$$ * 4)))
+  ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+    HasOneHopPath_840d9458_PMSCION(s_V0, ubuf_V0) ==>
+    (unfolding acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+      ubuf_V0), wildcard) in
+      12 +
+      AddrHdrLen_840d9458_PMSCION(s_V0, sliceDefault_Intbyte$$$_S_$$$(), true) +
+      Len_a6ceb89d_SY$558431e4_a6ceb89d_((ShStructget14of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$,
+      ssliceFromSlice_Ref(ubuf_V0, 12 +
+      AddrHdrLen_840d9458_PMSCION(s_V0, sliceDefault_Intbyte$$$_S_$$$(), true),
+      (ShStructget5of17(s_V0): Ref).Intuint8$$$$_E_$$$ * 4))) <=
+    (slen(ubuf_V0): Int)
+  ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+    acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(e_V0), write)
+{
+  inhale e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  
+  // decl s_V0_CN0: *SCION_840d9458_T@°°, b_V0_CN1: SerializeBuffer_b41831d7_T°°, opts_V0_CN2: SerializeOptions_b41831d7_T°°, ubuf_V0_CN3: []byte@°°, e_V0_CN4: error_a4af0e5e_T°°
+  var e_V0_CN4: Tuple2[Ref, Types]
+  var ubuf_V0_CN3: Slice[Ref]
+  var opts_V0_CN2: Tuple2[Bool, Bool]
+  var b_V0_CN1: Tuple2[Ref, Types]
+  var s_V0_CN0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+  
+  
+  var fn$$1_activation: Bool
+  var fn$$1_0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+  var fn$$1_1: Slice[Ref]
+  var fn$$1_2: Perm
+  fn$$1_activation := false
+  var fn$$2_activation: Bool
+  var fn$$2_0: Slice[Ref]
+  var fn$$2_1: Int
+  var fn$$2_2: Int
+  var fn$$2_3: Perm
+  fn$$2_activation := false
+  
+  // init s_V0_CN0
+  inhale s_V0_CN0 ==
+    shStructDefault_$BaseLayerA_DefinedBaseLayer_840d9458_T$$$_S_$$$_VersionA_Intuint8$$$_S_$$$_TrafficClassA_Intuint8$$$_S_$$$_FlowIDA_Intuint32$$$_S_$$$_NextHdrA_DefinedL4ProtocolType_840d9458_T$$$_S_$$$_HdrLenA_Intuint8$$$_S_$$$_PayloadLenA_Intuint16$$$_S_$$$_PathTypeA_DefinedType_a6ceb89d_T$$$_S_$$$_DstAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_SrcAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_DstIAA_DefinedIA_cd675838_T$$$_S_$$$_SrcIAA_DefinedIA_cd675838_T$$$_S_$$$_RawDstAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_RawSrcAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PathA_DefinedPath_a6ceb89d_T$$$_S_$$$_pathPoolA_SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$_S_$$$_pathPoolRawA_DefinedPath_a6ceb89d_T$$$_S_$$$$()
+  
+  // init b_V0_CN1
+  inhale b_V0_CN1 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  
+  // init opts_V0_CN2
+  var fn$$0: Tuple2[Bool, Bool]
+  fn$$0 := opts_V0_CN2
+  inhale (get0of2(fn$$0): Bool) == false
+  inhale (get1of2(fn$$0): Bool) == false
+  
+  // init ubuf_V0_CN3
+  inhale ubuf_V0_CN3 == sliceDefault_Intbyte$$$_S_$$$()
+  
+  // init e_V0_CN4
+  inhale e_V0_CN4 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  
+  // s_V0_CN0 = s_V0
+  s_V0_CN0 := s_V0
+  
+  // b_V0_CN1 = b_V0
+  b_V0_CN1 := b_V0
+  
+  // opts_V0_CN2 = opts_V0
+  opts_V0_CN2 := opts_V0
+  
+  // ubuf_V0_CN3 = ubuf_V0
+  ubuf_V0_CN3 := ubuf_V0
+  
+  // decl scnLen_V1: int°°, N24: []byte@°°, N25: error_a4af0e5e_T°°, buf_V1: []byte@°°, err_V1: error_a4af0e5e_T°°, uSerBufN_V1: []byte@°°, N28: []byte@°°, firstLine_V1: uint32°°, sPath_V1: Path_a6ceb89d_T°°, pathSlice_V1: []byte@°°, offset_V1: int°°, N35: error_a4af0e5e_T°°, tmp_V1: error_a4af0e5e_T°°
+  var tmp_V1: Tuple2[Ref, Types]
+  var N35: Tuple2[Ref, Types]
+  var offset_V1: Int
+  var pathSlice_V1: Slice[Ref]
+  var sPath_V1: Tuple2[Ref, Types]
+  var firstLine_V1: Int
+  var N28: Slice[Ref]
+  var uSerBufN_V1: Slice[Ref]
+  var err_V1: Tuple2[Ref, Types]
+  var buf_V1: Slice[Ref]
+  var N25: Tuple2[Ref, Types]
+  var N24: Slice[Ref]
+  var scnLen_V1: Int
+  
+  // unfold acc(s_V0_CN0.Mem(ubuf_V0_CN3), perm(1/4))
+  unfold acc(dynamic_pred_0((tuple2((box_Poly(s_V0_CN0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0_CN3), 1 / 4)
+  
+  // defer fold acc(s_V0_CN0.Mem(ubuf_V0_CN3), perm(1/4))
+  fn$$1_0 := s_V0_CN0
+  fn$$1_1 := ubuf_V0_CN3
+  fn$$1_2 := 1 / 4
+  fn$$1_activation := true
+  
+  // SplitRange_Bytes_e630ae22_F(ubuf_V0_CN3, int°(12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true)), int°(*s_V0_CN0.HdrLenA * 4), write)
+  SplitRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12 +
+    AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(), true),
+    (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$ * 4, write)
+  
+  // defer CombineRange_Bytes_e630ae22_F(ubuf_V0_CN3, int°(12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true)), int°(*s_V0_CN0.HdrLenA * 4), write)
+  fn$$2_0 := ubuf_V0_CN3
+  fn$$2_1 := 12 +
+    AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(), true)
+  fn$$2_2 := (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$ * 4
+  fn$$2_3 := write
+  fn$$2_activation := true
+  
+  // init scnLen_V1
+  inhale scnLen_V1 == 0
+  
+  // scnLen_V1 = 12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true) + *s_V0_CN0.PathA.Len(ubuf_V0_CN3[12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true):*s_V0_CN0.HdrLenA * 4])
+  scnLen_V1 := 12 +
+    AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(), true) +
+    Len_a6ceb89d_SY$558431e4_a6ceb89d_((ShStructget14of17(s_V0_CN0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$,
+    ssliceFromSlice_Ref(ubuf_V0_CN3, 12 +
+    AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(), true),
+    (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$ * 4))
+  
+  // if(scnLen_V1 > 1020) {...} else {...}
+  if (scnLen_V1 > 1020) {
+    
+    // decl N20: []interface{ name is empty_interface }@°°, N21: error_a4af0e5e_T°°
+    var N21: Tuple2[Ref, Types]
+    var N20: Slice[Ref]
+    
+    // N20 = new([]interface{ name is empty_interface }@ { 0:toInterface("max"), 1:toInterface(1020), 2:toInterface("actual"), 3:toInterface(scnLen_V1) })
+    var fn$$3: Emb_4_Interfaceempty_interface$$$_S_$$$
+    var fn$$5: Emb_4_Interfaceempty_interface$$$_S_$$$
+    var fn$$6: Emb_4_Interfaceempty_interface$$$$_E_$$$
+    inhale (forall fn$$4: Int ::
+        { (ShArrayloc(unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$3),
+        fn$$4): Ref) }
+        0 <= fn$$4 && fn$$4 < 4 ==>
+        acc((ShArrayloc(unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$3),
+        fn$$4): Ref).Interfaceempty_interface$$$$_E_$$$, write)) &&
+      !(fn$$3 ==
+      box_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(arrayNil_4_Interfaceempty_interface$$$_S_$$$()))
+    fn$$5 := fn$$3
+    fn$$6 := box_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(Seq((tuple2((box_Poly(stringLit6d6178()): Ref),
+      string_Types()): Tuple2[Ref, Types]), (tuple2((box_Poly(1020): Ref), integer_Types()): Tuple2[Ref, Types]),
+      (tuple2((box_Poly(stringLit61637475616c()): Ref), string_Types()): Tuple2[Ref, Types]),
+      (tuple2((box_Poly(scnLen_V1): Ref), int_Types()): Tuple2[Ref, Types])))
+    inhale (forall fn$$7: Int ::
+        { (ShArrayloc(unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$5),
+        fn$$7): Ref) }
+        { unbox_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(fn$$6)[fn$$7] }
+        0 <= fn$$7 && fn$$7 < 4 ==>
+        (ShArrayloc(unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$5),
+        fn$$7): Ref).Interfaceempty_interface$$$$_E_$$$ ==
+        unbox_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(fn$$6)[fn$$7])
+    N20 := ssliceFromArray_Ref(unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$3),
+      0, 4)
+    
+    // N21 = New_bfd5223e_F("header length exceeds maximum", N20)
+    N21 := New_bfd5223e_F(stringLit686561646572206c656e6774682065786365656473206d6178696d756d(),
+      N20)
+    
+    // e_V0_CN4 = N21
+    e_V0_CN4 := N21
+    
+    // return
+    goto returnLabel
+  }
+  
+  // if(scnLen_V1 % 4 != 0) {...} else {...}
+  if (!(scnLen_V1 % 4 == 0)) {
+    
+    // decl N22: []interface{ name is empty_interface }@°°, N23: error_a4af0e5e_T°°
+    var N23: Tuple2[Ref, Types]
+    var N22: Slice[Ref]
+    
+    // N22 = new([]interface{ name is empty_interface }@ { 0:toInterface("actual"), 1:toInterface(scnLen_V1) })
+    var fn$$8: Emb_2_Interfaceempty_interface$$$_S_$$$
+    var fn$$10: Emb_2_Interfaceempty_interface$$$_S_$$$
+    var fn$$11: Emb_2_Interfaceempty_interface$$$$_E_$$$
+    inhale (forall fn$$9: Int ::
+        { (ShArrayloc(unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$8),
+        fn$$9): Ref) }
+        0 <= fn$$9 && fn$$9 < 2 ==>
+        acc((ShArrayloc(unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$8),
+        fn$$9): Ref).Interfaceempty_interface$$$$_E_$$$, write)) &&
+      !(fn$$8 ==
+      box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(arrayNil_2_Interfaceempty_interface$$$_S_$$$()))
+    fn$$10 := fn$$8
+    fn$$11 := box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(Seq((tuple2((box_Poly(stringLit61637475616c()): Ref),
+      string_Types()): Tuple2[Ref, Types]), (tuple2((box_Poly(scnLen_V1): Ref),
+      int_Types()): Tuple2[Ref, Types])))
+    inhale (forall fn$$12: Int ::
+        { (ShArrayloc(unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$10),
+        fn$$12): Ref) }
+        { unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(fn$$11)[fn$$12] }
+        0 <= fn$$12 && fn$$12 < 2 ==>
+        (ShArrayloc(unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$10),
+        fn$$12): Ref).Interfaceempty_interface$$$$_E_$$$ ==
+        unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(fn$$11)[fn$$12])
+    N22 := ssliceFromArray_Ref(unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(fn$$8),
+      0, 2)
+    
+    // N23 = New_bfd5223e_F("header length is not an integer multiple of line length", N22)
+    N23 := New_bfd5223e_F(stringLit686561646572206c656e677468206973206e6f7420616e20696e7465676572206d756c7469706c65206f66206c696e65206c656e677468(),
+      N22)
+    
+    // e_V0_CN4 = N23
+    e_V0_CN4 := N23
+    
+    // return
+    goto returnLabel
+  }
+  
+  // N24, N25 = b_V0_CN1PrependBytes(scnLen_V1)
+  N24, N25 := PrependBytes_b41831d7_SY$3e1378f2_b41831d7_(b_V0_CN1, scnLen_V1)
+  
+  // init buf_V1
+  inhale buf_V1 == sliceDefault_Intbyte$$$_S_$$$()
+  
+  // init err_V1
+  inhale err_V1 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  
+  // buf_V1 = N24
+  buf_V1 := N24
+  
+  // err_V1 = N25
+  err_V1 := N25
+  
+  // if(err_V1 != (nil:error_a4af0e5e_T°)) {...} else {...}
+  if (!(err_V1 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))) {
+    
+    // decl 
+    
+    // e_V0_CN4 = err_V1
+    e_V0_CN4 := err_V1
+    
+    // return
+    goto returnLabel
+  }
+  
+  // if(opts_V0_CN2.FixLengthsA) {...} else {...}
+  if ((get0of2(opts_V0_CN2): Bool)) {
+    
+    // decl N26: []byte@°°
+    var N26: Slice[Ref]
+    
+    // Unreachable_ef823ad9_F()
+    assert false
+    Unreachable_ef823ad9_F()
+    
+    // *s_V0_CN0.HdrLenA = uint8°(scnLen_V1 / 4)
+    (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$ := scnLen_V1 / 4
+    
+    // N26 = b_V0_CN1Bytes()
+    N26 := Bytes_b41831d7_SY$3e1378f2_b41831d7_(b_V0_CN1)
+    
+    // *s_V0_CN0.PayloadLenA = uint16°(len(N26) - scnLen_V1)
+    (ShStructget6of17(s_V0_CN0): Ref).Intuint16$$$$_E_$$$ := (slen(N26): Int) -
+      scnLen_V1
+  }
+  
+  // init uSerBufN_V1
+  inhale uSerBufN_V1 == sliceDefault_Intbyte$$$_S_$$$()
+  
+  // uSerBufN_V1 = b_V0_CN1.UBuf()
+  uSerBufN_V1 := UBuf_b41831d7_SY$3e1378f2_b41831d7_(b_V0_CN1)
+  
+  // assert buf_V1 === uSerBufN_V1[0:scnLen_V1]
+  assert buf_V1 == ssliceFromSlice_Ref(uSerBufN_V1, 0, scnLen_V1)
+  
+  // N28 = b_V0_CN1ExchangePred()
+  N28 := ExchangePred_b41831d7_SY$3e1378f2_b41831d7_(b_V0_CN1)
+  
+  // SplitRange_Bytes_e630ae22_F(uSerBufN_V1, 0, scnLen_V1, write)
+  SplitRange_Bytes_e630ae22_F(uSerBufN_V1, 0, scnLen_V1, write)
+  
+  // init firstLine_V1
+  inhale firstLine_V1 == 0
+  
+  // firstLine_V1 = uint32°(*s_V0_CN0.VersionA & 0xf) << 28 | uint32°(*s_V0_CN0.TrafficClassA) << 20 | *s_V0_CN0.FlowIDA & 0xfffff
+  firstLine_V1 := intBitwiseOr(intBitwiseOr(intShiftLeft(intBitwiseAnd((ShStructget1of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$,
+    15), 28), intShiftLeft((ShStructget2of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$,
+    20)), intBitwiseAnd((ShStructget3of17(s_V0_CN0): Ref).Intuint32$$$$_E_$$$,
+    1048575))
+  
+  // SplitRange_Bytes_e630ae22_F(buf_V1, 0, 4, write)
+  SplitRange_Bytes_e630ae22_F(buf_V1, 0, 4, write)
+  
+  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[0:4], 0, 4))
+  unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 0, 4), 0,
+    4), write)
+  
+  // 0PutUint32(buf_V1[0:4], firstLine_V1)
+  PutUint32_72f0d887_MbigEndian(0, ssliceFromSlice_Ref(buf_V1, 0, 4), firstLine_V1)
+  
+  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[0:4], 0, 4))
+  fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 0, 4), 0, 4), write)
+  
+  // CombineRange_Bytes_e630ae22_F(buf_V1, 0, 4, write)
+  CombineRange_Bytes_e630ae22_F(buf_V1, 0, 4, write)
+  
+  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
+  unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
+  
+  // buf_V1[4] = uint8°(*s_V0_CN0.NextHdrA)
+  (ShArrayloc((sarray(buf_V1): ShArray[Ref]), sadd((soffset(buf_V1): Int), 4)): Ref).Intbyte$$$$_E_$$$ := (ShStructget4of17(s_V0_CN0): Ref).DefinedL4ProtocolType_840d9458_T$$$$_E_$$$
+  
+  // buf_V1[5] = *s_V0_CN0.HdrLenA
+  (ShArrayloc((sarray(buf_V1): ShArray[Ref]), sadd((soffset(buf_V1): Int), 5)): Ref).Intbyte$$$$_E_$$$ := (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$
+  
+  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
+  fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
+  
+  // SplitRange_Bytes_e630ae22_F(buf_V1, 6, 8, write)
+  SplitRange_Bytes_e630ae22_F(buf_V1, 6, 8, write)
+  
+  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[6:8], 0, 2))
+  unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 6, 8), 0,
+    2), write)
+  
+  // 0PutUint16(buf_V1[6:8], *s_V0_CN0.PayloadLenA)
+  PutUint16_72f0d887_MbigEndian(0, ssliceFromSlice_Ref(buf_V1, 6, 8), (ShStructget6of17(s_V0_CN0): Ref).Intuint16$$$$_E_$$$)
+  
+  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[6:8], 0, 2))
+  fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 6, 8), 0, 2), write)
+  
+  // CombineRange_Bytes_e630ae22_F(buf_V1, 6, 8, write)
+  CombineRange_Bytes_e630ae22_F(buf_V1, 6, 8, write)
+  
+  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
+  unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
+  
+  // buf_V1[8] = uint8°(*s_V0_CN0.PathTypeA)
+  (ShArrayloc((sarray(buf_V1): ShArray[Ref]), sadd((soffset(buf_V1): Int), 8)): Ref).Intbyte$$$$_E_$$$ := (ShStructget7of17(s_V0_CN0): Ref).DefinedType_a6ceb89d_T$$$$_E_$$$
+  
+  // buf_V1[9] = uint8°(*s_V0_CN0.DstAddrTypeA & 0x7) << 4 | uint8°(*s_V0_CN0.SrcAddrTypeA & 0x7)
+  (ShArrayloc((sarray(buf_V1): ShArray[Ref]), sadd((soffset(buf_V1): Int), 9)): Ref).Intbyte$$$$_E_$$$ := intBitwiseOr(intShiftLeft(intBitwiseAnd((ShStructget8of17(s_V0_CN0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$,
+    7), 4), intBitwiseAnd((ShStructget9of17(s_V0_CN0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$,
+    7))
+  
+  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
+  fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
+  
+  // SplitRange_Bytes_e630ae22_F(buf_V1, 10, 12, write)
+  SplitRange_Bytes_e630ae22_F(buf_V1, 10, 12, write)
+  
+  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[10:12], 0, 2))
+  unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 10, 12),
+    0, 2), write)
+  
+  // 0PutUint16(buf_V1[10:12], 0)
+  PutUint16_72f0d887_MbigEndian(0, ssliceFromSlice_Ref(buf_V1, 10, 12), 0)
+  
+  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[10:12], 0, 2))
+  fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 10, 12), 0,
+    2), write)
+  
+  // CombineRange_Bytes_e630ae22_F(buf_V1, 10, 12, write)
+  CombineRange_Bytes_e630ae22_F(buf_V1, 10, 12, write)
+  
+  // init sPath_V1
+  inhale sPath_V1 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  
+  // sPath_V1 = *s_V0_CN0.PathA
+  sPath_V1 := (ShStructget14of17(s_V0_CN0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$
+  
+  // init pathSlice_V1
+  inhale pathSlice_V1 == sliceDefault_Intbyte$$$_S_$$$()
+  
+  // pathSlice_V1 = ubuf_V0_CN3[12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true):*s_V0_CN0.HdrLenA * 4]
+  pathSlice_V1 := ssliceFromSlice_Ref(ubuf_V0_CN3, 12 +
+    AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(), true),
+    (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$ * 4)
+  
+  // CombineRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true), int°(*s_V0_CN0.HdrLenA * 4), perm(1/4096))
+  CombineRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12 +
+    AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(), true),
+    (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$ * 4, 1 / 4096)
+  
+  // SplitRange_Bytes_e630ae22_F(buf_V1, 12, len(buf_V1), write)
+  SplitRange_Bytes_e630ae22_F(buf_V1, 12, (slen(buf_V1): Int), write)
+  
+  // SplitRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12, len(ubuf_V0_CN3), perm(1/4096))
+  SplitRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12, (slen(ubuf_V0_CN3): Int), 1 /
+    4096)
+  
+  // decl N31: error_a4af0e5e_T°°, err_V2: error_a4af0e5e_T°°
+  var err_V2: Tuple2[Ref, Types]
+  var N31: Tuple2[Ref, Types]
+  
+  // N31 = s_V0_CN0SerializeAddrHdr(buf_V1[12:len(buf_V1)], ubuf_V0_CN3[12:len(ubuf_V0_CN3)])
+  N31 := SerializeAddrHdr_840d9458_PMSCION(s_V0_CN0, ssliceFromSlice_Ref(buf_V1,
+    12, (slen(buf_V1): Int)), ssliceFromSlice_Ref(ubuf_V0_CN3, 12, (slen(ubuf_V0_CN3): Int)))
+  
+  // init err_V2
+  inhale err_V2 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  
+  // err_V2 = N31
+  err_V2 := N31
+  
+  // if(err_V2 != (nil:error_a4af0e5e_T°)) {...} else {...}
+  if (!(err_V2 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))) {
+    
+    // decl 
+    
+    // CombineRange_Bytes_e630ae22_F(buf_V1, 12, len(buf_V1), write)
+    CombineRange_Bytes_e630ae22_F(buf_V1, 12, (slen(buf_V1): Int), write)
+    
+    // CombineRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12, len(ubuf_V0_CN3), perm(1/4096))
+    CombineRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12, (slen(ubuf_V0_CN3): Int),
+      1 / 4096)
+    
+    // SplitRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true), int°(*s_V0_CN0.HdrLenA * 4), perm(1/4096))
+    SplitRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12 +
+      AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(),
+      true), (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$ * 4, 1 /
+      4096)
+    
+    // CombineRange_Bytes_e630ae22_F(uSerBufN_V1, 0, scnLen_V1, write)
+    CombineRange_Bytes_e630ae22_F(uSerBufN_V1, 0, scnLen_V1, write)
+    
+    // b_V0_CN1RestoreMem(uSerBufN_V1)
+    RestoreMem_b41831d7_SY$3e1378f2_b41831d7_(b_V0_CN1, uSerBufN_V1)
+    
+    // e_V0_CN4 = err_V2
+    e_V0_CN4 := err_V2
+    
+    // return
+    goto returnLabel
+  }
+  
+  // init offset_V1
+  inhale offset_V1 == 0
+  
+  // offset_V1 = 12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true)
+  offset_V1 := 12 +
+    AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(), true)
+  
+  // CombineRange_Bytes_e630ae22_F(buf_V1, 12, len(buf_V1), write)
+  CombineRange_Bytes_e630ae22_F(buf_V1, 12, (slen(buf_V1): Int), write)
+  
+  // CombineRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12, len(ubuf_V0_CN3), perm(1/4096))
+  CombineRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12, (slen(ubuf_V0_CN3): Int), 1 /
+    4096)
+  
+  // SplitRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12 + s_V0_CN0.AddrHdrLen((nil:[]byte@°), true), int°(*s_V0_CN0.HdrLenA * 4), perm(1/4096))
+  SplitRange_Bytes_e630ae22_F(ubuf_V0_CN3, 12 +
+    AddrHdrLen_840d9458_PMSCION(s_V0_CN0, sliceDefault_Intbyte$$$_S_$$$(), true),
+    (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$ * 4, 1 / 4096)
+  
+  // SplitRange_Bytes_e630ae22_F(buf_V1, offset_V1, len(buf_V1), write)
+  SplitRange_Bytes_e630ae22_F(buf_V1, offset_V1, (slen(buf_V1): Int), write)
+  
+  // N35 = *s_V0_CN0.PathASerializeTo(buf_V1[offset_V1:len(buf_V1)], pathSlice_V1)
+  N35 := SerializeTo_a6ceb89d_SY$558431e4_a6ceb89d_((ShStructget14of17(s_V0_CN0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$,
+    ssliceFromSlice_Ref(buf_V1, offset_V1, (slen(buf_V1): Int)), pathSlice_V1)
+  
+  // init tmp_V1
+  inhale tmp_V1 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  
+  // tmp_V1 = N35
+  tmp_V1 := N35
+  
+  // CombineRange_Bytes_e630ae22_F(buf_V1, offset_V1, len(buf_V1), write)
+  CombineRange_Bytes_e630ae22_F(buf_V1, offset_V1, (slen(buf_V1): Int), write)
+  
+  // CombineRange_Bytes_e630ae22_F(uSerBufN_V1, 0, scnLen_V1, write)
+  CombineRange_Bytes_e630ae22_F(uSerBufN_V1, 0, scnLen_V1, write)
+  
+  // b_V0_CN1RestoreMem(uSerBufN_V1)
+  RestoreMem_b41831d7_SY$3e1378f2_b41831d7_(b_V0_CN1, uSerBufN_V1)
+  
+  // e_V0_CN4 = tmp_V1
+  e_V0_CN4 := tmp_V1
+  
+  // return
+  goto returnLabel
+  label returnLabel
+  if (fn$$2_activation) {
+    
+    // CombineRange_Bytes_e630ae22_F(fn$$2_0, fn$$2_1, fn$$2_2, fn$$2_3)
+    CombineRange_Bytes_e630ae22_F(fn$$2_0, fn$$2_1, fn$$2_2, fn$$2_3)
+  }
+  if (fn$$1_activation) {
+    
+    // fold acc(fn$$1_0.Mem(fn$$1_1), fn$$1_2)
+    fold acc(dynamic_pred_0((tuple2((box_Poly(fn$$1_0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+      fn$$1_1), fn$$1_2)
+  }
+  
+  // e_V0 = e_V0_CN4
+  e_V0 := e_V0_CN4
+}
+
+// decreases 
+method SplitRange_Bytes_e630ae22_F(s_V0: Slice[Ref], start_V0: Int, end_V0: Int,
+  p_V0: Perm)
+  requires 0 / 1 <= p_V0
+  requires 0 <= start_V0 && start_V0 <= end_V0 &&
+    end_V0 <= (slen(s_V0): Int)
+  requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, (slen(s_V0): Int)), p_V0)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(s_V0, start_V0,
+    end_V0), 0, end_V0 - start_V0), p_V0)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, start_V0), p_V0)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, end_V0, (slen(s_V0): Int)), p_V0)
+
+
+// decreases 
+method SerializeAddrHdr_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
+  buf_V0: Slice[Ref], ubuf_V0: Slice[Ref])
+  returns (err_V0: Tuple2[Ref, Types])
+  requires acc(HeaderMem_840d9458_PMSCION(s_V0, ubuf_V0), 1 / 4096)
+  requires acc(AbsSlice_Bytes_e630ae22_F(buf_V0, 0, (slen(buf_V0): Int)), write)
+  requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), 1 /
+    4096)
+  ensures acc(HeaderMem_840d9458_PMSCION(s_V0, ubuf_V0), 1 / 4096)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(buf_V0, 0, (slen(buf_V0): Int)), write)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), 1 /
+    4096)
+  ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+    acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(err_V0), write)
+
+
+// decreases 
+method RestoreMem_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types],
+  ub_V0: Slice[Ref])
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, ub_V0), write)
+  requires acc(AbsSlice_Bytes_e630ae22_F(ub_V0, 0, (slen(ub_V0): Int)), write)
+  ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write) &&
+    UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf) == ub_V0
+
+
+method Unreachable_ef823ad9_F()
+  requires false
+
+
+// decreases 
+method ExchangePred_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types])
+  returns (res_V0: Slice[Ref])
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
+  ensures res_V0 == old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))
+  ensures acc(AbsSlice_Bytes_e630ae22_F(res_V0, 0, (slen(res_V0): Int)), write)
+  ensures acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, res_V0), write)
+
+
+// decreases 
+method PointerDefinedSCION_840d9458_T$$$_S_$$$$$$$_E_$$$_SerializeTo_840d9458_PMSCION_SerializeTo_b41831d7_SY$17800ab4_b41831d7__proof(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
+  b_V0: Tuple2[Ref, Types], opts_V0: Tuple2[Bool, Bool], ubuf_V0: Slice[Ref])
+  returns (e_V0: Tuple2[Ref, Types])
+  requires !(get0of2(opts_V0): Bool)
+  requires !(b_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+    acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
+  requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), write)
+  requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
+  ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+    acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    ubuf_V0), write) &&
+    acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
+  ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+    acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(e_V0), write)
+{
+  inhale e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  
+  // decl 
+  
+  
+  
+  // e_V0 = s_V0SerializeTo(b_V0, opts_V0, ubuf_V0)
+  e_V0 := SerializeTo_840d9458_PMSCION(s_V0, b_V0, opts_V0, ubuf_V0)
+  label returnLabel
+}
+
+// decreases 
+method PrependBytes_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types],
+  num_V0: Int)
+  returns (res_V0: Slice[Ref], err_V0: Tuple2[Ref, Types])
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires num_V0 >= 0
+  requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
+  ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
+  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+    (slen(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf)): Int) ==
+    (slen(old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))): Int) + num_V0
+  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+    (slen(res_V0): Int) == num_V0
+  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+    res_V0 ==
+    ssliceFromSlice_Ref(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf), 0, num_V0)
+  ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+    UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf) ==
+    old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))
+  ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+    acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(err_V0), write)
+
+
+// decreases 
+method Bytes_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types])
+  returns (res_V0: Slice[Ref])
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
+  ensures res_V0 == old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))
+  ensures acc(AbsSlice_Bytes_e630ae22_F(res_V0, 0, (slen(res_V0): Int)), write)
+  ensures acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, res_V0), write)
+
+
+// decreases _
+method New_bfd5223e_F(msg_V0: Int, errCtx_V0: Slice[Ref])
+  returns (res_V0: Tuple2[Ref, Types])
+  requires (forall i_V1: Int ::
+      { (ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
+      i_V1)): Ref) }
+      0 <= i_V1 && i_V1 < (slen(errCtx_V0): Int) ==>
+      acc((ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
+      i_V1)): Ref).Interfaceempty_interface$$$$_E_$$$, 1 / 131072))
+  ensures (forall i_V1: Int ::
+      { (ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
+      i_V1)): Ref) }
+      0 <= i_V1 && i_V1 < (slen(errCtx_V0): Int) ==>
+      acc((ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
+      i_V1)): Ref).Interfaceempty_interface$$$$_E_$$$, 1 / 131072))
+  ensures !(res_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+    acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0), write)
+  ensures IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0)
+
+
+// decreases _
+method PutUint32_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
+  requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    0)): Ref).Intbyte$$$$_E_$$$, write) &&
+    acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    1)): Ref).Intbyte$$$$_E_$$$, write) &&
+    acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    2)): Ref).Intbyte$$$$_E_$$$, write) &&
+    acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    3)): Ref).Intbyte$$$$_E_$$$, write)
+  ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    0)): Ref).Intbyte$$$$_E_$$$, write) &&
+    acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    1)): Ref).Intbyte$$$$_E_$$$, write) &&
+    acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    2)): Ref).Intbyte$$$$_E_$$$, write) &&
+    acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    3)): Ref).Intbyte$$$$_E_$$$, write)
+
+
+// decreases _
+method PutUint16_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
+  requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    0)): Ref).Intbyte$$$$_E_$$$, write) &&
+    acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    1)): Ref).Intbyte$$$$_E_$$$, write)
+  ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    0)): Ref).Intbyte$$$$_E_$$$, write) &&
+    acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+    1)): Ref).Intbyte$$$$_E_$$$, write)
+
+
+// decreases 
+method SerializeTo_a6ceb89d_SY$558431e4_a6ceb89d_(thisItf: Tuple2[Ref, Types],
+  b_V0: Slice[Ref], underlyingBuf_V0: Slice[Ref])
+  returns (e_V0: Tuple2[Ref, Types])
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(AbsSlice_Bytes_e630ae22_F(underlyingBuf_V0, 0, (slen(underlyingBuf_V0): Int)), write)
+  requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), 1 / 8)
+  requires acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), write)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(underlyingBuf_V0, 0, (slen(underlyingBuf_V0): Int)), write)
+  ensures acc(dynamic_pred_6(thisItf, underlyingBuf_V0), 1 / 8)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), write)
+  ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+    acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(e_V0), write)
+
+
+// decreases 
+method CombineRange_Bytes_e630ae22_F(s_V0: Slice[Ref], start_V0: Int, end_V0: Int,
+  p_V0: Perm)
+  requires 0 / 1 <= p_V0
+  requires 0 <= start_V0 && start_V0 <= end_V0 &&
+    end_V0 <= (slen(s_V0): Int)
+  requires acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(s_V0, start_V0,
+    end_V0), 0, end_V0 - start_V0), p_V0)
+  requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, start_V0), p_V0)
+  requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, end_V0, (slen(s_V0): Int)), p_V0)
+  ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, (slen(s_V0): Int)), p_V0)

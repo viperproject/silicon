@@ -1,0 +1,275 @@
+import "examples-16.1.vpr"
+
+// Exercise 16.5
+/**
+ * Skipped because it is textual.
+ */
+
+// Exercise 16.6
+/**
+ * This is a modification of the Tokenizer code from the section 16.1 where we
+ * have two additional functions IsStart and IsFollow. Is start determines if
+ * the given character is a letter and IsFollow determines if the given character
+ * is a letter or a digit. With that we can modify the Read method to only 
+ * allow Identifier tokens to start with a letter and follow with a letter or a
+ * digit. The change is only in the "read token" part of the method and if a 
+ * faulty Identifier token is found, the method will return the Error category.
+ */
+function IsStart(ch: Int, cat: Category): Bool
+    requires !cat.isEnd
+    requires 0 <= ch <= 127
+{
+    Is(ch, Identifier())
+}
+
+function IsFollow(ch: Int, cat: Category): Bool
+    requires !cat.isEnd
+    requires 0 <= ch <= 127
+{
+    Is(ch, Identifier()) || Is(ch, Number())
+}
+
+method ReadModifedIdentifier(this: Ref) returns (cat: Category, p: Int, token: Seq[Int])
+    requires Tokenizer(this)
+    ensures 0 <= p
+    ensures Tokenizer(this)
+    ensures getSource(this) == old(getSource(this))
+    ensures !cat.isWhitespace
+    ensures old(getN(this)) <= p <= getN(this) <= |getSource(this)|
+    ensures cat.isEnd <==> p == |getSource(this)|
+    ensures cat.isEnd || cat.isError <==> p == getN(this)
+    ensures forall i: Int :: old(getN(this)) <= i < p ==> 
+        Is(getSource(this)[i], Whitespace())
+    ensures forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+    ensures p < getN(this) ==> getN(this) == |getSource(this)| || !Is(getSource(this)[getN(this)], cat)
+    ensures token == getSource(this)[p..getN(this)]
+    // New
+    ensures cat.isIdentifier ==> IsStart(token[0], cat) && forall i: Int :: 1 <= i < |token| ==> IsFollow(token[i], cat)
+{
+    // skip whitespace
+    while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], Whitespace()))
+        invariant Tokenizer(this)
+        invariant getSource(this) == old(getSource(this))
+        invariant old(getN(this)) <= getN(this) <= |getSource(this)|
+        invariant forall i: Int :: old(getN(this)) <= i < getN(this) ==> Is(getSource(this)[i], Whitespace())
+    {
+        unfold Tokenizer(this)
+        this.n := this.n + 1
+        fold Tokenizer(this)
+    }
+    p := getN(this)
+    // determine syntactic category
+    var return: Bool := false
+    if (getN(this) == |getSource(this)|)
+    {
+        cat := End()
+        token := Seq()
+        return := true
+    }
+    elseif (Is(getSource(this)[getN(this)], Identifier()))
+    {
+        cat := Identifier()
+    }
+    elseif (Is(getSource(this)[getN(this)], Number()))
+    {
+        cat := Number()
+    }
+    elseif (Is(getSource(this)[getN(this)], Operator()))
+    {
+        cat := Operator()
+    }
+    else
+    {
+        cat := Error()
+        token := Seq()
+        return := true
+    }
+    // read token
+    if (!return)
+    {
+        var start: Int := getN(this)
+        if (cat.isIdentifier && !IsStart(getSource(this)[getN(this)], cat))
+        {
+            return := true
+        }
+        else
+        {
+            unfold Tokenizer(this)
+            this.n := this.n + 1
+            fold Tokenizer(this)
+            while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], cat) && !return)
+                invariant Tokenizer(this)
+                invariant getSource(this) == old(getSource(this))
+                invariant p <= getN(this) <= |getSource(this)|
+                invariant forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+            {
+                if (cat.isIdentifier && !IsFollow(getSource(this)[getN(this)], cat))
+                {
+                    return := true
+                } 
+                else
+                {
+                    unfold Tokenizer(this)
+                    this.n := this.n + 1
+                    fold Tokenizer(this)
+                }
+            }
+        }
+        if (return)
+        {
+            cat := Error()
+            token := Seq()
+            unfold Tokenizer(this)
+            this.n := p
+            fold Tokenizer(this)
+        }
+        else
+        {
+            token := getSource(this)[start..getN(this)]
+        }
+    }    
+}
+
+// Exercise 16.7
+/**
+ * This is a modification of the Tokenizer code from the section 16.1 where we
+ * have the ability to prune the input string, or sequence of ASCII code 
+ * integers. For that, we track three 
+ * additional fields suffix, m and j. The suffix field is the remaining part of
+ * the input string that has not been pruned. The m field tracks how many
+ * characters have been pruned from the input string and the j field tracks how
+ * many characters have been read from the suffix without pruning. We still 
+ * maintain the source field for specification purposes, but we only use the
+ * suffix field for program logic. We also add a new method 
+ * TokenizerWithPruningPrune that prunes the input string to the current read
+ * position m + j == n.
+ */
+field suffix: Seq[Int]
+field m: Int
+field j: Int
+
+predicate TokenizerWithPruning(this: Ref)
+{
+    acc(this.source) && acc(this.suffix) && acc(this.m) && acc(this.j) &&
+    acc(this.n) && 0 <= this.n <= |this.source| &&
+    this.suffix == this.source[this.m..] && this.m + this.j == this.n &&
+    0 <= this.m <= this.n && 0 <= this.j <= |this.suffix| &&
+    forall i: Int :: 0 <= i < |this.source| ==> 0 <= this.source[i] <= 127 
+}
+
+method TokenizerWithPruningConstructor(s: Seq[Int]) returns (this: Ref)
+    requires forall i: Int :: 0 <= i < |s| ==> 0 <= s[i] <= 127
+    ensures TokenizerWithPruning(this)
+    ensures unfolding TokenizerWithPruning(this) in this.source == s &&
+        this.suffix == s && this.m == 0 && this.j == 0 && this.n == 0
+{
+    this := new(source, suffix, m, j, n)
+    this.source := s
+    this.suffix := s
+    this.m := 0
+    this.j := 0
+    this.n := 0
+    fold TokenizerWithPruning(this)
+}
+
+method TokenizerWithPruningPrune(this: Ref)
+    requires TokenizerWithPruning(this)
+    ensures TokenizerWithPruning(this)
+    ensures unfolding TokenizerWithPruning(this) in this.m == this.n && this.j == 0
+    ensures unfolding TokenizerWithPruning(this) in this.suffix == this.source[this.m..]
+{
+    unfold TokenizerWithPruning(this)
+    this.m := this.n
+    this.j := 0
+    this.suffix := this.source[this.m..]
+    fold TokenizerWithPruning(this)
+
+}
+
+method ReadWithPruning(this: Ref) returns (cat: Category, p: Int, token: Seq[Int])
+    requires TokenizerWithPruning(this)
+    ensures 0 <= p
+    ensures TokenizerWithPruning(this)
+    ensures unfolding TokenizerWithPruning(this) in this.source == old(unfolding TokenizerWithPruning(this) in this.source)
+    ensures unfolding TokenizerWithPruning(this) in this.m == old(unfolding TokenizerWithPruning(this) in this.m) 
+    ensures !cat.isWhitespace
+    ensures unfolding TokenizerWithPruning(this) in old(unfolding TokenizerWithPruning(this) in this.n) <= p <= this.n <= |this.source|
+    ensures unfolding TokenizerWithPruning(this) in cat.isEnd <==> p == |this.source|
+    ensures unfolding TokenizerWithPruning(this) in cat.isEnd || cat.isError <==> p == this.n
+    ensures unfolding TokenizerWithPruning(this) in forall i: Int :: old(unfolding TokenizerWithPruning(this) in this.n) <= i < p ==> 
+        Is(this.source[i], Whitespace())
+    ensures unfolding TokenizerWithPruning(this) in forall i: Int :: p <= i < this.n ==> Is(this.source[i], cat)
+    ensures unfolding TokenizerWithPruning(this) in p < this.n ==> this.n == |this.source| || !Is(this.source[this.n], cat)
+    ensures unfolding TokenizerWithPruning(this) in token == this.suffix[p-this.m..this.j]
+{
+    unfold TokenizerWithPruning(this)
+    assert 0 <= this.j <= |this.suffix|
+    fold TokenizerWithPruning(this)
+    // skip whitespace
+    while (unfolding TokenizerWithPruning(this) in this.j != |this.suffix| && Is(this.suffix[this.j], Whitespace()))
+        invariant TokenizerWithPruning(this)
+        invariant unfolding TokenizerWithPruning(this) in this.m == old(unfolding TokenizerWithPruning(this) in this.m) 
+        invariant unfolding TokenizerWithPruning(this) in this.source == old(unfolding TokenizerWithPruning(this) in this.source)
+        invariant unfolding TokenizerWithPruning(this) in old(unfolding TokenizerWithPruning(this) in this.n) <= this.n <= |this.source|
+        invariant unfolding TokenizerWithPruning(this) in forall i: Int :: old(unfolding TokenizerWithPruning(this) in this.n) <= i < this.n ==> Is(this.source[i], Whitespace())
+    {
+        unfold TokenizerWithPruning(this)
+        this.n := this.n + 1
+        this.j := this.j + 1
+        fold TokenizerWithPruning(this)
+    }
+    unfold TokenizerWithPruning(this)
+    p := this.n
+    fold TokenizerWithPruning(this)
+    // determine syntactic category
+    var return: Bool := false
+    if (unfolding TokenizerWithPruning(this) in this.n == |this.source|)
+    {
+        cat := End()
+        token := Seq()
+        return := true
+    }
+    elseif (unfolding TokenizerWithPruning(this) in Is(this.source[this.n], Identifier()))
+    {
+        cat := Identifier()
+    }
+    elseif (unfolding TokenizerWithPruning(this) in Is(this.source[this.n], Number()))
+    {
+        cat := Number()
+    }
+    elseif (unfolding TokenizerWithPruning(this) in Is(this.source[this.n], Operator()))
+    {
+        cat := Operator()
+    }
+    else
+    {
+        cat := Error()
+        token := Seq()
+        return := true
+        assert unfolding TokenizerWithPruning(this) in p - this.m == this.j
+    }
+    // read token
+    if (!return)
+    {
+        unfold TokenizerWithPruning(this)
+        var start: Int := this.j
+        this.n := this.n + 1
+        this.j := this.j + 1
+        fold TokenizerWithPruning(this)
+        while (unfolding TokenizerWithPruning(this) in this.n != |this.source| && Is(this.source[this.n], cat))
+            invariant TokenizerWithPruning(this)
+            invariant unfolding TokenizerWithPruning(this) in this.m == old(unfolding TokenizerWithPruning(this) in this.m) 
+            invariant unfolding TokenizerWithPruning(this) in this.source == old(unfolding TokenizerWithPruning(this) in this.source)
+            invariant unfolding TokenizerWithPruning(this) in p <= this.n <= |this.source|
+            invariant unfolding TokenizerWithPruning(this) in forall i: Int :: p <= i < this.n ==> Is(this.source[i], cat)
+        {
+            unfold TokenizerWithPruning(this)
+            this.n := this.n + 1
+            this.j := this.j + 1
+            fold TokenizerWithPruning(this)
+        }
+        unfold TokenizerWithPruning(this)
+        token := this.suffix[start..this.j]
+        fold TokenizerWithPruning(this)
+    }    
+}

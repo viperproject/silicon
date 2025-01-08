@@ -50,13 +50,19 @@ object LoopInvariantSolver {
               case f: Failure => f
               case abdRes: NonFatalResult =>
                 // TODO nklose we do not guarantee length 1 here anymore
-                val abd = abductionUtils.getAbductionSuccesses(abdRes).head
+                abductionUtils.getAbductionSuccesses(abdRes) match {
+                  case Seq(AbductionSuccess(s5, v5, _, Seq(), _, _)) =>
+                    val unfolded = VarTransformer(s5, v5, s5.g.values, s5.h).transformState(s5)
+                    Q(unfolded)
+                }
+                /*
                 val unfolds = abd.stmts.collect { case Unfold(pa) => (pa.toString -> pa.loc.predicateBody(s.program, Set()).get) }.toMap
                 val unfolded = inverted.map {
                   case inv: PredicateAccessPredicate => unfolds.getOrElse(inv.toString, inv)
                   case inv => inv
                 }
                 Q1(unfolded)
+                */
             }
         }
       }
@@ -100,12 +106,8 @@ object LoopInvariantSolver {
                           loopConBcs: Seq[Term] = Seq(),
                           iteration: Int = 1): VerificationResult = {
 
-
     // Produce the already known invariants. They are consumed at the end of the loop body, so we need to do this every iteration
     produces(s, freshSnap, loopHead.invs, ContractNotWellformed, v) { (sPreInv, vPreInv) =>
-
-      //var loopCondTerm: Option[Term] = None
-      //val oldPcs = vPreInv.decider.pcs.branchConditions
 
       // Run the loop the first time to check whether we abduce any new state
       executionFlowController.locally(sPreInv, vPreInv) { (sFP, vFP) =>
@@ -125,26 +127,14 @@ object LoopInvariantSolver {
           // We assume there is only one loop internal edge
           val loopConExp = loopEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition
 
-          //evaluator.eval(sPreInv0, loopConExp, pve, vPreInv0) { (sPreInv, loopConTerm, _, vPreInv) =>
-
-          //val newLoopCons = loopConBcs :+ loopCondTerm.get
-
           val abdReses = abductionUtils.getAbductionSuccesses(nonf)
           val preStateVars = sPreInv.g.values.filter { case (v, _) => origVars.contains(v) }
           val newStateOpt = abdReses.flatMap { case abd => abd.getPreconditions(preStateVars, sPreInv.h, Seq()).get }
-
-          //val newStateHeadOpt = abdReses.collect { case abd if abd.trigger.contains(loopConExp) => abd.toPrecondition(preStateVars, sPreInv.h) }
-          //if (newStateOpt.contains(None)) {
-          //  return Failure(pve dueTo DummyReason)
-          //}
 
           // We still need to remove the current loop condition
           val newState = newStateOpt.map(_.transform {
             case im: Implies if im.left == loopConExp => im.right
           })
-
-          //val newStateHead = newStateHeadOpt.flatMap(_.get)
-          //val abductionResults = newStateHead ++ newStateBody
 
           // Do the second pass so that we can compare the state at the end of the loop with the state at the beginning
           // Get the state at the beginning of the loop with the abduced things added
@@ -158,7 +148,6 @@ object LoopInvariantSolver {
               }, sPreAbd, vPreAbd) { chunks =>
 
                 val allChunks = chunks.keys
-                //val fixedChunks = chunks.collect({ case (c, loc) if newStateHead.contains(loc) => c }).toSeq
 
                 val newPreState0 = sPreAbd.copy(h = q.preHeap.+(Heap(allChunks)))
                 BiAbductionSolver.solveAbstraction(newPreState0, vPreAbd) {
@@ -166,6 +155,8 @@ object LoopInvariantSolver {
 
                     val preTran = VarTransformer(newPreState, newPreV, preStateVars, newPreState.h)
                     val newPreAbstraction = newPreAbstraction0.map(e => preTran.transformExp(e, strict = false).get)
+
+
                     
                     executor.follows(sPreAbd, loopEdges, pveLam, vPreAbd, joinPoint)((sPost, vPost) => {
 
@@ -174,6 +165,11 @@ object LoopInvariantSolver {
                         val postStateVars = sPostAbs.g.values.filter { case (v, _) => origVars.contains(v) }
                         val postTran = VarTransformer(sPostAbs, vPostAbs, postStateVars, sPostAbs.h)
                         val postAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
+
+                        println("\nIteration: " + iteration)
+                        println("New state:\n    " + newState.mkString("\n    "))
+                        println("New pre abstraction:\n    " + newPreAbstraction.mkString("\n    "))
+                        println("New post abstraction:\n    " + postAbstraction.mkString("\n    "))
                         
                         // If the pushed forward abstraction is the same as the previous one, we are done
                         if (newPreAbstraction == q.preAbstraction && postAbstraction == q.postAbstraction) {
@@ -198,7 +194,6 @@ object LoopInvariantSolver {
               }
             }
           }
-        //}
       }
     }
   }

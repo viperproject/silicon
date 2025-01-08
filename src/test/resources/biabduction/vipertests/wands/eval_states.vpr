@@ -1,0 +1,64 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+field h: Ref
+
+method test01(x: Ref)
+  requires acc(x.f, 1/2) --* acc(x.f) && x.f == 0
+  requires acc(x.f, 1/2)
+  ensures    acc(x.f) /* Consumed from the consume-heap h */
+          && x.f == 0 /* Needs to be evaluated in the eval-heap σ.h */
+{
+  apply acc(x.f, 1/2) --* acc(x.f) && x.f == 0
+}
+
+method test02(x: Ref)
+  requires true --* true
+{
+  package
+    acc(x.g) && x.g > 0
+      --* acc(x.g) /* Transfer acc(x.g) from σLHS to σUsed */
+      && x.g > 0  /* Needs to be evaluated in σUsed */ {
+        apply true --* true
+      }
+}
+
+predicate Emp(l: Ref) { true }
+
+method test03(l: Ref)
+  requires l != null
+  requires true --* acc(l.h) && acc(Emp(l.h))
+{
+  package true --* acc(l.h) {
+      apply true --* acc(l.h) && acc(Emp(l.h))
+      /* Permissions gained from applying the wand are pushed as a new heap to
+       * the top of the reserve heaps */
+      unfold acc(Emp(l.h)) /* Thus, l.h must be evaluated in the top reserve heap */
+    }
+}
+
+predicate P(x: Ref) { acc(x.h) && x.h != null && acc(x.h.h) && x.h.h != null }
+predicate Q(x: Ref) { acc(x.h) && x.h != null }
+
+method test04(l: Ref) {
+  package acc(P(l)) --* acc(l.h) && acc(Q(l.h)) {
+            unfold P(l)
+            /* Permissions gained from unfolding P(l) are pushed as a new heap
+             * to the top of the reserve heaps. */
+            fold Q(l.h)
+            /* When consuming the body of Q(l.h), evaluations need to happen in
+             * the heap in which the consumption was started (e.g., in σUsed).
+             *
+             * When producing Q(l.h) (which is produced *into* σUsed) l.h needs
+             * to be evaluated in the top reserve heap. */
+          }
+}
+
+method test05(l: Ref) {
+  package acc(P(l)) --* acc(Q(l)) {
+      unfold P(l)
+      fold Q(l)
+    }
+}

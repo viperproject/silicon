@@ -1,0 +1,347 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* This example is based on the list iterator example, created by Blom and Huisman, which is available at
+ * https://github.com/utwente-fmt/vercors/blob/master/examples/witnesses/ListIterator.java.
+ *
+ * This example encodes an iterator over a linked list. The iterator protocol consists of 3 states:
+ * "ready" is the initial state
+ * "ready for Node_next" indicates that the iterator can advance a step
+ * "ready for remove" indicates that the Iterator_current element can be removed from the list
+ * 
+ * The protocol followed indicates, that the Iterator_hasNext() method of the iterator in the "ready" state can be used
+ * to transition to the "ready for Node_next" state iff there is a Node_next element in the list. Furthermore the iterator's
+ * Node_next() method can only be called in the "ready for Node_next" state and transitions the iterator to the "redy for
+ * remove" state. From the "ready for remove" state it is possible to transition to the ready state directly or
+ * by calling the Iterator_remove() method to remove the Iterator_current item. It is moreover possible to get back access to the
+ * linked list by giving up access to the iterator in the "ready" state.  
+ */
+
+//main method used as an example execution using the Iterator class
+method main(l: Ref)
+requires l!=null && List_state(l)
+ensures  l!=null && List_state(l) {
+  var b: Bool
+  
+  //add some values to the list
+  List_put(l, 1)
+  List_put(l, 0)
+  List_put(l, -1)
+  
+  //create an iterator
+  var i: Ref
+  i := Iterator_new(l)
+  
+  //check if there is a first element
+  b := Iterator_hasNext(i)
+  
+  //loop over the list using the iterator
+  while(b)
+  invariant b ==> Iterator_readyForNext(i)
+  invariant !b ==> Iterator_ready(i) {
+  
+    //get the next value in the list
+    var tmp: Int
+    tmp := Iterator_next(i)
+    
+    //transition to the "ready" state by...
+    if (tmp < 0) {
+    
+      //...removing the element
+      Iterator_remove(i)
+    } else {
+    
+      //...using the provided magic wand for a direct transition
+      apply Iterator_readyForRemove(i) --* Iterator_ready(i)
+    }
+    
+    //check if the end of the list has been reached
+    b := Iterator_hasNext(i)
+  }
+  
+  //get back access to the list, by giving up the iterator
+  apply Iterator_ready(i) --* List_state(l)
+}
+
+//////////////////////Iterator class//////////////////////
+
+//fields of the iterator
+field Iterator_iteratee: Ref
+field Iterator_current: Ref
+field Iterator_last: Ref
+
+//encodes the "ready" state
+predicate Iterator_ready(this: Ref) {
+
+  //needs a list to iterate over
+  acc(this.Iterator_iteratee, 1/2) && this.Iterator_iteratee!=null
+  && acc(this.Iterator_iteratee.List_sentinel) && this.Iterator_iteratee.List_sentinel!=null
+
+  //needs access to the current and previous entry and the current entry cannot be null
+  && acc(this.Iterator_current) && acc(this.Iterator_last) && this.Iterator_current!=null
+
+  //needs access to the fields of the current node
+  && acc(this.Iterator_current.Node_val) && acc(this.Iterator_current.Node_next)&&acc(this.Iterator_current.Node_prev)
+
+  //only the sentinel node has no predecessor
+  && (this.Iterator_current.Node_prev == null ==> this.Iterator_current == this.Iterator_iteratee.List_sentinel)
+
+  //the predicate structure of the previous part of the list has been reversed
+  && (this.Iterator_current.Node_prev != null ==> Node_reverse(this.Iterator_current.Node_prev)
+  && Node_first(this.Iterator_current.Node_prev) == this.Iterator_iteratee.List_sentinel
+  && Node_rev_next(this.Iterator_current.Node_prev) == this.Iterator_current)
+
+  //the remainder of the list has not been reversed
+  && (this.Iterator_current.Node_next != null ==> Node_state(this.Iterator_current.Node_next))}
+
+//encodes the "ready for next" state
+predicate Iterator_readyForNext(this: Ref) {
+
+  //needs a list to iterate over
+  acc(this.Iterator_iteratee, 1/2) && this.Iterator_iteratee!=null
+  && acc(this.Iterator_iteratee.List_sentinel) && this.Iterator_iteratee.List_sentinel!=null
+
+  //needs access to the current and previous entry and the current entry cannot be null
+  && acc(this.Iterator_current) && acc(this.Iterator_last) && this.Iterator_current!=null
+
+  //needs access to the fields of the current node
+  && acc(this.Iterator_current.Node_val) && acc(this.Iterator_current.Node_next) && acc(this.Iterator_current.Node_prev)
+
+  //only the sentinel node has no predecessor
+  && (this.Iterator_current.Node_prev == null ==> this.Iterator_current == this.Iterator_iteratee.List_sentinel)
+
+  //the predicate structure of the previous part of the list has been reversed
+  && (this.Iterator_current.Node_prev!=null ==> Node_reverse(this.Iterator_current.Node_prev)
+  && Node_first(this.Iterator_current.Node_prev) == this.Iterator_iteratee.List_sentinel
+  && Node_rev_next(this.Iterator_current.Node_prev) == this.Iterator_current)
+
+  //the remainder of the list has not been reversed
+  && (this.Iterator_current.Node_next != null ==> Node_state(this.Iterator_current.Node_next))
+
+  //we now additionally know that there is a next element
+  && this.Iterator_current.Node_next != null}
+
+//encodes the "ready for remove" state
+predicate Iterator_readyForRemove(this: Ref) {
+
+  //needs a list to iterate over
+  acc(this.Iterator_iteratee, 1/2) && this.Iterator_iteratee != null
+  && acc(this.Iterator_iteratee.List_sentinel) && this.Iterator_iteratee.List_sentinel != null
+
+  //needs access to the current and previous entry and the current entry cannot be null
+  && acc(this.Iterator_current) && acc(this.Iterator_last) && this.Iterator_current!=null
+
+  //needs access to the fields of the current node
+  && acc(this.Iterator_current.Node_val) && acc(this.Iterator_current.Node_next) && acc(this.Iterator_current.Node_prev)
+
+  //only the sentinel node has no predecessor
+  && (this.Iterator_current.Node_prev == null ==> this.Iterator_current == this.Iterator_iteratee.List_sentinel)
+
+  //the remainder of the list has not been reversed
+  && (this.Iterator_current.Node_next != null ==> Node_state(this.Iterator_current.Node_next))
+
+  //the predecessor of current is last
+  && this.Iterator_current.Node_prev == this.Iterator_last
+
+  //there is a previous node, i.e. current is not the sentinel node and we have access to its fields
+  && this.Iterator_last != null && acc(this.Iterator_last.Node_val) && acc(this.Iterator_last.Node_next)
+  && acc(this.Iterator_last.Node_prev)
+
+  //if the previous node has no predecessor it is the sentinel node
+  && (this.Iterator_last.Node_prev == null ==> this.Iterator_last == this.Iterator_iteratee.List_sentinel)
+
+  //the predicate structure of the part of the list before last has been reversed
+  && (this.Iterator_last.Node_prev != null ==> Node_reverse(this.Iterator_last.Node_prev)
+  && Node_first(this.Iterator_last.Node_prev) == this.Iterator_iteratee.List_sentinel
+  && Node_rev_next(this.Iterator_last.Node_prev) == this.Iterator_last)
+
+  //the next element after last is current
+  && this.Iterator_last.Node_next == this.Iterator_current}
+
+//create an iterator for the list l
+method Iterator_new(l: Ref) returns (this: Ref)
+requires l!=null && List_state(l)
+ensures  Iterator_ready(this)
+
+//the wand can be used to get back access to the list by giving up permissions to the iterator
+ensures  Iterator_ready(this) --* List_state(l) {
+  this := new(Iterator_iteratee,Iterator_current,Iterator_last)
+  unfold List_state(l)
+  this.Iterator_current := l.List_sentinel
+  unfold Node_state(this.Iterator_current)
+  this.Iterator_current.Node_prev := null
+  this.Iterator_iteratee := l
+  fold Iterator_ready(this)
+
+  package Iterator_ready(this) --* List_state(l) {
+    unfold Iterator_ready(this)
+    fold Node_state(this.Iterator_current)
+
+    //the predicate structure of the part of the list before current has been reversed. This needs to be undone.
+    if (Node_get_prev(this.Iterator_current) != null){
+        Node_swap(Node_get_prev(this.Iterator_current), this.Iterator_iteratee.List_sentinel, this.Iterator_current)
+    }
+
+    /* transferring the remaining 1/2 permissions to this.Iterator_iteratee into the 
+     * footprint ensures, that its value cannot be chaned, i.e. stays l.
+     */
+    assert acc(this.Iterator_iteratee)
+    fold List_state(l)
+  }
+}
+
+//check whether there is a next node in the list and transition to the appropriate state
+method Iterator_hasNext(this: Ref) returns (res: Bool)
+requires Iterator_ready(this)
+
+//we only transition to the "ready for next" state of there is a next element
+ensures  res ==> Iterator_readyForNext(this)
+
+//and stay in the "ready" state otherwise
+ensures  !res ==> Iterator_ready(this) {
+  unfold Iterator_ready(this)
+  res := this.Iterator_current.Node_next != null
+  if(!res) {
+    fold Iterator_ready(this)
+  } else {
+    fold Iterator_readyForNext(this)
+  }
+}
+
+//iterate
+method Iterator_next(this: Ref) returns (res: Int)
+requires Iterator_readyForNext(this)
+ensures Iterator_readyForRemove(this)
+
+//the wand can be used to transition ot the "ready" state directly, without removing the current element
+ensures Iterator_readyForRemove(this) --* Iterator_ready(this) {
+  unfold Iterator_readyForNext(this)
+  this.Iterator_last:=this.Iterator_current
+  this.Iterator_current:=this.Iterator_current.Node_next
+  unfold Node_state(this.Iterator_current)
+  res := this.Iterator_current.Node_val
+  this.Iterator_current.Node_prev:=this.Iterator_last
+  fold Iterator_readyForRemove(this)
+
+  package Iterator_readyForRemove(this) --* Iterator_ready(this) {
+    unfold Iterator_readyForRemove(this)
+
+    //adds the previous node to the reversed part of the list
+    fold Node_reverse(this.Iterator_current.Node_prev)
+
+    fold Iterator_ready(this)
+  }
+}
+
+//remove the current node from the list
+method Iterator_remove(this: Ref)
+requires Iterator_readyForRemove(this)
+ensures Iterator_ready(this) {
+  unfold Iterator_readyForRemove(this)
+  this.Iterator_last.Node_next := this.Iterator_current.Node_next
+  this.Iterator_current := this.Iterator_last
+  fold Iterator_ready(this)
+}
+
+//////////////////////List class//////////////////////
+
+//the sentinel is a node prepended before the first element of the list and is not part of the list
+field List_sentinel: Ref
+
+//represents a valid list
+predicate List_state(this: Ref){
+  acc(this.List_sentinel) && this.List_sentinel != null && Node_state(this.List_sentinel)}
+
+//create a new empty list
+method List_new() returns (this: Ref)
+ensures List_state(this) {
+  this := new(List_sentinel)
+  var sent: Ref
+  sent := Node_new(0,null)
+  this.List_sentinel := sent
+  fold List_state(this)
+}
+
+//add an element to the list
+method List_put(this: Ref, v: Int)
+requires List_state(this)
+ensures List_state(this) {
+  unfold List_state(this)
+  unfold Node_state(this.List_sentinel)
+  var sentNode_next: Ref
+  sentNode_next := Node_new(v,this.List_sentinel.Node_next)
+  this.List_sentinel.Node_next := sentNode_next
+  fold Node_state(this.List_sentinel)
+  fold List_state(this)
+}
+
+//////////////////////Node class of linked list//////////////////////
+
+//fields of the node
+field Node_val: Int
+field Node_prev: Ref
+field Node_next: Ref
+
+//a valid list
+predicate Node_state(this: Ref) {
+  acc(this.Node_val) && acc(this.Node_prev) && acc(this.Node_next)
+  && (this.Node_next != null ==> Node_state(this.Node_next))}
+
+//a valid list, with a reversed predicate structure
+//i.e. the outer most predicate instance represents the last element of the list
+predicate Node_reverse(this: Ref) {
+  acc(this.Node_val) && acc(this.Node_prev) && acc(this.Node_next)
+  && (this.Node_prev != null ==> Node_reverse(this.Node_prev) && Node_rev_next(this.Node_prev) == this)}
+
+//getters
+function Node_get_next(this: Ref): Ref
+requires Node_state(this) {
+  unfolding Node_state(this) in this.Node_next}
+  
+function Node_get_prev(this: Ref): Ref
+requires Node_state(this) {
+  unfolding Node_state(this) in this.Node_prev}
+  
+function Node_rev_next(this: Ref): Ref  
+requires Node_reverse(this) {
+  unfolding Node_reverse(this) in this.Node_next}
+
+function Node_rev_prev(this: Ref): Ref
+requires Node_reverse(this) {
+  unfolding Node_reverse(this) in this.Node_prev}
+
+//finds the first node of a list
+function Node_first(this: Ref): Ref
+  requires Node_reverse(this)
+{
+  unfolding Node_reverse(this) in (this.Node_prev==null) ? this : Node_first(this.Node_prev)}
+
+//create a new node
+method Node_new(v: Int, n: Ref) returns (this: Ref)
+requires n != null ==> Node_state(n)
+ensures Node_state(this) && Node_get_next(this) == n
+ensures this != null {
+  this := new(Node_val, Node_prev, Node_next)
+  this.Node_val := v
+  this.Node_next := n
+  fold Node_state(this)
+}
+
+//used to undo the reversal of the predicate structure
+method Node_swap(this: Ref, fst: Ref, nxt: Ref)
+requires fst != null && Node_reverse(this) && Node_rev_next(this) == nxt && (nxt != null ==> Node_state(nxt)) && Node_first(this) == fst
+ensures  fst != null && Node_state(fst) {
+  unfold Node_reverse(this)
+  if (this.Node_prev == null) {
+
+    //we have reached the beginning of the list => after undoing the reversal of the predicate we are done
+    fold Node_state(this)
+  } else {
+
+    //we have not reached the beginning of the list, yet
+    //=> undo reversal of current predicate and recursively undo reversal of the remainder of the list
+    var tmp: Ref := this.Node_prev
+    fold Node_state(this)
+    Node_swap(tmp, fst,this)
+  }
+}

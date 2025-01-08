@@ -1,0 +1,733 @@
+domain String  {
+  
+  function strLen(id: Int): Int 
+  
+  function strConcat(l: Int, r: Int): Int 
+  
+  unique function stringLit(): Int 
+  
+  axiom {
+    (forall l: Int, r: Int ::
+      { strLen(strConcat(l, r)) }
+      strLen(strConcat(l, r)) == strLen(l) + strLen(r))
+  }
+  
+  axiom {
+    (forall str: Int :: { strLen(str) } 0 <= strLen(str))
+  }
+  
+  axiom {
+    strLen(stringLit()) == 0
+  }
+}
+
+domain Types  {
+  
+  function empty_interface_Types(): Types 
+  
+  unique function empty_interface_Types_tag(): Int 
+  
+  function behavioral_subtype_Types(l: Types, r: Types): Bool 
+  
+  function nil_Types(): Types 
+  
+  unique function nil_Types_tag(): Int 
+  
+  function comparableType_Types(t: Types): Bool 
+  
+  function tag_Types(t: Types): Int 
+  
+  axiom {
+    (forall a: Types ::
+      { behavioral_subtype_Types(a, empty_interface_Types()) }
+      behavioral_subtype_Types(a, empty_interface_Types()))
+  }
+  
+  axiom {
+    (forall a: Types ::
+      { behavioral_subtype_Types(a, a) }
+      behavioral_subtype_Types(a, a))
+  }
+  
+  axiom {
+    (forall a: Types, b: Types, c: Types ::
+      { behavioral_subtype_Types(a, b), behavioral_subtype_Types(b, c) }
+      behavioral_subtype_Types(a, b) && behavioral_subtype_Types(b, c) ==>
+      behavioral_subtype_Types(a, c))
+  }
+  
+  axiom {
+    comparableType_Types(empty_interface_Types()) == false
+  }
+  
+  axiom {
+    tag_Types(empty_interface_Types()) == empty_interface_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(nil_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(nil_Types()) == nil_Types_tag()
+  }
+}
+
+domain ShStruct3[T0, T1, T2]  {
+  
+  function ShStructrev0of3(v0: T0): ShStruct3[T0, T1, T2] 
+  
+  function ShStructrev1of3(v1: T1): ShStruct3[T0, T1, T2] 
+  
+  function ShStructrev2of3(v2: T2): ShStruct3[T0, T1, T2] 
+  
+  function ShStructget0of3(x: ShStruct3[T0, T1, T2]): T0 
+  
+  function ShStructget1of3(x: ShStruct3[T0, T1, T2]): T1 
+  
+  function ShStructget2of3(x: ShStruct3[T0, T1, T2]): T2 
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2], y: ShStruct3[T0, T1, T2] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of3(x): T0) == (ShStructget0of3(y): T0) &&
+      (ShStructget1of3(x): T1) == (ShStructget1of3(y): T1) &&
+      (ShStructget2of3(x): T2) == (ShStructget2of3(y): T2)))
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget0of3(x): T0) }
+      (ShStructrev0of3((ShStructget0of3(x): T0)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget1of3(x): T1) }
+      (ShStructrev1of3((ShStructget1of3(x): T1)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget2of3(x): T2) }
+      (ShStructrev2of3((ShStructget2of3(x): T2)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+}
+
+domain Equality[T]  {
+  
+  function eq(l: T, r: T): Bool 
+  
+  axiom {
+    (forall l: T, r: T ::
+      { (eq(l, r): Bool) }
+      (eq(l, r): Bool) == (l == r))
+  }
+}
+
+domain Tuple3[T0, T1, T2]  {
+  
+  function tuple3(t0: T0, t1: T1, t2: T2): Tuple3[T0, T1, T2] 
+  
+  function get0of3(p: Tuple3[T0, T1, T2]): T0 
+  
+  function get1of3(p: Tuple3[T0, T1, T2]): T1 
+  
+  function get2of3(p: Tuple3[T0, T1, T2]): T2 
+  
+  axiom getter_over_tuple3 {
+    (forall t0: T0, t1: T1, t2: T2 ::
+      { (tuple3(t0, t1, t2): Tuple3[T0, T1, T2]) }
+      (get0of3((tuple3(t0, t1, t2): Tuple3[T0, T1, T2])): T0) == t0 &&
+      (get1of3((tuple3(t0, t1, t2): Tuple3[T0, T1, T2])): T1) == t1 &&
+      (get2of3((tuple3(t0, t1, t2): Tuple3[T0, T1, T2])): T2) == t2)
+  }
+  
+  axiom tuple3_over_getter {
+    (forall p: Tuple3[T0, T1, T2] ::
+      { (get0of3(p): T0) }
+      { (get1of3(p): T1) }
+      { (get2of3(p): T2) }
+      (tuple3((get0of3(p): T0), (get1of3(p): T1), (get2of3(p): T2)): Tuple3[T0, T1, T2]) ==
+      p)
+  }
+}
+
+domain Tuple2[T0, T1]  {
+  
+  function tuple2(t0: T0, t1: T1): Tuple2[T0, T1] 
+  
+  function get0of2(p: Tuple2[T0, T1]): T0 
+  
+  function get1of2(p: Tuple2[T0, T1]): T1 
+  
+  axiom getter_over_tuple2 {
+    (forall t0: T0, t1: T1 ::
+      { (tuple2(t0, t1): Tuple2[T0, T1]) }
+      (get0of2((tuple2(t0, t1): Tuple2[T0, T1])): T0) == t0 &&
+      (get1of2((tuple2(t0, t1): Tuple2[T0, T1])): T1) == t1)
+  }
+  
+  axiom tuple2_over_getter {
+    (forall p: Tuple2[T0, T1] ::
+      { (get0of2(p): T0) }
+      { (get1of2(p): T1) }
+      (tuple2((get0of2(p): T0), (get1of2(p): T1)): Tuple2[T0, T1]) == p)
+  }
+}
+
+domain WellFoundedOrder[T]  {
+  
+  function decreasing(arg1: T, arg2: T): Bool 
+  
+  function bounded(arg1: T): Bool 
+}
+
+field PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$: ShStruct3[Ref, Ref, Ref]
+
+field Intint$$$$_E_$$$: Int
+
+// decreases _
+function shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$(): ShStruct3[Ref, Ref, Ref]
+  ensures (ShStructget0of3(result): Ref) == null &&
+    (ShStructget1of3(result): Ref) == null &&
+    (ShStructget2of3(result): Ref) == null
+
+
+function Contains_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int): Bool
+  requires !(self_V0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
+    acc(tree_d081ef35_F(self_V0), write)
+{
+  !(self_V0 ==
+  shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) &&
+  (unfolding acc(tree_d081ef35_F(self_V0), write) in
+    (ShStructget1of3(self_V0): Ref).Intint$$$$_E_$$$ == v_V0 ||
+    (Contains_d081ef35_PMTree((ShStructget0of3(self_V0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$,
+    v_V0) ||
+    Contains_d081ef35_PMTree((ShStructget2of3(self_V0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$,
+    v_V0)))
+}
+
+// decreases 
+function IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]): Bool
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
+
+
+predicate tree_d081ef35_F(self_V0: ShStruct3[Ref, Ref, Ref]) {
+  acc((ShStructget0of3(self_V0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$, write) &&
+  acc((ShStructget1of3(self_V0): Ref).Intint$$$$_E_$$$, write) &&
+  acc((ShStructget2of3(self_V0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$, write) &&
+  (!((ShStructget0of3(self_V0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ ==
+  shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
+  acc(tree_d081ef35_F((ShStructget0of3(self_V0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$), write)) &&
+  (!((ShStructget2of3(self_V0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ ==
+  shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
+  acc(tree_d081ef35_F((ShStructget2of3(self_V0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$), write))
+}
+
+predicate ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]) 
+
+method Insert_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
+  returns (res_V0: ShStruct3[Ref, Ref, Ref])
+  requires !(self_V0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
+    acc(tree_d081ef35_F(self_V0), write)
+  ensures acc(tree_d081ef35_F(res_V0), write) &&
+    Contains_d081ef35_PMTree(res_V0, v_V0)
+{
+  inhale res_V0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+  
+  // decl self_V0_CN0: *Tree_d081ef35_T@°°, v_V0_CN1: int°°, res_V0_CN2: *Tree_d081ef35_T@°°
+  {
+    var res_V0_CN2: ShStruct3[Ref, Ref, Ref]
+    var v_V0_CN1: Int
+    var self_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init self_V0_CN0
+    inhale self_V0_CN0 ==
+      shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init v_V0_CN1
+    inhale v_V0_CN1 == 0
+    
+    // init res_V0_CN2
+    inhale res_V0_CN2 ==
+      shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+    
+    // self_V0_CN0 = self_V0
+    self_V0_CN0 := self_V0
+    
+    // v_V0_CN1 = v_V0
+    v_V0_CN1 := v_V0
+    
+    // decl 
+    
+    // if(self_V0_CN0 == (nil:*Tree_d081ef35_T@°)) {...} else {...}
+    if (self_V0_CN0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) {
+      
+      // decl N6: *Tree_d081ef35_T@°°
+      {
+        var N6: ShStruct3[Ref, Ref, Ref]
+        
+        // N6 = new(Tree_d081ef35_T°{dflt[*Tree_d081ef35_T@°], v_V0_CN1, dflt[*Tree_d081ef35_T@°]})
+        {
+          var fn$$0: ShStruct3[Ref, Ref, Ref]
+          inhale (let fn$$1 ==
+              (fn$$0) in
+              acc((ShStructget0of3(fn$$1): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$, write) &&
+              acc((ShStructget1of3(fn$$1): Ref).Intint$$$$_E_$$$, write) &&
+              acc((ShStructget2of3(fn$$1): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$, write)) &&
+            (let fn$$2 ==
+              (fn$$0) in
+              (let fn$$3 ==
+                ((tuple3(shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$(),
+                v_V0_CN1, shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()): Tuple3[ShStruct3[Ref, Ref, Ref], Int, ShStruct3[Ref, Ref, Ref]])) in
+                (ShStructget0of3(fn$$2): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ ==
+                (get0of3(fn$$3): ShStruct3[Ref, Ref, Ref]) &&
+                (ShStructget1of3(fn$$2): Ref).Intint$$$$_E_$$$ ==
+                (get1of3(fn$$3): Int) &&
+                (ShStructget2of3(fn$$2): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ ==
+                (get2of3(fn$$3): ShStruct3[Ref, Ref, Ref])))
+          N6 := fn$$0
+        }
+        
+        // res_V0_CN2 = N6
+        res_V0_CN2 := N6
+      }
+    } else {
+      
+      // decl 
+      
+      // unfold acc(tree_d081ef35_F(self_V0_CN0))
+      unfold acc(tree_d081ef35_F(self_V0_CN0), write)
+      
+      // if(*self_V0_CN0.ValueA + v_V0_CN1 % 2 == 0) {...} else {...}
+      if (((ShStructget1of3(self_V0_CN0): Ref).Intint$$$$_E_$$$ + v_V0_CN1) %
+      2 ==
+      0) {
+        
+        // decl N5: *Tree_d081ef35_T@°°
+        {
+          var N5: ShStruct3[Ref, Ref, Ref]
+          
+          // N5 = *self_V0_CN0.LeftAInsert(v_V0_CN1)
+          N5 := Insert_d081ef35_PMTree((ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$,
+            v_V0_CN1)
+          
+          // *self_V0_CN0.LeftA = N5
+          (ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := N5
+        }
+      } else {
+        
+        // decl N4: *Tree_d081ef35_T@°°
+        {
+          var N4: ShStruct3[Ref, Ref, Ref]
+          
+          // N4 = *self_V0_CN0.RightAInsert(v_V0_CN1)
+          N4 := Insert_d081ef35_PMTree((ShStructget2of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$,
+            v_V0_CN1)
+          
+          // *self_V0_CN0.RightA = N4
+          (ShStructget2of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := N4
+        }
+      }
+      
+      // res_V0_CN2 = self_V0_CN0
+      res_V0_CN2 := self_V0_CN0
+    }
+    
+    // fold acc(tree_d081ef35_F(res_V0_CN2))
+    fold acc(tree_d081ef35_F(res_V0_CN2), write)
+    
+    // return
+    goto returnLabel
+    label returnLabel
+    
+    // res_V0 = res_V0_CN2
+    res_V0 := res_V0_CN2
+  }
+}
+
+method DeleteAll_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
+  returns (res_V0: ShStruct3[Ref, Ref, Ref])
+  requires !(self_V0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
+    acc(tree_d081ef35_F(self_V0), write)
+  ensures (!(res_V0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
+    acc(tree_d081ef35_F(res_V0), write)) &&
+    !Contains_d081ef35_PMTree(res_V0, v_V0)
+{
+  inhale res_V0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+  
+  // decl self_V0_CN0: *Tree_d081ef35_T@°°, v_V0_CN1: int°°, res_V0_CN2: *Tree_d081ef35_T@°°
+  {
+    var res_V0_CN2: ShStruct3[Ref, Ref, Ref]
+    var v_V0_CN1: Int
+    var self_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init self_V0_CN0
+    inhale self_V0_CN0 ==
+      shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init v_V0_CN1
+    inhale v_V0_CN1 == 0
+    
+    // init res_V0_CN2
+    inhale res_V0_CN2 ==
+      shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+    
+    // self_V0_CN0 = self_V0
+    self_V0_CN0 := self_V0
+    
+    // v_V0_CN1 = v_V0
+    v_V0_CN1 := v_V0
+    
+    // decl 
+    
+    // if(self_V0_CN0 == (nil:*Tree_d081ef35_T@°)) {...} else {...}
+    if (self_V0_CN0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) {
+      
+      // decl 
+      
+      // res_V0_CN2 = (nil:*Tree_d081ef35_T@°)
+      res_V0_CN2 := shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+    } else {
+      
+      // decl N4: *Tree_d081ef35_T@°°, newLeft_V1: *Tree_d081ef35_T@°°, N5: *Tree_d081ef35_T@°°, newRight_V1: *Tree_d081ef35_T@°°
+      {
+        var newRight_V1: ShStruct3[Ref, Ref, Ref]
+        var N5: ShStruct3[Ref, Ref, Ref]
+        var newLeft_V1: ShStruct3[Ref, Ref, Ref]
+        var N4: ShStruct3[Ref, Ref, Ref]
+        
+        // unfold acc(tree_d081ef35_F(self_V0_CN0))
+        unfold acc(tree_d081ef35_F(self_V0_CN0), write)
+        
+        // N4 = *self_V0_CN0.LeftADeleteAll(v_V0_CN1)
+        N4 := DeleteAll_d081ef35_PMTree((ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$,
+          v_V0_CN1)
+        
+        // init newLeft_V1
+        inhale newLeft_V1 ==
+          shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+        
+        // newLeft_V1 = N4
+        newLeft_V1 := N4
+        
+        // N5 = *self_V0_CN0.RightADeleteAll(v_V0_CN1)
+        N5 := DeleteAll_d081ef35_PMTree((ShStructget2of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$,
+          v_V0_CN1)
+        
+        // init newRight_V1
+        inhale newRight_V1 ==
+          shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+        
+        // newRight_V1 = N5
+        newRight_V1 := N5
+        
+        // if(*self_V0_CN0.ValueA == v_V0_CN1) {...} else {...}
+        if ((ShStructget1of3(self_V0_CN0): Ref).Intint$$$$_E_$$$ ==
+        v_V0_CN1) {
+          
+          // decl 
+          
+          // if(newLeft_V1 == (nil:*Tree_d081ef35_T@°)) {...} else {...}
+          if (newLeft_V1 ==
+          shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) {
+            
+            // decl 
+            
+            // res_V0_CN2 = newRight_V1
+            res_V0_CN2 := newRight_V1
+          } else {
+            
+            // if(newRight_V1 == (nil:*Tree_d081ef35_T@°)) {...} else {...}
+            if (newRight_V1 ==
+            shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) {
+              
+              // decl 
+              
+              // res_V0_CN2 = newLeft_V1
+              res_V0_CN2 := newLeft_V1
+            } else {
+              
+              // decl leftMost_V2: int°°, N6: *Tree_d081ef35_T@°°, N7: int°°
+              {
+                var N7: Int
+                var N6: ShStruct3[Ref, Ref, Ref]
+                var leftMost_V2: Int
+                
+                // init leftMost_V2
+                inhale leftMost_V2 == 0
+                
+                // leftMost_V2 = dflt[int°]
+                leftMost_V2 := 0
+                
+                // N6, N7 = newRight_V1deleteLeftMost(v_V0_CN1)
+                N6, N7 := deleteLeftMost_d081ef35_PMTree(newRight_V1, v_V0_CN1)
+                
+                // *self_V0_CN0.RightA = N6
+                (ShStructget2of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := N6
+                
+                // leftMost_V2 = N7
+                leftMost_V2 := N7
+                
+                // *self_V0_CN0.ValueA = leftMost_V2
+                (ShStructget1of3(self_V0_CN0): Ref).Intint$$$$_E_$$$ := leftMost_V2
+                
+                // *self_V0_CN0.LeftA = newLeft_V1
+                (ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := newLeft_V1
+                
+                // fold acc(tree_d081ef35_F(self_V0_CN0))
+                fold acc(tree_d081ef35_F(self_V0_CN0), write)
+                
+                // res_V0_CN2 = self_V0_CN0
+                res_V0_CN2 := self_V0_CN0
+              }
+            }
+          }
+        } else {
+          
+          // decl 
+          
+          // *self_V0_CN0.LeftA = newLeft_V1
+          (ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := newLeft_V1
+          
+          // *self_V0_CN0.RightA = newRight_V1
+          (ShStructget2of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := newRight_V1
+          
+          // fold acc(tree_d081ef35_F(self_V0_CN0))
+          fold acc(tree_d081ef35_F(self_V0_CN0), write)
+          
+          // res_V0_CN2 = self_V0_CN0
+          res_V0_CN2 := self_V0_CN0
+        }
+      }
+    }
+    
+    // res_V0_CN2 = res_V0_CN2
+    res_V0_CN2 := res_V0_CN2
+    
+    // return
+    goto returnLabel
+    label returnLabel
+    
+    // res_V0 = res_V0_CN2
+    res_V0 := res_V0_CN2
+  }
+}
+
+method deleteLeftMost_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
+  returns (res_V0: ShStruct3[Ref, Ref, Ref], leftMost_V0: Int)
+  requires acc(tree_d081ef35_F(self_V0), write) &&
+    !Contains_d081ef35_PMTree(self_V0, v_V0)
+  ensures (!(res_V0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
+    acc(tree_d081ef35_F(res_V0), write)) &&
+    !Contains_d081ef35_PMTree(res_V0, v_V0) &&
+    !(v_V0 == leftMost_V0)
+{
+  inhale res_V0 ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+  inhale leftMost_V0 == 0
+  
+  // decl self_V0_CN0: *Tree_d081ef35_T@°°, v_V0_CN1: int°°, res_V0_CN2: *Tree_d081ef35_T@°°, leftMost_V0_CN3: int°°
+  {
+    var leftMost_V0_CN3: Int
+    var res_V0_CN2: ShStruct3[Ref, Ref, Ref]
+    var v_V0_CN1: Int
+    var self_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init self_V0_CN0
+    inhale self_V0_CN0 ==
+      shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init v_V0_CN1
+    inhale v_V0_CN1 == 0
+    
+    // init res_V0_CN2
+    inhale res_V0_CN2 ==
+      shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init leftMost_V0_CN3
+    inhale leftMost_V0_CN3 == 0
+    
+    // self_V0_CN0 = self_V0
+    self_V0_CN0 := self_V0
+    
+    // v_V0_CN1 = v_V0
+    v_V0_CN1 := v_V0
+    
+    // decl 
+    
+    // unfold acc(tree_d081ef35_F(self_V0_CN0))
+    unfold acc(tree_d081ef35_F(self_V0_CN0), write)
+    
+    // if(*self_V0_CN0.LeftA != (nil:*Tree_d081ef35_T@°)) {...} else {...}
+    if (!((ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$())) {
+      
+      // decl N10: *Tree_d081ef35_T@°°, N11: int°°
+      {
+        var N11: Int
+        var N10: ShStruct3[Ref, Ref, Ref]
+        
+        // N10, N11 = *self_V0_CN0.LeftAdeleteLeftMost(v_V0_CN1)
+        N10, N11 := deleteLeftMost_d081ef35_PMTree((ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$,
+          v_V0_CN1)
+        
+        // *self_V0_CN0.LeftA = N10
+        (ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := N10
+        
+        // leftMost_V0_CN3 = N11
+        leftMost_V0_CN3 := N11
+        
+        // fold acc(tree_d081ef35_F(self_V0_CN0))
+        fold acc(tree_d081ef35_F(self_V0_CN0), write)
+        
+        // res_V0_CN2 = self_V0_CN0
+        res_V0_CN2 := self_V0_CN0
+      }
+    } else {
+      
+      // if(*self_V0_CN0.RightA != (nil:*Tree_d081ef35_T@°)) {...} else {...}
+      if (!((ShStructget2of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ ==
+      shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$())) {
+        
+        // decl N8: *Tree_d081ef35_T@°°, N9: int°°
+        {
+          var N9: Int
+          var N8: ShStruct3[Ref, Ref, Ref]
+          
+          // N8 = *self_V0_CN0.RightA
+          N8 := (ShStructget2of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$
+          
+          // N9 = *self_V0_CN0.ValueA
+          N9 := (ShStructget1of3(self_V0_CN0): Ref).Intint$$$$_E_$$$
+          
+          // res_V0_CN2 = N8
+          res_V0_CN2 := N8
+          
+          // leftMost_V0_CN3 = N9
+          leftMost_V0_CN3 := N9
+        }
+      } else {
+        
+        // decl N6: *Tree_d081ef35_T@°°, N7: int°°
+        {
+          var N7: Int
+          var N6: ShStruct3[Ref, Ref, Ref]
+          
+          // N6 = (nil:*Tree_d081ef35_T@°)
+          N6 := shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()
+          
+          // N7 = *self_V0_CN0.ValueA
+          N7 := (ShStructget1of3(self_V0_CN0): Ref).Intint$$$$_E_$$$
+          
+          // res_V0_CN2 = N6
+          res_V0_CN2 := N6
+          
+          // leftMost_V0_CN3 = N7
+          leftMost_V0_CN3 := N7
+        }
+      }
+    }
+    
+    // res_V0_CN2 = res_V0_CN2
+    res_V0_CN2 := res_V0_CN2
+    
+    // leftMost_V0_CN3 = leftMost_V0_CN3
+    leftMost_V0_CN3 := leftMost_V0_CN3
+    
+    // return
+    goto returnLabel
+    label returnLabel
+    
+    // res_V0 = res_V0_CN2
+    res_V0 := res_V0_CN2
+    
+    // leftMost_V0 = leftMost_V0_CN3
+    leftMost_V0 := leftMost_V0_CN3
+  }
+}
+
+method $IMPORTS_d081ef35_d081ef35()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+method $IMPORTS_d081ef35_bffb141e()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+// decreases 
+method $INIT_d081ef35_494e8976()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+method panic_bffb141e_F(v_V0: Tuple2[Ref, Types])
+  requires false
+
+
+// decreases 
+method Error_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
+  returns (P0_PO0: Int)
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+
+
+// decreases 
+method Duplicate_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf) ==>
+    acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+
+
+// decreases 
+method IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e__pres_termination_proof(thisItf: Tuple2[Ref, Types])
+{
+  var $condInEx: Bool
+  if (!(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))) {
+    inhale acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
+  }
+}

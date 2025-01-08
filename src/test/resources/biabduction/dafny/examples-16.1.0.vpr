@@ -1,0 +1,25 @@
+field source: Seq[Int]
+field n: Int
+
+predicate Tokenizer(this: Ref)
+{
+    acc(this.source) && 
+    acc(this.n) && 0 <= this.n <= |this.source| &&
+    forall i: Int :: 0 <= i < |this.source| ==> 0 <= this.source[i] <= 127
+}
+
+
+method TokenizerConstructor(s: Seq[Int]) returns (this: Ref)
+    requires forall i: Int :: 0 <= i < |s| ==> 0 <= s[i] <= 127
+    ensures Tokenizer(this)
+    //ensures getSource(this) == s && getN(this) == 0
+{
+    this := new(source, n)
+    this.source := s
+    this.n := 0
+    fold Tokenizer(this)
+}
+
+
+
+    

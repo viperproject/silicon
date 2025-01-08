@@ -1,6 +1,6 @@
 package viper.silicon.biabduction
 
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources._
 import viper.silicon.rules._
@@ -41,12 +41,34 @@ object AbstractionFold extends AbstractionRule {
         val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
         executionFlowController.tryOrElse0(q.s, q.v) {
           (s1, v1, T) =>
+
+            val fargs = pred.formalArgs.map(_.localVar)
+            val eArgs = q.varTran.transformTerm(chunk.args.head)
+            val formalsToActuals: Map[LocalVar, Exp] = fargs.zip(eArgs).to(Map)
+            val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
+            val pveTransformed = pve.withReasonNodeTransformed(reasonTransformer)
+
             // TODO nklose this can branch
-            predicateSupporter.fold(s1, pred, List(chunk.args.head), None, terms.FullPerm, Some(FullPerm()()), wildcards, pve, v1)(T)
-        } { 
-          (s2, v2) => Q(Some(q.copy(s = s2, v = v2))) 
+            predicateSupporter.fold(s1, pred, List(chunk.args.head), None, terms.FullPerm, Some(FullPerm()()), wildcards, pveTransformed, v1)(T)
         } {
-          _ => checkChunks(rest, q)(Q)
+          (s2, v2) => Q(Some(q.copy(s = s2, v = v2)))
+        } {
+          f =>
+            executionFlowController.tryOrElse0(q.s, q.v) {
+              (s3, v3, T) =>
+                BiAbductionSolver.solveAbduction(s3, v3, f, None) { (s4, res, v4) =>
+                  res.state match {
+                    case Seq() => T(s4, v4)
+                    case _ => f
+                  }
+                }
+            } {
+              (s5, v5) =>
+                Q(Some(q.copy(s = s5, v = v5)))
+            } {
+              f =>
+                checkChunks(rest, q)(Q)
+            }
         }
     }
   }
@@ -60,6 +82,7 @@ object AbstractionFold extends AbstractionRule {
 
 object AbstractionPackage extends AbstractionRule {
 
+  // TODO nklose we should only trigger on fields for which there is a recursive predicate call
   @tailrec
   private def findWandFieldChunk(chunks: Seq[Chunk], q: AbstractionQuestion): Option[(Exp, BasicChunk)] = {
     chunks match {
@@ -76,16 +99,17 @@ object AbstractionPackage extends AbstractionRule {
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
 
     findWandFieldChunk(q.s.h.values.toSeq, q) match {
-    case None => Q(None)
-    case Some((lhsArg, chunk)) =>
-      val pred = q.fields(abductionUtils.getField(chunk.id, q.s.program))
-      val lhs = PredicateAccessPredicate(PredicateAccess(Seq(lhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
-      val rhsArg = q.varTran.transformTerm(chunk.args.head).get
-      val rhs = PredicateAccessPredicate(PredicateAccess(Seq(rhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
-      val wand = MagicWand(lhs, rhs)()
-      executor.exec(q.s, Assert(wand)(), q.v) {
-        (s1, sv) =>
-          Q(Some(q.copy(s = s1, v = sv)))}
+      case None => Q(None)
+      case Some((lhsArg, chunk)) =>
+        val pred = q.fields(abductionUtils.getField(chunk.id, q.s.program))
+        val lhs = PredicateAccessPredicate(PredicateAccess(Seq(lhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
+        val rhsArg = q.varTran.transformTerm(chunk.args.head).get
+        val rhs = PredicateAccessPredicate(PredicateAccess(Seq(rhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
+        val wand = MagicWand(lhs, rhs)()
+        executor.exec(q.s, Assert(wand)(), q.v) {
+          (s1, v1) =>
+            Q(Some(q.copy(s = s1, v = v1)))
+        }
     }
   }
 }
@@ -93,7 +117,7 @@ object AbstractionPackage extends AbstractionRule {
 object AbstractionJoin extends AbstractionRule {
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
-    val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect{case Some(wand: MagicWand) => wand}.toSeq
+    val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect { case Some(wand: MagicWand) => wand }.toSeq
     val pairs = wands.combinations(2).toSeq
     pairs.collectFirst {
       case wands if wands(0).right == wands(1).left => (wands(0), wands(1))
@@ -102,7 +126,8 @@ object AbstractionJoin extends AbstractionRule {
       case None => Q(None)
       case (Some((w1, w2))) =>
         magicWandSupporter.packageWand(q.s, MagicWand(w1.left, w2.right)(), Seqn(Seq(Apply(w1)(), Apply(w2)()), Seq())(), pve, q.v) {
-          (s1, wandChunk, v1) => Q(Some(q.copy(s = s1.copy(h = s1.h.+(wandChunk)), v = v1)))
+          (s1, wandChunk, v1) =>
+            Q(Some(q.copy(s = s1.copy(h = s1.reserveHeaps.head.+(wandChunk)), v = v1)))
         }
     }
   }
@@ -111,14 +136,15 @@ object AbstractionJoin extends AbstractionRule {
 object AbstractionApply extends AbstractionRule {
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
-    val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect {case Some(wand: MagicWand) => wand}
-    val targets = q.s.h.values.collect { case c: BasicChunk if !q.fixedChunks.contains(c) => q.varTran.transformChunk(c) }.collect {case Some(exp) => exp}.toSeq
+    val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect { case Some(wand: MagicWand) => wand }
+    val targets = q.s.h.values.collect { case c: BasicChunk if !q.fixedChunks.contains(c) => q.varTran.transformChunk(c) }.collect { case Some(exp) => exp }.toSeq
 
-    wands.collectFirst{case wand if targets.contains(wand.left) => wand } match {
+    wands.collectFirst { case wand if targets.contains(wand.left) => wand } match {
       case None => Q(None)
       case Some(wand) =>
         magicWandSupporter.applyWand(q.s, wand, pve, q.v) {
-          (s1, v1) => Q(Some(q.copy(s = s1, v = v1)))
+          (s1, v1) =>
+            Q(Some(q.copy(s = s1, v = v1)))
         }
     }
   }

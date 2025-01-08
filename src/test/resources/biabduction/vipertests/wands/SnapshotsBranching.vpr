@@ -1,0 +1,32 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/216/)
+field a: Int
+field b: Int
+field c: Int
+
+method test0(x: Ref)
+requires acc(x.a) && acc(x.b) && acc(x.c)
+ensures acc(x.a) && acc(x.b) && acc(x.c) && x.a == old(x.a) && x.b == old(x.b) && x.c == old(x.c) {
+    package acc(x.a) --* acc(x.a) && (x.a == 0 ? acc(x.b) : acc(x.c))
+    apply acc(x.a) --* acc(x.a) && (x.a == 0 ? acc(x.b) : acc(x.c))
+}
+
+method test1(x: Ref)
+requires acc(x.a) && acc(x.b) && acc(x.c)
+ensures acc(x.a) && acc(x.b) && acc(x.c) && x.a == old(x.a) && x.b == old(x.b) && x.c == old(x.c) {
+    package acc(x.a) --* acc(x.a) && (x.a == 0 ? (true --* acc(x.b)) : (true --* acc(x.c))) {
+        if (x.a == 0) {
+            package true --* acc(x.b)
+        } else {
+            package true --* acc(x.c)
+        }
+    }
+    apply acc(x.a) --* acc(x.a) && (x.a == 0 ? (true --* acc(x.b)) : (true --* acc(x.c)))
+    if (x.a == 0) {
+        apply true --* acc(x.b)
+    } else {
+        apply true --* acc(x.c)
+    }
+}

@@ -1,0 +1,1876 @@
+domain String  {
+  
+  function strLen(id: Int): Int 
+  
+  function strConcat(l: Int, r: Int): Int 
+  
+  unique function stringLit(): Int 
+  
+  axiom {
+    (forall l: Int, r: Int ::
+      { strLen(strConcat(l, r)) }
+      strLen(strConcat(l, r)) == strLen(l) + strLen(r))
+  }
+  
+  axiom {
+    (forall str: Int :: { strLen(str) } 0 <= strLen(str))
+  }
+  
+  axiom {
+    strLen(stringLit()) == 0
+  }
+}
+
+domain Types  {
+  
+  function empty_interface_Types(): Types 
+  
+  unique function empty_interface_Types_tag(): Int 
+  
+  function behavioral_subtype_Types(l: Types, r: Types): Bool 
+  
+  function nil_Types(): Types 
+  
+  unique function nil_Types_tag(): Int 
+  
+  function comparableType_Types(t: Types): Bool 
+  
+  function tag_Types(t: Types): Int 
+  
+  axiom {
+    (forall a: Types ::
+      { behavioral_subtype_Types(a, empty_interface_Types()) }
+      behavioral_subtype_Types(a, empty_interface_Types()))
+  }
+  
+  axiom {
+    (forall a: Types ::
+      { behavioral_subtype_Types(a, a) }
+      behavioral_subtype_Types(a, a))
+  }
+  
+  axiom {
+    (forall a: Types, b: Types, c: Types ::
+      { behavioral_subtype_Types(a, b), behavioral_subtype_Types(b, c) }
+      behavioral_subtype_Types(a, b) && behavioral_subtype_Types(b, c) ==>
+      behavioral_subtype_Types(a, c))
+  }
+  
+  axiom {
+    comparableType_Types(empty_interface_Types()) == false
+  }
+  
+  axiom {
+    tag_Types(empty_interface_Types()) == empty_interface_Types_tag()
+  }
+  
+  axiom {
+    comparableType_Types(nil_Types()) == true
+  }
+  
+  axiom {
+    tag_Types(nil_Types()) == nil_Types_tag()
+  }
+}
+
+domain ShStruct1[T0]  {
+  
+  function ShStructrev0of1(v0: T0): ShStruct1[T0] 
+  
+  function ShStructget0of1(x: ShStruct1[T0]): T0 
+  
+  axiom {
+    (forall x: ShStruct1[T0], y: ShStruct1[T0] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of1(x): T0) == (ShStructget0of1(y): T0)))
+  }
+  
+  axiom {
+    (forall x: ShStruct1[T0] ::
+      { (ShStructget0of1(x): T0) }
+      (ShStructrev0of1((ShStructget0of1(x): T0)): ShStruct1[T0]) == x)
+  }
+}
+
+domain ShStruct3[T0, T1, T2]  {
+  
+  function ShStructrev0of3(v0: T0): ShStruct3[T0, T1, T2] 
+  
+  function ShStructrev1of3(v1: T1): ShStruct3[T0, T1, T2] 
+  
+  function ShStructrev2of3(v2: T2): ShStruct3[T0, T1, T2] 
+  
+  function ShStructget0of3(x: ShStruct3[T0, T1, T2]): T0 
+  
+  function ShStructget1of3(x: ShStruct3[T0, T1, T2]): T1 
+  
+  function ShStructget2of3(x: ShStruct3[T0, T1, T2]): T2 
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2], y: ShStruct3[T0, T1, T2] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of3(x): T0) == (ShStructget0of3(y): T0) &&
+      (ShStructget1of3(x): T1) == (ShStructget1of3(y): T1) &&
+      (ShStructget2of3(x): T2) == (ShStructget2of3(y): T2)))
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget0of3(x): T0) }
+      (ShStructrev0of3((ShStructget0of3(x): T0)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget1of3(x): T1) }
+      (ShStructrev1of3((ShStructget1of3(x): T1)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+  
+  axiom {
+    (forall x: ShStruct3[T0, T1, T2] ::
+      { (ShStructget2of3(x): T2) }
+      (ShStructrev2of3((ShStructget2of3(x): T2)): ShStruct3[T0, T1, T2]) ==
+      x)
+  }
+}
+
+domain Equality[T]  {
+  
+  function eq(l: T, r: T): Bool 
+  
+  axiom {
+    (forall l: T, r: T ::
+      { (eq(l, r): Bool) }
+      (eq(l, r): Bool) == (l == r))
+  }
+}
+
+domain Tuple1[T0]  {
+  
+  function tuple1(t0: T0): Tuple1[T0] 
+  
+  function get0of1(p: Tuple1[T0]): T0 
+  
+  axiom getter_over_tuple1 {
+    (forall t0: T0 ::
+      { (tuple1(t0): Tuple1[T0]) }
+      (get0of1((tuple1(t0): Tuple1[T0])): T0) == t0)
+  }
+  
+  axiom tuple1_over_getter {
+    (forall p: Tuple1[T0] ::
+      { (get0of1(p): T0) }
+      (tuple1((get0of1(p): T0)): Tuple1[T0]) == p)
+  }
+}
+
+domain Tuple3[T0, T1, T2]  {
+  
+  function tuple3(t0: T0, t1: T1, t2: T2): Tuple3[T0, T1, T2] 
+  
+  function get0of3(p: Tuple3[T0, T1, T2]): T0 
+  
+  function get1of3(p: Tuple3[T0, T1, T2]): T1 
+  
+  function get2of3(p: Tuple3[T0, T1, T2]): T2 
+  
+  axiom getter_over_tuple3 {
+    (forall t0: T0, t1: T1, t2: T2 ::
+      { (tuple3(t0, t1, t2): Tuple3[T0, T1, T2]) }
+      (get0of3((tuple3(t0, t1, t2): Tuple3[T0, T1, T2])): T0) == t0 &&
+      (get1of3((tuple3(t0, t1, t2): Tuple3[T0, T1, T2])): T1) == t1 &&
+      (get2of3((tuple3(t0, t1, t2): Tuple3[T0, T1, T2])): T2) == t2)
+  }
+  
+  axiom tuple3_over_getter {
+    (forall p: Tuple3[T0, T1, T2] ::
+      { (get0of3(p): T0) }
+      { (get1of3(p): T1) }
+      { (get2of3(p): T2) }
+      (tuple3((get0of3(p): T0), (get1of3(p): T1), (get2of3(p): T2)): Tuple3[T0, T1, T2]) ==
+      p)
+  }
+}
+
+domain Tuple2[T0, T1]  {
+  
+  function tuple2(t0: T0, t1: T1): Tuple2[T0, T1] 
+  
+  function get0of2(p: Tuple2[T0, T1]): T0 
+  
+  function get1of2(p: Tuple2[T0, T1]): T1 
+  
+  axiom getter_over_tuple2 {
+    (forall t0: T0, t1: T1 ::
+      { (tuple2(t0, t1): Tuple2[T0, T1]) }
+      (get0of2((tuple2(t0, t1): Tuple2[T0, T1])): T0) == t0 &&
+      (get1of2((tuple2(t0, t1): Tuple2[T0, T1])): T1) == t1)
+  }
+  
+  axiom tuple2_over_getter {
+    (forall p: Tuple2[T0, T1] ::
+      { (get0of2(p): T0) }
+      { (get1of2(p): T1) }
+      (tuple2((get0of2(p): T0), (get1of2(p): T1)): Tuple2[T0, T1]) == p)
+  }
+}
+
+domain Option[T]  {
+  
+  function optSome(e: T): Option[T] 
+  
+  function optNone(): Option[T] 
+  
+  function optGet(o: Option[T]): T 
+  
+  function optIsNone(o: Option[T]): Bool 
+  
+  axiom {
+    (forall e: T ::
+      { (optSome(e): Option[T]) }
+      (optGet((optSome(e): Option[T])): T) == e &&
+      !(optIsNone((optSome(e): Option[T])): Bool))
+  }
+  
+  axiom {
+    (forall o: Option[T] ::
+      { (optGet(o): T) }
+      !(optIsNone(o): Bool) ==> o == (optSome((optGet(o): T)): Option[T]))
+  }
+  
+  axiom {
+    (optIsNone((optNone(): Option[T])): Bool)
+  }
+  
+  axiom {
+    (forall o: Option[T] ::
+      { (optIsNone(o): Bool) }
+      o == (optNone(): Option[T]) ||
+      (exists e: T :: { (optSome(e): Option[T]) } o ==
+        (optSome(e): Option[T])))
+  }
+}
+
+domain WellFoundedOrder[T]  {
+  
+  function decreasing(arg1: T, arg2: T): Bool 
+  
+  function bounded(arg1: T): Bool 
+}
+
+field Intint$$$$_E_$$$: Int
+
+field PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$: ShStruct3[Ref, Ref, Ref]
+
+// decreases _
+function shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$(): ShStruct1[Ref]
+  ensures (ShStructget0of1(result): Ref) == null
+
+
+// decreases _
+function shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$(): ShStruct3[Ref, Ref, Ref]
+  ensures (ShStructget0of3(result): Ref) == null &&
+    (ShStructget1of3(result): Ref) == null &&
+    (ShStructget2of3(result): Ref) == null
+
+
+function IsEmpty_ff156c70_PMTree(t_V0: ShStruct1[Ref]): Bool
+  requires acc(tree_ff156c70_PMTree(t_V0), write)
+  ensures result ==
+    (unfolding acc(tree_ff156c70_PMTree(t_V0), write) in
+      (ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())
+{
+  (unfolding acc(tree_ff156c70_PMTree(t_V0), write) in
+    (ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())
+}
+
+function sorted_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: Option[Int],
+  upperBound_V0: Option[Int]): Bool
+  requires acc(tree_ff156c70_PMnode(n_V0), wildcard)
+{
+  (unfolding acc(tree_ff156c70_PMnode(n_V0), wildcard) in
+    (!(lowerBound_V0 == (optNone(): Option[Int])) ?
+      (optGet(lowerBound_V0): Int) <
+      (ShStructget0of3(n_V0): Ref).Intint$$$$_E_$$$ :
+      true) &&
+    (!(upperBound_V0 == (optNone(): Option[Int])) ?
+      (ShStructget0of3(n_V0): Ref).Intint$$$$_E_$$$ <
+      (optGet(upperBound_V0): Int) :
+      true) &&
+    (!((ShStructget1of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ?
+      sorted_ff156c70_PMnode((ShStructget1of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+      lowerBound_V0, (optSome((ShStructget0of3(n_V0): Ref).Intint$$$$_E_$$$): Option[Int])) :
+      true) &&
+    (!((ShStructget2of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ?
+      sorted_ff156c70_PMnode((ShStructget2of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+      (optSome((ShStructget0of3(n_V0): Ref).Intint$$$$_E_$$$): Option[Int]),
+      upperBound_V0) :
+      true))
+}
+
+function sortedValues_ff156c70_PMTree(t_V0: ShStruct1[Ref]): Seq[Int]
+  requires acc(tree_ff156c70_PMTree(t_V0), wildcard)
+  ensures (forall i_V1: Int ::
+      { result[i_V1] }
+      0 <= i_V1 && i_V1 + 1 < |result| ==> result[i_V1] < result[i_V1 + 1])
+{
+  (unfolding acc(tree_ff156c70_PMTree(t_V0), wildcard) in
+    ((ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$() ?
+      Seq[Int]() :
+      sortedValues_ff156c70_PMnode((ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+      (optNone(): Option[Int]), (optNone(): Option[Int]))))
+}
+
+function sortedValues_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: Option[Int],
+  upperBound_V0: Option[Int]): Seq[Int]
+  requires acc(tree_ff156c70_PMnode(n_V0), wildcard) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures (forall i_V1: Int ::
+      { result[i_V1] }
+      0 <= i_V1 && i_V1 < |result| ==>
+      (!(lowerBound_V0 == (optNone(): Option[Int])) ==>
+      result[i_V1] > (optGet(lowerBound_V0): Int)) &&
+      (!(upperBound_V0 == (optNone(): Option[Int])) ==>
+      result[i_V1] < (optGet(upperBound_V0): Int)))
+  ensures (forall i_V1: Int ::
+      { result[i_V1] }
+      0 <= i_V1 && i_V1 + 1 < |result| ==> result[i_V1] < result[i_V1 + 1])
+{
+  (unfolding acc(tree_ff156c70_PMnode(n_V0), wildcard) in
+    ((ShStructget1of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$() ?
+      Seq[Int]() :
+      sortedValues_ff156c70_PMnode((ShStructget1of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+      lowerBound_V0, (optSome((ShStructget0of3(n_V0): Ref).Intint$$$$_E_$$$): Option[Int]))) ++
+    Seq((ShStructget0of3(n_V0): Ref).Intint$$$$_E_$$$) ++
+    ((ShStructget2of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$() ?
+      Seq[Int]() :
+      sortedValues_ff156c70_PMnode((ShStructget2of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+      (optSome((ShStructget0of3(n_V0): Ref).Intint$$$$_E_$$$): Option[Int]),
+      upperBound_V0)))
+}
+
+function pureContains_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int, dividend_V0: Int): Bool
+  requires dividend_V0 > 0 &&
+    acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0)
+{
+  (unfolding acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0) in
+    !((ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) &&
+    (value_V0 in
+    sortedValues_ff156c70_PMnode((ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+    (optNone(): Option[Int]), (optNone(): Option[Int]))))
+}
+
+// decreases 
+function IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]): Bool
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
+
+
+predicate tree_ff156c70_PMTree(t_V0: ShStruct1[Ref]) {
+  acc((ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write) &&
+  (!((ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+  shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
+  acc(tree_ff156c70_PMnode((ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write) &&
+  sorted_ff156c70_PMnode((ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+  (optNone(): Option[Int]), (optNone(): Option[Int])))
+}
+
+predicate tree_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref]) {
+  acc((ShStructget0of3(n_V0): Ref).Intint$$$$_E_$$$, write) &&
+  acc((ShStructget1of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write) &&
+  acc((ShStructget2of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write) &&
+  (!((ShStructget1of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+  shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
+  acc(tree_ff156c70_PMnode((ShStructget1of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)) &&
+  (!((ShStructget2of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+  shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
+  acc(tree_ff156c70_PMnode((ShStructget2of3(n_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write))
+}
+
+predicate ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]) 
+
+method NewTree_ff156c70_F() returns (t_V0: ShStruct1[Ref])
+  ensures acc(tree_ff156c70_PMTree(t_V0), write) &&
+    IsEmpty_ff156c70_PMTree(t_V0)
+{
+  inhale t_V0 ==
+    shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+  
+  // decl t_V0_CN0: *Tree_ff156c70_T@°°
+  {
+    var t_V0_CN0: ShStruct1[Ref]
+    
+    
+    
+    // init t_V0_CN0
+    inhale t_V0_CN0 ==
+      shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // decl N2: *Tree_ff156c70_T@°°
+    {
+      var N2: ShStruct1[Ref]
+      
+      // N2 = new(dflt[Tree_ff156c70_T°])
+      {
+        var fn$$0: ShStruct1[Ref]
+        inhale (let fn$$1 ==
+            (fn$$0) in
+            acc((ShStructget0of1(fn$$1): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write)) &&
+          (let fn$$2 ==
+            (fn$$0) in
+            (let fn$$3 ==
+              ((tuple1(shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()): Tuple1[ShStruct3[Ref, Ref, Ref]])) in
+              (ShStructget0of1(fn$$2): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+              (get0of1(fn$$3): ShStruct3[Ref, Ref, Ref])))
+        N2 := fn$$0
+      }
+      
+      // t_V0_CN0 = N2
+      t_V0_CN0 := N2
+      
+      // fold acc(t_V0_CN0.tree())
+      fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+      
+      // t_V0_CN0 = t_V0_CN0
+      t_V0_CN0 := t_V0_CN0
+      
+      // return
+      goto returnLabel
+    }
+    label returnLabel
+    
+    // t_V0 = t_V0_CN0
+    t_V0 := t_V0_CN0
+  }
+}
+
+method Contains_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int, dividend_V0: Int)
+  returns (res_V0: Bool)
+  requires dividend_V0 > 0
+  requires acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0)
+  ensures acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0)
+  ensures res_V0 ==
+    pureContains_ff156c70_PMTree(t_V0, value_V0, dividend_V0)
+{
+  inhale res_V0 == false
+  
+  // decl t_V0_CN0: *Tree_ff156c70_T@°°, value_V0_CN1: int°°, dividend_V0_CN2: int°°, res_V0_CN3: bool°°
+  {
+    var res_V0_CN3: Bool
+    var dividend_V0_CN2: Int
+    var value_V0_CN1: Int
+    var t_V0_CN0: ShStruct1[Ref]
+    
+    
+    
+    // init t_V0_CN0
+    inhale t_V0_CN0 ==
+      shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init value_V0_CN1
+    inhale value_V0_CN1 == 0
+    
+    // init dividend_V0_CN2
+    inhale dividend_V0_CN2 == 0
+    
+    // init res_V0_CN3
+    inhale res_V0_CN3 == false
+    
+    // t_V0_CN0 = t_V0
+    t_V0_CN0 := t_V0
+    
+    // value_V0_CN1 = value_V0
+    value_V0_CN1 := value_V0
+    
+    // dividend_V0_CN2 = dividend_V0
+    dividend_V0_CN2 := dividend_V0
+    
+    // decl 
+    
+    // unfold acc(t_V0_CN0.tree(), 1/dividend_V0_CN2)
+    unfold acc(tree_ff156c70_PMTree(t_V0_CN0), 1 / dividend_V0_CN2)
+    
+    // if(*t_V0_CN0.rootA == (nil:*node_ff156c70_T@°)) {...} else {...}
+    if ((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) {
+      
+      // decl 
+      
+      // res_V0_CN3 = false
+      res_V0_CN3 := false
+    } else {
+      
+      // decl N5: bool°°
+      {
+        var N5: Bool
+        
+        // N5 = *t_V0_CN0.rootAcontains(value_V0_CN1, dividend_V0_CN2, none[int°], none[int°])
+        N5 := contains_ff156c70_PMnode((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+          value_V0_CN1, dividend_V0_CN2, (optNone(): Option[Int]), (optNone(): Option[Int]))
+        
+        // res_V0_CN3 = N5
+        res_V0_CN3 := N5
+      }
+    }
+    
+    // fold acc(t_V0_CN0.tree(), 1/dividend_V0_CN2)
+    fold acc(tree_ff156c70_PMTree(t_V0_CN0), 1 / dividend_V0_CN2)
+    
+    // res_V0_CN3 = res_V0_CN3
+    res_V0_CN3 := res_V0_CN3
+    
+    // return
+    goto returnLabel
+    label returnLabel
+    
+    // res_V0 = res_V0_CN3
+    res_V0 := res_V0_CN3
+  }
+}
+
+method contains_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
+  dividend_V0: Int, lowerBound_V0: Option[Int], upperBound_V0: Option[Int])
+  returns (res_V0: Bool)
+  requires dividend_V0 > 0
+  requires acc(tree_ff156c70_PMnode(n_V0), 1 / dividend_V0) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures acc(tree_ff156c70_PMnode(n_V0), 1 / dividend_V0) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures res_V0 ==
+    (value_V0 in
+    sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))
+{
+  inhale res_V0 == false
+  
+  // decl n_V0_CN0: *node_ff156c70_T@°°, value_V0_CN1: int°°, dividend_V0_CN2: int°°, lowerBound_V0_CN3: option[int°]°°, upperBound_V0_CN4: option[int°]°°, res_V0_CN5: bool°°
+  {
+    var res_V0_CN5: Bool
+    var upperBound_V0_CN4: Option[Int]
+    var lowerBound_V0_CN3: Option[Int]
+    var dividend_V0_CN2: Int
+    var value_V0_CN1: Int
+    var n_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init n_V0_CN0
+    inhale n_V0_CN0 ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init value_V0_CN1
+    inhale value_V0_CN1 == 0
+    
+    // init dividend_V0_CN2
+    inhale dividend_V0_CN2 == 0
+    
+    // init lowerBound_V0_CN3
+    inhale lowerBound_V0_CN3 == (optNone(): Option[Int])
+    
+    // init upperBound_V0_CN4
+    inhale upperBound_V0_CN4 == (optNone(): Option[Int])
+    
+    // init res_V0_CN5
+    inhale res_V0_CN5 == false
+    
+    // n_V0_CN0 = n_V0
+    n_V0_CN0 := n_V0
+    
+    // value_V0_CN1 = value_V0
+    value_V0_CN1 := value_V0
+    
+    // dividend_V0_CN2 = dividend_V0
+    dividend_V0_CN2 := dividend_V0
+    
+    // lowerBound_V0_CN3 = lowerBound_V0
+    lowerBound_V0_CN3 := lowerBound_V0
+    
+    // upperBound_V0_CN4 = upperBound_V0
+    upperBound_V0_CN4 := upperBound_V0
+    
+    // decl 
+    
+    // unfold acc(n_V0_CN0.tree(), 1/dividend_V0_CN2)
+    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), 1 / dividend_V0_CN2)
+    
+    // if(*n_V0_CN0.valueA == value_V0_CN1) {...} else {...}
+    if ((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ == value_V0_CN1) {
+      
+      // decl 
+      
+      // res_V0_CN5 = true
+      res_V0_CN5 := true
+    } else {
+      
+      // if(value_V0_CN1 < *n_V0_CN0.valueA && *n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
+      if (value_V0_CN1 < (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ &&
+      !((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+        
+        // decl N10: bool°°
+        {
+          var N10: Bool
+          
+          // N10 = *n_V0_CN0.leftAcontains(value_V0_CN1, dividend_V0_CN2, lowerBound_V0_CN3, some(*n_V0_CN0.valueA))
+          N10 := contains_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+            value_V0_CN1, dividend_V0_CN2, lowerBound_V0_CN3, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]))
+          
+          // res_V0_CN5 = N10
+          res_V0_CN5 := N10
+        }
+      } else {
+        
+        // if(value_V0_CN1 > *n_V0_CN0.valueA && *n_V0_CN0.rightA != (nil:*node_ff156c70_T@°)) {...} else {...}
+        if (value_V0_CN1 >
+        (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ &&
+        !((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+        shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+          
+          // decl N9: bool°°
+          {
+            var N9: Bool
+            
+            // N9 = *n_V0_CN0.rightAcontains(value_V0_CN1, dividend_V0_CN2, some(*n_V0_CN0.valueA), upperBound_V0_CN4)
+            N9 := contains_ff156c70_PMnode((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+              value_V0_CN1, dividend_V0_CN2, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+              upperBound_V0_CN4)
+            
+            // res_V0_CN5 = N9
+            res_V0_CN5 := N9
+          }
+        } else {
+          
+          // decl 
+          
+          // res_V0_CN5 = false
+          res_V0_CN5 := false
+        }
+      }
+    }
+    
+    // fold acc(n_V0_CN0.tree(), 1/dividend_V0_CN2)
+    fold acc(tree_ff156c70_PMnode(n_V0_CN0), 1 / dividend_V0_CN2)
+    
+    // res_V0_CN5 = res_V0_CN5
+    res_V0_CN5 := res_V0_CN5
+    
+    // return
+    goto returnLabel
+    label returnLabel
+    
+    // res_V0 = res_V0_CN5
+    res_V0 := res_V0_CN5
+  }
+}
+
+method Insert_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
+  requires acc(tree_ff156c70_PMTree(t_V0), write)
+  ensures acc(tree_ff156c70_PMTree(t_V0), write)
+  ensures (value_V0 in sortedValues_ff156c70_PMTree(t_V0))
+  ensures |sortedValues_ff156c70_PMTree(t_V0)| ==
+    old(|sortedValues_ff156c70_PMTree(t_V0)|) +
+    ((value_V0 in old(sortedValues_ff156c70_PMTree(t_V0))) ? 0 : 1)
+  ensures (forall i_V1: Int ::
+      { (i_V1 in old(sortedValues_ff156c70_PMTree(t_V0))) }
+      { (i_V1 in sortedValues_ff156c70_PMTree(t_V0)) }
+      (i_V1 in old(sortedValues_ff156c70_PMTree(t_V0))) ==>
+      (i_V1 in sortedValues_ff156c70_PMTree(t_V0)))
+  ensures (value_V0 in old(sortedValues_ff156c70_PMTree(t_V0))) ==>
+    old(sortedValues_ff156c70_PMTree(t_V0)) ==
+    sortedValues_ff156c70_PMTree(t_V0)
+{
+  
+  // decl t_V0_CN0: *Tree_ff156c70_T@°°, value_V0_CN1: int°°
+  {
+    var value_V0_CN1: Int
+    var t_V0_CN0: ShStruct1[Ref]
+    
+    
+    
+    // init t_V0_CN0
+    inhale t_V0_CN0 ==
+      shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init value_V0_CN1
+    inhale value_V0_CN1 == 0
+    
+    // t_V0_CN0 = t_V0
+    t_V0_CN0 := t_V0
+    
+    // value_V0_CN1 = value_V0
+    value_V0_CN1 := value_V0
+    
+    // decl 
+    
+    // unfold acc(t_V0_CN0.tree())
+    unfold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+    
+    // if(*t_V0_CN0.rootA == (nil:*node_ff156c70_T@°)) {...} else {...}
+    if ((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) {
+      
+      // decl N11: *node_ff156c70_T@°°
+      {
+        var N11: ShStruct3[Ref, Ref, Ref]
+        
+        // N11 = new(node_ff156c70_T°{value_V0_CN1, dflt[*node_ff156c70_T@°], dflt[*node_ff156c70_T@°]})
+        {
+          var fn$$0: ShStruct3[Ref, Ref, Ref]
+          inhale (let fn$$1 ==
+              (fn$$0) in
+              acc((ShStructget0of3(fn$$1): Ref).Intint$$$$_E_$$$, write) &&
+              acc((ShStructget1of3(fn$$1): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write) &&
+              acc((ShStructget2of3(fn$$1): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write)) &&
+            (let fn$$2 ==
+              (fn$$0) in
+              (let fn$$3 ==
+                ((tuple3(value_V0_CN1, shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$(),
+                shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()): Tuple3[Int, ShStruct3[Ref, Ref, Ref], ShStruct3[Ref, Ref, Ref]])) in
+                (ShStructget0of3(fn$$2): Ref).Intint$$$$_E_$$$ ==
+                (get0of3(fn$$3): Int) &&
+                (ShStructget1of3(fn$$2): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+                (get1of3(fn$$3): ShStruct3[Ref, Ref, Ref]) &&
+                (ShStructget2of3(fn$$2): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+                (get2of3(fn$$3): ShStruct3[Ref, Ref, Ref])))
+          N11 := fn$$0
+        }
+        
+        // *t_V0_CN0.rootA = N11
+        (ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N11
+        
+        // fold acc(*t_V0_CN0.rootA.tree())
+        fold acc(tree_ff156c70_PMnode((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
+      }
+    } else {
+      
+      // decl 
+      
+      // *t_V0_CN0.rootAinsert(value_V0_CN1, none[int°], none[int°])
+      insert_ff156c70_PMnode((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+        value_V0_CN1, (optNone(): Option[Int]), (optNone(): Option[Int]))
+    }
+    
+    // fold acc(t_V0_CN0.tree())
+    fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+    label returnLabel
+  }
+}
+
+method insert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
+  lowerBound_V0: Option[Int], upperBound_V0: Option[Int])
+  requires !(lowerBound_V0 == (optNone(): Option[Int])) ==>
+    (optGet(lowerBound_V0): Int) < value_V0
+  requires !(upperBound_V0 == (optNone(): Option[Int])) ==>
+    (optGet(upperBound_V0): Int) > value_V0
+  requires acc(tree_ff156c70_PMnode(n_V0), write) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures acc(tree_ff156c70_PMnode(n_V0), write) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures (value_V0 in
+    sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))
+  ensures |sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)| ==
+    old(|sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)|) +
+    ((value_V0 in
+    old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))) ?
+      0 :
+      1)
+  ensures (forall i_V1: Int ::
+      { (i_V1 in
+      old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))) }
+      { (i_V1 in
+      sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)) }
+      (i_V1 in
+      old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))) ==>
+      (i_V1 in
+      sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)))
+  ensures (value_V0 in
+    old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))) ==>
+    old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)) ==
+    sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+{
+  
+  // decl n_V0_CN0: *node_ff156c70_T@°°, value_V0_CN1: int°°, lowerBound_V0_CN2: option[int°]°°, upperBound_V0_CN3: option[int°]°°
+  {
+    var upperBound_V0_CN3: Option[Int]
+    var lowerBound_V0_CN2: Option[Int]
+    var value_V0_CN1: Int
+    var n_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init n_V0_CN0
+    inhale n_V0_CN0 ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init value_V0_CN1
+    inhale value_V0_CN1 == 0
+    
+    // init lowerBound_V0_CN2
+    inhale lowerBound_V0_CN2 == (optNone(): Option[Int])
+    
+    // init upperBound_V0_CN3
+    inhale upperBound_V0_CN3 == (optNone(): Option[Int])
+    
+    // n_V0_CN0 = n_V0
+    n_V0_CN0 := n_V0
+    
+    // value_V0_CN1 = value_V0
+    value_V0_CN1 := value_V0
+    
+    // lowerBound_V0_CN2 = lowerBound_V0
+    lowerBound_V0_CN2 := lowerBound_V0
+    
+    // upperBound_V0_CN3 = upperBound_V0
+    upperBound_V0_CN3 := upperBound_V0
+    
+    // decl 
+    
+    // unfold acc(n_V0_CN0.tree())
+    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    
+    // if(value_V0_CN1 < *n_V0_CN0.valueA) {...} else {...}
+    if (value_V0_CN1 < (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$) {
+      
+      // decl 
+      
+      // if(*n_V0_CN0.leftA == (nil:*node_ff156c70_T@°)) {...} else {...}
+      if ((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) {
+        
+        // decl N16: *node_ff156c70_T@°°
+        {
+          var N16: ShStruct3[Ref, Ref, Ref]
+          
+          // N16 = new(node_ff156c70_T°{value_V0_CN1, dflt[*node_ff156c70_T@°], dflt[*node_ff156c70_T@°]})
+          {
+            var fn$$0: ShStruct3[Ref, Ref, Ref]
+            inhale (let fn$$1 ==
+                (fn$$0) in
+                acc((ShStructget0of3(fn$$1): Ref).Intint$$$$_E_$$$, write) &&
+                acc((ShStructget1of3(fn$$1): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write) &&
+                acc((ShStructget2of3(fn$$1): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write)) &&
+              (let fn$$2 ==
+                (fn$$0) in
+                (let fn$$3 ==
+                  ((tuple3(value_V0_CN1, shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$(),
+                  shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()): Tuple3[Int, ShStruct3[Ref, Ref, Ref], ShStruct3[Ref, Ref, Ref]])) in
+                  (ShStructget0of3(fn$$2): Ref).Intint$$$$_E_$$$ ==
+                  (get0of3(fn$$3): Int) &&
+                  (ShStructget1of3(fn$$2): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+                  (get1of3(fn$$3): ShStruct3[Ref, Ref, Ref]) &&
+                  (ShStructget2of3(fn$$2): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+                  (get2of3(fn$$3): ShStruct3[Ref, Ref, Ref])))
+            N16 := fn$$0
+          }
+          
+          // *n_V0_CN0.leftA = N16
+          (ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N16
+          
+          // fold acc(*n_V0_CN0.leftA.tree())
+          fold acc(tree_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
+        }
+      } else {
+        
+        // decl 
+        
+        // *n_V0_CN0.leftAinsert(value_V0_CN1, lowerBound_V0_CN2, some(*n_V0_CN0.valueA))
+        insert_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+          value_V0_CN1, lowerBound_V0_CN2, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]))
+      }
+    } else {
+      
+      // if(value_V0_CN1 > *n_V0_CN0.valueA) {...} else {...}
+      if (value_V0_CN1 > (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$) {
+        
+        // decl 
+        
+        // if(*n_V0_CN0.rightA == (nil:*node_ff156c70_T@°)) {...} else {...}
+        if ((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+        shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) {
+          
+          // decl N15: *node_ff156c70_T@°°
+          {
+            var N15: ShStruct3[Ref, Ref, Ref]
+            
+            // N15 = new(node_ff156c70_T°{value_V0_CN1, dflt[*node_ff156c70_T@°], dflt[*node_ff156c70_T@°]})
+            {
+              var fn$$4: ShStruct3[Ref, Ref, Ref]
+              inhale (let fn$$5 ==
+                  (fn$$4) in
+                  acc((ShStructget0of3(fn$$5): Ref).Intint$$$$_E_$$$, write) &&
+                  acc((ShStructget1of3(fn$$5): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write) &&
+                  acc((ShStructget2of3(fn$$5): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$, write)) &&
+                (let fn$$6 ==
+                  (fn$$4) in
+                  (let fn$$7 ==
+                    ((tuple3(value_V0_CN1, shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$(),
+                    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()): Tuple3[Int, ShStruct3[Ref, Ref, Ref], ShStruct3[Ref, Ref, Ref]])) in
+                    (ShStructget0of3(fn$$6): Ref).Intint$$$$_E_$$$ ==
+                    (get0of3(fn$$7): Int) &&
+                    (ShStructget1of3(fn$$6): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+                    (get1of3(fn$$7): ShStruct3[Ref, Ref, Ref]) &&
+                    (ShStructget2of3(fn$$6): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+                    (get2of3(fn$$7): ShStruct3[Ref, Ref, Ref])))
+              N15 := fn$$4
+            }
+            
+            // *n_V0_CN0.rightA = N15
+            (ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N15
+            
+            // fold acc(*n_V0_CN0.rightA.tree())
+            fold acc(tree_ff156c70_PMnode((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
+          }
+        } else {
+          
+          // decl 
+          
+          // *n_V0_CN0.rightAinsert(value_V0_CN1, some(*n_V0_CN0.valueA), upperBound_V0_CN3)
+          insert_ff156c70_PMnode((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+            value_V0_CN1, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+            upperBound_V0_CN3)
+        }
+      }
+    }
+    
+    // fold acc(n_V0_CN0.tree())
+    fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    label returnLabel
+  }
+}
+
+method Delete_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
+  requires acc(tree_ff156c70_PMTree(t_V0), write)
+  ensures acc(tree_ff156c70_PMTree(t_V0), write)
+  ensures !((value_V0 in sortedValues_ff156c70_PMTree(t_V0)))
+{
+  
+  // decl t_V0_CN0: *Tree_ff156c70_T@°°, value_V0_CN1: int°°
+  {
+    var value_V0_CN1: Int
+    var t_V0_CN0: ShStruct1[Ref]
+    
+    
+    
+    // init t_V0_CN0
+    inhale t_V0_CN0 ==
+      shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init value_V0_CN1
+    inhale value_V0_CN1 == 0
+    
+    // t_V0_CN0 = t_V0
+    t_V0_CN0 := t_V0
+    
+    // value_V0_CN1 = value_V0
+    value_V0_CN1 := value_V0
+    
+    // decl 
+    
+    // unfold acc(t_V0_CN0.tree())
+    unfold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+    
+    // if(*t_V0_CN0.rootA != (nil:*node_ff156c70_T@°)) {...} else {...}
+    if (!((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+      
+      // decl N3: *node_ff156c70_T@°°
+      {
+        var N3: ShStruct3[Ref, Ref, Ref]
+        
+        // N3 = *t_V0_CN0.rootAdelete(value_V0_CN1, none[int°], none[int°])
+        N3 := delete_ff156c70_PMnode((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+          value_V0_CN1, (optNone(): Option[Int]), (optNone(): Option[Int]))
+        
+        // *t_V0_CN0.rootA = N3
+        (ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N3
+      }
+    }
+    
+    // fold acc(t_V0_CN0.tree())
+    fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+    label returnLabel
+  }
+}
+
+method delete_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
+  lowerBound_V0: Option[Int], upperBound_V0: Option[Int])
+  returns (res_V0: ShStruct3[Ref, Ref, Ref])
+  requires !(lowerBound_V0 == (optNone(): Option[Int])) ==>
+    (optGet(lowerBound_V0): Int) < value_V0
+  requires !(upperBound_V0 == (optNone(): Option[Int])) ==>
+    (optGet(upperBound_V0): Int) > value_V0
+  requires acc(tree_ff156c70_PMnode(n_V0), write) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures !(res_V0 ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
+    acc(tree_ff156c70_PMnode(res_V0), write) &&
+    sorted_ff156c70_PMnode(res_V0, lowerBound_V0, upperBound_V0)
+  ensures !(res_V0 ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
+    !((value_V0 in
+    sortedValues_ff156c70_PMnode(res_V0, lowerBound_V0, upperBound_V0)))
+{
+  inhale res_V0 ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+  
+  // decl n_V0_CN0: *node_ff156c70_T@°°, value_V0_CN1: int°°, lowerBound_V0_CN2: option[int°]°°, upperBound_V0_CN3: option[int°]°°, res_V0_CN4: *node_ff156c70_T@°°
+  {
+    var res_V0_CN4: ShStruct3[Ref, Ref, Ref]
+    var upperBound_V0_CN3: Option[Int]
+    var lowerBound_V0_CN2: Option[Int]
+    var value_V0_CN1: Int
+    var n_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init n_V0_CN0
+    inhale n_V0_CN0 ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init value_V0_CN1
+    inhale value_V0_CN1 == 0
+    
+    // init lowerBound_V0_CN2
+    inhale lowerBound_V0_CN2 == (optNone(): Option[Int])
+    
+    // init upperBound_V0_CN3
+    inhale upperBound_V0_CN3 == (optNone(): Option[Int])
+    
+    // init res_V0_CN4
+    inhale res_V0_CN4 ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // n_V0_CN0 = n_V0
+    n_V0_CN0 := n_V0
+    
+    // value_V0_CN1 = value_V0
+    value_V0_CN1 := value_V0
+    
+    // lowerBound_V0_CN2 = lowerBound_V0
+    lowerBound_V0_CN2 := lowerBound_V0
+    
+    // upperBound_V0_CN3 = upperBound_V0
+    upperBound_V0_CN3 := upperBound_V0
+    
+    // decl 
+    
+    // unfold acc(n_V0_CN0.tree())
+    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    
+    // if(value_V0_CN1 < *n_V0_CN0.valueA && *n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
+    if (value_V0_CN1 < (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ &&
+    !((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+      
+      // decl N11: *node_ff156c70_T@°°
+      {
+        var N11: ShStruct3[Ref, Ref, Ref]
+        
+        // N11 = *n_V0_CN0.leftAdelete(value_V0_CN1, lowerBound_V0_CN2, some(*n_V0_CN0.valueA))
+        N11 := delete_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+          value_V0_CN1, lowerBound_V0_CN2, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]))
+        
+        // *n_V0_CN0.leftA = N11
+        (ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N11
+        
+        // fold acc(n_V0_CN0.tree())
+        fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+        
+        // res_V0_CN4 = n_V0_CN0
+        res_V0_CN4 := n_V0_CN0
+      }
+    } else {
+      
+      // if(value_V0_CN1 > *n_V0_CN0.valueA && *n_V0_CN0.rightA != (nil:*node_ff156c70_T@°)) {...} else {...}
+      if (value_V0_CN1 > (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ &&
+      !((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+        
+        // decl N10: *node_ff156c70_T@°°
+        {
+          var N10: ShStruct3[Ref, Ref, Ref]
+          
+          // N10 = *n_V0_CN0.rightAdelete(value_V0_CN1, some(*n_V0_CN0.valueA), upperBound_V0_CN3)
+          N10 := delete_ff156c70_PMnode((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+            value_V0_CN1, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+            upperBound_V0_CN3)
+          
+          // *n_V0_CN0.rightA = N10
+          (ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N10
+          
+          // fold acc(n_V0_CN0.tree())
+          fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+          
+          // res_V0_CN4 = n_V0_CN0
+          res_V0_CN4 := n_V0_CN0
+        }
+      } else {
+        
+        // if(value_V0_CN1 == *n_V0_CN0.valueA) {...} else {...}
+        if (value_V0_CN1 ==
+        (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$) {
+          
+          // decl 
+          
+          // if(*n_V0_CN0.leftA != (nil:*node_ff156c70_T@°) && *n_V0_CN0.rightA != (nil:*node_ff156c70_T@°)) {...} else {...}
+          if (!((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+          shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) &&
+          !((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+          shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+            
+            // decl minValue_V1: int°°, N8: *node_ff156c70_T@°°, N9: int°°
+            {
+              var N9: Int
+              var N8: ShStruct3[Ref, Ref, Ref]
+              var minValue_V1: Int
+              
+              // init minValue_V1
+              inhale minValue_V1 == 0
+              
+              // minValue_V1 = dflt[int°]
+              minValue_V1 := 0
+              
+              // N8, N9 = *n_V0_CN0.rightAdeleteMinimum(some(*n_V0_CN0.valueA), upperBound_V0_CN3)
+              N8, N9 := deleteMinimum_ff156c70_PMnode((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+                (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+                upperBound_V0_CN3)
+              
+              // *n_V0_CN0.rightA = N8
+              (ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N8
+              
+              // minValue_V1 = N9
+              minValue_V1 := N9
+              
+              // if(*n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
+              if (!((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+              shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+                
+                // decl 
+                
+                // *n_V0_CN0.leftAconvert(lowerBound_V0_CN2, some(*n_V0_CN0.valueA), lowerBound_V0_CN2, some(minValue_V1))
+                convert_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+                  lowerBound_V0_CN2, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+                  lowerBound_V0_CN2, (optSome(minValue_V1): Option[Int]))
+              }
+              
+              // *n_V0_CN0.valueA = minValue_V1
+              (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ := minValue_V1
+              
+              // fold acc(n_V0_CN0.tree())
+              fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+              
+              // res_V0_CN4 = n_V0_CN0
+              res_V0_CN4 := n_V0_CN0
+            }
+          } else {
+            
+            // if(*n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
+            if (!((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+            shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+              
+              // decl 
+              
+              // res_V0_CN4 = *n_V0_CN0.leftA
+              res_V0_CN4 := (ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$
+              
+              // res_V0_CN4convert(lowerBound_V0_CN2, some(*n_V0_CN0.valueA), lowerBound_V0_CN2, upperBound_V0_CN3)
+              convert_ff156c70_PMnode(res_V0_CN4, lowerBound_V0_CN2, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+                lowerBound_V0_CN2, upperBound_V0_CN3)
+            } else {
+              
+              // if(*n_V0_CN0.rightA != (nil:*node_ff156c70_T@°)) {...} else {...}
+              if (!((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+              shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+                
+                // decl 
+                
+                // res_V0_CN4 = *n_V0_CN0.rightA
+                res_V0_CN4 := (ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$
+                
+                // res_V0_CN4convert(some(*n_V0_CN0.valueA), upperBound_V0_CN3, lowerBound_V0_CN2, upperBound_V0_CN3)
+                convert_ff156c70_PMnode(res_V0_CN4, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+                  upperBound_V0_CN3, lowerBound_V0_CN2, upperBound_V0_CN3)
+              } else {
+                
+                // decl 
+                
+                // res_V0_CN4 = (nil:*node_ff156c70_T@°)
+                res_V0_CN4 := shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // res_V0_CN4 = res_V0_CN4
+    res_V0_CN4 := res_V0_CN4
+    
+    // return
+    goto returnLabel
+    label returnLabel
+    
+    // res_V0 = res_V0_CN4
+    res_V0 := res_V0_CN4
+  }
+}
+
+method deleteMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: Option[Int],
+  upperBound_V0: Option[Int])
+  returns (res_V0: ShStruct3[Ref, Ref, Ref], minimum_V0: Int)
+  requires acc(tree_ff156c70_PMnode(n_V0), write) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures !(res_V0 ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
+    acc(tree_ff156c70_PMnode(res_V0), write) &&
+    sorted_ff156c70_PMnode(res_V0, (optSome(minimum_V0): Option[Int]), upperBound_V0)
+  ensures !(res_V0 ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
+    !((minimum_V0 in
+    sortedValues_ff156c70_PMnode(res_V0, (optSome(minimum_V0): Option[Int]),
+    upperBound_V0)))
+  ensures !(lowerBound_V0 == (optNone(): Option[Int])) ==>
+    (optGet(lowerBound_V0): Int) < minimum_V0
+  ensures !(upperBound_V0 == (optNone(): Option[Int])) ==>
+    (optGet(upperBound_V0): Int) > minimum_V0
+{
+  inhale res_V0 ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+  inhale minimum_V0 == 0
+  
+  // decl n_V0_CN0: *node_ff156c70_T@°°, lowerBound_V0_CN1: option[int°]°°, upperBound_V0_CN2: option[int°]°°, res_V0_CN3: *node_ff156c70_T@°°, minimum_V0_CN4: int°°
+  {
+    var minimum_V0_CN4: Int
+    var res_V0_CN3: ShStruct3[Ref, Ref, Ref]
+    var upperBound_V0_CN2: Option[Int]
+    var lowerBound_V0_CN1: Option[Int]
+    var n_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init n_V0_CN0
+    inhale n_V0_CN0 ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init lowerBound_V0_CN1
+    inhale lowerBound_V0_CN1 == (optNone(): Option[Int])
+    
+    // init upperBound_V0_CN2
+    inhale upperBound_V0_CN2 == (optNone(): Option[Int])
+    
+    // init res_V0_CN3
+    inhale res_V0_CN3 ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init minimum_V0_CN4
+    inhale minimum_V0_CN4 == 0
+    
+    // n_V0_CN0 = n_V0
+    n_V0_CN0 := n_V0
+    
+    // lowerBound_V0_CN1 = lowerBound_V0
+    lowerBound_V0_CN1 := lowerBound_V0
+    
+    // upperBound_V0_CN2 = upperBound_V0
+    upperBound_V0_CN2 := upperBound_V0
+    
+    // decl 
+    
+    // unfold acc(n_V0_CN0.tree())
+    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    
+    // if(*n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
+    if (!((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+      
+      // decl N12: *node_ff156c70_T@°°, N13: int°°
+      {
+        var N13: Int
+        var N12: ShStruct3[Ref, Ref, Ref]
+        
+        // N12, N13 = *n_V0_CN0.leftAdeleteMinimum(lowerBound_V0_CN1, some(*n_V0_CN0.valueA))
+        N12, N13 := deleteMinimum_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+          lowerBound_V0_CN1, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]))
+        
+        // *n_V0_CN0.leftA = N12
+        (ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N12
+        
+        // minimum_V0_CN4 = N13
+        minimum_V0_CN4 := N13
+        
+        // fold acc(n_V0_CN0.tree())
+        fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+        
+        // res_V0_CN3 = n_V0_CN0
+        res_V0_CN3 := n_V0_CN0
+      }
+    } else {
+      
+      // if(*n_V0_CN0.rightA != (nil:*node_ff156c70_T@°)) {...} else {...}
+      if (!((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+        
+        // decl N10: *node_ff156c70_T@°°, N11: int°°
+        {
+          var N11: Int
+          var N10: ShStruct3[Ref, Ref, Ref]
+          
+          // N10 = *n_V0_CN0.rightA
+          N10 := (ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$
+          
+          // N11 = *n_V0_CN0.valueA
+          N11 := (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$
+          
+          // res_V0_CN3 = N10
+          res_V0_CN3 := N10
+          
+          // minimum_V0_CN4 = N11
+          minimum_V0_CN4 := N11
+        }
+      } else {
+        
+        // decl N8: *node_ff156c70_T@°°, N9: int°°
+        {
+          var N9: Int
+          var N8: ShStruct3[Ref, Ref, Ref]
+          
+          // N8 = (nil:*node_ff156c70_T@°)
+          N8 := shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+          
+          // N9 = *n_V0_CN0.valueA
+          N9 := (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$
+          
+          // res_V0_CN3 = N8
+          res_V0_CN3 := N8
+          
+          // minimum_V0_CN4 = N9
+          minimum_V0_CN4 := N9
+        }
+      }
+    }
+    
+    // res_V0_CN3 = res_V0_CN3
+    res_V0_CN3 := res_V0_CN3
+    
+    // minimum_V0_CN4 = minimum_V0_CN4
+    minimum_V0_CN4 := minimum_V0_CN4
+    
+    // return
+    goto returnLabel
+    label returnLabel
+    
+    // res_V0 = res_V0_CN3
+    res_V0 := res_V0_CN3
+    
+    // minimum_V0 = minimum_V0_CN4
+    minimum_V0 := minimum_V0_CN4
+  }
+}
+
+method getMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: Option[Int],
+  upperBound_V0: Option[Int])
+  returns (res_V0: Int)
+  requires acc(tree_ff156c70_PMnode(n_V0), write) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures acc(tree_ff156c70_PMnode(n_V0), write) &&
+    sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  ensures !(lowerBound_V0 == (optNone(): Option[Int])) ==>
+    res_V0 > (optGet(lowerBound_V0): Int)
+  ensures !(upperBound_V0 == (optNone(): Option[Int])) ==>
+    res_V0 < (optGet(upperBound_V0): Int)
+  ensures res_V0 ==
+    sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)[0]
+{
+  inhale res_V0 == 0
+  
+  // decl n_V0_CN0: *node_ff156c70_T@°°, lowerBound_V0_CN1: option[int°]°°, upperBound_V0_CN2: option[int°]°°, res_V0_CN3: int°°
+  {
+    var res_V0_CN3: Int
+    var upperBound_V0_CN2: Option[Int]
+    var lowerBound_V0_CN1: Option[Int]
+    var n_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init n_V0_CN0
+    inhale n_V0_CN0 ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init lowerBound_V0_CN1
+    inhale lowerBound_V0_CN1 == (optNone(): Option[Int])
+    
+    // init upperBound_V0_CN2
+    inhale upperBound_V0_CN2 == (optNone(): Option[Int])
+    
+    // init res_V0_CN3
+    inhale res_V0_CN3 == 0
+    
+    // n_V0_CN0 = n_V0
+    n_V0_CN0 := n_V0
+    
+    // lowerBound_V0_CN1 = lowerBound_V0
+    lowerBound_V0_CN1 := lowerBound_V0
+    
+    // upperBound_V0_CN2 = upperBound_V0
+    upperBound_V0_CN2 := upperBound_V0
+    
+    // decl 
+    
+    // unfold acc(n_V0_CN0.tree())
+    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    
+    // if(*n_V0_CN0.leftA == (nil:*node_ff156c70_T@°)) {...} else {...}
+    if ((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) {
+      
+      // decl 
+      
+      // res_V0_CN3 = *n_V0_CN0.valueA
+      res_V0_CN3 := (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$
+    } else {
+      
+      // decl N7: int°°
+      {
+        var N7: Int
+        
+        // N7 = *n_V0_CN0.leftAgetMinimum(lowerBound_V0_CN1, some(*n_V0_CN0.valueA))
+        N7 := getMinimum_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+          lowerBound_V0_CN1, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]))
+        
+        // res_V0_CN3 = N7
+        res_V0_CN3 := N7
+      }
+    }
+    
+    // fold acc(n_V0_CN0.tree())
+    fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    
+    // res_V0_CN3 = res_V0_CN3
+    res_V0_CN3 := res_V0_CN3
+    
+    // return
+    goto returnLabel
+    label returnLabel
+    
+    // res_V0 = res_V0_CN3
+    res_V0 := res_V0_CN3
+  }
+}
+
+method main_ff156c70_F()
+{
+  
+  // decl 
+  {
+    
+    
+    
+    // decl value0_V0: int°°, value1_V0: int°°, value2_V0: int°°, N0: *Tree_ff156c70_T@°°, t_V0: *Tree_ff156c70_T@°°
+    {
+      var t_V0: ShStruct1[Ref]
+      var N0: ShStruct1[Ref]
+      var value2_V0: Int
+      var value1_V0: Int
+      var value0_V0: Int
+      
+      // init value0_V0
+      inhale value0_V0 == 0
+      
+      // value0_V0 = 2
+      value0_V0 := 2
+      
+      // init value1_V0
+      inhale value1_V0 == 0
+      
+      // value1_V0 = 5
+      value1_V0 := 5
+      
+      // init value2_V0
+      inhale value2_V0 == 0
+      
+      // value2_V0 = 42
+      value2_V0 := 42
+      
+      // N0 = client0_ff156c70_F(value0_V0)
+      N0 := client0_ff156c70_F(value0_V0)
+      
+      // init t_V0
+      inhale t_V0 ==
+        shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+      
+      // t_V0 = N0
+      t_V0 := N0
+      
+      // client1_ff156c70_F(t_V0, value1_V0)
+      client1_ff156c70_F(t_V0, value1_V0)
+      
+      // client2_ff156c70_F(t_V0, value2_V0)
+      client2_ff156c70_F(t_V0, value2_V0)
+    }
+    label returnLabel
+  }
+}
+
+method client0_ff156c70_F(value_V0: Int) returns (t_V0: ShStruct1[Ref])
+  ensures acc(tree_ff156c70_PMTree(t_V0), write)
+{
+  inhale t_V0 ==
+    shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+  
+  // decl value_V0_CN0: int°°, t_V0_CN1: *Tree_ff156c70_T@°°
+  {
+    var t_V0_CN1: ShStruct1[Ref]
+    var value_V0_CN0: Int
+    
+    
+    
+    // init value_V0_CN0
+    inhale value_V0_CN0 == 0
+    
+    // init t_V0_CN1
+    inhale t_V0_CN1 ==
+      shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // value_V0_CN0 = value_V0
+    value_V0_CN0 := value_V0
+    
+    // decl N2: *Tree_ff156c70_T@°°
+    {
+      var N2: ShStruct1[Ref]
+      
+      // N2 = NewTree_ff156c70_F()
+      N2 := NewTree_ff156c70_F()
+      
+      // t_V0_CN1 = N2
+      t_V0_CN1 := N2
+      
+      // assert !t_V0_CN1.pureContains(value_V0_CN0, 2)
+      assert !pureContains_ff156c70_PMTree(t_V0_CN1, value_V0_CN0, 2)
+      
+      // t_V0_CN1Insert(value_V0_CN0)
+      Insert_ff156c70_PMTree(t_V0_CN1, value_V0_CN0)
+      
+      // assert t_V0_CN1.sortedValues() == seq[int°] { 0:value_V0_CN0 }
+      assert sortedValues_ff156c70_PMTree(t_V0_CN1) == Seq(value_V0_CN0)
+      
+      // t_V0_CN1Delete(value_V0_CN0)
+      Delete_ff156c70_PMTree(t_V0_CN1, value_V0_CN0)
+      
+      // assert !t_V0_CN1.pureContains(value_V0_CN0, 2)
+      assert !pureContains_ff156c70_PMTree(t_V0_CN1, value_V0_CN0, 2)
+      
+      // t_V0_CN1 = t_V0_CN1
+      t_V0_CN1 := t_V0_CN1
+      
+      // return
+      goto returnLabel
+    }
+    label returnLabel
+    
+    // t_V0 = t_V0_CN1
+    t_V0 := t_V0_CN1
+  }
+}
+
+method client1_ff156c70_F(t_V0: ShStruct1[Ref], value_V0: Int)
+  requires acc(tree_ff156c70_PMTree(t_V0), write)
+  ensures acc(tree_ff156c70_PMTree(t_V0), write)
+{
+  
+  // decl t_V0_CN0: *Tree_ff156c70_T@°°, value_V0_CN1: int°°
+  {
+    var value_V0_CN1: Int
+    var t_V0_CN0: ShStruct1[Ref]
+    
+    
+    
+    // init t_V0_CN0
+    inhale t_V0_CN0 ==
+      shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init value_V0_CN1
+    inhale value_V0_CN1 == 0
+    
+    // t_V0_CN0 = t_V0
+    t_V0_CN0 := t_V0
+    
+    // value_V0_CN1 = value_V0
+    value_V0_CN1 := value_V0
+    
+    // decl oldValues_V1: seq[int°]°°, N3: bool°°, newValues_V1: seq[int°]°°
+    {
+      var newValues_V1: Seq[Int]
+      var N3: Bool
+      var oldValues_V1: Seq[Int]
+      
+      // init oldValues_V1
+      inhale oldValues_V1 == Seq[Int]()
+      
+      // oldValues_V1 = t_V0_CN0.sortedValues()
+      oldValues_V1 := sortedValues_ff156c70_PMTree(t_V0_CN0)
+      
+      // N3 = t_V0_CN0Contains(value_V0_CN1, 2)
+      N3 := Contains_ff156c70_PMTree(t_V0_CN0, value_V0_CN1, 2)
+      
+      // init newValues_V1
+      inhale newValues_V1 == Seq[Int]()
+      
+      // newValues_V1 = t_V0_CN0.sortedValues()
+      newValues_V1 := sortedValues_ff156c70_PMTree(t_V0_CN0)
+      
+      // assert oldValues_V1 == newValues_V1
+      assert oldValues_V1 == newValues_V1
+    }
+    label returnLabel
+  }
+}
+
+method client2_ff156c70_F(t_V0: ShStruct1[Ref], value_V0: Int)
+  requires acc(tree_ff156c70_PMTree(t_V0), write)
+  ensures acc(tree_ff156c70_PMTree(t_V0), write)
+{
+  
+  // decl t_V0_CN0: *Tree_ff156c70_T@°°, value_V0_CN1: int°°
+  {
+    var value_V0_CN1: Int
+    var t_V0_CN0: ShStruct1[Ref]
+    
+    
+    
+    // init t_V0_CN0
+    inhale t_V0_CN0 ==
+      shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init value_V0_CN1
+    inhale value_V0_CN1 == 0
+    
+    // t_V0_CN0 = t_V0
+    t_V0_CN0 := t_V0
+    
+    // value_V0_CN1 = value_V0
+    value_V0_CN1 := value_V0
+    
+    // decl oldValues_V1: seq[int°]°°, newValues_V1: seq[int°]°°
+    {
+      var newValues_V1: Seq[Int]
+      var oldValues_V1: Seq[Int]
+      
+      // init oldValues_V1
+      inhale oldValues_V1 == Seq[Int]()
+      
+      // oldValues_V1 = t_V0_CN0.sortedValues()
+      oldValues_V1 := sortedValues_ff156c70_PMTree(t_V0_CN0)
+      
+      // t_V0_CN0Insert(value_V0_CN1)
+      Insert_ff156c70_PMTree(t_V0_CN0, value_V0_CN1)
+      
+      // init newValues_V1
+      inhale newValues_V1 == Seq[Int]()
+      
+      // newValues_V1 = t_V0_CN0.sortedValues()
+      newValues_V1 := sortedValues_ff156c70_PMTree(t_V0_CN0)
+      
+      // assert t_V0_CN0.pureContains(value_V0_CN1, 2)
+      assert pureContains_ff156c70_PMTree(t_V0_CN0, value_V0_CN1, 2)
+      
+      // if(value_V0_CN1 in oldValues_V1) {...} else {...}
+      if ((value_V0_CN1 in oldValues_V1)) {
+        
+        // decl 
+        
+        // assert oldValues_V1 == newValues_V1
+        assert oldValues_V1 == newValues_V1
+      } else {
+        
+        // decl 
+        
+      }
+    }
+    label returnLabel
+  }
+}
+
+method convert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], oldLowerBound_V0: Option[Int],
+  oldUpperBound_V0: Option[Int], newLowerBound_V0: Option[Int], newUpperBound_V0: Option[Int])
+  requires acc(tree_ff156c70_PMnode(n_V0), write)
+  requires sorted_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0)
+  requires oldLowerBound_V0 == (optNone(): Option[Int]) ==>
+    newLowerBound_V0 == (optNone(): Option[Int])
+  requires oldUpperBound_V0 == (optNone(): Option[Int]) ==>
+    newUpperBound_V0 == (optNone(): Option[Int])
+  requires !(newLowerBound_V0 == (optNone(): Option[Int])) ==>
+    !(oldLowerBound_V0 == (optNone(): Option[Int])) &&
+    (optGet(oldLowerBound_V0): Int) >= (optGet(newLowerBound_V0): Int)
+  requires !(newUpperBound_V0 == (optNone(): Option[Int])) ==>
+    !(oldUpperBound_V0 == (optNone(): Option[Int])) &&
+    (optGet(oldUpperBound_V0): Int) <= (optGet(newUpperBound_V0): Int)
+  ensures acc(tree_ff156c70_PMnode(n_V0), write)
+  ensures sorted_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0) &&
+    sorted_ff156c70_PMnode(n_V0, newLowerBound_V0, newUpperBound_V0)
+  ensures sortedValues_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0) ==
+    sortedValues_ff156c70_PMnode(n_V0, newLowerBound_V0, newUpperBound_V0)
+{
+  
+  // decl n_V0_CN0: *node_ff156c70_T@°°, oldLowerBound_V0_CN1: option[int°]°°, oldUpperBound_V0_CN2: option[int°]°°, newLowerBound_V0_CN3: option[int°]°°, newUpperBound_V0_CN4: option[int°]°°
+  {
+    var newUpperBound_V0_CN4: Option[Int]
+    var newLowerBound_V0_CN3: Option[Int]
+    var oldUpperBound_V0_CN2: Option[Int]
+    var oldLowerBound_V0_CN1: Option[Int]
+    var n_V0_CN0: ShStruct3[Ref, Ref, Ref]
+    
+    
+    
+    // init n_V0_CN0
+    inhale n_V0_CN0 ==
+      shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
+    
+    // init oldLowerBound_V0_CN1
+    inhale oldLowerBound_V0_CN1 == (optNone(): Option[Int])
+    
+    // init oldUpperBound_V0_CN2
+    inhale oldUpperBound_V0_CN2 == (optNone(): Option[Int])
+    
+    // init newLowerBound_V0_CN3
+    inhale newLowerBound_V0_CN3 == (optNone(): Option[Int])
+    
+    // init newUpperBound_V0_CN4
+    inhale newUpperBound_V0_CN4 == (optNone(): Option[Int])
+    
+    // n_V0_CN0 = n_V0
+    n_V0_CN0 := n_V0
+    
+    // oldLowerBound_V0_CN1 = oldLowerBound_V0
+    oldLowerBound_V0_CN1 := oldLowerBound_V0
+    
+    // oldUpperBound_V0_CN2 = oldUpperBound_V0
+    oldUpperBound_V0_CN2 := oldUpperBound_V0
+    
+    // newLowerBound_V0_CN3 = newLowerBound_V0
+    newLowerBound_V0_CN3 := newLowerBound_V0
+    
+    // newUpperBound_V0_CN4 = newUpperBound_V0
+    newUpperBound_V0_CN4 := newUpperBound_V0
+    
+    // decl 
+    
+    // unfold acc(n_V0_CN0.tree())
+    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    
+    // if(*n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
+    if (!((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+      
+      // decl 
+      
+      // *n_V0_CN0.leftAconvert(oldLowerBound_V0_CN1, some(*n_V0_CN0.valueA), newLowerBound_V0_CN3, some(*n_V0_CN0.valueA))
+      convert_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+        oldLowerBound_V0_CN1, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+        newLowerBound_V0_CN3, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]))
+    }
+    
+    // if(*n_V0_CN0.rightA != (nil:*node_ff156c70_T@°)) {...} else {...}
+    if (!((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
+    shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())) {
+      
+      // decl 
+      
+      // *n_V0_CN0.rightAconvert(some(*n_V0_CN0.valueA), oldUpperBound_V0_CN2, some(*n_V0_CN0.valueA), newUpperBound_V0_CN4)
+      convert_ff156c70_PMnode((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$,
+        (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+        oldUpperBound_V0_CN2, (optSome((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$): Option[Int]),
+        newUpperBound_V0_CN4)
+    }
+    
+    // fold acc(n_V0_CN0.tree())
+    fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    label returnLabel
+  }
+}
+
+method main_ff156c70_$CHECKMAIN()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+method $IMPORTS_ff156c70_ff156c70()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+method $IMPORTS_ff156c70_bffb141e()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+// decreases 
+method $INIT_ff156c70_18fc7317()
+{
+  
+  // decl 
+  {
+    
+    
+    label returnLabel
+  }
+}
+
+method panic_bffb141e_F(v_V0: Tuple2[Ref, Types])
+  requires false
+
+
+// decreases 
+method Error_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
+  returns (P0_PO0: Int)
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+
+
+// decreases 
+method Duplicate_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
+  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  ensures IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf) ==>
+    acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+
+
+// decreases 
+method IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e__pres_termination_proof(thisItf: Tuple2[Ref, Types])
+{
+  var $condInEx: Bool
+  if (!(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))) {
+    inhale acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
+  }
+}

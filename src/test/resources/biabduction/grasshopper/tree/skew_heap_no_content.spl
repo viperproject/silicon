@@ -1,0 +1,57 @@
+include "../include/bstree.spl";
+
+procedure union(h1: Node, h2: Node)
+  returns (res: Node)
+  requires heap(h1) &*& heap(h2)
+  ensures heap(res)
+{
+  if (h1 == null) {
+    return h2;
+  } else if (h2 == null) {
+    return h1;
+  } else if (h1.data >= h2.data) {
+    var u: Node, r: Node;
+    r := h1.right;
+    h1.right := h1.left;
+    if (r != null) { r.parent := null; }
+    u := union(h2, r);
+    h1.left := u;
+    if (u != null) { u.parent := h1; }
+    return h1;
+  } else {
+    return union(h2, h1);
+  }
+}
+
+procedure extractMax(h: Node) 
+  returns (max: Int, rest: Node)
+  requires heap(h) &*& h != null
+  ensures  heap(rest)
+{
+  var d : Int;
+  d := h.data;
+  var hp: Node, r: Node, l: Node;
+  l := h.left;
+  r := h.right;
+  h.parent := null;
+  free h;
+  if (l != null) { l.parent := null; }
+  if (r != null) { r.parent := null; }
+  hp := union(l, r);
+  if (hp != null) { hp.parent := null; }
+  return d, hp;
+}
+
+procedure insert(h: Node, value: Int) 
+  returns (res: Node)
+  requires heap(h)
+  ensures heap(res)
+{
+  var n: Node;
+  n := new Node;
+  n.left := null;
+  n.right := null;
+  n.parent := null;
+  n.data := value;
+  return union(h, n);
+}

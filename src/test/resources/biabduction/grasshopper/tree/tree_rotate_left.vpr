@@ -1,0 +1,17 @@
+import "./tree.vpr"
+
+method rotate_left(root: Ref) returns (res: Ref)
+requires tree(root) && root != null 
+requires unfolding tree(root) in root.right != null
+ensures tree(res)
+{
+    unfold tree(root)
+    res := root.right
+    unfold tree(res)
+
+    root.right := res.left
+    res.left := root
+
+    fold tree(root)
+    fold tree(res)
+}

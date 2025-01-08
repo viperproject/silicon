@@ -1,0 +1,37 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/silicon/issue/40/)
+
+field next: Ref
+
+predicate valid(this: Ref) {
+  acc(this.next, wildcard) &&
+  (((this.next) != (null)) ==> acc(valid(this.next), wildcard))
+}
+
+method testNestingUnfold(this: Ref)
+  requires acc(valid(this), wildcard)
+{
+  unfold acc(valid(this), wildcard)
+  assert ((this) != (this.next))
+
+  if (((this.next) != (null))) {
+    unfold acc(valid(this.next), wildcard)
+    assert ((this.next) != (this.next.next))
+    assert ((this) != (this.next.next))
+  }
+}
+
+
+predicate valid2(this: Ref) {
+  acc(this.next) &&
+  (((this.next) != (null)) ==> acc(valid2(this.next)))
+}
+
+method testNestingUnfold2(this: Ref)
+  requires acc(valid2(this))
+{
+  unfold acc(valid2(this))
+  assert ((this) != (this.next))
+}

@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field b: Bool
+field f: Ref
+
+predicate Cell(x: Ref) {
+    acc(x.b) && acc(x.f) && (x.b ==> Cell(x.f))
+}
+
+method test0(x: Ref)
+{
+    package Cell(x) --* acc(x.f) && acc(x.b) && (x.b ? acc(x.f.b) : false) {
+        unfold Cell(x)
+        if(x.b) {
+            unfold Cell(x.f)
+        } else {
+            assume false
+        }
+        assert x.b ==> acc(x.f.b)
+    }
+    exhale Cell(x) --* acc(x.f) && acc(x.b) && (x.b ? acc(x.f.b) : false)
+}

@@ -1,0 +1,60 @@
+import "./tree.vpr"
+
+method skew_union(t1: Ref, t2: Ref) returns (root1: Ref)
+requires tree(t1) && tree(t2)
+ensures tree(root1)
+{
+    if(t1 == null){
+        root1 := t2        
+    } elseif (t2 == null){
+        root1 := t1
+    } else {
+
+        root1 := t1
+        var root2: Ref := t2
+
+        var curr_root1: Ref := root1
+        var curr_root2: Ref := root2
+        package tree(curr_root1) && tree(curr_root2) --* tree(root1) && tree(root2)
+
+        while(curr_root2!= null && curr_root1 != null)
+        invariant tree(curr_root1) && tree(curr_root2)
+        invariant tree(curr_root1) && tree(curr_root2) --* tree(root1) && tree(root2)
+        {
+            var prev1: Ref := curr_root1
+            var prev2: Ref := curr_root2
+
+            unfold tree(curr_root1)
+            unfold tree(curr_root2)
+
+
+            if(curr_root2.val >= curr_root1.val){
+                var tmp: Ref := curr_root1.right
+                curr_root1.right := curr_root1.left
+                curr_root1.left := null
+                fold tree(curr_root1.left)
+                curr_root1 := tmp
+
+                package tree(curr_root1) && tree(curr_root2) --* tree(root1) && tree(root2){
+                    fold tree(prev1)
+                    apply tree(prev1) && tree(curr_root2) --* tree(root1) && tree(root2)
+                }
+                fold tree(curr_root2)
+            } else {
+                assume false
+            }
+
+
+
+
+            //var swap: Bool := curr_root2.val < curr_root1.val
+
+
+
+
+
+            
+
+        }
+    }
+}

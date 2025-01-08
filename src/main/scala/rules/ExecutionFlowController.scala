@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silver.ast
 import viper.silicon.Config.ExhaleMode
+import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.state.State
@@ -197,9 +198,29 @@ object executionFlowController extends ExecutionFlowRules {
 
 
   private def tryOrElseWithResult[R](s: State, v: Verifier)
-                  (action: (State, Verifier, (State, R, Verifier) => VerificationResult) => VerificationResult)
-                  (Q: (State, R, Verifier) => VerificationResult)
-                  (F: Failure => VerificationResult) : VerificationResult = {
+                                    (action: (State, Verifier, (State, R, Verifier) => VerificationResult) => VerificationResult)
+                                    (Q: (State, R, Verifier) => VerificationResult)
+                                    (F: Failure => VerificationResult): VerificationResult = {
+
+
+    /*
+    val initPcs = v.decider.pcs.duplicate()
+    var optRes: Option[(State, R, Verifier, PathConditionStack)] = None
+    action(s, v, { (s2, r, v2) =>
+      optRes = Some((s2, r, v2, v2.decider.pcs.duplicate()))
+      Success()
+    }) match {
+      case _: NonFatalResult =>
+        optRes match {
+          case Some((s3, r1, v3, pcs)) =>
+            v3.decider.setPcs(pcs)
+            Q(s3, r1, v3)
+        }
+      case f: Failure =>
+        v.decider.setPcs(initPcs)
+        F(f)
+    }*/
+    
 
     // This is not as efficient as it maybe could be, we call action twice.
     // To speed it up we would have to save the s2, v2, r that we currently ignore in the fake
