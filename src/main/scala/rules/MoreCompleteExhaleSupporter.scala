@@ -165,10 +165,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     // the counterexample might be wrong.
     if (relevantChunks.size == 1 &&  !Verifier.config.counterexample.isDefined) {
       val chunk = relevantChunks.head
-      if (v.decider.check(And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 }), Verifier.config.checkTimeout())) {
+      val argsEqual = And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 })
+      if (v.decider.check(argsEqual, Verifier.config.checkTimeout())) {
         return Q(s, chunk.snap, chunk.perm, chunk.permExp, v)
-      } else {
-        return Q(s, chunk.snap, NoPerm, Option.when(withExp)(ast.NoPerm()()), v)
       }
     }
 
