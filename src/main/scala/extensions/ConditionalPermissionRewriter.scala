@@ -20,7 +20,7 @@ import scala.collection.mutable
   *
   */
 class ConditionalPermissionRewriter {
-  private def rewriter(implicit p: Program, isFunction: Boolean, alreadySeen: mutable.HashSet[Exp]) = ViperStrategy.Context[Condition]({
+  private def rewriter(implicit p: Program, allowCondWildcard: Boolean, alreadySeen: mutable.HashSet[Exp]) = ViperStrategy.Context[Condition]({
     // Does NOT rewrite ternary expressions; those have to be transformed to implications in advance
     // using the ternaryRewriter below.
     //
@@ -32,8 +32,8 @@ class ConditionalPermissionRewriter {
       // Transformation causes issues if the permission involve a wildcard, so we avoid that case.
       // Also, we cannot push perm and forperm expressions further in, since their value may be different at different
       // places in the same assertion.
-      val res = if ((isFunction || !acc.perm.contains[WildcardPerm]) && !Expressions.containsPermissionIntrospection(cond))
-        (conditionalize(acc, cc.c &*& cond, isFunction), cc) // Won't recurse into acc's children (see recurseFunc below)
+      val res = if ((allowCondWildcard || !acc.perm.contains[WildcardPerm]) && !Expressions.containsPermissionIntrospection(cond))
+        (conditionalize(acc, cc.c &*& cond, allowCondWildcard), cc) // Won't recurse into acc's children (see recurseFunc below)
       else
         (Implies(And(cc.c.exp, cond)(), acc)(i.pos, i.info, i.errT), cc)
       alreadySeen.add(res._1)
@@ -61,8 +61,8 @@ class ConditionalPermissionRewriter {
     case (acc: AccessPredicate, cc) if cc.c.optExp.nonEmpty =>
       // Found an accessibility predicate nested under some conditionals
       // Wildcards may cause issues, see above.
-      val res = if (isFunction || !acc.perm.contains[WildcardPerm])
-        (conditionalize(acc, cc.c, isFunction), cc) // Won't recurse into acc's children
+      val res = if (allowCondWildcard || !acc.perm.contains[WildcardPerm])
+        (conditionalize(acc, cc.c, allowCondWildcard), cc) // Won't recurse into acc's children
       else
         (Implies(cc.c.exp, acc)(acc.pos, acc.info, acc.errT), cc)
       alreadySeen.add(res._1)
@@ -101,9 +101,9 @@ class ConditionalPermissionRewriter {
   /** Conservatively transforms all conditional accessibility predicates in `root` into unconditional accessibility
     * predicates with suitable conditional permission expressions when this is safe to do.
     */
-  def rewrite(root: Program): Program = {
+  def rewrite(root: Program, allowTernaryWildcardsInFunctions: Boolean): Program = {
     val noTernaryProgram: Program = ternaryRewriter.execute(root)
-    val functionRewriter = rewriter(root, true, new mutable.HashSet[Exp]())
+    val functionRewriter = rewriter(root, allowTernaryWildcardsInFunctions, new mutable.HashSet[Exp]())
     val nonFunctionRewriter = rewriter(root, false, new mutable.HashSet[Exp]())
     val res = noTernaryProgram.copy(functions = noTernaryProgram.functions.map(functionRewriter.execute[Function](_)),
       predicates = noTernaryProgram.predicates.map(nonFunctionRewriter.execute[Predicate](_)),
