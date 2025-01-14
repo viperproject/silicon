@@ -191,7 +191,7 @@ class DefaultMainVerifier(config: Config,
     // TODO: Autotrigger for cfgs.
 
     if (config.conditionalizePermissions()) {
-      program = new ConditionalPermissionRewriter().rewrite(program).asInstanceOf[ast.Program]
+      program = new ConditionalPermissionRewriter().rewrite(program, !config.respectFunctionPrePermAmounts()).asInstanceOf[ast.Program]
     }
 
     if (config.printTranslatedProgram()) {
