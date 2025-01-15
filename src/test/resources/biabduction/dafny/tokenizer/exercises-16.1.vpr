@@ -1,10 +1,5 @@
 import "examples-16.1.vpr"
 
-// Exercise 16.5
-/**
- * Skipped because it is textual.
- */
-
 // Exercise 16.6
 /**
  * This is a modification of the Tokenizer code from the section 16.1 where we

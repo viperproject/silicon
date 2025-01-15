@@ -11,12 +11,14 @@ import viper.silver.ast._
 
 import scala.annotation.tailrec
 
-case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap) {
+case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap, newFieldChunks: Map[BasicChunk, LocationAccess] = Map()) {
 
   //val pve: PartialVerificationError = Internal()
 
   // Ask the decider whether any of the terms are equal to a target.
   val matches: Map[Term, Exp] = resolveMatches()
+
+  val newChunkBySnap = newFieldChunks.map { case (c, fa: FieldAccess) => c.snap -> (c, fa) }
 
   private def resolveMatches(): Map[Term, Exp] = {
 
@@ -69,6 +71,10 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
         case _ => None
       }
       case terms.True => Some(TrueLit()())
+      case t if newChunkBySnap.contains(t) =>
+        val c = newChunkBySnap(t)
+        val rcv = transformTerm(c._1.args.head)
+        Some(FieldAccess(rcv.get, c._2.field)())
       case _ => None
     }
   }
@@ -126,16 +132,17 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     }
   }
 
-  // This is kinda tricky if the expression contains field accesses.
-  // We do not get the guarantee that the chunks exist in the current state, so we can not evaluate them
-  // directly
   def transformExp(e: Exp, strict: Boolean = true): Option[Exp] = {
     try {
       val res = e.transform {
         case FieldAccessPredicate(fa, perm) =>
+          // We do not want to transform the entire field access, this would resolve the snap!
           val newRcv = transformExp(fa.rcv).get
           FieldAccessPredicate(FieldAccess(newRcv, fa.field)(), perm)()
         case fa@FieldAccess(target, field) =>
+
+          // We do not get the guarantee that the chunks exist in the current state, so we can not evaluate them
+          // directly
           safeEval(fa) match {
             // If the chunk exists in the current state, then we want to match the snap term
             case Some(term) =>
@@ -143,8 +150,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
               existingChunkTerm match {
                 case Some(nfa: FieldAccess) => nfa
 
-                // Due to heap representation this can sometimes happen
-                case Some(NullLit()) | Some(LocalVar(_, _)) =>
+                case Some(NullLit()) | Some(LocalVar(_, _)) | None =>
                   val rvcExp = transformExp(target)
                   FieldAccess(rvcExp.get, field)()
 
@@ -152,9 +158,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
                 // Specifically I think if we are transforming "in-place" then this is fine,
                 // but if we are transforming "into the past" then this can be wrong because the
                 // old value of the field is not necessarily equal to the new value
-                case None =>
-                  val rvcExp = transformExp(target)
-                  FieldAccess(rvcExp.get, field)()
+
               }
             // Else we want to recurse and try to match the target
             case None =>

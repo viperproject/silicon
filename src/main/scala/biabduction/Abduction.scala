@@ -8,7 +8,7 @@ import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.rules.evaluator.{eval, evals}
 import viper.silicon.rules.producer.produces
 import viper.silicon.state._
-import viper.silicon.state.terms.{SortWrapper, Term, sorts}
+import viper.silicon.state.terms.{SortWrapper, Term}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -64,7 +64,6 @@ trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
   }
 
   protected def checkChunk(loc: LocationAccess, s: State, v: Verifier, lostAccesses: Map[Exp, Term])(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
-    // TODO Currently we assume only one arg, which may be wrong for arbitrary predicates
     val arg = loc match {
       case FieldAccess(rcv, _) => rcv
       case PredicateAccess(args, _) => args.head
@@ -100,8 +99,8 @@ object AbductionRemove extends AbductionRule {
       case Some(g@AccessPredicate(loc: LocationAccess, _)) =>
         val g1 = q.goal.filterNot(g == _)
         checkChunk(loc, q.s, q.v, q.lostAccesses) {
-          case Some(c) =>
-            consumeChunks(Seq(c), q.copy(goal = g1))(q2 => Q(Some(q2)))
+          case Some(_) => Q(Some(q.copy(goal = g1)))
+          //consumeChunks(Seq(c), q.copy(goal = g1))(q2 => Q(Some(q2)))
           case None => apply(q.copy(goal = g1)) {
             case Some(q2) => Q(Some(q2.copy(goal = g +: q2.goal)))
             case None => Q(None)
@@ -112,19 +111,19 @@ object AbductionRemove extends AbductionRule {
 
   /**
     * This will crash if the chunks do not exist. This is by design. Only call this if you are sure that the chunks exist.
-    */
-  private def consumeChunks(chunks: Seq[BasicChunk], q: AbductionQuestion)(Q: AbductionQuestion => VerificationResult): VerificationResult = {
-    chunks match {
-      case Seq() => Q(q)
-      case c +: cs =>
-        val c1 = findChunk[BasicChunk](q.s.h.values, c.id, c.args, q.v).get
-        val resource: Resource = c.resourceID match {
-          case PredicateID => q.s.program.predicates.head
-          case FieldID => q.s.program.fields.head
-        }
-        chunkSupporter.consume(q.s, q.s.h, resource, c1.args, None, c1.perm, None, ve, q.v, "")((s1, _, _, v1) => consumeChunks(cs, q.copy(s = s1, v = v1))(Q))
-    }
-  }
+    *
+    * private def consumeChunks(chunks: Seq[BasicChunk], q: AbductionQuestion)(Q: AbductionQuestion => VerificationResult): VerificationResult = {
+    * chunks match {
+    * case Seq() => Q(q)
+    * case c +: cs =>
+    * val c1 = findChunk[BasicChunk](q.s.h.values, c.id, c.args, q.v).get
+    * val resource: Resource = c.resourceID match {
+    * case PredicateID => q.s.program.predicates.head
+    * case FieldID => q.s.program.fields.head
+    * }
+    * chunkSupporter.consume(q.s, q.s.h, resource, c1.args, None, c1.perm, None, ve, q.v, "")((s1, _, _, v1) => consumeChunks(cs, q.copy(s = s1, v = v1))(Q))
+    * }
+    * } */
 
 }
 
@@ -161,10 +160,10 @@ object AbductionFoldBase extends AbductionRule {
                       val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                       // TODO nklose this could branch
                       predicateSupporter.fold(s1, pred, List(t), None, terms.FullPerm, None, wildcards, pve, v2) { (s3, v3) =>
-                        consumer.consume(s3, a, pve, v3) { (s4, _, v4) =>
-                          val fold = Fold(a)()
-                          Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold, s = s4, v = v4)))
-                        }
+                        //consumer.consume(s3, a, pve, v3) { (s4, _, v4) =>
+                        val fold = Fold(a)()
+                        Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold, s = s3, v = v3)))
+                        //}
                       }
                   }
                 } else {
@@ -214,35 +213,43 @@ object AbductionFold extends AbductionRule {
           // If we find a chunk, then we definitely have to fold. So we attempt to and abduce anything else that might be missing.
           // TODO nklose if the predicate is conditional in a weird way, then this might be wrong?
           case Some((field, chunk)) =>
-            val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
-            
-            val fargs = pred.formalArgs.map(_.localVar)
-            val eArgs = a.loc.args
-            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
-            val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
-            val pveTransformed = pve.withReasonNodeTransformed(reasonTransformer)
-            
-            val tryFold = predicateSupporter.fold(q.s, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pveTransformed, q.v) {
-              (s1, v1) =>
-                consumer.consume(s1, a, pve, v1) { (s2, _, v2) =>
-                  Success(Some(AbductionSuccess(s2, v2, v2.decider.pcs.duplicate(), Seq(), Seq(Fold(a)()))))
+            //val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
+
+            //val fargs = pred.formalArgs.map(_.localVar)
+            //val eArgs = a.loc.args
+            //val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
+            //val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
+            //val pveTransformed = pve.withReasonNodeTransformed(reasonTransformer)
+
+            val fold = Fold(a)()
+            executor.exec(q.s, fold, q.v, doAbduction = true, q.trigger) { (s1, v1) =>
+              val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, chunk.snap.sort))
+              val q2 = q.copy(s = s1, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
+              Q(Some(q2))
+            }
+
+          /*
+          val tryFold = predicateSupporter.fold(q.s, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pveTransformed, q.v) {
+            (s1, v1) =>
+              consumer.consume(s1, a, pve, v1) { (s2, _, v2) =>
+                Success(Some(AbductionSuccess(s1, v1, v1.decider.pcs.duplicate(), Seq(), Seq(Fold(a)()), newFieldChunks=Map())))
+            }
+          }
+          tryFold match {
+            case nf: NonFatalResult =>
+              // TODO nklose make sure the pcs are correct here
+              abductionUtils.getAbductionSuccesses(nf) match {
+                case Seq(suc) =>
+                  val fold = Fold(a)()
+                  val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, chunk.snap.sort))
+                  val q2 = q.copy(s = suc.s, v = suc.v, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
+                  Q(Some(q2))
               }
-            }
-            tryFold match {
-              case nf: NonFatalResult => 
-                // TODO nklose make sure the pcs are correct here
-                abductionUtils.getAbductionSuccesses(nf) match {
-                  case Seq(suc) =>
-                    val fold = Fold(a)()
-                    val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, sorts.Ref))
-                    val q2 = q.copy(s = suc.s, v = suc.v, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
-                    Q(Some(q2))
-                }
-              case f: Failure =>
-                BiAbductionSolver.solveAbduction(q.s, q.v, f, q.trigger){(s3, res, v3) =>
-                  apply(q.copy(s = s3, v = v3, foundState = res.state ++ q.foundState, foundStmts = res.stmts ++ q.foundStmts))(Q)}
-            }
-            
+            case f: Failure =>
+              BiAbductionSolver.solveAbduction(q.s, q.v, f, q.trigger){(s3, res, v3) =>
+                apply(q.copy(s = s3, v = v3, foundState = res.state ++ q.foundState, foundStmts = res.stmts ++ q.foundStmts))(Q)}
+          }*/
+
           case None => {
             // If we do not find a chunk, we recurse to try the others by calling this
             apply(q.copy(goal = g1)) {
@@ -336,7 +343,7 @@ object AbductionApply extends AbductionRule {
         // We drop the first element, because it is the true lit of the lhs
         val subexps = goalWand.subexpressionsToEvaluate(q.s.program).tail
         // If the args of the magic wand chunk match the evaluated subexpressions, then the right hand of the magic wand
-        // chunk is our goal, so the rule can be applieed
+        // chunk is our goal, so the rule can be applied
         evals(q.s, subexps, _ => pve, q.v)((s1, args, _, v1) => {
           val matchingWand = s1.h.values.collect {
             case m: MagicWandChunk if m.id.ghostFreeWand.structure(s1.program).right == goalStructure.right && m.args.takeRight(args.length) == args =>
@@ -356,10 +363,26 @@ object AbductionApply extends AbductionRule {
           }.collectFirst { case c if c.isDefined => c.get }
           matchingWand match {
             case Some(wand) =>
-              val g1 = q.goal.filterNot(_ == wand.right) :+ wand.left
-              consumer.consume(s1, wand, pve, v1)((s2, _, v2) => {
-                Q(Some(q.copy(s = s2, v = v2, goal = g1, foundStmts = q.foundStmts :+ Apply(wand)())))
-              })
+              val q1 = q.copy(goal = Seq(wand.left))
+              AbductionApplier.applyRules(q1) { lhsRes =>
+
+                if (lhsRes.goal.nonEmpty) {
+                  Q(None)
+                } else {
+                  magicWandSupporter.applyWand(lhsRes.s, wand, pve, lhsRes.v) { (s2, v2) =>
+                    val g1 = q.goal.filterNot(_ == wand.right)
+                    val stmts = q.foundStmts ++ lhsRes.foundStmts :+ Apply(wand)()
+                    val state = q.foundState ++ lhsRes.foundState
+                    val lost = q.lostAccesses ++ lhsRes.lostAccesses
+                    Q(Some(AbductionQuestion(s2, v2, g1, lost, state, stmts, q.trigger)))
+                    /*val g1 = q.goal.filterNot(_ == wand.right) :+ wand.left
+                    consumer.consume(s1, wand, pve, v1)((s2, _, v2) =>
+                      Q(Some(q.copy(s = s2, v = v2, goal = g1, foundStmts = q.foundStmts :+ Apply(wand)())))
+                    )*/
+                  }
+                }
+              }
+
             case None =>
               val g1 = q.goal.filterNot(_ == g)
               apply(q.copy(goal = g1)) {
@@ -382,17 +405,19 @@ object AbductionPackage extends AbductionRule {
         producer.produce(q.s, freshSnap, wand.left, pve, q.v)((s1, v1) => {
 
           val packQ = q.copy(s = s1, v = v1, goal = Seq(wand.right))
-          AbductionApplier.applyRules(packQ){ packRes =>
-            
+          AbductionApplier.applyRules(packQ) { packRes =>
+
             if (packRes.goal.nonEmpty) {
               Q(None)
             } else {
 
-            val g1 = q.goal.filterNot(_ == wand)
-            val stmts = q.foundStmts :+ Package(wand, Seqn(packRes.foundStmts.reverse, Seq())())()
-            val pres = q.foundState ++ packRes.foundState
-            Q(Some(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts, foundState = pres)))
-          }}
+              val g1 = q.goal.filterNot(_ == wand)
+              val stmts = q.foundStmts :+ Package(wand, Seqn(packRes.foundStmts.reverse, Seq())())()
+              val pres = q.foundState ++ packRes.foundState
+              //val lost = q.lostAccesses ++ packRes.lostAccesses
+              Q(Some(q.copy(s = packRes.s, v = packRes.v, goal = g1, foundStmts = stmts, foundState = pres)))
+            }
+          }
         })
     }
   }
@@ -410,7 +435,9 @@ object AbductionMissing extends AbductionRule {
       Q(None)
     } else {
       val g1 = q.goal.filterNot(accs.contains)
-      Q(Some(q.copy(goal = g1, foundState = q.foundState ++ accs)))
+      producer.produces(q.s, freshSnap, accs, _ => pve, q.v) { (s1, v1) =>
+        Q(Some(q.copy(s = s1, v = v1, goal = g1, foundState = q.foundState ++ accs)))
+      }
     }
   }
 }

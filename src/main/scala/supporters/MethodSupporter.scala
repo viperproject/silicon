@@ -19,7 +19,6 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.{Map, toMap}
 import viper.silver.ast
-import viper.silver.ast.Method
 import viper.silver.components.StatefulComponent
 import viper.silver.reporter.AnnotationWarning
 import viper.silver.verifier.DummyNode

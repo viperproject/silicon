@@ -11,13 +11,12 @@ predicate Tokenizer(this: Ref)
 
 method TokenizerConstructor(s: Seq[Int]) returns (this: Ref)
     requires forall i: Int :: 0 <= i < |s| ==> 0 <= s[i] <= 127
-    ensures Tokenizer(this)
-    //ensures getSource(this) == s && getN(this) == 0
+    //ensures Tokenizer(this)
 {
     this := new(source, n)
     this.source := s
     this.n := 0
-    fold Tokenizer(this)
+    //fold Tokenizer(this)
 }
 
 

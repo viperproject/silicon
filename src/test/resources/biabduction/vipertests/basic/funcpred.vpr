@@ -19,12 +19,12 @@ predicate valid(this: Ref) {
 }
 
 method a(this: Ref)
-    requires acc(valid(this), write) && acc(this.f, write)
-    ensures acc(valid(this), write)
+    //requires acc(valid(this), write) && acc(this.f, write)
+    //ensures acc(valid(this), write)
 {
-    unfold acc(valid(this), write)
+    //unfold acc(valid(this), write)
     this.value := 1
-    fold acc(valid(this), write)
+    //fold acc(valid(this), write)
     void(this)
     assert itemat(this, 0) == 1
 }

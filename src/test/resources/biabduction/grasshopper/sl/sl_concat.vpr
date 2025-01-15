@@ -6,7 +6,7 @@ requires list(y)
 //ensures list(res)
 {
     if (x == null) {
-        x := y
+        res := y
     } else {
         var curr: Ref := x
         //package list(curr) --* list(x)
@@ -20,13 +20,15 @@ requires list(y)
             curr := curr.next
             //unfold list(curr)
             //package list(curr) --* list(x) {
-            //    fold list(prev)
-            //    apply list(prev) --* list(x)
+             //   fold list(prev)
+             //   apply list(prev) --* list(x)
             //}
         }
         curr.next := y
-        //fold list(curr)
-        //apply list(curr) --* list(x)
         res := x
     }
+    //if(x != null){
+     //   fold list(curr)
+     //   apply list(curr) --* list(x)
+    //}
 }

@@ -8,12 +8,11 @@ predicate ChecksumMachine(this: Ref)
 
 
 method ChecksumMachineConstructor() returns (this: Ref)
-    ensures ChecksumMachine(this)
-    //ensures unfolding ChecksumMachine(this) in this.checksumData == 0
+    //ensures ChecksumMachine(this)
 {
     this := new(checksumData)
     this.checksumData := 0
-    fold ChecksumMachine(this)
+    //fold ChecksumMachine(this)
 }
 
 

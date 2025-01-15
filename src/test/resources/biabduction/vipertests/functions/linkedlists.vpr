@@ -1,17 +1,3 @@
-// Any copyright is dedicated to the Public Domain.
-// http://creativecommons.org/publicdomain/zero/1.0/
-
-//:: IgnoreFile(/silicon/issue/104/)
-
-// NOTES (important points are also commented in the code below)
-// (1) The definition of list(xs) precludes the case xs==null. But, without unfolding the predicate, this information is not available. This is important for e.g.,
-// showing that length increases by 1 when prepending. For now, the explicit non-nullity of the argument has been conjoined everywhere.
-// (2) The definition of the function ascending in terms of the function head means that framing head is often necessary. This is true even in cases where the head
-// element is "clear", e.g. when a postcondition about elems is also written, since relating the sequence to the head() function is not automatic.
-// (3) The relationships between different abstractions is not always automatic. For example, the if-condition tail(xs)==null actually implies that elems(xs) has
-// length 1 and also that head(xs) == tail(xs). Both of these facts are needed to prove the postconditions of insert. Resorting to limited functions would allow
-// manual assertions to trigger these properties. Without limited-functions-style triggering (i.e. only based on fold/unfold of predicates), these must be assumptions
-
 field next: Ref
 field val: Int
 
@@ -54,18 +40,20 @@ function get(xs: Ref, index: Int): Int
 { unfolding acc(list(xs)) in index == 0 ? xs.val : get(xs.next, index - 1) }
 
 method prepend(xs: Ref, y: Int) returns (ys: Ref)
-  requires acc(list(xs)) && xs != null
-  ensures acc(list(ys)) && ys != null
-  ensures length(ys) == old(length(xs)) + 1 // (1)
-  ensures elems(ys) == Seq(y) ++ old(elems(xs))
-  ensures head(ys) == y // (2)
-  ensures old(y <= head(xs) && ascending(xs)) ==> ascending(ys)
+  //requires acc(list(xs)) && xs != null
+  //ensures acc(list(ys))
+  //ensures ys != null
+  //ensures length(ys) == old(length(xs)) + 1 // (1)
+  //ensures elems(ys) == Seq(y) ++ old(elems(xs))
+  //ensures head(ys) == y // (2)
+  //ensures old(y <= head(xs) && ascending(xs)) ==> ascending(ys)
 {
   ys := new(val, next)
   ys.val := y
   ys.next := xs
   fold acc(list(ys))
 }
+
 
 method append(xs: Ref, y: Int)
   requires acc(list(xs)) && xs != null

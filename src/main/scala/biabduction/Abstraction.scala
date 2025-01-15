@@ -19,7 +19,7 @@ case class AbstractionQuestion(s: State, v: Verifier, fixedChunks: Seq[Chunk]) {
   // TODO we assume each field only appears in at most one predicate
   def fields: Map[Field, Predicate] = s.program.predicates.flatMap { pred => pred.body.get.collect { case fa: FieldAccessPredicate => (fa.loc.field, pred) } }.toMap
 
-  def varTran: VarTransformer = VarTransformer(s, v, s.g.values, Heap())
+  def varTran: VarTransformer = VarTransformer(s, v, s.g.values, s.h)
 
   def isTriggerField(bc: BasicChunk): Boolean = {
     bc.resourceID match {

@@ -51,9 +51,10 @@ object LoopInvariantSolver {
               case abdRes: NonFatalResult =>
                 // TODO nklose we do not guarantee length 1 here anymore
                 abductionUtils.getAbductionSuccesses(abdRes) match {
-                  case Seq(AbductionSuccess(s5, v5, _, Seq(), _, _)) =>
+                  case Seq(AbductionSuccess(s5, v5, _, Seq(), _, _, _)) =>
                     val unfolded = VarTransformer(s5, v5, s5.g.values, s5.h).transformState(s5)
                     Q(unfolded)
+                  case _ => Q(inverted)
                 }
                 /*
                 val unfolds = abd.stmts.collect { case Unfold(pa) => (pa.toString -> pa.loc.predicateBody(s.program, Set()).get) }.toMap
@@ -69,31 +70,6 @@ object LoopInvariantSolver {
     }(Q)
   }
 
-  private def findChunkFromExp(loc: LocationAccess, s: State, v: Verifier)(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
-
-    // TODO Currently we assume only one arg, which may be wrong for arbitrary predicates
-    val arg = loc match {
-      case FieldAccess(rcv, _) => rcv
-      case PredicateAccess(args, _) => args.head
-    }
-    evaluator.eval(s, arg, pve, v) { (s2, term, _, v2) =>
-      val resource = loc.res(s2.program)
-      val id = ChunkIdentifier(resource, s2.program)
-      val chunk = findChunk[BasicChunk](s2.h.values, id, Seq(term), v2)
-      Q(chunk)
-    }
-  }
-
-  protected def findChunks(locs: Seq[LocationAccess], s: State, v: Verifier)(Q: Map[BasicChunk, LocationAccess] => VerificationResult): VerificationResult = {
-    locs match {
-      case Seq() => Q(Map())
-      case loc +: rest =>
-        findChunkFromExp(loc, s, v) {
-          case Some(chunk) => findChunks(rest, s, v) { chunks => Q(chunks + (chunk -> loc)) }
-        }
-    }
-  }
-
   // TODO do we need to check well-definedness of the loop condition?
   def solveLoopInvariants(s: State,
                           v: Verifier,
@@ -106,6 +82,7 @@ object LoopInvariantSolver {
                           loopConBcs: Seq[Term] = Seq(),
                           iteration: Int = 1): VerificationResult = {
 
+    println("\nIteration: " + iteration)
     // Produce the already known invariants. They are consumed at the end of the loop body, so we need to do this every iteration
     produces(s, freshSnap, loopHead.invs, ContractNotWellformed, v) { (sPreInv, vPreInv) =>
 
@@ -113,28 +90,28 @@ object LoopInvariantSolver {
       executionFlowController.locally(sPreInv, vPreInv) { (sFP, vFP) =>
 
         // TODO nklose follows should be private. We can exec the statement block instead?
-        executor.follows(sFP, loopEdges, pveLam, vFP, joinPoint) { (_, _) =>
-          //loopCondTerm = Some(v.decider.pcs.branchConditions.diff(oldPcs).head)
-          Success()
-        }
+        executor.follows(sFP, loopEdges, pveLam, vFP, joinPoint) { (_, _) => Success()}
       } match {
 
         // Abduction has failed so we fail
         case f: Failure => f
-
         case nonf: NonFatalResult =>
 
           // We assume there is only one loop internal edge
           val loopConExp = loopEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition
 
-          val abdReses = abductionUtils.getAbductionSuccesses(nonf)
+          val abdReses = abductionUtils.getAbductionSuccesses(nonf).reverse
+          // TODO nklose do we want to join branches here like we do for preconditions?
+          val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
           val preStateVars = sPreInv.g.values.filter { case (v, _) => origVars.contains(v) }
-          val newStateOpt = abdReses.flatMap { case abd => abd.getPreconditions(preStateVars, sPreInv.h, Seq()).get }
+          val newStateOpt = abdReses.flatMap { case abd => abd.getPreconditions(preStateVars, sPreInv.h, Seq(), newMatches).get }
 
           // We still need to remove the current loop condition
           val newState = newStateOpt.map(_.transform {
             case im: Implies if im.left == loopConExp => im.right
           })
+
+          println("New state:\n    " + newState.mkString("\n    "))
 
           // Do the second pass so that we can compare the state at the end of the loop with the state at the beginning
           // Get the state at the beginning of the loop with the abduced things added
@@ -142,10 +119,10 @@ object LoopInvariantSolver {
 
             evaluator.eval(sPreAbd0, loopConExp, pve, vPreAbd0) { (sPreAbd, loopCondTerm, _, vPreAbd) =>
 
-              findChunks(newState.collect {
+              abductionUtils.findChunks(newState.collect {
                 case loc: FieldAccessPredicate => loc.loc
                 case loc: PredicateAccessPredicate => loc.loc
-              }, sPreAbd, vPreAbd) { chunks =>
+              }, sPreAbd, vPreAbd, pve) { chunks =>
 
                 val allChunks = chunks.keys
 
@@ -156,8 +133,8 @@ object LoopInvariantSolver {
                     val preTran = VarTransformer(newPreState, newPreV, preStateVars, newPreState.h)
                     val newPreAbstraction = newPreAbstraction0.map(e => preTran.transformExp(e, strict = false).get)
 
+                    println("New pre abstraction:\n    " + newPreAbstraction.mkString("\n    "))
 
-                    
                     executor.follows(sPreAbd, loopEdges, pveLam, vPreAbd, joinPoint)((sPost, vPost) => {
 
                       BiAbductionSolver.solveAbstraction(sPost, vPost) { (sPostAbs, postAbstraction0, vPostAbs) =>
@@ -166,20 +143,14 @@ object LoopInvariantSolver {
                         val postTran = VarTransformer(sPostAbs, vPostAbs, postStateVars, sPostAbs.h)
                         val postAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
 
-                        println("\nIteration: " + iteration)
-                        println("New state:\n    " + newState.mkString("\n    "))
-                        println("New pre abstraction:\n    " + newPreAbstraction.mkString("\n    "))
                         println("New post abstraction:\n    " + postAbstraction.mkString("\n    "))
                         
                         // If the pushed forward abstraction is the same as the previous one, we are done
-                        if (newPreAbstraction == q.preAbstraction && postAbstraction == q.postAbstraction) {
+                        if (newPreAbstraction.toSet == q.preAbstraction.toSet && postAbstraction.toSet == q.postAbstraction.toSet) {
                           getPreInvariant(newPreAbstraction, postAbstraction, loopConExp, sPostAbs, vPostAbs) { preInv =>
-                            preInv ++ postAbstraction match {
-                              case Seq() => Success()
-                              case res =>
-                                val loop = abductionUtils.getWhile(loopConExp, s.currentMember.get.asInstanceOf[Method])
-                                Success(Some(LoopInvariantSuccess(sPostAbs, vPostAbs, invs = res, loop, vPostAbs.decider.pcs.duplicate())))
-                            }
+
+                              val loop = abductionUtils.getWhile(loopConExp, s.currentMember.get.asInstanceOf[Method])
+                              Success(Some(LoopInvariantSuccess(sPostAbs, vPostAbs, invs = preInv ++ postAbstraction, loop, vPostAbs.decider.pcs.duplicate())))
                           }
                         } else {
                           val newLoopCons = loopConBcs :+ loopCondTerm

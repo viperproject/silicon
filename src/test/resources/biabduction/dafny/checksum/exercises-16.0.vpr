@@ -1,18 +1,7 @@
 //import "examples-16.0.vpr"
+
 field checksumData: Int
 
-// Exercise 16.3
-/**
- * This is a quick implementation of the ChecksumMachine with an additional
- * field ocs, which is an optional checksum value. The checksum value will only
- * be computed if it is not already present in the ocs field. If a checksum is
- * present, it will be returned instead of recomputing it. When the 
- * checksumData value changes, the ocs field will be reset to None. This avoids
- * an additional computation of the checksum value because we would have to 
- * check if the ocs value is still correct.
- * Because the implementation is a variation of already seen and explained code,
- * we will not go into detail about the individual code sections.
- */
 adt Option[T] {
     Some(value: T)
     None()

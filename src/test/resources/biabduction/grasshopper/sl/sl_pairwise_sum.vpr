@@ -1,12 +1,12 @@
 import "./sl.vpr"
 
 method pairwise_sum(x: Ref, y: Ref) returns (z: Ref)
-requires list(x) && list(y)
-ensures list(x) && list(y) && list(z)
+//requires list(x) && list(y)
+//ensures list(x) && list(y) && list(z)
 {
     if(x == null || y == null){
         z := null
-        fold list(z)
+        //fold list(z)
     } else {
         z := new(*)
 
@@ -15,24 +15,24 @@ ensures list(x) && list(y) && list(z)
         var curr_y: Ref := y
         var curr_z: Ref := z
         
-        package list(x) --* list(x)
-        package list(y) --* list(y)
-        package list(z) --* list(z)
+        //package list(x) --* list(x)
+        //package list(y) --* list(y)
+        //package list(z) --* list(z)
 
-        unfold list(x)
-        unfold list(y)
+        //unfold list(x)
+        //unfold list(y)
         
         //z.next := null
         //fold list(z.next)
         z.data := x.data + y.data
 
         while(curr_x.next != null && curr_y.next != null)
-            invariant acc(curr_x.next) && acc(curr_x.data) && list(curr_x.next)
-            invariant list(curr_x) --* list(x)
-            invariant acc(curr_y.next) && acc(curr_y.data) && list(curr_y.next)
-            invariant list(curr_y) --* list(y)
-            invariant acc(curr_z.next) && acc(curr_z.data)
-            invariant list(curr_z) --* list(z)
+            //invariant acc(curr_x.next) && acc(curr_x.data) && list(curr_x.next)
+            //invariant list(curr_x) --* list(x)
+            //invariant acc(curr_y.next) && acc(curr_y.data) && list(curr_y.next)
+            //invariant list(curr_y) --* list(y)
+            //invariant acc(curr_z.next) && acc(curr_z.data)
+            //invariant list(curr_z) --* list(z)
         {
             var prev_x: Ref := curr_x
             var prev_y: Ref := curr_y
@@ -40,15 +40,15 @@ ensures list(x) && list(y) && list(z)
 
             curr_x := curr_x.next
             curr_y := curr_y.next
-            unfold list(curr_x)
-            unfold list(curr_y)
+            //unfold list(curr_x)
+            //unfold list(curr_y)
             curr_z := new(*)
             curr_z.next := null
             curr_z.data := curr_x.data + curr_y.data
 
             prev_z.next := curr_z
 
-            
+            /*
             package list(curr_x) --* list(x){
                 fold list(prev_x)
                 apply list(prev_x) --* list(x)
@@ -63,15 +63,16 @@ ensures list(x) && list(y) && list(z)
                 fold list(prev_z)
                 apply list(prev_z) --* list(z)
             }
+            */
         }
 
-        fold list(curr_x)
-        apply list(curr_x) --* list(x)
-        fold list(curr_y)
-        apply list(curr_y) --* list(y)
+        //fold list(curr_x)
+        //apply list(curr_x) --* list(x)
+        //fold list(curr_y)
+        //apply list(curr_y) --* list(y)
         curr_z.next := null
-        fold list(curr_z.next)
-        fold list(curr_z)
-        apply list(curr_z) --* list(z)
+        //fold list(curr_z.next)
+        //fold list(curr_z)
+        //apply list(curr_z) --* list(z)
     }
 }

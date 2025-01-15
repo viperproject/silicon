@@ -18,5 +18,4 @@ ensures list(res)
         res := tmp
         fold list(tmp)
     }
-
 }

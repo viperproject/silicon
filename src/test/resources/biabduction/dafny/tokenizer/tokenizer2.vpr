@@ -49,30 +49,30 @@ function getN(this: Ref): Int
 }
 
 method Read(this: Ref) returns (cat: Category, p: Int, token: Seq[Int]) 
-    requires Tokenizer(this)
-    ensures 0 <= p
-    ensures Tokenizer(this)
-    ensures getSource(this) == old(getSource(this))
-    ensures !cat.isWhitespace
-    ensures old(getN(this)) <= p <= getN(this) <= |getSource(this)|
-    ensures cat.isEnd <==> p == |getSource(this)|
-    ensures cat.isEnd || cat.isError <==> p == getN(this)
-    ensures forall i: Int :: old(getN(this)) <= i < p ==> 
-        Is(getSource(this)[i], Whitespace())
-    ensures forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
-    ensures p < getN(this) ==> getN(this) == |getSource(this)| || !Is(getSource(this)[getN(this)], cat)
-    ensures !cat.isError ==> token == getSource(this)[p..getN(this)]
+    //requires Tokenizer(this)
+    //ensures Tokenizer(this)
+    //ensures 0 <= p
+    //ensures getSource(this) == old(getSource(this))
+    //ensures !cat.isWhitespace
+    //ensures old(getN(this)) <= p <= getN(this) <= |getSource(this)|
+    //ensures cat.isEnd <==> p == |getSource(this)|
+    //ensures cat.isEnd || cat.isError <==> p == getN(this)
+    //ensures forall i: Int :: old(getN(this)) <= i < p ==>
+     //   Is(getSource(this)[i], Whitespace())
+    //ensures forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+    //ensures p < getN(this) ==> getN(this) == |getSource(this)| || !Is(getSource(this)[getN(this)], cat)
+    //ensures !cat.isError ==> token == getSource(this)[p..getN(this)]
 {
     // skip whitespace
     while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], Whitespace()))
-        invariant Tokenizer(this)
-        invariant getSource(this) == old(getSource(this))
-        invariant old(getN(this)) <= getN(this) <= |getSource(this)|
-        invariant forall i: Int :: old(getN(this)) <= i < getN(this) ==> Is(getSource(this)[i], Whitespace())
+        //invariant Tokenizer(this)
+        //invariant getSource(this) == old(getSource(this))
+        //invariant old(getN(this)) <= getN(this) <= |getSource(this)|
+        //invariant forall i: Int :: old(getN(this)) <= i < getN(this) ==> Is(getSource(this)[i], Whitespace())
     {
-        unfold Tokenizer(this)
+        //unfold Tokenizer(this)
         this.n := this.n + 1
-        fold Tokenizer(this)
+        //fold Tokenizer(this)
     }
     p := getN(this)
     // determine syntactic category
@@ -105,18 +105,18 @@ method Read(this: Ref) returns (cat: Category, p: Int, token: Seq[Int])
     if (!return)
     {
         var start: Int := getN(this)
-        unfold Tokenizer(this)
+        //unfold Tokenizer(this)
         this.n := this.n + 1
-        fold Tokenizer(this)
+        //fold Tokenizer(this)
         while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], cat))
-            invariant Tokenizer(this)
-            invariant getSource(this) == old(getSource(this))
-            invariant p <= getN(this) <= |getSource(this)|
-            invariant forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+            //invariant Tokenizer(this)
+            //invariant getSource(this) == old(getSource(this))
+            //invariant p <= getN(this) <= |getSource(this)|
+            //invariant forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
         {
-            unfold Tokenizer(this)
+            //unfold Tokenizer(this)
             this.n := this.n + 1
-            fold Tokenizer(this)
+            //fold Tokenizer(this)
         }
         token := getSource(this)[start..getN(this)]
     }    

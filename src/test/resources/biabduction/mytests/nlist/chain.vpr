@@ -1,0 +1,10 @@
+field next: Ref
+
+method test(x: Ref)
+{
+    var y: Ref := x.next
+
+    var z: Ref := y.next
+
+    var a: Ref := z.next
+}
