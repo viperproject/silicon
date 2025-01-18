@@ -15,10 +15,49 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.Exp
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
+import viper.silver.verifier.errors.PostconditionViolatedBranch
+import viper.silver.verifier.reasons.AssertionFalseAtBranch
 
-import scala.collection.immutable.HashSet
+import java.io.Serializable
+import scala.collection.immutable.{HashSet, Seq}
+import scala.collection.mutable
+
+
+case class BranchFailurePath(condition : Exp, taken : Boolean, sideResult : VerificationResult)
+object branchFailurePaths extends mutable.HashMap[String, Vector[BranchFailurePath]] {
+  def prettyPrintPath(key : String) : String = {
+    var res = ""
+    val branchFailurePath = branchFailurePaths.get(key)
+    if (branchFailurePath.isDefined) {
+      val mappedBfp = branchFailurePath.get.collect(bf => {
+        val condStr = bf.condition.toString
+        val even = (n : Int) => (n & 1) == 0
+        "│ "+ condStr + (if (even(condStr.length)) " " else "") +  " ├"
+      })
+      val maxLen = mappedBfp.map(_.length).max
+      val halfLen = maxLen / 2
+      for ((condStr, bfp) <- mappedBfp zip branchFailurePath.get) {
+        val numChars = (maxLen - condStr.length) / 2
+        val border = " "*numChars+"┌"+("─" * (condStr.length-2))+"┐"+" "*numChars
+        val borderTop = border + " " + (if (bfp.taken) "F" else "T") + "\n"
+        val halfBoxLen = (condStr.length-2) / 2
+        val borderBottom = " "*numChars+"└"+("─" * halfBoxLen + "┬" + "─" * halfBoxLen)+"┘"+" "*numChars + "\n"
+        val sideResultSymbol = bfp.sideResult match {
+          case _: Unreachable => "?"
+          case _ => "✔"
+        }
+        val condStr_ = " "*numChars+condStr+"-"*numChars+s"──▶ "+ sideResultSymbol + "\n"
+        res += borderTop + condStr_ + borderBottom
+        res += " "*halfLen+"▼"+" "+(if (bfp.taken) "T" else "F")+"\n"
+      }
+      res += " "*(halfLen-2)+"Error"+"\n"
+    }
+    res
+  }
+}
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
@@ -28,7 +67,7 @@ trait BranchingRules extends SymbolicExecutionRules {
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
              fFalse: (State, Verifier) => VerificationResult)
-            : VerificationResult
+  : VerificationResult
 }
 
 object brancher extends BranchingRules {
@@ -39,7 +78,7 @@ object brancher extends BranchingRules {
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
-            : VerificationResult = {
+  : VerificationResult = {
 
     val negatedCondition = Not(condition)
     val negatedConditionExp = ast.Not(conditionExp._1)(pos = conditionExp._1.pos, info = conditionExp._1.info, ast.NoTrafos)
@@ -51,29 +90,29 @@ object brancher extends BranchingRules {
      *   (2) the branch condition contains a quantified variable
      */
     val skipPathFeasibilityCheck = (
-         fromShortCircuitingAnd
-      || (   s.quantifiedVariables.nonEmpty
-          && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
-    )
+      fromShortCircuitingAnd
+        || (   s.quantifiedVariables.nonEmpty
+        && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
+      )
 
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
-         skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+      skipPathFeasibilityCheck
+        || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
-         !executeThenBranch /* Assumes that ast least one branch is feasible */
-      || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout()))
+      !executeThenBranch /* Assumes that ast least one branch is feasible */
+        || skipPathFeasibilityCheck
+        || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
-//    val additionalPaths =
-//      if (executeThenBranch && exploreFalseBranch) 1
-//      else 0
+    //    val additionalPaths =
+    //      if (executeThenBranch && exploreFalseBranch) 1
+    //      else 0
 
-//    bookkeeper.branches += additionalPaths
+    //    bookkeeper.branches += additionalPaths
 
     val cnt = v.counter(this).next()
 
@@ -188,64 +227,77 @@ object brancher extends BranchingRules {
         CompletableFuture.completedFuture(Seq(Unreachable()))
       }
 
-    val res = {
-      val thenRes = if (executeThenBranch) {
-          v.symbExLog.markReachable(uidBranchPoint)
-          executionFlowController.locally(s, v)((s1, v1) => {
-            v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-            v1.decider.setCurrentBranchCondition(condition, conditionExp)
+    // Then result
+    val thenRes = if (executeThenBranch) {
+      v.symbExLog.markReachable(uidBranchPoint)
+      executionFlowController.locally(s, v)((s1, v1) => {
+        v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
+        v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
-            fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
-          })
-        } else {
-          Unreachable()
+        fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
+      })
+    } else {
+      Unreachable()
+    }
+    if (thenRes.isFatal && !thenRes.isReported && s.parallelizeBranches && s.isLastRetry) {
+      thenRes.isReported = true
+      v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
+        condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
+    }
+
+    // Else result
+    /* [BRANCH-PARALLELISATION] */
+    var elseResults: Seq[VerificationResult] = null
+    try {
+      if (parallelizeElseBranch) {
+        val pcsAfterThenBranch = v.decider.pcs.duplicate()
+        val noOfErrorsAfterThenBranch = v.errorsReportedSoFar.get()
+
+        val pcsBefore = v.decider.pcs
+
+        elseResults = elseBranchFuture.get()
+
+        if (v.decider.pcs != pcsBefore && v.uniqueId != elseBranchVerifier){
+          // we have done other work during the join, need to reset
+          v.decider.prover.comment(s"Resetting path conditions after interruption")
+          v.decider.setPcs(pcsAfterThenBranch)
+          v.errorsReportedSoFar.set(noOfErrorsAfterThenBranch)
+          v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+          v.decider.resetProverOptions()
+          v.decider.setProverOptions(proverArgsOfCurrentDecider)
         }
-      if (thenRes.isFatal && !thenRes.isReported && s.parallelizeBranches && s.isLastRetry) {
-        thenRes.isReported = true
-        v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
-          condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
+      } else {
+        elseResults = elseBranchFuture.get()
       }
-      thenRes
-    }.combine({
+    } catch {
+      case ex: ExecutionException =>
+        ex.getCause.printStackTrace()
+        throw ex
+    }
 
-      /* [BRANCH-PARALLELISATION] */
-      var rs: Seq[VerificationResult] = null
-      try {
-        if (parallelizeElseBranch) {
-          val pcsAfterThenBranch = v.decider.pcs.duplicate()
-          val noOfErrorsAfterThenBranch = v.errorsReportedSoFar.get()
+    assert(elseResults.length == 1, s"Expected a single verification result but found ${elseResults.length}")
+    if (elseResults.head.isFatal && !elseResults.head.isReported && s.parallelizeBranches && s.isLastRetry) {
+      elseResults.head.isReported = true
+      v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
+        condenseToViperResult(Seq(elseResults.head)).asInstanceOf[Failure]))
+    }
+    val elseRes = elseResults.head
 
-          val pcsBefore = v.decider.pcs
+    val res = thenRes.combine(elseRes, alwaysWaitForOther = parallelizeElseBranch)
 
-          rs = elseBranchFuture.get()
-
-          if (v.decider.pcs != pcsBefore && v.uniqueId != elseBranchVerifier){
-            // we have done other work during the join, need to reset
-            v.decider.prover.comment(s"Resetting path conditions after interruption")
-            v.decider.setPcs(pcsAfterThenBranch)
-            v.errorsReportedSoFar.set(noOfErrorsAfterThenBranch)
-            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-            v.decider.resetProverOptions()
-            v.decider.setProverOptions(proverArgsOfCurrentDecider)
-          }
-        } else {
-          rs = elseBranchFuture.get()
-        }
-      } catch {
-        case ex: ExecutionException =>
-          ex.getCause.printStackTrace()
-          throw ex
+    if (s.currentMember.isDefined && res.isFatal) {
+      val bfp = branchFailurePaths.get(s.currentMember.get.name)
+      val sideRes = if (thenRes.isFatal) elseRes else thenRes
+      val newBfp = BranchFailurePath(conditionExp._1, thenRes.isFatal, sideRes) +: bfp.getOrElse(Vector[BranchFailurePath]())
+      branchFailurePaths.put(s.currentMember.get.name, newBfp)
+      if ((thenRes.isFatal || elseRes.isFatal) && v.decider.pcs.branchConditionExps.length == 0) {
+        val firstCond = newBfp.head.condition
+        val failure = Failure(Seq(PostconditionViolatedBranch(firstCond, AssertionFalseAtBranch(firstCond, branchFailurePaths.prettyPrintPath(s.currentMember.get.name)))))
+        v.reporter.report(BranchFailureMessage(s"silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable], failure))
+        branchFailurePaths.remove(s.currentMember.get.name)
       }
+    }
 
-      assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
-      if (rs.head.isFatal && !rs.head.isReported && s.parallelizeBranches && s.isLastRetry) {
-        rs.head.isReported = true
-        v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
-          condenseToViperResult(Seq(rs.head)).asInstanceOf[Failure]))
-      }
-      rs.head
-
-    }, alwaysWaitForOther = parallelizeElseBranch)
     v.symbExLog.endBranchPoint(uidBranchPoint)
     if (wasElseExecutedOnDifferentVerifier && s.underJoin) {
 
