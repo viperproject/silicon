@@ -5,22 +5,22 @@ import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.state.terms.{BuiltinEquals, Term, Var}
 import viper.silicon.state._
+import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast._
 
 import scala.annotation.tailrec
 
-case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap, newFieldChunks: Map[BasicChunk, LocationAccess] = Map()) {
+case class VarTransformer(s: State, v: Verifier, targetVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap, newFieldChunks: Map[BasicChunk, ast.LocationAccess] = Map()) {
 
   //val pve: PartialVerificationError = Internal()
 
   // Ask the decider whether any of the terms are equal to a target.
-  val matches: Map[Term, Exp] = resolveMatches()
+  val matches: Map[Term, ast.Exp] = resolveMatches()
 
-  val newChunkBySnap = newFieldChunks.map { case (c, fa: FieldAccess) => c.snap -> (c, fa) }
+  val newChunkBySnap = newFieldChunks.map { case (c, fa: ast.FieldAccess) => c.snap -> (c, fa) }
 
-  private def resolveMatches(): Map[Term, Exp] = {
+  private def resolveMatches(): Map[Term, ast.Exp] = {
 
     val allTerms: Seq[Term] = (s.g.values.values.map { case (t1, _) => t1 }
       ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten
@@ -43,63 +43,92 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
   }
 
   @tailrec
-  private def resolveChunks(currentMatches: Map[Term, Exp], remainingChunks: Seq[BasicChunk], remainingTerms: Seq[Term]): Map[Term, Exp] = {
+  private def resolveChunks(currentMatches: Map[Term, ast.Exp], remainingChunks: Seq[BasicChunk], remainingTerms: Seq[Term]): Map[Term, ast.Exp] = {
     remainingChunks.collectFirst { case c if currentMatches.contains(c.args.head) => c } match {
       case None => currentMatches
       case Some(c) =>
-        val newExp = FieldAccess(currentMatches(c.args.head), abductionUtils.getField(c.id, s.program))()
+        val newExp = ast.FieldAccess(currentMatches(c.args.head), abductionUtils.getField(c.id, s.program))()
         val newMatches = currentMatches ++ remainingTerms.collect { case t if t.sort == c.snap.sort && v.decider.check(BuiltinEquals(t, c.snap), Verifier.config.checkTimeout()) => t -> newExp }
         resolveChunks(newMatches, remainingChunks.filter(_ != c), remainingTerms.filter(!newMatches.contains(_)))
     }
   }
 
-  def transformTerm(t: Term): Option[Exp] = {
+  def transformTerm(t: Term): Option[ast.Exp] = {
 
     t match {
       case t if matches.contains(t) => matches.get(t)
       case BuiltinEquals(t1, t2) => (transformTerm(t1), transformTerm(t2)) match {
         case (Some(e1), Some(e2)) =>
-          Some(EqCmp(e1, e2)())
+          Some(ast.EqCmp(e1, e2)())
         case _ => None
       }
-      case terms.FractionPermLiteral(r) => Some(FractionalPerm(IntLit(r.numerator)(), IntLit(r.denominator)())())
-      case terms.FullPerm => Some(FullPerm()())
-      case terms.Null => Some(NullLit()())
+      case terms.FractionPermLiteral(r) => Some(ast.FractionalPerm(ast.IntLit(r.numerator)(), ast.IntLit(r.denominator)())())
+      case terms.FullPerm => Some(ast.FullPerm()())
+      case terms.Null => Some(ast.NullLit()())
+      case terms.Not(t1) => transformTerm(t1).flatMap(e1 => Some(ast.Not(e1)()))
       case terms.Not(BuiltinEquals(t1, t2)) => (transformTerm(t1), transformTerm(t2)) match {
-        case (Some(e1), Some(e2)) =>
-          Some(NeCmp(e1, e2)())
+        case (Some(e1), Some(e2)) => Some(ast.NeCmp(e1, e2)())
         case _ => None
       }
-      case terms.True => Some(TrueLit()())
+      case terms.True => Some(ast.TrueLit()())
       case t if newChunkBySnap.contains(t) =>
         val c = newChunkBySnap(t)
         val rcv = transformTerm(c._1.args.head)
-        Some(FieldAccess(rcv.get, c._2.field)())
+        Some(ast.FieldAccess(rcv.get, c._2.field)())
+      case and: terms.And =>
+        val subs = and.ts.map(transformTerm)
+        if (subs.contains(None)) None else Some(BigAnd(subs.map(_.get)))
+      case app: terms.App =>
+        
+        app.applicable match {
+          case df: terms.DomainFun => 
+            val args = app.args.map(transformTerm)
+            if (args.contains(None)) None else {
+              val funcName = df.id.name.split('[').head
+              val domFunc = s.program.domainFunctionsByName.get(funcName)
+              Some(ast.DomainFuncApp(domFunc.get, args.map(_.get), Map())())
+            }
+            
+          case _ => 
+            val args = app.args.tail.map(transformTerm)
+            if (args.contains(None)) None else {
+              val funcName = app.applicable.id.name
+              val func = s.program.functionsByName.get(funcName)
+              Some(ast.FuncApp(func.get, args.map(_.get))())
+            }
+        }
+
+      case sl: terms.SeqLength => transformTerm(sl.p).flatMap(e => Some(ast.SeqLength(e)()))
+      case sa: terms.SeqAt => (transformTerm(sa.p0), transformTerm(sa.p1)) match {
+        case (Some(e0), Some(e1)) => Some(ast.SeqIndex(e0, e1)())
+        case _ => None
+      }
+      case terms.IntLiteral(n) => Some(ast.IntLit(n)())
       case _ => None
     }
   }
 
-  def transformState(s: State): Seq[Exp] = {
+  def transformState(s: State): Seq[ast.Exp] = {
 
     val transformed = s.h.values.collect { case c: NonQuantifiedChunk => transformChunk(c) }.collect { case Some(e) => e }.toSeq
     transformed.filter {
-      case _: FieldAccessPredicate => true
+      case _: ast.FieldAccessPredicate => true
       case _ => false
     } ++ transformed.filter {
-      case _: FieldAccessPredicate => false
+      case _: ast.FieldAccessPredicate => false
       case _ => true
     }
   }
 
-  def transformChunk(b: NonQuantifiedChunk): Option[Exp] = {
+  def transformChunk(b: NonQuantifiedChunk): Option[ast.Exp] = {
 
     b match {
       case bc: BasicChunk =>
         val rcv = transformTerm(bc.args.head)
         (bc, rcv) match {
           case (_, None) => None
-          case (BasicChunk(FieldID, _, _, _, _, _, _), rcv) => Some(FieldAccessPredicate(FieldAccess(rcv.get, abductionUtils.getField(bc.id, s.program))(), transformTerm(b.perm).get)())
-          case (BasicChunk(PredicateID, id, _, _, _, _, _), rcv) => Some(PredicateAccessPredicate(PredicateAccess(Seq(rcv.get), id.name)(), transformTerm(b.perm).get)())
+          case (BasicChunk(FieldID, _, _, _, _, _, _), rcv) => Some(ast.FieldAccessPredicate(ast.FieldAccess(rcv.get, abductionUtils.getField(bc.id, s.program))(), transformTerm(b.perm).get)())
+          case (BasicChunk(PredicateID, id, _, _, _, _, _), rcv) => Some(ast.PredicateAccessPredicate(ast.PredicateAccess(Seq(rcv.get), id.name)(), transformTerm(b.perm).get)())
 
         }
       case mwc: MagicWandChunk =>
@@ -114,10 +143,10 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     }
   }
 
-  private def safeEval(e: Exp): Option[Term] = {
+  private def safeEval(e: ast.Exp): Option[Term] = {
     e match {
-      case lv: LocalVar => Some(s.g(lv))
-      case fa@FieldAccess(target, _) =>
+      case lv: ast.LocalVar => Some(s.g(lv))
+      case fa@ast.FieldAccess(target, _) =>
         safeEval(target) match {
           case None => None
           case Some(arg) =>
@@ -132,14 +161,15 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
     }
   }
 
-  def transformExp(e: Exp, strict: Boolean = true): Option[Exp] = {
+  def transformExp(e: ast.Exp, strict: Boolean = true): Option[ast.Exp] = {
     try {
       val res = e.transform {
-        case FieldAccessPredicate(fa, perm) =>
+        case ast.FieldAccessPredicate(fa, perm) =>
+          
           // We do not want to transform the entire field access, this would resolve the snap!
           val newRcv = transformExp(fa.rcv).get
-          FieldAccessPredicate(FieldAccess(newRcv, fa.field)(), perm)()
-        case fa@FieldAccess(target, field) =>
+          ast.FieldAccessPredicate(ast.FieldAccess(newRcv, fa.field)(), perm)()
+        case fa@ast.FieldAccess(target, field) =>
 
           // We do not get the guarantee that the chunks exist in the current state, so we can not evaluate them
           // directly
@@ -148,11 +178,11 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
             case Some(term) =>
               val existingChunkTerm = transformTerm(term)
               existingChunkTerm match {
-                case Some(nfa: FieldAccess) => nfa
+                case Some(nfa: ast.FieldAccess) => nfa
 
-                case Some(NullLit()) | Some(LocalVar(_, _)) | None =>
+                case Some(ast.NullLit()) | Some(ast.LocalVar(_, _)) | None =>
                   val rvcExp = transformExp(target)
-                  FieldAccess(rvcExp.get, field)()
+                  ast.FieldAccess(rvcExp.get, field)()
 
                 // TODO nklose this wrong sometimes?
                 // Specifically I think if we are transforming "in-place" then this is fine,
@@ -163,9 +193,9 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[AbstractLocalVa
             // Else we want to recurse and try to match the target
             case None =>
               val rvcExp = transformExp(target)
-              FieldAccess(rvcExp.get, field)()
+              ast.FieldAccess(rvcExp.get, field)()
           }
-        case lv: LocalVar => {
+        case lv: ast.LocalVar => {
           val term: Term = s.g.values.getOrElse(lv, targetVars(lv))._1
           transformTerm(term).get
         }

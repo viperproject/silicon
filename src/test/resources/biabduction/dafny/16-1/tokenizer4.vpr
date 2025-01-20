@@ -1,0 +1,29 @@
+field suffix: Seq[Int]
+field m: Int
+field j: Int
+field source: Seq[Int]
+field n: Int
+
+predicate TokenizerWithPruning(this: Ref)
+{
+    acc(this.source) && acc(this.suffix) && acc(this.m) && acc(this.j) &&
+    acc(this.n) && 0 <= this.n <= |this.source| &&
+    this.suffix == this.source[this.m..] && this.m + this.j == this.n &&
+    0 <= this.m <= this.n && 0 <= this.j <= |this.suffix| &&
+    forall i: Int :: 0 <= i < |this.source| ==> 0 <= this.source[i] <= 127
+}
+
+method TokenizerWithPruningConstructor(s: Seq[Int]) returns (this: Ref)
+    requires forall i: Int :: 0 <= i < |s| ==> 0 <= s[i] <= 127
+    //ensures TokenizerWithPruning(this)
+    //ensures unfolding TokenizerWithPruning(this) in this.source == s &&
+    //    this.suffix == s && this.m == 0 && this.j == 0 && this.n == 0
+{
+    this := new(source, suffix, m, j, n)
+    this.source := s
+    this.suffix := s
+    this.m := 0
+    this.j := 0
+    this.n := 0
+    //fold TokenizerWithPruning(this)
+}

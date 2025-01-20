@@ -1,0 +1,89 @@
+field hasBeans: Bool
+
+predicate Grinder(this: Ref)
+{
+    acc(this.hasBeans)
+}
+
+function getHasBeans(this: Ref): Bool
+    requires Grinder(this)
+{
+    unfolding Grinder(this) in
+    this.hasBeans
+}
+
+field Level: Int
+
+predicate WaterTank(this: Ref)
+{
+    acc(this.Level) && 0 <= this.Level
+}
+
+function getLevel(this: Ref): Int
+    requires WaterTank(this)
+    ensures 0 <= result
+{
+    unfolding WaterTank(this) in
+    this.Level
+}
+
+method GrinderAddBeans(this: Ref)
+    requires Grinder(this)
+    ensures Grinder(this)
+    ensures getHasBeans(this)
+
+method GrinderGrind(this: Ref)
+    requires Grinder(this)
+    requires getHasBeans(this)
+    ensures Grinder(this)
+    ensures !getHasBeans(this)
+
+    method WaterTankFill(this: Ref)
+    requires WaterTank(this)
+    ensures WaterTank(this)
+    ensures getLevel(this) == 10
+
+method WaterTankUse(this: Ref)
+    requires WaterTank(this)
+    requires getLevel(this) != 0
+    ensures WaterTank(this)
+    ensures getLevel(this) == old(getLevel(this)) - 1
+
+
+predicate Cup(this: Ref)
+
+
+method CupConstructor() returns (this: Ref)
+    ensures Cup(this)
+
+
+field CMGrinder: Ref
+field CMWaterTank: Ref
+
+predicate CoffeeMaker(this: Ref)
+{
+    acc(this.CMGrinder) && Grinder(this.CMGrinder) &&
+    acc(this.CMWaterTank) && WaterTank(this.CMWaterTank)
+}
+
+function getCoffeeMakerGrinder(this: Ref): Ref
+    requires CoffeeMaker(this)
+{
+    unfolding CoffeeMaker(this) in
+    this.CMGrinder
+}
+
+function getCoffeeMakerWaterTank(this: Ref): Ref
+    requires CoffeeMaker(this)
+{
+    unfolding CoffeeMaker(this) in
+    this.CMWaterTank
+}
+
+function CoffeeMakerReady(this: Ref): Bool
+    requires CoffeeMaker(this)
+{
+    true
+    //unfolding CoffeeMaker(this) in
+    //getHasBeans(this.CMGrinder) && 2 <= getLevel(this.CMWaterTank)
+}

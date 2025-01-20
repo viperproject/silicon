@@ -1,4 +1,4 @@
-import "examples-16.2.vpr"
+import "coffee1.vpr"
 
 method CoffeemakerRemoveGrinder(this: Ref) returns (grinder: Ref)
     requires CoffeeMaker(this)

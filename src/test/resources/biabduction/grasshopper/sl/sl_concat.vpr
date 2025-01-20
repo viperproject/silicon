@@ -5,10 +5,11 @@ method concat(x: Ref, y: Ref) returns (res: Ref)
 requires list(y)
 //ensures list(res)
 {
+    var curr: Ref
     if (x == null) {
         res := y
     } else {
-        var curr: Ref := x
+        curr := x
         //package list(curr) --* list(x)
         //unfold list(curr)
         while (curr.next != null)

@@ -1,0 +1,25 @@
+function Sum(s: Seq[Int]): Int
+{
+    (|s| == 0) ? 0 : s[0] + Sum(s[1..])
+}
+
+field LedgerTransactions: Seq[Int]
+field LedgerBalance: Int
+
+predicate Ledger(this: Ref)
+{
+    acc(this.LedgerTransactions) &&
+    acc(this.LedgerBalance) && 0 <= this.LedgerBalance &&
+    this.LedgerBalance == Sum(this.LedgerTransactions)
+}
+
+method LedgerConstructor() returns (this: Ref)
+    //ensures Ledger(this)
+    //ensures unfolding Ledger(this) in this.LedgerTransactions == Seq()
+    //ensures unfolding Ledger(this) in this.LedgerBalance == 0
+{
+    this := new(LedgerTransactions, LedgerBalance)
+    this.LedgerTransactions := Seq()
+    this.LedgerBalance := 0
+    //fold Ledger(this)
+}

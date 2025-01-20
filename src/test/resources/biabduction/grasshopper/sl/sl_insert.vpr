@@ -38,6 +38,7 @@ method insert(x: Ref, elt: Ref) returns (res: Ref)
         //apply list(curr) --* list(x)
         res := x
     }
+    assert acc(elt.next, write)
 }
 
 

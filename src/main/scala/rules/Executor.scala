@@ -38,11 +38,11 @@ trait ExecutionRules extends SymbolicExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult
 
-  def exec(s: State, stmt: ast.Stmt, v: Verifier, doAbduction: Boolean = true, abdLoc: Option[Positioned] = None)
+  def exec(s: State, stmt: ast.Stmt, v: Verifier, abdLoc: Option[Positioned] = None, abdStateAllowed: Boolean = true)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult
 
-  def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier, doAbduction: Boolean = true, abdLoc: Option[Positioned] = None)
+  def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier, abdLoc: Option[Positioned] = None)
            (Q: (State, Verifier) => VerificationResult)
            : VerificationResult
 }
@@ -85,8 +85,8 @@ object executor extends ExecutionRules {
                 Success()
               })} {
             f =>
-              BiAbductionSolver.solveAbduction(s1, v, f, Some(ce.condition))((s5, res, v5) => {
-                Success(Some(res)) && follow(s5, edge, v5, joinPoint)(Q)
+              BiAbductionSolver.solveAbductionForError(s1, v, f, stateAllowed = true, Some(ce.condition))((s5, v5) => {
+                follow(s5, edge, v5, joinPoint)(Q)
               }
               )
           }
@@ -223,7 +223,7 @@ object executor extends ExecutionRules {
 
     block match {
       case cfg.StatementBlock(stmt) =>
-        execs(s, stmt, v, doAbduction = true)((s1, v1) =>
+        execs(s, stmt, v)((s1, v1) =>
           follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint)(Q))
 
       case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
@@ -271,13 +271,13 @@ object executor extends ExecutionRules {
             }))
             val sBody = s.copy(g = gBody, h = Heap())
 
-            val invReses = executionFlowController.locally(s, v)((sInv, vInv) =>
-              // We have to consume the existing invariants once, because we produce it at the start of each iteration
+            val invReses = if(s.doAbduction) {executionFlowController.locally(s, v)((sInv, vInv) =>
+              // We have to consume the existing invariants once, because we produce them at the start of each iteration
               // We do this as an assert so that abduction guarantees it to exist
-              executor.exec(sInv, ast.Exhale(BigAnd(existingInvs))(), vInv, doAbduction = true) { (sInv1, vInv1) =>
+              executor.exec(sInv, ast.Exhale(BigAnd(existingInvs))(), vInv) { (sInv1, vInv1) =>
                 LoopInvariantSolver.solveLoopInvariants(sInv1, vInv1, sInv1.g.values.keys.toSeq, block, otherEdges, joinPoint, vInv1.decider.pcs.branchConditions)
               }
-            )
+            )} else Success()
 
             invReses match {
 
@@ -286,7 +286,8 @@ object executor extends ExecutionRules {
               case nfr: NonFatalResult => {
 
                 val (foundInvs, invSuc) = abductionUtils.getInvariantSuccesses(nfr) match {
-                  case Seq(invSuc) => (invSuc.invs.distinct, Success(Some(LoopInvariantSuccess(s, v, invSuc.invs.distinct, invSuc.loop, v.decider.pcs.duplicate()))))
+                  case Seq(invSuc) if s.doAbduction => (invSuc.invs.distinct, Success(Some(LoopInvariantSuccess(s, v, invSuc.invs.distinct, invSuc.loop, v.decider.pcs.duplicate()))))
+                  case Seq() if !s.doAbduction => (Seq(), Success())
                 }
                 val invs = foundInvs ++ existingInvs
 
@@ -306,7 +307,7 @@ object executor extends ExecutionRules {
 
                 val con = executionFlowController.locally(s, v) ((s0, v0) => {
                   v0.decider.prover.comment("Loop head block: Establish invariant")
-                  checkInvariants(s0, v0, invs, condition)((sLeftover, v1) => {
+                  checkInvariants(s0, v0, invs, condition, stateAllowed = true)((sLeftover, v1) => {
                     v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                     phase1data.foldLeft(Success(): VerificationResult) {
                       case (result, _) if !result.continueVerification => result
@@ -319,7 +320,7 @@ object executor extends ExecutionRules {
                           if (v2.decider.checkSmoke())
                             Success()
                           else {
-                            execs(s3, stmts, v2, doAbduction=true)((s4, v3) => {
+                            execs(s3, stmts, v2)((s4, v3) => {
                               v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
                               val wde = edgeConditions.foldLeft(Success(): VerificationResult) {
                                 case (result, _) if !result.continueVerification => result
@@ -335,7 +336,7 @@ object executor extends ExecutionRules {
                                 follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) => {
                                   // We have to check the inferred invariants after loop manually here instead of
                                   // relying on the reentry of the loop head, as this will not have the found invariants
-                                  checkInvariants(s6, v6, foundInvs, endStmt)((_, _) => Success())
+                                  checkInvariants(s6, v6, foundInvs, endStmt, stateAllowed = false)((_, _) => Success())
                                 }
                                 )
                               })
@@ -359,12 +360,13 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            checkInvariants(s, v, existingInvs, endStmt)(Q)
+            // TODO If we reach this from the invariant generation, then state is OK. If from the final loop checking, it is not! 
+            checkInvariants(s, v, existingInvs, endStmt, stateAllowed = true)(Q)
         }
     }
   }
 
-  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp], location: Positioned)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  private def checkInvariants(s: State, v: Verifier, invs: Seq[Exp], location: Positioned, stateAllowed: Boolean)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
     if (invs.isEmpty) {
       Q(s, v)
     } else {
@@ -376,24 +378,23 @@ object executor extends ExecutionRules {
           Q(s2, v2)
       } {
         f =>
-        // There are cases where it is incorrect to abduce state here, but only some cases and it is hard to distinguish them
-        BiAbductionSolver.solveAbduction(s, v, f, Some(location))((s3, res, v3) =>
-          Success(Some(res)) && checkInvariants(s3, v3, invs, location)(Q))
+        BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(location))((s3, v3) =>
+          checkInvariants(s3, v3, invs, location, stateAllowed)(Q))
       }
     }
   }
 
-  def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier, doAbduction: Boolean = true, abdLoc: Option[Positioned] = None)
+  def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier, abdLoc: Option[Positioned] = None)
            (Q: (State, Verifier) => VerificationResult)
            : VerificationResult =
 
     if (stmts.nonEmpty)
-      exec(s, stmts.head, v, doAbduction)((s1, v1) =>
-        execs(s1, stmts.tail, v1, doAbduction)(Q))
+      exec(s, stmts.head, v)((s1, v1) =>
+        execs(s1, stmts.tail, v1)(Q))
     else
       Q(s, v)
 
-  def exec(s: State, stmt: ast.Stmt, v: Verifier, doAbduction: Boolean = true, abdLoc: Option[Positioned] = None)
+  def exec(s: State, stmt: ast.Stmt, v: Verifier, abdLoc: Option[Positioned] = None, abdStateAllowed: Boolean = true)
           (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
@@ -404,16 +405,12 @@ object executor extends ExecutionRules {
       Q(s2, v2)
     } {
       f =>
-        if (doAbduction) {
-          val loc = if (abdLoc.isDefined) abdLoc else Some(stmt)
-          BiAbductionSolver.solveAbduction(s, v, f, loc)((s3, res, v3) => {
-            v3.symbExLog.closeScope(sepIdentifier)
-            Success(Some(res)) && exec(s3, stmt, v3)(Q)
-          }
-          )
-        } else {
-          f
+        val loc = if (abdLoc.isDefined) abdLoc else Some(stmt)
+        BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed = abdStateAllowed, loc)((s3, v3) => {
+          v3.symbExLog.closeScope(sepIdentifier)
+          exec(s3, stmt, v3)(Q)
         }
+        )
     }
   }
 

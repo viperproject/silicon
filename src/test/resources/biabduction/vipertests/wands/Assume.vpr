@@ -12,6 +12,7 @@ predicate LinkedList(x: Ref) {
 method test0(x: Ref)
 requires LinkedList(x)
 ensures LinkedList(x)
+ensures LinkedList(x) --* acc(x.next) && LinkedList(x.next)
 {
     package LinkedList(x) --* acc(x.next) && LinkedList(x.next) {
         unfold LinkedList(x)

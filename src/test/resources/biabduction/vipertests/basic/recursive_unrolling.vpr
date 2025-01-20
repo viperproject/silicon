@@ -7,7 +7,7 @@ predicate node(this: Ref) {
   acc(this.next) && (this.next != null ==> acc(node(this.next)))
 }
 
-/*
+
 method test01() {
   var n1: Ref; n1 := new(next)
   n1.next := null
@@ -31,7 +31,7 @@ method test01() {
 
   assert acc(node(n5))
 }
-*/
+
 
 method test02(n4: Ref)
   //requires acc(node(n4))

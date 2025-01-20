@@ -1,0 +1,27 @@
+//import "examples-16.0.vpr"
+
+field checksumData: Int
+
+adt Option[T] {
+    Some(value: T)
+    None()
+}
+
+field ocs: Option[Int]
+
+predicate ChecksumMachineOCS(this: Ref) 
+{
+    acc(this.checksumData) && 0 <= this.checksumData &&
+    acc(this.ocs)
+}
+
+method ChecksumMachineOCSConstructor() returns (this: Ref)
+    //ensures ChecksumMachineOCS(this)
+    //ensures unfolding ChecksumMachineOCS(this) in this.checksumData == 0
+    //ensures unfolding ChecksumMachineOCS(this) in this.ocs.isNone
+{
+    this := new(checksumData, ocs)
+    this.checksumData := 0
+    this.ocs := None()
+    //fold ChecksumMachineOCS(this)
+}

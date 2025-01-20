@@ -1,0 +1,12 @@
+field next: Ref
+
+predicate list(x: Ref){
+    x != null ==> acc(x.next) && list(x.next)
+}
+
+method foo() returns (x: Ref, y: Ref)
+//requires acc(this.next, write)
+{
+    x := new(next)
+    x.next := y
+}

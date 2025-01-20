@@ -1,0 +1,27 @@
+function Sum(s: Seq[Int]): Int
+{
+    (|s| == 0) ? 0 : s[0] + Sum(s[1..])
+}
+
+field LedgerTransactions: Seq[Int]
+field LedgerBalance: Int
+
+predicate Ledger(this: Ref)
+{
+    acc(this.LedgerTransactions) &&
+    acc(this.LedgerBalance) && 0 <= this.LedgerBalance &&
+    this.LedgerBalance == Sum(this.LedgerTransactions)
+}
+
+method LedgerDeposit(this: Ref, n: Int)
+    requires Ledger(this)
+    requires 0 <= n
+    //ensures Ledger(this)
+    //ensures unfolding Ledger(this) in this.LedgerTransactions == Seq(n) ++ old(unfolding Ledger(this) in this.LedgerTransactions)
+    //ensures unfolding Ledger(this) in this.LedgerBalance == n + old(unfolding Ledger(this) in this.LedgerBalance)
+{
+    //unfold Ledger(this)
+    this.LedgerTransactions := Seq(n) ++ this.LedgerTransactions
+    this.LedgerBalance := this.LedgerBalance + n
+    //fold Ledger(this)
+}

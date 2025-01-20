@@ -1,0 +1,49 @@
+adt Category {
+    Identifier()
+    Number()
+    Operator()
+    Whitespace()
+    Error()
+    End()
+}
+
+function Is(ch: Int, cat: Category): Bool
+    requires !cat.isEnd
+    requires 0 <= ch <= 127
+{
+    (cat.isWhitespace) ? ch == 32 || ch == 9 || ch == 13 || ch == 10 : // " \t\r\n"
+    (cat.isIdentifier) ? 65 <= ch <= 90 || 97 <= ch <= 122           : // 'A' <= ch <= 'Z' || 'a' <= ch <= 'z'
+    (cat.isNumber)     ? 48 <= ch <= 57                              : // '0' <= ch <= '9'
+    (cat.isOperator)   ? ch == 43 || ch == 45 || ch == 42 || ch == 47 || ch == 37 || ch == 33 || 
+                         ch == 61 || ch == 62 || ch == 60 || ch == 126 || ch == 94 || ch == 38 || 
+                         ch == 124                                   : // "+-*/%!=><=~^&|"
+                         !Is(ch, Identifier()) && !Is(ch, Number()) && !Is(ch, Operator()) && 
+                         !Is(ch, Whitespace()) // error case
+}
+
+field source: Seq[Int]
+field n: Int
+
+predicate Tokenizer(this: Ref)
+{
+    acc(this.source) && 
+    acc(this.n) && 0 <= this.n <= |this.source| &&
+    forall i: Int :: 0 <= i < |this.source| ==> 0 <= this.source[i] <= 127
+}
+
+
+function getSource(this: Ref): Seq[Int]
+    requires Tokenizer(this)
+    ensures forall i: Int :: 0 <= i < |result| ==> 0 <= result[i] <= 127
+{
+    unfolding Tokenizer(this) in
+    this.source
+}
+
+function getN(this: Ref): Int
+    requires Tokenizer(this)
+    ensures 0 <= result <= |getSource(this)|
+{
+    unfolding Tokenizer(this) in
+    this.n
+}

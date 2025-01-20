@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.biabduction.AbductionQuestion
+import viper.silicon.biabduction.{AbductionQuestion, BiAbductionSolver}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
@@ -85,6 +85,22 @@ object evaluator extends EvaluationRules {
       eval(s, es.head, pvef(es.head), v)((s1, t, eNew, v1) =>
         evals2(s1, es.tail, t :: ts,  pvef, v1)((s2, ts2, es2, v2) => Q(s2, ts2, eNew.map(eN => eN :: es2.get), v2)))
   }
+
+  /*
+  def evalWithAbduction(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
+                       (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
+  : VerificationResult = {
+    executionFlowController.tryOrElse2[Term, Option[ast.Exp]](s, v) { (s1, v1, T) =>
+      evaluator.eval(s1, e, pve, v1)(T)
+    } {
+      Q
+    } {
+      f =>
+        BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed = true, Some(e)) { (s2, v2) =>
+          evalWithAbduction(s2, e, pve, v2)(Q)
+        }
+    }
+  }*/
 
   /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. * */
   @inline

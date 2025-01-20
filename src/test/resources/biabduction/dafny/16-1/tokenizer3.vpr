@@ -1,0 +1,116 @@
+import "tokenizer.vpr"
+
+function IsStart(ch: Int, cat: Category): Bool
+    requires !cat.isEnd
+    requires 0 <= ch <= 127
+{
+    Is(ch, Identifier())
+}
+
+function IsFollow(ch: Int, cat: Category): Bool
+    requires !cat.isEnd
+    requires 0 <= ch <= 127
+{
+    Is(ch, Identifier()) || Is(ch, Number())
+}
+
+method ReadModifedIdentifier(this: Ref) returns (cat: Category, p: Int, token: Seq[Int])
+    //requires Tokenizer(this)
+    ensures 0 <= p
+    //ensures Tokenizer(this)
+    //ensures getSource(this) == old(getSource(this))
+    //ensures !cat.isWhitespace
+    //ensures old(getN(this)) <= p <= getN(this) <= |getSource(this)|
+    //ensures cat.isEnd <==> p == |getSource(this)|
+    //ensures cat.isEnd || cat.isError <==> p == getN(this)
+    //ensures forall i: Int :: old(getN(this)) <= i < p ==> 
+    //    Is(getSource(this)[i], Whitespace())
+    //ensures forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+    //ensures p < getN(this) ==> getN(this) == |getSource(this)| || !Is(getSource(this)[getN(this)], cat)
+    //ensures token == getSource(this)[p..getN(this)]
+    // New
+    //ensures cat.isIdentifier ==> IsStart(token[0], cat) && forall i: Int :: 1 <= i < |token| ==> IsFollow(token[i], cat)
+{
+    // skip whitespace
+    while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], Whitespace()))
+        //invariant Tokenizer(this)
+        //invariant getSource(this) == old(getSource(this))
+        //invariant old(getN(this)) <= getN(this) <= |getSource(this)|
+        //invariant forall i: Int :: old(getN(this)) <= i < getN(this) ==> Is(getSource(this)[i], Whitespace())
+    {
+        //unfold Tokenizer(this)
+        this.n := this.n + 1
+        //fold Tokenizer(this)
+    }
+    p := getN(this)
+    // determine syntactic category
+    var return: Bool := false
+    if (getN(this) == |getSource(this)|)
+    {
+        cat := End()
+        token := Seq()
+        return := true
+    }
+    elseif (Is(getSource(this)[getN(this)], Identifier()))
+    {
+        cat := Identifier()
+    }
+    elseif (Is(getSource(this)[getN(this)], Number()))
+    {
+        cat := Number()
+    }
+    elseif (Is(getSource(this)[getN(this)], Operator()))
+    {
+        cat := Operator()
+    }
+    else
+    {
+        cat := Error()
+        token := Seq()
+        return := true
+    }
+    // read token
+    if (!return)
+    {
+        var start: Int := getN(this)
+        if (cat.isIdentifier && !IsStart(getSource(this)[getN(this)], cat))
+        {
+            return := true
+        }
+        else
+        {
+            //unfold Tokenizer(this)
+            this.n := this.n + 1
+            //fold Tokenizer(this)
+            while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], cat) && !return)
+                //invariant Tokenizer(this)
+                //invariant getSource(this) == old(getSource(this))
+                //invariant p <= getN(this) <= |getSource(this)|
+                //invariant forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+            {
+                if (cat.isIdentifier && !IsFollow(getSource(this)[getN(this)], cat))
+                {
+                    return := true
+                } 
+                else
+                {
+                    //unfold Tokenizer(this)
+                    this.n := this.n + 1
+                    //fold Tokenizer(this)
+                }
+            }
+        }
+        if (return)
+        {
+            cat := Error()
+            token := Seq()
+            //unfold Tokenizer(this)
+            this.n := p
+            //fold Tokenizer(this)
+        }
+        else
+        {
+            token := getSource(this)[start..getN(this)]
+        }
+    }    
+}

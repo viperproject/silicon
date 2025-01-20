@@ -14,67 +14,70 @@ object AbstractionApplier extends RuleApplier[AbstractionQuestion] {
   override val rules: Seq[AbstractionRule] = Seq(AbstractionFold, AbstractionPackage, AbstractionJoin, AbstractionApply)
 }
 
-case class AbstractionQuestion(s: State, v: Verifier, fixedChunks: Seq[Chunk]) {
-
-  // TODO we assume each field only appears in at most one predicate
-  def fields: Map[Field, Predicate] = s.program.predicates.flatMap { pred => pred.body.get.collect { case fa: FieldAccessPredicate => (fa.loc.field, pred) } }.toMap
+case class AbstractionQuestion(s: State, v: Verifier) {
 
   def varTran: VarTransformer = VarTransformer(s, v, s.g.values, s.h)
 
-  def isTriggerField(bc: BasicChunk): Boolean = {
-    bc.resourceID match {
-      case FieldID => fields.contains(abductionUtils.getField(bc.id, s.program)) && !fixedChunks.contains(bc)
-      case _ => false
-    }
-  }
 }
 
 trait AbstractionRule extends BiAbductionRule[AbstractionQuestion]
 
 object AbstractionFold extends AbstractionRule {
 
-  private def checkChunks(chunks: Seq[BasicChunk], q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
+
+  // TODO we assume each field only appears in at most one predicate
+  private def getFieldPredicate(bc: BasicChunk, q: AbstractionQuestion): Option[Predicate] = {
+
+    if (bc.resourceID != FieldID) None else {
+      val field = abductionUtils.getField(bc.id, q.s.program)
+
+      q.s.program.predicates.collectFirst { case pred if pred.collect{case fa: FieldAccess => fa.field}.toSeq.contains(field) => pred }
+    }
+  }
+
+  private def checkChunks(chunks: Seq[(BasicChunk, Predicate)], q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
     chunks match {
-      case Seq() => Q(None)
-      case chunk +: rest =>
-        val pred = q.fields(abductionUtils.getField(chunk.id, q.s.program))
+      case _ if chunks.isEmpty => Q(None)
+      case (chunk, pred) +: rest =>
+        //val pred = q.fields(abductionUtils.getField(chunk.id, q.s.program))
         val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
         executionFlowController.tryOrElse0(q.s, q.v) {
           (s1, v1, T) =>
 
-            val fargs = pred.formalArgs.map(_.localVar)
+            //val fargs = pred.formalArgs.map(_.localVar)
             val eArgs = q.varTran.transformTerm(chunk.args.head)
-            val formalsToActuals: Map[LocalVar, Exp] = fargs.zip(eArgs).to(Map)
-            val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
-            val pveTransformed = pve.withReasonNodeTransformed(reasonTransformer)
+            //val formalsToActuals: Map[LocalVar, Exp] = fargs.zip(eArgs).to(Map)
+            //val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
+            //val pveTransformed = pve.withReasonNodeTransformed(reasonTransformer)
+
+            val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs.get), pred.name)(), FullPerm()())())()
+            executor.exec(s1, fold, v1, None, abdStateAllowed = false)(T)
 
             // TODO nklose this can branch
-            predicateSupporter.fold(s1, pred, List(chunk.args.head), None, terms.FullPerm, Some(FullPerm()()), wildcards, pveTransformed, v1)(T)
+            //predicateSupporter.fold(s1, pred, List(chunk.args.head), None, terms.FullPerm, Some(FullPerm()()), wildcards, pveTransformed, v1)(T)
         } {
           (s2, v2) => Q(Some(q.copy(s = s2, v = v2)))
         } {
-          f =>
+
+          f => checkChunks(rest, q)(Q)
+
+            /*
             executionFlowController.tryOrElse0(q.s, q.v) {
               (s3, v3, T) =>
-                BiAbductionSolver.solveAbduction(s3, v3, f, None) { (s4, res, v4) =>
-                  res.state match {
-                    case Seq() => T(s4, v4)
-                    case _ => f
-                  }
-                }
+                BiAbductionSolver.solveAbductionForError(s3, v3, f, stateAllowed = false, None) { T }
             } {
               (s5, v5) =>
                 Q(Some(q.copy(s = s5, v = v5)))
             } {
               f =>
                 checkChunks(rest, q)(Q)
-            }
+            }*/
         }
     }
   }
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
-    val candChunks = q.s.h.values.collect { case bc: BasicChunk if q.isTriggerField(bc) => bc }.toSeq
+    val candChunks = q.s.h.values.collect { case bc: BasicChunk => (bc, getFieldPredicate(bc, q)) }.collect { case (c, Some(pred)) => (c, pred) }.toSeq
     checkChunks(candChunks, q)(Q)
   }
 }
@@ -82,30 +85,51 @@ object AbstractionFold extends AbstractionRule {
 
 object AbstractionPackage extends AbstractionRule {
 
-  // TODO nklose we should only trigger on fields for which there is a recursive predicate call
+  // TODO if the fold fails for a different reason than the recursive predicate missing, then this will do nonsense
+  // We should actually check what is missing and be smarter about what we package.
+  private def checkField(bc: BasicChunk, q: AbstractionQuestion): Option[MagicWand] = {
+    if (bc.resourceID != FieldID) None else {
+
+      // TODO this fails if the sorts don't line up
+      q.s.g.termValues.collectFirst{ case (lv, term) if term.sort == bc.snap.sort && q.v.decider.check(terms.Equals(term, bc.snap), Verifier.config.checkTimeout())   => lv} match {
+        case None => None
+        case Some(lhsArgExp) =>
+          val field = abductionUtils.getField(bc.id, q.s.program)
+          // TODO we assume each field only appears in at most one predicate
+          val predOpt = q.s.program.predicates.collectFirst { case pred if pred.collect{case fa: FieldAccess => fa.field}.toSeq.contains(field) => pred }
+          predOpt.flatMap { pred =>
+            val recPredOpt = pred.collectFirst {
+              case recPred@PredicateAccess(Seq(FieldAccess(_, field2)), _) if field == field2 => recPred
+            }
+            recPredOpt.flatMap { recPred =>
+              val lhs = PredicateAccessPredicate(PredicateAccess(Seq(lhsArgExp), recPred.predicateName)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
+              val rhsArg = q.varTran.transformTerm(bc.args.head).get
+              val rhs = PredicateAccessPredicate(PredicateAccess(Seq(rhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
+              Some(MagicWand(lhs, rhs)())
+            }
+          }
+      }
+    }
+  }
+
   @tailrec
-  private def findWandFieldChunk(chunks: Seq[Chunk], q: AbstractionQuestion): Option[(Exp, BasicChunk)] = {
+  private def findWand(chunks: Seq[Chunk], q: AbstractionQuestion): Option[MagicWand] = {
     chunks match {
       case Seq() => None
-      case (chunk: BasicChunk) +: rest if q.isTriggerField(chunk) =>
-        q.varTran.transformTerm(chunk.snap) match {
-          case None => findWandFieldChunk(rest, q)
-          case Some(snap) => Some((snap, chunk))
+      case (chunk: BasicChunk) +: rest =>
+        checkField(chunk, q) match {
+          case None => findWand(rest, q)
+          case wand => wand
         }
-      case _ +: rest => findWandFieldChunk(rest, q)
+      case (_: Chunk) +: rest => findWand(rest, q)
     }
   }
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
 
-    findWandFieldChunk(q.s.h.values.toSeq, q) match {
+    findWand(q.s.h.values.toSeq, q) match {
       case None => Q(None)
-      case Some((lhsArg, chunk)) =>
-        val pred = q.fields(abductionUtils.getField(chunk.id, q.s.program))
-        val lhs = PredicateAccessPredicate(PredicateAccess(Seq(lhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
-        val rhsArg = q.varTran.transformTerm(chunk.args.head).get
-        val rhs = PredicateAccessPredicate(PredicateAccess(Seq(rhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
-        val wand = MagicWand(lhs, rhs)()
+      case Some(wand) =>
         executor.exec(q.s, Assert(wand)(), q.v) {
           (s1, v1) =>
             Q(Some(q.copy(s = s1, v = v1)))
@@ -137,7 +161,7 @@ object AbstractionApply extends AbstractionRule {
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
     val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect { case Some(wand: MagicWand) => wand }
-    val targets = q.s.h.values.collect { case c: BasicChunk if !q.fixedChunks.contains(c) => q.varTran.transformChunk(c) }.collect { case Some(exp) => exp }.toSeq
+    val targets = q.s.h.values.collect { case c: BasicChunk => q.varTran.transformChunk(c) }.collect { case Some(exp) => exp }.toSeq
 
     wands.collectFirst { case wand if targets.contains(wand.left) => wand } match {
       case None => Q(None)

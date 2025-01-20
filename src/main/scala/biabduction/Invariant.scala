@@ -1,11 +1,10 @@
 package viper.silicon.biabduction
 
 import viper.silicon.interfaces._
-import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.rules.producer.produces
 import viper.silicon.rules.{evaluator, executionFlowController, executor, producer}
 import viper.silicon.state.terms.Term
-import viper.silicon.state.{BasicChunk, ChunkIdentifier, Heap, State}
+import viper.silicon.state.{Heap, State}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
@@ -29,41 +28,31 @@ object LoopInvariantSolver {
   // In particular, we need to ensure that permissions are not doubled between the two. Whenever the two invariants describe the same
   // point in time, we should make sure that there is no duplication going on, possible using abduction.
   // Also we need to guarantee well-definedness of the invariants
-  private def getPreInvariant(pres: Seq[Exp], posts: Seq[Exp], con: Exp, s: State, v: Verifier)(Q: Seq[Exp] => VerificationResult): VerificationResult = {
+  private def getInvariants(pres: Seq[Exp], posts: Seq[Exp], loopCon: Exp, existingInvs: Seq[Exp], s: State, v: Verifier)(Q: Seq[Exp] => VerificationResult): VerificationResult = {
 
     //TODO nklose probably we want to keep things that apply to non-reassigned variables just as part of the invariant.
-    val inverted = pres.collect { case m: MagicWand => m.left }
+    val invs = pres.collect { case m: MagicWand => m.left } ++ posts
 
     // If the loop condition requires permissions which are folded away in the invariant, we need to partially unfold it.
     executionFlowController.locallyWithResult[Seq[Exp]](s.copy(h = Heap()), v) { (s1, v1, Q1) =>
-      producer.produces(s1, freshSnap, inverted, pveLam, v1) { (s2, v2) =>
+      producer.produces(s1, freshSnap, invs ++ existingInvs, pveLam, v1) { (s2, v2) =>
         executionFlowController.tryOrElse0(s2, v2) { (s3, v3, T) =>
-          evaluator.eval(s3, con, pve, v3)((s4, _, _, v4) => T(s4, v4))
+          evaluator.eval(s3, loopCon, pve, v3)((s4, _, _, v4) => T(s4, v4))
         } {
-          (_, _) => Q1(inverted)
+          (_, _) => Q1(invs)
         } {
           f =>
-            val abdRes = BiAbductionSolver.solveAbduction(s2, v2, f, Some(con)) { (_, res, _) =>
-              Success(Some(res))
-            }
-            abdRes match {
+            BiAbductionSolver.solveAbductionForError(s2, v2, f, stateAllowed = false, Some(loopCon)) { (_, _) =>
+              Success()
+            } match {
               case f: Failure => f
               case abdRes: NonFatalResult =>
                 // TODO nklose we do not guarantee length 1 here anymore
                 abductionUtils.getAbductionSuccesses(abdRes) match {
                   case Seq(AbductionSuccess(s5, v5, _, Seq(), _, _, _)) =>
                     val unfolded = VarTransformer(s5, v5, s5.g.values, s5.h).transformState(s5)
-                    Q(unfolded)
-                  case _ => Q(inverted)
+                    Q1(unfolded)
                 }
-                /*
-                val unfolds = abd.stmts.collect { case Unfold(pa) => (pa.toString -> pa.loc.predicateBody(s.program, Set()).get) }.toMap
-                val unfolded = inverted.map {
-                  case inv: PredicateAccessPredicate => unfolds.getOrElse(inv.toString, inv)
-                  case inv => inv
-                }
-                Q1(unfolded)
-                */
             }
         }
       }
@@ -79,10 +68,18 @@ object LoopInvariantSolver {
                           joinPoint: Option[SilverBlock],
                           initialBcs: Seq[Term],
                           q: InvariantAbductionQuestion = InvariantAbductionQuestion(Heap(), Seq(), Seq()),
-                          loopConBcs: Seq[Term] = Seq(),
+                          //loopConBcs: Seq[Term] = Seq(),
                           iteration: Int = 1): VerificationResult = {
 
+
+    // TODO if the loop condition (and maybe also the loop invs) contain permissions which require statements from the starting state, then this will fail.
+    // I need thought out way to eval / assume / check all of these things each iteration.
+
     println("\nIteration: " + iteration)
+
+    // We assume there is only one loop internal edge
+    val loopConExp = loopEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition
+
     // Produce the already known invariants. They are consumed at the end of the loop body, so we need to do this every iteration
     produces(s, freshSnap, loopHead.invs, ContractNotWellformed, v) { (sPreInv, vPreInv) =>
 
@@ -90,34 +87,34 @@ object LoopInvariantSolver {
       executionFlowController.locally(sPreInv, vPreInv) { (sFP, vFP) =>
 
         // TODO nklose follows should be private. We can exec the statement block instead?
-        executor.follows(sFP, loopEdges, pveLam, vFP, joinPoint) { (_, _) => Success()}
+        executor.follows(sFP, loopEdges, pveLam, vFP, joinPoint) {
+          (_, _) => Success()
+          //(s1, v1) =>
+            // We evaluate the loop condition at the end of loop so that we can start the next iteration from a valid state
+            //evaluator.evalWithAbduction(s1, loopConExp, pve, v1){(_, _, _, _) => Success()}
+        }
       } match {
 
         // Abduction has failed so we fail
         case f: Failure => f
         case nonf: NonFatalResult =>
 
-          // We assume there is only one loop internal edge
-          val loopConExp = loopEdges.head.asInstanceOf[ConditionalEdge[Stmt, Exp]].condition
-
           val abdReses = abductionUtils.getAbductionSuccesses(nonf).reverse
-          // TODO nklose do we want to join branches here like we do for preconditions?
+          // TODO nklose do we want to join branches properly here like we do for preconditions?
           val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
           val preStateVars = sPreInv.g.values.filter { case (v, _) => origVars.contains(v) }
-          val newStateOpt = abdReses.flatMap { case abd => abd.getPreconditions(preStateVars, sPreInv.h, Seq(), newMatches).get }
+          val newStateOpt = abdReses.flatMap { case abd => abd.getPreconditions(preStateVars, sPreInv.h, Seq(), newMatches).get }.distinct
 
           // We still need to remove the current loop condition
-          val newState = newStateOpt.map(_.transform {
+          val newState = abductionUtils.sortExps(newStateOpt.map(_.transform {
             case im: Implies if im.left == loopConExp => im.right
-          })
+          }))
 
           println("New state:\n    " + newState.mkString("\n    "))
 
           // Do the second pass so that we can compare the state at the end of the loop with the state at the beginning
           // Get the state at the beginning of the loop with the abduced things added
-          producer.produces(sPreInv, freshSnap, newState, pveLam, vPreInv) { (sPreAbd0, vPreAbd0) =>
-
-            evaluator.eval(sPreAbd0, loopConExp, pve, vPreAbd0) { (sPreAbd, loopCondTerm, _, vPreAbd) =>
+          producer.produces(sPreInv, freshSnap, newState, pveLam, vPreInv) { (sPreAbd, vPreAbd) =>
 
               abductionUtils.findChunks(newState.collect {
                 case loc: FieldAccessPredicate => loc.loc
@@ -141,29 +138,30 @@ object LoopInvariantSolver {
 
                         val postStateVars = sPostAbs.g.values.filter { case (v, _) => origVars.contains(v) }
                         val postTran = VarTransformer(sPostAbs, vPostAbs, postStateVars, sPostAbs.h)
-                        val postAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
+                        val newpostAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
 
-                        println("New post abstraction:\n    " + postAbstraction.mkString("\n    "))
-                        
+                        println("New post abstraction:\n    " + newpostAbstraction.mkString("\n    "))
+
                         // If the pushed forward abstraction is the same as the previous one, we are done
-                        if (newPreAbstraction.toSet == q.preAbstraction.toSet && postAbstraction.toSet == q.postAbstraction.toSet) {
-                          getPreInvariant(newPreAbstraction, postAbstraction, loopConExp, sPostAbs, vPostAbs) { preInv =>
+                        if (newPreAbstraction.toSet == q.preAbstraction.toSet && newpostAbstraction.toSet == q.postAbstraction.toSet) {
 
-                              val loop = abductionUtils.getWhile(loopConExp, s.currentMember.get.asInstanceOf[Method])
-                              Success(Some(LoopInvariantSuccess(sPostAbs, vPostAbs, invs = preInv ++ postAbstraction, loop, vPostAbs.decider.pcs.duplicate())))
+                          val loop = abductionUtils.getWhile(loopConExp, s.currentMember.get.asInstanceOf[Method])
+                          val existingInvs = loop.invs
+                          getInvariants(newPreAbstraction, newpostAbstraction, loopConExp, existingInvs, sPostAbs, vPostAbs) { res =>
+                            println("Invariants:\n    " + res.mkString("\n    "))
+                            Success(Some(LoopInvariantSuccess(sPostAbs, vPostAbs, invs = res, loop, vPostAbs.decider.pcs.duplicate())))
                           }
                         } else {
-                          val newLoopCons = loopConBcs :+ loopCondTerm
+                          //val newLoopCons = loopConBcs :+ loopCondTerm
                           // Else continue with next iteration, using the state from the end of the loop
                           solveLoopInvariants(sPostAbs, vPostAbs, origVars, loopHead, loopEdges, joinPoint, initialBcs, q.copy(preHeap = newPreState.h, preAbstraction = newPreAbstraction,
-                            postAbstraction = postAbstraction), newLoopCons, iteration = iteration + 1)
+                            postAbstraction = newpostAbstraction), iteration = iteration + 1)
                         }
                       }
-                    }
-                    )
+                    })
                 }
               }
-            }
+            //}
           }
       }
     }
