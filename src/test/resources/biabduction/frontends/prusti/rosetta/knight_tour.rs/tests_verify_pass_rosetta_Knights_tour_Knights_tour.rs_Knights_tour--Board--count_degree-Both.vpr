@@ -290,36 +290,36 @@ field val_int: Int
 field val_ref: Ref
 
 function f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(_1: Snap$struct$m_VecWrapperI32I32): Int
-  requires true
-  requires true
-  ensures result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result >= 0
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(_1),
     true]
 
 
 function f_size__$TY$__$int$(): Int
-  requires true
-  requires true
-  ensures result == 8
-  ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
+  //requires true
+  //requires true
+  //ensures result == 8
+  //ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
 
 
 function snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(self: Ref): Snap$struct$m_VecWrapperI32I32
-  requires acc(struct$m_VecWrapperI32I32(self), read$())
+  //requires acc(struct$m_VecWrapperI32I32(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32((unfolding acc(struct$m_VecWrapperI32I32(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self), read$())
 
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -556,15 +556,15 @@ method m_Board$$count_degree() returns (_0: Ref)
   _16.val_bool := false
   // [mir] switchInt(move _16) -> [0: bb7, otherwise: bb6]
   __t22 := _16.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb3)
+  // Assert and exhale the loop body //invariant (loop head: bb3)
   _preserve$0 := _1.val_ref
-  fold acc(i32(_5), write)
+  //fold acc(i32(_5), write)
   // obtain acc(i32(_5), write)
-  fold acc(usize(_7), write)
+  //fold acc(usize(_7), write)
   // obtain acc(usize(_7), write)
-  fold acc(bool(_8), write)
+  //fold acc(bool(_8), write)
   // obtain acc(bool(_8), write)
   // obtain acc(struct$m_VecWrapperI32I32(_6), write)
   // obtain acc(struct$m_Point(_4), write)
@@ -626,7 +626,7 @@ method m_Board$$count_degree() returns (_0: Ref)
   __t8 := builtin$havoc_bool()
   __t9 := builtin$havoc_bool()
   // ========== loop3_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb3
+  // Inhale the loop permissions //invariant of block bb3
   inhale acc(i32(_5), write) &&
     (acc(usize(_7), write) &&
     (acc(bool(_8), write) &&
@@ -645,7 +645,7 @@ method m_Board$$count_degree() returns (_0: Ref)
   // [mir] _14 = _8
   _14 := builtin$havoc_ref()
   inhale acc(_14.val_bool, write)
-  unfold acc(bool(_8), write)
+  //unfold acc(bool(_8), write)
   _14.val_bool := _8.val_bool
   label l10
   // [mir] switchInt(move _14) -> [0: bb21, otherwise: bb5]
@@ -671,7 +671,7 @@ method m_Board$$count_degree() returns (_0: Ref)
   inhale acc(_35.tuple_0.val_int, write)
   inhale acc(_35.tuple_1, write)
   inhale acc(_35.tuple_1.val_bool, write)
-  unfold acc(i32(_5), write)
+  //unfold acc(i32(_5), write)
   _35.tuple_0.val_int := _5.val_int + 1
   _35.tuple_1.val_bool := false
   // [mir] assert(!move (_35.1: bool), "attempt to compute `{} + {}`, which would overflow", _5, const 1_i32) -> [success: bb16, unwind: bb23]
@@ -704,9 +704,9 @@ method m_Board$$count_degree() returns (_0: Ref)
   _16.val_bool := false
   // [mir] switchInt(move _16) -> [0: bb7, otherwise: bb6]
   __t24 := _16.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb3
+  // Inhale the loop fnspec //invariant of block bb3
   inhale 0 <= (unfolding acc(usize(_7), write) in _7.val_int) &&
     (unfolding acc(usize(_7), write) in _7.val_int) <
     f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(_6))
@@ -726,7 +726,7 @@ method m_Board$$count_degree() returns (_0: Ref)
   _20.val_bool := false
   // [mir] switchInt(move _20) -> [0: bb10, otherwise: bb9]
   __t25 := _20.val_bool
-  // Ignore default target bb9, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb9, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_group3_bb10 ==========
   __t8 := true
   // [mir] _19 = const ()
@@ -745,7 +745,7 @@ method m_Board$$count_degree() returns (_0: Ref)
   // [mir] StorageLive(_26)
   // [mir] _26 = _7
   _26 := builtin$havoc_int()
-  unfold acc(usize(_7), write)
+  //unfold acc(usize(_7), write)
   _26 := _7.val_int
   label l14
   // [mir] _24 = VecWrapperI32I32::lookup(move _25, move _26) -> [return: bb12, unwind: bb23]
@@ -871,7 +871,7 @@ method m_Board$$count_degree() returns (_0: Ref)
   // [mir] StorageDead(_34)
   // [mir] StorageDead(_33)
   // [mir] switchInt(move _32) -> [0: bb17, otherwise: bb15]
-  unfold acc(bool(_32), write)
+  //unfold acc(bool(_32), write)
   __t26 := _32.val_bool
   if (!__t26) {
     goto loop3_start
@@ -904,15 +904,15 @@ method m_Board$$count_degree() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l42
-  // Fold predicates for &mut args and transfer borrow permissions to old
+  // //fold predicates for &mut args and transfer borrow permissions to old
   // obtain acc(struct$m_Board(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(i32(_0), write)
+  // //fold the result
+  //fold acc(i32(_0), write)
   // obtain acc(i32(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_Board(_old$pre$0), write)
@@ -934,14 +934,14 @@ method m_Board$$count_degree() returns (_0: Ref)
   _16.val_bool := false
   // [mir] switchInt(move _16) -> [0: bb7, otherwise: bb6]
   __t30 := _16.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb3)
-  fold acc(i32(_5), write)
+  // Assert and exhale the loop body //invariant (loop head: bb3)
+  //fold acc(i32(_5), write)
   // obtain acc(i32(_5), write)
-  fold acc(usize(_7), write)
+  //fold acc(usize(_7), write)
   // obtain acc(usize(_7), write)
-  fold acc(bool(_8), write)
+  //fold acc(bool(_8), write)
   // obtain acc(bool(_8), write)
   // obtain acc(struct$m_VecWrapperI32I32(_6), write)
   // obtain acc(struct$m_Point(_4), write)
@@ -1073,7 +1073,7 @@ method m_Board$$count_degree() returns (_0: Ref)
   // [mir] _31 = const ()
   // [mir] goto -> bb18
   // ========== l43 ==========
-  unfold acc(i32(_5), write)
+  //unfold acc(i32(_5), write)
   goto loop3_group1_bb3
   
   label return

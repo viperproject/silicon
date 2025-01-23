@@ -183,37 +183,37 @@ field $stepTo_int: Int
 field $cell_$f: Int
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function comprehension_13_280($s_0: Int, $s_1: Int): Set[Int]
-  ensures (forall $k: Int ::($k in result) == ($s_0 <= $k && $k < $s_1))
+  //ensures (forall $k: Int ::($k in result) == ($s_0 <= $k && $k < $s_1))
 
 
 function comprehension_9_150($s_0: Int): Set[Int]
-  ensures (forall $k: Int ::($k in result) == $k >= $s_0)
+  //ensures (forall $k: Int ::($k in result) == $k >= $s_0)
 
 
 function comprehension_38_170(): Set[Int]
-  ensures (forall $k: Int ::($k in result) == $k >= 0)
+  //ensures (forall $k: Int ::($k in result) == $k >= 0)
 
 
 function TLock_atomicity_context_hf(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref,
   ry: Ref, ylvl: Int, y: Ref): Set[Int]
-  requires acc(TLock_atomicity_context_fp(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
-  ensures [TLock_atomicity_context_df(r, alvl, rx, xlvl, x, ry, ylvl, y),
+  //requires acc(TLock_atomicity_context_fp(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+  //ensures [TLock_atomicity_context_df(r, alvl, rx, xlvl, x, ry, ylvl, y),
     true]
 
 
 function TLock_interferenceSet_hf($p0: Int, r: Ref, alvl: Int, rx: Ref, xlvl: Int,
   x: Ref, ry: Ref, ylvl: Int, y: Ref): Set[Int]
-  requires acc(TLock_interferenceContext_fp(r, alvl, rx, xlvl, x, ry, ylvl,
+  //requires acc(TLock_interferenceContext_fp(r, alvl, rx, xlvl, x, ry, ylvl,
     y), write)
-  ensures [(forall $_m: Int ::
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in
@@ -223,26 +223,26 @@ function TLock_interferenceSet_hf($p0: Int, r: Ref, alvl: Int, rx: Ref, xlvl: In
 
 function TLock_interferenceReference_hf($p0: Int, r: Ref, alvl: Int, rx: Ref,
   xlvl: Int, x: Ref, ry: Ref, ylvl: Int, y: Ref): Int
-  requires acc(TLock_interferenceContext_fp(r, alvl, rx, xlvl, x, ry, ylvl,
+  //requires acc(TLock_interferenceContext_fp(r, alvl, rx, xlvl, x, ry, ylvl,
     y), write)
-  ensures [TLock_interferenceReference_df($p0, r, alvl, rx, xlvl, x, ry, ylvl,
+  //ensures [TLock_interferenceReference_df($p0, r, alvl, rx, xlvl, x, ry, ylvl,
     y),
     true]
 
 
 function TLock_sk_$_action_n(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref,
   ry: Ref, ylvl: Int, y: Ref): Int
-  requires acc(TLock_sk_fp(), write)
+  //requires acc(TLock_sk_fp(), write)
 
 
 function TLock_sk_$_action_m(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref,
   ry: Ref, ylvl: Int, y: Ref): Int
-  requires acc(TLock_sk_fp(), write)
+  //requires acc(TLock_sk_fp(), write)
 
 
 function TLock_out0(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref,
   ylvl: Int, y: Ref): Int
-  requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+  //requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
 {
   (unfolding acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) in
     Counter_state(ry, ylvl, y))
@@ -250,21 +250,21 @@ function TLock_out0(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref,
 
 function TLock_state(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref,
   ylvl: Int, y: Ref): Int
-  requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
-  ensures [TLock_state_T(r, alvl, rx, xlvl, x, ry, ylvl, y), true]
+  //requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+  //ensures [TLock_state_T(r, alvl, rx, xlvl, x, ry, ylvl, y), true]
 {
   (unfolding acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) in
     Counter_state(rx, xlvl, x))
 }
 
 function Counter_atomicity_context_hf(c: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(Counter_atomicity_context_fp(c, lvl, x), write)
-  ensures [Counter_atomicity_context_df(c, lvl, x), true]
+  //requires acc(Counter_atomicity_context_fp(c, lvl, x), write)
+  //ensures [Counter_atomicity_context_df(c, lvl, x), true]
 
 
 function Counter_interferenceSet_hf($p0: Int, c: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(Counter_interferenceContext_fp(c, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(Counter_interferenceContext_fp(c, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in Counter_interferenceSet_df($p0, c, lvl, x))),
@@ -272,21 +272,21 @@ function Counter_interferenceSet_hf($p0: Int, c: Ref, lvl: Int, x: Ref): Set[Int
 
 
 function Counter_interferenceReference_hf($p0: Int, c: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_interferenceContext_fp(c, lvl, x), write)
-  ensures [Counter_interferenceReference_df($p0, c, lvl, x), true]
+  //requires acc(Counter_interferenceContext_fp(c, lvl, x), write)
+  //ensures [Counter_interferenceReference_df($p0, c, lvl, x), true]
 
 
 function Counter_sk_$_action_n(c: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_sk_fp(), write)
+  //requires acc(Counter_sk_fp(), write)
 
 
 function Counter_sk_$_action_m(c: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_sk_fp(), write)
+  //requires acc(Counter_sk_fp(), write)
 
 
 function Counter_state(c: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter(c, lvl, x), write)
-  ensures [Counter_state_T(c, lvl, x), true]
+  //requires acc(Counter(c, lvl, x), write)
+  //ensures [Counter_state_T(c, lvl, x), true]
 {
   (unfolding acc(Counter(c, lvl, x), write) in x.$cell_$f)
 }
@@ -359,8 +359,8 @@ method ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
 
 method makeLock(alvl: Int, xlvl: Int, ylvl: Int)
   returns (x: Ref, y: Ref, r: Ref, rx: Ref, ry: Ref)
-  requires xlvl >= 0 && ylvl >= 0 && alvl > xlvl && alvl > ylvl
-  ensures acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
+  //requires xlvl >= 0 && ylvl >= 0 && alvl > xlvl && alvl > ylvl
+  //ensures acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
     (alvl >= 0 && true)
 {
   var k: Int
@@ -623,12 +623,12 @@ method makeLock(alvl: Int, xlvl: Int, ylvl: Int)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(Counter(rx, xlvl, x), write)
+  //fold acc(Counter(rx, xlvl, x), write)
   assert xlvl >= 0 && true
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
   
   // ------- inhale BEGIN ------------
@@ -638,12 +638,12 @@ method makeLock(alvl: Int, xlvl: Int, ylvl: Int)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(Counter(ry, ylvl, y), write)
+  //fold acc(Counter(ry, ylvl, y), write)
   assert ylvl >= 0 && true
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
   
   // ------- inhale BEGIN ------------
@@ -660,24 +660,24 @@ method makeLock(alvl: Int, xlvl: Int, ylvl: Int)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+  //fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
   assert alvl >= 0 && true
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int,
   y: Ref)
-  requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
+  //requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
     (alvl >= 0 &&
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ==
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) &&
     acc(TLock_Z(r), write)
-  requires (TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) in IntSet())
-  ensures acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
+  //requires (TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) in IntSet())
+  //ensures acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
     (alvl >= 0 &&
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ==
     old(TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y))) &&
@@ -794,7 +794,7 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
   label preWhile0
   loopVar0 := true
   while (loopVar0)
-    invariant !loopVar0 ==>
+    //invariant !loopVar0 ==>
       acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
       (alvl >= 0 &&
       TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ==
@@ -929,7 +929,7 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
     label pre_open_region0
     assert $_levelVar_1 > alvl
     $_levelVar_3 := alvl
-    unfold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+    //unfold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
     label transitionPre0
     quasihavoc Counter_interferenceContext_fp(rx, xlvl, x)
     quasihavoc Counter_interferenceContext_fp(ry, ylvl, y)
@@ -1039,7 +1039,7 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
     
     // ------- call:incr END -----------
     
-    fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+    //fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
     assert TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ==
       old[pre_open_region0](TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y))
     $_levelVar_4 := $_levelVar_1
@@ -1162,7 +1162,7 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
     assert $_levelVar_4 > alvl
     $_levelVar_5 := alvl
     exhale acc(TLock_atomicity_context_fp(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
-    unfold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+    //unfold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
     label transitionPre
     quasihavoc Counter_interferenceContext_fp(rx, xlvl, x)
     quasihavoc Counter_interferenceContext_fp(ry, ylvl, y)
@@ -1274,7 +1274,7 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
     
     // ------- call:read END -----------
     
-    fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+    //fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
     if (TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) !=
     old[pre_region_update0](TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) ||
     v == t) {
@@ -1406,13 +1406,13 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
     
     label preWhile
     while (v < t)
-      invariant acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
+      //invariant acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
         (alvl >= 0 && true) &&
         (TLock_TICKET_T(r, t) && acc(TLock_TICKET(r, t), write))
-      invariant t >= TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) &&
+      //invariant t >= TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) &&
         TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) >= v
-      invariant (v < t ? acc(r.$diamond, write) : true)
-      invariant (v == t ?
+      //invariant (v < t ? acc(r.$diamond, write) : true)
+      //invariant (v == t ?
           acc(r.$stepFrom_int, write) &&
           r.$stepFrom_int == TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) &&
           (acc(r.$stepTo_int, write) &&
@@ -1513,7 +1513,7 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
       $_levelVar_7 := alvl
       exhale acc(TLock_atomicity_context_fp(r, alvl, rx, xlvl, x, ry, ylvl,
         y), write)
-      unfold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+      //unfold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
       label transitionPre2
       quasihavoc Counter_interferenceContext_fp(rx, xlvl, x)
       quasihavoc Counter_interferenceContext_fp(ry, ylvl, y)
@@ -1627,7 +1627,7 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
       
       // ------- call:read END -----------
       
-      fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+      //fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
       if (TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) !=
       old[pre_region_update](TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) ||
       v == t) {
@@ -1793,15 +1793,15 @@ method acquire(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
 
 method release(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int,
   y: Ref)
-  requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
+  //requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
     (alvl >= 0 &&
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ==
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) &&
     (TLock_TICKET_T(r, TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) &&
     acc(TLock_TICKET(r, TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)), write))
-  requires (TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) in
+  //requires (TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) in
     Set(TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)))
-  ensures acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
+  //ensures acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
     (alvl >= 0 &&
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ==
     old(TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) + 1)
@@ -1837,7 +1837,7 @@ method release(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
   $_levelVar_12 := alvl
   exhale TLock_TICKET_T(r, old(TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y))) &&
     acc(TLock_TICKET(r, old(TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y))), write)
-  unfold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+  //unfold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
   label transitionPre3
   quasihavoc Counter_interferenceContext_fp(rx, xlvl, x)
   quasihavoc Counter_interferenceContext_fp(ry, ylvl, y)
@@ -1951,7 +1951,7 @@ method release(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
   inhale perm(TLock_TICKET(r, old(TLock_state(r, alvl, rx, xlvl, x, ry, ylvl,
     y)))) <=
     write
-  fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
+  //fold acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write)
   assert old[pre_use_atomic0](TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) ==
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ||
     old[pre_use_atomic0](TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) <
@@ -1967,14 +1967,14 @@ method release(r: Ref, alvl: Int, rx: Ref, xlvl: Int, x: Ref, ry: Ref, ylvl: Int
 }
 
 method read(c: Ref, lvl: Int, x: Ref) returns (ret: Int)
-  requires acc(Counter(c, lvl, x), write) &&
+  //requires acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) &&
     acc(Counter_G(c), write)
-  requires (Counter_state(c, lvl, x) in IntSet())
-  ensures acc(Counter(c, lvl, x), write) &&
+  //requires (Counter_state(c, lvl, x) in IntSet())
+  //ensures acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 && Counter_state(c, lvl, x) == old(Counter_state(c, lvl, x))) &&
     acc(Counter_G(c), write)
-  ensures ret == old(Counter_state(c, lvl, x))
+  //ensures ret == old(Counter_state(c, lvl, x))
 {
   var $_levelVar_14: Int
   inhale $_levelVar_14 >= 0 && $_levelVar_14 > lvl
@@ -1998,11 +1998,11 @@ method read(c: Ref, lvl: Int, x: Ref) returns (ret: Int)
 }
 
 method incr(c: Ref, lvl: Int, x: Ref) returns (ret: Int)
-  requires acc(Counter(c, lvl, x), write) &&
+  //requires acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) &&
     acc(Counter_G(c), write)
-  requires (Counter_state(c, lvl, x) in IntSet())
-  ensures acc(Counter(c, lvl, x), write) &&
+  //requires (Counter_state(c, lvl, x) in IntSet())
+  //ensures acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 &&
     Counter_state(c, lvl, x) == old(Counter_state(c, lvl, x)) + 1) &&
     acc(Counter_G(c), write) &&
@@ -2030,11 +2030,11 @@ method incr(c: Ref, lvl: Int, x: Ref) returns (ret: Int)
 }
 
 method wkincr(c: Ref, lvl: Int, x: Ref)
-  requires acc(Counter(c, lvl, x), write) &&
+  //requires acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) &&
     acc(Counter_G(c), write)
-  requires (Counter_state(c, lvl, x) in Set(Counter_state(c, lvl, x)))
-  ensures acc(Counter(c, lvl, x), write) &&
+  //requires (Counter_state(c, lvl, x) in Set(Counter_state(c, lvl, x)))
+  //ensures acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 &&
     Counter_state(c, lvl, x) == old(Counter_state(c, lvl, x)) + 1) &&
     acc(Counter_G(c), write)
@@ -2302,7 +2302,7 @@ method $_Counter_action_transitivity_check()
 
 method $_makeLock_condition_stability_precondition_check(alvl: Int, xlvl: Int,
   ylvl: Int, x: Ref, y: Ref, r: Ref, rx: Ref, ry: Ref)
-  requires xlvl >= 0 && ylvl >= 0 && alvl > xlvl && alvl > ylvl
+  //requires xlvl >= 0 && ylvl >= 0 && alvl > xlvl && alvl > ylvl
 {
   var $_levelVar_17: Int
   inhale $_levelVar_17 >= 0
@@ -2387,7 +2387,7 @@ method $_makeLock_condition_stability_precondition_check(alvl: Int, xlvl: Int,
 
 method $_acquire_condition_stability_precondition_check(r: Ref, alvl: Int, rx: Ref,
   xlvl: Int, x: Ref, ry: Ref, ylvl: Int, y: Ref)
-  requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
+  //requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
     (alvl >= 0 &&
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ==
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) &&
@@ -2486,7 +2486,7 @@ method $_acquire_condition_stability_precondition_check(r: Ref, alvl: Int, rx: R
 
 method $_release_condition_stability_precondition_check(r: Ref, alvl: Int, rx: Ref,
   xlvl: Int, x: Ref, ry: Ref, ylvl: Int, y: Ref)
-  requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
+  //requires acc(TLock(r, alvl, rx, xlvl, x, ry, ylvl, y), write) &&
     (alvl >= 0 &&
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y) ==
     TLock_state(r, alvl, rx, xlvl, x, ry, ylvl, y)) &&
@@ -2585,7 +2585,7 @@ method $_release_condition_stability_precondition_check(r: Ref, alvl: Int, rx: R
 
 method $_read_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref,
   ret: Int)
-  requires acc(Counter(c, lvl, x), write) &&
+  //requires acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) &&
     acc(Counter_G(c), write)
 {
@@ -2677,7 +2677,7 @@ method $_read_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref,
 
 method $_incr_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref,
   ret: Int)
-  requires acc(Counter(c, lvl, x), write) &&
+  //requires acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) &&
     acc(Counter_G(c), write)
 {
@@ -2768,7 +2768,7 @@ method $_incr_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref,
 }
 
 method $_wkincr_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref)
-  requires acc(Counter(c, lvl, x), write) &&
+  //requires acc(Counter(c, lvl, x), write) &&
     (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) &&
     acc(Counter_G(c), write)
 {

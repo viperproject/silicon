@@ -268,19 +268,19 @@ field PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$: ShStruct3[Ref, Ref, Ref]
 
 // decreases _
 function shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$(): ShStruct1[Ref]
-  ensures (ShStructget0of1(result): Ref) == null
+  //ensures (ShStructget0of1(result): Ref) == null
 
 
 // decreases _
 function shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$(): ShStruct3[Ref, Ref, Ref]
-  ensures (ShStructget0of3(result): Ref) == null &&
+  //ensures (ShStructget0of3(result): Ref) == null &&
     (ShStructget1of3(result): Ref) == null &&
     (ShStructget2of3(result): Ref) == null
 
 
 function IsEmpty_ff156c70_PMTree(t_V0: ShStruct1[Ref]): Bool
-  requires acc(tree_ff156c70_PMTree(t_V0), write)
-  ensures result ==
+  //requires acc(tree_ff156c70_PMTree(t_V0), write)
+  //ensures result ==
     (unfolding acc(tree_ff156c70_PMTree(t_V0), write) in
       (ShStructget0of1(t_V0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
       shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$())
@@ -292,7 +292,7 @@ function IsEmpty_ff156c70_PMTree(t_V0: ShStruct1[Ref]): Bool
 
 function sorted_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: Option[Int],
   upperBound_V0: Option[Int]): Bool
-  requires acc(tree_ff156c70_PMnode(n_V0), wildcard)
+  //requires acc(tree_ff156c70_PMnode(n_V0), wildcard)
 {
   (unfolding acc(tree_ff156c70_PMnode(n_V0), wildcard) in
     (!(lowerBound_V0 == (optNone(): Option[Int])) ?
@@ -317,8 +317,8 @@ function sorted_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: O
 }
 
 function sortedValues_ff156c70_PMTree(t_V0: ShStruct1[Ref]): Seq[Int]
-  requires acc(tree_ff156c70_PMTree(t_V0), wildcard)
-  ensures (forall i_V1: Int ::
+  //requires acc(tree_ff156c70_PMTree(t_V0), wildcard)
+  //ensures (forall i_V1: Int ::
       { result[i_V1] }
       0 <= i_V1 && i_V1 + 1 < |result| ==> result[i_V1] < result[i_V1 + 1])
 {
@@ -332,17 +332,17 @@ function sortedValues_ff156c70_PMTree(t_V0: ShStruct1[Ref]): Seq[Int]
 
 function sortedValues_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: Option[Int],
   upperBound_V0: Option[Int]): Seq[Int]
-  requires acc(tree_ff156c70_PMnode(n_V0), wildcard) &&
+  //requires acc(tree_ff156c70_PMnode(n_V0), wildcard) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures (forall i_V1: Int ::
+  //ensures sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
+  //ensures (forall i_V1: Int ::
       { result[i_V1] }
       0 <= i_V1 && i_V1 < |result| ==>
       (!(lowerBound_V0 == (optNone(): Option[Int])) ==>
       result[i_V1] > (optGet(lowerBound_V0): Int)) &&
       (!(upperBound_V0 == (optNone(): Option[Int])) ==>
       result[i_V1] < (optGet(upperBound_V0): Int)))
-  ensures (forall i_V1: Int ::
+  //ensures (forall i_V1: Int ::
       { result[i_V1] }
       0 <= i_V1 && i_V1 + 1 < |result| ==> result[i_V1] < result[i_V1 + 1])
 {
@@ -362,7 +362,7 @@ function sortedValues_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound
 }
 
 function pureContains_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int, dividend_V0: Int): Bool
-  requires dividend_V0 > 0 &&
+  //requires dividend_V0 > 0 &&
     acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0)
 {
   (unfolding acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0) in
@@ -375,8 +375,8 @@ function pureContains_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int, divid
 
 // decreases 
 function IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]): Bool
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
 
 
 predicate tree_ff156c70_PMTree(t_V0: ShStruct1[Ref]) {
@@ -403,7 +403,7 @@ predicate tree_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref]) {
 predicate ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]) 
 
 method NewTree_ff156c70_F() returns (t_V0: ShStruct1[Ref])
-  ensures acc(tree_ff156c70_PMTree(t_V0), write) &&
+  //ensures acc(tree_ff156c70_PMTree(t_V0), write) &&
     IsEmpty_ff156c70_PMTree(t_V0)
 {
   inhale t_V0 ==
@@ -441,8 +441,8 @@ method NewTree_ff156c70_F() returns (t_V0: ShStruct1[Ref])
       // t_V0_CN0 = N2
       t_V0_CN0 := N2
       
-      // fold acc(t_V0_CN0.tree())
-      fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+      // //fold acc(t_V0_CN0.tree())
+      //fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
       
       // t_V0_CN0 = t_V0_CN0
       t_V0_CN0 := t_V0_CN0
@@ -459,10 +459,10 @@ method NewTree_ff156c70_F() returns (t_V0: ShStruct1[Ref])
 
 method Contains_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int, dividend_V0: Int)
   returns (res_V0: Bool)
-  requires dividend_V0 > 0
-  requires acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0)
-  ensures acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0)
-  ensures res_V0 ==
+  //requires dividend_V0 > 0
+  //requires acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0)
+  //ensures acc(tree_ff156c70_PMTree(t_V0), 1 / dividend_V0)
+  //ensures res_V0 ==
     pureContains_ff156c70_PMTree(t_V0, value_V0, dividend_V0)
 {
   inhale res_V0 == false
@@ -500,8 +500,8 @@ method Contains_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int, dividend_V0
     
     // decl 
     
-    // unfold acc(t_V0_CN0.tree(), 1/dividend_V0_CN2)
-    unfold acc(tree_ff156c70_PMTree(t_V0_CN0), 1 / dividend_V0_CN2)
+    // //unfold acc(t_V0_CN0.tree(), 1/dividend_V0_CN2)
+    //unfold acc(tree_ff156c70_PMTree(t_V0_CN0), 1 / dividend_V0_CN2)
     
     // if(*t_V0_CN0.rootA == (nil:*node_ff156c70_T@°)) {...} else {...}
     if ((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
@@ -526,8 +526,8 @@ method Contains_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int, dividend_V0
       }
     }
     
-    // fold acc(t_V0_CN0.tree(), 1/dividend_V0_CN2)
-    fold acc(tree_ff156c70_PMTree(t_V0_CN0), 1 / dividend_V0_CN2)
+    // //fold acc(t_V0_CN0.tree(), 1/dividend_V0_CN2)
+    //fold acc(tree_ff156c70_PMTree(t_V0_CN0), 1 / dividend_V0_CN2)
     
     // res_V0_CN3 = res_V0_CN3
     res_V0_CN3 := res_V0_CN3
@@ -544,12 +544,12 @@ method Contains_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int, dividend_V0
 method contains_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
   dividend_V0: Int, lowerBound_V0: Option[Int], upperBound_V0: Option[Int])
   returns (res_V0: Bool)
-  requires dividend_V0 > 0
-  requires acc(tree_ff156c70_PMnode(n_V0), 1 / dividend_V0) &&
+  //requires dividend_V0 > 0
+  //requires acc(tree_ff156c70_PMnode(n_V0), 1 / dividend_V0) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures acc(tree_ff156c70_PMnode(n_V0), 1 / dividend_V0) &&
+  //ensures acc(tree_ff156c70_PMnode(n_V0), 1 / dividend_V0) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures res_V0 ==
+  //ensures res_V0 ==
     (value_V0 in
     sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))
 {
@@ -602,8 +602,8 @@ method contains_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
     
     // decl 
     
-    // unfold acc(n_V0_CN0.tree(), 1/dividend_V0_CN2)
-    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), 1 / dividend_V0_CN2)
+    // //unfold acc(n_V0_CN0.tree(), 1/dividend_V0_CN2)
+    //unfold acc(tree_ff156c70_PMnode(n_V0_CN0), 1 / dividend_V0_CN2)
     
     // if(*n_V0_CN0.valueA == value_V0_CN1) {...} else {...}
     if ((ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ == value_V0_CN1) {
@@ -660,8 +660,8 @@ method contains_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
       }
     }
     
-    // fold acc(n_V0_CN0.tree(), 1/dividend_V0_CN2)
-    fold acc(tree_ff156c70_PMnode(n_V0_CN0), 1 / dividend_V0_CN2)
+    // //fold acc(n_V0_CN0.tree(), 1/dividend_V0_CN2)
+    //fold acc(tree_ff156c70_PMnode(n_V0_CN0), 1 / dividend_V0_CN2)
     
     // res_V0_CN5 = res_V0_CN5
     res_V0_CN5 := res_V0_CN5
@@ -676,18 +676,18 @@ method contains_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
 }
 
 method Insert_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
-  requires acc(tree_ff156c70_PMTree(t_V0), write)
-  ensures acc(tree_ff156c70_PMTree(t_V0), write)
-  ensures (value_V0 in sortedValues_ff156c70_PMTree(t_V0))
-  ensures |sortedValues_ff156c70_PMTree(t_V0)| ==
+  //requires acc(tree_ff156c70_PMTree(t_V0), write)
+  //ensures acc(tree_ff156c70_PMTree(t_V0), write)
+  //ensures (value_V0 in sortedValues_ff156c70_PMTree(t_V0))
+  //ensures |sortedValues_ff156c70_PMTree(t_V0)| ==
     old(|sortedValues_ff156c70_PMTree(t_V0)|) +
     ((value_V0 in old(sortedValues_ff156c70_PMTree(t_V0))) ? 0 : 1)
-  ensures (forall i_V1: Int ::
+  //ensures (forall i_V1: Int ::
       { (i_V1 in old(sortedValues_ff156c70_PMTree(t_V0))) }
       { (i_V1 in sortedValues_ff156c70_PMTree(t_V0)) }
       (i_V1 in old(sortedValues_ff156c70_PMTree(t_V0))) ==>
       (i_V1 in sortedValues_ff156c70_PMTree(t_V0)))
-  ensures (value_V0 in old(sortedValues_ff156c70_PMTree(t_V0))) ==>
+  //ensures (value_V0 in old(sortedValues_ff156c70_PMTree(t_V0))) ==>
     old(sortedValues_ff156c70_PMTree(t_V0)) ==
     sortedValues_ff156c70_PMTree(t_V0)
 {
@@ -714,8 +714,8 @@ method Insert_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
     
     // decl 
     
-    // unfold acc(t_V0_CN0.tree())
-    unfold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+    // //unfold acc(t_V0_CN0.tree())
+    //unfold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
     
     // if(*t_V0_CN0.rootA == (nil:*node_ff156c70_T@°)) {...} else {...}
     if ((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
@@ -750,8 +750,8 @@ method Insert_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
         // *t_V0_CN0.rootA = N11
         (ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N11
         
-        // fold acc(*t_V0_CN0.rootA.tree())
-        fold acc(tree_ff156c70_PMnode((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
+        // //fold acc(*t_V0_CN0.rootA.tree())
+        //fold acc(tree_ff156c70_PMnode((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
       }
     } else {
       
@@ -762,31 +762,31 @@ method Insert_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
         value_V0_CN1, (optNone(): Option[Int]), (optNone(): Option[Int]))
     }
     
-    // fold acc(t_V0_CN0.tree())
-    fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+    // //fold acc(t_V0_CN0.tree())
+    //fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
     label returnLabel
   }
 }
 
 method insert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
   lowerBound_V0: Option[Int], upperBound_V0: Option[Int])
-  requires !(lowerBound_V0 == (optNone(): Option[Int])) ==>
+  //requires !(lowerBound_V0 == (optNone(): Option[Int])) ==>
     (optGet(lowerBound_V0): Int) < value_V0
-  requires !(upperBound_V0 == (optNone(): Option[Int])) ==>
+  //requires !(upperBound_V0 == (optNone(): Option[Int])) ==>
     (optGet(upperBound_V0): Int) > value_V0
-  requires acc(tree_ff156c70_PMnode(n_V0), write) &&
+  //requires acc(tree_ff156c70_PMnode(n_V0), write) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures acc(tree_ff156c70_PMnode(n_V0), write) &&
+  //ensures acc(tree_ff156c70_PMnode(n_V0), write) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures (value_V0 in
+  //ensures (value_V0 in
     sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))
-  ensures |sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)| ==
+  //ensures |sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)| ==
     old(|sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)|) +
     ((value_V0 in
     old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))) ?
       0 :
       1)
-  ensures (forall i_V1: Int ::
+  //ensures (forall i_V1: Int ::
       { (i_V1 in
       old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))) }
       { (i_V1 in
@@ -795,7 +795,7 @@ method insert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
       old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))) ==>
       (i_V1 in
       sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)))
-  ensures (value_V0 in
+  //ensures (value_V0 in
     old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0))) ==>
     old(sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)) ==
     sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
@@ -837,8 +837,8 @@ method insert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
     
     // decl 
     
-    // unfold acc(n_V0_CN0.tree())
-    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    // //unfold acc(n_V0_CN0.tree())
+    //unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
     
     // if(value_V0_CN1 < *n_V0_CN0.valueA) {...} else {...}
     if (value_V0_CN1 < (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$) {
@@ -878,8 +878,8 @@ method insert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
           // *n_V0_CN0.leftA = N16
           (ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N16
           
-          // fold acc(*n_V0_CN0.leftA.tree())
-          fold acc(tree_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
+          // //fold acc(*n_V0_CN0.leftA.tree())
+          //fold acc(tree_ff156c70_PMnode((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
         }
       } else {
         
@@ -929,8 +929,8 @@ method insert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
             // *n_V0_CN0.rightA = N15
             (ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N15
             
-            // fold acc(*n_V0_CN0.rightA.tree())
-            fold acc(tree_ff156c70_PMnode((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
+            // //fold acc(*n_V0_CN0.rightA.tree())
+            //fold acc(tree_ff156c70_PMnode((ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$), write)
           }
         } else {
           
@@ -944,16 +944,16 @@ method insert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
       }
     }
     
-    // fold acc(n_V0_CN0.tree())
-    fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    // //fold acc(n_V0_CN0.tree())
+    //fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
     label returnLabel
   }
 }
 
 method Delete_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
-  requires acc(tree_ff156c70_PMTree(t_V0), write)
-  ensures acc(tree_ff156c70_PMTree(t_V0), write)
-  ensures !((value_V0 in sortedValues_ff156c70_PMTree(t_V0)))
+  //requires acc(tree_ff156c70_PMTree(t_V0), write)
+  //ensures acc(tree_ff156c70_PMTree(t_V0), write)
+  //ensures !((value_V0 in sortedValues_ff156c70_PMTree(t_V0)))
 {
   
   // decl t_V0_CN0: *Tree_ff156c70_T@°°, value_V0_CN1: int°°
@@ -978,8 +978,8 @@ method Delete_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
     
     // decl 
     
-    // unfold acc(t_V0_CN0.tree())
-    unfold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+    // //unfold acc(t_V0_CN0.tree())
+    //unfold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
     
     // if(*t_V0_CN0.rootA != (nil:*node_ff156c70_T@°)) {...} else {...}
     if (!((ShStructget0of1(t_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
@@ -998,8 +998,8 @@ method Delete_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
       }
     }
     
-    // fold acc(t_V0_CN0.tree())
-    fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
+    // //fold acc(t_V0_CN0.tree())
+    //fold acc(tree_ff156c70_PMTree(t_V0_CN0), write)
     label returnLabel
   }
 }
@@ -1007,17 +1007,17 @@ method Delete_ff156c70_PMTree(t_V0: ShStruct1[Ref], value_V0: Int)
 method delete_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
   lowerBound_V0: Option[Int], upperBound_V0: Option[Int])
   returns (res_V0: ShStruct3[Ref, Ref, Ref])
-  requires !(lowerBound_V0 == (optNone(): Option[Int])) ==>
+  //requires !(lowerBound_V0 == (optNone(): Option[Int])) ==>
     (optGet(lowerBound_V0): Int) < value_V0
-  requires !(upperBound_V0 == (optNone(): Option[Int])) ==>
+  //requires !(upperBound_V0 == (optNone(): Option[Int])) ==>
     (optGet(upperBound_V0): Int) > value_V0
-  requires acc(tree_ff156c70_PMnode(n_V0), write) &&
+  //requires acc(tree_ff156c70_PMnode(n_V0), write) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures !(res_V0 ==
+  //ensures !(res_V0 ==
     shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
     acc(tree_ff156c70_PMnode(res_V0), write) &&
     sorted_ff156c70_PMnode(res_V0, lowerBound_V0, upperBound_V0)
-  ensures !(res_V0 ==
+  //ensures !(res_V0 ==
     shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
     !((value_V0 in
     sortedValues_ff156c70_PMnode(res_V0, lowerBound_V0, upperBound_V0)))
@@ -1066,8 +1066,8 @@ method delete_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
     
     // decl 
     
-    // unfold acc(n_V0_CN0.tree())
-    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    // //unfold acc(n_V0_CN0.tree())
+    //unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
     
     // if(value_V0_CN1 < *n_V0_CN0.valueA && *n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
     if (value_V0_CN1 < (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ &&
@@ -1085,8 +1085,8 @@ method delete_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
         // *n_V0_CN0.leftA = N11
         (ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N11
         
-        // fold acc(n_V0_CN0.tree())
-        fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+        // //fold acc(n_V0_CN0.tree())
+        //fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
         
         // res_V0_CN4 = n_V0_CN0
         res_V0_CN4 := n_V0_CN0
@@ -1110,8 +1110,8 @@ method delete_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
           // *n_V0_CN0.rightA = N10
           (ShStructget2of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ := N10
           
-          // fold acc(n_V0_CN0.tree())
-          fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+          // //fold acc(n_V0_CN0.tree())
+          //fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
           
           // res_V0_CN4 = n_V0_CN0
           res_V0_CN4 := n_V0_CN0
@@ -1168,8 +1168,8 @@ method delete_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
               // *n_V0_CN0.valueA = minValue_V1
               (ShStructget0of3(n_V0_CN0): Ref).Intint$$$$_E_$$$ := minValue_V1
               
-              // fold acc(n_V0_CN0.tree())
-              fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+              // //fold acc(n_V0_CN0.tree())
+              //fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
               
               // res_V0_CN4 = n_V0_CN0
               res_V0_CN4 := n_V0_CN0
@@ -1230,20 +1230,20 @@ method delete_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], value_V0: Int,
 method deleteMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: Option[Int],
   upperBound_V0: Option[Int])
   returns (res_V0: ShStruct3[Ref, Ref, Ref], minimum_V0: Int)
-  requires acc(tree_ff156c70_PMnode(n_V0), write) &&
+  //requires acc(tree_ff156c70_PMnode(n_V0), write) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures !(res_V0 ==
+  //ensures !(res_V0 ==
     shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
     acc(tree_ff156c70_PMnode(res_V0), write) &&
     sorted_ff156c70_PMnode(res_V0, (optSome(minimum_V0): Option[Int]), upperBound_V0)
-  ensures !(res_V0 ==
+  //ensures !(res_V0 ==
     shStructDefault_$valueA_Intint$$$_S_$$$_leftA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$_rightA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()) ==>
     !((minimum_V0 in
     sortedValues_ff156c70_PMnode(res_V0, (optSome(minimum_V0): Option[Int]),
     upperBound_V0)))
-  ensures !(lowerBound_V0 == (optNone(): Option[Int])) ==>
+  //ensures !(lowerBound_V0 == (optNone(): Option[Int])) ==>
     (optGet(lowerBound_V0): Int) < minimum_V0
-  ensures !(upperBound_V0 == (optNone(): Option[Int])) ==>
+  //ensures !(upperBound_V0 == (optNone(): Option[Int])) ==>
     (optGet(upperBound_V0): Int) > minimum_V0
 {
   inhale res_V0 ==
@@ -1288,8 +1288,8 @@ method deleteMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_
     
     // decl 
     
-    // unfold acc(n_V0_CN0.tree())
-    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    // //unfold acc(n_V0_CN0.tree())
+    //unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
     
     // if(*n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
     if (!((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
@@ -1310,8 +1310,8 @@ method deleteMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_
         // minimum_V0_CN4 = N13
         minimum_V0_CN4 := N13
         
-        // fold acc(n_V0_CN0.tree())
-        fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+        // //fold acc(n_V0_CN0.tree())
+        //fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
         
         // res_V0_CN3 = n_V0_CN0
         res_V0_CN3 := n_V0_CN0
@@ -1382,15 +1382,15 @@ method deleteMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_
 method getMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0: Option[Int],
   upperBound_V0: Option[Int])
   returns (res_V0: Int)
-  requires acc(tree_ff156c70_PMnode(n_V0), write) &&
+  //requires acc(tree_ff156c70_PMnode(n_V0), write) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures acc(tree_ff156c70_PMnode(n_V0), write) &&
+  //ensures acc(tree_ff156c70_PMnode(n_V0), write) &&
     sorted_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)
-  ensures !(lowerBound_V0 == (optNone(): Option[Int])) ==>
+  //ensures !(lowerBound_V0 == (optNone(): Option[Int])) ==>
     res_V0 > (optGet(lowerBound_V0): Int)
-  ensures !(upperBound_V0 == (optNone(): Option[Int])) ==>
+  //ensures !(upperBound_V0 == (optNone(): Option[Int])) ==>
     res_V0 < (optGet(upperBound_V0): Int)
-  ensures res_V0 ==
+  //ensures res_V0 ==
     sortedValues_ff156c70_PMnode(n_V0, lowerBound_V0, upperBound_V0)[0]
 {
   inhale res_V0 == 0
@@ -1428,8 +1428,8 @@ method getMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0:
     
     // decl 
     
-    // unfold acc(n_V0_CN0.tree())
-    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    // //unfold acc(n_V0_CN0.tree())
+    //unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
     
     // if(*n_V0_CN0.leftA == (nil:*node_ff156c70_T@°)) {...} else {...}
     if ((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
@@ -1454,8 +1454,8 @@ method getMinimum_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], lowerBound_V0:
       }
     }
     
-    // fold acc(n_V0_CN0.tree())
-    fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    // //fold acc(n_V0_CN0.tree())
+    //fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
     
     // res_V0_CN3 = res_V0_CN3
     res_V0_CN3 := res_V0_CN3
@@ -1524,7 +1524,7 @@ method main_ff156c70_F()
 }
 
 method client0_ff156c70_F(value_V0: Int) returns (t_V0: ShStruct1[Ref])
-  ensures acc(tree_ff156c70_PMTree(t_V0), write)
+  //ensures acc(tree_ff156c70_PMTree(t_V0), write)
 {
   inhale t_V0 ==
     shStructDefault_$rootA_PointerDefinednode_ff156c70_T$$$_S_$$$$$$_S_$$$$()
@@ -1585,8 +1585,8 @@ method client0_ff156c70_F(value_V0: Int) returns (t_V0: ShStruct1[Ref])
 }
 
 method client1_ff156c70_F(t_V0: ShStruct1[Ref], value_V0: Int)
-  requires acc(tree_ff156c70_PMTree(t_V0), write)
-  ensures acc(tree_ff156c70_PMTree(t_V0), write)
+  //requires acc(tree_ff156c70_PMTree(t_V0), write)
+  //ensures acc(tree_ff156c70_PMTree(t_V0), write)
 {
   
   // decl t_V0_CN0: *Tree_ff156c70_T@°°, value_V0_CN1: int°°
@@ -1638,8 +1638,8 @@ method client1_ff156c70_F(t_V0: ShStruct1[Ref], value_V0: Int)
 }
 
 method client2_ff156c70_F(t_V0: ShStruct1[Ref], value_V0: Int)
-  requires acc(tree_ff156c70_PMTree(t_V0), write)
-  ensures acc(tree_ff156c70_PMTree(t_V0), write)
+  //requires acc(tree_ff156c70_PMTree(t_V0), write)
+  //ensures acc(tree_ff156c70_PMTree(t_V0), write)
 {
   
   // decl t_V0_CN0: *Tree_ff156c70_T@°°, value_V0_CN1: int°°
@@ -1704,22 +1704,22 @@ method client2_ff156c70_F(t_V0: ShStruct1[Ref], value_V0: Int)
 
 method convert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], oldLowerBound_V0: Option[Int],
   oldUpperBound_V0: Option[Int], newLowerBound_V0: Option[Int], newUpperBound_V0: Option[Int])
-  requires acc(tree_ff156c70_PMnode(n_V0), write)
-  requires sorted_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0)
-  requires oldLowerBound_V0 == (optNone(): Option[Int]) ==>
+  //requires acc(tree_ff156c70_PMnode(n_V0), write)
+  //requires sorted_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0)
+  //requires oldLowerBound_V0 == (optNone(): Option[Int]) ==>
     newLowerBound_V0 == (optNone(): Option[Int])
-  requires oldUpperBound_V0 == (optNone(): Option[Int]) ==>
+  //requires oldUpperBound_V0 == (optNone(): Option[Int]) ==>
     newUpperBound_V0 == (optNone(): Option[Int])
-  requires !(newLowerBound_V0 == (optNone(): Option[Int])) ==>
+  //requires !(newLowerBound_V0 == (optNone(): Option[Int])) ==>
     !(oldLowerBound_V0 == (optNone(): Option[Int])) &&
     (optGet(oldLowerBound_V0): Int) >= (optGet(newLowerBound_V0): Int)
-  requires !(newUpperBound_V0 == (optNone(): Option[Int])) ==>
+  //requires !(newUpperBound_V0 == (optNone(): Option[Int])) ==>
     !(oldUpperBound_V0 == (optNone(): Option[Int])) &&
     (optGet(oldUpperBound_V0): Int) <= (optGet(newUpperBound_V0): Int)
-  ensures acc(tree_ff156c70_PMnode(n_V0), write)
-  ensures sorted_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0) &&
+  //ensures acc(tree_ff156c70_PMnode(n_V0), write)
+  //ensures sorted_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0) &&
     sorted_ff156c70_PMnode(n_V0, newLowerBound_V0, newUpperBound_V0)
-  ensures sortedValues_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0) ==
+  //ensures sortedValues_ff156c70_PMnode(n_V0, oldLowerBound_V0, oldUpperBound_V0) ==
     sortedValues_ff156c70_PMnode(n_V0, newLowerBound_V0, newUpperBound_V0)
 {
   
@@ -1766,8 +1766,8 @@ method convert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], oldLowerBound_V0:
     
     // decl 
     
-    // unfold acc(n_V0_CN0.tree())
-    unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    // //unfold acc(n_V0_CN0.tree())
+    //unfold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
     
     // if(*n_V0_CN0.leftA != (nil:*node_ff156c70_T@°)) {...} else {...}
     if (!((ShStructget1of3(n_V0_CN0): Ref).PointerDefinednode_ff156c70_T$$$_S_$$$$$$$_E_$$$ ==
@@ -1794,8 +1794,8 @@ method convert_ff156c70_PMnode(n_V0: ShStruct3[Ref, Ref, Ref], oldLowerBound_V0:
         newUpperBound_V0_CN4)
     }
     
-    // fold acc(n_V0_CN0.tree())
-    fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
+    // //fold acc(n_V0_CN0.tree())
+    //fold acc(tree_ff156c70_PMnode(n_V0_CN0), write)
     label returnLabel
   }
 }
@@ -1846,23 +1846,23 @@ method $INIT_ff156c70_18fc7317()
 }
 
 method panic_bffb141e_F(v_V0: Tuple2[Ref, Types])
-  requires false
+  //requires false
 
 
 // decreases 
 method Error_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
   returns (P0_PO0: Int)
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
-  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  //ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
 
 
 // decreases 
 method Duplicate_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
-  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
-  ensures IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf) ==>
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  //ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  //ensures IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf) ==>
     acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
 
 

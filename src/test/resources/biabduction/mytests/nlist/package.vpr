@@ -9,7 +9,7 @@ method foo(this: Ref)
 {
     var x: Ref := this.next
     //package acc(list(x), write) --* acc(list(this), write) {
-    //    fold acc(list(this), write)
+    //    //fold acc(list(this), write)
     //}
     assert list(x) --* list(this)
 }
@@ -21,10 +21,10 @@ method bar(this: Ref)
     var x: Ref := this
     inhale list(x) --* list(this)
     inhale list(x)
-    unfold list(x)
+    //unfold list(x)
     x := x.next
-    package acc(list(x), write) --* acc(list(this), write) {
-        fold acc(list(this), write)
+    //package acc(list(x), write) --* acc(list(this), write) {
+        //fold acc(list(this), write)
     }
     assert list(x) --* list(this)
 }

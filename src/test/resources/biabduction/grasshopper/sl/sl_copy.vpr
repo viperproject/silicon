@@ -24,8 +24,8 @@ method copy(x: Ref) returns (res: Ref)
 
         //fold list(cp)
         //package list(curr) --* list(x) {
-        //    fold list(old_curr)
-        //    apply list(old_curr) --* list(x)
+        //    //fold list(old_curr)
+        //    //apply list(old_curr) --* list(x)
         //}
     }
 

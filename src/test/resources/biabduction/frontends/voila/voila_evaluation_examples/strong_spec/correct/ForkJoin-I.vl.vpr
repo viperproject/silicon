@@ -163,38 +163,38 @@ field $stepTo_int: Int
 field $memcell_$f: Int
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function comprehension_41_220(): Set[Int]
-  ensures (forall $k: Int ::($k in result) == true)
+  //ensures (forall $k: Int ::($k in result) == true)
 
 
 function Join_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(Join_atomicity_context_fp(r, lvl, x), write)
-  ensures [Join_atomicity_context_df(r, lvl, x), true]
+  //requires acc(Join_atomicity_context_fp(r, lvl, x), write)
+  //ensures [Join_atomicity_context_df(r, lvl, x), true]
 
 
 function Join_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(Join_interferenceContext_fp(r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(Join_interferenceContext_fp(r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==> ($_m in Join_interferenceSet_df($p0, r, lvl, x))),
     true]
 
 
 function Join_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Join_interferenceContext_fp(r, lvl, x), write)
-  ensures [Join_interferenceReference_df($p0, r, lvl, x), true]
+  //requires acc(Join_interferenceContext_fp(r, lvl, x), write)
+  //ensures [Join_interferenceReference_df($p0, r, lvl, x), true]
 
 
 function Join_state(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Join(r, lvl, x), write)
-  ensures [Join_state_T(r, lvl, x), true]
+  //requires acc(Join(r, lvl, x), write)
+  //ensures [Join_state_T(r, lvl, x), true]
 {
   (unfolding acc(Join(r, lvl, x), write) in x.$memcell_$f)
 }
@@ -230,8 +230,8 @@ method ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
 
 
 method makeJoin(lvl: Int) returns (ret: Ref, r: Ref)
-  requires lvl >= 0
-  ensures acc(Join(r, lvl, ret), write) && (lvl >= 0 && true) &&
+  //requires lvl >= 0
+  //ensures acc(Join(r, lvl, ret), write) && (lvl >= 0 && true) &&
     acc(Join_SET(r), write)
 {
   var $_levelVar_0: Int
@@ -304,19 +304,19 @@ method makeJoin(lvl: Int) returns (ret: Ref, r: Ref)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(Join(r, lvl, ret), write)
+  //fold acc(Join(r, lvl, ret), write)
   assert lvl >= 0 && true
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method set_to_one(r: Ref, lvl: Int, x: Ref)
-  requires acc(Join(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Join(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Join_SET(r), write)
-  ensures acc(Join(r, lvl, x), write) &&
+  //ensures acc(Join(r, lvl, x), write) &&
     (lvl >= 0 && Join_state(r, lvl, x) == 1) &&
     acc(Join_SET(r), write)
 {
@@ -339,7 +339,7 @@ method set_to_one(r: Ref, lvl: Int, x: Ref)
   assert $_levelVar_1 > lvl
   $_levelVar_2 := lvl
   exhale acc(Join_SET(r), write)
-  unfold acc(Join(r, lvl, x), write)
+  //unfold acc(Join(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -352,7 +352,7 @@ method set_to_one(r: Ref, lvl: Int, x: Ref)
   
   // ------- heap-write END ----------
   
-  fold acc(Join(r, lvl, x), write)
+  //fold acc(Join(r, lvl, x), write)
   assert old[pre_use_atomic0](Join_state(r, lvl, x)) ==
     Join_state(r, lvl, x) ||
     0 == old[pre_use_atomic0](Join_state(r, lvl, x)) &&
@@ -364,11 +364,11 @@ method set_to_one(r: Ref, lvl: Int, x: Ref)
 }
 
 method wait(r: Ref, lvl: Int, x: Ref)
-  requires acc(Join(r, lvl, x), write) &&
+  //requires acc(Join(r, lvl, x), write) &&
     (lvl >= 0 && Join_state(r, lvl, x) == Join_state(r, lvl, x)) &&
     acc(Join_Z(r), write)
-  requires (Join_state(r, lvl, x) in comprehension_41_220())
-  ensures acc(Join(r, lvl, x), write) &&
+  //requires (Join_state(r, lvl, x) in comprehension_41_220())
+  //ensures acc(Join(r, lvl, x), write) &&
     (lvl >= 0 && Join_state(r, lvl, x) == 1) &&
     acc(Join_Z(r), write)
 {
@@ -432,7 +432,7 @@ method wait(r: Ref, lvl: Int, x: Ref)
   label preWhile0
   loopVar0 := true
   while (loopVar0)
-    invariant !loopVar0 ==>
+    //invariant !loopVar0 ==>
       acc(Join(r, lvl, x), write) &&
       (lvl >= 0 && Join_state(r, lvl, x) == 1) &&
       acc(Join_Z(r), write) 
@@ -509,7 +509,7 @@ method wait(r: Ref, lvl: Int, x: Ref)
     label pre_open_region0
     assert $_levelVar_4 > lvl
     $_levelVar_6 := lvl
-    unfold acc(Join(r, lvl, x), write)
+    //unfold acc(Join(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -520,7 +520,7 @@ method wait(r: Ref, lvl: Int, x: Ref)
     
     // ------- heap-read END -----------
     
-    fold acc(Join(r, lvl, x), write)
+    //fold acc(Join(r, lvl, x), write)
     assert Join_state(r, lvl, x) ==
       old[pre_open_region0](Join_state(r, lvl, x))
     $_levelVar_7 := $_levelVar_4
@@ -604,8 +604,8 @@ method wait(r: Ref, lvl: Int, x: Ref)
     
     label preWhile
     while (v == 0)
-      invariant acc(Join(r, lvl, x), write) && (lvl >= 0 && true)
-      invariant (v == 0 ?
+      //invariant acc(Join(r, lvl, x), write) && (lvl >= 0 && true)
+      //invariant (v == 0 ?
           Join_state(r, lvl, x) >= 0 && acc(r.$diamond, write) :
           Join_state(r, lvl, x) == 1 &&
           (acc(r.$stepFrom_int, write) &&
@@ -665,7 +665,7 @@ method wait(r: Ref, lvl: Int, x: Ref)
       label pre_open_region
       assert $_levelVar_8 > lvl
       $_levelVar_9 := lvl
-      unfold acc(Join(r, lvl, x), write)
+      //unfold acc(Join(r, lvl, x), write)
       
       // no interference context translation needed
       
@@ -676,7 +676,7 @@ method wait(r: Ref, lvl: Int, x: Ref)
       
       // ------- heap-read END -----------
       
-      fold acc(Join(r, lvl, x), write)
+      //fold acc(Join(r, lvl, x), write)
       assert Join_state(r, lvl, x) ==
         old[pre_open_region](Join_state(r, lvl, x))
       $_levelVar_10 := $_levelVar_8
@@ -839,7 +839,7 @@ method $_Join_action_transitivity_check()
 
 method $_makeJoin_condition_stability_precondition_check(lvl: Int, ret: Ref,
   r: Ref)
-  requires lvl >= 0
+  //requires lvl >= 0
 {
   var $_levelVar_14: Int
   inhale $_levelVar_14 >= 0
@@ -878,7 +878,7 @@ method $_makeJoin_condition_stability_precondition_check(lvl: Int, ret: Ref,
 
 method $_set_to_one_condition_stability_precondition_check(r: Ref, lvl: Int,
   x: Ref)
-  requires acc(Join(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Join(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Join_SET(r), write)
 {
   var $_levelVar_15: Int
@@ -918,7 +918,7 @@ method $_set_to_one_condition_stability_precondition_check(r: Ref, lvl: Int,
 }
 
 method $_wait_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
-  requires acc(Join(r, lvl, x), write) &&
+  //requires acc(Join(r, lvl, x), write) &&
     (lvl >= 0 && Join_state(r, lvl, x) == Join_state(r, lvl, x)) &&
     acc(Join_Z(r), write)
 {

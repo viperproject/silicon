@@ -1,19 +1,19 @@
 import "./tree.vpr"
 
 method rotate_right(root: Ref) returns (res: Ref)
-requires tree(root) && root != null
-requires unfolding tree(root) in root.left != null
-ensures tree(res)
+//requires tree(root) && root != null
+//requires unfolding tree(root) in root.left != null
+//ensures tree(res)
 {
-    unfold tree(root)
+    //unfold tree(root)
     res := root.left
-    unfold tree(res)
+    //unfold tree(res)
 
     root.left := res.right
     res.right := root
 
-    fold tree(root)
-    fold tree(res)
+    //fold tree(root)
+    //fold tree(res)
 }
 
 method traverse(root: Ref)

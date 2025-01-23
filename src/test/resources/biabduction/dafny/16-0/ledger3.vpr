@@ -14,9 +14,9 @@ predicate Ledger(this: Ref)
 }
 
 method LedgerWithdraw(this: Ref, n: Int)
-    requires Ledger(this)
-    requires 0 <= n
-    requires unfolding Ledger(this) in n <= this.LedgerBalance
+    //requires Ledger(this)
+    //requires 0 <= n
+    //requires unfolding Ledger(this) in n <= this.LedgerBalance
     //ensures Ledger(this)
     //ensures unfolding Ledger(this) in this.LedgerTransactions == Seq(-n) ++ old(unfolding Ledger(this) in this.LedgerTransactions)
     //ensures unfolding Ledger(this) in this.LedgerBalance == old(unfolding Ledger(this) in this.LedgerBalance) - n

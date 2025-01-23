@@ -17,7 +17,7 @@ method filter(x: Ref) returns (res: Ref)
         //invariant list(prev) --* list(x)
         //invariant acc(prev.next)
         //invariant acc(prev.data)
-        invariant prev.next == curr
+        //invariant prev.next == curr
         //invariant list(curr)
         {
             var old_curr: Ref := curr
@@ -36,8 +36,8 @@ method filter(x: Ref) returns (res: Ref)
 
             if(!nondet){
                 //package list(prev) --* list(x) {
-                //    fold list(old_prev)
-                //    apply list(old_prev) --* list(x)
+                //    //fold list(old_prev)
+                //    //apply list(old_prev) --* list(x)
                 //}
             }
          }

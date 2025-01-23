@@ -289,33 +289,33 @@ field val_int: Int
 field val_ref: Ref
 
 function f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1: Snap$struct$m_VecWrapperI32): Int
-  requires true
-  requires true
-  ensures result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result >= 0
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1),
     true]
 
 
 function f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(_1: Snap$struct$m_VecWrapperI32,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 &&
+  //requires true
+  //requires 0 <= _2 &&
     _2 < f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1)
-  requires 0 <= _2
-  ensures true
-  ensures [result ==
+  //requires 0 <= _2
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(_1,
     _2),
     true]
 
 
 function f_order__$TY$__$int$$$int$$$bool$(_1: Int, _2: Int): Bool
-  requires true
-  requires true
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_order__$TY$__$int$$$int$$$bool$(_1, _2),
     true]
 {
@@ -323,19 +323,19 @@ function f_order__$TY$__$int$$$int$$$bool$(_1: Int, _2: Int): Bool
 }
 
 function snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(self: Ref): Snap$struct$m_VecWrapperI32
-  requires acc(struct$m_VecWrapperI32(self), read$())
+  //requires acc(struct$m_VecWrapperI32(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32((unfolding acc(struct$m_VecWrapperI32(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
 
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -575,13 +575,13 @@ method m_shift_down() returns (_0: Ref)
   _9.val_bool := false
   // [mir] switchInt(move _9) -> [0: bb5, otherwise: bb4]
   __t36 := _9.val_bool
-  // Ignore default target bb4, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb4, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb1)
+  // Assert and exhale the loop body //invariant (loop head: bb1)
   _preserve$0 := _1.val_ref
-  fold acc(bool(_5), write)
+  //fold acc(bool(_5), write)
   // obtain acc(bool(_5), write)
-  fold acc(usize(_4), write)
+  //fold acc(usize(_4), write)
   // obtain acc(usize(_4), write)
   // obtain acc(_1.val_ref, read)
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
@@ -694,7 +694,7 @@ method m_shift_down() returns (_0: Ref)
   __t8 := builtin$havoc_bool()
   __t9 := builtin$havoc_bool()
   // ========== loop1_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb1
+  // Inhale the loop permissions //invariant of block bb1
   inhale acc(bool(_5), write) &&
     (acc(usize(_4), write) &&
     (acc(_1.val_ref, read$()) &&
@@ -711,7 +711,7 @@ method m_shift_down() returns (_0: Ref)
   // [mir] _7 = _5
   _7 := builtin$havoc_ref()
   inhale acc(_7.val_bool, write)
-  unfold acc(bool(_5), write)
+  //unfold acc(bool(_5), write)
   _7.val_bool := _5.val_bool
   label l4
   // [mir] switchInt(move _7) -> [0: bb37, otherwise: bb3]
@@ -759,7 +759,7 @@ method m_shift_down() returns (_0: Ref)
   // [mir] StorageDead(_40)
   // [mir] _38 = (*_39)
   _38 := builtin$havoc_int()
-  unfold acc(i32(_39.val_ref), write)
+  //unfold acc(i32(_39.val_ref), write)
   _38 := _39.val_ref.val_int
   label l23
   // expire_borrows ReborrowingDAG(L13,L14,L5,)
@@ -784,9 +784,9 @@ method m_shift_down() returns (_0: Ref)
         _0_quant_0) ==
         old[l21](f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_40.val_ref),
         _0_quant_0)))))))
-    fold acc(i32(_old$l22$0), write)
+    //fold acc(i32(_old$l22$0), write)
     inhale acc(DeadBorrowToken$(13), write)
-    apply acc(DeadBorrowToken$(13), write) && acc(i32(_old$l22$0), write) --*
+    //apply acc(DeadBorrowToken$(13), write) && acc(i32(_old$l22$0), write) --*
       acc(struct$m_VecWrapperI32(old[l21](_40.val_ref)), write) &&
       (f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(old[l21](_40.val_ref))) ==
       old[l21](f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_40.val_ref))) &&
@@ -842,7 +842,7 @@ method m_shift_down() returns (_0: Ref)
     _45.val_int <
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_44.val_ref))
   assert true
-  fold acc(usize(_45), write)
+  //fold acc(usize(_45), write)
   exhale acc(_44.val_ref, write) &&
     (acc(struct$m_VecWrapperI32(_44.val_ref), write) &&
     acc(usize(_45), write))
@@ -856,7 +856,7 @@ method m_shift_down() returns (_0: Ref)
   // [mir] StorageDead(_44)
   // [mir] _42 = (*_43)
   _42 := builtin$havoc_int()
-  unfold acc(i32(_43.val_ref), write)
+  //unfold acc(i32(_43.val_ref), write)
   _42 := _43.val_ref.val_int
   label l29
   // expire_borrows ReborrowingDAG(L16,L17,L6,)
@@ -881,9 +881,9 @@ method m_shift_down() returns (_0: Ref)
         _0_quant_0) ==
         old[l27](f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_44.val_ref),
         _0_quant_0)))))))
-    fold acc(i32(_old$l28$0), write)
+    //fold acc(i32(_old$l28$0), write)
     inhale acc(DeadBorrowToken$(16), write)
-    apply acc(DeadBorrowToken$(16), write) && acc(i32(_old$l28$0), write) --*
+    //apply acc(DeadBorrowToken$(16), write) && acc(i32(_old$l28$0), write) --*
       acc(struct$m_VecWrapperI32(old[l27](_44.val_ref)), write) &&
       (f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(old[l27](_44.val_ref))) ==
       old[l27](f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_44.val_ref))) &&
@@ -923,7 +923,7 @@ method m_shift_down() returns (_0: Ref)
   // drop Acc(_43.val_ref, write) (Acc(_43.val_ref, write))
   // drop Acc(_39.val_ref, write) (Acc(_39.val_ref, write))
   // drop Acc(_38.val_int, write) (Acc(_38.val_int, write))
-  unfold acc(bool(_31), write)
+  //unfold acc(bool(_31), write)
   // drop Acc(_47.tuple_1.val_bool, write) (Acc(_47.tuple_1.val_bool, write))
   // drop Acc(_47.tuple_0, write) (Acc(_47.tuple_0, write))
   // drop Acc(_47.tuple_1, write) (Acc(_47.tuple_1, write))
@@ -986,9 +986,9 @@ method m_shift_down() returns (_0: Ref)
   _9.val_bool := false
   // [mir] switchInt(move _9) -> [0: bb5, otherwise: bb4]
   __t38 := _9.val_bool
-  // Ignore default target bb4, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb4, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb1
+  // Inhale the loop fnspec //invariant of block bb1
   inhale 0 <= (unfolding acc(usize(_4), write) in _4.val_int) &&
     (unfolding acc(usize(_4), write) in _4.val_int) <
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_1.val_ref)) &&
@@ -1013,7 +1013,7 @@ method m_shift_down() returns (_0: Ref)
   _14.val_bool := false
   // [mir] switchInt(move _14) -> [0: bb8, otherwise: bb7]
   __t39 := _14.val_bool
-  // Ignore default target bb7, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb7, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_bb8 ==========
   __t6 := true
   // [mir] _13 = const ()
@@ -1030,7 +1030,7 @@ method m_shift_down() returns (_0: Ref)
   _19.val_bool := false
   // [mir] switchInt(move _19) -> [0: bb11, otherwise: bb10]
   __t40 := _19.val_bool
-  // Ignore default target bb10, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb10, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_bb11 ==========
   __t8 := true
   // [mir] _18 = const ()
@@ -1044,7 +1044,7 @@ method m_shift_down() returns (_0: Ref)
   // [mir] StorageLive(_24)
   // [mir] _24 = _4
   _24 := builtin$havoc_int()
-  unfold acc(usize(_4), write)
+  //unfold acc(usize(_4), write)
   _24 := _4.val_int
   label l7
   // [mir] _25 = CheckedMul(_24, const 2_usize)
@@ -1331,17 +1331,17 @@ method m_shift_down() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l60
-  // Fold predicates for &mut args and transfer borrow permissions to old
+  // //fold predicates for &mut args and transfer borrow permissions to old
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(tuple0$(_0), write)
+  // //fold the result
+  //fold acc(tuple0$(_0), write)
   // obtain acc(tuple0$(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
   assert f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_old$pre$0)) ==
     old[pre](f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_1.val_ref)))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_VecWrapperI32(_old$pre$0), write)
@@ -1363,12 +1363,12 @@ method m_shift_down() returns (_0: Ref)
   _9.val_bool := false
   // [mir] switchInt(move _9) -> [0: bb5, otherwise: bb4]
   __t51 := _9.val_bool
-  // Ignore default target bb4, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb4, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb1)
-  fold acc(bool(_5), write)
+  // Assert and exhale the loop body //invariant (loop head: bb1)
+  //fold acc(bool(_5), write)
   // obtain acc(bool(_5), write)
-  fold acc(usize(_4), write)
+  //fold acc(usize(_4), write)
   // obtain acc(usize(_4), write)
   // obtain acc(_1.val_ref, read)
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
@@ -1429,7 +1429,7 @@ method m_shift_down() returns (_0: Ref)
   // [mir] StorageDead(_52)
   // [mir] _50 = (*_51)
   _50 := builtin$havoc_int()
-  unfold acc(i32(_51.val_ref), write)
+  //unfold acc(i32(_51.val_ref), write)
   _50 := _51.val_ref.val_int
   label l39
   // expire_borrows ReborrowingDAG(L18,L19,L7,)
@@ -1454,9 +1454,9 @@ method m_shift_down() returns (_0: Ref)
         _0_quant_0) ==
         old[l37](f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_52.val_ref),
         _0_quant_0)))))))
-    fold acc(i32(_old$l38$0), write)
+    //fold acc(i32(_old$l38$0), write)
     inhale acc(DeadBorrowToken$(18), write)
-    apply acc(DeadBorrowToken$(18), write) && acc(i32(_old$l38$0), write) --*
+    //apply acc(DeadBorrowToken$(18), write) && acc(i32(_old$l38$0), write) --*
       acc(struct$m_VecWrapperI32(old[l37](_52.val_ref)), write) &&
       (f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(old[l37](_52.val_ref))) ==
       old[l37](f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_52.val_ref))) &&
@@ -1506,7 +1506,7 @@ method m_shift_down() returns (_0: Ref)
   // [mir] StorageDead(_56)
   // [mir] _54 = (*_55)
   _54 := builtin$havoc_int()
-  unfold acc(i32(_55.val_ref), write)
+  //unfold acc(i32(_55.val_ref), write)
   _54 := _55.val_ref.val_int
   label l44
   // expire_borrows ReborrowingDAG(L20,L21,L8,)
@@ -1531,9 +1531,9 @@ method m_shift_down() returns (_0: Ref)
         _0_quant_0) ==
         old[l42](f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_56.val_ref),
         _0_quant_0)))))))
-    fold acc(i32(_old$l43$0), write)
+    //fold acc(i32(_old$l43$0), write)
     inhale acc(DeadBorrowToken$(20), write)
-    apply acc(DeadBorrowToken$(20), write) && acc(i32(_old$l43$0), write) --*
+    //apply acc(DeadBorrowToken$(20), write) && acc(i32(_old$l43$0), write) --*
       acc(struct$m_VecWrapperI32(old[l42](_56.val_ref)), write) &&
       (f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(old[l42](_56.val_ref))) ==
       old[l42](f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_56.val_ref))) &&
@@ -1564,7 +1564,7 @@ method m_shift_down() returns (_0: Ref)
   // [mir] StorageDead(_51)
   // [mir] StorageDead(_50)
   // [mir] switchInt(move _49) -> [0: bb34, otherwise: bb32]
-  unfold acc(bool(_49), write)
+  //unfold acc(bool(_49), write)
   __t49 := _49.val_bool
   if (!__t49) {
     goto loop1_group2a_bb2

@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
 import viper.silicon.biabduction.BiAbductionSolver.{resolveAbductionResults, resolveFramingResults, resolveLoopInvResults, solveFraming}
-import viper.silicon.biabduction.{VarTransformer, abductionUtils}
+import viper.silicon.biabduction.{BiAbductionSolver, VarTransformer, abductionUtils}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
@@ -106,40 +106,65 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
          * rules in Smans' paper.
          */
         executionFlowController.locally(s, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
-            v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-            val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
+          executionFlowController.tryOrElse0(s1,v1){(s1a, v1a, T) =>
+            produces(s1a, freshSnap, pres, ContractNotWellformed, v1a)(T)
+          }{
+            (s2, v2) => {
+              v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+              val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
 
-            val wfc = if (sInit.doAbduction) Success() else {
-              executionFlowController.locally(s2a, v2)((s3, v3) => {
-                val s4 = s3.copy(h = Heap())
-                val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
-                val sepIdentifier = symbExLog.openScope(impLog)
-                produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
-                  symbExLog.closeScope(sepIdentifier)
-                  Success()
+              val wfc = if (sInit.doAbduction) Success() else {
+                executionFlowController.locally(s2a, v2)((s3, v3) => {
+                  val s4 = s3.copy(h = Heap())
+                  val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
+                  val sepIdentifier = symbExLog.openScope(impLog)
+                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                    symbExLog.closeScope(sepIdentifier)
+                    Success()
+                  })
                 })
-              })
-            }
-            val ex = executionFlowController.locally(s2a, v2)((s3, v3) => {
-              exec(s3, body, v3) { (s4, v4) => {
-                if(sInit.doAbduction) {
-                  val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
-                  val vars = s4.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
-                  val tra = VarTransformer(s4, v4, vars, s4.h)
-                  solveFraming(s4, v4, postViolated, tra, abductionUtils.dummyEndStmt, posts, stateAllowed = true) {
-                    frame => Success(Some(frame.copy(s = s4, v = v4))
-                    )
+              }
+              val ex = executionFlowController.locally(s2a, v2)((s3, v3) => {
+                exec(s3, body, v3) { (s4, v4) => {
+                  if(sInit.doAbduction) {
+                    val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
+                    val vars = s4.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
+                    val tra = VarTransformer(s4, v4, vars, s4.h)
+                    solveFraming(s4, v4, postViolated, tra, abductionUtils.dummyEndStmt, posts, stateAllowed = true) {
+                      frame => Success(Some(frame.copy(s = s4, v = v4))
+                      )
+                    }
+                  } else {
+                    consumes(s4, posts, postViolated, v4)((_, _, _) =>
+                      Success())
                   }
-                } else {
-                  consumes(s4, posts, postViolated, v4)((_, _, _) =>
-                    Success())
                 }
+                }
+              })
+              wfc && ex
+            }
+          }{
+            f =>
+              BiAbductionSolver.solveAbductionForError(s1, v1, f, stateAllowed = true, None)((_,  _) => {
+                Success()
+              }) match {
+                case _: FatalResult => f
+                case nf: NonFatalResult =>
+                  val reses = abductionUtils.getAbductionSuccesses(nf)
+                  // We can't abduce statement for preconditions
+                  reses.map(_.stmts) match {
+                    case Seq() =>
+                      val pres = reses.flatMap(_.state.map(_._1))
+                      producer.produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s4, _) => {
+                        val preMeth = method.copy(pres = pres ++ method.pres)(method.pos, method.info, method.errT)
+                        verify(s4, preMeth) match {
+                          case Seq(res) => res
+                        }
+                      })
+                    case _ => f
+                  }
               }
-              }
-            })
-            wfc && ex
-          })
+          }
         })
 
       val finalRes = if(sInit.doAbduction) {

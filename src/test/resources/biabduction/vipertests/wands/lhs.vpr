@@ -15,19 +15,19 @@ function sum(p: Ref): Int
 { unfolding Pair(p) in p.f + p.g }
 
 method test1(p: Ref)
-  requires acc(p.f)
-  requires acc(p.g)
+  //requires acc(p.f)
+  //requires acc(p.g)
 {
   p.f := 10
 
   package (acc(p.g)) --* acc(Pair(p)) && sum(p) == 10 + old[lhs](p.g) {
       fold Pair(p)
   }
-  // TODO: package acc(p.g) --* folding Pair(p) in sum(p) == 10 + lhs(p.g)  must be rejected!
+  // TODO: //package acc(p.g) --* //folding Pair(p) in sum(p) == 10 + lhs(p.g)  must be rejected!
 }
 
 method test2(p: Ref)
-  requires acc(p.g)
+  //requires acc(p.g)
   requires acc(p.g) --* acc(Pair(p)) && sum(p) == 10 + old[lhs](p.g)
 {
   p.g := 3

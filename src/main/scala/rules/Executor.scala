@@ -286,7 +286,11 @@ object executor extends ExecutionRules {
               case nfr: NonFatalResult => {
 
                 val (foundInvs, invSuc) = abductionUtils.getInvariantSuccesses(nfr) match {
-                  case Seq(invSuc) if s.doAbduction => (invSuc.invs.distinct, Success(Some(LoopInvariantSuccess(s, v, invSuc.invs.distinct, invSuc.loop, v.decider.pcs.duplicate()))))
+                  case invSucs if s.doAbduction && invSucs.nonEmpty => 
+                    
+                    // This fails some branching maybe
+                    val allInvs = invSucs.flatMap{_.invs}.distinct
+                    (allInvs, Success(Some(LoopInvariantSuccess(s, v, allInvs, invSucs.head.loop, v.decider.pcs.duplicate()))))
                   case Seq() if !s.doAbduction => (Seq(), Success())
                 }
                 val invs = foundInvs ++ existingInvs
@@ -295,16 +299,16 @@ object executor extends ExecutionRules {
                 var phase1data: Vector[PhaseData] = Vector.empty
 
                 val wfi = executionFlowController.locally(sBody, v)((s0, v0) => {
-                  v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
-                  val mark = v0.decider.setPathConditionMark()
-                  produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
-                    phase1data = phase1data :+ (s1,
-                      v1.decider.pcs.after(mark),
-                      v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */ )
-                    Success()
+                    v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
+                    val mark = v0.decider.setPathConditionMark()
+                    produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
+                      phase1data = phase1data :+ (s1,
+                        v1.decider.pcs.after(mark),
+                        v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */ )
+                      Success()
+                    })
                   })
-                })
-
+                
                 val con = executionFlowController.locally(s, v) ((s0, v0) => {
                   v0.decider.prover.comment("Loop head block: Establish invariant")
                   checkInvariants(s0, v0, invs, condition, stateAllowed = true)((sLeftover, v1) => {
@@ -360,7 +364,7 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            // TODO If we reach this from the invariant generation, then state is OK. If from the final loop checking, it is not! 
+            // TODO If we reach this from the invariant generation, then state is OK. If from the final loop checking, it is not!
             checkInvariants(s, v, existingInvs, endStmt, stateAllowed = true)(Q)
         }
     }

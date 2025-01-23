@@ -252,8 +252,8 @@ field val_int: Int
 field val_ref: Ref
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -314,22 +314,22 @@ method m_Point$$mov() returns (_0: Ref)
   // [mir] StorageLive(_3)
   // [mir] _3 = ((*_2).0: i32)
   _3 := builtin$havoc_int()
-  unfold acc(tuple2$i32$i32(_2.val_ref), write)
-  unfold acc(i32(_2.val_ref.tuple_0), write)
+  //unfold acc(tuple2$i32$i32(_2.val_ref), write)
+  //unfold acc(i32(_2.val_ref.tuple_0), write)
   _3 := _2.val_ref.tuple_0.val_int
   label l0
   // [mir] StorageLive(_4)
   // [mir] _4 = ((*_2).1: i32)
   _4 := builtin$havoc_int()
-  unfold acc(i32(_2.val_ref.tuple_1), write)
+  //unfold acc(i32(_2.val_ref.tuple_1), write)
   _4 := _2.val_ref.tuple_1.val_int
   label l1
   // [mir] StorageLive(_5)
   // [mir] StorageLive(_6)
   // [mir] _6 = ((*_1).0: i32)
   _6 := builtin$havoc_int()
-  unfold acc(struct$m_Point(_1.val_ref), write)
-  unfold acc(i32(_1.val_ref.f$x), write)
+  //unfold acc(struct$m_Point(_1.val_ref), write)
+  //unfold acc(i32(_1.val_ref.f$x), write)
   _6 := _1.val_ref.f$x.val_int
   label l2
   // [mir] StorageLive(_7)
@@ -360,7 +360,7 @@ method m_Point$$mov() returns (_0: Ref)
   // [mir] StorageLive(_10)
   // [mir] _10 = ((*_1).1: i32)
   _10 := builtin$havoc_int()
-  unfold acc(i32(_1.val_ref.f$y), write)
+  //unfold acc(i32(_1.val_ref.f$y), write)
   _10 := _1.val_ref.f$y.val_int
   label l5
   // [mir] StorageLive(_11)
@@ -390,7 +390,7 @@ method m_Point$$mov() returns (_0: Ref)
   // [mir] _0 = Point { x: move _5, y: move _9 }
   _0 := builtin$havoc_ref()
   inhale acc(struct$m_Point(_0), write)
-  unfold acc(struct$m_Point(_0), write)
+  //unfold acc(struct$m_Point(_0), write)
   _0.f$x := _5
   label l8
   _0.f$y := _9
@@ -404,21 +404,21 @@ method m_Point$$mov() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l11
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  fold acc(i32(_1.val_ref.f$y), write)
-  fold acc(i32(_1.val_ref.f$x), write)
-  fold acc(struct$m_Point(_1.val_ref), write)
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  //fold acc(i32(_1.val_ref.f$y), write)
+  //fold acc(i32(_1.val_ref.f$x), write)
+  //fold acc(struct$m_Point(_1.val_ref), write)
   // obtain acc(struct$m_Point(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  fold acc(i32(_2.val_ref.tuple_1), write)
-  fold acc(i32(_2.val_ref.tuple_0), write)
-  fold acc(tuple2$i32$i32(_2.val_ref), write)
+  //fold acc(i32(_2.val_ref.tuple_1), write)
+  //fold acc(i32(_2.val_ref.tuple_0), write)
+  //fold acc(tuple2$i32$i32(_2.val_ref), write)
   // obtain acc(tuple2$i32$i32(_2.val_ref), write)
   _old$pre$1 := _2.val_ref
-  // Fold the result
-  fold acc(i32(_0.f$y), write)
-  fold acc(i32(_0.f$x), write)
-  fold acc(struct$m_Point(_0), write)
+  // //fold the result
+  //fold acc(i32(_0.f$y), write)
+  //fold acc(i32(_0.f$x), write)
+  //fold acc(struct$m_Point(_0), write)
   // obtain acc(struct$m_Point(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -433,7 +433,7 @@ method m_Point$$mov() returns (_0: Ref)
           old[pre]((unfolding acc(struct$m_Point(_1.val_ref), write) in
             (unfolding acc(i32(_1.val_ref.f$y), write) in
               _1.val_ref.f$y.val_int))))))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_Point(_old$pre$0), write) &&

@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field next: Ref
+
+predicate node(this: Ref) {
+  acc(this.next) && (this.next != null ==> acc(node(this.next)))
+}
+
+method test02(n4: Ref)
+  //requires acc(node(n4))
+  //requires length(n4) == 4
+{
+  //unfold acc(node(n4))
+  //unfold acc(node(n4.next))
+  //unfold acc(node(n4.next.next))
+  //unfold acc(node(n4.next.next.next))
+
+  n4.next.next.next.next := null
+}

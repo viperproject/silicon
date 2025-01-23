@@ -2377,16 +2377,16 @@ field DefinedL4ProtocolType_840d9458_T$$$$_E_$$$: Int
 
 // decreases _
 function sliceDefault_Intbyte$$$_S_$$$(): Slice[Ref]
-  ensures (soffset(result): Int) == 0
-  ensures (slen(result): Int) == 0
-  ensures (scap(result): Int) == 0
-  ensures (sarray(result): ShArray[Ref]) ==
+  //ensures (soffset(result): Int) == 0
+  //ensures (slen(result): Int) == 0
+  //ensures (scap(result): Int) == 0
+  //ensures (sarray(result): ShArray[Ref]) ==
     unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(arrayNil_1_Intbyte$$$_S_$$$()))
 
 
 // decreases _
 function shStructDefault_$CurrINFA_Intuint8$$$_S_$$$_CurrHFA_Intuint8$$$_S_$$$_SegLenA_Array3Intuint8$$$_S_$$$$$$_S_$$$$(): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$]
-  ensures (ShStructget0of3(result): Ref) == null &&
+  //ensures (ShStructget0of3(result): Ref) == null &&
     (ShStructget1of3(result): Ref) == null &&
     (ShStructget2of3(result): Emb_3_Intuint8$$$_S_$$$) ==
     box_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(arrayNil_3_Intuint8$$$_S_$$$())
@@ -2394,11 +2394,11 @@ function shStructDefault_$CurrINFA_Intuint8$$$_S_$$$_CurrHFA_Intuint8$$$_S_$$$_S
 
 // decreases 
 function addrHdrLenAbstractionLeak_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]): Int
-  requires acc((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard) &&
+  //requires acc((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard) &&
     acc((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard)
-  requires Has3Bits_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
+  //requires Has3Bits_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
     Has3Bits_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$)
-  ensures 0 <= result
+  //ensures 0 <= result
 {
   2 * 8 +
   Length_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) +
@@ -2408,16 +2408,16 @@ function addrHdrLenAbstractionLeak_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[R
 // decreases 
 function assertArg2_ShStruct2_ShStruct3_ShStruct3_RefRefEmb_3_Intuint8$$$_S_$$$RefRefRef(b: Bool,
   y: ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]
-  requires b
+  //requires b
 {
   y
 }
 
 // decreases _
 function Len_daeaf66a_PMBase(s_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]): Int
-  requires acc(Mem_daeaf66a_PMBase(s_V0), wildcard)
-  ensures result >= 4
-  ensures result ==
+  //requires acc(Mem_daeaf66a_PMBase(s_V0), wildcard)
+  //ensures result >= 4
+  //ensures result ==
     (unfolding acc(Mem_daeaf66a_PMBase(s_V0), wildcard) in
       4 + (ShStructget1of3(s_V0): Ref).Intint$$$$_E_$$$ * 8 +
       (ShStructget2of3(s_V0): Ref).Intint$$$$_E_$$$ * 12)
@@ -2429,33 +2429,33 @@ function Len_daeaf66a_PMBase(s_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$
 
 // decreases _
 function unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(y: Emb_4_Interfaceempty_interface$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 4 ||
+  //ensures (ShArraylen(result): Int) == 4 ||
     result == arrayNil_4_Interfaceempty_interface$$$_S_$$$()
-  ensures box_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures box_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
     y
 
 
 // decreases _
 function box_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_4_Interfaceempty_interface$$$_S_$$$
-  requires (ShArraylen(x): Int) == 4 ||
+  //requires (ShArraylen(x): Int) == 4 ||
     x == arrayNil_4_Interfaceempty_interface$$$_S_$$$()
-  ensures unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures unbox_Emb_4_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
     x
 
 
 // decreases 
 function assertArg2_ShStruct4_ShStruct2_RefRefRefRefRef(b: Bool, y: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]
-  requires b
+  //requires b
 {
   y
 }
 
 // decreases 
 function Length_840d9458_MAddrType(tl_V0: Int): Int
-  ensures result == 4 * (1 + BitAnd3_ca158f5e_F(tl_V0))
-  ensures tl_V0 == 0 ==> result == 4
-  ensures tl_V0 == 4 ==> result == 4
-  ensures tl_V0 == 3 ==> result == 4 * 4
+  //ensures result == 4 * (1 + BitAnd3_ca158f5e_F(tl_V0))
+  //ensures tl_V0 == 0 ==> result == 4
+  //ensures tl_V0 == 4 ==> result == 4
+  //ensures tl_V0 == 3 ==> result == 4 * 4
 {
   4 * (1 + intBitwiseAnd(tl_V0, 3))
 }
@@ -2463,7 +2463,7 @@ function Length_840d9458_MAddrType(tl_V0: Int): Int
 // decreases _
 function Len_c385169_PMPath(o_V0: ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]],
   ubuf_V0: Slice[Ref]): Int
-  ensures result == 32
+  //ensures result == 32
 {
   32
 }
@@ -2471,12 +2471,12 @@ function Len_c385169_PMPath(o_V0: ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStr
 // decreases 
 function getPathPure_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   pathType_V0: Int): Tuple2[Ref, Types]
-  requires 0 <= pathType_V0 && pathType_V0 < 256
-  requires acc((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, wildcard) &&
+  //requires 0 <= pathType_V0 && pathType_V0 < 256
+  //requires acc((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, wildcard) &&
     acc((ShStructget16of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, wildcard)
-  requires !((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$ ==
+  //requires !((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$ ==
     sliceDefault_DefinedPath_a6ceb89d_T$$$_S_$$$())
-  requires acc(PathPoolMemExceptOne_840d9458_F((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$,
+  //requires acc(PathPoolMemExceptOne_840d9458_F((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$,
     (ShStructget16of17(s_V0): Ref).DefinedPath_a6ceb89d_T$$$$_E_$$$, pathType_V0), wildcard)
 {
   (pathType_V0 <
@@ -2491,23 +2491,23 @@ function getPathPure_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref,
 
 // decreases _
 function arrayNil_1_Intbyte$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
 
 // decreases _
 function arrayNil_3_Intuint8$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
 
 // decreases 
 function assertArg2_Tuple0(b: Bool, y: Tuple0): Tuple0
-  requires b
+  //requires b
 {
   y
 }
@@ -2515,18 +2515,18 @@ function assertArg2_Tuple0(b: Bool, y: Tuple0): Tuple0
 // decreases 
 function PointerDefinedPath_c6e60a1d_T$$$_S_$$$$$$$_E_$$$_Len_c6e60a1d_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(p_V0: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref],
   ubuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard)
-  ensures result >= 0
+  //ensures result >= 0
 {
   Len_c6e60a1d_PMPath(p_V0, ubuf_V0)
 }
 
 // decreases _
 function box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_2_Interfaceempty_interface$$$_S_$$$
-  requires (ShArraylen(x): Int) == 2 ||
+  //requires (ShArraylen(x): Int) == 2 ||
     x == arrayNil_2_Interfaceempty_interface$$$_S_$$$()
-  ensures unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
     x
 
 
@@ -2536,15 +2536,15 @@ function intBitwiseOr(left: Int, right: Int): Int
 
 // decreases _
 function shStructDefault_$BaseA_DefinedBase_daeaf66a_T$$$_S_$$$_RawA_SliceIntbyte$$$_S_$$$$$$_S_$$$$(): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]
-  ensures (ShStructget0of2(result): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]) ==
+  //ensures (ShStructget0of2(result): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]) ==
     shStructDefault_$PathMetaA_DefinedMetaHdr_daeaf66a_T$$$_S_$$$_NumINFA_Intint$$$_S_$$$_NumHopsA_Intint$$$_S_$$$$() &&
     (ShStructget1of2(result): Ref) == null
 
 
 // decreases _
 function box_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_3_Intuint8$$$_S_$$$
-  requires (ShArraylen(x): Int) == 3 || x == arrayNil_3_Intuint8$$$_S_$$$()
-  ensures unbox_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(result) == x
+  //requires (ShArraylen(x): Int) == 3 || x == arrayNil_3_Intuint8$$$_S_$$$()
+  //ensures unbox_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(result) == x
 
 
 // decreases _
@@ -2553,28 +2553,28 @@ function intBitwiseAnd(left: Int, right: Int): Int
 
 // decreases 
 function UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types]): Slice[Ref]
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), wildcard)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), wildcard)
 
 
 // decreases _
 function shStructDefault_$ContentsA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PayloadA_SliceIntbyte$$$_S_$$$$$$_S_$$$$(): ShStruct2[Ref, Ref]
-  ensures (ShStructget0of2(result): Ref) == null &&
+  //ensures (ShStructget0of2(result): Ref) == null &&
     (ShStructget1of2(result): Ref) == null
 
 
 // decreases 
 function BitAnd3_ca158f5e_F(b_V0: Int): Int
-  ensures 0 <= intBitwiseAnd(b_V0, 3) && intBitwiseAnd(b_V0, 3) <= 3
-  ensures b_V0 == 0 ==> result == 0
-  ensures b_V0 == 3 ==> result == 3
-  ensures b_V0 == 4 ==> result == 0
-  ensures result == intBitwiseAnd(b_V0, 3)
+  //ensures 0 <= intBitwiseAnd(b_V0, 3) && intBitwiseAnd(b_V0, 3) <= 3
+  //ensures b_V0 == 0 ==> result == 0
+  //ensures b_V0 == 3 ==> result == 3
+  //ensures b_V0 == 4 ==> result == 0
+  //ensures result == intBitwiseAnd(b_V0, 3)
 
 
 // decreases _
 function shStructDefault_$PathMetaA_DefinedMetaHdr_daeaf66a_T$$$_S_$$$_NumINFA_Intint$$$_S_$$$_NumHopsA_Intint$$$_S_$$$$(): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]
-  ensures (ShStructget0of3(result): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$]) ==
+  //ensures (ShStructget0of3(result): ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$]) ==
     shStructDefault_$CurrINFA_Intuint8$$$_S_$$$_CurrHFA_Intuint8$$$_S_$$$_SegLenA_Array3Intuint8$$$_S_$$$$$$_S_$$$$() &&
     (ShStructget1of3(result): Ref) == null &&
     (ShStructget2of3(result): Ref) == null
@@ -2582,20 +2582,20 @@ function shStructDefault_$PathMetaA_DefinedMetaHdr_daeaf66a_T$$$_S_$$$_NumINFA_I
 
 // decreases _
 function intShiftLeft(left: Int, right: Int): Int
-  requires right >= 0
+  //requires right >= 0
 
 
 // decreases 
 function assertArg2_ShStruct3_ShStruct4_RefRefRefRefShStruct6_RefRefRefRefRefEmb_6_Intbyte$$$_S_$$$ShStruct6_RefRefRefRefRefEmb_6_Intbyte$$$_S_$$$(b: Bool,
   y: ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]
-  requires b
+  //requires b
 {
   y
 }
 
 // decreases _
 function shStructDefault_$BaseLayerA_DefinedBaseLayer_840d9458_T$$$_S_$$$_VersionA_Intuint8$$$_S_$$$_TrafficClassA_Intuint8$$$_S_$$$_FlowIDA_Intuint32$$$_S_$$$_NextHdrA_DefinedL4ProtocolType_840d9458_T$$$_S_$$$_HdrLenA_Intuint8$$$_S_$$$_PayloadLenA_Intuint16$$$_S_$$$_PathTypeA_DefinedType_a6ceb89d_T$$$_S_$$$_DstAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_SrcAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_DstIAA_DefinedIA_cd675838_T$$$_S_$$$_SrcIAA_DefinedIA_cd675838_T$$$_S_$$$_RawDstAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_RawSrcAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PathA_DefinedPath_a6ceb89d_T$$$_S_$$$_pathPoolA_SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$_S_$$$_pathPoolRawA_DefinedPath_a6ceb89d_T$$$_S_$$$$(): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
-  ensures (ShStructget0of17(result): ShStruct2[Ref, Ref]) ==
+  //ensures (ShStructget0of17(result): ShStruct2[Ref, Ref]) ==
     shStructDefault_$ContentsA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PayloadA_SliceIntbyte$$$_S_$$$$$$_S_$$$$() &&
     (ShStructget1of17(result): Ref) == null &&
     (ShStructget2of17(result): Ref) == null &&
@@ -2616,22 +2616,22 @@ function shStructDefault_$BaseLayerA_DefinedBaseLayer_840d9458_T$$$_S_$$$_Versio
 
 
 function ssliceFromArray_Ref(a: ShArray[Ref], i: Int, j: Int): Slice[Ref]
-  requires 0 <= i
-  requires i <= j
-  requires j <= (ShArraylen(a): Int)
-  ensures (soffset(result): Int) == i
-  ensures (slen(result): Int) == j - i
-  ensures (scap(result): Int) == (ShArraylen(a): Int) - i
-  ensures (sarray(result): ShArray[Ref]) == a
+  //requires 0 <= i
+  //requires i <= j
+  //requires j <= (ShArraylen(a): Int)
+  //ensures (soffset(result): Int) == i
+  //ensures (slen(result): Int) == j - i
+  //ensures (scap(result): Int) == (ShArraylen(a): Int) - i
+  //ensures (sarray(result): ShArray[Ref]) == a
 
 
 // decreases _
 function Len_c6e60a1d_PMPath(p_V0: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref],
   ubuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard)
-  ensures !hasScionPath_c6e60a1d_PMPath(p_V0, ubuf_V0) ==> result == 16
-  ensures hasScionPath_c6e60a1d_PMPath(p_V0, ubuf_V0) ==>
+  //ensures !hasScionPath_c6e60a1d_PMPath(p_V0, ubuf_V0) ==> result == 16
+  //ensures hasScionPath_c6e60a1d_PMPath(p_V0, ubuf_V0) ==>
     result ==
     16 +
     (unfolding acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
@@ -2648,33 +2648,33 @@ function Has3Bits_840d9458_MAddrType(a_V0: Int): Bool
 
 // decreases _
 function arrayNil_2_Interfaceempty_interface$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
 
 // decreases _
 function ssliceFromSlice_Ref(s: Slice[Ref], i: Int, j: Int): Slice[Ref]
-  requires 0 <= i
-  requires i <= j
-  requires j <= (scap(s): Int)
-  ensures (soffset(result): Int) == (soffset(s): Int) + i
-  ensures (slen(result): Int) == j - i
-  ensures (scap(result): Int) == (scap(s): Int) - i
-  ensures (sarray(result): ShArray[Ref]) == (sarray(s): ShArray[Ref])
+  //requires 0 <= i
+  //requires i <= j
+  //requires j <= (scap(s): Int)
+  //ensures (soffset(result): Int) == (soffset(s): Int) + i
+  //ensures (slen(result): Int) == j - i
+  //ensures (scap(result): Int) == (scap(s): Int) - i
+  //ensures (sarray(result): ShArray[Ref]) == (sarray(s): ShArray[Ref])
 
 
 // decreases _
 function Len_daeaf66a_PMRaw(s_V0: ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref],
   buf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
     buf_V0), wildcard)
-  ensures (unfolding acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+  //ensures (unfolding acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
       buf_V0), wildcard) in
       result ==
       Len_daeaf66a_PMBase((ShStructget0of2(s_V0): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])))
-  ensures result >= 0
+  //ensures result >= 0
 {
   (unfolding acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
     buf_V0), wildcard) in
@@ -2683,18 +2683,18 @@ function Len_daeaf66a_PMRaw(s_V0: ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_
 
 // decreases _
 function unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(y: Emb_2_Interfaceempty_interface$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 2 ||
+  //ensures (ShArraylen(result): Int) == 2 ||
     result == arrayNil_2_Interfaceempty_interface$$$_S_$$$()
-  ensures box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
     y
 
 
 // decreases 
 function PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMRaw_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(s_V0: ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref],
   buf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(s_V0): Ref), pointer_Types(Raw_daeaf66a_T_Types())): Tuple2[Ref, Types]),
     buf_V0), wildcard)
-  ensures result >= 0
+  //ensures result >= 0
 {
   Len_daeaf66a_PMRaw(s_V0, buf_V0)
 }
@@ -2702,9 +2702,9 @@ function PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMRaw_Len_
 // decreases 
 function AddrHdrLenNoAbstractionLeak_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   ubuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard)
-  ensures 0 <= result
+  //ensures 0 <= result
 {
   (unfolding acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard) in
@@ -2717,51 +2717,51 @@ function AddrHdrLenNoAbstractionLeak_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2
 
 // decreases _
 function typeOfInterface_Y$558431e4_a6ceb89d_(itf: Tuple2[Ref, Types]): Types
-  ensures result == (get1of2(itf): Types)
-  ensures behavioral_subtype_Types(result, Y$558431e4_a6ceb89d__Types())
+  //ensures result == (get1of2(itf): Types)
+  //ensures behavioral_subtype_Types(result, Y$558431e4_a6ceb89d__Types())
 
 
 // decreases _
 function sliceDefault_DefinedPath_a6ceb89d_T$$$_S_$$$(): Slice[Ref]
-  ensures (soffset(result): Int) == 0
-  ensures (slen(result): Int) == 0
-  ensures (scap(result): Int) == 0
-  ensures (sarray(result): ShArray[Ref]) ==
+  //ensures (soffset(result): Int) == 0
+  //ensures (slen(result): Int) == 0
+  //ensures (scap(result): Int) == 0
+  //ensures (sarray(result): ShArray[Ref]) ==
     unbox_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(box_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$()))
 
 
 // decreases _
 function unbox_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(y: Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1 ||
+  //ensures (ShArraylen(result): Int) == 1 ||
     result == arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$()
-  ensures box_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures box_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(result) ==
     y
 
 
 // decreases 
 function assertArg2_ShStruct2_RefRef(b: Bool, y: ShStruct2[Ref, Ref]): ShStruct2[Ref, Ref]
-  requires b
+  //requires b
 {
   y
 }
 
 // decreases 
 function IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf: Tuple2[Ref, Types]): Bool
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf), wildcard)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf), wildcard)
 
 
 // decreases _
 function box_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$
-  requires (ShArraylen(x): Int) == 1 ||
+  //requires (ShArraylen(x): Int) == 1 ||
     x == arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$()
-  ensures unbox_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures unbox_Emb_1_DefinedPath_a6ceb89d_T$$$_S_$$$_ShArray_Ref(result) ==
     x
 
 
 function HasOneHopPath_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   ub_V0: Slice[Ref]): Bool
-  requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ub_V0), wildcard)
 {
   (unfolding acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
@@ -2772,15 +2772,15 @@ function HasOneHopPath_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Re
 
 // decreases _
 function unbox_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(y: Emb_4_Interfaceempty_interface$$$$_E_$$$): Seq[Tuple2[Ref, Types]]
-  ensures |result| == 4
-  ensures box_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+  //ensures |result| == 4
+  //ensures box_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
     y
 
 
 // decreases _
 function arrayNil_4_Interfaceempty_interface$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
@@ -2788,17 +2788,17 @@ function arrayNil_4_Interfaceempty_interface$$$_S_$$$(): ShArray[Ref]
 // decreases 
 function PointerDefinedPath_c385169_T$$$_S_$$$$$$$_E_$$$_Len_c385169_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(o_V0: ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]],
   ubuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(o_V0): Ref), pointer_Types(Path_c385169_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(o_V0): Ref), pointer_Types(Path_c385169_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard)
-  ensures result >= 0
+  //ensures result >= 0
 {
   Len_c385169_PMPath(o_V0, ubuf_V0)
 }
 
 // decreases 
 function getNumHops_daeaf66a_PMBase(b_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]): Int
-  requires acc(Mem_daeaf66a_PMBase(b_V0), wildcard)
-  ensures 0 <= result
+  //requires acc(Mem_daeaf66a_PMBase(b_V0), wildcard)
+  //ensures 0 <= result
 {
   (unfolding acc(Mem_daeaf66a_PMBase(b_V0), wildcard) in
     (ShStructget2of3(b_V0): Ref).Intint$$$$_E_$$$)
@@ -2806,8 +2806,8 @@ function getNumHops_daeaf66a_PMBase(b_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_In
 
 // decreases 
 function getNumINF_daeaf66a_PMBase(b_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref]): Int
-  requires acc(Mem_daeaf66a_PMBase(b_V0), wildcard)
-  ensures 0 <= result && result <= 3
+  //requires acc(Mem_daeaf66a_PMBase(b_V0), wildcard)
+  //ensures 0 <= result && result <= 3
 {
   (unfolding acc(Mem_daeaf66a_PMBase(b_V0), wildcard) in
     (ShStructget1of3(b_V0): Ref).Intint$$$$_E_$$$)
@@ -2815,37 +2815,37 @@ function getNumINF_daeaf66a_PMBase(b_V0: ShStruct3[ShStruct3[Ref, Ref, Emb_3_Int
 
 // decreases _
 function Len_4cddb96f_MPath(o_V0: Tuple0, underlyingBuf_V0: Slice[Ref]): Int
-  ensures 0 <= result
+  //ensures 0 <= result
 {
   0
 }
 
 // decreases _
 function box_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(x: Seq[Tuple2[Ref, Types]]): Emb_4_Interfaceempty_interface$$$$_E_$$$
-  requires |x| == 4
-  ensures unbox_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+  //requires |x| == 4
+  //ensures unbox_Emb_4_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
     x
 
 
 // decreases _
 function box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(x: Seq[Tuple2[Ref, Types]]): Emb_2_Interfaceempty_interface$$$$_E_$$$
-  requires |x| == 2
-  ensures unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+  //requires |x| == 2
+  //ensures unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
     x
 
 
 // decreases _
 function unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(y: Emb_2_Interfaceempty_interface$$$$_E_$$$): Seq[Tuple2[Ref, Types]]
-  ensures |result| == 2
-  ensures box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+  //ensures |result| == 2
+  //ensures box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
     y
 
 
 // decreases _
 function Len_a6ceb89d_PMrawPath(p_V0: ShStruct2[Ref, Ref], underlyingBuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(rawPath_a6ceb89d_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(rawPath_a6ceb89d_T_Types())): Tuple2[Ref, Types]),
     underlyingBuf_V0), wildcard)
-  ensures result >= 0
+  //ensures result >= 0
 {
   (unfolding acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(rawPath_a6ceb89d_T_Types())): Tuple2[Ref, Types]),
     underlyingBuf_V0), wildcard) in
@@ -2855,44 +2855,44 @@ function Len_a6ceb89d_PMrawPath(p_V0: ShStruct2[Ref, Ref], underlyingBuf_V0: Sli
 // decreases _
 function Len_a6ceb89d_SY$558431e4_a6ceb89d_$itfcopy$fallback(thisItf: Tuple2[Ref, Types],
   underlyingBuf_V0: Slice[Ref]): Int
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), wildcard)
-  ensures (get1of2(thisItf): Types) == Path_4cddb96f_T_Types() ==>
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), wildcard)
+  //ensures (get1of2(thisItf): Types) == Path_4cddb96f_T_Types() ==>
     result ==
     DefinedPath_4cddb96f_T$$$$_E_$$$_Len_4cddb96f_MPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): Tuple0),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(Decoded_daeaf66a_T_Types()) ==>
     result ==
     PointerDefinedDecoded_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMDecoded_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(Path_c385169_T_Types()) ==>
     result ==
     PointerDefinedPath_c385169_T$$$_S_$$$$$$$_E_$$$_Len_c385169_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(Path_c6e60a1d_T_Types()) ==>
     result ==
     PointerDefinedPath_c6e60a1d_T$$$_S_$$$$$$$_E_$$$_Len_c6e60a1d_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(Raw_daeaf66a_T_Types()) ==>
     result ==
     PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMRaw_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(rawPath_a6ceb89d_T_Types()) ==>
     result ==
     PointerDefinedrawPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$_Len_a6ceb89d_PMrawPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[Ref, Ref]),
     underlyingBuf_V0)
-  ensures result >= 0
+  //ensures result >= 0
 
 
 // decreases _
 function arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
@@ -2900,9 +2900,9 @@ function arrayNil_1_DefinedPath_a6ceb89d_T$$$_S_$$$(): ShArray[Ref]
 // decreases 
 function hasScionPath_c6e60a1d_PMPath(p_V0: ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref],
   buf_V0: Slice[Ref]): Bool
-  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
     buf_V0), wildcard)
-  ensures result ==
+  //ensures result ==
     (unfolding acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(Path_c6e60a1d_T_Types())): Tuple2[Ref, Types]),
       buf_V0), wildcard) in
       !((ShStructget3of4(p_V0): Ref).PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$ ==
@@ -2915,14 +2915,14 @@ function hasScionPath_c6e60a1d_PMPath(p_V0: ShStruct4[ShStruct2[Ref, Ref], Ref, 
 }
 
 function sadd(left: Int, right: Int): Int
-  ensures result == left + right
+  //ensures result == left + right
 {
   left + right
 }
 
 // decreases 
 function pathPoolInitialized_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]): Bool
-  requires acc((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, wildcard)
+  //requires acc((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$, wildcard)
 {
   !((ShStructget15of17(s_V0): Ref).SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$ ==
   sliceDefault_DefinedPath_a6ceb89d_T$$$_S_$$$())
@@ -2931,47 +2931,47 @@ function pathPoolInitialized_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Re
 // decreases 
 function PointerDefinedrawPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$_Len_a6ceb89d_PMrawPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(p_V0: ShStruct2[Ref, Ref],
   underlyingBuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(rawPath_a6ceb89d_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(p_V0): Ref), pointer_Types(rawPath_a6ceb89d_T_Types())): Tuple2[Ref, Types]),
     underlyingBuf_V0), wildcard)
-  ensures result >= 0
+  //ensures result >= 0
 {
   Len_a6ceb89d_PMrawPath(p_V0, underlyingBuf_V0)
 }
 
 // decreases 
 function Len_a6ceb89d_SY$558431e4_a6ceb89d_(thisItf: Tuple2[Ref, Types], underlyingBuf_V0: Slice[Ref]): Int
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), wildcard)
-  ensures (get1of2(thisItf): Types) == Path_4cddb96f_T_Types() ==>
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), wildcard)
+  //ensures (get1of2(thisItf): Types) == Path_4cddb96f_T_Types() ==>
     result ==
     DefinedPath_4cddb96f_T$$$$_E_$$$_Len_4cddb96f_MPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): Tuple0),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(Decoded_daeaf66a_T_Types()) ==>
     result ==
     PointerDefinedDecoded_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMDecoded_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(Path_c385169_T_Types()) ==>
     result ==
     PointerDefinedPath_c385169_T$$$_S_$$$$$$$_E_$$$_Len_c385169_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct3[ShStruct4[Ref, Ref, Ref, Ref], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$], ShStruct6[Ref, Ref, Ref, Ref, Ref, Emb_6_Intbyte$$$_S_$$$]]),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(Path_c6e60a1d_T_Types()) ==>
     result ==
     PointerDefinedPath_c6e60a1d_T$$$_S_$$$$$$$_E_$$$_Len_c6e60a1d_PMPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct4[ShStruct2[Ref, Ref], Ref, Ref, Ref]),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(Raw_daeaf66a_T_Types()) ==>
     result ==
     PointerDefinedRaw_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMRaw_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref]),
     underlyingBuf_V0)
-  ensures (get1of2(thisItf): Types) ==
+  //ensures (get1of2(thisItf): Types) ==
     pointer_Types(rawPath_a6ceb89d_T_Types()) ==>
     result ==
     PointerDefinedrawPath_a6ceb89d_T$$$_S_$$$$$$$_E_$$$_Len_a6ceb89d_PMrawPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof((unbox_Poly((get0of2(thisItf): Ref)): ShStruct2[Ref, Ref]),
     underlyingBuf_V0)
-  ensures result >= 0
+  //ensures result >= 0
 {
   (true ?
     Len_a6ceb89d_SY$558431e4_a6ceb89d_$itfcopy$fallback(thisItf, underlyingBuf_V0) :
@@ -3011,23 +3011,23 @@ function Len_a6ceb89d_SY$558431e4_a6ceb89d_(thisItf: Tuple2[Ref, Types], underly
 
 // decreases _
 function unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(y: Emb_1_Intbyte$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1 ||
+  //ensures (ShArraylen(result): Int) == 1 ||
     result == arrayNil_1_Intbyte$$$_S_$$$()
-  ensures box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == y
+  //ensures box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == y
 
 
 // decreases _
 function box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_1_Intbyte$$$_S_$$$
-  requires (ShArraylen(x): Int) == 1 || x == arrayNil_1_Intbyte$$$_S_$$$()
-  ensures unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == x
+  //requires (ShArraylen(x): Int) == 1 || x == arrayNil_1_Intbyte$$$_S_$$$()
+  //ensures unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == x
 
 
 // decreases 
 function PointerDefinedDecoded_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMDecoded_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(d_V0: ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref],
   ubuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard)
-  ensures result >= 0
+  //ensures result >= 0
 {
   Len_daeaf66a_PMDecoded(d_V0, ubuf_V0)
 }
@@ -3035,26 +3035,26 @@ function PointerDefinedDecoded_daeaf66a_T$$$_S_$$$$$$$_E_$$$_Len_daeaf66a_PMDeco
 // decreases 
 function AddrHdrLen_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   ubuf_V0: Slice[Ref], insideSlayers_V0: Bool): Int
-  requires insideSlayers_V0 ==>
+  //requires insideSlayers_V0 ==>
     acc((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard) &&
     acc((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$, wildcard)
-  requires insideSlayers_V0 ==>
+  //requires insideSlayers_V0 ==>
     Has3Bits_840d9458_MAddrType((ShStructget8of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$) &&
     Has3Bits_840d9458_MAddrType((ShStructget9of17(s_V0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$)
-  requires !insideSlayers_V0 ==>
+  //requires !insideSlayers_V0 ==>
     acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard)
-  ensures insideSlayers_V0 ==>
+  //ensures insideSlayers_V0 ==>
     result == addrHdrLenAbstractionLeak_840d9458_PMSCION(s_V0)
-  ensures !insideSlayers_V0 ==>
+  //ensures !insideSlayers_V0 ==>
     result == AddrHdrLenNoAbstractionLeak_840d9458_PMSCION(s_V0, ubuf_V0)
-  ensures 0 <= result
+  //ensures 0 <= result
 
 
 // decreases 
 function assertArg2_ShStruct3_ShStruct3_ShStruct3_RefRefEmb_3_Intuint8$$$_S_$$$RefRefRefRef(b: Bool,
   y: ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]): ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref]
-  requires b
+  //requires b
 {
   y
 }
@@ -3062,13 +3062,13 @@ function assertArg2_ShStruct3_ShStruct3_ShStruct3_RefRefEmb_3_Intuint8$$$_S_$$$R
 // decreases _
 function Len_daeaf66a_PMDecoded(d_V0: ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref], Ref, Ref],
   ubuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard)
-  ensures (unfolding acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
+  //ensures (unfolding acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
       ubuf_V0), wildcard) in
       result ==
       Len_daeaf66a_PMBase((ShStructget0of3(d_V0): ShStruct3[ShStruct3[Ref, Ref, Emb_3_Intuint8$$$_S_$$$], Ref, Ref])))
-  ensures result >= 0
+  //ensures result >= 0
 {
   (unfolding acc(dynamic_pred_6((tuple2((box_Poly(d_V0): Ref), pointer_Types(Decoded_daeaf66a_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), wildcard) in
@@ -3078,18 +3078,18 @@ function Len_daeaf66a_PMDecoded(d_V0: ShStruct3[ShStruct3[ShStruct3[Ref, Ref, Em
 // decreases 
 function DefinedPath_4cddb96f_T$$$$_E_$$$_Len_4cddb96f_MPath_Len_a6ceb89d_SY$558431e4_a6ceb89d__proof(o_V0: Tuple0,
   underlyingBuf_V0: Slice[Ref]): Int
-  requires acc(dynamic_pred_6((tuple2((box_Poly(o_V0): Ref), Path_4cddb96f_T_Types()): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_6((tuple2((box_Poly(o_V0): Ref), Path_4cddb96f_T_Types()): Tuple2[Ref, Types]),
     underlyingBuf_V0), wildcard)
-  ensures result >= 0
+  //ensures result >= 0
 {
   Len_4cddb96f_MPath(o_V0, underlyingBuf_V0)
 }
 
 // decreases _
 function unbox_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(y: Emb_3_Intuint8$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 3 ||
+  //ensures (ShArraylen(result): Int) == 3 ||
     result == arrayNil_3_Intuint8$$$_S_$$$()
-  ensures box_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(result) == y
+  //ensures box_Emb_3_Intuint8$$$_S_$$$_ShArray_Ref(result) == y
 
 
 predicate dynamic_pred_0(i: Tuple2[Ref, Types], x0: Slice[Ref]) {
@@ -3582,17 +3582,17 @@ predicate MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Typ
 method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   b_V0: Tuple2[Ref, Types], opts_V0: Tuple2[Bool, Bool], ubuf_V0: Slice[Ref])
   returns (e_V0: Tuple2[Ref, Types])
-  requires !(get0of2(opts_V0): Bool)
-  requires !(b_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  //requires !(get0of2(opts_V0): Bool)
+  //requires !(b_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
     acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
-  requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), 1 / 4)
-  requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
-  ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
-  ensures acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
+  //ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
+  //ensures acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), 1 / 4)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
-  ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
+  //ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     HasOneHopPath_840d9458_PMSCION(s_V0, ubuf_V0) ==>
     (slen(UBuf_b41831d7_SY$3e1378f2_b41831d7_(b_V0)): Int) ==
     old((slen(UBuf_b41831d7_SY$3e1378f2_b41831d7_(b_V0)): Int)) +
@@ -3604,7 +3604,7 @@ method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, R
       ssliceFromSlice_Ref(ubuf_V0, 12 +
       AddrHdrLen_840d9458_PMSCION(s_V0, sliceDefault_Intbyte$$$_S_$$$(), true),
       (ShStructget5of17(s_V0): Ref).Intuint8$$$$_E_$$$ * 4)))
-  ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     HasOneHopPath_840d9458_PMSCION(s_V0, ubuf_V0) ==>
     (unfolding acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
       ubuf_V0), wildcard) in
@@ -3615,7 +3615,7 @@ method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, R
       AddrHdrLen_840d9458_PMSCION(s_V0, sliceDefault_Intbyte$$$_S_$$$(), true),
       (ShStructget5of17(s_V0): Ref).Intuint8$$$$_E_$$$ * 4))) <=
     (slen(ubuf_V0): Int)
-  ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+  //ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(e_V0), write)
 {
   inhale e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
@@ -3686,11 +3686,11 @@ method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, R
   var N24: Slice[Ref]
   var scnLen_V1: Int
   
-  // unfold acc(s_V0_CN0.Mem(ubuf_V0_CN3), perm(1/4))
-  unfold acc(dynamic_pred_0((tuple2((box_Poly(s_V0_CN0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+  // //unfold acc(s_V0_CN0.Mem(ubuf_V0_CN3), perm(1/4))
+  //unfold acc(dynamic_pred_0((tuple2((box_Poly(s_V0_CN0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0_CN3), 1 / 4)
   
-  // defer fold acc(s_V0_CN0.Mem(ubuf_V0_CN3), perm(1/4))
+  // defer //fold acc(s_V0_CN0.Mem(ubuf_V0_CN3), perm(1/4))
   fn$$1_0 := s_V0_CN0
   fn$$1_1 := ubuf_V0_CN3
   fn$$1_2 := 1 / 4
@@ -3886,21 +3886,21 @@ method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, R
   // SplitRange_Bytes_e630ae22_F(buf_V1, 0, 4, write)
   SplitRange_Bytes_e630ae22_F(buf_V1, 0, 4, write)
   
-  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[0:4], 0, 4))
-  unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 0, 4), 0,
+  // //unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[0:4], 0, 4))
+  //unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 0, 4), 0,
     4), write)
   
   // 0PutUint32(buf_V1[0:4], firstLine_V1)
   PutUint32_72f0d887_MbigEndian(0, ssliceFromSlice_Ref(buf_V1, 0, 4), firstLine_V1)
   
-  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[0:4], 0, 4))
-  fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 0, 4), 0, 4), write)
+  // //fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[0:4], 0, 4))
+  //fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 0, 4), 0, 4), write)
   
   // CombineRange_Bytes_e630ae22_F(buf_V1, 0, 4, write)
   CombineRange_Bytes_e630ae22_F(buf_V1, 0, 4, write)
   
-  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
-  unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
+  // //unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
+  //unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
   
   // buf_V1[4] = uint8°(*s_V0_CN0.NextHdrA)
   (ShArrayloc((sarray(buf_V1): ShArray[Ref]), sadd((soffset(buf_V1): Int), 4)): Ref).Intbyte$$$$_E_$$$ := (ShStructget4of17(s_V0_CN0): Ref).DefinedL4ProtocolType_840d9458_T$$$$_E_$$$
@@ -3908,27 +3908,27 @@ method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, R
   // buf_V1[5] = *s_V0_CN0.HdrLenA
   (ShArrayloc((sarray(buf_V1): ShArray[Ref]), sadd((soffset(buf_V1): Int), 5)): Ref).Intbyte$$$$_E_$$$ := (ShStructget5of17(s_V0_CN0): Ref).Intuint8$$$$_E_$$$
   
-  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
-  fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
+  // //fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
+  //fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
   
   // SplitRange_Bytes_e630ae22_F(buf_V1, 6, 8, write)
   SplitRange_Bytes_e630ae22_F(buf_V1, 6, 8, write)
   
-  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[6:8], 0, 2))
-  unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 6, 8), 0,
+  // //unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[6:8], 0, 2))
+  //unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 6, 8), 0,
     2), write)
   
   // 0PutUint16(buf_V1[6:8], *s_V0_CN0.PayloadLenA)
   PutUint16_72f0d887_MbigEndian(0, ssliceFromSlice_Ref(buf_V1, 6, 8), (ShStructget6of17(s_V0_CN0): Ref).Intuint16$$$$_E_$$$)
   
-  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[6:8], 0, 2))
-  fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 6, 8), 0, 2), write)
+  // //fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[6:8], 0, 2))
+  //fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 6, 8), 0, 2), write)
   
   // CombineRange_Bytes_e630ae22_F(buf_V1, 6, 8, write)
   CombineRange_Bytes_e630ae22_F(buf_V1, 6, 8, write)
   
-  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
-  unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
+  // //unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
+  //unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
   
   // buf_V1[8] = uint8°(*s_V0_CN0.PathTypeA)
   (ShArrayloc((sarray(buf_V1): ShArray[Ref]), sadd((soffset(buf_V1): Int), 8)): Ref).Intbyte$$$$_E_$$$ := (ShStructget7of17(s_V0_CN0): Ref).DefinedType_a6ceb89d_T$$$$_E_$$$
@@ -3938,21 +3938,21 @@ method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, R
     7), 4), intBitwiseAnd((ShStructget9of17(s_V0_CN0): Ref).DefinedAddrType_840d9458_T$$$$_E_$$$,
     7))
   
-  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
-  fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
+  // //fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, len(buf_V1)))
+  //fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1, 0, (slen(buf_V1): Int)), write)
   
   // SplitRange_Bytes_e630ae22_F(buf_V1, 10, 12, write)
   SplitRange_Bytes_e630ae22_F(buf_V1, 10, 12, write)
   
-  // unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[10:12], 0, 2))
-  unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 10, 12),
+  // //unfold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[10:12], 0, 2))
+  //unfold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 10, 12),
     0, 2), write)
   
   // 0PutUint16(buf_V1[10:12], 0)
   PutUint16_72f0d887_MbigEndian(0, ssliceFromSlice_Ref(buf_V1, 10, 12), 0)
   
-  // fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[10:12], 0, 2))
-  fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 10, 12), 0,
+  // //fold acc(AbsSlice_Bytes_e630ae22_F(buf_V1[10:12], 0, 2))
+  //fold acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(buf_V1, 10, 12), 0,
     2), write)
   
   // CombineRange_Bytes_e630ae22_F(buf_V1, 10, 12, write)
@@ -4083,8 +4083,8 @@ method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, R
   }
   if (fn$$1_activation) {
     
-    // fold acc(fn$$1_0.Mem(fn$$1_1), fn$$1_2)
-    fold acc(dynamic_pred_0((tuple2((box_Poly(fn$$1_0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+    // //fold acc(fn$$1_0.Mem(fn$$1_1), fn$$1_2)
+    //fold acc(dynamic_pred_0((tuple2((box_Poly(fn$$1_0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
       fn$$1_1), fn$$1_2)
   }
   
@@ -4095,72 +4095,72 @@ method SerializeTo_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, R
 // decreases 
 method SplitRange_Bytes_e630ae22_F(s_V0: Slice[Ref], start_V0: Int, end_V0: Int,
   p_V0: Perm)
-  requires 0 / 1 <= p_V0
-  requires 0 <= start_V0 && start_V0 <= end_V0 &&
+  //requires 0 / 1 <= p_V0
+  //requires 0 <= start_V0 && start_V0 <= end_V0 &&
     end_V0 <= (slen(s_V0): Int)
-  requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, (slen(s_V0): Int)), p_V0)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(s_V0, start_V0,
+  //requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, (slen(s_V0): Int)), p_V0)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(s_V0, start_V0,
     end_V0), 0, end_V0 - start_V0), p_V0)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, start_V0), p_V0)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, end_V0, (slen(s_V0): Int)), p_V0)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, start_V0), p_V0)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, end_V0, (slen(s_V0): Int)), p_V0)
 
 
 // decreases 
 method SerializeAddrHdr_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   buf_V0: Slice[Ref], ubuf_V0: Slice[Ref])
   returns (err_V0: Tuple2[Ref, Types])
-  requires acc(HeaderMem_840d9458_PMSCION(s_V0, ubuf_V0), 1 / 4096)
-  requires acc(AbsSlice_Bytes_e630ae22_F(buf_V0, 0, (slen(buf_V0): Int)), write)
-  requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), 1 /
+  //requires acc(HeaderMem_840d9458_PMSCION(s_V0, ubuf_V0), 1 / 4096)
+  //requires acc(AbsSlice_Bytes_e630ae22_F(buf_V0, 0, (slen(buf_V0): Int)), write)
+  //requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), 1 /
     4096)
-  ensures acc(HeaderMem_840d9458_PMSCION(s_V0, ubuf_V0), 1 / 4096)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(buf_V0, 0, (slen(buf_V0): Int)), write)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), 1 /
+  //ensures acc(HeaderMem_840d9458_PMSCION(s_V0, ubuf_V0), 1 / 4096)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(buf_V0, 0, (slen(buf_V0): Int)), write)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), 1 /
     4096)
-  ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+  //ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(err_V0), write)
 
 
 // decreases 
 method RestoreMem_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types],
   ub_V0: Slice[Ref])
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, ub_V0), write)
-  requires acc(AbsSlice_Bytes_e630ae22_F(ub_V0, 0, (slen(ub_V0): Int)), write)
-  ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write) &&
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, ub_V0), write)
+  //requires acc(AbsSlice_Bytes_e630ae22_F(ub_V0, 0, (slen(ub_V0): Int)), write)
+  //ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write) &&
     UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf) == ub_V0
 
 
 method Unreachable_ef823ad9_F()
-  requires false
+  //requires false
 
 
 // decreases 
 method ExchangePred_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types])
   returns (res_V0: Slice[Ref])
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
-  ensures res_V0 == old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))
-  ensures acc(AbsSlice_Bytes_e630ae22_F(res_V0, 0, (slen(res_V0): Int)), write)
-  ensures acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, res_V0), write)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
+  //ensures res_V0 == old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(res_V0, 0, (slen(res_V0): Int)), write)
+  //ensures acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, res_V0), write)
 
 
 // decreases 
 method PointerDefinedSCION_840d9458_T$$$_S_$$$$$$$_E_$$$_SerializeTo_840d9458_PMSCION_SerializeTo_b41831d7_SY$17800ab4_b41831d7__proof(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   b_V0: Tuple2[Ref, Types], opts_V0: Tuple2[Bool, Bool], ubuf_V0: Slice[Ref])
   returns (e_V0: Tuple2[Ref, Types])
-  requires !(get0of2(opts_V0): Bool)
-  requires !(b_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  //requires !(get0of2(opts_V0): Bool)
+  //requires !(b_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
     acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
-  requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
+  //requires acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), write)
-  requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
-  ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+  //requires acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(ubuf_V0, 0, (slen(ubuf_V0): Int)), write)
+  //ensures e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
     acc(dynamic_pred_0((tuple2((box_Poly(s_V0): Ref), pointer_Types(SCION_840d9458_T_Types())): Tuple2[Ref, Types]),
     ubuf_V0), write) &&
     acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(b_V0), write)
-  ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+  //ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(e_V0), write)
 {
   inhale e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
@@ -4178,58 +4178,58 @@ method PointerDefinedSCION_840d9458_T$$$_S_$$$$$$$_E_$$$_SerializeTo_840d9458_PM
 method PrependBytes_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types],
   num_V0: Int)
   returns (res_V0: Slice[Ref], err_V0: Tuple2[Ref, Types])
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires num_V0 >= 0
-  requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
-  ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires num_V0 >= 0
+  //requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
+  //ensures acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
     (slen(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf)): Int) ==
     (slen(old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))): Int) + num_V0
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
     (slen(res_V0): Int) == num_V0
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
     res_V0 ==
     ssliceFromSlice_Ref(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf), 0, num_V0)
-  ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+  //ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
     UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf) ==
     old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))
-  ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+  //ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(err_V0), write)
 
 
 // decreases 
 method Bytes_b41831d7_SY$3e1378f2_b41831d7_(thisItf: Tuple2[Ref, Types])
   returns (res_V0: Slice[Ref])
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
-  ensures res_V0 == old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))
-  ensures acc(AbsSlice_Bytes_e630ae22_F(res_V0, 0, (slen(res_V0): Int)), write)
-  ensures acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, res_V0), write)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(Mem_b41831d7_SY$3e1378f2_b41831d7_(thisItf), write)
+  //ensures res_V0 == old(UBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf))
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(res_V0, 0, (slen(res_V0): Int)), write)
+  //ensures acc(MemWithoutUBuf_b41831d7_SY$3e1378f2_b41831d7_(thisItf, res_V0), write)
 
 
 // decreases _
 method New_bfd5223e_F(msg_V0: Int, errCtx_V0: Slice[Ref])
   returns (res_V0: Tuple2[Ref, Types])
-  requires (forall i_V1: Int ::
+  //requires (forall i_V1: Int ::
       { (ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref) }
       0 <= i_V1 && i_V1 < (slen(errCtx_V0): Int) ==>
       acc((ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref).Interfaceempty_interface$$$$_E_$$$, 1 / 131072))
-  ensures (forall i_V1: Int ::
+  //ensures (forall i_V1: Int ::
       { (ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref) }
       0 <= i_V1 && i_V1 < (slen(errCtx_V0): Int) ==>
       acc((ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref).Interfaceempty_interface$$$$_E_$$$, 1 / 131072))
-  ensures !(res_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  //ensures !(res_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0), write)
-  ensures IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0)
+  //ensures IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0)
 
 
 // decreases _
 method PutUint32_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
-  requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+  //requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     0)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     1)): Ref).Intbyte$$$$_E_$$$, write) &&
@@ -4237,7 +4237,7 @@ method PutUint32_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
     2)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     3)): Ref).Intbyte$$$$_E_$$$, write)
-  ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+  //ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     0)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     1)): Ref).Intbyte$$$$_E_$$$, write) &&
@@ -4249,11 +4249,11 @@ method PutUint32_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
 
 // decreases _
 method PutUint16_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
-  requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+  //requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     0)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     1)): Ref).Intbyte$$$$_E_$$$, write)
-  ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+  //ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     0)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     1)): Ref).Intbyte$$$$_E_$$$, write)
@@ -4263,25 +4263,25 @@ method PutUint16_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
 method SerializeTo_a6ceb89d_SY$558431e4_a6ceb89d_(thisItf: Tuple2[Ref, Types],
   b_V0: Slice[Ref], underlyingBuf_V0: Slice[Ref])
   returns (e_V0: Tuple2[Ref, Types])
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(AbsSlice_Bytes_e630ae22_F(underlyingBuf_V0, 0, (slen(underlyingBuf_V0): Int)), write)
-  requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), 1 / 8)
-  requires acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), write)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(underlyingBuf_V0, 0, (slen(underlyingBuf_V0): Int)), write)
-  ensures acc(dynamic_pred_6(thisItf, underlyingBuf_V0), 1 / 8)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), write)
-  ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(AbsSlice_Bytes_e630ae22_F(underlyingBuf_V0, 0, (slen(underlyingBuf_V0): Int)), write)
+  //requires acc(dynamic_pred_6(thisItf, underlyingBuf_V0), 1 / 8)
+  //requires acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), write)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(underlyingBuf_V0, 0, (slen(underlyingBuf_V0): Int)), write)
+  //ensures acc(dynamic_pred_6(thisItf, underlyingBuf_V0), 1 / 8)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), write)
+  //ensures !(e_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(e_V0), write)
 
 
 // decreases 
 method CombineRange_Bytes_e630ae22_F(s_V0: Slice[Ref], start_V0: Int, end_V0: Int,
   p_V0: Perm)
-  requires 0 / 1 <= p_V0
-  requires 0 <= start_V0 && start_V0 <= end_V0 &&
+  //requires 0 / 1 <= p_V0
+  //requires 0 <= start_V0 && start_V0 <= end_V0 &&
     end_V0 <= (slen(s_V0): Int)
-  requires acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(s_V0, start_V0,
+  //requires acc(AbsSlice_Bytes_e630ae22_F(ssliceFromSlice_Ref(s_V0, start_V0,
     end_V0), 0, end_V0 - start_V0), p_V0)
-  requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, start_V0), p_V0)
-  requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, end_V0, (slen(s_V0): Int)), p_V0)
-  ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, (slen(s_V0): Int)), p_V0)
+  //requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, start_V0), p_V0)
+  //requires acc(AbsSlice_Bytes_e630ae22_F(s_V0, end_V0, (slen(s_V0): Int)), p_V0)
+  //ensures acc(AbsSlice_Bytes_e630ae22_F(s_V0, 0, (slen(s_V0): Int)), p_V0)

@@ -163,34 +163,34 @@ field $stepTo_int: Int
 field $memcell_$f: Int
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function SLock_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(SLock_atomicity_context_fp(r, lvl, x), write)
-  ensures [SLock_atomicity_context_df(r, lvl, x), true]
+  //requires acc(SLock_atomicity_context_fp(r, lvl, x), write)
+  //ensures [SLock_atomicity_context_df(r, lvl, x), true]
 
 
 function SLock_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(SLock_interferenceContext_fp(r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(SLock_interferenceContext_fp(r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==> ($_m in SLock_interferenceSet_df($p0, r, lvl, x))),
     true]
 
 
 function SLock_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(SLock_interferenceContext_fp(r, lvl, x), write)
-  ensures [SLock_interferenceReference_df($p0, r, lvl, x), true]
+  //requires acc(SLock_interferenceContext_fp(r, lvl, x), write)
+  //ensures [SLock_interferenceReference_df($p0, r, lvl, x), true]
 
 
 function SLock_state(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(SLock(r, lvl, x), write)
-  ensures [SLock_state_T(r, lvl, x), true]
+  //requires acc(SLock(r, lvl, x), write)
+  //ensures [SLock_state_T(r, lvl, x), true]
 {
   (unfolding acc(SLock(r, lvl, x), write) in x.$memcell_$f)
 }
@@ -226,8 +226,8 @@ method ___silicon_hack407_havoc_all_SLock_interferenceContext_fp()
 
 
 method makeLock(lvl: Int) returns (ret: Ref, r: Ref)
-  requires lvl >= 0
-  ensures acc(SLock(r, lvl, ret), write) && (lvl >= 0 && true) &&
+  //requires lvl >= 0
+  //ensures acc(SLock(r, lvl, ret), write) && (lvl >= 0 && true) &&
     acc(SLock_LOCK(r), write)
 {
   var $_levelVar_0: Int
@@ -261,25 +261,25 @@ method makeLock(lvl: Int) returns (ret: Ref, r: Ref)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(SLock(r, lvl, ret), write)
+  //fold acc(SLock(r, lvl, ret), write)
   assert lvl >= 0 && true
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method acquire(r: Ref, lvl: Int, x: Ref)
-  requires acc(SLock(r, lvl, x), write) &&
+  //requires acc(SLock(r, lvl, x), write) &&
     (lvl >= 0 && SLock_state(r, lvl, x) == SLock_state(r, lvl, x)) &&
     acc(SLock_LOCK(r), write)
-  requires (SLock_state(r, lvl, x) in Set(0, 1))
-  ensures acc(SLock(r, lvl, x), write) &&
+  //requires (SLock_state(r, lvl, x) in Set(0, 1))
+  //ensures acc(SLock(r, lvl, x), write) &&
     (lvl >= 0 && SLock_state(r, lvl, x) == 1) &&
     acc(SLock_LOCK(r), write) &&
     acc(SLock_UNLOCK(r), write)
-  ensures old(SLock_state(r, lvl, x)) == 0
+  //ensures old(SLock_state(r, lvl, x)) == 0
 {
   var b: Bool
   var $_levelVar_1: Int
@@ -344,12 +344,12 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   label preWhile0
   loopVar0 := true
   while (loopVar0)
-    invariant !loopVar0 ==>
+    //invariant !loopVar0 ==>
       acc(SLock(r, lvl, x), write) &&
       (lvl >= 0 && SLock_state(r, lvl, x) == 1) &&
       acc(SLock_LOCK(r), write) &&
       acc(SLock_UNLOCK(r), write)
-    invariant !loopVar0 ==> old(SLock_state(r, lvl, x)) == 0 
+    //invariant !loopVar0 ==> old(SLock_state(r, lvl, x)) == 0 
   {
     inhale acc(SLock_sk_fp(), write)
     
@@ -434,7 +434,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     assert $_levelVar_1 > lvl
     $_levelVar_3 := lvl
     exhale acc(SLock_atomicity_context_fp(r, lvl, x), write)
-    unfold acc(SLock(r, lvl, x), write)
+    //unfold acc(SLock(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -456,7 +456,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     
     // ------- call:CAS END ------------
     
-    fold acc(SLock(r, lvl, x), write)
+    //fold acc(SLock(r, lvl, x), write)
     if (SLock_state(r, lvl, x) !=
     old[pre_region_update0](SLock_state(r, lvl, x))) {
       inhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
@@ -519,9 +519,9 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     
     label preWhile
     while (!b)
-      invariant acc(SLock(r, lvl, x), write) && (lvl >= 0 && true)
-      invariant (!b ? acc(r.$diamond, write) : true)
-      invariant (b ?
+      //invariant acc(SLock(r, lvl, x), write) && (lvl >= 0 && true)
+      //invariant (!b ? acc(r.$diamond, write) : true)
+      //invariant (b ?
           acc(r.$stepFrom_int, write) && r.$stepFrom_int == 0 &&
           (acc(r.$stepTo_int, write) && r.$stepTo_int == 1) &&
           acc(SLock_UNLOCK(r), write) :
@@ -584,7 +584,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
       assert $_levelVar_4 > lvl
       $_levelVar_5 := lvl
       exhale acc(SLock_atomicity_context_fp(r, lvl, x), write)
-      unfold acc(SLock(r, lvl, x), write)
+      //unfold acc(SLock(r, lvl, x), write)
       
       // no interference context translation needed
       
@@ -606,7 +606,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
       
       // ------- call:CAS END ------------
       
-      fold acc(SLock(r, lvl, x), write)
+      //fold acc(SLock(r, lvl, x), write)
       if (SLock_state(r, lvl, x) !=
       old[pre_region_update](SLock_state(r, lvl, x))) {
         inhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
@@ -700,10 +700,10 @@ method acquire(r: Ref, lvl: Int, x: Ref)
 }
 
 method release(r: Ref, lvl: Int, x: Ref)
-  requires acc(SLock(r, lvl, x), write) &&
+  //requires acc(SLock(r, lvl, x), write) &&
     (lvl >= 0 && SLock_state(r, lvl, x) == 1) &&
     acc(SLock_UNLOCK(r), write)
-  ensures acc(SLock(r, lvl, x), write) &&
+  //ensures acc(SLock(r, lvl, x), write) &&
     (lvl >= 0 && SLock_state(r, lvl, x) == 0)
 {
   var $_levelVar_9: Int
@@ -725,7 +725,7 @@ method release(r: Ref, lvl: Int, x: Ref)
   assert $_levelVar_9 > lvl
   $_levelVar_10 := lvl
   exhale acc(SLock_UNLOCK(r), write)
-  unfold acc(SLock(r, lvl, x), write)
+  //unfold acc(SLock(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -738,7 +738,7 @@ method release(r: Ref, lvl: Int, x: Ref)
   
   // ------- heap-write END ----------
   
-  fold acc(SLock(r, lvl, x), write)
+  //fold acc(SLock(r, lvl, x), write)
   assert old[pre_use_atomic0](SLock_state(r, lvl, x)) ==
     SLock_state(r, lvl, x) ||
     1 == old[pre_use_atomic0](SLock_state(r, lvl, x)) &&
@@ -750,8 +750,8 @@ method release(r: Ref, lvl: Int, x: Ref)
 }
 
 method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
-  requires acc(x.$memcell_$f, write) && true
-  ensures (old(x.$memcell_$f) == now ?
+  //requires acc(x.$memcell_$f, write) && true
+  //ensures (old(x.$memcell_$f) == now ?
       ret && (acc(x.$memcell_$f, write) && x.$memcell_$f == thn) :
       !ret &&
       (acc(x.$memcell_$f, write) && x.$memcell_$f == old(x.$memcell_$f)))
@@ -817,7 +817,7 @@ method $_SLock_action_transitivity_check()
 
 method $_makeLock_condition_stability_precondition_check(lvl: Int, ret: Ref,
   r: Ref)
-  requires lvl >= 0
+  //requires lvl >= 0
 {
   var $_levelVar_13: Int
   inhale $_levelVar_13 >= 0
@@ -860,7 +860,7 @@ method $_makeLock_condition_stability_precondition_check(lvl: Int, ret: Ref,
 }
 
 method $_acquire_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
-  requires acc(SLock(r, lvl, x), write) &&
+  //requires acc(SLock(r, lvl, x), write) &&
     (lvl >= 0 && SLock_state(r, lvl, x) == SLock_state(r, lvl, x)) &&
     acc(SLock_LOCK(r), write)
 {
@@ -911,7 +911,7 @@ method $_acquire_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref
 }
 
 method $_release_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
-  requires acc(SLock(r, lvl, x), write) &&
+  //requires acc(SLock(r, lvl, x), write) &&
     (lvl >= 0 && SLock_state(r, lvl, x) == 1) &&
     acc(SLock_UNLOCK(r), write)
 {

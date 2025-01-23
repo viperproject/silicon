@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+field h: Int
+
+
+method test02(x: Ref)
+  requires acc(x.h, write) --* (acc(x.h, write) && (acc(x.f, write) --* (acc(x.f, write) && acc(x.g, write))))
+  requires acc(x.h, write) && acc(x.f, write)
+{
+  //apply acc(x.h, write) --* (acc(x.h, write) && (acc(x.f, write) --* (acc(x.f, write) && acc(x.g, write))))
+  //apply acc(x.f, write) --* (acc(x.f, write) && acc(x.g, write))
+
+   assert acc(x.g, write)
+}

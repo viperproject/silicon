@@ -5,8 +5,8 @@ predicate list(x: Ref){
 }
 
 method reverse(x: Ref)
-requires list(x)
-ensures list(x)
+//requires list(x)
+//ensures list(x)
 
 
 method test(x: Ref)

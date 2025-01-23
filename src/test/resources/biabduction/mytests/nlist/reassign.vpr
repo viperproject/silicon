@@ -5,12 +5,12 @@ predicate list(x: Ref){
 }
 
 method reverse(x: Ref)
-requires list(x)
-ensures list(x)
+//requires list(x)
+//ensures list(x)
 
 /*
 method test(x: Ref, y: Ref)
-requires acc(x.next)
+//requires acc(x.next)
 {
     x.next := y
     reverse(x)
@@ -18,8 +18,8 @@ requires acc(x.next)
 */
 
 method test(x: Ref, y: Ref)
-requires acc(x.next)
-requires acc(y.next)
+//requires acc(x.next)
+//requires acc(y.next)
 {
     x.next := y.next
     reverse(x)
@@ -28,21 +28,21 @@ requires acc(y.next)
 
 /*
 method test(x: Ref, y: Ref)
-requires acc(x.next)
-requires acc(y.next) && list(y.next)
+//requires acc(x.next)
+//requires acc(y.next) && list(y.next)
 {
     x.next := y.next
-    fold list(x)
+    //fold list(x)
     assert list(y)
 }
 
 
 method test(x: Ref)
-requires list(x)
+//requires list(x)
 {
-    unfold list(x)
+    //unfold list(x)
     var y: Ref := x.next
-    fold list(x)
+    //fold list(x)
     assert list(y)
 }
 */

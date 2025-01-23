@@ -17,8 +17,8 @@ method sls_double_all(lst: Ref) returns (res: Ref)
         x := x.next
 
         //package list(x) --* list(lst) {
-        //    fold list(x_old)
-        //    apply list(x_old) --* list(lst)
+        //    //fold list(x_old)
+        //    //apply list(x_old) --* list(lst)
         //}
     }
     //apply list(x) --* list(lst)

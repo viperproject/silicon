@@ -51,7 +51,7 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
         case None => body
         case Some(t: Stmt) if t == abductionUtils.dummyEndStmt =>
           addToInnerBody(body, finalStmt)
-          //Seqn(, body.scopedSeqnDeclarations)(body.pos, body.info, body.errT)
+        //Seqn(, body.scopedSeqnDeclarations)(body.pos, body.info, body.errT)
 
         case Some(t: Stmt) if abductionUtils.isEndOfLoopStmt(t) =>
           val loop = abductionUtils.getWhile(t.asInstanceOf[Label].invs.head, m)
@@ -60,16 +60,16 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
           body.transform { case stmt if stmt == loop => newLoop }
         case Some(t: Stmt) =>
           body.transform {
-            case stmt if stmt == t =>
+            case stmt: Stmt if stmt == t && stmt.pos == t.pos =>
               Seqn(finalStmt :+ t, Seq())(t.pos, t.info, t.errT)
           }
         case Some(e: Exp) => body.transform {
-          case ifStmt: If if ifStmt.cond == e => Seqn(stmts :+ ifStmt, Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
-          case whileStmt: While if whileStmt.cond == e => Seqn(stmts :+ whileStmt, Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
+          case ifStmt: If if ifStmt.cond == e && ifStmt.cond.pos == e.pos => Seqn(stmts :+ ifStmt, Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
+          case whileStmt: While if whileStmt.cond == e && whileStmt.cond.pos == e.pos => Seqn(stmts :+ whileStmt, Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
         }
       }
-
-      Some(m.copy(pres = (m.pres ++ pres.get).distinct, body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
+      
+      Some(m.copy(pres = abductionUtils.sortExps(pres.get ++ m.pres).distinct, body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
     }
   }
 
@@ -328,20 +328,16 @@ object BiAbductionSolver {
                 val newState = q1.foundState.reverse
                 val newStmts = q1.foundStmts
 
-                // TODO nklose created chunks can go away again before we finish abduction, due to a package or a fold
-                // We have to do this in place when the chunks are created and not here
-                //abductionUtils.findChunks(newLocs, q1.s, q1.v, Internal()) { newChunks =>
                 if (q1.v.decider.checkSmoke()) {
                   Success(Some(BiAbductionFailure(s, v, initPcs)))
                 } else {
-                  val newChunks = newState.collect { case (e, c: Some[BasicChunk]) => c.get }
+                  val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
                   val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
                   val s1 = q1.s.copy(oldHeaps = newOldHeaps)
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
                   val abd = AbductionSuccess(s1, q1.v, q1.v.decider.pcs.duplicate(), newState, newStmts, fieldChunks, trigger)
                   Success(Some(abd)) && Q(s1, q1.v)
                 }
-                //}
               } else {
                 f
               }
@@ -404,7 +400,7 @@ object BiAbductionSolver {
   def resolveAbductionResults(m: Method, nf: NonFatalResult): Option[Method] = {
     val abdReses = abductionUtils.getAbductionSuccesses(nf)
     val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
-    val abdCases = abdReses.groupBy(res => (res.trigger, res.stmts, res.state))
+    val abdCases = abdReses.groupBy(res => (res.trigger.get, res.trigger.get.pos, res.stmts, res.state))
 
     // Try to join by bc terms
     val joinedCases = abdCases.flatMap {
@@ -444,7 +440,6 @@ object BiAbductionSolver {
     val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
     val vars = frames.head.s.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
 
-
     val cases = frames.map(f => (f.posts.diff(everyPosts), f.getBcExps(f.pcs.branchConditions.distinct.filter(_ != True), vars))).distinct
 
     // We can remove bcs that hold in every branch
@@ -477,6 +472,7 @@ object BiAbductionSolver {
 
     val invsSuccs = abductionUtils.getInvariantSuccesses(nf)
 
+    // there is an issue here if the same loop is repeated twice in the same method
     val reses = invsSuccs.groupBy(inv => inv.loop).map {
       case (loop, cases) =>
 
@@ -501,8 +497,8 @@ object BiAbductionSolver {
     Some(reses.foldLeft(m) { case (m1, (loop, inv)) =>
       val body = m1.body.get
       val newBody = body.transform {
-        case l: While if l.cond == loop.cond =>
-          l.copy(invs = l.invs ++ inv)(pos = l.pos, info = l.info, errT = l.errT)
+        case l: While if l.cond == loop.cond && l.cond.pos == loop.cond.pos =>
+          l.copy(invs = inv ++ l.invs)(pos = l.pos, info = l.info, errT = l.errT)
         case other => other
       }
       m1.copy(body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT)
@@ -601,18 +597,18 @@ object abductionUtils {
 
   def getWhile(condition: Exp, method: Method): While = {
     method.body.get.toSeq.collectFirst {
-      case w: While if w.cond == condition => w
+      case w: While if w.cond.pos == condition.pos => w
     }.get
   }
 
   def joinBcs[T](bcs: Seq[(Seq[T], Seq[Term])]): Seq[(Seq[T], Seq[Term])] = {
     bcs.combinations(2).collectFirst {
-      case Seq((a_res, a_pcs), (b_res, b_pcs)) if canJoin(a_pcs, b_pcs).isDefined =>
+      case Seq((a_res, a_pcs), (b_res, b_pcs)) if canJoin(a_pcs, b_pcs).isDefined => Seq((a_res, a_pcs), (b_res, b_pcs))
+    } match {
+      case Some(Seq((a_res, a_pcs), (b_res, b_pcs))) =>
         val rest = bcs.filter { case (c_res, _) => c_res != a_res && c_res != b_res }
         val joined = canJoin(a_pcs, b_pcs).get
         joinBcs(rest :+ (a_res ++ b_res, joined))
-    } match {
-      case Some(joined) => joined
       case None => bcs
     }
   }

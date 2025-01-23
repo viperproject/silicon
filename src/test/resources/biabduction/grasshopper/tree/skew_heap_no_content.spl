@@ -2,8 +2,8 @@ include "../include/bstree.spl";
 
 procedure union(h1: Node, h2: Node)
   returns (res: Node)
-  requires heap(h1) &*& heap(h2)
-  ensures heap(res)
+  //requires heap(h1) &*& heap(h2)
+  //ensures heap(res)
 {
   if (h1 == null) {
     return h2;
@@ -25,8 +25,8 @@ procedure union(h1: Node, h2: Node)
 
 procedure extractMax(h: Node) 
   returns (max: Int, rest: Node)
-  requires heap(h) &*& h != null
-  ensures  heap(rest)
+  //requires heap(h) &*& h != null
+  //ensures  heap(rest)
 {
   var d : Int;
   d := h.data;
@@ -44,8 +44,8 @@ procedure extractMax(h: Node)
 
 procedure insert(h: Node, value: Int) 
   returns (res: Node)
-  requires heap(h)
-  ensures heap(res)
+  //requires heap(h)
+  //ensures heap(res)
 {
   var n: Node;
   n := new Node;

@@ -418,16 +418,16 @@ field val_int: Int
 field val_ref: Ref
 
 function f_size__$TY$__$int$(): Int
-  requires true
-  requires true
-  ensures result == 8
-  ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
+  //requires true
+  //requires true
+  //ensures result == 8
+  //ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
 
 
 function m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(self: Ref): Int
-  requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
-  ensures 0 <= result && result <= 1
-  ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self)) ==
+  //requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
+  //ensures 0 <= result && result <= 1
+  //ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self)) ==
     result
 {
   (unfolding acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$()) in
@@ -435,7 +435,7 @@ function m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$discrimina
 }
 
 function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_
-  requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
+  //requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
 {
   ((unfolding acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$()) in
     self.discriminant) ==
@@ -447,7 +447,7 @@ function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point
 }
 
 function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self: Ref): Snap$struct$m_Point
-  requires acc(struct$m_Point(self), read$())
+  //requires acc(struct$m_Point(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point((unfolding acc(struct$m_Point(self), read$()) in
     (unfolding acc(i32(self.f$x), read$()) in self.f$x.val_int)), (unfolding acc(struct$m_Point(self), read$()) in
@@ -455,7 +455,7 @@ function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(sel
 }
 
 function snap$__$TY$__Snap$tuple2$i32$struct$m_Point$tuple2$i32$struct$m_Point$Snap$tuple2$i32$struct$m_Point(self: Ref): Snap$tuple2$i32$struct$m_Point
-  requires acc(tuple2$i32$struct$m_Point(self), read$())
+  //requires acc(tuple2$i32$struct$m_Point(self), read$())
 {
   cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point((unfolding acc(tuple2$i32$struct$m_Point(self), read$()) in
     (unfolding acc(i32(self.tuple_0), read$()) in self.tuple_0.val_int)), (unfolding acc(tuple2$i32$struct$m_Point(self), read$()) in
@@ -463,8 +463,8 @@ function snap$__$TY$__Snap$tuple2$i32$struct$m_Point$tuple2$i32$struct$m_Point$S
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -591,9 +591,9 @@ method m_valid() returns (_0: Ref)
   // [mir] _3 = &((((*_1) as Some).0: (i32, Point)).1: Point)
   _3 := builtin$havoc_ref()
   inhale acc(_3.val_ref, write)
-  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_1.val_ref), read$())
-  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_1.val_ref.enum_Some), read$())
-  unfold acc(tuple2$i32$struct$m_Point(_1.val_ref.enum_Some.f$0), read$())
+  //unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_1.val_ref), read$())
+  //unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_1.val_ref.enum_Some), read$())
+  //unfold acc(tuple2$i32$struct$m_Point(_1.val_ref.enum_Some.f$0), read$())
   _3.val_ref := _1.val_ref.enum_Some.f$0.tuple_1
   inhale acc(struct$m_Point(_3.val_ref), read$())
   label l2
@@ -603,8 +603,8 @@ method m_valid() returns (_0: Ref)
   // [mir] StorageLive(_7)
   // [mir] _7 = ((*_3).0: i32)
   _7 := builtin$havoc_int()
-  unfold acc(struct$m_Point(_3.val_ref), read$())
-  unfold acc(i32(_3.val_ref.f$x), read$())
+  //unfold acc(struct$m_Point(_3.val_ref), read$())
+  //unfold acc(i32(_3.val_ref.f$x), read$())
   _7 := _3.val_ref.f$x.val_int
   label l3
   // [mir] _6 = Le(const 0_i32, move _7)
@@ -639,9 +639,9 @@ method m_valid() returns (_0: Ref)
 
   if (__t3) {
     // expire loan L3
-    fold acc(i32(_3.val_ref.f$y), read$())
-    fold acc(i32(_3.val_ref.f$x), read$())
-    fold acc(struct$m_Point(_3.val_ref), read$())
+    //fold acc(i32(_3.val_ref.f$y), read$())
+    //fold acc(i32(_3.val_ref.f$x), read$())
+    //fold acc(struct$m_Point(_3.val_ref), read$())
     exhale acc(struct$m_Point(_3.val_ref), read$())
   }
   // ========== bb5 ==========
@@ -661,15 +661,15 @@ method m_valid() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l19
-  // Fold predicates for &mut args and transfer borrow permissions to old
+  // //fold predicates for &mut args and transfer borrow permissions to old
   // obtain acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(bool(_0), write)
+  // //fold the result
+  //fold acc(bool(_0), write)
   // obtain acc(bool(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
-  // Assert type invariants
+  // Assert type //invariants
   // Exhale permissions of postcondition (1/3)
   exhale acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_old$pre$0), read$())
   // Exhale permissions of postcondition (2/3)
@@ -685,9 +685,9 @@ method m_valid() returns (_0: Ref)
   // [mir] StorageDead(_3)
   // [mir] goto -> bb16
   // ========== l23 ==========
-  fold acc(tuple2$i32$struct$m_Point(_1.val_ref.enum_Some.f$0), read$())
-  fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_1.val_ref.enum_Some), read$())
-  fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_1.val_ref), read$())
+  //fold acc(tuple2$i32$struct$m_Point(_1.val_ref.enum_Some.f$0), read$())
+  //fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_1.val_ref.enum_Some), read$())
+  //fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_1.val_ref), read$())
   // drop Acc(_6.val_bool, write) (Acc(_6.val_bool, write))
   // drop Acc(_7.val_int, write) (Acc(_7.val_int, write))
   // drop Acc(_5.val_bool, write) (Acc(_5.val_bool, write))
@@ -704,7 +704,7 @@ method m_valid() returns (_0: Ref)
   // [mir] StorageLive(_12)
   // [mir] _12 = ((*_3).1: i32)
   _12 := builtin$havoc_int()
-  unfold acc(i32(_3.val_ref.f$y), read$())
+  //unfold acc(i32(_3.val_ref.f$y), read$())
   _12 := _3.val_ref.f$y.val_int
   label l11
   // [mir] _11 = Le(const 0_i32, move _12)
@@ -743,7 +743,7 @@ method m_valid() returns (_0: Ref)
   _4.val_bool := false
   // [mir] goto -> bb10
   // ========== l21 ==========
-  unfold acc(i32(_3.val_ref.f$y), read$())
+  //unfold acc(i32(_3.val_ref.f$y), read$())
   goto l4
   
   label l0
@@ -769,7 +769,7 @@ method m_valid() returns (_0: Ref)
   // [mir] _8 = Lt(move _9, move _10)
   _8 := builtin$havoc_ref()
   inhale acc(_8.val_bool, write)
-  unfold acc(i32(_10), write)
+  //unfold acc(i32(_10), write)
   _8.val_bool := _9 < _10.val_int
   // [mir] StorageDead(_10)
   // [mir] StorageDead(_9)
@@ -821,9 +821,9 @@ method m_valid() returns (_0: Ref)
 
   if (__t3) {
     // expire loan L3
-    fold acc(i32(_3.val_ref.f$y), read$())
-    fold acc(i32(_3.val_ref.f$x), read$())
-    fold acc(struct$m_Point(_3.val_ref), read$())
+    //fold acc(i32(_3.val_ref.f$y), read$())
+    //fold acc(i32(_3.val_ref.f$x), read$())
+    //fold acc(struct$m_Point(_3.val_ref), read$())
     exhale acc(struct$m_Point(_3.val_ref), read$())
   }
   // [mir] StorageLive(_15)
@@ -838,7 +838,7 @@ method m_valid() returns (_0: Ref)
   // [mir] _13 = Lt(move _14, move _15)
   _13 := builtin$havoc_ref()
   inhale acc(_13.val_bool, write)
-  unfold acc(i32(_15), write)
+  //unfold acc(i32(_15), write)
   _13.val_bool := _14 < _15.val_int
   // [mir] StorageDead(_15)
   // [mir] StorageDead(_14)

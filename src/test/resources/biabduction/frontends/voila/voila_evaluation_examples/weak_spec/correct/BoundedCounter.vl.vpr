@@ -163,21 +163,21 @@ field $stepTo_int: Int
 field $memcell_$f: Int
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function BCounter_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(BCounter_atomicity_context_fp(r, lvl, x), write)
-  ensures [BCounter_atomicity_context_df(r, lvl, x), true]
+  //requires acc(BCounter_atomicity_context_fp(r, lvl, x), write)
+  //ensures [BCounter_atomicity_context_df(r, lvl, x), true]
 
 
 function BCounter_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(BCounter_interferenceContext_fp(r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(BCounter_interferenceContext_fp(r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in BCounter_interferenceSet_df($p0, r, lvl, x))),
@@ -185,21 +185,21 @@ function BCounter_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[In
 
 
 function BCounter_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(BCounter_interferenceContext_fp(r, lvl, x), write)
-  ensures [BCounter_interferenceReference_df($p0, r, lvl, x), true]
+  //requires acc(BCounter_interferenceContext_fp(r, lvl, x), write)
+  //ensures [BCounter_interferenceReference_df($p0, r, lvl, x), true]
 
 
 function BCounter_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(BCounter_sk_fp(), write)
+  //requires acc(BCounter_sk_fp(), write)
 
 
 function BCounter_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(BCounter_sk_fp(), write)
+  //requires acc(BCounter_sk_fp(), write)
 
 
 function BCounter_state(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(BCounter(r, lvl, x), write)
-  ensures [BCounter_state_T(r, lvl, x), true]
+  //requires acc(BCounter(r, lvl, x), write)
+  //ensures [BCounter_state_T(r, lvl, x), true]
 {
   (unfolding acc(BCounter(r, lvl, x), write) in x.$memcell_$f)
 }
@@ -236,8 +236,8 @@ method ___silicon_hack407_havoc_all_BCounter_interferenceContext_fp()
 
 
 method makeBCounter(r: Ref, lvl: Int) returns (ret: Ref)
-  requires lvl >= 0
-  ensures acc(BCounter(r, lvl, ret), write) && (lvl >= 0 && true) &&
+  //requires lvl >= 0
+  //ensures acc(BCounter(r, lvl, ret), write) && (lvl >= 0 && true) &&
     acc(BCounter_INCREMENT(r), write)
 {
   var v: Ref
@@ -322,22 +322,22 @@ method makeBCounter(r: Ref, lvl: Int) returns (ret: Ref)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(BCounter(r, lvl, ret), write)
+  //fold acc(BCounter(r, lvl, ret), write)
   assert lvl >= 0 && BCounter_state(r, lvl, ret) == 0
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
-  requires acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
     p >= 1 / 4 &&
     acc(BCounter_INCREMENT(r), p)
-  ensures acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //ensures acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(BCounter_INCREMENT(r), p)
-  ensures (p == write ?
+  //ensures (p == write ?
       ret == old(BCounter_state(r, lvl, x)) &&
       (old(BCounter_state(r, lvl, x)) < 2 ?
         BCounter_state(r, lvl, x) == old(BCounter_state(r, lvl, x)) + 1 :
@@ -408,7 +408,7 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
   label pre_open_region0
   assert $_levelVar_1 > lvl
   $_levelVar_2 := lvl
-  unfold acc(BCounter(r, lvl, x), write)
+  //unfold acc(BCounter(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -419,7 +419,7 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
   
   // ------- heap-read END -----------
   
-  fold acc(BCounter(r, lvl, x), write)
+  //fold acc(BCounter(r, lvl, x), write)
   assert BCounter_state(r, lvl, x) ==
     old[pre_open_region0](BCounter_state(r, lvl, x))
   $_levelVar_3 := $_levelVar_1
@@ -502,7 +502,7 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
   assert $_levelVar_5 > lvl
   $_levelVar_6 := lvl
   exhale acc(BCounter_INCREMENT(r), 1 / 4)
-  unfold acc(BCounter(r, lvl, x), write)
+  //unfold acc(BCounter(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -525,7 +525,7 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
   
   // ------- call:CAS END ------------
   
-  fold acc(BCounter(r, lvl, x), write)
+  //fold acc(BCounter(r, lvl, x), write)
   assert old[pre_use_atomic0](BCounter_state(r, lvl, x)) ==
     BCounter_state(r, lvl, x) ||
     1 / 4 <= 1 / 4
@@ -586,9 +586,9 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
   
   label preWhile0
   while (!b)
-    invariant acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
+    //invariant acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
       acc(BCounter_INCREMENT(r), p)
-    invariant (p == write ?
+    //invariant (p == write ?
         b && v == old(BCounter_state(r, lvl, x)) &&
         (old(BCounter_state(r, lvl, x)) < 2 ?
           BCounter_state(r, lvl, x) == old(BCounter_state(r, lvl, x)) + 1 :
@@ -649,7 +649,7 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
     label pre_open_region
     assert $_levelVar_7 > lvl
     $_levelVar_8 := lvl
-    unfold acc(BCounter(r, lvl, x), write)
+    //unfold acc(BCounter(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -660,7 +660,7 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
     
     // ------- heap-read END -----------
     
-    fold acc(BCounter(r, lvl, x), write)
+    //fold acc(BCounter(r, lvl, x), write)
     assert BCounter_state(r, lvl, x) ==
       old[pre_open_region](BCounter_state(r, lvl, x))
     $_levelVar_9 := $_levelVar_7
@@ -743,7 +743,7 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
     assert $_levelVar_11 > lvl
     $_levelVar_12 := lvl
     exhale acc(BCounter_INCREMENT(r), 1 / 4)
-    unfold acc(BCounter(r, lvl, x), write)
+    //unfold acc(BCounter(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -766,7 +766,7 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
     
     // ------- call:CAS END ------------
     
-    fold acc(BCounter(r, lvl, x), write)
+    //fold acc(BCounter(r, lvl, x), write)
     assert old[pre_use_atomic](BCounter_state(r, lvl, x)) ==
       BCounter_state(r, lvl, x) ||
       1 / 4 <= 1 / 4
@@ -838,12 +838,12 @@ method incr(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
 }
 
 method read(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
-  requires acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
     0 / 1 < p &&
     acc(BCounter_INCREMENT(r), p)
-  ensures acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //ensures acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(BCounter_INCREMENT(r), p)
-  ensures (p == write ?
+  //ensures (p == write ?
       ret == old(BCounter_state(r, lvl, x)) &&
       old(BCounter_state(r, lvl, x)) == BCounter_state(r, lvl, x) :
       true)
@@ -898,7 +898,7 @@ method read(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
   label pre_open_region2
   assert $_levelVar_15 > lvl
   $_levelVar_16 := lvl
-  unfold acc(BCounter(r, lvl, x), write)
+  //unfold acc(BCounter(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -909,7 +909,7 @@ method read(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
   
   // ------- heap-read END -----------
   
-  fold acc(BCounter(r, lvl, x), write)
+  //fold acc(BCounter(r, lvl, x), write)
   assert BCounter_state(r, lvl, x) ==
     old[pre_open_region2](BCounter_state(r, lvl, x))
   $_levelVar_17 := $_levelVar_15
@@ -960,8 +960,8 @@ method read(r: Ref, lvl: Int, x: Ref, p: Perm) returns (ret: Int)
 }
 
 method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
-  requires acc(x.$memcell_$f, write) && true
-  ensures (old(x.$memcell_$f) == now ?
+  //requires acc(x.$memcell_$f, write) && true
+  //ensures (old(x.$memcell_$f) == now ?
       ret && (acc(x.$memcell_$f, write) && x.$memcell_$f == thn) :
       !ret &&
       (acc(x.$memcell_$f, write) && x.$memcell_$f == old(x.$memcell_$f)))
@@ -1029,7 +1029,7 @@ method $_BCounter_action_transitivity_check()
 
 method $_makeBCounter_condition_stability_precondition_check(r: Ref, lvl: Int,
   ret: Ref)
-  requires lvl >= 0
+  //requires lvl >= 0
 {
   var $_levelVar_19: Int
   var v: Ref
@@ -1071,7 +1071,7 @@ method $_makeBCounter_condition_stability_precondition_check(r: Ref, lvl: Int,
 
 method $_incr_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref,
   p: Perm, ret: Int)
-  requires acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
     p >= 1 / 4 &&
     acc(BCounter_INCREMENT(r), p)
 {
@@ -1119,7 +1119,7 @@ method $_incr_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref,
 
 method $_read_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref,
   p: Perm, ret: Int)
-  requires acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(BCounter(r, lvl, x), write) && (lvl >= 0 && true) &&
     0 / 1 < p &&
     acc(BCounter_INCREMENT(r), p)
 {

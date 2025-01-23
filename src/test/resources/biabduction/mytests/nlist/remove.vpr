@@ -5,7 +5,7 @@ predicate list(x: Ref){
 }
 
 method test(this: Ref, target: Ref)
-requires target != null
+//requires target != null
 //requires list(this)
 //ensures list(this)
 {
@@ -24,9 +24,9 @@ requires target != null
         }
         x := x.next
         //package acc(list(x), write) --* acc(list(this), write) {
-        //   fold acc(list(xo), write)
-        //    apply acc(list(xo), write) --* acc(list(this), write)
+        //   //fold acc(list(xo), write)
+        //    //apply acc(list(xo), write) --* acc(list(this), write)
         //}
     }
-   // apply list(x) --* list(this)
+   // //apply list(x) --* list(this)
 }

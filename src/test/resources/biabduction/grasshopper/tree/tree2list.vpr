@@ -2,33 +2,33 @@ import "tree.vpr"
 import "../sl/sl.vpr"
 
 method insert(x: Ref, newVal: Int) returns (res: Ref)
-requires list(x)
-ensures list(res)
+//requires list(x)
+//ensures list(res)
 
 method tree2list(root: Ref) returns (res: Ref)
-requires tree(root)
-ensures list(res)
+//requires tree(root)
+//ensures list(res)
 {
     res := null
-    fold list(res)
+    //fold list(res)
     
     if(root != null){
 
         var remaining: Ref := new(*)
         remaining.tNext := null
         remaining.elem := root
-        fold tList(remaining.tNext)
-        fold tList(remaining)
+        //fold tList(remaining.tNext)
+        //fold tList(remaining)
 
         while(remaining != null)
-        invariant tList(remaining)
-        invariant list(res)
+        //invariant tList(remaining)
+        //invariant list(res)
         {
-            unfold tList(remaining)
+            //unfold tList(remaining)
             var current: Ref := remaining.elem
             if(current != null){
 
-                unfold tree(current)
+                //unfold tree(current)
 
                 var lNode: Ref := new(*)
                 var rNode: Ref := new(*)
@@ -43,8 +43,8 @@ ensures list(res)
                 res := insert(res, current.val)
 
 
-                fold tList(rNode)
-                fold tList(lNode)
+                //fold tList(rNode)
+                //fold tList(lNode)
             }
             remaining := remaining.tNext
         }

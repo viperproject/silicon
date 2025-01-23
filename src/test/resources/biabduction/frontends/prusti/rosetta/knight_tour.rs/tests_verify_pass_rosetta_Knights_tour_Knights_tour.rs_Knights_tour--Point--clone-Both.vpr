@@ -246,8 +246,8 @@ field val_int: Int
 field val_ref: Ref
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -285,21 +285,21 @@ method m_Point$$clone() returns (_0: Ref)
   // [mir] _2 = ((*_1).0: i32)
   _2 := builtin$havoc_ref()
   inhale acc(_2.val_int, write)
-  unfold acc(struct$m_Point(_1.val_ref), write)
-  unfold acc(i32(_1.val_ref.f$x), write)
+  //unfold acc(struct$m_Point(_1.val_ref), write)
+  //unfold acc(i32(_1.val_ref.f$x), write)
   _2.val_int := _1.val_ref.f$x.val_int
   label l0
   // [mir] StorageLive(_3)
   // [mir] _3 = ((*_1).1: i32)
   _3 := builtin$havoc_ref()
   inhale acc(_3.val_int, write)
-  unfold acc(i32(_1.val_ref.f$y), write)
+  //unfold acc(i32(_1.val_ref.f$y), write)
   _3.val_int := _1.val_ref.f$y.val_int
   label l1
   // [mir] _0 = Point { x: move _2, y: move _3 }
   _0 := builtin$havoc_ref()
   inhale acc(struct$m_Point(_0), write)
-  unfold acc(struct$m_Point(_0), write)
+  //unfold acc(struct$m_Point(_0), write)
   _0.f$x := _2
   label l2
   _0.f$y := _3
@@ -311,16 +311,16 @@ method m_Point$$clone() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l5
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  fold acc(i32(_1.val_ref.f$y), write)
-  fold acc(i32(_1.val_ref.f$x), write)
-  fold acc(struct$m_Point(_1.val_ref), write)
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  //fold acc(i32(_1.val_ref.f$y), write)
+  //fold acc(i32(_1.val_ref.f$x), write)
+  //fold acc(struct$m_Point(_1.val_ref), write)
   // obtain acc(struct$m_Point(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(i32(_0.f$y), write)
-  fold acc(i32(_0.f$x), write)
-  fold acc(struct$m_Point(_0), write)
+  // //fold the result
+  //fold acc(i32(_0.f$y), write)
+  //fold acc(i32(_0.f$x), write)
+  //fold acc(struct$m_Point(_0), write)
   // obtain acc(struct$m_Point(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -346,7 +346,7 @@ method m_Point$$clone() returns (_0: Ref)
                 old[pre]((unfolding acc(struct$m_Point(_1.val_ref), write) in
                   (unfolding acc(i32(_1.val_ref.f$y), write) in
                     _1.val_ref.f$y.val_int)))))))))))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_Point(_old$pre$0), write)

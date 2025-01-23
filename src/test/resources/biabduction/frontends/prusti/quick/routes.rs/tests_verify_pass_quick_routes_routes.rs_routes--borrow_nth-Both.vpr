@@ -417,15 +417,15 @@ field val_int: Int
 field val_ref: Ref
 
 function builtin$unreach__$TY$__$int$$$int$(): Int
-  requires false
+  //requires false
 
 
 function f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1: Snap$struct$m_Route,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 && _2 < f_length__$TY$__Snap$struct$m_Route$$int$(_1)
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires 0 <= _2 && _2 < f_length__$TY$__Snap$struct$m_Route$$int$(_1)
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1, _2),
     true]
 {
@@ -439,10 +439,10 @@ function f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1: Snap$struct$m_Ro
 }
 
 function f_length__$TY$__Snap$struct$m_Route$$int$(_1: Snap$struct$m_Route): Int
-  requires true
-  requires true
-  ensures result > 0
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result > 0
+  //ensures [result ==
     mirror_simple$f_length__$TY$__Snap$struct$m_Route$$int$(_1),
     true]
 {
@@ -454,9 +454,9 @@ function f_length__$TY$__Snap$struct$m_Route$$int$(_1: Snap$struct$m_Route): Int
 }
 
 function m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(self: Ref): Int
-  requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
-  ensures 0 <= result && result <= 1
-  ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self)) ==
+  //requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
+  //ensures 0 <= result && result <= 1
+  //ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self)) ==
     result
 {
   (unfolding acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$()) in
@@ -464,7 +464,7 @@ function m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$str
 }
 
 function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_
-  requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
+  //requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
 {
   ((unfolding acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$()) in
     self.discriminant) ==
@@ -477,7 +477,7 @@ function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$
 }
 
 function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self: Ref): Snap$struct$m_Point
-  requires acc(struct$m_Point(self), read$())
+  //requires acc(struct$m_Point(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point((unfolding acc(struct$m_Point(self), read$()) in
     (unfolding acc(i32(self.f$x), read$()) in self.f$x.val_int)), (unfolding acc(struct$m_Point(self), read$()) in
@@ -485,7 +485,7 @@ function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(sel
 }
 
 function snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(self: Ref): Snap$struct$m_Route
-  requires acc(struct$m_Route(self), read$())
+  //requires acc(struct$m_Route(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route((unfolding acc(struct$m_Route(self), read$()) in
     snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self.f$current)),
@@ -494,8 +494,8 @@ function snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(sel
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -595,7 +595,7 @@ method m_borrow_nth() returns (_0: Ref)
   // [mir] StorageLive(_6)
   // [mir] _6 = _2
   _6 := builtin$havoc_int()
-  unfold acc(i32(_2), write)
+  //unfold acc(i32(_2), write)
   _6 := _2.val_int
   label l0
   // [mir] _5 = Eq(move _6, const 0_i32)
@@ -619,7 +619,7 @@ method m_borrow_nth() returns (_0: Ref)
   // [mir] FakeRead(ForMatchedPlace(None), ((*_1).1: std::option::Option<std::boxed::Box<Route>>))
   // [mir] _10 = discriminant(((*_1).1: std::option::Option<std::boxed::Box<Route>>))
   _10 := builtin$havoc_int()
-  unfold acc(struct$m_Route(_1.val_ref), write)
+  //unfold acc(struct$m_Route(_1.val_ref), write)
   _10 := m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$$int$(_1.val_ref.f$rest)
   // [mir] switchInt(move _10) -> [0: bb3, 1: bb4, otherwise: bb5]
   __t11 := _10
@@ -639,7 +639,7 @@ method m_borrow_nth() returns (_0: Ref)
   // [mir] _8 = &mut ((*_1).0: Point)
   _8 := builtin$havoc_ref()
   inhale acc(_8.val_ref, write)
-  unfold acc(struct$m_Route(_1.val_ref), write)
+  //unfold acc(struct$m_Route(_1.val_ref), write)
   _8.val_ref := _1.val_ref.f$current
   label l3
   // [mir] _7 = &mut (*_8)
@@ -680,7 +680,7 @@ method m_borrow_nth() returns (_0: Ref)
   // [mir] return
   // obtain ((acc(struct$m_Point(_0.val_ref), write)) && (true)) && ((true) && (true))
   label l18
-  package acc(DeadBorrowToken$(-1), write) &&
+  //package acc(DeadBorrowToken$(-1), write) &&
   acc(struct$m_Point(old[l18](_0.val_ref)), write) --*
   acc(struct$m_Route(old[pre](_1.val_ref)), write) &&
   (f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[pre](_1.val_ref))) ==
@@ -768,7 +768,7 @@ method m_borrow_nth() returns (_0: Ref)
           old[l12](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_13.val_ref),
           _0_quant_0)))))))
       inhale acc(DeadBorrowToken$(12), write)
-      apply acc(DeadBorrowToken$(12), write) &&
+      //apply acc(DeadBorrowToken$(12), write) &&
         acc(struct$m_Point(_old$l13$0$p0), write) --*
         acc(struct$m_Route(old[l12](_13.val_ref)), write) &&
         (f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l12](_13.val_ref))) ==
@@ -803,12 +803,12 @@ method m_borrow_nth() returns (_0: Ref)
       assert acc(old[l18](_1.val_ref).f$rest, read$())
       assert acc(old[l18](_1.val_ref).f$rest.enum_Some, read$())
       assert acc(old[l18](_1.val_ref).f$rest.enum_Some.f$0, read$())
-      fold acc(struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(old[l18](_1.val_ref).f$rest.enum_Some.f$0), write)
+      //fold acc(struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(old[l18](_1.val_ref).f$rest.enum_Some.f$0), write)
       assert acc(old[l18](_1.val_ref).f$rest, read$())
       assert acc(old[l18](_1.val_ref).f$rest.enum_Some, read$())
-      fold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(old[l18](_1.val_ref).f$rest.enum_Some), write)
+      //fold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(old[l18](_1.val_ref).f$rest.enum_Some), write)
       assert acc(old[l18](_1.val_ref).f$rest, read$())
-      fold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(old[l18](_1.val_ref).f$rest), write)
+      //fold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(old[l18](_1.val_ref).f$rest), write)
       // drop Acc(_9.val_ref, write) (Acc(_9.val_ref, write))
       // restored (in branch merge): Acc(_9.val_ref, write) (Acc(_9.val_ref, write))
       // drop Acc(old[l14](_12.val_ref), write) (Acc(old[l14](_12.val_ref), write))
@@ -826,9 +826,9 @@ method m_borrow_nth() returns (_0: Ref)
       // drop Acc(_7.val_ref, write) (Acc(_7.val_ref, write))
       // restored (in branch merge): Acc(_7.val_ref, write) (Acc(_7.val_ref, write))
     }
-    // Fold predicates for &mut args
+    // //fold predicates for &mut args
     // transfer perm _1.val_ref --> old[pre](_1.val_ref) // unchecked: false
-    fold acc(struct$m_Route(old[pre](_1.val_ref)), write)
+    //fold acc(struct$m_Route(old[pre](_1.val_ref)), write)
     // obtain acc(struct$m_Route(old[pre](_1.val_ref)), write)
   }
   // transfer perm old[l18](_0.val_ref) --> _0.val_ref // unchecked: false
@@ -836,8 +836,8 @@ method m_borrow_nth() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l19
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  // Fold the result
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  // //fold the result
   // obtain acc(struct$m_Point(_0.val_ref), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -846,7 +846,7 @@ method m_borrow_nth() returns (_0: Ref)
         _0.val_ref.f$x.val_int ==
         old[pre](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_1.val_ref),
         (unfolding acc(i32(_2), write) in _2.val_int)))))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   // Exhale permissions of postcondition (2/3)
@@ -885,9 +885,9 @@ method m_borrow_nth() returns (_0: Ref)
   // [mir] _11 = &mut (*((((*_1).1: std::option::Option<std::boxed::Box<Route>>) as Some).0: std::boxed::Box<Route>))
   _11 := builtin$havoc_ref()
   inhale acc(_11.val_ref, write)
-  unfold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1.val_ref.f$rest), write)
-  unfold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(_1.val_ref.f$rest.enum_Some), write)
-  unfold acc(struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(_1.val_ref.f$rest.enum_Some.f$0), write)
+  //unfold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(_1.val_ref.f$rest), write)
+  //unfold acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_Some(_1.val_ref.f$rest.enum_Some), write)
+  //unfold acc(struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global(_1.val_ref.f$rest.enum_Some.f$0), write)
   _11.val_ref := _1.val_ref.f$rest.enum_Some.f$0.val_ref
   label l8
   // [mir] StorageLive(_12)
@@ -927,7 +927,7 @@ method m_borrow_nth() returns (_0: Ref)
     _14.val_int <
     f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_13.val_ref))
   assert true
-  fold acc(i32(_14), write)
+  //fold acc(i32(_14), write)
   exhale acc(_13.val_ref, write) &&
     (acc(struct$m_Route(_13.val_ref), write) && acc(i32(_14), write))
   _12 := builtin$havoc_ref()

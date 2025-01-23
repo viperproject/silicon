@@ -163,21 +163,21 @@ field $stepTo_int: Int
 field $memcell_$f: Int
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function Counter_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(Counter_atomicity_context_fp(r, lvl, x), write)
-  ensures [Counter_atomicity_context_df(r, lvl, x), true]
+  //requires acc(Counter_atomicity_context_fp(r, lvl, x), write)
+  //ensures [Counter_atomicity_context_df(r, lvl, x), true]
 
 
 function Counter_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in Counter_interferenceSet_df($p0, r, lvl, x))),
@@ -185,21 +185,21 @@ function Counter_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int
 
 
 function Counter_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
-  ensures [Counter_interferenceReference_df($p0, r, lvl, x), true]
+  //requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
+  //ensures [Counter_interferenceReference_df($p0, r, lvl, x), true]
 
 
 function Counter_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_sk_fp(), write)
+  //requires acc(Counter_sk_fp(), write)
 
 
 function Counter_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_sk_fp(), write)
+  //requires acc(Counter_sk_fp(), write)
 
 
 function Counter_state(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter(r, lvl, x), write)
-  ensures [Counter_state_T(r, lvl, x), true]
+  //requires acc(Counter(r, lvl, x), write)
+  //ensures [Counter_state_T(r, lvl, x), true]
 {
   (unfolding acc(Counter(r, lvl, x), write) in x.$memcell_$f)
 }
@@ -232,8 +232,8 @@ method ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
 
 
 method makeCounter(r: Ref, lvl: Int) returns (ret: Ref)
-  requires lvl >= 0
-  ensures acc(Counter(r, lvl, ret), write) && (lvl >= 0 && true) &&
+  //requires lvl >= 0
+  //ensures acc(Counter(r, lvl, ret), write) && (lvl >= 0 && true) &&
     acc(Counter_INCREMENT(r), write)
 {
   var v: Ref
@@ -319,21 +319,21 @@ method makeCounter(r: Ref, lvl: Int) returns (ret: Ref)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(Counter(r, lvl, ret), write)
+  //fold acc(Counter(r, lvl, ret), write)
   assert lvl >= 0 && Counter_state(r, lvl, ret) == 0
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Counter_INCREMENT(r), write)
-  ensures acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //ensures acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Counter_INCREMENT(r), write)
-  ensures old(Counter_state(r, lvl, x)) < Counter_state(r, lvl, x)
+  //ensures old(Counter_state(r, lvl, x)) < Counter_state(r, lvl, x)
 {
   var v: Int
   var b: Bool
@@ -394,7 +394,7 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
   label pre_open_region0
   assert $_levelVar_1 > lvl
   $_levelVar_2 := lvl
-  unfold acc(Counter(r, lvl, x), write)
+  //unfold acc(Counter(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -405,7 +405,7 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
   
   // ------- heap-read END -----------
   
-  fold acc(Counter(r, lvl, x), write)
+  //fold acc(Counter(r, lvl, x), write)
   assert Counter_state(r, lvl, x) ==
     old[pre_open_region0](Counter_state(r, lvl, x))
   $_levelVar_3 := $_levelVar_1
@@ -462,7 +462,7 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
   assert $_levelVar_3 > lvl
   $_levelVar_4 := lvl
   exhale acc(Counter_INCREMENT(r), write)
-  unfold acc(Counter(r, lvl, x), write)
+  //unfold acc(Counter(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -485,7 +485,7 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
   
   // ------- call:CAS END ------------
   
-  fold acc(Counter(r, lvl, x), write)
+  //fold acc(Counter(r, lvl, x), write)
   assert old[pre_use_atomic0](Counter_state(r, lvl, x)) ==
     Counter_state(r, lvl, x) ||
     old[pre_use_atomic0](Counter_state(r, lvl, x)) <
@@ -541,9 +541,9 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
   
   label preWhile0
   while (!b)
-    invariant acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+    //invariant acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
       acc(Counter_INCREMENT(r), write)
-    invariant (b ?
+    //invariant (b ?
         old(Counter_state(r, lvl, x)) < Counter_state(r, lvl, x) :
         old(Counter_state(r, lvl, x)) <= Counter_state(r, lvl, x)) 
   {
@@ -601,7 +601,7 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
     label pre_open_region
     assert $_levelVar_5 > lvl
     $_levelVar_6 := lvl
-    unfold acc(Counter(r, lvl, x), write)
+    //unfold acc(Counter(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -612,7 +612,7 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
     
     // ------- heap-read END -----------
     
-    fold acc(Counter(r, lvl, x), write)
+    //fold acc(Counter(r, lvl, x), write)
     assert Counter_state(r, lvl, x) ==
       old[pre_open_region](Counter_state(r, lvl, x))
     $_levelVar_7 := $_levelVar_5
@@ -669,7 +669,7 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
     assert $_levelVar_7 > lvl
     $_levelVar_8 := lvl
     exhale acc(Counter_INCREMENT(r), write)
-    unfold acc(Counter(r, lvl, x), write)
+    //unfold acc(Counter(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -692,7 +692,7 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
     
     // ------- call:CAS END ------------
     
-    fold acc(Counter(r, lvl, x), write)
+    //fold acc(Counter(r, lvl, x), write)
     assert old[pre_use_atomic](Counter_state(r, lvl, x)) ==
       Counter_state(r, lvl, x) ||
       old[pre_use_atomic](Counter_state(r, lvl, x)) <
@@ -752,11 +752,11 @@ method incr(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
 }
 
 method read(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Counter_INCREMENT(r), write)
-  ensures acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //ensures acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Counter_INCREMENT(r), write)
-  ensures ret <= Counter_state(r, lvl, x)
+  //ensures ret <= Counter_state(r, lvl, x)
 {
   var $_levelVar_11: Int
   var $_levelVar_12: Int
@@ -808,7 +808,7 @@ method read(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
   label pre_open_region2
   assert $_levelVar_11 > lvl
   $_levelVar_12 := lvl
-  unfold acc(Counter(r, lvl, x), write)
+  //unfold acc(Counter(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -819,7 +819,7 @@ method read(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
   
   // ------- heap-read END -----------
   
-  fold acc(Counter(r, lvl, x), write)
+  //fold acc(Counter(r, lvl, x), write)
   assert Counter_state(r, lvl, x) ==
     old[pre_open_region2](Counter_state(r, lvl, x))
   $_levelVar_13 := $_levelVar_11
@@ -871,8 +871,8 @@ method read(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
 }
 
 method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
-  requires acc(x.$memcell_$f, write) && true
-  ensures (old(x.$memcell_$f) == now ?
+  //requires acc(x.$memcell_$f, write) && true
+  //ensures (old(x.$memcell_$f) == now ?
       ret && (acc(x.$memcell_$f, write) && x.$memcell_$f == thn) :
       !ret &&
       (acc(x.$memcell_$f, write) && x.$memcell_$f == old(x.$memcell_$f)))
@@ -941,7 +941,7 @@ method $_Counter_action_transitivity_check()
 
 method $_makeCounter_condition_stability_precondition_check(r: Ref, lvl: Int,
   ret: Ref)
-  requires lvl >= 0
+  //requires lvl >= 0
 {
   var $_levelVar_15: Int
   var v: Ref
@@ -984,7 +984,7 @@ method $_makeCounter_condition_stability_precondition_check(r: Ref, lvl: Int,
 
 method $_incr_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref,
   ret: Int)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Counter_INCREMENT(r), write)
 {
   var $_levelVar_16: Int
@@ -1030,7 +1030,7 @@ method $_incr_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref,
 
 method $_read_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref,
   ret: Int)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Counter_INCREMENT(r), write)
 {
   var $_levelVar_17: Int

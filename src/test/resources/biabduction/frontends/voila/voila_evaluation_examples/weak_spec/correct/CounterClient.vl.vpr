@@ -202,21 +202,21 @@ field $fjcell_$_payload: Bool
 field $cell_$value: Int
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function Counter_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(Counter_atomicity_context_fp(r, lvl, x), write)
-  ensures [Counter_atomicity_context_df(r, lvl, x), true]
+  //requires acc(Counter_atomicity_context_fp(r, lvl, x), write)
+  //ensures [Counter_atomicity_context_df(r, lvl, x), true]
 
 
 function Counter_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in Counter_interferenceSet_df($p0, r, lvl, x))),
@@ -224,35 +224,35 @@ function Counter_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int
 
 
 function Counter_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
-  ensures [Counter_interferenceReference_df($p0, r, lvl, x), true]
+  //requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
+  //ensures [Counter_interferenceReference_df($p0, r, lvl, x), true]
 
 
 function Counter_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_sk_fp(), write)
+  //requires acc(Counter_sk_fp(), write)
 
 
 function Counter_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter_sk_fp(), write)
+  //requires acc(Counter_sk_fp(), write)
 
 
 function Counter_state(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Counter(r, lvl, x), write)
-  ensures [Counter_state_T(r, lvl, x), true]
+  //requires acc(Counter(r, lvl, x), write)
+  //ensures [Counter_state_T(r, lvl, x), true]
 {
   (unfolding acc(Counter(r, lvl, x), write) in x.$cell_$value)
 }
 
 function Join_atomicity_context_hf(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int,
   x: Ref): Set[Int]
-  requires acc(Join_atomicity_context_fp(s, alvl, y, r, lvl, x), write)
-  ensures [Join_atomicity_context_df(s, alvl, y, r, lvl, x), true]
+  //requires acc(Join_atomicity_context_fp(s, alvl, y, r, lvl, x), write)
+  //ensures [Join_atomicity_context_df(s, alvl, y, r, lvl, x), true]
 
 
 function Join_interferenceSet_hf($p0: Int, s: Ref, alvl: Int, y: Ref, r: Ref,
   lvl: Int, x: Ref): Set[Int]
-  requires acc(Join_interferenceContext_fp(s, alvl, y, r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(Join_interferenceContext_fp(s, alvl, y, r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in Join_interferenceSet_df($p0, s, alvl, y, r, lvl, x))),
@@ -261,25 +261,25 @@ function Join_interferenceSet_hf($p0: Int, s: Ref, alvl: Int, y: Ref, r: Ref,
 
 function Join_interferenceReference_hf($p0: Int, s: Ref, alvl: Int, y: Ref,
   r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Join_interferenceContext_fp(s, alvl, y, r, lvl, x), write)
-  ensures [Join_interferenceReference_df($p0, s, alvl, y, r, lvl, x), true]
+  //requires acc(Join_interferenceContext_fp(s, alvl, y, r, lvl, x), write)
+  //ensures [Join_interferenceReference_df($p0, s, alvl, y, r, lvl, x), true]
 
 
 function Join_state(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Join(s, alvl, y, r, lvl, x), write)
-  ensures [Join_state_T(s, alvl, y, r, lvl, x), true]
+  //requires acc(Join(s, alvl, y, r, lvl, x), write)
+  //ensures [Join_state_T(s, alvl, y, r, lvl, x), true]
 {
   (unfolding acc(Join(s, alvl, y, r, lvl, x), write) in y.$fjcell_$value)
 }
 
 function LevelDummy_atomicity_context_hf(r: Ref, lvl: Int): Set[Int]
-  requires acc(LevelDummy_atomicity_context_fp(r, lvl), write)
-  ensures [LevelDummy_atomicity_context_df(r, lvl), true]
+  //requires acc(LevelDummy_atomicity_context_fp(r, lvl), write)
+  //ensures [LevelDummy_atomicity_context_df(r, lvl), true]
 
 
 function LevelDummy_interferenceSet_hf($p0: Int, r: Ref, lvl: Int): Set[Int]
-  requires acc(LevelDummy_interferenceContext_fp(r, lvl), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(LevelDummy_interferenceContext_fp(r, lvl), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in LevelDummy_interferenceSet_df($p0, r, lvl))),
@@ -287,13 +287,13 @@ function LevelDummy_interferenceSet_hf($p0: Int, r: Ref, lvl: Int): Set[Int]
 
 
 function LevelDummy_interferenceReference_hf($p0: Int, r: Ref, lvl: Int): Int
-  requires acc(LevelDummy_interferenceContext_fp(r, lvl), write)
-  ensures [LevelDummy_interferenceReference_df($p0, r, lvl), true]
+  //requires acc(LevelDummy_interferenceContext_fp(r, lvl), write)
+  //ensures [LevelDummy_interferenceReference_df($p0, r, lvl), true]
 
 
 function LevelDummy_state(r: Ref, lvl: Int): Int
-  requires acc(LevelDummy(r, lvl), write)
-  ensures [LevelDummy_state_T(r, lvl), true]
+  //requires acc(LevelDummy(r, lvl), write)
+  //ensures [LevelDummy_state_T(r, lvl), true]
 {
   (unfolding acc(LevelDummy(r, lvl), write) in 0)
 }
@@ -386,22 +386,22 @@ method ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
 
 
 method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
-  requires acc(x.$cell_$value, write) && true
-  ensures (old(x.$cell_$value) == now ?
+  //requires acc(x.$cell_$value, write) && true
+  //ensures (old(x.$cell_$value) == now ?
       ret && (acc(x.$cell_$value, write) && x.$cell_$value == thn) :
       !ret &&
       (acc(x.$cell_$value, write) && x.$cell_$value == old(x.$cell_$value)))
 
 
 method thread_incr(r: Ref, lvl: Int, x: Ref, s: Ref, alvl: Int, y: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     (Counter_AUTH_T(r, 1) && acc(Counter_AUTH(r, 1), write)) &&
     acc(Counter_INCR(r), 1 / 2) &&
     (acc(Join(s, alvl, y, r, lvl, x), write) &&
     (alvl >= 0 && Join_state(s, alvl, y, r, lvl, x) == 0)) &&
     acc(Join_SET(s), write) &&
     lvl < alvl
-  ensures true
+  //ensures true
 {
   var $_levelVar_1: Int
   inhale $_levelVar_1 >= 0 && $_levelVar_1 > lvl && $_levelVar_1 > alvl
@@ -584,9 +584,9 @@ method thread_incr(r: Ref, lvl: Int, x: Ref, s: Ref, alvl: Int, y: Ref)
 
 method parallel_incr(lvl: Int, alvl: Int, dummy: Ref)
   returns (r: Ref, x: Ref)
-  requires acc(LevelDummy(dummy, alvl), write) && (alvl >= 0 && true) &&
+  //requires acc(LevelDummy(dummy, alvl), write) && (alvl >= 0 && true) &&
     (alvl > lvl && lvl >= 0)
-  ensures acc(Counter(r, lvl, x), write) &&
+  //ensures acc(Counter(r, lvl, x), write) &&
     (lvl >= 0 && Counter_state(r, lvl, x) == 2) &&
     (Counter_CONT_T(r, 2) && acc(Counter_CONT(r, 2), write)) &&
     (Counter_AUTH_T(r, 0 - 1 - 2) && acc(Counter_AUTH(r, 0 - 1 - 2), write)) &&
@@ -722,18 +722,18 @@ method parallel_incr(lvl: Int, alvl: Int, dummy: Ref)
   // ------- inhale END --------------
   
   
-  // ------- apply BEGIN -------------
+  // ------- //apply BEGIN -------------
   
   AUTH_split(r, 0 - 1 - 1, 1)
   
-  // ------- apply END ---------------
+  // ------- //apply END ---------------
   
   
-  // ------- apply BEGIN -------------
+  // ------- //apply BEGIN -------------
   
   AUTH_split(r, 0 - 1 - 2, 1)
   
-  // ------- apply END ---------------
+  // ------- //apply END ---------------
   
   
   // ------- call:make_join BEGIN ----
@@ -1098,18 +1098,18 @@ method parallel_incr(lvl: Int, alvl: Int, dummy: Ref)
   // ------- call:wait END -----------
   
   
-  // ------- apply BEGIN -------------
+  // ------- //apply BEGIN -------------
   
   CONT_join(r, 1, 1)
   
-  // ------- apply END ---------------
+  // ------- //apply END ---------------
   
   
-  // ------- unfold BEGIN ------------
+  // ------- //unfold BEGIN ------------
   
   n := Counter_state(r, lvl, x)
   assert lvl >= 0 && true
-  unfold acc(Counter(r, lvl, x), write)
+  //unfold acc(Counter(r, lvl, x), write)
   
   // ------- Inferring interference context Counter,Join,LevelDummy (recompute interference context after unfold) BEGIN 
   
@@ -1198,29 +1198,29 @@ method parallel_incr(lvl: Int, alvl: Int, dummy: Ref)
   // ------- Inferring interference context Counter,Join,LevelDummy (recompute interference context after unfold) END 
   
   
-  // ------- unfold END --------------
+  // ------- //unfold END --------------
   
   
-  // ------- apply BEGIN -------------
+  // ------- //apply BEGIN -------------
   
   CONT_max1(r, 2, n)
   
-  // ------- apply END ---------------
+  // ------- //apply END ---------------
   
   
-  // ------- apply BEGIN -------------
+  // ------- //apply BEGIN -------------
   
   AUTH_max1(r, n, 2)
   
-  // ------- apply END ---------------
+  // ------- //apply END ---------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(Counter(r, lvl, x), write)
+  //fold acc(Counter(r, lvl, x), write)
   assert lvl >= 0 && Counter_state(r, lvl, x) == 2
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
   
   // skip;
@@ -1336,10 +1336,10 @@ method parallel_incr(lvl: Int, alvl: Int, dummy: Ref)
 }
 
 method CONT_split(r: Ref, n: Int, m: Int)
-  requires Counter_CONT_T(r, n + m) && acc(Counter_CONT(r, n + m), write)
-  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
+  //requires Counter_CONT_T(r, n + m) && acc(Counter_CONT(r, n + m), write)
+  //requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
     m < 0 && 0 <= n && n + m < 0
-  ensures Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
+  //ensures Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
     (Counter_CONT_T(r, m) && acc(Counter_CONT(r, m), write))
 {
   var $_levelVar_3: Int
@@ -1366,11 +1366,11 @@ method CONT_split(r: Ref, n: Int, m: Int)
 }
 
 method CONT_join(r: Ref, n: Int, m: Int)
-  requires Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
+  //requires Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
     (Counter_CONT_T(r, m) && acc(Counter_CONT(r, m), write))
-  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
+  //requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
     m < 0 && 0 <= n && n + m < 0
-  ensures Counter_CONT_T(r, n + m) && acc(Counter_CONT(r, n + m), write)
+  //ensures Counter_CONT_T(r, n + m) && acc(Counter_CONT(r, n + m), write)
 {
   var $_levelVar_4: Int
   inhale $_levelVar_4 >= 0
@@ -1396,10 +1396,10 @@ method CONT_join(r: Ref, n: Int, m: Int)
 }
 
 method CONT_false1(r: Ref, n: Int)
-  requires Counter_CONT_T(r, 0 - 1) && acc(Counter_CONT(r, 0 - 1), write) &&
+  //requires Counter_CONT_T(r, 0 - 1) && acc(Counter_CONT(r, 0 - 1), write) &&
     (Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write)) &&
     0 < n
-  ensures false
+  //ensures false
 {
   var $_levelVar_5: Int
   inhale $_levelVar_5 >= 0
@@ -1425,13 +1425,13 @@ method CONT_false1(r: Ref, n: Int)
 }
 
 method CONT_max1(r: Ref, n: Int, m: Int)
-  requires Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
+  //requires Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
     (Counter_CONT_T(r, 0 - 1 - m) && acc(Counter_CONT(r, 0 - 1 - m), write)) &&
     0 <= n &&
     0 <= m
-  ensures Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
+  //ensures Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
     (Counter_CONT_T(r, 0 - 1 - m) && acc(Counter_CONT(r, 0 - 1 - m), write))
-  ensures n <= m
+  //ensures n <= m
 {
   var $_levelVar_6: Int
   inhale $_levelVar_6 >= 0
@@ -1457,10 +1457,10 @@ method CONT_max1(r: Ref, n: Int, m: Int)
 }
 
 method AUTH_split(r: Ref, n: Int, m: Int)
-  requires Counter_AUTH_T(r, n + m) && acc(Counter_AUTH(r, n + m), write)
-  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
+  //requires Counter_AUTH_T(r, n + m) && acc(Counter_AUTH(r, n + m), write)
+  //requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
     m < 0 && 0 <= n && n + m < 0
-  ensures Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
+  //ensures Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
     (Counter_AUTH_T(r, m) && acc(Counter_AUTH(r, m), write))
 {
   var $_levelVar_7: Int
@@ -1487,11 +1487,11 @@ method AUTH_split(r: Ref, n: Int, m: Int)
 }
 
 method AUTH_join(r: Ref, n: Int, m: Int)
-  requires Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
+  //requires Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
     (Counter_AUTH_T(r, m) && acc(Counter_AUTH(r, m), write))
-  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
+  //requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
     m < 0 && 0 <= n && n + m < 0
-  ensures Counter_AUTH_T(r, n + m) && acc(Counter_AUTH(r, n + m), write)
+  //ensures Counter_AUTH_T(r, n + m) && acc(Counter_AUTH(r, n + m), write)
 {
   var $_levelVar_8: Int
   inhale $_levelVar_8 >= 0
@@ -1517,10 +1517,10 @@ method AUTH_join(r: Ref, n: Int, m: Int)
 }
 
 method AUTH_false1(r: Ref, n: Int)
-  requires Counter_AUTH_T(r, 0 - 1) && acc(Counter_AUTH(r, 0 - 1), write) &&
+  //requires Counter_AUTH_T(r, 0 - 1) && acc(Counter_AUTH(r, 0 - 1), write) &&
     (Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write)) &&
     0 < n
-  ensures false
+  //ensures false
 {
   var $_levelVar_9: Int
   inhale $_levelVar_9 >= 0
@@ -1546,13 +1546,13 @@ method AUTH_false1(r: Ref, n: Int)
 }
 
 method AUTH_max1(r: Ref, n: Int, m: Int)
-  requires Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
+  //requires Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
     (Counter_AUTH_T(r, 0 - 1 - m) && acc(Counter_AUTH(r, 0 - 1 - m), write)) &&
     0 <= n &&
     0 <= m
-  ensures Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
+  //ensures Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
     (Counter_AUTH_T(r, 0 - 1 - m) && acc(Counter_AUTH(r, 0 - 1 - m), write))
-  ensures n <= m
+  //ensures n <= m
 {
   var $_levelVar_10: Int
   inhale $_levelVar_10 >= 0
@@ -1578,8 +1578,8 @@ method AUTH_max1(r: Ref, n: Int, m: Int)
 }
 
 method makeCounter(lvl: Int) returns (r: Ref, x: Ref)
-  requires lvl >= 0
-  ensures acc(Counter(r, lvl, x), write) &&
+  //requires lvl >= 0
+  //ensures acc(Counter(r, lvl, x), write) &&
     (lvl >= 0 && Counter_state(r, lvl, x) == 0) &&
     acc(Counter_INCR(r), write) &&
     (Counter_AUTH_T(r, 0 - 1) && acc(Counter_AUTH(r, 0 - 1), write))
@@ -1736,27 +1736,27 @@ method makeCounter(lvl: Int) returns (r: Ref, x: Ref)
   // ------- inhale END --------------
   
   
-  // ------- apply BEGIN -------------
+  // ------- //apply BEGIN -------------
   
   AUTH_split(r, 0 - 1, 0)
   
-  // ------- apply END ---------------
+  // ------- //apply END ---------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(Counter(r, lvl, x), write)
+  //fold acc(Counter(r, lvl, x), write)
   assert lvl >= 0 && true
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method incr(r: Ref, lvl: Int, x: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     (Counter_AUTH_T(r, 1) && acc(Counter_AUTH(r, 1), write)) &&
     acc(Counter_INCR(r), 1 / 2)
-  ensures acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //ensures acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     (Counter_CONT_T(r, 1) && acc(Counter_CONT(r, 1), write)) &&
     acc(Counter_INCR(r), 1 / 2)
 {
@@ -1832,7 +1832,7 @@ method incr(r: Ref, lvl: Int, x: Ref)
   label pre_open_region0
   assert $_levelVar_12 > lvl
   $_levelVar_13 := lvl
-  unfold acc(Counter(r, lvl, x), write)
+  //unfold acc(Counter(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -1843,7 +1843,7 @@ method incr(r: Ref, lvl: Int, x: Ref)
   
   // ------- heap-read END -----------
   
-  fold acc(Counter(r, lvl, x), write)
+  //fold acc(Counter(r, lvl, x), write)
   assert Counter_state(r, lvl, x) ==
     old[pre_open_region0](Counter_state(r, lvl, x))
   $_levelVar_14 := $_levelVar_12
@@ -1967,7 +1967,7 @@ method incr(r: Ref, lvl: Int, x: Ref)
   assert $_levelVar_14 > lvl
   $_levelVar_15 := lvl
   exhale acc(Counter_INCR(r), 1 / 2)
-  unfold acc(Counter(r, lvl, x), write)
+  //unfold acc(Counter(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -1995,18 +1995,18 @@ method incr(r: Ref, lvl: Int, x: Ref)
   
   if (b) {
     
-    // ------- apply BEGIN -------------
+    // ------- //apply BEGIN -------------
     
     AUTH_join(r, v, 1)
     
-    // ------- apply END ---------------
+    // ------- //apply END ---------------
     
     
-    // ------- apply BEGIN -------------
+    // ------- //apply BEGIN -------------
     
     CONT_split(r, 0 - 1 - (v + 1), 1)
     
-    // ------- apply END ---------------
+    // ------- //apply END ---------------
     
     assert $_levelVar_15 == $_levelVar_15
   }
@@ -2014,7 +2014,7 @@ method incr(r: Ref, lvl: Int, x: Ref)
   
   // ------- if-then-else END --------
   
-  fold acc(Counter(r, lvl, x), write)
+  //fold acc(Counter(r, lvl, x), write)
   assert old[pre_use_atomic0](Counter_state(r, lvl, x)) ==
     Counter_state(r, lvl, x) ||
     1 / 2 <= 1 / 2
@@ -2136,9 +2136,9 @@ method incr(r: Ref, lvl: Int, x: Ref)
   
   label preWhile0
   while (!b)
-    invariant acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+    //invariant acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
       acc(Counter_INCR(r), 1 / 2)
-    invariant (!b ?
+    //invariant (!b ?
         Counter_AUTH_T(r, 1) && acc(Counter_AUTH(r, 1), write) :
         Counter_CONT_T(r, 1) && acc(Counter_CONT(r, 1), write)) 
   {
@@ -2225,7 +2225,7 @@ method incr(r: Ref, lvl: Int, x: Ref)
     label pre_open_region
     assert $_levelVar_17 > lvl
     $_levelVar_18 := lvl
-    unfold acc(Counter(r, lvl, x), write)
+    //unfold acc(Counter(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -2236,7 +2236,7 @@ method incr(r: Ref, lvl: Int, x: Ref)
     
     // ------- heap-read END -----------
     
-    fold acc(Counter(r, lvl, x), write)
+    //fold acc(Counter(r, lvl, x), write)
     assert Counter_state(r, lvl, x) ==
       old[pre_open_region](Counter_state(r, lvl, x))
     $_levelVar_19 := $_levelVar_17
@@ -2364,7 +2364,7 @@ method incr(r: Ref, lvl: Int, x: Ref)
     assert $_levelVar_19 > lvl
     $_levelVar_20 := lvl
     exhale acc(Counter_INCR(r), 1 / 2)
-    unfold acc(Counter(r, lvl, x), write)
+    //unfold acc(Counter(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -2392,18 +2392,18 @@ method incr(r: Ref, lvl: Int, x: Ref)
     
     if (b) {
       
-      // ------- apply BEGIN -------------
+      // ------- //apply BEGIN -------------
       
       AUTH_join(r, v, 1)
       
-      // ------- apply END ---------------
+      // ------- //apply END ---------------
       
       
-      // ------- apply BEGIN -------------
+      // ------- //apply BEGIN -------------
       
       CONT_split(r, 0 - 1 - (v + 1), 1)
       
-      // ------- apply END ---------------
+      // ------- //apply END ---------------
       
       assert $_levelVar_20 == $_levelVar_20
     }
@@ -2411,7 +2411,7 @@ method incr(r: Ref, lvl: Int, x: Ref)
     
     // ------- if-then-else END --------
     
-    fold acc(Counter(r, lvl, x), write)
+    //fold acc(Counter(r, lvl, x), write)
     assert old[pre_use_atomic](Counter_state(r, lvl, x)) ==
       Counter_state(r, lvl, x) ||
       1 / 2 <= 1 / 2
@@ -2542,9 +2542,9 @@ method incr(r: Ref, lvl: Int, x: Ref)
 
 method make_join(alvl: Int, r: Ref, lvl: Int, x: Ref)
   returns (s: Ref, y: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     lvl < alvl
-  ensures acc(Join(s, alvl, y, r, lvl, x), write) &&
+  //ensures acc(Join(s, alvl, y, r, lvl, x), write) &&
     (alvl >= 0 && Join_state(s, alvl, y, r, lvl, x) == 0) &&
     acc(Join_SET(s), write) &&
     acc(Join_JOIN(s), write) &&
@@ -2709,24 +2709,24 @@ method make_join(alvl: Int, r: Ref, lvl: Int, x: Ref)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(Join(s, alvl, y, r, lvl, x), write)
+  //fold acc(Join(s, alvl, y, r, lvl, x), write)
   assert alvl >= 0 && Join_state(s, alvl, y, r, lvl, x) == 0
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method set_to_one(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     (Counter_CONT_T(r, 1) && acc(Counter_CONT(r, 1), write)) &&
     acc(Counter_INCR(r), 1 / 2) &&
     (acc(Join(s, alvl, y, r, lvl, x), write) &&
     (alvl >= 0 && Join_state(s, alvl, y, r, lvl, x) == 0)) &&
     acc(Join_SET(s), write) &&
     lvl < alvl
-  ensures acc(Join(s, alvl, y, r, lvl, x), write) &&
+  //ensures acc(Join(s, alvl, y, r, lvl, x), write) &&
     (alvl >= 0 && Join_state(s, alvl, y, r, lvl, x) == 1)
 {
   var $_levelVar_25: Int
@@ -2791,7 +2791,7 @@ method set_to_one(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
   assert $_levelVar_25 > alvl
   $_levelVar_26 := alvl
   exhale acc(Join_SET(s), write)
-  unfold acc(Join(s, alvl, y, r, lvl, x), write)
+  //unfold acc(Join(s, alvl, y, r, lvl, x), write)
   label transitionPre4
   quasihavoc Counter_interferenceContext_fp(r, lvl, x)
   
@@ -2826,7 +2826,7 @@ method set_to_one(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
   
   // ------- inhale END --------------
   
-  fold acc(Join(s, alvl, y, r, lvl, x), write)
+  //fold acc(Join(s, alvl, y, r, lvl, x), write)
   assert old[pre_use_atomic2](Join_state(s, alvl, y, r, lvl, x)) ==
     Join_state(s, alvl, y, r, lvl, x) ||
     0 == old[pre_use_atomic2](Join_state(s, alvl, y, r, lvl, x)) &&
@@ -2948,10 +2948,10 @@ method set_to_one(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
 }
 
 method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Join_JOIN(s), write) &&
     (acc(Join(s, alvl, y, r, lvl, x), write) && (alvl >= 0 && true))
-  ensures acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //ensures acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     (Counter_CONT_T(r, 1) && acc(Counter_CONT(r, 1), write)) &&
     acc(Counter_INCR(r), 1 / 2) &&
     (acc(Join(s, alvl, y, r, lvl, x), write) &&
@@ -3023,7 +3023,7 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
   label pre_open_region2
   assert $_levelVar_28 > alvl
   $_levelVar_29 := alvl
-  unfold acc(Join(s, alvl, y, r, lvl, x), write)
+  //unfold acc(Join(s, alvl, y, r, lvl, x), write)
   label transitionPre5
   quasihavoc Counter_interferenceContext_fp(r, lvl, x)
   
@@ -3047,19 +3047,19 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
   
   if (!(v == 0)) {
     
-    // ------- fold BEGIN --------------
+    // ------- //fold BEGIN --------------
     
-    fold acc(Join(s, alvl, y, r, lvl, x), write)
+    //fold acc(Join(s, alvl, y, r, lvl, x), write)
     assert alvl >= 0 && true
     
-    // ------- fold END ----------------
+    // ------- //fold END ----------------
     
     
     // ------- use-region-interpretation BEGIN 
     
-    unfold acc(Join(s, alvl, y, r, lvl, x), write)
+    //unfold acc(Join(s, alvl, y, r, lvl, x), write)
     inhale perm(Join_JOIN(s)) <= write
-    fold acc(Join(s, alvl, y, r, lvl, x), write)
+    //fold acc(Join(s, alvl, y, r, lvl, x), write)
     
     // ------- Inferring interference context Counter,Join,LevelDummy (infer interference context after use-region interpretation) BEGIN 
     
@@ -3154,10 +3154,10 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
     // ------- use-region-interpretation END 
     
     
-    // ------- unfold BEGIN ------------
+    // ------- //unfold BEGIN ------------
     
     assert alvl >= 0 && true
-    unfold acc(Join(s, alvl, y, r, lvl, x), write)
+    //unfold acc(Join(s, alvl, y, r, lvl, x), write)
     
     // ------- Inferring interference context Counter,Join,LevelDummy (recompute interference context after unfold) BEGIN 
     
@@ -3249,7 +3249,7 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
     // ------- Inferring interference context Counter,Join,LevelDummy (recompute interference context after unfold) END 
     
     
-    // ------- unfold END --------------
+    // ------- //unfold END --------------
     
     
     // ------- exhale BEGIN ------------
@@ -3271,7 +3271,7 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
   
   // ------- if-then-else END --------
   
-  fold acc(Join(s, alvl, y, r, lvl, x), write)
+  //fold acc(Join(s, alvl, y, r, lvl, x), write)
   assert Join_state(s, alvl, y, r, lvl, x) ==
     old[pre_open_region2](Join_state(s, alvl, y, r, lvl, x))
   $_levelVar_31 := $_levelVar_28
@@ -3393,9 +3393,9 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
   
   label preWhile
   while (v == 0)
-    invariant acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+    //invariant acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
       (acc(Join(s, alvl, y, r, lvl, x), write) && (alvl >= 0 && true))
-    invariant (v == 0 ?
+    //invariant (v == 0 ?
         acc(Join_JOIN(s), write) :
         Counter_CONT_T(r, 1) && acc(Counter_CONT(r, 1), write) &&
         acc(Counter_INCR(r), 1 / 2) &&
@@ -3483,7 +3483,7 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
     label pre_open_region3
     assert $_levelVar_31 > alvl
     $_levelVar_32 := alvl
-    unfold acc(Join(s, alvl, y, r, lvl, x), write)
+    //unfold acc(Join(s, alvl, y, r, lvl, x), write)
     label transitionPre6
     quasihavoc Counter_interferenceContext_fp(r, lvl, x)
     
@@ -3507,19 +3507,19 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
     
     if (!(v == 0)) {
       
-      // ------- fold BEGIN --------------
+      // ------- //fold BEGIN --------------
       
-      fold acc(Join(s, alvl, y, r, lvl, x), write)
+      //fold acc(Join(s, alvl, y, r, lvl, x), write)
       assert alvl >= 0 && true
       
-      // ------- fold END ----------------
+      // ------- //fold END ----------------
       
       
       // ------- use-region-interpretation BEGIN 
       
-      unfold acc(Join(s, alvl, y, r, lvl, x), write)
+      //unfold acc(Join(s, alvl, y, r, lvl, x), write)
       inhale perm(Join_JOIN(s)) <= write
-      fold acc(Join(s, alvl, y, r, lvl, x), write)
+      //fold acc(Join(s, alvl, y, r, lvl, x), write)
       
       // ------- Inferring interference context Counter,Join,LevelDummy (infer interference context after use-region interpretation) BEGIN 
       
@@ -3616,10 +3616,10 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
       // ------- use-region-interpretation END 
       
       
-      // ------- unfold BEGIN ------------
+      // ------- //unfold BEGIN ------------
       
       assert alvl >= 0 && true
-      unfold acc(Join(s, alvl, y, r, lvl, x), write)
+      //unfold acc(Join(s, alvl, y, r, lvl, x), write)
       
       // ------- Inferring interference context Counter,Join,LevelDummy (recompute interference context after unfold) BEGIN 
       
@@ -3713,7 +3713,7 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
       // ------- Inferring interference context Counter,Join,LevelDummy (recompute interference context after unfold) END 
       
       
-      // ------- unfold END --------------
+      // ------- //unfold END --------------
       
       
       // ------- exhale BEGIN ------------
@@ -3736,7 +3736,7 @@ method wait(s: Ref, alvl: Int, y: Ref, r: Ref, lvl: Int, x: Ref)
     
     // ------- if-then-else END --------
     
-    fold acc(Join(s, alvl, y, r, lvl, x), write)
+    //fold acc(Join(s, alvl, y, r, lvl, x), write)
     assert Join_state(s, alvl, y, r, lvl, x) ==
       old[pre_open_region3](Join_state(s, alvl, y, r, lvl, x))
     $_levelVar_34 := $_levelVar_31
@@ -4191,7 +4191,7 @@ method $_LevelDummy_action_transitivity_check()
 
 method $_thread_incr_condition_stability_precondition_check(r: Ref, lvl: Int,
   x: Ref, s: Ref, alvl: Int, y: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     (Counter_AUTH_T(r, 1) && acc(Counter_AUTH(r, 1), write)) &&
     acc(Counter_INCR(r), 1 / 2) &&
     (acc(Join(s, alvl, y, r, lvl, x), write) &&
@@ -4290,7 +4290,7 @@ method $_thread_incr_condition_stability_precondition_check(r: Ref, lvl: Int,
 
 method $_parallel_incr_condition_stability_precondition_check(lvl: Int, alvl: Int,
   dummy: Ref, r: Ref, x: Ref)
-  requires acc(LevelDummy(dummy, alvl), write) && (alvl >= 0 && true) &&
+  //requires acc(LevelDummy(dummy, alvl), write) && (alvl >= 0 && true) &&
     (alvl > lvl && lvl >= 0)
 {
   var $_levelVar_37: Int
@@ -4384,8 +4384,8 @@ method $_parallel_incr_condition_stability_precondition_check(lvl: Int, alvl: In
 }
 
 method $_CONT_split_condition_stability_precondition_check(r: Ref, n: Int, m: Int)
-  requires Counter_CONT_T(r, n + m) && acc(Counter_CONT(r, n + m), write)
-  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
+  //requires Counter_CONT_T(r, n + m) && acc(Counter_CONT(r, n + m), write)
+  //requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
     m < 0 && 0 <= n && n + m < 0
 {
   var $_levelVar_38: Int
@@ -4474,9 +4474,9 @@ method $_CONT_split_condition_stability_precondition_check(r: Ref, n: Int, m: In
 }
 
 method $_CONT_join_condition_stability_precondition_check(r: Ref, n: Int, m: Int)
-  requires Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
+  //requires Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
     (Counter_CONT_T(r, m) && acc(Counter_CONT(r, m), write))
-  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
+  //requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
     m < 0 && 0 <= n && n + m < 0
 {
   var $_levelVar_39: Int
@@ -4566,7 +4566,7 @@ method $_CONT_join_condition_stability_precondition_check(r: Ref, n: Int, m: Int
 }
 
 method $_CONT_false1_condition_stability_precondition_check(r: Ref, n: Int)
-  requires Counter_CONT_T(r, 0 - 1) && acc(Counter_CONT(r, 0 - 1), write) &&
+  //requires Counter_CONT_T(r, 0 - 1) && acc(Counter_CONT(r, 0 - 1), write) &&
     (Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write)) &&
     0 < n
 {
@@ -4656,7 +4656,7 @@ method $_CONT_false1_condition_stability_precondition_check(r: Ref, n: Int)
 }
 
 method $_CONT_max1_condition_stability_precondition_check(r: Ref, n: Int, m: Int)
-  requires Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
+  //requires Counter_CONT_T(r, n) && acc(Counter_CONT(r, n), write) &&
     (Counter_CONT_T(r, 0 - 1 - m) && acc(Counter_CONT(r, 0 - 1 - m), write)) &&
     0 <= n &&
     0 <= m
@@ -4748,8 +4748,8 @@ method $_CONT_max1_condition_stability_precondition_check(r: Ref, n: Int, m: Int
 }
 
 method $_AUTH_split_condition_stability_precondition_check(r: Ref, n: Int, m: Int)
-  requires Counter_AUTH_T(r, n + m) && acc(Counter_AUTH(r, n + m), write)
-  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
+  //requires Counter_AUTH_T(r, n + m) && acc(Counter_AUTH(r, n + m), write)
+  //requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
     m < 0 && 0 <= n && n + m < 0
 {
   var $_levelVar_42: Int
@@ -4838,9 +4838,9 @@ method $_AUTH_split_condition_stability_precondition_check(r: Ref, n: Int, m: In
 }
 
 method $_AUTH_join_condition_stability_precondition_check(r: Ref, n: Int, m: Int)
-  requires Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
+  //requires Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
     (Counter_AUTH_T(r, m) && acc(Counter_AUTH(r, m), write))
-  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
+  //requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 ||
     m < 0 && 0 <= n && n + m < 0
 {
   var $_levelVar_43: Int
@@ -4930,7 +4930,7 @@ method $_AUTH_join_condition_stability_precondition_check(r: Ref, n: Int, m: Int
 }
 
 method $_AUTH_false1_condition_stability_precondition_check(r: Ref, n: Int)
-  requires Counter_AUTH_T(r, 0 - 1) && acc(Counter_AUTH(r, 0 - 1), write) &&
+  //requires Counter_AUTH_T(r, 0 - 1) && acc(Counter_AUTH(r, 0 - 1), write) &&
     (Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write)) &&
     0 < n
 {
@@ -5020,7 +5020,7 @@ method $_AUTH_false1_condition_stability_precondition_check(r: Ref, n: Int)
 }
 
 method $_AUTH_max1_condition_stability_precondition_check(r: Ref, n: Int, m: Int)
-  requires Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
+  //requires Counter_AUTH_T(r, n) && acc(Counter_AUTH(r, n), write) &&
     (Counter_AUTH_T(r, 0 - 1 - m) && acc(Counter_AUTH(r, 0 - 1 - m), write)) &&
     0 <= n &&
     0 <= m
@@ -5113,7 +5113,7 @@ method $_AUTH_max1_condition_stability_precondition_check(r: Ref, n: Int, m: Int
 
 method $_makeCounter_condition_stability_precondition_check(lvl: Int, r: Ref,
   x: Ref)
-  requires lvl >= 0
+  //requires lvl >= 0
 {
   var $_levelVar_46: Int
   inhale $_levelVar_46 >= 0
@@ -5199,7 +5199,7 @@ method $_makeCounter_condition_stability_precondition_check(lvl: Int, r: Ref,
 }
 
 method $_incr_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     (Counter_AUTH_T(r, 1) && acc(Counter_AUTH(r, 1), write)) &&
     acc(Counter_INCR(r), 1 / 2)
 {
@@ -5292,7 +5292,7 @@ method $_incr_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
 
 method $_make_join_condition_stability_precondition_check(alvl: Int, r: Ref,
   lvl: Int, x: Ref, s: Ref, y: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     lvl < alvl
 {
   var $_levelVar_48: Int
@@ -5380,7 +5380,7 @@ method $_make_join_condition_stability_precondition_check(alvl: Int, r: Ref,
 
 method $_set_to_one_condition_stability_precondition_check(s: Ref, alvl: Int,
   y: Ref, r: Ref, lvl: Int, x: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     (Counter_CONT_T(r, 1) && acc(Counter_CONT(r, 1), write)) &&
     acc(Counter_INCR(r), 1 / 2) &&
     (acc(Join(s, alvl, y, r, lvl, x), write) &&
@@ -5479,7 +5479,7 @@ method $_set_to_one_condition_stability_precondition_check(s: Ref, alvl: Int,
 
 method $_wait_condition_stability_precondition_check(s: Ref, alvl: Int, y: Ref,
   r: Ref, lvl: Int, x: Ref)
-  requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(Counter(r, lvl, x), write) && (lvl >= 0 && true) &&
     acc(Join_JOIN(s), write) &&
     (acc(Join(s, alvl, y, r, lvl, x), write) && (alvl >= 0 && true))
 {

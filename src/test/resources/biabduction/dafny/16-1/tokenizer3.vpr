@@ -16,7 +16,7 @@ function IsFollow(ch: Int, cat: Category): Bool
 
 method ReadModifedIdentifier(this: Ref) returns (cat: Category, p: Int, token: Seq[Int])
     //requires Tokenizer(this)
-    ensures 0 <= p
+    //ensures 0 <= p
     //ensures Tokenizer(this)
     //ensures getSource(this) == old(getSource(this))
     //ensures !cat.isWhitespace
@@ -28,15 +28,16 @@ method ReadModifedIdentifier(this: Ref) returns (cat: Category, p: Int, token: S
     //ensures forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
     //ensures p < getN(this) ==> getN(this) == |getSource(this)| || !Is(getSource(this)[getN(this)], cat)
     //ensures token == getSource(this)[p..getN(this)]
-    // New
     //ensures cat.isIdentifier ==> IsStart(token[0], cat) && forall i: Int :: 1 <= i < |token| ==> IsFollow(token[i], cat)
 {
     // skip whitespace
+    var oldSource: Seq[Int] := getSource(this)
+    var oldN: Int := getN(this)
     while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], Whitespace()))
         //invariant Tokenizer(this)
-        //invariant getSource(this) == old(getSource(this))
-        //invariant old(getN(this)) <= getN(this) <= |getSource(this)|
-        //invariant forall i: Int :: old(getN(this)) <= i < getN(this) ==> Is(getSource(this)[i], Whitespace())
+        invariant getSource(this) == oldSource
+        invariant oldN <= getN(this) <= |getSource(this)|
+        invariant forall i: Int :: oldN <= i < getN(this) ==> Is(getSource(this)[i], Whitespace())
     {
         //unfold Tokenizer(this)
         this.n := this.n + 1
@@ -84,9 +85,9 @@ method ReadModifedIdentifier(this: Ref) returns (cat: Category, p: Int, token: S
             //fold Tokenizer(this)
             while (getN(this) != |getSource(this)| && Is(getSource(this)[getN(this)], cat) && !return)
                 //invariant Tokenizer(this)
-                //invariant getSource(this) == old(getSource(this))
-                //invariant p <= getN(this) <= |getSource(this)|
-                //invariant forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
+                invariant getSource(this) == oldSource
+                invariant p <= getN(this) <= |getSource(this)|
+                invariant forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
             {
                 if (cat.isIdentifier && !IsFollow(getSource(this)[getN(this)], cat))
                 {
@@ -106,7 +107,7 @@ method ReadModifedIdentifier(this: Ref) returns (cat: Category, p: Int, token: S
             token := Seq()
             //unfold Tokenizer(this)
             this.n := p
-            //fold Tokenizer(this)
+            fold Tokenizer(this)
         }
         else
         {

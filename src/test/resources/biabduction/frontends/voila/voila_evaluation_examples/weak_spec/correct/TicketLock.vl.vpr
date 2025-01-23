@@ -173,60 +173,60 @@ field $memcell_$next: Int
 field $memcell_$owner: Int
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function comprehension_12_150($s_0: Int): Set[Int]
-  ensures (forall $k: Int ::($k in result) == $k >= $s_0)
+  //ensures (forall $k: Int ::($k in result) == $k >= $s_0)
 
 
 function comprehension_29_170(): Set[Int]
-  ensures (forall $k: Int ::($k in result) == $k >= 0)
+  //ensures (forall $k: Int ::($k in result) == $k >= 0)
 
 
 function comprehension_16_280($s_0: Int, $s_1: Int): Set[Int]
-  ensures (forall $k: Int ::($k in result) == ($s_0 <= $k && $k < $s_1))
+  //ensures (forall $k: Int ::($k in result) == ($s_0 <= $k && $k < $s_1))
 
 
 function TLock_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(TLock_atomicity_context_fp(r, lvl, x), write)
-  ensures [TLock_atomicity_context_df(r, lvl, x), true]
+  //requires acc(TLock_atomicity_context_fp(r, lvl, x), write)
+  //ensures [TLock_atomicity_context_df(r, lvl, x), true]
 
 
 function TLock_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(TLock_interferenceContext_fp(r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(TLock_interferenceContext_fp(r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==> ($_m in TLock_interferenceSet_df($p0, r, lvl, x))),
     true]
 
 
 function TLock_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock_interferenceContext_fp(r, lvl, x), write)
-  ensures [TLock_interferenceReference_df($p0, r, lvl, x), true]
+  //requires acc(TLock_interferenceContext_fp(r, lvl, x), write)
+  //ensures [TLock_interferenceReference_df($p0, r, lvl, x), true]
 
 
 function TLock_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock_sk_fp(), write)
+  //requires acc(TLock_sk_fp(), write)
 
 
 function TLock_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock_sk_fp(), write)
+  //requires acc(TLock_sk_fp(), write)
 
 
 function TLock_out0(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock(r, lvl, x), write)
+  //requires acc(TLock(r, lvl, x), write)
 {
   (unfolding acc(TLock(r, lvl, x), write) in x.$memcell_$next)
 }
 
 function TLock_state(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock(r, lvl, x), write)
-  ensures [TLock_state_T(r, lvl, x), true]
+  //requires acc(TLock(r, lvl, x), write)
+  //ensures [TLock_state_T(r, lvl, x), true]
 {
   (unfolding acc(TLock(r, lvl, x), write) in x.$memcell_$owner)
 }
@@ -271,8 +271,8 @@ method ___silicon_hack407_havoc_all_TLock_interferenceContext_fp()
 
 
 method makeLock(lvl: Int) returns (ret: Ref, r: Ref)
-  requires lvl >= 0
-  ensures acc(TLock(r, lvl, ret), write) && (lvl >= 0 && true)
+  //requires lvl >= 0
+  //ensures acc(TLock(r, lvl, ret), write) && (lvl >= 0 && true)
 {
   var k: Int
   var $_levelVar_0: Int
@@ -421,18 +421,18 @@ method makeLock(lvl: Int) returns (ret: Ref, r: Ref)
   // ------- inhale END --------------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(TLock(r, lvl, ret), write)
+  //fold acc(TLock(r, lvl, ret), write)
   assert lvl >= 0 && true
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method acquire(r: Ref, lvl: Int, x: Ref)
-  requires acc(TLock(r, lvl, x), write) && (lvl >= 0 && true)
-  ensures acc(TLock(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(TLock(r, lvl, x), write) && (lvl >= 0 && true)
+  //ensures acc(TLock(r, lvl, x), write) && (lvl >= 0 && true) &&
     (TLock_TICKET_T(r, TLock_state(r, lvl, x)) &&
     acc(TLock_TICKET(r, TLock_state(r, lvl, x)), write))
 {
@@ -508,7 +508,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   label pre_open_region0
   assert $_levelVar_1 > lvl
   $_levelVar_2 := lvl
-  unfold acc(TLock(r, lvl, x), write)
+  //unfold acc(TLock(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -519,7 +519,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   
   // ------- heap-read END -----------
   
-  fold acc(TLock(r, lvl, x), write)
+  //fold acc(TLock(r, lvl, x), write)
   assert TLock_state(r, lvl, x) ==
     old[pre_open_region0](TLock_state(r, lvl, x))
   $_levelVar_3 := $_levelVar_1
@@ -582,7 +582,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   label pre_open_region
   assert $_levelVar_3 > lvl
   $_levelVar_4 := lvl
-  unfold acc(TLock(r, lvl, x), write)
+  //unfold acc(TLock(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -603,7 +603,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   
   // ------- call:CAS END ------------
   
-  fold acc(TLock(r, lvl, x), write)
+  //fold acc(TLock(r, lvl, x), write)
   assert TLock_state(r, lvl, x) ==
     old[pre_open_region](TLock_state(r, lvl, x))
   $_levelVar_5 := $_levelVar_3
@@ -665,8 +665,8 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   
   label preWhile0
   while (!b)
-    invariant acc(TLock(r, lvl, x), write) && (lvl >= 0 && true)
-    invariant (b ?
+    //invariant acc(TLock(r, lvl, x), write) && (lvl >= 0 && true)
+    //invariant (b ?
         TLock_TICKET_T(r, t) && acc(TLock_TICKET(r, t), write) &&
         t >= TLock_state(r, lvl, x) :
         true) 
@@ -733,7 +733,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     label pre_open_region2
     assert $_levelVar_5 > lvl
     $_levelVar_6 := lvl
-    unfold acc(TLock(r, lvl, x), write)
+    //unfold acc(TLock(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -744,7 +744,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     
     // ------- heap-read END -----------
     
-    fold acc(TLock(r, lvl, x), write)
+    //fold acc(TLock(r, lvl, x), write)
     assert TLock_state(r, lvl, x) ==
       old[pre_open_region2](TLock_state(r, lvl, x))
     $_levelVar_7 := $_levelVar_5
@@ -807,7 +807,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     label pre_open_region3
     assert $_levelVar_7 > lvl
     $_levelVar_8 := lvl
-    unfold acc(TLock(r, lvl, x), write)
+    //unfold acc(TLock(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -828,7 +828,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     
     // ------- call:CAS END ------------
     
-    fold acc(TLock(r, lvl, x), write)
+    //fold acc(TLock(r, lvl, x), write)
     assert TLock_state(r, lvl, x) ==
       old[pre_open_region3](TLock_state(r, lvl, x))
     $_levelVar_9 := $_levelVar_7
@@ -897,7 +897,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   label pre_open_region4
   assert $_levelVar_10 > lvl
   $_levelVar_11 := lvl
-  unfold acc(TLock(r, lvl, x), write)
+  //unfold acc(TLock(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -908,7 +908,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   
   // ------- heap-read END -----------
   
-  fold acc(TLock(r, lvl, x), write)
+  //fold acc(TLock(r, lvl, x), write)
   assert TLock_state(r, lvl, x) ==
     old[pre_open_region4](TLock_state(r, lvl, x))
   $_levelVar_12 := $_levelVar_10
@@ -970,9 +970,9 @@ method acquire(r: Ref, lvl: Int, x: Ref)
   
   label preWhile
   while (v < t)
-    invariant acc(TLock(r, lvl, x), write) && (lvl >= 0 && true) &&
+    //invariant acc(TLock(r, lvl, x), write) && (lvl >= 0 && true) &&
       (TLock_TICKET_T(r, t) && acc(TLock_TICKET(r, t), write))
-    invariant t >= TLock_state(r, lvl, x) && TLock_state(r, lvl, x) >= v 
+    //invariant t >= TLock_state(r, lvl, x) && TLock_state(r, lvl, x) >= v 
   {
     inhale acc(TLock_sk_fp(), write)
     
@@ -1035,7 +1035,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     label pre_open_region5
     assert $_levelVar_12 > lvl
     $_levelVar_13 := lvl
-    unfold acc(TLock(r, lvl, x), write)
+    //unfold acc(TLock(r, lvl, x), write)
     
     // no interference context translation needed
     
@@ -1046,7 +1046,7 @@ method acquire(r: Ref, lvl: Int, x: Ref)
     
     // ------- heap-read END -----------
     
-    fold acc(TLock(r, lvl, x), write)
+    //fold acc(TLock(r, lvl, x), write)
     assert TLock_state(r, lvl, x) ==
       old[pre_open_region5](TLock_state(r, lvl, x))
     $_levelVar_14 := $_levelVar_12
@@ -1112,10 +1112,10 @@ method acquire(r: Ref, lvl: Int, x: Ref)
 }
 
 method release(r: Ref, lvl: Int, x: Ref)
-  requires acc(TLock(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(TLock(r, lvl, x), write) && (lvl >= 0 && true) &&
     (TLock_TICKET_T(r, TLock_state(r, lvl, x)) &&
     acc(TLock_TICKET(r, TLock_state(r, lvl, x)), write))
-  ensures acc(TLock(r, lvl, x), write) && (lvl >= 0 && true)
+  //ensures acc(TLock(r, lvl, x), write) && (lvl >= 0 && true)
 {
   var v: Int
   var $_levelVar_16: Int
@@ -1178,7 +1178,7 @@ method release(r: Ref, lvl: Int, x: Ref)
   label pre_open_region6
   assert $_levelVar_16 > lvl
   $_levelVar_17 := lvl
-  unfold acc(TLock(r, lvl, x), write)
+  //unfold acc(TLock(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -1189,7 +1189,7 @@ method release(r: Ref, lvl: Int, x: Ref)
   
   // ------- heap-read END -----------
   
-  fold acc(TLock(r, lvl, x), write)
+  //fold acc(TLock(r, lvl, x), write)
   assert TLock_state(r, lvl, x) ==
     old[pre_open_region6](TLock_state(r, lvl, x))
   $_levelVar_18 := $_levelVar_16
@@ -1255,7 +1255,7 @@ method release(r: Ref, lvl: Int, x: Ref)
   $_levelVar_19 := lvl
   exhale TLock_TICKET_T(r, old(TLock_state(r, lvl, x))) &&
     acc(TLock_TICKET(r, old(TLock_state(r, lvl, x))), write)
-  unfold acc(TLock(r, lvl, x), write)
+  //unfold acc(TLock(r, lvl, x), write)
   
   // no interference context translation needed
   
@@ -1270,7 +1270,7 @@ method release(r: Ref, lvl: Int, x: Ref)
   // ------- heap-write END ----------
   
   inhale perm(TLock_TICKET(r, old(TLock_state(r, lvl, x)))) <= write
-  fold acc(TLock(r, lvl, x), write)
+  //fold acc(TLock(r, lvl, x), write)
   assert old[pre_use_atomic0](TLock_state(r, lvl, x)) ==
     TLock_state(r, lvl, x) ||
     old[pre_use_atomic0](TLock_state(r, lvl, x)) < TLock_state(r, lvl, x) &&
@@ -1335,8 +1335,8 @@ method release(r: Ref, lvl: Int, x: Ref)
 }
 
 method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
-  requires acc(x.$memcell_$next, write) && true
-  ensures (old(x.$memcell_$next) == now ?
+  //requires acc(x.$memcell_$next, write) && true
+  //ensures (old(x.$memcell_$next) == now ?
       ret && (acc(x.$memcell_$next, write) && x.$memcell_$next == thn) :
       !ret &&
       (acc(x.$memcell_$next, write) &&
@@ -1438,7 +1438,7 @@ method $_TLock_action_transitivity_check()
 
 method $_makeLock_condition_stability_precondition_check(lvl: Int, ret: Ref,
   r: Ref)
-  requires lvl >= 0
+  //requires lvl >= 0
 {
   var $_levelVar_22: Int
   inhale $_levelVar_22 >= 0
@@ -1486,7 +1486,7 @@ method $_makeLock_condition_stability_precondition_check(lvl: Int, ret: Ref,
 }
 
 method $_acquire_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
-  requires acc(TLock(r, lvl, x), write) && (lvl >= 0 && true)
+  //requires acc(TLock(r, lvl, x), write) && (lvl >= 0 && true)
 {
   var $_levelVar_23: Int
   var b: Bool
@@ -1537,7 +1537,7 @@ method $_acquire_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref
 }
 
 method $_release_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
-  requires acc(TLock(r, lvl, x), write) && (lvl >= 0 && true) &&
+  //requires acc(TLock(r, lvl, x), write) && (lvl >= 0 && true) &&
     (TLock_TICKET_T(r, TLock_state(r, lvl, x)) &&
     acc(TLock_TICKET(r, TLock_state(r, lvl, x)), write))
 {

@@ -1,16 +1,16 @@
 import "coffee1.vpr"
 
 method CoffeemakerRemoveGrinder(this: Ref) returns (grinder: Ref)
-    requires CoffeeMaker(this)
-    ensures CoffeeMaker(this)
-    ensures Grinder(grinder)
-    ensures unfolding CoffeeMaker(this) in !getHasBeans(this.CMGrinder)
-    ensures getHasBeans(grinder) == old(unfolding CoffeeMaker(this) in getHasBeans(this.CMGrinder))
+    //requires CoffeeMaker(this)
+    //ensures CoffeeMaker(this)
+    //ensures Grinder(grinder)
+    //ensures unfolding CoffeeMaker(this) in !getHasBeans(this.CMGrinder)
+    //ensures getHasBeans(grinder) == old(unfolding CoffeeMaker(this) in getHasBeans(this.CMGrinder))
 {
-    unfold CoffeeMaker(this)
+    //unfold CoffeeMaker(this)
     grinder := this.CMGrinder
     this.CMGrinder := GrinderConstructor()
-    fold CoffeeMaker(this)
+    //fold CoffeeMaker(this)
 }
 
 method RemoveGrinderHarness()

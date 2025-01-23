@@ -192,35 +192,35 @@ field $memcell_$next: Int
 field $memcell_$owner: Int
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function comprehension_74_280($s_0: Int, $s_1: Int): Set[Int]
-  ensures (forall $k: Int ::($k in result) == ($s_0 <= $k && $k < $s_1))
+  //ensures (forall $k: Int ::($k in result) == ($s_0 <= $k && $k < $s_1))
 
 
 function comprehension_85_220(): Set[Int]
-  ensures (forall $k: Int ::($k in result) == true)
+  //ensures (forall $k: Int ::($k in result) == true)
 
 
 function comprehension_70_150($s_0: Int): Set[Int]
-  ensures (forall $k: Int ::($k in result) == $k >= $s_0)
+  //ensures (forall $k: Int ::($k in result) == $k >= $s_0)
 
 
 function Client_atomicity_context_hf(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int,
   x: Ref): Set[Int]
-  requires acc(Client_atomicity_context_fp(c, l, z, r, lvl, x), write)
-  ensures [Client_atomicity_context_df(c, l, z, r, lvl, x), true]
+  //requires acc(Client_atomicity_context_fp(c, l, z, r, lvl, x), write)
+  //ensures [Client_atomicity_context_df(c, l, z, r, lvl, x), true]
 
 
 function Client_interferenceSet_hf($p0: Int, c: Ref, l: Int, z: Ref, r: Ref,
   lvl: Int, x: Ref): Set[Int]
-  requires acc(Client_interferenceContext_fp(c, l, z, r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(Client_interferenceContext_fp(c, l, z, r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in Client_interferenceSet_df($p0, c, l, z, r, lvl, x))),
@@ -229,60 +229,60 @@ function Client_interferenceSet_hf($p0: Int, c: Ref, l: Int, z: Ref, r: Ref,
 
 function Client_interferenceReference_hf($p0: Int, c: Ref, l: Int, z: Ref, r: Ref,
   lvl: Int, x: Ref): Int
-  requires acc(Client_interferenceContext_fp(c, l, z, r, lvl, x), write)
-  ensures [Client_interferenceReference_df($p0, c, l, z, r, lvl, x), true]
+  //requires acc(Client_interferenceContext_fp(c, l, z, r, lvl, x), write)
+  //ensures [Client_interferenceReference_df($p0, c, l, z, r, lvl, x), true]
 
 
 function Client_sk_$_action_n(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Client_sk_fp(), write)
+  //requires acc(Client_sk_fp(), write)
 
 
 function Client_sk_$_action_m(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Client_sk_fp(), write)
+  //requires acc(Client_sk_fp(), write)
 
 
 function Client_state(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(Client(c, l, z, r, lvl, x), write)
-  ensures [Client_state_T(c, l, z, r, lvl, x), true]
+  //requires acc(Client(c, l, z, r, lvl, x), write)
+  //ensures [Client_state_T(c, l, z, r, lvl, x), true]
 {
   (unfolding acc(Client(c, l, z, r, lvl, x), write) in z.$dualcell_$_val)
 }
 
 function TLock_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(TLock_atomicity_context_fp(r, lvl, x), write)
-  ensures [TLock_atomicity_context_df(r, lvl, x), true]
+  //requires acc(TLock_atomicity_context_fp(r, lvl, x), write)
+  //ensures [TLock_atomicity_context_df(r, lvl, x), true]
 
 
 function TLock_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
-  requires acc(TLock_interferenceContext_fp(r, lvl, x), write)
-  ensures [(forall $_m: Int ::
+  //requires acc(TLock_interferenceContext_fp(r, lvl, x), write)
+  //ensures [(forall $_m: Int ::
       { ($_m in result) }
       ($_m in result) ==> ($_m in TLock_interferenceSet_df($p0, r, lvl, x))),
     true]
 
 
 function TLock_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock_interferenceContext_fp(r, lvl, x), write)
-  ensures [TLock_interferenceReference_df($p0, r, lvl, x), true]
+  //requires acc(TLock_interferenceContext_fp(r, lvl, x), write)
+  //ensures [TLock_interferenceReference_df($p0, r, lvl, x), true]
 
 
 function TLock_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock_sk_fp(), write)
+  //requires acc(TLock_sk_fp(), write)
 
 
 function TLock_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock_sk_fp(), write)
+  //requires acc(TLock_sk_fp(), write)
 
 
 function TLock_out0(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock(r, lvl, x), write)
+  //requires acc(TLock(r, lvl, x), write)
 {
   (unfolding acc(TLock(r, lvl, x), write) in x.$memcell_$next)
 }
 
 function TLock_state(r: Ref, lvl: Int, x: Ref): Int
-  requires acc(TLock(r, lvl, x), write)
-  ensures [TLock_state_T(r, lvl, x), true]
+  //requires acc(TLock(r, lvl, x), write)
+  //ensures [TLock_state_T(r, lvl, x), true]
 {
   (unfolding acc(TLock(r, lvl, x), write) in x.$memcell_$owner)
 }
@@ -356,9 +356,9 @@ method ___silicon_hack407_havoc_all_TLock_interferenceContext_fp()
 
 
 method foo(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref, w: Int)
-  requires acc(Client(c, l, z, r, lvl, x), write) && (l >= 0 && true) &&
+  //requires acc(Client(c, l, z, r, lvl, x), write) && (l >= 0 && true) &&
     acc(Client_Z(c), write)
-  ensures acc(Client(c, l, z, r, lvl, x), write) && (l >= 0 && true) &&
+  //ensures acc(Client(c, l, z, r, lvl, x), write) && (l >= 0 && true) &&
     acc(Client_Z(c), write)
 {
   var ni: Int
@@ -423,7 +423,7 @@ method foo(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref, w: Int)
   label pre_open_region0
   assert $_levelVar_0 > l
   $_levelVar_1 := l
-  unfold acc(Client(c, l, z, r, lvl, x), write)
+  //unfold acc(Client(c, l, z, r, lvl, x), write)
   label transitionPre0
   quasihavoc TLock_interferenceContext_fp(r, lvl, x)
   
@@ -544,7 +544,7 @@ method foo(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref, w: Int)
   
   // ------- assume END --------------
   
-  fold acc(Client(c, l, z, r, lvl, x), write)
+  //fold acc(Client(c, l, z, r, lvl, x), write)
   assert Client_state(c, l, z, r, lvl, x) ==
     old[pre_open_region0](Client_state(c, l, z, r, lvl, x))
   $_levelVar_2 := $_levelVar_0
@@ -840,7 +840,7 @@ method foo(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref, w: Int)
   assert $_levelVar_2 > l
   $_levelVar_3 := l
   exhale acc(Client_Z(c), write)
-  unfold acc(Client(c, l, z, r, lvl, x), write)
+  //unfold acc(Client(c, l, z, r, lvl, x), write)
   label transitionPre
   quasihavoc TLock_interferenceContext_fp(r, lvl, x)
   
@@ -985,7 +985,7 @@ method foo(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref, w: Int)
   
   // ------- call:release END --------
   
-  fold acc(Client(c, l, z, r, lvl, x), write)
+  //fold acc(Client(c, l, z, r, lvl, x), write)
   assert true
   $_levelVar_4 := $_levelVar_2
   
@@ -1083,10 +1083,10 @@ method foo(c: Ref, l: Int, z: Ref, r: Ref, lvl: Int, x: Ref, w: Int)
 }
 
 method acquire(r: Ref, lvl: Int, x: Ref)
-  requires acc(TLock(r, lvl, x), write) &&
+  //requires acc(TLock(r, lvl, x), write) &&
     (lvl >= 0 && TLock_state(r, lvl, x) == TLock_state(r, lvl, x))
-  requires (TLock_state(r, lvl, x) in comprehension_85_220())
-  ensures acc(TLock(r, lvl, x), write) &&
+  //requires (TLock_state(r, lvl, x) in comprehension_85_220())
+  //ensures acc(TLock(r, lvl, x), write) &&
     (lvl >= 0 && TLock_state(r, lvl, x) == old(TLock_state(r, lvl, x))) &&
     (TLock_TICKET_T(r, old(TLock_state(r, lvl, x))) &&
     acc(TLock_TICKET(r, old(TLock_state(r, lvl, x))), write))
@@ -1112,12 +1112,12 @@ method acquire(r: Ref, lvl: Int, x: Ref)
 }
 
 method release(r: Ref, lvl: Int, x: Ref)
-  requires acc(TLock(r, lvl, x), write) &&
+  //requires acc(TLock(r, lvl, x), write) &&
     (lvl >= 0 && TLock_state(r, lvl, x) == TLock_state(r, lvl, x)) &&
     (TLock_TICKET_T(r, TLock_state(r, lvl, x)) &&
     acc(TLock_TICKET(r, TLock_state(r, lvl, x)), write))
-  requires (TLock_state(r, lvl, x) in comprehension_85_220())
-  ensures acc(TLock(r, lvl, x), write) &&
+  //requires (TLock_state(r, lvl, x) in comprehension_85_220())
+  //ensures acc(TLock(r, lvl, x), write) &&
     (lvl >= 0 && TLock_state(r, lvl, x) == old(TLock_state(r, lvl, x)) + 1)
 {
   var $_levelVar_6: Int
@@ -1374,7 +1374,7 @@ method $_TLock_action_transitivity_check()
 
 method $_foo_condition_stability_precondition_check(c: Ref, l: Int, z: Ref,
   r: Ref, lvl: Int, x: Ref, w: Int)
-  requires acc(Client(c, l, z, r, lvl, x), write) && (l >= 0 && true) &&
+  //requires acc(Client(c, l, z, r, lvl, x), write) && (l >= 0 && true) &&
     acc(Client_Z(c), write)
 {
   var $_levelVar_7: Int
@@ -1451,7 +1451,7 @@ method $_foo_condition_stability_precondition_check(c: Ref, l: Int, z: Ref,
 }
 
 method $_acquire_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
-  requires acc(TLock(r, lvl, x), write) &&
+  //requires acc(TLock(r, lvl, x), write) &&
     (lvl >= 0 && TLock_state(r, lvl, x) == TLock_state(r, lvl, x))
 {
   var $_levelVar_8: Int
@@ -1531,7 +1531,7 @@ method $_acquire_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref
 }
 
 method $_release_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
-  requires acc(TLock(r, lvl, x), write) &&
+  //requires acc(TLock(r, lvl, x), write) &&
     (lvl >= 0 && TLock_state(r, lvl, x) == TLock_state(r, lvl, x)) &&
     (TLock_TICKET_T(r, TLock_state(r, lvl, x)) &&
     acc(TLock_TICKET(r, TLock_state(r, lvl, x)), write))

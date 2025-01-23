@@ -6,16 +6,16 @@ predicate list(x: Ref){
 
 /*
 method test(x: Ref)
-    requires acc(x.next)
-    requires list(x.next)
-    ensures list(x)
+    //requires acc(x.next)
+    //requires list(x.next)
+    //ensures list(x)
 {
 }
 */
 /*
 method test(x: Ref)
-    requires acc(x.next)
-    requires list(x.next)
+    //requires acc(x.next)
+    //requires list(x.next)
 {
     assert list(x)
 }
@@ -23,8 +23,8 @@ method test(x: Ref)
 
 
 method test(x: Ref, y: Ref)
-requires acc(x.next) && acc(x.next.next)
-requires list(y)
+//requires acc(x.next) && acc(x.next.next)
+//requires list(y)
 //ensures list(x)
 {
     x.next.next := y
@@ -34,9 +34,9 @@ requires list(y)
 
 /*
 method test(x: Ref, y: Ref)
-requires acc(x.next)
-requires list(y)
-ensures list(x)
+//requires acc(x.next)
+//requires list(y)
+//ensures list(x)
 {
     x.next := y
 }

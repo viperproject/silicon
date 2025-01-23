@@ -6,9 +6,9 @@ predicate list(x: Ref){
 
 
 method test(x: Ref)
-    requires list(x)
-    requires x != null
-    ensures acc(x.next)
-    ensures list(x.next)
+    //requires list(x)
+    //requires x != null
+    //ensures acc(x.next)
+    //ensures list(x.next)
 {
 }

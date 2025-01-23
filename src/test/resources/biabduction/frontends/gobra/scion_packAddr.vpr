@@ -2321,17 +2321,17 @@ field String$$$$_E_$$$: Int
 
 // decreases _
 function sliceDefault_Intbyte$$$_S_$$$(): Slice[Ref]
-  ensures (soffset(result): Int) == 0
-  ensures (slen(result): Int) == 0
-  ensures (scap(result): Int) == 0
-  ensures (sarray(result): ShArray[Ref]) ==
+  //ensures (soffset(result): Int) == 0
+  //ensures (slen(result): Int) == 0
+  //ensures (scap(result): Int) == 0
+  //ensures (sarray(result): ShArray[Ref]) ==
     unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(arrayNil_1_Intbyte$$$_S_$$$()))
 
 
 function isIPv6_840d9458_F(a_V0: Tuple2[Ref, Types]): Bool
-  requires typeOfInterface_Y$53a71dc3_5c610647_(a_V0) ==
+  //requires typeOfInterface_Y$53a71dc3_5c610647_(a_V0) ==
     pointer_Types(IPAddr_5c610647_T_Types())
-  requires acc((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
+  //requires acc((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
     pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(a_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$, wildcard)
 {
   (slen((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
@@ -2341,52 +2341,52 @@ function isIPv6_840d9458_F(a_V0: Tuple2[Ref, Types]): Bool
 
 // decreases 
 function assertArg2_Int(b: Bool, y: Int): Int
-  requires b
+  //requires b
 {
   y
 }
 
 // decreases _
 function arrayNil_1_Intbyte$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
 
 // decreases _
 function typeOfInterface_Y$53a71dc3_5c610647_(itf: Tuple2[Ref, Types]): Types
-  ensures result == (get1of2(itf): Types)
-  ensures behavioral_subtype_Types(result, Y$53a71dc3_5c610647__Types())
+  //ensures result == (get1of2(itf): Types)
+  //ensures behavioral_subtype_Types(result, Y$53a71dc3_5c610647__Types())
 
 
 function ssliceFromArray_Ref(a: ShArray[Ref], i: Int, j: Int): Slice[Ref]
-  requires 0 <= i
-  requires i <= j
-  requires j <= (ShArraylen(a): Int)
-  ensures (soffset(result): Int) == i
-  ensures (slen(result): Int) == j - i
-  ensures (scap(result): Int) == (ShArraylen(a): Int) - i
-  ensures (sarray(result): ShArray[Ref]) == a
+  //requires 0 <= i
+  //requires i <= j
+  //requires j <= (ShArraylen(a): Int)
+  //ensures (soffset(result): Int) == i
+  //ensures (slen(result): Int) == j - i
+  //ensures (scap(result): Int) == (ShArraylen(a): Int) - i
+  //ensures (sarray(result): ShArray[Ref]) == a
 
 
 // decreases _
 function arrayNil_2_Interfaceempty_interface$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
 
 // decreases _
 function ssliceFromSlice_Ref(s: Slice[Ref], i: Int, j: Int): Slice[Ref]
-  requires 0 <= i
-  requires i <= j
-  requires j <= (scap(s): Int)
-  ensures (soffset(result): Int) == (soffset(s): Int) + i
-  ensures (slen(result): Int) == j - i
-  ensures (scap(result): Int) == (scap(s): Int) - i
-  ensures (sarray(result): ShArray[Ref]) == (sarray(s): ShArray[Ref])
+  //requires 0 <= i
+  //requires i <= j
+  //requires j <= (scap(s): Int)
+  //ensures (soffset(result): Int) == (soffset(s): Int) + i
+  //ensures (slen(result): Int) == j - i
+  //ensures (scap(result): Int) == (scap(s): Int) - i
+  //ensures (sarray(result): ShArray[Ref]) == (sarray(s): ShArray[Ref])
 
 
 function isZeros_5c610647_F(s_V0: Slice[Ref]): Bool
@@ -2394,16 +2394,16 @@ function isZeros_5c610647_F(s_V0: Slice[Ref]): Bool
 
 // decreases _
 function unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(y: Emb_2_Interfaceempty_interface$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 2 ||
+  //ensures (ShArraylen(result): Int) == 2 ||
     result == arrayNil_2_Interfaceempty_interface$$$_S_$$$()
-  ensures box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
     y
 
 
 function isIPv4_840d9458_F(a_V0: Tuple2[Ref, Types]): Bool
-  requires typeOfInterface_Y$53a71dc3_5c610647_(a_V0) ==
+  //requires typeOfInterface_Y$53a71dc3_5c610647_(a_V0) ==
     pointer_Types(IPAddr_5c610647_T_Types())
-  requires acc((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
+  //requires acc((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
     pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(a_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$, wildcard)
 {
   (slen((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
@@ -2413,44 +2413,44 @@ function isIPv4_840d9458_F(a_V0: Tuple2[Ref, Types]): Bool
 
 // decreases _
 function box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(x: Seq[Tuple2[Ref, Types]]): Emb_2_Interfaceempty_interface$$$$_E_$$$
-  requires |x| == 2
-  ensures unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+  //requires |x| == 2
+  //ensures unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
     x
 
 
 // decreases _
 function unbox_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(y: Emb_2_Interfaceempty_interface$$$$_E_$$$): Seq[Tuple2[Ref, Types]]
-  ensures |result| == 2
-  ensures box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
+  //ensures |result| == 2
+  //ensures box_Emb_2_Interfaceempty_interface$$$$_E_$$$_Seq_Tuple2_RefTypes(result) ==
     y
 
 
 function sadd(left: Int, right: Int): Int
-  ensures result == left + right
+  //ensures result == left + right
 {
   left + right
 }
 
 // decreases _
 function box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_1_Intbyte$$$_S_$$$
-  requires (ShArraylen(x): Int) == 1 || x == arrayNil_1_Intbyte$$$_S_$$$()
-  ensures unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == x
+  //requires (ShArraylen(x): Int) == 1 || x == arrayNil_1_Intbyte$$$_S_$$$()
+  //ensures unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == x
 
 
 // decreases _
 function box_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_2_Interfaceempty_interface$$$_S_$$$
-  requires (ShArraylen(x): Int) == 2 ||
+  //requires (ShArraylen(x): Int) == 2 ||
     x == arrayNil_2_Interfaceempty_interface$$$_S_$$$()
-  ensures unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures unbox_Emb_2_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
     x
 
 
 function isConvertibleToIPv4_840d9458_F(a_V0: Tuple2[Ref, Types]): Bool
-  requires typeOfInterface_Y$53a71dc3_5c610647_(a_V0) ==
+  //requires typeOfInterface_Y$53a71dc3_5c610647_(a_V0) ==
     pointer_Types(IPAddr_5c610647_T_Types())
-  requires acc((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
+  //requires acc((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
     pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(a_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$, wildcard)
-  requires (forall i_V1: Int ::
+  //requires (forall i_V1: Int ::
       { (ShArrayloc((sarray((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
       pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(a_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$): ShArray[Ref]),
       sadd((soffset((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
@@ -2465,7 +2465,7 @@ function isConvertibleToIPv4_840d9458_F(a_V0: Tuple2[Ref, Types]): Bool
       sadd((soffset((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
       pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(a_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$): Int),
       i_V1)): Ref).Intbyte$$$$_E_$$$, wildcard))
-  requires (slen((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
+  //requires (slen((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(a_V0),
     pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(a_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$): Int) ==
     16
 {
@@ -2494,22 +2494,22 @@ function isIP_840d9458_F(a_V0: Tuple2[Ref, Types]): Bool
 
 // decreases 
 function assertArg2_ShStruct2_RefRef(b: Bool, y: ShStruct2[Ref, Ref]): ShStruct2[Ref, Ref]
-  requires b
+  //requires b
 {
   y
 }
 
 // decreases 
 function IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf: Tuple2[Ref, Types]): Bool
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf), wildcard)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf), wildcard)
 
 
 // decreases _
 function unbox_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(y: Emb_1_Intbyte$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1 ||
+  //ensures (ShArraylen(result): Int) == 1 ||
     result == arrayNil_1_Intbyte$$$_S_$$$()
-  ensures box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == y
+  //ensures box_Emb_1_Intbyte$$$_S_$$$_ShArray_Ref(result) == y
 
 
 function isHostSVC_840d9458_F(a_V0: Tuple2[Ref, Types]): Bool
@@ -2575,8 +2575,8 @@ predicate dynamic_pred_8_unknown(i: Tuple2[Ref, Types])
 // decreases _
 method PackWithPad_cd675838_MHostSVC(h_V0: Int, pad_V0: Int)
   returns (res_V0: Slice[Ref])
-  requires pad_V0 >= 0
-  ensures (forall fn$$0: Int ::
+  //requires pad_V0 >= 0
+  //ensures (forall fn$$0: Int ::
       { (ShArrayloc((sarray(res_V0): ShArray[Ref]), sadd((soffset(res_V0): Int),
       fn$$0)): Ref) }
       0 <= fn$$0 && fn$$0 < (slen(res_V0): Int) ==>
@@ -2587,52 +2587,52 @@ method PackWithPad_cd675838_MHostSVC(h_V0: Int, pad_V0: Int)
 // decreases _
 method To4_5c610647_MIP(ip_V0: Slice[Ref], wildcard_V0: Bool)
   returns (res_V0: Slice[Ref])
-  requires wildcard_V0 ==>
+  //requires wildcard_V0 ==>
     (forall i_V1: Int ::
       { (ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int),
       i_V1)): Ref) }
       0 <= i_V1 && i_V1 < (slen(ip_V0): Int) ==>
       acc((ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int),
       i_V1)): Ref).Intbyte$$$$_E_$$$, wildcard))
-  requires !wildcard_V0 ==>
+  //requires !wildcard_V0 ==>
     (forall i_V2: Int ::
       { (ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int),
       i_V2)): Ref) }
       0 <= i_V2 && i_V2 < (slen(ip_V0): Int) ==>
       acc((ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int),
       i_V2)): Ref).Intbyte$$$$_E_$$$, 1 / 4194304))
-  ensures wildcard_V0 ==>
+  //ensures wildcard_V0 ==>
     (forall i_V1: Int ::
       { (ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int),
       i_V1)): Ref) }
       0 <= i_V1 && i_V1 < (slen(ip_V0): Int) ==>
       acc((ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int),
       i_V1)): Ref).Intbyte$$$$_E_$$$, wildcard))
-  ensures !wildcard_V0 ==>
+  //ensures !wildcard_V0 ==>
     (forall i_V2: Int ::
       { (ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int),
       i_V2)): Ref) }
       0 <= i_V2 && i_V2 < (slen(ip_V0): Int) ==>
       acc((ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int),
       i_V2)): Ref).Intbyte$$$$_E_$$$, 1 / 4194304))
-  ensures !(res_V0 == sliceDefault_Intbyte$$$_S_$$$()) ==>
+  //ensures !(res_V0 == sliceDefault_Intbyte$$$_S_$$$()) ==>
     (slen(res_V0): Int) == 4
-  ensures (slen(ip_V0): Int) == 4 ==> ip_V0 == res_V0
-  ensures (slen(ip_V0): Int) == 16 &&
+  //ensures (slen(ip_V0): Int) == 4 ==> ip_V0 == res_V0
+  //ensures (slen(ip_V0): Int) == 16 &&
     isZeros_5c610647_F(ssliceFromSlice_Ref(ip_V0, 0, 10)) &&
     (ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int), 10)): Ref).Intbyte$$$$_E_$$$ ==
     255 &&
     (ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int), 11)): Ref).Intbyte$$$$_E_$$$ ==
     255 ==>
     !(res_V0 == sliceDefault_Intbyte$$$_S_$$$())
-  ensures (slen(ip_V0): Int) == 16 &&
+  //ensures (slen(ip_V0): Int) == 16 &&
     !(isZeros_5c610647_F(ssliceFromSlice_Ref(ip_V0, 0, 10)) &&
     (ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int), 10)): Ref).Intbyte$$$$_E_$$$ ==
     255 &&
     (ShArrayloc((sarray(ip_V0): ShArray[Ref]), sadd((soffset(ip_V0): Int), 11)): Ref).Intbyte$$$$_E_$$$ ==
     255) ==>
     res_V0 == sliceDefault_Intbyte$$$_S_$$$()
-  ensures (slen(ip_V0): Int) == 16 &&
+  //ensures (slen(ip_V0): Int) == 16 &&
     !(res_V0 == sliceDefault_Intbyte$$$_S_$$$()) ==>
     (forall i_V3: Int ::
       { (ShArrayloc((sarray(res_V0): ShArray[Ref]), sadd((soffset(res_V0): Int),
@@ -2642,51 +2642,51 @@ method To4_5c610647_MIP(ip_V0: Slice[Ref], wildcard_V0: Bool)
       12 + i_V3)): Ref) ==
       (ShArrayloc((sarray(res_V0): ShArray[Ref]), sadd((soffset(res_V0): Int),
       i_V3)): Ref))
-  ensures !((slen(ip_V0): Int) == 4) && !((slen(ip_V0): Int) == 16) ==>
+  //ensures !((slen(ip_V0): Int) == 4) && !((slen(ip_V0): Int) == 16) ==>
     res_V0 == sliceDefault_Intbyte$$$_S_$$$()
 
 
 // decreases 
 method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
   returns (addrtyp_V0: Int, b_V0: Slice[Ref], err_V0: Tuple2[Ref, Types])
-  requires wildcard_V0 ==> acc(dynamic_pred_8(hostAddr_V0), wildcard)
-  requires !wildcard_V0 ==> acc(dynamic_pred_8(hostAddr_V0), 1 / 2097152)
-  ensures !wildcard_V0 ==> acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304)
-  ensures hostAddr_V0 == old(hostAddr_V0)
-  ensures isIP_840d9458_F(hostAddr_V0) ==>
+  //requires wildcard_V0 ==> acc(dynamic_pred_8(hostAddr_V0), wildcard)
+  //requires !wildcard_V0 ==> acc(dynamic_pred_8(hostAddr_V0), 1 / 2097152)
+  //ensures !wildcard_V0 ==> acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304)
+  //ensures hostAddr_V0 == old(hostAddr_V0)
+  //ensures isIP_840d9458_F(hostAddr_V0) ==>
     err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
-  ensures isHostSVC_840d9458_F(hostAddr_V0) ==>
+  //ensures isHostSVC_840d9458_F(hostAddr_V0) ==>
     err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) ==>
     isIP_840d9458_F(hostAddr_V0) || isHostSVC_840d9458_F(hostAddr_V0)
-  ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+  //ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(err_V0), write)
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), wildcard)
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     wildcard_V0 &&
     isHostSVC_840d9458_F(hostAddr_V0) ==>
     acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), write)
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isHostSVC_840d9458_F(hostAddr_V0) ==>
     acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), write)
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isHostSVC_840d9458_F(hostAddr_V0) ==>
     acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304)
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), 1 / 4194304)
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     acc(AbsSlice_Bytes_e630ae22_F(b_V0, 0, (slen(b_V0): Int)), 1 / 4194304) --*
     acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304)
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     (unfolding acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304) in
@@ -2704,7 +2704,7 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
             i_V1)): Ref) :
             true)) :
         true))
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     (unfolding acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304) in
@@ -2723,7 +2723,7 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
             12 + i_V2)): Ref) :
             true)) :
         true))
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     (unfolding acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304) in
@@ -2741,7 +2741,7 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
             i_V1)): Ref) :
             true)) :
         true))
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     (unfolding acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304) in
@@ -2760,7 +2760,7 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
             i_V1)): Ref) :
             true)) :
         true))
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     (unfolding acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304) in
@@ -2769,7 +2769,7 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
         (slen((ShStructget0of2(assertArg2_ShStruct2_RefRef(behavioral_subtype_Types(typeOfInterface_Y$53a71dc3_5c610647_(hostAddr_V0),
         pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(hostAddr_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$): Int) :
         true))
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     (unfolding acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304) in
@@ -2779,7 +2779,7 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
         pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(hostAddr_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$): Int) ==
         (slen(b_V0): Int) + 12 :
         true))
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     (unfolding acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304) in
@@ -2788,7 +2788,7 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
         pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(hostAddr_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$): Int) ==
         (slen(b_V0): Int) :
         true))
-  ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
+  //ensures err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]) &&
     !wildcard_V0 &&
     isIP_840d9458_F(hostAddr_V0) ==>
     (unfolding acc(dynamic_pred_8(hostAddr_V0), 1 / 4194304) in
@@ -2798,7 +2798,7 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
         pointer_Types(IPAddr_5c610647_T_Types())), (unbox_Poly((get0of2(hostAddr_V0): Ref)): ShStruct2[Ref, Ref]))): Ref).DefinedIP_5c610647_T$$$$_E_$$$): Int) ==
         (slen(b_V0): Int) :
         true))
-  ensures (err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==
+  //ensures (err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==
     (typeOfInterface_Y$53a71dc3_5c610647_(hostAddr_V0) ==
     pointer_Types(IPAddr_5c610647_T_Types()) ||
     typeOfInterface_Y$53a71dc3_5c610647_(hostAddr_V0) ==
@@ -2867,14 +2867,14 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
       
       // decl 
       
-      // unfold acc(hostAddr_V0_CN0.Mem(), _)
-      unfold acc(dynamic_pred_8(hostAddr_V0_CN0), wildcard)
+      // //unfold acc(hostAddr_V0_CN0.Mem(), _)
+      //unfold acc(dynamic_pred_8(hostAddr_V0_CN0), wildcard)
     } else {
       
       // decl 
       
-      // unfold acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
-      unfold acc(dynamic_pred_8(hostAddr_V0_CN0), 1 / 4194304)
+      // //unfold acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
+      //unfold acc(dynamic_pred_8(hostAddr_V0_CN0), 1 / 4194304)
     }
     
     // decl N38: IP_5c610647_T°°, ip_V4: IP_5c610647_T°°
@@ -2939,29 +2939,29 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
         
         // decl 
         
-        // fold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, len(ip_V4)), _)
-        fold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, (slen(ip_V4): Int)), wildcard)
+        // //fold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, len(ip_V4)), _)
+        //fold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, (slen(ip_V4): Int)), wildcard)
       } else {
         
         // decl 
         
-        // fold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, len(ip_V4)), perm(1/4194304))
-        fold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, (slen(ip_V4): Int)), 1 /
+        // //fold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, len(ip_V4)), perm(1/4194304))
+        //fold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, (slen(ip_V4): Int)), 1 /
           4194304)
         
-        // package acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, len(ip_V4)), perm(1/4194304)) --* acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
-        package acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, (slen(ip_V4): Int)), 1 /
+        // //package acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, len(ip_V4)), perm(1/4194304)) --* acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
+        //package acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, (slen(ip_V4): Int)), 1 /
         4194304) --*
         acc(dynamic_pred_8(hostAddr_V0_CN0), 1 / 4194304) {
           
           // decl 
           
-          // unfold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, len(ip_V4)), perm(1/4194304))
-          unfold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, (slen(ip_V4): Int)), 1 /
+          // //unfold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, len(ip_V4)), perm(1/4194304))
+          //unfold acc(AbsSlice_Bytes_e630ae22_F(ip_V4, 0, (slen(ip_V4): Int)), 1 /
             4194304)
           
-          // fold acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
-          fold acc(dynamic_pred_8(hostAddr_V0_CN0), 1 / 4194304)
+          // //fold acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
+          //fold acc(dynamic_pred_8(hostAddr_V0_CN0), 1 / 4194304)
         }
       }
       
@@ -3008,29 +3008,29 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
       
       // decl 
       
-      // fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, len(verScionTmp_V6)), _)
-      fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, (slen(verScionTmp_V6): Int)), wildcard)
+      // //fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, len(verScionTmp_V6)), _)
+      //fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, (slen(verScionTmp_V6): Int)), wildcard)
     } else {
       
       // decl 
       
-      // fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, len(verScionTmp_V6)), perm(1/4194304))
-      fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, (slen(verScionTmp_V6): Int)), 1 /
+      // //fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, len(verScionTmp_V6)), perm(1/4194304))
+      //fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, (slen(verScionTmp_V6): Int)), 1 /
         4194304)
       
-      // package acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, len(verScionTmp_V6)), perm(1/4194304)) --* acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
-      package acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, (slen(verScionTmp_V6): Int)), 1 /
+      // //package acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, len(verScionTmp_V6)), perm(1/4194304)) --* acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
+      //package acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, (slen(verScionTmp_V6): Int)), 1 /
       4194304) --*
       acc(dynamic_pred_8(hostAddr_V0_CN0), 1 / 4194304) {
         
         // decl 
         
-        // unfold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, len(verScionTmp_V6)), perm(1/4194304))
-        unfold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, (slen(verScionTmp_V6): Int)), 1 /
+        // //unfold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, len(verScionTmp_V6)), perm(1/4194304))
+        //unfold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V6, 0, (slen(verScionTmp_V6): Int)), 1 /
           4194304)
         
-        // fold acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
-        fold acc(dynamic_pred_8(hostAddr_V0_CN0), 1 / 4194304)
+        // //fold acc(hostAddr_V0_CN0.Mem(), perm(1/4194304))
+        //fold acc(dynamic_pred_8(hostAddr_V0_CN0), 1 / 4194304)
       }
     }
     
@@ -3070,8 +3070,8 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
       // verScionTmp_V7 = N47
       verScionTmp_V7 := N47
       
-      // fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V7, 0, len(verScionTmp_V7)))
-      fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V7, 0, (slen(verScionTmp_V7): Int)), write)
+      // //fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V7, 0, len(verScionTmp_V7)))
+      //fold acc(AbsSlice_Bytes_e630ae22_F(verScionTmp_V7, 0, (slen(verScionTmp_V7): Int)), write)
       
       // addrtyp_V0_CN2 = 4
       addrtyp_V0_CN2 := 4
@@ -3142,18 +3142,18 @@ method packAddr_840d9458_F(hostAddr_V0: Tuple2[Ref, Types], wildcard_V0: Bool)
 // decreases _
 method New_bfd5223e_F(msg_V0: Int, errCtx_V0: Slice[Ref])
   returns (res_V0: Tuple2[Ref, Types])
-  requires (forall i_V1: Int ::
+  //requires (forall i_V1: Int ::
       { (ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref) }
       0 <= i_V1 && i_V1 < (slen(errCtx_V0): Int) ==>
       acc((ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref).Interfaceempty_interface$$$$_E_$$$, 1 / 131072))
-  ensures (forall i_V1: Int ::
+  //ensures (forall i_V1: Int ::
       { (ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref) }
       0 <= i_V1 && i_V1 < (slen(errCtx_V0): Int) ==>
       acc((ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref).Interfaceempty_interface$$$$_E_$$$, 1 / 131072))
-  ensures !(res_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  //ensures !(res_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0), write)
-  ensures IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0)
+  //ensures IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0)

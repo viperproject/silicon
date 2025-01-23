@@ -19,8 +19,9 @@
 
 //main method used as an example execution using the Iterator class
 method main(l: Ref)
-requires l!=null && List_state(l)
-ensures  l!=null && List_state(l) {
+//requires l!=null && List_state(l)
+//ensures  l!=null && List_state(l)
+{
   var b: Bool
   
   //add some values to the list
@@ -37,8 +38,9 @@ ensures  l!=null && List_state(l) {
   
   //loop over the list using the iterator
   while(b)
-  invariant b ==> Iterator_readyForNext(i)
-  invariant !b ==> Iterator_ready(i) {
+  //invariant b ==> Iterator_readyForNext(i)
+  //invariant !b ==> Iterator_ready(i)
+  {
   
     //get the next value in the list
     var tmp: Int
@@ -52,7 +54,7 @@ ensures  l!=null && List_state(l) {
     } else {
     
       //...using the provided magic wand for a direct transition
-      apply Iterator_readyForRemove(i) --* Iterator_ready(i)
+      //apply Iterator_readyForRemove(i) --* Iterator_ready(i)
     }
     
     //check if the end of the list has been reached
@@ -60,10 +62,10 @@ ensures  l!=null && List_state(l) {
   }
   
   //get back access to the list, by giving up the iterator
-  apply Iterator_ready(i) --* List_state(l)
+  //apply Iterator_ready(i) --* List_state(l)
 }
 
-//////////////////////Iterator class//////////////////////
+////////////Iterator class////////////
 
 //fields of the iterator
 field Iterator_iteratee: Ref
@@ -160,18 +162,19 @@ predicate Iterator_readyForRemove(this: Ref) {
 
 //create an iterator for the list l
 method Iterator_new(l: Ref) returns (this: Ref)
-requires l!=null && List_state(l)
-ensures  Iterator_ready(this)
+//requires l!=null && List_state(l)
+//ensures  Iterator_ready(this)
 
 //the wand can be used to get back access to the list by giving up permissions to the iterator
-ensures  Iterator_ready(this) --* List_state(l) {
+//ensures  Iterator_ready(this) --* List_state(l)
+{
   this := new(Iterator_iteratee,Iterator_current,Iterator_last)
-  unfold List_state(l)
+  //unfold List_state(l)
   this.Iterator_current := l.List_sentinel
-  unfold Node_state(this.Iterator_current)
+  //unfold Node_state(this.Iterator_current)
   this.Iterator_current.Node_prev := null
   this.Iterator_iteratee := l
-  fold Iterator_ready(this)
+  //fold Iterator_ready(this)
 
   package Iterator_ready(this) --* List_state(l) {
     unfold Iterator_ready(this)
@@ -183,7 +186,7 @@ ensures  Iterator_ready(this) --* List_state(l) {
     }
 
     /* transferring the remaining 1/2 permissions to this.Iterator_iteratee into the 
-     * footprint ensures, that its value cannot be chaned, i.e. stays l.
+     * footprint //ensures, that its value cannot be chaned, i.e. stays l.
      */
     assert acc(this.Iterator_iteratee)
     fold List_state(l)
@@ -192,19 +195,20 @@ ensures  Iterator_ready(this) --* List_state(l) {
 
 //check whether there is a next node in the list and transition to the appropriate state
 method Iterator_hasNext(this: Ref) returns (res: Bool)
-requires Iterator_ready(this)
+//requires Iterator_ready(this)
 
 //we only transition to the "ready for next" state of there is a next element
 ensures  res ==> Iterator_readyForNext(this)
 
 //and stay in the "ready" state otherwise
-ensures  !res ==> Iterator_ready(this) {
-  unfold Iterator_ready(this)
+ensures  !res ==> Iterator_ready(this)
+{
+  //unfold Iterator_ready(this)
   res := this.Iterator_current.Node_next != null
   if(!res) {
-    fold Iterator_ready(this)
+    //fold Iterator_ready(this)
   } else {
-    fold Iterator_readyForNext(this)
+    //fold Iterator_readyForNext(this)
   }
 }
 
@@ -214,36 +218,38 @@ requires Iterator_readyForNext(this)
 ensures Iterator_readyForRemove(this)
 
 //the wand can be used to transition ot the "ready" state directly, without removing the current element
-ensures Iterator_readyForRemove(this) --* Iterator_ready(this) {
-  unfold Iterator_readyForNext(this)
+ensures Iterator_readyForRemove(this) --* Iterator_ready(this)
+{
+  //unfold Iterator_readyForNext(this)
   this.Iterator_last:=this.Iterator_current
   this.Iterator_current:=this.Iterator_current.Node_next
-  unfold Node_state(this.Iterator_current)
+  //unfold Node_state(this.Iterator_current)
   res := this.Iterator_current.Node_val
   this.Iterator_current.Node_prev:=this.Iterator_last
-  fold Iterator_readyForRemove(this)
+  //fold Iterator_readyForRemove(this)
 
-  package Iterator_readyForRemove(this) --* Iterator_ready(this) {
-    unfold Iterator_readyForRemove(this)
+  //package Iterator_readyForRemove(this) --* Iterator_ready(this) {
+    //unfold Iterator_readyForRemove(this)
 
     //adds the previous node to the reversed part of the list
-    fold Node_reverse(this.Iterator_current.Node_prev)
+    //fold Node_reverse(this.Iterator_current.Node_prev)
 
-    fold Iterator_ready(this)
-  }
+    //fold Iterator_ready(this)
+  //}
 }
 
 //remove the current node from the list
 method Iterator_remove(this: Ref)
-requires Iterator_readyForRemove(this)
-ensures Iterator_ready(this) {
-  unfold Iterator_readyForRemove(this)
+//requires Iterator_readyForRemove(this)
+//ensures Iterator_ready(this)
+{
+  //unfold Iterator_readyForRemove(this)
   this.Iterator_last.Node_next := this.Iterator_current.Node_next
   this.Iterator_current := this.Iterator_last
-  fold Iterator_ready(this)
+  //fold Iterator_ready(this)
 }
 
-//////////////////////List class//////////////////////
+////////////List class////////////
 
 //the sentinel is a node prepended before the first element of the list and is not part of the list
 field List_sentinel: Ref
@@ -254,28 +260,30 @@ predicate List_state(this: Ref){
 
 //create a new empty list
 method List_new() returns (this: Ref)
-ensures List_state(this) {
+//ensures List_state(this)
+{
   this := new(List_sentinel)
   var sent: Ref
   sent := Node_new(0,null)
   this.List_sentinel := sent
-  fold List_state(this)
+  //fold List_state(this)
 }
 
 //add an element to the list
 method List_put(this: Ref, v: Int)
-requires List_state(this)
-ensures List_state(this) {
-  unfold List_state(this)
-  unfold Node_state(this.List_sentinel)
+//requires List_state(this)
+//ensures List_state(this)
+{
+  //unfold List_state(this)
+  //unfold Node_state(this.List_sentinel)
   var sentNode_next: Ref
   sentNode_next := Node_new(v,this.List_sentinel.Node_next)
   this.List_sentinel.Node_next := sentNode_next
-  fold Node_state(this.List_sentinel)
-  fold List_state(this)
+  //fold Node_state(this.List_sentinel)
+  //fold List_state(this)
 }
 
-//////////////////////Node class of linked list//////////////////////
+////////////Node class of linked list////////////
 
 //fields of the node
 field Node_val: Int
@@ -295,7 +303,7 @@ predicate Node_reverse(this: Ref) {
 
 //getters
 function Node_get_next(this: Ref): Ref
-requires Node_state(this) {
+requires Node_state(this){
   unfolding Node_state(this) in this.Node_next}
   
 function Node_get_prev(this: Ref): Ref
@@ -318,30 +326,32 @@ function Node_first(this: Ref): Ref
 
 //create a new node
 method Node_new(v: Int, n: Ref) returns (this: Ref)
-requires n != null ==> Node_state(n)
-ensures Node_state(this) && Node_get_next(this) == n
-ensures this != null {
+//requires n != null ==> Node_state(n)
+//ensures Node_state(this) && Node_get_next(this) == n
+//ensures this != null
+{
   this := new(Node_val, Node_prev, Node_next)
   this.Node_val := v
   this.Node_next := n
-  fold Node_state(this)
+  //fold Node_state(this)
 }
 
 //used to undo the reversal of the predicate structure
 method Node_swap(this: Ref, fst: Ref, nxt: Ref)
-requires fst != null && Node_reverse(this) && Node_rev_next(this) == nxt && (nxt != null ==> Node_state(nxt)) && Node_first(this) == fst
-ensures  fst != null && Node_state(fst) {
-  unfold Node_reverse(this)
+//requires fst != null && Node_reverse(this) && Node_rev_next(this) == nxt && (nxt != null ==> Node_state(nxt)) && Node_first(this) == fst
+//ensures  fst != null && Node_state(fst)
+{
+  //unfold Node_reverse(this)
   if (this.Node_prev == null) {
 
     //we have reached the beginning of the list => after undoing the reversal of the predicate we are done
-    fold Node_state(this)
+    //fold Node_state(this)
   } else {
 
     //we have not reached the beginning of the list, yet
     //=> undo reversal of current predicate and recursively undo reversal of the remainder of the list
     var tmp: Ref := this.Node_prev
-    fold Node_state(this)
+    //fold Node_state(this)
     Node_swap(tmp, fst,this)
   }
 }

@@ -5,15 +5,15 @@ predicate list(x: Ref){
 }
 
 method test(x: Ref)
-requires acc(x.next)
+//requires acc(x.next)
 {
     var y: Ref
     y := new(next)
     y.next := null
-    fold list(y.next)
-    fold list(y)
+    //fold list(y.next)
+    //fold list(y)
     x.next := y
-    fold list(x)
+    //fold list(x)
 }
 
 

@@ -1,50 +1,50 @@
 import "sl.vpr"
 
 method set_union(lst1: Ref, lst2: Ref) returns (res: Ref)
-requires list(lst1) && list(lst2)
-ensures list(res)
+//requires list(lst1) && list(lst2)
+//ensures list(res)
 {
     if(lst1 == null){
         res := lst2
     } else {
         res := lst1
         var curr: Ref := res
-        package list(curr) --* list(res)
+        //package list(curr) --* list(res)
 
-        unfold list(lst1)
+        //unfold list(lst1)
         var l1: Ref := lst1.next
         var l2: Ref := lst2
 
         while(l1 != null && l2 != null)
-        invariant list(l1) && list(l2)
-        invariant acc(curr.data) && acc(curr.next)
-        invariant list(curr) --* list(res)
+        //invariant list(l1) && list(l2)
+        //invariant acc(curr.data) && acc(curr.next)
+        //invariant list(curr) --* list(res)
         {
-            unfold list(l1)
-            unfold list(l2)
+            //unfold list(l1)
+            //unfold list(l2)
             if(l1.data == curr.data){
                 l1 := l1.next
-                fold list(l2)
+                //fold list(l2)
             } elseif(l2.data == curr.data){
                 l2 := l2.next
-                fold list(l1)
+                //fold list(l1)
             } else {
                 var prev: Ref := curr
                 if(l1.data < l2.data){
                     curr.next := l1
                     curr := l1
                     l1 := l1.next
-                    fold list(l2)
+                    //fold list(l2)
                 } else {
                     curr.next := l2
                     curr := l2
                     l2 := l2.next
-                    fold list(l1)
+                    //fold list(l1)
                 }
-                package list(curr) --* list(res){
-                    fold list(prev)
-                    apply list(prev) --* list(res)
-                }
+                //package list(curr) --* list(res){
+                    //fold list(prev)
+                    //apply list(prev) --* list(res)
+                //}
             }
         }
         if(l1 == null){
@@ -52,7 +52,7 @@ ensures list(res)
         } else {
             curr.next := l1
         }
-        fold list(curr)
-        apply list(curr) --* list(res)
+        //fold list(curr)
+        //apply list(curr) --* list(res)
     }
 }

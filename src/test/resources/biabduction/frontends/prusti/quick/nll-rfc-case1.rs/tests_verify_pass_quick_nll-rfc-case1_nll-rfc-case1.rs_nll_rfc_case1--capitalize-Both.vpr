@@ -287,42 +287,42 @@ field val_int: Int
 field val_ref: Ref
 
 function f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1: Snap$struct$m_VecWrapperI32): Int
-  requires true
-  requires true
-  ensures result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result >= 0
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1),
     true]
 
 
 function f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(_1: Snap$struct$m_VecWrapperI32,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 &&
+  //requires true
+  //requires 0 <= _2 &&
     _2 < f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1)
-  requires 0 <= _2
-  ensures true
-  ensures [result ==
+  //requires 0 <= _2
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(_1,
     _2),
     true]
 
 
 function snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(self: Ref): Snap$struct$m_VecWrapperI32
-  requires acc(struct$m_VecWrapperI32(self), read$())
+  //requires acc(struct$m_VecWrapperI32(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32((unfolding acc(struct$m_VecWrapperI32(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
 
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -550,13 +550,13 @@ method m_capitalize() returns (_0: Ref)
   _10.val_bool := false
   // [mir] switchInt(move _10) -> [0: bb6, otherwise: bb5]
   __t28 := _10.val_bool
-  // Ignore default target bb5, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb5, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop2_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb2)
+  // Assert and exhale the loop body //invariant (loop head: bb2)
   _preserve$0 := _1.val_ref
-  fold acc(usize(_2), write)
+  //fold acc(usize(_2), write)
   // obtain acc(usize(_2), write)
-  fold acc(bool(_3), write)
+  //fold acc(bool(_3), write)
   // obtain acc(bool(_3), write)
   // obtain acc(_1.val_ref, read)
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
@@ -678,7 +678,7 @@ method m_capitalize() returns (_0: Ref)
   __t8 := builtin$havoc_bool()
   __t9 := builtin$havoc_bool()
   // ========== loop2_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb2
+  // Inhale the loop permissions //invariant of block bb2
   inhale acc(usize(_2), write) &&
     (acc(bool(_3), write) &&
     (acc(_1.val_ref, read$()) &&
@@ -695,7 +695,7 @@ method m_capitalize() returns (_0: Ref)
   // [mir] _8 = _3
   _8 := builtin$havoc_ref()
   inhale acc(_8.val_bool, write)
-  unfold acc(bool(_3), write)
+  //unfold acc(bool(_3), write)
   _8.val_bool := _3.val_bool
   label l7
   // [mir] switchInt(move _8) -> [0: bb32, otherwise: bb4]
@@ -718,9 +718,9 @@ method m_capitalize() returns (_0: Ref)
   _10.val_bool := false
   // [mir] switchInt(move _10) -> [0: bb6, otherwise: bb5]
   __t30 := _10.val_bool
-  // Ignore default target bb5, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb5, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop2_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb2
+  // Inhale the loop fnspec //invariant of block bb2
   inhale f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_1.val_ref)) ==
     old[pre](f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_1.val_ref))) &&
     (0 <= (unfolding acc(usize(_2), write) in _2.val_int) &&
@@ -785,7 +785,7 @@ method m_capitalize() returns (_0: Ref)
   _14.val_bool := false
   // [mir] switchInt(move _14) -> [0: bb9, otherwise: bb8]
   __t31 := _14.val_bool
-  // Ignore default target bb8, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb8, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop2_group3_bb9 ==========
   __t7 := true
   // [mir] _13 = const ()
@@ -802,7 +802,7 @@ method m_capitalize() returns (_0: Ref)
   _19.val_bool := false
   // [mir] switchInt(move _19) -> [0: bb12, otherwise: bb11]
   __t32 := _19.val_bool
-  // Ignore default target bb11, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb11, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop2_group3_bb12 ==========
   __t9 := true
   // [mir] _18 = const ()
@@ -819,7 +819,7 @@ method m_capitalize() returns (_0: Ref)
   _24.val_bool := false
   // [mir] switchInt(move _24) -> [0: bb15, otherwise: bb14]
   __t33 := _24.val_bool
-  // Ignore default target bb14, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb14, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop2_group3_bb15 ==========
   __t11 := true
   // [mir] _23 = const ()
@@ -836,7 +836,7 @@ method m_capitalize() returns (_0: Ref)
   _29.val_bool := false
   // [mir] switchInt(move _29) -> [0: bb18, otherwise: bb17]
   __t34 := _29.val_bool
-  // Ignore default target bb17, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb17, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop2_group3_bb18 ==========
   __t13 := true
   // [mir] _28 = const ()
@@ -853,7 +853,7 @@ method m_capitalize() returns (_0: Ref)
   _34.val_bool := false
   // [mir] switchInt(move _34) -> [0: bb21, otherwise: bb20]
   __t35 := _34.val_bool
-  // Ignore default target bb20, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb20, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop2_group3_bb21 ==========
   __t15 := true
   // [mir] _33 = const ()
@@ -874,7 +874,7 @@ method m_capitalize() returns (_0: Ref)
   // [mir] StorageLive(_40)
   // [mir] _40 = _2
   _40 := builtin$havoc_int()
-  unfold acc(usize(_2), write)
+  //unfold acc(usize(_2), write)
   _40 := _2.val_int
   label l11
   // [mir] _38 = VecWrapperI32::lookup(move _39, move _40) -> [return: bb23, unwind: bb33]
@@ -906,7 +906,7 @@ method m_capitalize() returns (_0: Ref)
   // [mir] StorageLive(_43)
   // [mir] _43 = _38
   _43 := builtin$havoc_int()
-  unfold acc(i32(_38), write)
+  //unfold acc(i32(_38), write)
   _43 := _38.val_int
   label l14
   // [mir] _42 = Gt(move _43, const 0_i32)
@@ -965,11 +965,11 @@ method m_capitalize() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l38
-  // Fold predicates for &mut args and transfer borrow permissions to old
+  // //fold predicates for &mut args and transfer borrow permissions to old
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(tuple0$(_0), write)
+  // //fold the result
+  //fold acc(tuple0$(_0), write)
   // obtain acc(tuple0$(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -1007,7 +1007,7 @@ method m_capitalize() returns (_0: Ref)
       _0_quant_0)) ==
       f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_old$pre$0),
       _0_quant_0))))))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_VecWrapperI32(_old$pre$0), write)
@@ -1061,7 +1061,7 @@ method m_capitalize() returns (_0: Ref)
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_45.val_ref))
   assert true
   assert _46 >= 0
-  fold acc(i32(_47), write)
+  //fold acc(i32(_47), write)
   exhale acc(_45.val_ref, write) &&
     (acc(struct$m_VecWrapperI32(_45.val_ref), write) &&
     (_46 >= 0 && acc(i32(_47), write)))
@@ -1201,12 +1201,12 @@ method m_capitalize() returns (_0: Ref)
   _10.val_bool := false
   // [mir] switchInt(move _10) -> [0: bb6, otherwise: bb5]
   __t40 := _10.val_bool
-  // Ignore default target bb5, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb5, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop2_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb2)
-  fold acc(usize(_2), write)
+  // Assert and exhale the loop body //invariant (loop head: bb2)
+  //fold acc(usize(_2), write)
   // obtain acc(usize(_2), write)
-  fold acc(bool(_3), write)
+  //fold acc(bool(_3), write)
   // obtain acc(bool(_3), write)
   // obtain acc(_1.val_ref, read)
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
@@ -1297,7 +1297,7 @@ method m_capitalize() returns (_0: Ref)
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_51.val_ref))
   assert true
   assert _52 >= 0
-  fold acc(i32(_53), write)
+  //fold acc(i32(_53), write)
   exhale acc(_51.val_ref, write) &&
     (acc(struct$m_VecWrapperI32(_51.val_ref), write) &&
     (_52 >= 0 && acc(i32(_53), write)))

@@ -4,6 +4,7 @@
 
 field f: Int
 field g: Int
+field b: Bool
 field unrelatedField: Int
 
 method unrelated(this: Ref)
@@ -11,30 +12,30 @@ method unrelated(this: Ref)
     ensures acc(this.unrelatedField, write)
 {}
 
-predicate valid(this: Ref, b: Bool) {
-    b ? acc(this.f, write) : acc(this.g, write)
+predicate valid(this: Ref) {
+    acc(this.b) && (this.b ? acc(this.f, write) : acc(this.g, write))
 }
 
-method t1(this: Ref, b: Bool)
-    requires acc(this.unrelatedField, write)
-    requires acc(valid(this, b), write)
-    ensures acc(valid(this, b), write)
+method t1(this: Ref)
+    //requires acc(this.unrelatedField, write)
+    //requires acc(valid(this), write)
+    //ensures acc(valid(this), write)
 {
-    unfold acc(valid(this, b), write)
-    if (b) {
+    //unfold acc(valid(this), write)
+    if (this.b) {
         this.f := 1
     } else {
         this.g := 2
     }
-    fold acc(valid(this, b), write)
+    //fold acc(valid(this), write)
     unrelated(this)
 }
 
 method t2(this: Ref)
-    requires acc(this.unrelatedField, write)
-    requires acc(this.f, write)
-    ensures acc(valid(this, true), write)
+    //requires acc(this.unrelatedField, write)
+    //requires acc(this.f, write)
+    //ensures acc(valid(this, true), write)
 {
-    fold acc(valid(this, true), write)
+    //fold acc(valid(this, true), write)
     unrelated(this)
 }

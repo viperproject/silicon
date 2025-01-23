@@ -8,9 +8,9 @@ predicate tree(x: Ref){
 
 
 method test(x: Ref)
-    requires tree(x)
-    requires x != null
-    ensures acc(x.l)
+    //requires tree(x)
+    //requires x != null
+    //ensures acc(x.l)
     //ensures list(x.next)
 {
 }

@@ -5,7 +5,7 @@ predicate list(x: Ref){
 }
 
 method foo(b: Ref)
-requires acc(b.next)
+//requires acc(b.next)
 {
     b.next := new()
     assert acc(b.next.next)

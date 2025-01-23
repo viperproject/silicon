@@ -309,6 +309,7 @@ object AbductionUnfold extends AbductionRule {
       case Some(a: FieldAccessPredicate) =>
         val g1 = q.goal.filterNot(a == _)
 
+
         // If we fail for a, then we recurse and try for other fields
         val R = () => apply(q.copy(goal = g1)) {
           case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
@@ -345,7 +346,8 @@ object AbductionApply extends AbductionRule {
         // chunk is our goal, so the rule can be applied
         evals(q.s, subexps, _ => pve, q.v)((s1, args, _, v1) => {
           val matchingWand = s1.h.values.collect {
-            case m: MagicWandChunk if m.id.ghostFreeWand.structure(s1.program).right == goalStructure.right && m.args.takeRight(args.length) == args =>
+            // If the wand in the state contains our goal in the right-hand-side, then we would like to apply the wand
+            case m: MagicWandChunk if m.id.ghostFreeWand.structure(s1.program).right.contains(goalStructure.right) && m.args.takeRight(args.length) == args =>
               // If we find a matching wand, we have to find an expression representing the left hand side of the wand
               val lhsTerms = m.args.dropRight(args.length)
               val varTransformer = VarTransformer(s1, v1, s1.g.values, s1.h)
@@ -354,10 +356,10 @@ object AbductionApply extends AbductionRule {
                 None
               } else {
                 val formalLhsArgs = m.id.ghostFreeWand.subexpressionsToEvaluate(s1.program).dropRight(args.length)
-                val lhs = m.id.ghostFreeWand.left.transform {
+                val wand = m.id.ghostFreeWand.transform {
                   case n if formalLhsArgs.contains(n) => lhsArgs(formalLhsArgs.indexOf(n)).get // I am assuming that the subexpressions are unique, which should hold
                 }
-                Some(MagicWand(lhs, g)())
+                Some(wand)
               }
           }.collectFirst { case c if c.isDefined => c.get }
           matchingWand match {
@@ -370,7 +372,7 @@ object AbductionApply extends AbductionRule {
                 } else {
                   magicWandSupporter.applyWand(lhsRes.s, wand, pve, lhsRes.v) { (s2, v2) =>
                     val g1 = q.goal.filterNot(_ == wand.right)
-                    val stmts = q.foundStmts ++ lhsRes.foundStmts :+ Apply(wand)()
+                    val stmts = (q.foundStmts ++ lhsRes.foundStmts :+ Apply(wand)()).distinct // TODO there is a weird duplication here sometimes
                     val state = q.foundState ++ lhsRes.foundState
                     val lost = q.lostAccesses ++ lhsRes.lostAccesses
                     Q(Some(AbductionQuestion(s2, v2, g1, lost, state, stmts, q.trigger, q.stateAllowed)))
@@ -405,7 +407,7 @@ object AbductionPackage extends AbductionRule {
 
           // TODO This may produce things that are already in the state
           producer.produce(s0, freshSnap, wand.left, pve, v0) { (s1, v1) =>
-            val packQ = q.copy(s = s1, v = v1, goal = Seq(wand.right))
+            val packQ = q.copy(s = s1, v = v1, goal = wand.right.topLevelConjuncts)
             AbductionApplier.applyRules(packQ) { packRes =>
               if (packRes.goal.nonEmpty) {
                 Failure(pve dueTo(DummyReason))

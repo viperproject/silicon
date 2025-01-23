@@ -187,58 +187,58 @@ field $link_$_nextLvl: Int
 field $link_$_nextState: Seq[Int]
 
 function IntSet(): Set[Int]
-  ensures (forall n: Int ::(n in result))
+  //ensures (forall n: Int ::(n in result))
 
 
 function NatSet(): Set[Int]
-  ensures (forall n: Int ::0 <= n == (n in result))
+  //ensures (forall n: Int ::0 <= n == (n in result))
 
 
 function comprehension_113_220(): Set[Seq[Int]]
-  ensures (forall $k: Seq[Int] ::($k in result) == true)
+  //ensures (forall $k: Seq[Int] ::($k in result) == true)
 
 
 function Bag_atomicity_context_hf(r: Ref, lvl: Int, z: Ref): Set[Seq[Int]]
-  requires acc(Bag_atomicity_context_fp(r, lvl, z), write)
-  ensures [Bag_atomicity_context_df(r, lvl, z), true]
+  //requires acc(Bag_atomicity_context_fp(r, lvl, z), write)
+  //ensures [Bag_atomicity_context_df(r, lvl, z), true]
 
 
 function Bag_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, z: Ref): Set[Seq[Int]]
-  requires acc(Bag_interferenceContext_fp(r, lvl, z), write)
-  ensures [(forall $_m: Seq[Int] ::
+  //requires acc(Bag_interferenceContext_fp(r, lvl, z), write)
+  //ensures [(forall $_m: Seq[Int] ::
       { ($_m in result) }
       ($_m in result) ==> ($_m in Bag_interferenceSet_df($p0, r, lvl, z))),
     true]
 
 
 function Bag_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, z: Ref): Seq[Int]
-  requires acc(Bag_interferenceContext_fp(r, lvl, z), write)
-  ensures [Bag_interferenceReference_df($p0, r, lvl, z), true]
+  //requires acc(Bag_interferenceContext_fp(r, lvl, z), write)
+  //ensures [Bag_interferenceReference_df($p0, r, lvl, z), true]
 
 
 function Bag_sk_$_action_p(r: Ref, lvl: Int, z: Ref): Seq[Int]
-  requires acc(Bag_sk_fp(), write)
+  //requires acc(Bag_sk_fp(), write)
 
 
 function Bag_sk_$_action_q(r: Ref, lvl: Int, z: Ref): Seq[Int]
-  requires acc(Bag_sk_fp(), write)
+  //requires acc(Bag_sk_fp(), write)
 
 
 function Bag_state(r: Ref, lvl: Int, z: Ref): Seq[Int]
-  requires acc(Bag(r, lvl, z), write)
-  ensures [Bag_state_T(r, lvl, z), true]
+  //requires acc(Bag(r, lvl, z), write)
+  //ensures [Bag_state_T(r, lvl, z), true]
 {
   (unfolding acc(Bag(r, lvl, z), write) in z.$entry_$_nextState)
 }
 
 function BagList_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Seq[Int]]
-  requires acc(BagList_atomicity_context_fp(r, lvl, x), write)
-  ensures [BagList_atomicity_context_df(r, lvl, x), true]
+  //requires acc(BagList_atomicity_context_fp(r, lvl, x), write)
+  //ensures [BagList_atomicity_context_df(r, lvl, x), true]
 
 
 function BagList_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Seq[Int]]
-  requires acc(BagList_interferenceContext_fp(r, lvl, x), write)
-  ensures [(forall $_m: Seq[Int] ::
+  //requires acc(BagList_interferenceContext_fp(r, lvl, x), write)
+  //ensures [(forall $_m: Seq[Int] ::
       { ($_m in result) }
       ($_m in result) ==>
       ($_m in BagList_interferenceSet_df($p0, r, lvl, x))),
@@ -246,21 +246,21 @@ function BagList_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Seq
 
 
 function BagList_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Seq[Int]
-  requires acc(BagList_interferenceContext_fp(r, lvl, x), write)
-  ensures [BagList_interferenceReference_df($p0, r, lvl, x), true]
+  //requires acc(BagList_interferenceContext_fp(r, lvl, x), write)
+  //ensures [BagList_interferenceReference_df($p0, r, lvl, x), true]
 
 
 function BagList_sk_$_action_p(r: Ref, lvl: Int, x: Ref): Seq[Int]
-  requires acc(BagList_sk_fp(), write)
+  //requires acc(BagList_sk_fp(), write)
 
 
 function BagList_sk_$_action_q(r: Ref, lvl: Int, x: Ref): Seq[Int]
-  requires acc(BagList_sk_fp(), write)
+  //requires acc(BagList_sk_fp(), write)
 
 
 function BagList_state(r: Ref, lvl: Int, x: Ref): Seq[Int]
-  requires acc(BagList(r, lvl, x), write)
-  ensures [BagList_state_T(r, lvl, x), true]
+  //requires acc(BagList(r, lvl, x), write)
+  //ensures [BagList_state_T(r, lvl, x), true]
 {
   (unfolding acc(BagList(r, lvl, x), write) in
     (x == null ? Seq[Int]() : Seq(x.$link_$val) ++ x.$link_$_nextState))
@@ -336,11 +336,11 @@ method ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
 
 
 method push(r: Ref, lvl: Int, z: Ref, n: Int)
-  requires acc(Bag(r, lvl, z), write) &&
+  //requires acc(Bag(r, lvl, z), write) &&
     (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) &&
     acc(Bag_Z(r), write)
-  requires (Bag_state(r, lvl, z) in comprehension_113_220())
-  ensures acc(Bag(r, lvl, z), write) &&
+  //requires (Bag_state(r, lvl, z) in comprehension_113_220())
+  //ensures acc(Bag(r, lvl, z), write) &&
     (lvl >= 0 &&
     Bag_state(r, lvl, z) == Seq(n) ++ old(Bag_state(r, lvl, z))) &&
     acc(Bag_Z(r), write)
@@ -447,7 +447,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
   label preWhile0
   loopVar0 := true
   while (loopVar0)
-    invariant !loopVar0 ==>
+    //invariant !loopVar0 ==>
       acc(Bag(r, lvl, z), write) &&
       (lvl >= 0 &&
       Bag_state(r, lvl, z) == Seq(n) ++ old(Bag_state(r, lvl, z))) &&
@@ -602,7 +602,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
     label pre_open_region0
     assert $_levelVar_0 > lvl
     $_levelVar_2 := lvl
-    unfold acc(Bag(r, lvl, z), write)
+    //unfold acc(Bag(r, lvl, z), write)
     label transitionPre0
     quasihavoc BagList_interferenceContext_fp(z.$entry_$_nextId, z.$entry_$_nextLvl,
     z.$entry_$next)
@@ -624,7 +624,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
     
     // ------- heap-read END -----------
     
-    fold acc(Bag(r, lvl, z), write)
+    //fold acc(Bag(r, lvl, z), write)
     assert Bag_state(r, lvl, z) ==
       old[pre_open_region0](Bag_state(r, lvl, z))
     $_levelVar_3 := $_levelVar_0
@@ -796,7 +796,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
     assert $_levelVar_3 > lvl
     $_levelVar_4 := lvl
     exhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
-    unfold acc(Bag(r, lvl, z), write)
+    //unfold acc(Bag(r, lvl, z), write)
     label transitionPre
     quasihavoc BagList_interferenceContext_fp(z.$entry_$_nextId, z.$entry_$_nextLvl,
     z.$entry_$next)
@@ -869,18 +869,18 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
       // ------- assume END --------------
       
       
-      // ------- apply BEGIN -------------
+      // ------- //apply BEGIN -------------
       
       createBagList(c, l, x, ur, ul, u_state)
       
-      // ------- apply END ---------------
+      // ------- //apply END ---------------
       
       
-      // ------- apply BEGIN -------------
+      // ------- //apply BEGIN -------------
       
       updateEntryGhost(z, c, l)
       
-      // ------- apply END ---------------
+      // ------- //apply END ---------------
       
       assert $_levelVar_4 == $_levelVar_4
     }
@@ -888,7 +888,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
     
     // ------- if-then-else END --------
     
-    fold acc(Bag(r, lvl, z), write)
+    //fold acc(Bag(r, lvl, z), write)
     if (Bag_state(r, lvl, z) !=
     old[pre_region_update0](Bag_state(r, lvl, z))) {
       inhale acc(r.$stepFrom_seq_int_, write) &&
@@ -985,8 +985,8 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
     
     label preWhile
     while (!b)
-      invariant acc(Bag(r, lvl, z), write) && (lvl >= 0 && true)
-      invariant (!b ?
+      //invariant acc(Bag(r, lvl, z), write) && (lvl >= 0 && true)
+      //invariant (!b ?
           acc(r.$diamond, write) &&
           (acc(x.$link_$val, write) && x.$link_$val == n) &&
           (acc(x.$link_$next, write) && true) &&
@@ -994,7 +994,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
           (acc(x.$link_$_nextLvl, write) && true) &&
           (acc(x.$link_$_nextState, write) && true)) :
           true)
-      invariant (b ?
+      //invariant (b ?
           acc(r.$stepFrom_seq_int_, write) &&
           r.$stepFrom_seq_int_ == y_state &&
           (acc(r.$stepTo_seq_int_, write) &&
@@ -1067,7 +1067,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
       label pre_open_region
       assert $_levelVar_6 > lvl
       $_levelVar_7 := lvl
-      unfold acc(Bag(r, lvl, z), write)
+      //unfold acc(Bag(r, lvl, z), write)
       label transitionPre2
       quasihavoc BagList_interferenceContext_fp(z.$entry_$_nextId, z.$entry_$_nextLvl,
       z.$entry_$next)
@@ -1089,7 +1089,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
       
       // ------- heap-read END -----------
       
-      fold acc(Bag(r, lvl, z), write)
+      //fold acc(Bag(r, lvl, z), write)
       assert Bag_state(r, lvl, z) ==
         old[pre_open_region](Bag_state(r, lvl, z))
       $_levelVar_8 := $_levelVar_6
@@ -1261,7 +1261,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
       assert $_levelVar_8 > lvl
       $_levelVar_9 := lvl
       exhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
-      unfold acc(Bag(r, lvl, z), write)
+      //unfold acc(Bag(r, lvl, z), write)
       label transitionPre3
       quasihavoc BagList_interferenceContext_fp(z.$entry_$_nextId, z.$entry_$_nextLvl,
       z.$entry_$next)
@@ -1334,18 +1334,18 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
         // ------- assume END --------------
         
         
-        // ------- apply BEGIN -------------
+        // ------- //apply BEGIN -------------
         
         createBagList(c, l, x, ur$, ul$, u_state$)
         
-        // ------- apply END ---------------
+        // ------- //apply END ---------------
         
         
-        // ------- apply BEGIN -------------
+        // ------- //apply BEGIN -------------
         
         updateEntryGhost(z, c, l)
         
-        // ------- apply END ---------------
+        // ------- //apply END ---------------
         
         assert $_levelVar_9 == $_levelVar_9
       }
@@ -1353,7 +1353,7 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
       
       // ------- if-then-else END --------
       
-      fold acc(Bag(r, lvl, z), write)
+      //fold acc(Bag(r, lvl, z), write)
       if (Bag_state(r, lvl, z) !=
       old[pre_region_update](Bag_state(r, lvl, z))) {
         inhale acc(r.$stepFrom_seq_int_, write) &&
@@ -1479,11 +1479,11 @@ method push(r: Ref, lvl: Int, z: Ref, n: Int)
 }
 
 method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
-  requires acc(Bag(r, lvl, z), write) &&
+  //requires acc(Bag(r, lvl, z), write) &&
     (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) &&
     acc(Bag_Z(r), write)
-  requires (Bag_state(r, lvl, z) in comprehension_113_220())
-  ensures acc(Bag(r, lvl, z), write) && (lvl >= 0 && true) &&
+  //requires (Bag_state(r, lvl, z) in comprehension_113_220())
+  //ensures acc(Bag(r, lvl, z), write) && (lvl >= 0 && true) &&
     acc(Bag_Z(r), write) &&
     old(Bag_state(r, lvl, z)) == Seq(v) ++ Bag_state(r, lvl, z)
 {
@@ -1608,7 +1608,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
   label preWhile2
   loopVar := true
   while (loopVar)
-    invariant !loopVar ==>
+    //invariant !loopVar ==>
       acc(Bag(r, lvl, z), write) && (lvl >= 0 && true) &&
       acc(Bag_Z(r), write) &&
       old(Bag_state(r, lvl, z)) == Seq(v) ++ Bag_state(r, lvl, z) 
@@ -1676,7 +1676,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
     label pre_open_region2
     assert $_levelVar_14 > lvl
     $_levelVar_16 := lvl
-    unfold acc(Bag(r, lvl, z), write)
+    //unfold acc(Bag(r, lvl, z), write)
     label transitionPre4
     quasihavoc BagList_interferenceContext_fp(z.$entry_$_nextId, z.$entry_$_nextLvl,
     z.$entry_$next)
@@ -1724,7 +1724,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
     
     // ------- inhale END --------------
     
-    fold acc(Bag(r, lvl, z), write)
+    //fold acc(Bag(r, lvl, z), write)
     assert Bag_state(r, lvl, z) ==
       old[pre_open_region2](Bag_state(r, lvl, z))
     $_levelVar_17 := $_levelVar_14
@@ -1849,7 +1849,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
       label pre_open_region3
       assert $_levelVar_17 > jl
       $_levelVar_18 := jl
-      unfold acc(BagList(jr, jl, t), write)
+      //unfold acc(BagList(jr, jl, t), write)
       label transitionPre5
       quasihavoc BagList_interferenceContext_fp(t.$link_$_nextId, t.$link_$_nextLvl,
       t.$link_$next)
@@ -1871,7 +1871,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
       
       // ------- heap-read END -----------
       
-      fold acc(BagList(jr, jl, t), write)
+      //fold acc(BagList(jr, jl, t), write)
       assert BagList_state(jr, jl, t) ==
         old[pre_open_region3](BagList_state(jr, jl, t))
       $_levelVar_19 := $_levelVar_17
@@ -1968,7 +1968,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
       assert $_levelVar_19 > lvl
       $_levelVar_20 := lvl
       exhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
-      unfold acc(Bag(r, lvl, z), write)
+      //unfold acc(Bag(r, lvl, z), write)
       label transitionPre6
       quasihavoc BagList_interferenceContext_fp(z.$entry_$_nextId, z.$entry_$_nextLvl,
       z.$entry_$next)
@@ -2020,10 +2020,10 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
       
       if (b) {
         
-        // ------- unfold BEGIN ------------
+        // ------- //unfold BEGIN ------------
         
         assert ul >= 0 && true
-        unfold acc(BagList(ur, ul, t), write)
+        //unfold acc(BagList(ur, ul, t), write)
         
         // ------- Inferring interference context Bag,BagList (recompute interference context after unfold) BEGIN 
         
@@ -2088,7 +2088,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
         // ------- Inferring interference context Bag,BagList (recompute interference context after unfold) END 
         
         
-        // ------- unfold END --------------
+        // ------- //unfold END --------------
         
         
         // ------- exhale BEGIN ------------
@@ -2119,11 +2119,11 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
         // ------- assume END --------------
         
         
-        // ------- apply BEGIN -------------
+        // ------- //apply BEGIN -------------
         
         updateEntryGhost(z, nr, nl)
         
-        // ------- apply END ---------------
+        // ------- //apply END ---------------
         
         
         // ------- havoc BEGIN -------------
@@ -2167,7 +2167,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
       
       // ------- if-then-else END --------
       
-      fold acc(Bag(r, lvl, z), write)
+      //fold acc(Bag(r, lvl, z), write)
       if (Bag_state(r, lvl, z) !=
       old[pre_region_update2](Bag_state(r, lvl, z))) {
         inhale acc(r.$stepFrom_seq_int_, write) &&
@@ -2270,9 +2270,9 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
     
     label preWhile3
     while (!b)
-      invariant acc(Bag(r, lvl, z), write) && (lvl >= 0 && true)
-      invariant (!b ? acc(r.$diamond, write) : true)
-      invariant (b ?
+      //invariant acc(Bag(r, lvl, z), write) && (lvl >= 0 && true)
+      //invariant (!b ? acc(r.$diamond, write) : true)
+      //invariant (b ?
           acc(r.$stepFrom_seq_int_, write) &&
           r.$stepFrom_seq_int_ == Seq(vi) ++ x_state &&
           (acc(r.$stepTo_seq_int_, write) && r.$stepTo_seq_int_ == x_state) &&
@@ -2347,7 +2347,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
       label pre_open_region4
       assert $_levelVar_23 > lvl
       $_levelVar_24 := lvl
-      unfold acc(Bag(r, lvl, z), write)
+      //unfold acc(Bag(r, lvl, z), write)
       label transitionPre7
       quasihavoc BagList_interferenceContext_fp(z.$entry_$_nextId, z.$entry_$_nextLvl,
       z.$entry_$next)
@@ -2395,7 +2395,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
       
       // ------- inhale END --------------
       
-      fold acc(Bag(r, lvl, z), write)
+      //fold acc(Bag(r, lvl, z), write)
       assert Bag_state(r, lvl, z) ==
         old[pre_open_region4](Bag_state(r, lvl, z))
       $_levelVar_25 := $_levelVar_23
@@ -2520,7 +2520,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
         label pre_open_region5
         assert $_levelVar_25 > jl$
         $_levelVar_26 := jl$
-        unfold acc(BagList(jr$, jl$, t), write)
+        //unfold acc(BagList(jr$, jl$, t), write)
         label transitionPre8
         quasihavoc BagList_interferenceContext_fp(t.$link_$_nextId, t.$link_$_nextLvl,
         t.$link_$next)
@@ -2542,7 +2542,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
         
         // ------- heap-read END -----------
         
-        fold acc(BagList(jr$, jl$, t), write)
+        //fold acc(BagList(jr$, jl$, t), write)
         assert BagList_state(jr$, jl$, t) ==
           old[pre_open_region5](BagList_state(jr$, jl$, t))
         $_levelVar_27 := $_levelVar_25
@@ -2640,7 +2640,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
         assert $_levelVar_27 > lvl
         $_levelVar_28 := lvl
         exhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
-        unfold acc(Bag(r, lvl, z), write)
+        //unfold acc(Bag(r, lvl, z), write)
         label transitionPre9
         quasihavoc BagList_interferenceContext_fp(z.$entry_$_nextId, z.$entry_$_nextLvl,
         z.$entry_$next)
@@ -2692,10 +2692,10 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
         
         if (b) {
           
-          // ------- unfold BEGIN ------------
+          // ------- //unfold BEGIN ------------
           
           assert ul$ >= 0 && true
-          unfold acc(BagList(ur$, ul$, t), write)
+          //unfold acc(BagList(ur$, ul$, t), write)
           
           // ------- Inferring interference context Bag,BagList (recompute interference context after unfold) BEGIN 
           
@@ -2760,7 +2760,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
           // ------- Inferring interference context Bag,BagList (recompute interference context after unfold) END 
           
           
-          // ------- unfold END --------------
+          // ------- //unfold END --------------
           
           
           // ------- exhale BEGIN ------------
@@ -2791,11 +2791,11 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
           // ------- assume END --------------
           
           
-          // ------- apply BEGIN -------------
+          // ------- //apply BEGIN -------------
           
           updateEntryGhost(z, nr$, nl$)
           
-          // ------- apply END ---------------
+          // ------- //apply END ---------------
           
           
           // ------- havoc BEGIN -------------
@@ -2839,7 +2839,7 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
         
         // ------- if-then-else END --------
         
-        fold acc(Bag(r, lvl, z), write)
+        //fold acc(Bag(r, lvl, z), write)
         if (Bag_state(r, lvl, z) !=
         old[pre_region_update3](Bag_state(r, lvl, z))) {
           inhale acc(r.$stepFrom_seq_int_, write) &&
@@ -3055,12 +3055,12 @@ method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
 }
 
 method updateEntryGhost(x: Ref, c: Ref, l: Int)
-  requires acc(x.$entry_$next, write) && true &&
+  //requires acc(x.$entry_$next, write) && true &&
     (acc(BagList(c, l, x.$entry_$next), write) && (l >= 0 && true)) &&
     (acc(x.$entry_$_nextId, write) && true &&
     (acc(x.$entry_$_nextLvl, write) && true) &&
     (acc(x.$entry_$_nextState, write) && true))
-  ensures acc(x.$entry_$next, write) &&
+  //ensures acc(x.$entry_$next, write) &&
     x.$entry_$next == old(x.$entry_$next) &&
     (acc(BagList(c, l, old(x.$entry_$next)), write) &&
     (l >= 0 &&
@@ -3120,12 +3120,12 @@ method updateEntryGhost(x: Ref, c: Ref, l: Int)
 }
 
 method updateLinkGhost(x: Ref, c: Ref, l: Int)
-  requires acc(x.$link_$next, write) && true &&
+  //requires acc(x.$link_$next, write) && true &&
     (acc(BagList(c, l, x.$link_$next), write) && (l >= 0 && true)) &&
     (acc(x.$link_$_nextId, write) && true &&
     (acc(x.$link_$_nextLvl, write) && true) &&
     (acc(x.$link_$_nextState, write) && true))
-  ensures acc(x.$link_$next, write) && x.$link_$next == old(x.$link_$next) &&
+  //ensures acc(x.$link_$next, write) && x.$link_$next == old(x.$link_$next) &&
     (acc(BagList(c, l, old(x.$link_$next)), write) &&
     (l >= 0 &&
     BagList_state(c, l, old(x.$link_$next)) ==
@@ -3184,7 +3184,7 @@ method updateLinkGhost(x: Ref, c: Ref, l: Int)
 }
 
 method createBagList(r: Ref, lvl: Int, x: Ref, c: Ref, l: Int, vs: Seq[Int])
-  requires acc(x.$link_$val, write) && true &&
+  //requires acc(x.$link_$val, write) && true &&
     (acc(x.$link_$next, write) && true) &&
     (acc(x.$link_$_nextId, write) && true &&
     (acc(x.$link_$_nextLvl, write) && true) &&
@@ -3195,7 +3195,7 @@ method createBagList(r: Ref, lvl: Int, x: Ref, c: Ref, l: Int, vs: Seq[Int])
       acc(BagList_G(c), write) &&
       l < lvl :
       true)
-  ensures acc(BagList(r, lvl, x), write) &&
+  //ensures acc(BagList(r, lvl, x), write) &&
     (lvl >= 0 && BagList_state(r, lvl, x) == Seq(old(x.$link_$val)) ++ vs) &&
     acc(BagList_G(r), write)
 {
@@ -3226,11 +3226,11 @@ method createBagList(r: Ref, lvl: Int, x: Ref, c: Ref, l: Int, vs: Seq[Int])
   
   if (!(x == null)) {
     
-    // ------- apply BEGIN -------------
+    // ------- //apply BEGIN -------------
     
     updateLinkGhost(x, c, l)
     
-    // ------- apply END ---------------
+    // ------- //apply END ---------------
     
     assert $_levelVar_36 == $_levelVar_36
   }
@@ -3239,18 +3239,18 @@ method createBagList(r: Ref, lvl: Int, x: Ref, c: Ref, l: Int, vs: Seq[Int])
   // ------- if-then-else END --------
   
   
-  // ------- fold BEGIN --------------
+  // ------- //fold BEGIN --------------
   
-  fold acc(BagList(r, lvl, x), write)
+  //fold acc(BagList(r, lvl, x), write)
   assert lvl >= 0 && true
   
-  // ------- fold END ----------------
+  // ------- //fold END ----------------
   
 }
 
 method CAS_entry(x: Ref, now: Ref, thn: Ref) returns (ret: Bool)
-  requires acc(x.$entry_$next, write) && true
-  ensures (old(x.$entry_$next) == now ?
+  //requires acc(x.$entry_$next, write) && true
+  //ensures (old(x.$entry_$next) == now ?
       ret && (acc(x.$entry_$next, write) && x.$entry_$next == thn) :
       !ret &&
       (acc(x.$entry_$next, write) && x.$entry_$next == old(x.$entry_$next)))
@@ -3458,7 +3458,7 @@ method $_BagList_action_transitivity_check()
 
 method $_push_condition_stability_precondition_check(r: Ref, lvl: Int, z: Ref,
   n: Int)
-  requires acc(Bag(r, lvl, z), write) &&
+  //requires acc(Bag(r, lvl, z), write) &&
     (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) &&
     acc(Bag_Z(r), write)
 {
@@ -3535,7 +3535,7 @@ method $_push_condition_stability_precondition_check(r: Ref, lvl: Int, z: Ref,
 
 method $_pop_condition_stability_precondition_check(r: Ref, lvl: Int, z: Ref,
   v: Int)
-  requires acc(Bag(r, lvl, z), write) &&
+  //requires acc(Bag(r, lvl, z), write) &&
     (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) &&
     acc(Bag_Z(r), write)
 {
@@ -3611,7 +3611,7 @@ method $_pop_condition_stability_precondition_check(r: Ref, lvl: Int, z: Ref,
 
 method $_updateEntryGhost_condition_stability_precondition_check(x: Ref, c: Ref,
   l: Int)
-  requires acc(x.$entry_$next, write) && true &&
+  //requires acc(x.$entry_$next, write) && true &&
     (acc(BagList(c, l, x.$entry_$next), write) && (l >= 0 && true)) &&
     (acc(x.$entry_$_nextId, write) && true &&
     (acc(x.$entry_$_nextLvl, write) && true) &&
@@ -3683,7 +3683,7 @@ method $_updateEntryGhost_condition_stability_precondition_check(x: Ref, c: Ref,
 
 method $_updateLinkGhost_condition_stability_precondition_check(x: Ref, c: Ref,
   l: Int)
-  requires acc(x.$link_$next, write) && true &&
+  //requires acc(x.$link_$next, write) && true &&
     (acc(BagList(c, l, x.$link_$next), write) && (l >= 0 && true)) &&
     (acc(x.$link_$_nextId, write) && true &&
     (acc(x.$link_$_nextLvl, write) && true) &&
@@ -3755,7 +3755,7 @@ method $_updateLinkGhost_condition_stability_precondition_check(x: Ref, c: Ref,
 
 method $_createBagList_condition_stability_precondition_check(r: Ref, lvl: Int,
   x: Ref, c: Ref, l: Int, vs: Seq[Int])
-  requires acc(x.$link_$val, write) && true &&
+  //requires acc(x.$link_$val, write) && true &&
     (acc(x.$link_$next, write) && true) &&
     (acc(x.$link_$_nextId, write) && true &&
     (acc(x.$link_$_nextLvl, write) && true) &&

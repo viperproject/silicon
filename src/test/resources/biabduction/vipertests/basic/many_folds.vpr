@@ -31,16 +31,3 @@ method test01() {
 
   assert acc(node(n5))
 }
-
-
-method test02(n4: Ref)
-  //requires acc(node(n4))
-  //requires length(n4) == 4
-{
-  //unfold acc(node(n4))
-  //unfold acc(node(n4.next))
-  //unfold acc(node(n4.next.next))
-  //unfold acc(node(n4.next.next.next))
-
-  n4.next.next.next.next := null
-}

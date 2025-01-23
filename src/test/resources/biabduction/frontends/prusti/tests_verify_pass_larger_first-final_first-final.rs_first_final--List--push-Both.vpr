@@ -389,14 +389,14 @@ field val_int: Int
 field val_ref: Ref
 
 function builtin$unreach__$TY$__$int$$$int$(): Int
-  requires false
+  //requires false
 
 
 function f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1: Snap$m_Link$_beg_$_end_): Bool
-  requires true
-  requires true
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1),
     true]
 {
@@ -405,13 +405,13 @@ function f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1: Snap$m_Link$
 }
 
 function f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1: Snap$m_Link$_beg_$_end_): Int
-  requires true
-  requires true
-  ensures (!f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1) ==>
+  //requires true
+  //requires true
+  //ensures (!f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1) ==>
     result > 0) &&
     result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1),
     true]
 {
@@ -424,12 +424,12 @@ function f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1: Snap$m_Link$_beg_$
 
 function f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1: Snap$m_Link$_beg_$_end_,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 &&
+  //requires true
+  //requires 0 <= _2 &&
     _2 < f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1)
-  requires 0 <= _2
-  ensures true
-  ensures [result ==
+  //requires 0 <= _2
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1,
     _2),
     true]
@@ -444,11 +444,11 @@ function f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1: Snap$m_Li
 }
 
 function f_List$$len__$TY$__Snap$struct$m_List$$int$(_1: Snap$struct$m_List): Int
-  requires true
-  requires true
-  ensures true
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_List$$len__$TY$__Snap$struct$m_List$$int$(_1),
     true]
 {
@@ -457,11 +457,11 @@ function f_List$$len__$TY$__Snap$struct$m_List$$int$(_1: Snap$struct$m_List): In
 
 function f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1: Snap$struct$m_List,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 && _2 < f_List$$len__$TY$__Snap$struct$m_List$$int$(_1)
-  requires 0 <= _2
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires 0 <= _2 && _2 < f_List$$len__$TY$__Snap$struct$m_List$$int$(_1)
+  //requires 0 <= _2
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1, _2),
     true]
 {
@@ -470,16 +470,16 @@ function f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1: Snap$struct$m_
 }
 
 function m_Link$_beg_$_end_$$discriminant$$__$TY$__m_Link$_beg_$_end_$$int$(self: Ref): Int
-  requires acc(m_Link$_beg_$_end_(self), read$())
-  ensures 0 <= result && result <= 1
-  ensures discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self)) ==
+  //requires acc(m_Link$_beg_$_end_(self), read$())
+  //ensures 0 <= result && result <= 1
+  //ensures discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self)) ==
     result
 {
   (unfolding acc(m_Link$_beg_$_end_(self), read$()) in self.discriminant)
 }
 
 function snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self: Ref): Snap$m_Link$_beg_$_end_
-  requires acc(m_Link$_beg_$_end_(self), read$())
+  //requires acc(m_Link$_beg_$_end_(self), read$())
 {
   ((unfolding acc(m_Link$_beg_$_end_(self), read$()) in self.discriminant) ==
   1 ?
@@ -491,14 +491,14 @@ function snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_be
 }
 
 function snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(self: Ref): Snap$struct$m_List
-  requires acc(struct$m_List(self), read$())
+  //requires acc(struct$m_List(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List((unfolding acc(struct$m_List(self), read$()) in
     snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self.f$head)))
 }
 
 function snap$__$TY$__Snap$struct$m_Node$struct$m_Node$Snap$struct$m_Node(self: Ref): Snap$struct$m_Node
-  requires acc(struct$m_Node(self), read$())
+  //requires acc(struct$m_Node(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Node$$int$$Snap$m_Link$_beg_$_end_$Snap$struct$m_Node((unfolding acc(struct$m_Node(self), read$()) in
     (unfolding acc(i32(self.f$elem), read$()) in self.f$elem.val_int)), (unfolding acc(struct$m_Node(self), read$()) in
@@ -506,8 +506,8 @@ function snap$__$TY$__Snap$struct$m_Node$struct$m_Node$Snap$struct$m_Node(self: 
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -598,7 +598,7 @@ method m_List$$push() returns (_0: Ref)
   // [mir] _4 = &((*_1).0: Link)
   _4 := builtin$havoc_ref()
   inhale acc(_4.val_ref, write)
-  unfold acc(struct$m_List(_1.val_ref), write)
+  //unfold acc(struct$m_List(_1.val_ref), write)
   _4.val_ref := _1.val_ref.f$head
   exhale acc(m_Link$_beg_$_end_(_1.val_ref.f$head), write - read$())
   inhale acc(m_Link$_beg_$_end_(_4.val_ref), read$())
@@ -631,7 +631,7 @@ method m_List$$push() returns (_0: Ref)
   // [mir] _7 = _2
   _7 := builtin$havoc_ref()
   inhale acc(_7.val_int, write)
-  unfold acc(i32(_2), write)
+  //unfold acc(i32(_2), write)
   _7.val_int := _2.val_int
   label l3
   // [mir] StorageLive(_8)
@@ -688,7 +688,7 @@ method m_List$$push() returns (_0: Ref)
   // [mir] _6 = Node { elem: move _7, next: move _8 }
   _6 := builtin$havoc_ref()
   inhale acc(struct$m_Node(_6), write)
-  unfold acc(struct$m_Node(_6), write)
+  //unfold acc(struct$m_Node(_6), write)
   _6.f$elem := _7
   label l9
   _6.f$next := _8
@@ -723,8 +723,8 @@ method m_List$$push() returns (_0: Ref)
     1
   // downcast _12 to enum_More
 
-  unfold acc(m_Link$_beg_$_end_(_12), write)
-  unfold acc(m_Link$_beg_$_end_More(_12.enum_More), write)
+  //unfold acc(m_Link$_beg_$_end_(_12), write)
+  //unfold acc(m_Link$_beg_$_end_More(_12.enum_More), write)
   _12.enum_More.f$0 := _13
   label l13
   // [mir] drop(_13) -> [return: bb5, unwind: bb10]
@@ -752,17 +752,17 @@ method m_List$$push() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l16
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  fold acc(i32(_1.val_ref.f$head.enum_More.f$0.val_ref.f$elem), write)
-  fold acc(struct$m_Node(_1.val_ref.f$head.enum_More.f$0.val_ref), write)
-  fold acc(struct$m_std$$boxed$$Box$struct$m_Node$struct$m_std$$alloc$$Global(_1.val_ref.f$head.enum_More.f$0), write)
-  fold acc(m_Link$_beg_$_end_More(_1.val_ref.f$head.enum_More), write)
-  fold acc(m_Link$_beg_$_end_(_1.val_ref.f$head), write)
-  fold acc(struct$m_List(_1.val_ref), write)
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  //fold acc(i32(_1.val_ref.f$head.enum_More.f$0.val_ref.f$elem), write)
+  //fold acc(struct$m_Node(_1.val_ref.f$head.enum_More.f$0.val_ref), write)
+  //fold acc(struct$m_std$$boxed$$Box$struct$m_Node$struct$m_std$$alloc$$Global(_1.val_ref.f$head.enum_More.f$0), write)
+  //fold acc(m_Link$_beg_$_end_More(_1.val_ref.f$head.enum_More), write)
+  //fold acc(m_Link$_beg_$_end_(_1.val_ref.f$head), write)
+  //fold acc(struct$m_List(_1.val_ref), write)
   // obtain acc(struct$m_List(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(tuple0$(_0), write)
+  // //fold the result
+  //fold acc(tuple0$(_0), write)
   // obtain acc(tuple0$(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -780,7 +780,7 @@ method m_List$$push() returns (_0: Ref)
       _0_quant_0 - 1)) ==
       f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_old$pre$0),
       _0_quant_0))))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_List(_old$pre$0), write)

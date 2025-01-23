@@ -5,12 +5,12 @@ predicate list(x: Ref){
 }
 
 method test(x: Ref, y: Ref)
-requires list(x)
-requires x != null
-requires acc(y.next)
+//requires list(x)
+//requires x != null
+//requires acc(y.next)
 {
-   unfold list(x)
+   //unfold list(x)
    y.next := x.next
-   fold list(x)
+   //fold list(x)
    assert list(y.next)
 }

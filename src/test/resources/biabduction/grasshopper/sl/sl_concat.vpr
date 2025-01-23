@@ -2,7 +2,7 @@ import "./sl.vpr"
 
 method concat(x: Ref, y: Ref) returns (res: Ref)
 //requires list(x)
-requires list(y)
+//requires list(y)
 //ensures list(res)
 {
     var curr: Ref
@@ -21,15 +21,15 @@ requires list(y)
             curr := curr.next
             //unfold list(curr)
             //package list(curr) --* list(x) {
-             //   fold list(prev)
-             //   apply list(prev) --* list(x)
+             //   //fold list(prev)
+             //   //apply list(prev) --* list(x)
             //}
         }
         curr.next := y
         res := x
     }
     //if(x != null){
-     //   fold list(curr)
-     //   apply list(curr) --* list(x)
+     //   //fold list(curr)
+     //   //apply list(curr) --* list(x)
     //}
 }

@@ -1,81 +1,82 @@
 import "sl.vpr"
 
 method difference(lst1: Ref, lst2: Ref) returns (res: Ref)
-requires list(lst1) && list(lst2)
-ensures list(res) && list(lst2)
+//requires list(lst1) && list(lst2)
+//ensures list(res) && list(lst2)
 { 
     res := lst1
     if(lst1 != null && lst2 != null){
     
         var curr_2: Ref := lst2
-        package list(curr_2) --* list(lst2)
+        //package list(curr_2) --* list(lst2)
         while(res != null && curr_2 != null && unfolding list(res) in unfolding list(curr_2) in res.data == curr_2.data)
-            invariant list(curr_2) && (list(curr_2) --* list(lst2))
-            invariant list(res)
+            //invariant list(curr_2) && (list(curr_2) --* list(lst2))
+            //invariant list(res)
         {
             var prev_2: Ref := curr_2
-            unfold list(curr_2)
-            unfold list(res)
+            //unfold list(curr_2)
+            //unfold list(res)
             res := res.next
             curr_2 := curr_2.next
-            package list(curr_2) --* list(lst2){
-                fold list(prev_2)
-                apply list(prev_2) --* list(lst2)
-            }
+            //package list(curr_2) --* list(lst2){
+                //fold list(prev_2)
+                //apply list(prev_2) --* list(lst2)
+            //}
         }
         
         if(res != null && curr_2 != null){
             
             var prev_res: Ref := res
-            package list(prev_res) --* list(res)
-            unfold list(res)
+            //package list(prev_res) --* list(res)
+            //unfold list(res)
             var curr_res: Ref := res.next
             
             while(curr_res != null && curr_2 != null)
-            invariant list(curr_2) && (list(curr_2) --* list(lst2))
-            invariant list(curr_res)
-            invariant acc(prev_res.data) && acc(prev_res.next)
-            invariant prev_res.next == curr_res
-            invariant list(prev_res) --* list(res)
+            //invariant list(curr_2) && (list(curr_2) --* list(lst2))
+            //invariant list(curr_res)
+            //invariant acc(prev_res.data) && acc(prev_res.next)
+            //invariant prev_res.next == curr_res
+            //invariant list(prev_res) --* list(res)
             {
                 var prev_2: Ref := curr_2
                 var prev_res_old: Ref := prev_res
                 
-                unfold list(curr_2)
-                unfold list(curr_res)
+                //unfold list(curr_2)
+                //unfold list(curr_res)
 
 
                 if(curr_res.data < curr_2.data){
                     curr_res := curr_res.next
                     prev_res := prev_res.next
-                    fold list(curr_2)
-                    package list(prev_res) --* list(res){
-                        fold list(prev_res_old)
-                        apply list(prev_res_old) --* list(res)
-                    }
+                    //fold list(curr_2)
+                    //package list(prev_res) --* list(res){
+                        //fold list(prev_res_old)
+                        //apply list(prev_res_old) --* list(res)
+                    //}
                 } elseif(curr_res.data > curr_2.data){
                     curr_2 := curr_2.next
-                    package list(curr_2) --* list(lst2){
-                        fold list(prev_2)
-                        apply list(prev_2) --* list(lst2)
-                    }
-                    fold list(curr_res)
+                    //package list(curr_2) --* list(lst2){
+                        //fold list(prev_2)
+                        //apply list(prev_2) --* list(lst2)
+                    //}
+                    //fold list(curr_res)
                 } else {
                     prev_res.next := curr_res.next
                     curr_res := curr_res.next
-                    fold list(curr_2)
+                    //fold list(curr_2)
                 }    
             }
-            fold list(prev_res)
-            apply list(prev_res) --* list(res)
+            //fold list(prev_res)
+            //apply list(prev_res) --* list(res)
         }
-        apply list(curr_2) --* list(lst2)
+        //apply list(curr_2) --* list(lst2)
     }
 }
 
+/*
 method difference1(lst1: Ref, lst2: Ref) returns (res: Ref)
-requires list(lst1) && list(lst2)
-ensures list(res)
+//requires list(lst1) && list(lst2)
+//ensures list(res)
 {
     if(lst1 == null){
         res := lst2
@@ -85,10 +86,10 @@ ensures list(res)
         var x: Ref := lst1
         var y: Ref := lst2
         while(x != null && y != null && unfolding list(x) in unfolding list(y) in x.data == y.data)
-            invariant list(x) && list(y)
+            //invariant list(x) && list(y)
         {
-            unfold list(x)
-            unfold list(y)
+            //unfold list(x)
+            //unfold list(y)
             x := x.next
             y := y.next
         }
@@ -98,28 +99,28 @@ ensures list(res)
         } elseif(y == null){
             res := x
         } else {
-            unfold list(x)
-            unfold list(y)
+            //unfold list(x)
+            //unfold list(y)
             if(x.data < y.data){
                 res := x
                 x := x.next
                 res.next := null
-                fold list(y)
+                //fold list(y)
             } else {
                 res := y
                 y := y.next
                 res.next := null
-                fold list(x)
+                //fold list(x)
             }
             var res_curr: Ref := res
-            package list(res_curr) --* list(res)
+            //package list(res_curr) --* list(res)
             while(x != null && y != null)
-            invariant list(x) && list(y)
-            invariant list(res_curr) --* list(res)
-            invariant acc(res_curr.data) && acc(res_curr.next)
+            //invariant list(x) && list(y)
+            //invariant list(res_curr) --* list(res)
+            //invariant acc(res_curr.data) && acc(res_curr.next)
             {
-                unfold list(x)
-                unfold list(y)
+                //unfold list(x)
+                //unfold list(y)
                 if(x.data == y.data){
                     x := x.next
                     y := y.next
@@ -127,18 +128,18 @@ ensures list(res)
                     if(x.data < y.data){
                         res_curr.next := x
                         x := x.next
-                        fold list(y)
+                        //fold list(y)
                     } else {
                         res_curr.next := y
                         y := y.next
-                        fold list(x)
+                        //fold list(x)
                     }
 
                     var res_prev: Ref := res_curr
                     res_curr := res_curr.next
-                    package list(res_curr) --* list(res){
-                        fold list(res_prev)
-                        apply list(res_prev) --* list(res)
+                    //package list(res_curr) --* list(res){
+                        //fold list(res_prev)
+                        //apply list(res_prev) --* list(res)
                     }
                 }
             }
@@ -148,8 +149,8 @@ ensures list(res)
             } else {
                 res_curr.next := x
             }
-            fold list(res_curr)
-            apply list(res_curr) --* list(res)
+            //fold list(res_curr)
+            //apply list(res_curr) --* list(res)
         }
     }
-}
+}*/

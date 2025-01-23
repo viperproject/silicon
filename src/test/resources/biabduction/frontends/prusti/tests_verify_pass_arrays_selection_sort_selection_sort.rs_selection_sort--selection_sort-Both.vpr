@@ -300,34 +300,34 @@ field val_int: Int
 field val_ref: Ref
 
 function Slice$len__$TY$__i32$Slice$i32$$int$(self: Ref): Int
-  requires acc(Slice$i32(self), read$())
-  ensures result >= 0
-  ensures result <= 18446744073709551615
+  //requires acc(Slice$i32(self), read$())
+  //ensures result >= 0
+  //ensures result <= 18446744073709551615
 
 
 function lookup_pure__$TY$__Array$10$i32$i32$Array$10$i32$$int$$$int$(self: Ref,
   idx: Int): Int
-  requires acc(Array$10$i32(self), read$())
-  requires 0 <= idx
-  requires idx < 10
+  //requires acc(Array$10$i32(self), read$())
+  //requires 0 <= idx
+  //requires idx < 10
 
 
 function lookup_pure__$TY$__Slice$i32$i32$Slice$i32$$int$$$int$(self: Ref, idx: Int): Int
-  requires acc(Slice$i32(self), read$())
-  requires 0 <= idx
-  requires idx < Slice$len__$TY$__i32$Slice$i32$$int$(self)
+  //requires acc(Slice$i32(self), read$())
+  //requires 0 <= idx
+  //requires idx < Slice$len__$TY$__i32$Slice$i32$$int$(self)
 
 
 function seq_collect$Array$10$i32$__$TY$__Array$10$i32$$int$$Seq$$int$(self: Ref,
   start: Int): Seq[Int]
-  requires acc(Array$10$i32(self), read$())
-  requires 0 <= start
-  ensures start >= 10 ==> result == Seq[Int]()
-  ensures start < 10 ==> |result| == 10 - start
-  ensures start < 10 ==>
+  //requires acc(Array$10$i32(self), read$())
+  //requires 0 <= start
+  //ensures start >= 10 ==> result == Seq[Int]()
+  //ensures start < 10 ==> |result| == 10 - start
+  //ensures start < 10 ==>
     result[0] ==
     lookup_pure__$TY$__Array$10$i32$i32$Array$10$i32$$int$$$int$(self, start)
-  ensures start < 10 ==>
+  //ensures start < 10 ==>
     (forall i: Int, j: Int ::
       { lookup_pure__$TY$__Array$10$i32$i32$Array$10$i32$$int$$$int$(self, i),
       result[j] }
@@ -343,8 +343,8 @@ function seq_collect$Array$10$i32$__$TY$__Array$10$i32$$int$$Seq$$int$(self: Ref
 }
 
 function snap$__$TY$__Snap$Array$10$i32$Array$10$i32$Snap$Array$10$i32(self: Ref): Snap$Array$10$i32
-  requires acc(Array$10$i32(self), read$())
-  ensures (forall i: Int ::
+  //requires acc(Array$10$i32(self), read$())
+  //ensures (forall i: Int ::
       { read$Snap$Array$10$i32$__$TY$__Snap$Array$10$i32$$int$$$int$(result,
       i) }
       { lookup_pure__$TY$__Array$10$i32$i32$Array$10$i32$$int$$$int$(self, i) }
@@ -357,8 +357,8 @@ function snap$__$TY$__Snap$Array$10$i32$Array$10$i32$Snap$Array$10$i32(self: Ref
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate Array$10$i32(self: Ref) 
@@ -669,11 +669,11 @@ method m_selection_sort() returns (_0: Ref)
   _11.val_bool := false
   // [mir] switchInt(move _11) -> [0: bb6, otherwise: bb5]
   __t48 := _11.val_bool
-  // Ignore default target bb5, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb5, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb1)
+  // Assert and exhale the loop body //invariant (loop head: bb1)
   // obtain acc(_1.val_ref, read)
-  fold acc(usize(_3), write)
+  //fold acc(usize(_3), write)
   // obtain acc(usize(_3), write)
   // obtain acc(Array$10$i32(_1.val_ref), write)
   assert 0 <= (unfolding acc(usize(_3), write) in _3.val_int) &&
@@ -850,12 +850,12 @@ method m_selection_sort() returns (_0: Ref)
   __t9 := builtin$havoc_bool()
   _preserve$0 := builtin$havoc_ref()
   // ========== loop1_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb1
+  // Inhale the loop permissions //invariant of block bb1
   inhale acc(_1.val_ref, read$()) &&
     (acc(usize(_3), write) && acc(Array$10$i32(_1.val_ref), write))
   inhale true
   // ========== loop1_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb1
+  // Inhale the loop fnspec //invariant of block bb1
   inhale 0 <= (unfolding acc(usize(_3), write) in _3.val_int) &&
     (unfolding acc(usize(_3), write) in _3.val_int) < 10 &&
     ((unfolding acc(usize(_3), write) in _3.val_int) < 10 &&
@@ -908,7 +908,7 @@ method m_selection_sort() returns (_0: Ref)
   _15.val_bool := false
   // [mir] switchInt(move _15) -> [0: bb9, otherwise: bb8]
   __t49 := _15.val_bool
-  // Ignore default target bb8, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb8, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_bb9 ==========
   __t7 := true
   // [mir] _14 = const ()
@@ -925,7 +925,7 @@ method m_selection_sort() returns (_0: Ref)
   _20.val_bool := false
   // [mir] switchInt(move _20) -> [0: bb12, otherwise: bb11]
   __t50 := _20.val_bool
-  // Ignore default target bb11, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb11, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_bb12 ==========
   __t9 := true
   // [mir] _19 = const ()
@@ -942,7 +942,7 @@ method m_selection_sort() returns (_0: Ref)
   _25.val_bool := false
   // [mir] switchInt(move _25) -> [0: bb15, otherwise: bb14]
   __t51 := _25.val_bool
-  // Ignore default target bb14, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb14, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_bb15 ==========
   __t11 := true
   // [mir] _24 = const ()
@@ -955,7 +955,7 @@ method m_selection_sort() returns (_0: Ref)
   // [mir] _29 = _3
   _29 := builtin$havoc_ref()
   inhale acc(_29.val_int, write)
-  unfold acc(usize(_3), write)
+  //unfold acc(usize(_3), write)
   _29.val_int := _3.val_int
   label l7
   // [mir] _2 = move _29
@@ -1090,7 +1090,7 @@ method m_selection_sort() returns (_0: Ref)
   // drop Acc(_82.val_bool, write) (Acc(_82.val_bool, write))
   // drop Acc(__t65.val_int, write) (Acc(__t65.val_int, write))
   // drop Acc(_92.tuple_0, write) (Acc(_92.tuple_0, write))
-  unfold acc(usize(_3), write)
+  //unfold acc(usize(_3), write)
   // drop Acc(old[l30](_37.val_ref), write) (Acc(old[l30](_37.val_ref), write))
   // drop Acc(_69.val_bool, write) (Acc(_69.val_bool, write))
   // drop Acc(_83.val_int, write) (Acc(_83.val_int, write))
@@ -1134,7 +1134,7 @@ method m_selection_sort() returns (_0: Ref)
     _97) ==
     (unfolding acc(i32(__t71), write) in __t71.val_int)
   _96 := builtin$havoc_int()
-  unfold acc(i32(__t71), write)
+  //unfold acc(i32(__t71), write)
   _96 := __t71.val_int
   label l35
   // [mir] FakeRead(ForLet(None), _96)
@@ -1167,7 +1167,7 @@ method m_selection_sort() returns (_0: Ref)
     _101) ==
     (unfolding acc(i32(__t73), write) in __t73.val_int)
   _100 := builtin$havoc_int()
-  unfold acc(i32(__t73), write)
+  //unfold acc(i32(__t73), write)
   _100 := __t73.val_int
   label l37
   // [mir] FakeRead(ForLet(None), _100)
@@ -1364,15 +1364,15 @@ method m_selection_sort() returns (_0: Ref)
   _40.val_bool := false
   // [mir] switchInt(move _40) -> [0: bb23, otherwise: bb22]
   __t54 := _40.val_bool
-  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb18)
+  // Assert and exhale the loop body //invariant (loop head: bb18)
   _preserve$0 := _1.val_ref
-  fold acc(usize(_2), write)
+  //fold acc(usize(_2), write)
   // obtain acc(usize(_2), write)
-  fold acc(usize(_30), write)
+  //fold acc(usize(_30), write)
   // obtain acc(usize(_30), write)
-  fold acc(usize(_3), write)
+  //fold acc(usize(_3), write)
   // obtain acc(usize(_3), read)
   // obtain acc(_1.val_ref, read)
   // obtain acc(Array$10$i32(_1.val_ref), read)
@@ -1517,7 +1517,7 @@ method m_selection_sort() returns (_0: Ref)
   __t68 := builtin$havoc_bool()
   __t69 := builtin$havoc_bool()
   // ========== loop1_group3_loop18_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb18
+  // Inhale the loop permissions //invariant of block bb18
   inhale acc(usize(_2), write) &&
     (acc(usize(_30), write) &&
     (acc(usize(_3), read$()) &&
@@ -1525,7 +1525,7 @@ method m_selection_sort() returns (_0: Ref)
   inhale _preserve$0 == _1.val_ref
   inhale true
   // ========== loop1_group3_loop18_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb18
+  // Inhale the loop fnspec //invariant of block bb18
   inhale 0 <= (unfolding acc(usize(_3), write) in _3.val_int) &&
     (unfolding acc(usize(_3), write) in _3.val_int) < 10 &&
     ((unfolding acc(usize(_3), write) in _3.val_int) < 10 &&
@@ -1609,7 +1609,7 @@ method m_selection_sort() returns (_0: Ref)
   _44.val_bool := false
   // [mir] switchInt(move _44) -> [0: bb26, otherwise: bb25]
   __t55 := _44.val_bool
-  // Ignore default target bb25, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb25, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_group3_bb26 ==========
   __t20 := true
   // [mir] _43 = const ()
@@ -1626,7 +1626,7 @@ method m_selection_sort() returns (_0: Ref)
   _49.val_bool := false
   // [mir] switchInt(move _49) -> [0: bb29, otherwise: bb28]
   __t56 := _49.val_bool
-  // Ignore default target bb28, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb28, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_group3_bb29 ==========
   __t22 := true
   // [mir] _48 = const ()
@@ -1643,7 +1643,7 @@ method m_selection_sort() returns (_0: Ref)
   _54.val_bool := false
   // [mir] switchInt(move _54) -> [0: bb32, otherwise: bb31]
   __t57 := _54.val_bool
-  // Ignore default target bb31, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb31, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_group3_bb32 ==========
   __t24 := true
   // [mir] _53 = const ()
@@ -1660,7 +1660,7 @@ method m_selection_sort() returns (_0: Ref)
   _59.val_bool := false
   // [mir] switchInt(move _59) -> [0: bb35, otherwise: bb34]
   __t58 := _59.val_bool
-  // Ignore default target bb34, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb34, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_group3_bb35 ==========
   __t26 := true
   // [mir] _58 = const ()
@@ -1677,7 +1677,7 @@ method m_selection_sort() returns (_0: Ref)
   _64.val_bool := false
   // [mir] switchInt(move _64) -> [0: bb38, otherwise: bb37]
   __t59 := _64.val_bool
-  // Ignore default target bb37, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb37, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_group3_bb38 ==========
   __t28 := true
   // [mir] _63 = const ()
@@ -1694,7 +1694,7 @@ method m_selection_sort() returns (_0: Ref)
   _69.val_bool := false
   // [mir] switchInt(move _69) -> [0: bb41, otherwise: bb40]
   __t60 := _69.val_bool
-  // Ignore default target bb40, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb40, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_group3_bb41 ==========
   __t30 := true
   // [mir] _68 = const ()
@@ -1711,7 +1711,7 @@ method m_selection_sort() returns (_0: Ref)
   _75.val_bool := false
   // [mir] switchInt(move _75) -> [0: bb44, otherwise: bb43]
   __t61 := _75.val_bool
-  // Ignore default target bb43, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb43, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_group3_bb44 ==========
   __t32 := true
   // [mir] _74 = const ()
@@ -1726,7 +1726,7 @@ method m_selection_sort() returns (_0: Ref)
   // [mir] StorageLive(_84)
   // [mir] _84 = _30
   _84 := builtin$havoc_int()
-  unfold acc(usize(_30), write)
+  //unfold acc(usize(_30), write)
   _84 := _30.val_int
   label l18
   // [mir] _85 = Len((*_1))
@@ -1751,14 +1751,14 @@ method m_selection_sort() returns (_0: Ref)
     _84) ==
     (unfolding acc(i32(__t63), write) in __t63.val_int)
   _83 := builtin$havoc_int()
-  unfold acc(i32(__t63), write)
+  //unfold acc(i32(__t63), write)
   _83 := __t63.val_int
   label l19
   // [mir] StorageLive(_87)
   // [mir] StorageLive(_88)
   // [mir] _88 = _2
   _88 := builtin$havoc_int()
-  unfold acc(usize(_2), write)
+  //unfold acc(usize(_2), write)
   _88 := _2.val_int
   label l20
   // [mir] _89 = Len((*_1))
@@ -1783,7 +1783,7 @@ method m_selection_sort() returns (_0: Ref)
     _88) ==
     (unfolding acc(i32(__t65), write) in __t65.val_int)
   _87 := builtin$havoc_int()
-  unfold acc(i32(__t65), write)
+  //unfold acc(i32(__t65), write)
   _87 := __t65.val_int
   label l21
   // [mir] _82 = Lt(move _83, move _87)
@@ -1972,12 +1972,12 @@ method m_selection_sort() returns (_0: Ref)
   _40.val_bool := false
   // [mir] switchInt(move _40) -> [0: bb23, otherwise: bb22]
   __t69 := _40.val_bool
-  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_group3_loop18_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb18)
-  fold acc(usize(_2), write)
+  // Assert and exhale the loop body //invariant (loop head: bb18)
+  //fold acc(usize(_2), write)
   // obtain acc(usize(_2), write)
-  fold acc(usize(_30), write)
+  //fold acc(usize(_30), write)
   // obtain acc(usize(_30), write)
   // obtain acc(usize(_3), read)
   // obtain acc(_1.val_ref, read)
@@ -2071,11 +2071,11 @@ method m_selection_sort() returns (_0: Ref)
   _11.val_bool := false
   // [mir] switchInt(move _11) -> [0: bb6, otherwise: bb5]
   __t80 := _11.val_bool
-  // Ignore default target bb5, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb5, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop1_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb1)
+  // Assert and exhale the loop body //invariant (loop head: bb1)
   // obtain acc(_1.val_ref, read)
-  fold acc(usize(_3), write)
+  //fold acc(usize(_3), write)
   // obtain acc(usize(_3), write)
   // obtain acc(Array$10$i32(_1.val_ref), write)
   assert 0 <= (unfolding acc(usize(_3), write) in _3.val_int) &&
@@ -2134,11 +2134,11 @@ method m_selection_sort() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l55
-  // Fold predicates for &mut args and transfer borrow permissions to old
+  // //fold predicates for &mut args and transfer borrow permissions to old
   // obtain acc(Array$10$i32(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(tuple0$(_0), write)
+  // //fold the result
+  //fold acc(tuple0$(_0), write)
   // obtain acc(tuple0$(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -2156,7 +2156,7 @@ method m_selection_sort() returns (_0: Ref)
       _0_quant_0) <=
       read$Snap$Array$10$i32$__$TY$__Snap$Array$10$i32$$int$$$int$(snap$__$TY$__Snap$Array$10$i32$Array$10$i32$Snap$Array$10$i32(_old$pre$0),
       _1_quant_0)))))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(Array$10$i32(_old$pre$0), write)

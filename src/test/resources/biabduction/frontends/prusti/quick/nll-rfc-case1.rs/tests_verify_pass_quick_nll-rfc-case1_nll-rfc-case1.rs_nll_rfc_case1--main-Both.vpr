@@ -238,8 +238,8 @@ domain BitVectorDomain128 interpretation (SMTLIB: "(_ BitVec 128)", Boogie: "bv1
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -280,13 +280,13 @@ method m_main() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l3
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  // Fold the result
-  fold acc(tuple0$(_0), write)
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  // //fold the result
+  //fold acc(tuple0$(_0), write)
   // obtain acc(tuple0$(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   // Exhale permissions of postcondition (2/3)

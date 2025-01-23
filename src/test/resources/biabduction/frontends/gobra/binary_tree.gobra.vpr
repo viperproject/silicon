@@ -193,13 +193,13 @@ field Intint$$$$_E_$$$: Int
 
 // decreases _
 function shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$(): ShStruct3[Ref, Ref, Ref]
-  ensures (ShStructget0of3(result): Ref) == null &&
+  //ensures (ShStructget0of3(result): Ref) == null &&
     (ShStructget1of3(result): Ref) == null &&
     (ShStructget2of3(result): Ref) == null
 
 
 function Contains_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int): Bool
-  requires !(self_V0 ==
+  //requires !(self_V0 ==
     shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
     acc(tree_d081ef35_F(self_V0), write)
 {
@@ -215,8 +215,8 @@ function Contains_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int):
 
 // decreases 
 function IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types]): Bool
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), wildcard)
 
 
 predicate tree_d081ef35_F(self_V0: ShStruct3[Ref, Ref, Ref]) {
@@ -235,10 +235,10 @@ predicate ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
 
 method Insert_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
   returns (res_V0: ShStruct3[Ref, Ref, Ref])
-  requires !(self_V0 ==
+  //requires !(self_V0 ==
     shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
     acc(tree_d081ef35_F(self_V0), write)
-  ensures acc(tree_d081ef35_F(res_V0), write) &&
+  //ensures acc(tree_d081ef35_F(res_V0), write) &&
     Contains_d081ef35_PMTree(res_V0, v_V0)
 {
   inhale res_V0 ==
@@ -308,8 +308,8 @@ method Insert_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
       
       // decl 
       
-      // unfold acc(tree_d081ef35_F(self_V0_CN0))
-      unfold acc(tree_d081ef35_F(self_V0_CN0), write)
+      // //unfold acc(tree_d081ef35_F(self_V0_CN0))
+      //unfold acc(tree_d081ef35_F(self_V0_CN0), write)
       
       // if(*self_V0_CN0.ValueA + v_V0_CN1 % 2 == 0) {...} else {...}
       if (((ShStructget1of3(self_V0_CN0): Ref).Intint$$$$_E_$$$ + v_V0_CN1) %
@@ -346,8 +346,8 @@ method Insert_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
       res_V0_CN2 := self_V0_CN0
     }
     
-    // fold acc(tree_d081ef35_F(res_V0_CN2))
-    fold acc(tree_d081ef35_F(res_V0_CN2), write)
+    // //fold acc(tree_d081ef35_F(res_V0_CN2))
+    //fold acc(tree_d081ef35_F(res_V0_CN2), write)
     
     // return
     goto returnLabel
@@ -360,10 +360,10 @@ method Insert_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
 
 method DeleteAll_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
   returns (res_V0: ShStruct3[Ref, Ref, Ref])
-  requires !(self_V0 ==
+  //requires !(self_V0 ==
     shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
     acc(tree_d081ef35_F(self_V0), write)
-  ensures (!(res_V0 ==
+  //ensures (!(res_V0 ==
     shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
     acc(tree_d081ef35_F(res_V0), write)) &&
     !Contains_d081ef35_PMTree(res_V0, v_V0)
@@ -415,8 +415,8 @@ method DeleteAll_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
         var newLeft_V1: ShStruct3[Ref, Ref, Ref]
         var N4: ShStruct3[Ref, Ref, Ref]
         
-        // unfold acc(tree_d081ef35_F(self_V0_CN0))
-        unfold acc(tree_d081ef35_F(self_V0_CN0), write)
+        // //unfold acc(tree_d081ef35_F(self_V0_CN0))
+        //unfold acc(tree_d081ef35_F(self_V0_CN0), write)
         
         // N4 = *self_V0_CN0.LeftADeleteAll(v_V0_CN1)
         N4 := DeleteAll_d081ef35_PMTree((ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$,
@@ -493,8 +493,8 @@ method DeleteAll_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
                 // *self_V0_CN0.LeftA = newLeft_V1
                 (ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := newLeft_V1
                 
-                // fold acc(tree_d081ef35_F(self_V0_CN0))
-                fold acc(tree_d081ef35_F(self_V0_CN0), write)
+                // //fold acc(tree_d081ef35_F(self_V0_CN0))
+                //fold acc(tree_d081ef35_F(self_V0_CN0), write)
                 
                 // res_V0_CN2 = self_V0_CN0
                 res_V0_CN2 := self_V0_CN0
@@ -511,8 +511,8 @@ method DeleteAll_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
           // *self_V0_CN0.RightA = newRight_V1
           (ShStructget2of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ := newRight_V1
           
-          // fold acc(tree_d081ef35_F(self_V0_CN0))
-          fold acc(tree_d081ef35_F(self_V0_CN0), write)
+          // //fold acc(tree_d081ef35_F(self_V0_CN0))
+          //fold acc(tree_d081ef35_F(self_V0_CN0), write)
           
           // res_V0_CN2 = self_V0_CN0
           res_V0_CN2 := self_V0_CN0
@@ -534,9 +534,9 @@ method DeleteAll_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
 
 method deleteLeftMost_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: Int)
   returns (res_V0: ShStruct3[Ref, Ref, Ref], leftMost_V0: Int)
-  requires acc(tree_d081ef35_F(self_V0), write) &&
+  //requires acc(tree_d081ef35_F(self_V0), write) &&
     !Contains_d081ef35_PMTree(self_V0, v_V0)
-  ensures (!(res_V0 ==
+  //ensures (!(res_V0 ==
     shStructDefault_$LeftA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$_ValueA_Intint$$$_S_$$$_RightA_PointerDefinedTree_d081ef35_T$$$_S_$$$$$$_S_$$$$()) ==>
     acc(tree_d081ef35_F(res_V0), write)) &&
     !Contains_d081ef35_PMTree(res_V0, v_V0) &&
@@ -577,8 +577,8 @@ method deleteLeftMost_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: I
     
     // decl 
     
-    // unfold acc(tree_d081ef35_F(self_V0_CN0))
-    unfold acc(tree_d081ef35_F(self_V0_CN0), write)
+    // //unfold acc(tree_d081ef35_F(self_V0_CN0))
+    //unfold acc(tree_d081ef35_F(self_V0_CN0), write)
     
     // if(*self_V0_CN0.LeftA != (nil:*Tree_d081ef35_T@°)) {...} else {...}
     if (!((ShStructget0of3(self_V0_CN0): Ref).PointerDefinedTree_d081ef35_T$$$_S_$$$$$$$_E_$$$ ==
@@ -599,8 +599,8 @@ method deleteLeftMost_d081ef35_PMTree(self_V0: ShStruct3[Ref, Ref, Ref], v_V0: I
         // leftMost_V0_CN3 = N11
         leftMost_V0_CN3 := N11
         
-        // fold acc(tree_d081ef35_F(self_V0_CN0))
-        fold acc(tree_d081ef35_F(self_V0_CN0), write)
+        // //fold acc(tree_d081ef35_F(self_V0_CN0))
+        //fold acc(tree_d081ef35_F(self_V0_CN0), write)
         
         // res_V0_CN2 = self_V0_CN0
         res_V0_CN2 := self_V0_CN0
@@ -703,23 +703,23 @@ method $INIT_d081ef35_494e8976()
 }
 
 method panic_bffb141e_F(v_V0: Tuple2[Ref, Types])
-  requires false
+  //requires false
 
 
 // decreases 
 method Error_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
   returns (P0_PO0: Int)
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
-  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  //ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
 
 
 // decreases 
 method Duplicate_bffb141e_SY$c04328b0_bffb141e_(thisItf: Tuple2[Ref, Types])
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
-  ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
-  ensures IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf) ==>
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  //ensures acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
+  //ensures IsDuplicableMem_bffb141e_SY$c04328b0_bffb141e_(thisItf) ==>
     acc(ErrorMem_bffb141e_SY$c04328b0_bffb141e_(thisItf), write)
 
 

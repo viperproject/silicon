@@ -287,42 +287,42 @@ field val_int: Int
 field val_ref: Ref
 
 function f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1: Snap$struct$m_VecWrapperI32): Int
-  requires true
-  requires true
-  ensures result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result >= 0
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1),
     true]
 
 
 function f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(_1: Snap$struct$m_VecWrapperI32,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 &&
+  //requires true
+  //requires 0 <= _2 &&
     _2 < f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1)
-  requires 0 <= _2
-  ensures true
-  ensures [result ==
+  //requires 0 <= _2
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(_1,
     _2),
     true]
 
 
 function snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(self: Ref): Snap$struct$m_VecWrapperI32
-  requires acc(struct$m_VecWrapperI32(self), read$())
+  //requires acc(struct$m_VecWrapperI32(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32((unfolding acc(struct$m_VecWrapperI32(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
 
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -537,11 +537,11 @@ method m_knuth_shuffle() returns (_0: Ref)
   _12.val_bool := false
   // [mir] switchInt(move _12) -> [0: bb7, otherwise: bb6]
   __t20 := _12.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb3)
+  // Assert and exhale the loop body //invariant (loop head: bb3)
   _preserve$0 := _1.val_ref
-  fold acc(usize(_5), write)
+  //fold acc(usize(_5), write)
   // obtain acc(usize(_5), write)
   // obtain acc(struct$m_ThreadRngWrapper(_2), write)
   // obtain acc(_1.val_ref, read)
@@ -611,7 +611,7 @@ method m_knuth_shuffle() returns (_0: Ref)
   __t8 := builtin$havoc_bool()
   __t9 := builtin$havoc_bool()
   // ========== loop3_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb3
+  // Inhale the loop permissions //invariant of block bb3
   inhale acc(usize(_5), write) &&
     (acc(struct$m_ThreadRngWrapper(_2), write) &&
     (acc(_1.val_ref, read$()) &&
@@ -628,7 +628,7 @@ method m_knuth_shuffle() returns (_0: Ref)
   // [mir] StorageLive(_9)
   // [mir] _9 = _5
   _9 := builtin$havoc_int()
-  unfold acc(usize(_5), write)
+  //unfold acc(usize(_5), write)
   _9 := _5.val_int
   label l9
   // [mir] StorageLive(_10)
@@ -696,9 +696,9 @@ method m_knuth_shuffle() returns (_0: Ref)
   _12.val_bool := false
   // [mir] switchInt(move _12) -> [0: bb7, otherwise: bb6]
   __t22 := _12.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb3
+  // Inhale the loop fnspec //invariant of block bb3
   inhale 0 <= _5.val_int && _5.val_int < _3 &&
     (_6 == 0 &&
     _3 ==
@@ -719,7 +719,7 @@ method m_knuth_shuffle() returns (_0: Ref)
   _17.val_bool := false
   // [mir] switchInt(move _17) -> [0: bb10, otherwise: bb9]
   __t23 := _17.val_bool
-  // Ignore default target bb9, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb9, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_group3_bb10 ==========
   __t8 := true
   // [mir] _16 = const ()
@@ -736,7 +736,7 @@ method m_knuth_shuffle() returns (_0: Ref)
   _21.val_bool := false
   // [mir] switchInt(move _21) -> [0: bb13, otherwise: bb12]
   __t24 := _21.val_bool
-  // Ignore default target bb12, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb12, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_group3_bb13 ==========
   __t10 := true
   // [mir] _20 = const ()
@@ -793,7 +793,7 @@ method m_knuth_shuffle() returns (_0: Ref)
   assert _27 < _28.val_int
   assert true
   assert _27 >= 0
-  fold acc(usize(_28), write)
+  //fold acc(usize(_28), write)
   exhale acc(_26.val_ref, write) &&
     (acc(struct$m_ThreadRngWrapper(_26.val_ref), write) &&
     (_27 >= 0 && acc(usize(_28), write)))
@@ -886,7 +886,7 @@ method m_knuth_shuffle() returns (_0: Ref)
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_33.val_ref)))
   assert true
   assert _34 >= 0
-  fold acc(usize(_35), write)
+  //fold acc(usize(_35), write)
   exhale acc(_33.val_ref, write) &&
     (acc(struct$m_VecWrapperI32(_33.val_ref), write) &&
     (_34 >= 0 && acc(usize(_35), write)))
@@ -990,10 +990,10 @@ method m_knuth_shuffle() returns (_0: Ref)
   _12.val_bool := false
   // [mir] switchInt(move _12) -> [0: bb7, otherwise: bb6]
   __t30 := _12.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb3)
-  fold acc(usize(_5), write)
+  // Assert and exhale the loop body //invariant (loop head: bb3)
+  //fold acc(usize(_5), write)
   // obtain acc(usize(_5), write)
   // obtain acc(struct$m_ThreadRngWrapper(_2), write)
   // obtain acc(_1.val_ref, read)
@@ -1032,15 +1032,15 @@ method m_knuth_shuffle() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l36
-  // Fold predicates for &mut args and transfer borrow permissions to old
+  // //fold predicates for &mut args and transfer borrow permissions to old
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(tuple0$(_0), write)
+  // //fold the result
+  //fold acc(tuple0$(_0), write)
   // obtain acc(tuple0$(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_VecWrapperI32(_old$pre$0), write)

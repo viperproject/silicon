@@ -364,15 +364,15 @@ field val_int: Int
 field val_ref: Ref
 
 function builtin$unreach__$TY$__$int$$$int$(): Int
-  requires false
+  //requires false
 
 
 function f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1: Snap$struct$m_Route,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 && _2 < f_length__$TY$__Snap$struct$m_Route$$int$(_1)
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires 0 <= _2 && _2 < f_length__$TY$__Snap$struct$m_Route$$int$(_1)
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1, _2),
     true]
 {
@@ -386,10 +386,10 @@ function f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(_1: Snap$struct$m_Ro
 }
 
 function f_length__$TY$__Snap$struct$m_Route$$int$(_1: Snap$struct$m_Route): Int
-  requires true
-  requires true
-  ensures result > 0
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result > 0
+  //ensures [result ==
     mirror_simple$f_length__$TY$__Snap$struct$m_Route$$int$(_1),
     true]
 {
@@ -401,11 +401,11 @@ function f_length__$TY$__Snap$struct$m_Route$$int$(_1: Snap$struct$m_Route): Int
 }
 
 function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_
-  requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
+  //requires acc(m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_(self), read$())
 
 
 function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self: Ref): Snap$struct$m_Point
-  requires acc(struct$m_Point(self), read$())
+  //requires acc(struct$m_Point(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point((unfolding acc(struct$m_Point(self), read$()) in
     (unfolding acc(i32(self.f$x), read$()) in self.f$x.val_int)), (unfolding acc(struct$m_Point(self), read$()) in
@@ -413,7 +413,7 @@ function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(sel
 }
 
 function snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(self: Ref): Snap$struct$m_Route
-  requires acc(struct$m_Route(self), read$())
+  //requires acc(struct$m_Route(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Route$Snap$struct$m_Point$Snap$m_std$$option$$Option$_beg_$struct$m_std$$boxed$$Box$struct$m_Route$struct$m_std$$alloc$$Global$_end_$Snap$struct$m_Route((unfolding acc(struct$m_Route(self), read$()) in
     snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self.f$current)),
@@ -422,8 +422,8 @@ function snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(sel
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -497,7 +497,7 @@ method m_shift_nth_x() returns (_0: Ref)
   // [mir] _6 = _2
   _6 := builtin$havoc_ref()
   inhale acc(_6.val_int, write)
-  unfold acc(i32(_2), write)
+  //unfold acc(i32(_2), write)
   _6.val_int := _2.val_int
   label l1
   // [mir] _4 = borrow_nth(move _5, move _6) -> [return: bb1, unwind: bb3]
@@ -506,7 +506,7 @@ method m_shift_nth_x() returns (_0: Ref)
     _6.val_int <
     f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_5.val_ref))
   assert true
-  fold acc(i32(_6), write)
+  //fold acc(i32(_6), write)
   exhale acc(_5.val_ref, write) &&
     (acc(struct$m_Route(_5.val_ref), write) && acc(i32(_6), write))
   _4 := builtin$havoc_ref()
@@ -534,13 +534,13 @@ method m_shift_nth_x() returns (_0: Ref)
   // [mir] _9 = _3
   _9 := builtin$havoc_ref()
   inhale acc(_9.val_int, write)
-  unfold acc(i32(_3), write)
+  //unfold acc(i32(_3), write)
   _9.val_int := _3.val_int
   label l5
   // [mir] _7 = shift_x(move _8, move _9) -> [return: bb2, unwind: bb3]
   label l6
   assert true
-  fold acc(i32(_9), write)
+  //fold acc(i32(_9), write)
   exhale acc(_8.val_ref, write) &&
     (acc(struct$m_Point(_8.val_ref), write) && acc(i32(_9), write))
   _7 := builtin$havoc_ref()
@@ -586,7 +586,7 @@ method m_shift_nth_x() returns (_0: Ref)
         old[l2](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_5.val_ref),
         _0_quant_0)))))))
     inhale acc(DeadBorrowToken$(6), write)
-    apply acc(DeadBorrowToken$(6), write) &&
+    //apply acc(DeadBorrowToken$(6), write) &&
       acc(struct$m_Point(_old$l3$0), write) --*
       acc(struct$m_Route(old[l2](_5.val_ref)), write) &&
       (f_length__$TY$__Snap$struct$m_Route$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(old[l2](_5.val_ref))) ==
@@ -616,11 +616,11 @@ method m_shift_nth_x() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l10
-  // Fold predicates for &mut args and transfer borrow permissions to old
+  // //fold predicates for &mut args and transfer borrow permissions to old
   // obtain acc(struct$m_Route(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(tuple0$(_0), write)
+  // //fold the result
+  //fold acc(tuple0$(_0), write)
   // obtain acc(tuple0$(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -640,7 +640,7 @@ method m_shift_nth_x() returns (_0: Ref)
       _0_quant_0) ==
       old[pre](f_get_nth_x__$TY$__Snap$struct$m_Route$$int$$$int$(snap$__$TY$__Snap$struct$m_Route$struct$m_Route$Snap$struct$m_Route(_1.val_ref),
       _0_quant_0))))))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_Route(_old$pre$0), write)

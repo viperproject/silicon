@@ -19,8 +19,8 @@ method test(this: Ref)
         //unfold list(x)
         x := x.next
         //package acc(list(x), write) --* acc(list(this), write) {
-        //    fold acc(list(xo), write)
-        //    apply acc(list(xo), write) --* acc(list(this), write)
+        //    //fold acc(list(xo), write)
+        //    //apply acc(list(xo), write) --* acc(list(this), write)
         //}
     }
     //apply list(x) --* list(this)

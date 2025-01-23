@@ -16,7 +16,7 @@ predicate ChecksumMachineOCS(this: Ref)
 }
 
 method ChecksumOCS(this: Ref) returns (checksum: Int)
-    requires ChecksumMachineOCS(this)
+    //requires ChecksumMachineOCS(this)
     //requires unfolding ChecksumMachineOCS(this) in this.ocs.isNone || this.ocs.value == Hash(this.checksumData)
     //ensures ChecksumMachineOCS(this)
     //ensures unfolding ChecksumMachineOCS(this) in this.checksumData == old(unfolding ChecksumMachineOCS(this) in this.checksumData)

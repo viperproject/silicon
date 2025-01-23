@@ -27,8 +27,8 @@ method insert(x: Ref, elt: Ref) returns (res: Ref)
             curr := curr.next
             //unfold list(curr)
             //package list(curr) --* list(x) {
-            //    fold list(old_curr)
-            //    apply list(old_curr) --* list(x)
+            //    //fold list(old_curr)
+            //    //apply list(old_curr) --* list(x)
             //}
         }
         elt.next := curr.next

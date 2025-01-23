@@ -1,13 +1,13 @@
 import "./tree.vpr"
 
 method singleton(value: Int) returns (root: Ref)
-ensures tree(root)
+//ensures tree(root)
 {
     root := new(*)
     root.left := null
     root.right := null
     root.val := value
-    fold tree(root.left)
-    fold tree(root.right)
-    fold tree(root)
+    //fold tree(root.left)
+    //fold tree(root.right)
+    //fold tree(root)
 }

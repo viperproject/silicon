@@ -23,10 +23,10 @@ method loop(this: Ref)
         x := x.next
         //unfold list(x)
         //package list(x) --* list(this){
-        //    fold list(x_old)
-        //    apply list(x_old) --* list(this)
+        //    //fold list(x_old)
+        //    //apply list(x_old) --* list(this)
         //}
     }
-  //  fold list(x)
-   // apply list(x) --* list(this)
+  //  //fold list(x)
+   // //apply list(x) --* list(this)
 }

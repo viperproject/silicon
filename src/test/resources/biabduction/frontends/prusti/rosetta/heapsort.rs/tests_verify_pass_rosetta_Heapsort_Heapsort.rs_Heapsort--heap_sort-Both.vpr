@@ -287,42 +287,42 @@ field val_int: Int
 field val_ref: Ref
 
 function f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1: Snap$struct$m_VecWrapperI32): Int
-  requires true
-  requires true
-  ensures result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result >= 0
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1),
     true]
 
 
 function f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(_1: Snap$struct$m_VecWrapperI32,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 &&
+  //requires true
+  //requires 0 <= _2 &&
     _2 < f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(_1)
-  requires 0 <= _2
-  ensures true
-  ensures [result ==
+  //requires 0 <= _2
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32$$lookup__$TY$__Snap$struct$m_VecWrapperI32$$int$$$int$(_1,
     _2),
     true]
 
 
 function snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(self: Ref): Snap$struct$m_VecWrapperI32
-  requires acc(struct$m_VecWrapperI32(self), read$())
+  //requires acc(struct$m_VecWrapperI32(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecWrapperI32$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32((unfolding acc(struct$m_VecWrapperI32(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global(self), read$())
 
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -585,13 +585,13 @@ method m_heap_sort() returns (_0: Ref)
   _13.val_bool := false
   // [mir] switchInt(move _13) -> [0: bb7, otherwise: bb6]
   __t32 := _13.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb3)
+  // Assert and exhale the loop body //invariant (loop head: bb3)
   _preserve$0 := _1.val_ref
-  fold acc(usize(_4), write)
+  //fold acc(usize(_4), write)
   // obtain acc(usize(_4), write)
-  fold acc(bool(_7), write)
+  //fold acc(bool(_7), write)
   // obtain acc(bool(_7), write)
   // obtain acc(_1.val_ref, read)
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
@@ -641,7 +641,7 @@ method m_heap_sort() returns (_0: Ref)
   __t8 := builtin$havoc_bool()
   __t9 := builtin$havoc_bool()
   // ========== loop3_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb3
+  // Inhale the loop permissions //invariant of block bb3
   inhale acc(usize(_4), write) &&
     (acc(bool(_7), write) &&
     (acc(_1.val_ref, read$()) &&
@@ -658,7 +658,7 @@ method m_heap_sort() returns (_0: Ref)
   // [mir] _11 = _7
   _11 := builtin$havoc_ref()
   inhale acc(_11.val_bool, write)
-  unfold acc(bool(_7), write)
+  //unfold acc(bool(_7), write)
   _11.val_bool := _7.val_bool
   label l8
   // [mir] switchInt(move _11) -> [0: bb18, otherwise: bb5]
@@ -681,9 +681,9 @@ method m_heap_sort() returns (_0: Ref)
   _13.val_bool := false
   // [mir] switchInt(move _13) -> [0: bb7, otherwise: bb6]
   __t34 := _13.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb3
+  // Inhale the loop fnspec //invariant of block bb3
   inhale _2 ==
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_1.val_ref)) &&
     ((unfolding acc(usize(_4), write) in _4.val_int) <= _2 / 2 &&
@@ -704,7 +704,7 @@ method m_heap_sort() returns (_0: Ref)
   _18.val_bool := false
   // [mir] switchInt(move _18) -> [0: bb10, otherwise: bb9]
   __t35 := _18.val_bool
-  // Ignore default target bb9, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb9, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_group3_bb10 ==========
   __t8 := true
   // [mir] _17 = const ()
@@ -721,7 +721,7 @@ method m_heap_sort() returns (_0: Ref)
   _23.val_bool := false
   // [mir] switchInt(move _23) -> [0: bb13, otherwise: bb12]
   __t36 := _23.val_bool
-  // Ignore default target bb12, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb12, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_group3_bb13 ==========
   __t10 := true
   // [mir] _22 = const ()
@@ -736,7 +736,7 @@ method m_heap_sort() returns (_0: Ref)
   inhale acc(_26.tuple_0.val_int, write)
   inhale acc(_26.tuple_1, write)
   inhale acc(_26.tuple_1.val_bool, write)
-  unfold acc(usize(_4), write)
+  //unfold acc(usize(_4), write)
   _26.tuple_0.val_int := _4.val_int - 1
   _26.tuple_1.val_bool := false
   // [mir] assert(!move (_26.1: bool), "attempt to compute `{} - {}`, which would overflow", _4, const 1_usize) -> [success: bb15, unwind: bb36]
@@ -797,7 +797,7 @@ method m_heap_sort() returns (_0: Ref)
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_28.val_ref))))
   assert true
   assert _29 >= 0
-  fold acc(usize(_30), write)
+  //fold acc(usize(_30), write)
   exhale acc(_28.val_ref, write) &&
     (acc(struct$m_VecWrapperI32(_28.val_ref), write) &&
     (_29 >= 0 && acc(usize(_30), write)))
@@ -890,9 +890,9 @@ method m_heap_sort() returns (_0: Ref)
   _42.val_bool := false
   // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
   __t44 := _42.val_bool
-  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop19_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb19
+  // Inhale the loop fnspec //invariant of block bb19
   inhale _2 ==
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_1.val_ref)) &&
     ((unfolding acc(usize(_37), write) in _37.val_int) <= _2 &&
@@ -913,7 +913,7 @@ method m_heap_sort() returns (_0: Ref)
   _47.val_bool := false
   // [mir] switchInt(move _47) -> [0: bb26, otherwise: bb25]
   __t45 := _47.val_bool
-  // Ignore default target bb25, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb25, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop19_group3_bb26 ==========
   __t21 := true
   // [mir] _46 = const ()
@@ -930,7 +930,7 @@ method m_heap_sort() returns (_0: Ref)
   _52.val_bool := false
   // [mir] switchInt(move _52) -> [0: bb29, otherwise: bb28]
   __t46 := _52.val_bool
-  // Ignore default target bb28, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb28, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop19_group3_bb29 ==========
   __t23 := true
   // [mir] _51 = const ()
@@ -945,7 +945,7 @@ method m_heap_sort() returns (_0: Ref)
   inhale acc(_55.tuple_0.val_int, write)
   inhale acc(_55.tuple_1, write)
   inhale acc(_55.tuple_1.val_bool, write)
-  unfold acc(usize(_37), write)
+  //unfold acc(usize(_37), write)
   _55.tuple_0.val_int := _37.val_int - 1
   _55.tuple_1.val_bool := false
   // [mir] assert(!move (_55.1: bool), "attempt to compute `{} - {}`, which would overflow", _37, const 1_usize) -> [success: bb31, unwind: bb36]
@@ -1077,7 +1077,7 @@ method m_heap_sort() returns (_0: Ref)
     f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_62.val_ref))))
   assert true
   assert _63 >= 0
-  fold acc(usize(_64), write)
+  //fold acc(usize(_64), write)
   exhale acc(_62.val_ref, write) &&
     (acc(struct$m_VecWrapperI32(_62.val_ref), write) &&
     (_63 >= 0 && acc(usize(_64), write)))
@@ -1148,13 +1148,13 @@ method m_heap_sort() returns (_0: Ref)
   _42.val_bool := false
   // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
   __t42 := _42.val_bool
-  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop19_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb19)
+  // Assert and exhale the loop body //invariant (loop head: bb19)
   _preserve$1 := _1.val_ref
-  fold acc(usize(_37), write)
+  //fold acc(usize(_37), write)
   // obtain acc(usize(_37), write)
-  fold acc(bool(_38), write)
+  //fold acc(bool(_38), write)
   // obtain acc(bool(_38), write)
   // obtain acc(_1.val_ref, read)
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
@@ -1210,7 +1210,7 @@ method m_heap_sort() returns (_0: Ref)
   __t49 := builtin$havoc_bool()
   __t50 := builtin$havoc_bool()
   // ========== loop19_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb19
+  // Inhale the loop permissions //invariant of block bb19
   inhale acc(usize(_37), write) &&
     (acc(bool(_38), write) &&
     (acc(_1.val_ref, read$()) &&
@@ -1227,7 +1227,7 @@ method m_heap_sort() returns (_0: Ref)
   // [mir] _40 = _38
   _40 := builtin$havoc_ref()
   inhale acc(_40.val_bool, write)
-  unfold acc(bool(_38), write)
+  //unfold acc(bool(_38), write)
   _40.val_bool := _38.val_bool
   label l28
   // [mir] switchInt(move _40) -> [0: bb35, otherwise: bb21]
@@ -1271,12 +1271,12 @@ method m_heap_sort() returns (_0: Ref)
   _13.val_bool := false
   // [mir] switchInt(move _13) -> [0: bb7, otherwise: bb6]
   __t40 := _13.val_bool
-  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop3_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb3)
-  fold acc(usize(_4), write)
+  // Assert and exhale the loop body //invariant (loop head: bb3)
+  //fold acc(usize(_4), write)
   // obtain acc(usize(_4), write)
-  fold acc(bool(_7), write)
+  //fold acc(bool(_7), write)
   // obtain acc(bool(_7), write)
   // obtain acc(_1.val_ref, read)
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
@@ -1308,12 +1308,12 @@ method m_heap_sort() returns (_0: Ref)
   _42.val_bool := false
   // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
   __t50 := _42.val_bool
-  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop19_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb19)
-  fold acc(usize(_37), write)
+  // Assert and exhale the loop body //invariant (loop head: bb19)
+  //fold acc(usize(_37), write)
   // obtain acc(usize(_37), write)
-  fold acc(bool(_38), write)
+  //fold acc(bool(_38), write)
   // obtain acc(bool(_38), write)
   // obtain acc(_1.val_ref, read)
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
@@ -1348,17 +1348,17 @@ method m_heap_sort() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l50
-  // Fold predicates for &mut args and transfer borrow permissions to old
+  // //fold predicates for &mut args and transfer borrow permissions to old
   // obtain acc(struct$m_VecWrapperI32(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(tuple0$(_0), write)
+  // //fold the result
+  //fold acc(tuple0$(_0), write)
   // obtain acc(tuple0$(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
   assert f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_old$pre$0)) ==
     old[pre](f_VecWrapperI32$$len__$TY$__Snap$struct$m_VecWrapperI32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32$struct$m_VecWrapperI32$Snap$struct$m_VecWrapperI32(_1.val_ref)))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_VecWrapperI32(_old$pre$0), write)

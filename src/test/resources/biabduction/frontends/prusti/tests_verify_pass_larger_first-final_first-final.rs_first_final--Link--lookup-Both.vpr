@@ -362,14 +362,14 @@ field val_int: Int
 field val_ref: Ref
 
 function builtin$unreach__$TY$__$int$$$int$(): Int
-  requires false
+  //requires false
 
 
 function f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1: Snap$m_Link$_beg_$_end_): Bool
-  requires true
-  requires true
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1),
     true]
 {
@@ -378,13 +378,13 @@ function f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1: Snap$m_Link$
 }
 
 function f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1: Snap$m_Link$_beg_$_end_): Int
-  requires true
-  requires true
-  ensures (!f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1) ==>
+  //requires true
+  //requires true
+  //ensures (!f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1) ==>
     result > 0) &&
     result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1),
     true]
 {
@@ -396,16 +396,16 @@ function f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1: Snap$m_Link$_beg_$
 }
 
 function m_Link$_beg_$_end_$$discriminant$$__$TY$__m_Link$_beg_$_end_$$int$(self: Ref): Int
-  requires acc(m_Link$_beg_$_end_(self), read$())
-  ensures 0 <= result && result <= 1
-  ensures discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self)) ==
+  //requires acc(m_Link$_beg_$_end_(self), read$())
+  //ensures 0 <= result && result <= 1
+  //ensures discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self)) ==
     result
 {
   (unfolding acc(m_Link$_beg_$_end_(self), read$()) in self.discriminant)
 }
 
 function snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self: Ref): Snap$m_Link$_beg_$_end_
-  requires acc(m_Link$_beg_$_end_(self), read$())
+  //requires acc(m_Link$_beg_$_end_(self), read$())
 {
   ((unfolding acc(m_Link$_beg_$_end_(self), read$()) in self.discriminant) ==
   1 ?
@@ -417,7 +417,7 @@ function snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_be
 }
 
 function snap$__$TY$__Snap$struct$m_Node$struct$m_Node$Snap$struct$m_Node(self: Ref): Snap$struct$m_Node
-  requires acc(struct$m_Node(self), read$())
+  //requires acc(struct$m_Node(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Node$$int$$Snap$m_Link$_beg_$_end_$Snap$struct$m_Node((unfolding acc(struct$m_Node(self), read$()) in
     (unfolding acc(i32(self.f$elem), read$()) in self.f$elem.val_int)), (unfolding acc(struct$m_Node(self), read$()) in
@@ -425,8 +425,8 @@ function snap$__$TY$__Snap$struct$m_Node$struct$m_Node$Snap$struct$m_Node(self: 
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -532,9 +532,9 @@ method m_Link$$lookup() returns (_0: Ref)
   // [mir] _5 = &(*(((*_1) as More).0: std::boxed::Box<Node>))
   _5 := builtin$havoc_ref()
   inhale acc(_5.val_ref, write)
-  unfold acc(m_Link$_beg_$_end_(_1.val_ref), read$())
-  unfold acc(m_Link$_beg_$_end_More(_1.val_ref.enum_More), read$())
-  unfold acc(struct$m_std$$boxed$$Box$struct$m_Node$struct$m_std$$alloc$$Global(_1.val_ref.enum_More.f$0), read$())
+  //unfold acc(m_Link$_beg_$_end_(_1.val_ref), read$())
+  //unfold acc(m_Link$_beg_$_end_More(_1.val_ref.enum_More), read$())
+  //unfold acc(struct$m_std$$boxed$$Box$struct$m_Node$struct$m_std$$alloc$$Global(_1.val_ref.enum_More.f$0), read$())
   _5.val_ref := _1.val_ref.enum_More.f$0.val_ref
   inhale acc(struct$m_Node(_5.val_ref), read$())
   label l2
@@ -581,18 +581,18 @@ method m_Link$$lookup() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l14
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  fold acc(struct$m_std$$boxed$$Box$struct$m_Node$struct$m_std$$alloc$$Global(_1.val_ref.enum_More.f$0), read$())
-  fold acc(m_Link$_beg_$_end_More(_1.val_ref.enum_More), read$())
-  fold acc(m_Link$_beg_$_end_(_1.val_ref), read$())
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  //fold acc(struct$m_std$$boxed$$Box$struct$m_Node$struct$m_std$$alloc$$Global(_1.val_ref.enum_More.f$0), read$())
+  //fold acc(m_Link$_beg_$_end_More(_1.val_ref.enum_More), read$())
+  //fold acc(m_Link$_beg_$_end_(_1.val_ref), read$())
   // obtain acc(m_Link$_beg_$_end_(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(i32(_0), write)
+  // //fold the result
+  //fold acc(i32(_0), write)
   // obtain acc(i32(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
-  // Assert type invariants
+  // Assert type //invariants
   // Exhale permissions of postcondition (1/3)
   exhale acc(m_Link$_beg_$_end_(_old$pre$0), read$())
   // Exhale permissions of postcondition (2/3)
@@ -609,7 +609,7 @@ method m_Link$$lookup() returns (_0: Ref)
   // [mir] _8 = &((*_5).1: Link)
   _8 := builtin$havoc_ref()
   inhale acc(_8.val_ref, write)
-  unfold acc(struct$m_Node(_5.val_ref), read$())
+  //unfold acc(struct$m_Node(_5.val_ref), read$())
   _8.val_ref := _5.val_ref.f$next
   inhale acc(m_Link$_beg_$_end_(_8.val_ref), read$())
   label l7
@@ -642,7 +642,7 @@ method m_Link$$lookup() returns (_0: Ref)
   assert 0 <= _9.val_int &&
     _9.val_int <
     f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(_8.val_ref))
-  fold acc(usize(_9), write)
+  //fold acc(usize(_9), write)
   exhale acc(_8.val_ref, write) && acc(usize(_9), write)
   _0 := builtin$havoc_ref()
   inhale acc(i32(_0), write)
@@ -660,7 +660,7 @@ method m_Link$$lookup() returns (_0: Ref)
   }
   if (__t2 && (__t4 && __t5)) {
     // expire loan L5
-    fold acc(struct$m_Node(_5.val_ref), read$())
+    //fold acc(struct$m_Node(_5.val_ref), read$())
     exhale acc(struct$m_Node(_5.val_ref), read$())
   }
   // ========== bb8 ==========
@@ -670,7 +670,7 @@ method m_Link$$lookup() returns (_0: Ref)
   // [mir] goto -> bb9
   // ========== l13 ==========
   // drop Acc(_10.val_int, write) (Acc(_10.val_int, write))
-  unfold acc(i32(_0), write)
+  //unfold acc(i32(_0), write)
   // drop Acc(_11.tuple_0, write) (Acc(_11.tuple_0, write))
   // drop Acc(_11.tuple_1.val_bool, write) (Acc(_11.tuple_1.val_bool, write))
   // drop Acc(_11.tuple_1, write) (Acc(_11.tuple_1, write))
@@ -684,16 +684,16 @@ method m_Link$$lookup() returns (_0: Ref)
   // [mir] _0 = ((*_5).0: i32)
   _0 := builtin$havoc_ref()
   inhale acc(_0.val_int, write)
-  unfold acc(struct$m_Node(_5.val_ref), read$())
-  unfold acc(i32(_5.val_ref.f$elem), read$())
+  //unfold acc(struct$m_Node(_5.val_ref), read$())
+  //unfold acc(i32(_5.val_ref.f$elem), read$())
   _0.val_int := _5.val_ref.f$elem.val_int
   label l6
   // expire_borrows ReborrowingDAG(L5,)
 
   if (__t2) {
     // expire loan L5
-    fold acc(i32(_5.val_ref.f$elem), read$())
-    fold acc(struct$m_Node(_5.val_ref), read$())
+    //fold acc(i32(_5.val_ref.f$elem), read$())
+    //fold acc(struct$m_Node(_5.val_ref), read$())
     exhale acc(struct$m_Node(_5.val_ref), read$())
   }
   // [mir] goto -> bb9

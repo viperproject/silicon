@@ -31,7 +31,7 @@ object AbstractionFold extends AbstractionRule {
     if (bc.resourceID != FieldID) None else {
       val field = abductionUtils.getField(bc.id, q.s.program)
 
-      q.s.program.predicates.collectFirst { case pred if pred.collect{case fa: FieldAccess => fa.field}.toSeq.contains(field) => pred }
+      q.s.program.predicates.collectFirst { case pred if pred.collect { case fa: FieldAccess => fa.field }.toSeq.contains(field) => pred }
     }
   }
 
@@ -39,39 +39,25 @@ object AbstractionFold extends AbstractionRule {
     chunks match {
       case _ if chunks.isEmpty => Q(None)
       case (chunk, pred) +: rest =>
-        //val pred = q.fields(abductionUtils.getField(chunk.id, q.s.program))
-        val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
-        executionFlowController.tryOrElse0(q.s, q.v) {
-          (s1, v1, T) =>
+        q.varTran.transformTerm(chunk.args.head) match {
+          case None => checkChunks(rest, q)(Q)
+          case Some(eArgs) =>
 
-            //val fargs = pred.formalArgs.map(_.localVar)
-            val eArgs = q.varTran.transformTerm(chunk.args.head)
-            //val formalsToActuals: Map[LocalVar, Exp] = fargs.zip(eArgs).to(Map)
-            //val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
-            //val pveTransformed = pve.withReasonNodeTransformed(reasonTransformer)
 
-            val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs.get), pred.name)(), FullPerm()())())()
-            executor.exec(s1, fold, v1, None, abdStateAllowed = false)(T)
-
-            // TODO nklose this can branch
-            //predicateSupporter.fold(s1, pred, List(chunk.args.head), None, terms.FullPerm, Some(FullPerm()()), wildcards, pveTransformed, v1)(T)
-        } {
-          (s2, v2) => Q(Some(q.copy(s = s2, v = v2)))
-        } {
-
-          f => checkChunks(rest, q)(Q)
-
-            /*
             executionFlowController.tryOrElse0(q.s, q.v) {
-              (s3, v3, T) =>
-                BiAbductionSolver.solveAbductionForError(s3, v3, f, stateAllowed = false, None) { T }
+              (s1, v1, T) =>
+
+                val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), FullPerm()())())()
+                executor.exec(s1, fold, v1, None, abdStateAllowed = false)(T)
+
+              // TODO nklose this can branch
+              //predicateSupporter.fold(s1, pred, List(chunk.args.head), None, terms.FullPerm, Some(FullPerm()()), wildcards, pveTransformed, v1)(T)
             } {
-              (s5, v5) =>
-                Q(Some(q.copy(s = s5, v = v5)))
+              (s2, v2) => Q(Some(q.copy(s = s2, v = v2)))
             } {
               f =>
                 checkChunks(rest, q)(Q)
-            }*/
+            }
         }
     }
   }
@@ -91,12 +77,12 @@ object AbstractionPackage extends AbstractionRule {
     if (bc.resourceID != FieldID) None else {
 
       // TODO this fails if the sorts don't line up
-      q.s.g.termValues.collectFirst{ case (lv, term) if term.sort == bc.snap.sort && q.v.decider.check(terms.Equals(term, bc.snap), Verifier.config.checkTimeout())   => lv} match {
+      q.s.g.termValues.collectFirst { case (lv, term) if term.sort == bc.snap.sort && q.v.decider.check(terms.Equals(term, bc.snap), Verifier.config.checkTimeout()) => lv } match {
         case None => None
         case Some(lhsArgExp) =>
           val field = abductionUtils.getField(bc.id, q.s.program)
           // TODO we assume each field only appears in at most one predicate
-          val predOpt = q.s.program.predicates.collectFirst { case pred if pred.collect{case fa: FieldAccess => fa.field}.toSeq.contains(field) => pred }
+          val predOpt = q.s.program.predicates.collectFirst { case pred if pred.collect { case fa: FieldAccess => fa.field }.toSeq.contains(field) => pred }
           predOpt.flatMap { pred =>
             val recPredOpt = pred.collectFirst {
               case recPred@PredicateAccess(Seq(FieldAccess(_, field2)), _) if field == field2 => recPred

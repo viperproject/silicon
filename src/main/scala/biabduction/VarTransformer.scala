@@ -78,8 +78,8 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[ast.AbstractLoc
       case and: terms.And =>
         val subs = and.ts.map(transformTerm)
         if (subs.contains(None)) None else Some(BigAnd(subs.map(_.get)))
+      /*
       case app: terms.App =>
-        
         app.applicable match {
           case df: terms.DomainFun => 
             val args = app.args.map(transformTerm)
@@ -97,7 +97,7 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[ast.AbstractLoc
               Some(ast.FuncApp(func.get, args.map(_.get))())
             }
         }
-
+        */
       case sl: terms.SeqLength => transformTerm(sl.p).flatMap(e => Some(ast.SeqLength(e)()))
       case sa: terms.SeqAt => (transformTerm(sa.p0), transformTerm(sa.p1)) match {
         case (Some(e0), Some(e1)) => Some(ast.SeqIndex(e0, e1)())

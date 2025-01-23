@@ -290,37 +290,37 @@ field val_ref: Ref
 
 function f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(_1: Snap$struct$m_VecVecWrapperI32,
   _2: Int, _3: Int): Int
-  requires true
-  requires 0 <= _2 && _2 < f_size__$TY$__$int$() &&
+  //requires true
+  //requires 0 <= _2 && _2 < f_size__$TY$__$int$() &&
     (0 <= _3 && _3 < f_size__$TY$__$int$())
-  ensures true
-  ensures [result ==
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(_1,
     _2, _3),
     true]
 
 
 function f_size__$TY$__$int$(): Int
-  requires true
-  requires true
-  ensures result == 8
-  ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
+  //requires true
+  //requires true
+  //ensures result == 8
+  //ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
 
 
 function snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(self: Ref): Snap$struct$m_VecVecWrapperI32
-  requires acc(struct$m_VecVecWrapperI32(self), read$())
+  //requires acc(struct$m_VecVecWrapperI32(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32((unfolding acc(struct$m_VecVecWrapperI32(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self), read$())
 
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -431,8 +431,8 @@ method m_Board$$available() returns (_0: Ref)
   // [mir] StorageLive(_8)
   // [mir] _8 = (_2.0: i32)
   _8 := builtin$havoc_int()
-  unfold acc(struct$m_Point(_2), write)
-  unfold acc(i32(_2.f$x), write)
+  //unfold acc(struct$m_Point(_2), write)
+  //unfold acc(i32(_2.f$x), write)
   _8 := _2.f$x.val_int
   label l0
   // [mir] _7 = Le(const 0_i32, move _8)
@@ -482,12 +482,12 @@ method m_Board$$available() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l25
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  fold acc(struct$m_Board(_1.val_ref), write)
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  //fold acc(struct$m_Board(_1.val_ref), write)
   // obtain acc(struct$m_Board(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
-  fold acc(bool(_0), write)
+  // //fold the result
+  //fold acc(bool(_0), write)
   // obtain acc(bool(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -504,7 +504,7 @@ method m_Board$$available() returns (_0: Ref)
     old[pre]((unfolding acc(struct$m_Point(_2), write) in
       (unfolding acc(i32(_2.f$y), write) in _2.f$y.val_int))) <
     f_size__$TY$__$int$()))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_Board(_old$pre$0), write)
@@ -524,7 +524,7 @@ method m_Board$$available() returns (_0: Ref)
   _0.val_bool := false
   // [mir] goto -> bb14
   // ========== l30 ==========
-  unfold acc(struct$m_Board(_1.val_ref), write)
+  //unfold acc(struct$m_Board(_1.val_ref), write)
   goto bb4
   
   label bb7
@@ -550,7 +550,7 @@ method m_Board$$available() returns (_0: Ref)
   // [mir] _14 = Lt(move _15, move _16)
   _14 := builtin$havoc_ref()
   inhale acc(_14.val_bool, write)
-  unfold acc(i32(_16), write)
+  //unfold acc(i32(_16), write)
   _14.val_bool := _15 < _16.val_int
   // [mir] StorageDead(_16)
   // [mir] StorageDead(_15)
@@ -574,7 +574,7 @@ method m_Board$$available() returns (_0: Ref)
   _5.val_bool := false
   // [mir] goto -> bb6
   // ========== l27 ==========
-  unfold acc(i32(_2.f$y), write)
+  //unfold acc(i32(_2.f$y), write)
   goto bb10
   
   label bb9
@@ -610,7 +610,7 @@ method m_Board$$available() returns (_0: Ref)
   // [mir] StorageLive(_13)
   // [mir] _13 = (_2.1: i32)
   _13 := builtin$havoc_int()
-  unfold acc(i32(_2.f$y), write)
+  //unfold acc(i32(_2.f$y), write)
   _13 := _2.f$y.val_int
   label l8
   // [mir] _12 = Le(const 0_i32, move _13)
@@ -656,7 +656,7 @@ method m_Board$$available() returns (_0: Ref)
   // [mir] _20 = &((*_1).0: VecVecWrapperI32)
   _20 := builtin$havoc_ref()
   inhale acc(_20.val_ref, write)
-  unfold acc(struct$m_Board(_1.val_ref), write)
+  //unfold acc(struct$m_Board(_1.val_ref), write)
   _20.val_ref := _1.val_ref.f$field
   exhale acc(struct$m_VecVecWrapperI32(_1.val_ref.f$field), write - read$())
   inhale acc(struct$m_VecVecWrapperI32(_20.val_ref), read$())
@@ -699,7 +699,7 @@ method m_Board$$available() returns (_0: Ref)
   // [mir] _18 = Eq(move _19, const 0_i32)
   _18 := builtin$havoc_ref()
   inhale acc(_18.val_bool, write)
-  unfold acc(i32(_19), write)
+  //unfold acc(i32(_19), write)
   _18.val_bool := _19.val_int == 0
   // [mir] StorageDead(_19)
   // [mir] _0 = move _18
@@ -737,7 +737,7 @@ method m_Board$$available() returns (_0: Ref)
   // [mir] _9 = Lt(move _10, move _11)
   _9 := builtin$havoc_ref()
   inhale acc(_9.val_bool, write)
-  unfold acc(i32(_11), write)
+  //unfold acc(i32(_11), write)
   _9.val_bool := _10 < _11.val_int
   // [mir] StorageDead(_11)
   // [mir] StorageDead(_10)

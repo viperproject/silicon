@@ -14,23 +14,23 @@ predicate valid1(this: Ref) {
 
 
 method init(this: Ref)
-	requires acc(this.root1,write);
-	ensures acc(valid1(this),write);
+	//requires acc(this.root1,write);
+	//ensures acc(valid1(this),write);
 {
 	this.root1 := null;
 	fold acc(valid1(this),write);
 }
 
 method has(this:Ref, k : Int) returns (b : Bool)
-	requires acc(valid1(this),write);
-	ensures acc(valid1(this),write);
+	//requires acc(valid1(this),write);
+	//ensures acc(valid1(this),write);
 {
 var n : Ref
 var end : Bool
 var p : Ref
 var q : Ref
 var r : Ref
-	unfold acc(valid1(this),write);
+	//unfold acc(valid1(this),write);
 	if (this.root1==null){
 		b := false;
 		fold acc(valid1(this),write);
@@ -40,17 +40,17 @@ var r : Ref
 		end := false;
 		fold acc(udParentValid(n),write);
 		while (!end)
-			invariant acc(this.root1,write);
-			invariant this.root1 != null && acc(this.root1.parent,1/2);
-			invariant n!=null;
-			invariant acc(valid(n),write);
-			invariant acc(n.root,4/10);
-			invariant acc(udParentValid(n),write);
-			invariant unfolding acc(valid(n),write) in n.root==(this.root1);
-			invariant this.root1!=null;
+			//invariant acc(this.root1,write);
+			//invariant this.root1 != null && acc(this.root1.parent,1/2);
+			//invariant n!=null;
+			//invariant acc(valid(n),write);
+			//invariant acc(n.root,4/10);
+			//invariant acc(udParentValid(n),write);
+			//invariant unfolding acc(valid(n),write) in n.root==(this.root1);
+			//invariant this.root1!=null;
 		{
-			unfold acc(valid(n),write);
-			unfold acc(validRest(n),write);
+			//unfold acc(valid(n),write);
+			//unfold acc(validRest(n),write);
 
 			if (n.key==k){
 				b := true;
@@ -65,7 +65,7 @@ var r : Ref
 						fold acc(valid(n),write);
 					}else{
 						p := n;
-						unfold acc(leftValid(p),write);
+						//unfold acc(leftValid(p),write);
 						n := p.left;
 						p.leftDown := true;
 						fold acc(leftOpen(p),write);
@@ -79,7 +79,7 @@ var r : Ref
 						fold acc(valid(n),write);
 					}else{
 						q := n;
-						unfold acc(rightValid(q),write);
+						//unfold acc(rightValid(q),write);
 						n := q.right;
 						q.leftDown := false;
 						fold acc(rightOpen(q),write);
@@ -91,28 +91,28 @@ var r : Ref
 		}
 					end := false;
 					while (!end)
-						invariant acc(this.root1,write);
-						invariant this.root1 != null && acc(this.root1.parent,1/2);
-						invariant n!=null;
-						invariant acc(valid(n),write);
-						invariant acc(udParentValid(n),write);
-						invariant acc(n.root,4/10);
-						invariant unfolding acc(valid(n),write) in n.root==(this.root1);
-						invariant this.root1!=null;
-						invariant end==>unfolding acc(udParentValid(n),write) in n.parent==null;
+						//invariant acc(this.root1,write);
+						//invariant this.root1 != null && acc(this.root1.parent,1/2);
+						//invariant n!=null;
+						//invariant acc(valid(n),write);
+						//invariant acc(udParentValid(n),write);
+						//invariant acc(n.root,4/10);
+						//invariant unfolding acc(valid(n),write) in n.root==(this.root1);
+						//invariant this.root1!=null;
+						//invariant end==>unfolding acc(udParentValid(n),write) in n.parent==null;
 					{
-						unfold acc(udParentValid(n),write);
+						//unfold acc(udParentValid(n),write);
 						r := n.parent;
 						if (r==null){
 							end := true;
 							fold acc(udParentValid(n),write);
 						}else{
-							unfold acc(udValid(r),write);
+							//unfold acc(udValid(r),write);
 							if (r.left==n){
-								unfold acc(leftOpen(r),write);
+								//unfold acc(leftOpen(r),write);
 								fold   acc(leftValid(r),write);
 							}else{
-								unfold acc(rightOpen(r),write);
+								//unfold acc(rightOpen(r),write);
 								fold   acc(rightValid(r),write);
 							}
 							fold acc(validRest(r),write);
@@ -120,7 +120,7 @@ var r : Ref
 							n:=r;
 						}
 					}
-					unfold acc(udParentValid(n),write);
+					//unfold acc(udParentValid(n),write);
 					fold acc(valid1(this),write);
 
 	}
@@ -214,12 +214,12 @@ predicate udValid(this: Ref){
 }
 
 method init_2(this:Ref, k : Int)
-	requires acc(this.key   ,write);
-	requires acc(this.left  ,write);
-	requires acc(this.right ,write);
-	requires acc(this.leftDown ,write);
-	requires acc(this.root,     write);
-	ensures acc(valid(this),write);
+	//requires acc(this.key   ,write);
+	//requires acc(this.left  ,write);
+	//requires acc(this.right ,write);
+	//requires acc(this.leftDown ,write);
+	//requires acc(this.root,     write);
+	//ensures acc(valid(this),write);
 {
 	this.left   := null;
 	this.right  := null;

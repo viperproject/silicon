@@ -5,25 +5,25 @@ requires list(x) && acc(elt.next) && acc(elt.data)
 ensures list(x)
 
 method insertion_sort(lst: Ref) returns (res: Ref)
-requires list(lst)
-ensures list(lst)
+//requires list(lst)
+//ensures list(lst)
 {
     if(lst == null){
         res := lst
     } else {
-        unfold list(lst)
+        //unfold list(lst)
         var curr: Ref := lst.next
         res := lst
         res.next := null
-        fold list(res.next)
-        fold list(res)
+        //fold list(res.next)
+        //fold list(res)
         
         while(curr != null)
-        invariant list(curr)
-        invariant list(res)
+        //invariant list(curr)
+        //invariant list(res)
         {
             var add: Ref := curr
-            unfold list(curr)
+            //unfold list(curr)
             curr := curr.next
             insert(res, add)
         }

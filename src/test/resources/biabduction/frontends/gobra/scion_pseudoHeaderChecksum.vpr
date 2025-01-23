@@ -2339,9 +2339,9 @@ field Intbyte$$$$_E_$$$: Int
 
 // decreases _
 function unbox_Emb_1_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(y: Emb_1_Interfaceempty_interface$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1 ||
+  //ensures (ShArraylen(result): Int) == 1 ||
     result == arrayNil_1_Interfaceempty_interface$$$_S_$$$()
-  ensures box_Emb_1_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures box_Emb_1_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
     y
 
 
@@ -2351,31 +2351,31 @@ function intBitwiseAnd(left: Int, right: Int): Int
 
 // decreases _
 function shStructDefault_$ContentsA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PayloadA_SliceIntbyte$$$_S_$$$$$$_S_$$$$(): ShStruct2[Ref, Ref]
-  ensures (ShStructget0of2(result): Ref) == null &&
+  //ensures (ShStructget0of2(result): Ref) == null &&
     (ShStructget1of2(result): Ref) == null
 
 
 // decreases _
 function intShiftLeft(left: Int, right: Int): Int
-  requires right >= 0
+  //requires right >= 0
 
 
 // decreases _
 function arrayNil_1_Interfaceempty_interface$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
 
 // decreases _
 function intShiftRight(left: Int, right: Int): Int
-  requires right >= 0
+  //requires right >= 0
 
 
 function arrayDefault_8_Intbyte$$$$_E_$$$(): Emb_8_Intbyte$$$$_E_$$$
-  ensures |unbox_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(result)| == 8
-  ensures (forall idx: Int ::
+  //ensures |unbox_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(result)| == 8
+  //ensures (forall idx: Int ::
       { unbox_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(result)[idx] }
       0 <= idx && idx < 8 ==>
       unbox_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(result)[idx] == 0)
@@ -2383,49 +2383,49 @@ function arrayDefault_8_Intbyte$$$$_E_$$$(): Emb_8_Intbyte$$$$_E_$$$
 
 // decreases 
 function IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf: Tuple2[Ref, Types]): Bool
-  requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  requires acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf), wildcard)
+  //requires !(thisItf == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
+  //requires acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf), wildcard)
 
 
 // decreases _
 function unbox_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(y: Emb_8_Intbyte$$$_S_$$$): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 8 ||
+  //ensures (ShArraylen(result): Int) == 8 ||
     result == arrayNil_8_Intbyte$$$_S_$$$()
-  ensures box_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(result) == y
+  //ensures box_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(result) == y
 
 
 // decreases _
 function box_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(x: Seq[Int]): Emb_8_Intbyte$$$$_E_$$$
-  requires |x| == 8
-  ensures unbox_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(result) == x
+  //requires |x| == 8
+  //ensures unbox_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(result) == x
 
 
 // decreases _
 function sliceDefault_Interfaceempty_interface$$$_S_$$$(): Slice[Ref]
-  ensures (soffset(result): Int) == 0
-  ensures (slen(result): Int) == 0
-  ensures (scap(result): Int) == 0
-  ensures (sarray(result): ShArray[Ref]) ==
+  //ensures (soffset(result): Int) == 0
+  //ensures (slen(result): Int) == 0
+  //ensures (scap(result): Int) == 0
+  //ensures (sarray(result): ShArray[Ref]) ==
     unbox_Emb_1_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(box_Emb_1_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(arrayNil_1_Interfaceempty_interface$$$_S_$$$()))
 
 
 // decreases _
 function unbox_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(y: Emb_8_Intbyte$$$$_E_$$$): Seq[Int]
-  ensures |result| == 8
-  ensures box_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(result) == y
+  //ensures |result| == 8
+  //ensures box_Emb_8_Intbyte$$$$_E_$$$_Seq_Int(result) == y
 
 
 // decreases _
 function box_Emb_1_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_1_Interfaceempty_interface$$$_S_$$$
-  requires (ShArraylen(x): Int) == 1 ||
+  //requires (ShArraylen(x): Int) == 1 ||
     x == arrayNil_1_Interfaceempty_interface$$$_S_$$$()
-  ensures unbox_Emb_1_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
+  //ensures unbox_Emb_1_Interfaceempty_interface$$$_S_$$$_ShArray_Ref(result) ==
     x
 
 
 // decreases _
 function shStructDefault_$BaseLayerA_DefinedBaseLayer_840d9458_T$$$_S_$$$_VersionA_Intuint8$$$_S_$$$_TrafficClassA_Intuint8$$$_S_$$$_FlowIDA_Intuint32$$$_S_$$$_NextHdrA_DefinedL4ProtocolType_840d9458_T$$$_S_$$$_HdrLenA_Intuint8$$$_S_$$$_PayloadLenA_Intuint16$$$_S_$$$_PathTypeA_DefinedType_a6ceb89d_T$$$_S_$$$_DstAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_SrcAddrTypeA_DefinedAddrType_840d9458_T$$$_S_$$$_DstIAA_DefinedIA_cd675838_T$$$_S_$$$_SrcIAA_DefinedIA_cd675838_T$$$_S_$$$_RawDstAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_RawSrcAddrA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PathA_DefinedPath_a6ceb89d_T$$$_S_$$$_pathPoolA_SliceDefinedPath_a6ceb89d_T$$$_S_$$$$$$_S_$$$_pathPoolRawA_DefinedPath_a6ceb89d_T$$$_S_$$$$(): ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
-  ensures (ShStructget0of17(result): ShStruct2[Ref, Ref]) ==
+  //ensures (ShStructget0of17(result): ShStruct2[Ref, Ref]) ==
     shStructDefault_$ContentsA_SliceIntbyte$$$_S_$$$$$$_S_$$$_PayloadA_SliceIntbyte$$$_S_$$$$$$_S_$$$$() &&
     (ShStructget1of17(result): Ref) == null &&
     (ShStructget2of17(result): Ref) == null &&
@@ -2447,30 +2447,30 @@ function shStructDefault_$BaseLayerA_DefinedBaseLayer_840d9458_T$$$_S_$$$_Versio
 
 // decreases _
 function box_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(x: ShArray[Ref]): Emb_8_Intbyte$$$_S_$$$
-  requires (ShArraylen(x): Int) == 8 || x == arrayNil_8_Intbyte$$$_S_$$$()
-  ensures unbox_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(result) == x
+  //requires (ShArraylen(x): Int) == 8 || x == arrayNil_8_Intbyte$$$_S_$$$()
+  //ensures unbox_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(result) == x
 
 
 function ssliceFromArray_Ref(a: ShArray[Ref], i: Int, j: Int): Slice[Ref]
-  requires 0 <= i
-  requires i <= j
-  requires j <= (ShArraylen(a): Int)
-  ensures (soffset(result): Int) == i
-  ensures (slen(result): Int) == j - i
-  ensures (scap(result): Int) == (ShArraylen(a): Int) - i
-  ensures (sarray(result): ShArray[Ref]) == a
+  //requires 0 <= i
+  //requires i <= j
+  //requires j <= (ShArraylen(a): Int)
+  //ensures (soffset(result): Int) == i
+  //ensures (slen(result): Int) == j - i
+  //ensures (scap(result): Int) == (ShArraylen(a): Int) - i
+  //ensures (sarray(result): ShArray[Ref]) == a
 
 
 // decreases _
 function arrayNil_8_Intbyte$$$_S_$$$(): ShArray[Ref]
-  ensures (ShArraylen(result): Int) == 1
-  ensures (forall idx: Int ::
+  //ensures (ShArraylen(result): Int) == 1
+  //ensures (forall idx: Int ::
       { (ShArrayloc(result, idx): Ref) }
       (ShArrayloc(result, idx): Ref) == null)
 
 
 function sadd(left: Int, right: Int): Int
-  ensures result == left + right
+  //ensures result == left + right
 {
   left + right
 }
@@ -2483,26 +2483,26 @@ predicate ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(thisItf: Tuple2[Ref, Types])
 method pseudoHeaderChecksum_840d9458_PMSCION$L$66$2(s_V0_CN0$in: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   csum_V1$in: Int, i_V6$in: Int, err_V0_CN4$in: Tuple2[Ref, Types])
   returns (csum_V1$out: Int)
-  requires acc((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
+  //requires acc((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
     4194304) &&
     acc(AbsSlice_Bytes_e630ae22_F((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
     0, (slen((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
     4194304)
-  requires 0 <= i_V6$in &&
+  //requires 0 <= i_V6$in &&
     i_V6$in <
     (slen((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) &&
     i_V6$in % 2 == 0 &&
     (slen((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
     2 ==
     0
-  requires err_V0_CN4$in == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
-  ensures err_V0_CN4$in == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
-  ensures acc((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
+  //requires err_V0_CN4$in == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  //ensures err_V0_CN4$in == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  //ensures acc((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
     4194304) &&
     acc(AbsSlice_Bytes_e630ae22_F((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
     0, (slen((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
     4194304)
-  ensures (ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
+  //ensures (ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
     old((ShStructget12of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$)
 
 
@@ -2510,49 +2510,49 @@ method pseudoHeaderChecksum_840d9458_PMSCION$L$66$2(s_V0_CN0$in: ShStruct17[ShSt
 method pseudoHeaderChecksum_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   length_V0: Int, protocol_V0: Int)
   returns (res_V0: Int, err_V0: Tuple2[Ref, Types])
-  requires acc((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
+  //requires acc((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
     4194304) &&
     acc((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
     4194304)
-  requires (slen((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
+  //requires (slen((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
     2 ==
     0 &&
     (slen((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
     2 ==
     0
-  requires acc((ShStructget11of17(s_V0): Ref).DefinedIA_cd675838_T$$$$_E_$$$, 1 /
+  //requires acc((ShStructget11of17(s_V0): Ref).DefinedIA_cd675838_T$$$$_E_$$$, 1 /
     4194304) &&
     acc((ShStructget10of17(s_V0): Ref).DefinedIA_cd675838_T$$$$_E_$$$, 1 /
     4194304)
-  requires acc(AbsSlice_Bytes_e630ae22_F((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
+  //requires acc(AbsSlice_Bytes_e630ae22_F((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
     0, (slen((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
     4194304)
-  requires acc(AbsSlice_Bytes_e630ae22_F((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
+  //requires acc(AbsSlice_Bytes_e630ae22_F((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
     0, (slen((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
     4194304)
-  ensures acc((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
+  //ensures acc((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
     4194304) &&
     acc((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
     4194304)
-  ensures acc((ShStructget11of17(s_V0): Ref).DefinedIA_cd675838_T$$$$_E_$$$, 1 /
+  //ensures acc((ShStructget11of17(s_V0): Ref).DefinedIA_cd675838_T$$$$_E_$$$, 1 /
     4194304) &&
     acc((ShStructget10of17(s_V0): Ref).DefinedIA_cd675838_T$$$$_E_$$$, 1 /
     4194304)
-  ensures acc(AbsSlice_Bytes_e630ae22_F((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
+  //ensures acc(AbsSlice_Bytes_e630ae22_F((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
     0, (slen((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
     4194304)
-  ensures acc(AbsSlice_Bytes_e630ae22_F((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
+  //ensures acc(AbsSlice_Bytes_e630ae22_F((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
     0, (slen((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
     4194304)
-  ensures (slen((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
+  //ensures (slen((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
     0 ==>
     !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  ensures (slen((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
+  //ensures (slen((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
     0 ==>
     !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types]))
-  ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
+  //ensures !(err_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) ==>
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(err_V0), write)
-  ensures (slen((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) >
+  //ensures (slen((ShStructget12of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) >
     0 &&
     (slen((ShStructget13of17(s_V0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) >
     0 ==>
@@ -2747,27 +2747,27 @@ method pseudoHeaderChecksum_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref
   i_V2 := 0
   
   // while(i_V2 < 8)
-// invariant forall j_V3: int° :: { &srcIA_V1[j_V3] } 0 <= j_V3 && j_V3 < 8 ==> acc(srcIA_V1[j_V3])
-// invariant forall j_V4: int° :: { &dstIA_V1[j_V4] } 0 <= j_V4 && j_V4 < 8 ==> acc(dstIA_V1[j_V4])
-// invariant i_V2 % 2 == 0
-// invariant 0 <= i_V2 && i_V2 <= 8
+// //invariant forall j_V3: int° :: { &srcIA_V1[j_V3] } 0 <= j_V3 && j_V3 < 8 ==> acc(srcIA_V1[j_V3])
+// //invariant forall j_V4: int° :: { &dstIA_V1[j_V4] } 0 <= j_V4 && j_V4 < 8 ==> acc(dstIA_V1[j_V4])
+// //invariant i_V2 % 2 == 0
+// //invariant 0 <= i_V2 && i_V2 <= 8
 // decreases8 - i_V2 
 
   
   // decreases 8 - i_V2
   while (i_V2 < 8)
-    invariant (forall j_V3: Int ::
+    //invariant (forall j_V3: Int ::
         { (ShArrayloc(unbox_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(srcIA_V1), j_V3): Ref) }
         0 <= j_V3 && j_V3 < 8 ==>
         acc((ShArrayloc(unbox_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(srcIA_V1),
         j_V3): Ref).Intbyte$$$$_E_$$$, write))
-    invariant (forall j_V4: Int ::
+    //invariant (forall j_V4: Int ::
         { (ShArrayloc(unbox_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(dstIA_V1), j_V4): Ref) }
         0 <= j_V4 && j_V4 < 8 ==>
         acc((ShArrayloc(unbox_Emb_8_Intbyte$$$_S_$$$_ShArray_Ref(dstIA_V1),
         j_V4): Ref).Intbyte$$$$_E_$$$, write))
-    invariant i_V2 % 2 == 0
-    invariant 0 <= i_V2 && i_V2 <= 8 
+    //invariant i_V2 % 2 == 0
+    //invariant 0 <= i_V2 && i_V2 <= 8 
   {
     var old_W7_T0: Int
     old_W7_T0 := 8 - i_V2
@@ -2829,29 +2829,29 @@ method pseudoHeaderChecksum_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref
   i_V5 := 0
   
   // while(i_V5 < len(*s_V0_CN0.RawSrcAddrA))
-// invariant acc(*s_V0_CN0.RawSrcAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawSrcAddrA, 0, len(*s_V0_CN0.RawSrcAddrA)), perm(1/4194304))
-// invariant len(*s_V0_CN0.RawSrcAddrA) == rawSrcAddrLen_V1
-// invariant len(*s_V0_CN0.RawSrcAddrA) % 2 == 0
-// invariant i_V5 % 2 == 0
-// invariant 0 <= i_V5 && i_V5 <= len(*s_V0_CN0.RawSrcAddrA)
+// //invariant acc(*s_V0_CN0.RawSrcAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawSrcAddrA, 0, len(*s_V0_CN0.RawSrcAddrA)), perm(1/4194304))
+// //invariant len(*s_V0_CN0.RawSrcAddrA) == rawSrcAddrLen_V1
+// //invariant len(*s_V0_CN0.RawSrcAddrA) % 2 == 0
+// //invariant i_V5 % 2 == 0
+// //invariant 0 <= i_V5 && i_V5 <= len(*s_V0_CN0.RawSrcAddrA)
 // decreaseslen(*s_V0_CN0.RawSrcAddrA) - i_V5 
 
   
   // decreases (slen((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) - i_V5
   while (i_V5 <
   (slen((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int))
-    invariant acc((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
+    //invariant acc((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
       4194304) &&
       acc(AbsSlice_Bytes_e630ae22_F((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
       0, (slen((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
       4194304)
-    invariant (slen((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
+    //invariant (slen((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
       rawSrcAddrLen_V1
-    invariant (slen((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
+    //invariant (slen((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
       2 ==
       0
-    invariant i_V5 % 2 == 0
-    invariant 0 <= i_V5 &&
+    //invariant i_V5 % 2 == 0
+    //invariant 0 <= i_V5 &&
       i_V5 <=
       (slen((ShStructget13of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) 
   {
@@ -2864,12 +2864,12 @@ method pseudoHeaderChecksum_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref
     // decl 
     
     // 
-//   requires acc(*s_V0_CN0.RawSrcAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawSrcAddrA, 0, len(*s_V0_CN0.RawSrcAddrA)), perm(1/4194304))
-//   requires 0 <= i_V5 && i_V5 < len(*s_V0_CN0.RawSrcAddrA) && i_V5 % 2 == 0 && len(*s_V0_CN0.RawSrcAddrA) % 2 == 0
-//   requires err_V0_CN4 == (nil:error_a4af0e5e_T°)
-//   ensures err_V0_CN4 == (nil:error_a4af0e5e_T°)
-//   ensures acc(*s_V0_CN0.RawSrcAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawSrcAddrA, 0, len(*s_V0_CN0.RawSrcAddrA)), perm(1/4194304))
-//   ensures *s_V0_CN0.RawSrcAddrA === old[before](*s_V0_CN0.RawSrcAddrA)
+//   //requires acc(*s_V0_CN0.RawSrcAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawSrcAddrA, 0, len(*s_V0_CN0.RawSrcAddrA)), perm(1/4194304))
+//   //requires 0 <= i_V5 && i_V5 < len(*s_V0_CN0.RawSrcAddrA) && i_V5 % 2 == 0 && len(*s_V0_CN0.RawSrcAddrA) % 2 == 0
+//   //requires err_V0_CN4 == (nil:error_a4af0e5e_T°)
+//   //ensures err_V0_CN4 == (nil:error_a4af0e5e_T°)
+//   //ensures acc(*s_V0_CN0.RawSrcAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawSrcAddrA, 0, len(*s_V0_CN0.RawSrcAddrA)), perm(1/4194304))
+//   //ensures *s_V0_CN0.RawSrcAddrA === old[before](*s_V0_CN0.RawSrcAddrA)
 //   decreases  
 //   outline
     csum_V1 := pseudoHeaderChecksum_840d9458_PMSCION$L$45$2(s_V0_CN0, csum_V1,
@@ -2916,29 +2916,29 @@ method pseudoHeaderChecksum_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref
   i_V6 := 0
   
   // while(i_V6 < len(*s_V0_CN0.RawDstAddrA))
-// invariant acc(*s_V0_CN0.RawDstAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawDstAddrA, 0, len(*s_V0_CN0.RawDstAddrA)), perm(1/4194304))
-// invariant len(*s_V0_CN0.RawDstAddrA) == rawDstAddrLen_V1
-// invariant len(*s_V0_CN0.RawDstAddrA) % 2 == 0
-// invariant i_V6 % 2 == 0
-// invariant 0 <= i_V6 && i_V6 <= len(*s_V0_CN0.RawDstAddrA)
+// //invariant acc(*s_V0_CN0.RawDstAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawDstAddrA, 0, len(*s_V0_CN0.RawDstAddrA)), perm(1/4194304))
+// //invariant len(*s_V0_CN0.RawDstAddrA) == rawDstAddrLen_V1
+// //invariant len(*s_V0_CN0.RawDstAddrA) % 2 == 0
+// //invariant i_V6 % 2 == 0
+// //invariant 0 <= i_V6 && i_V6 <= len(*s_V0_CN0.RawDstAddrA)
 // decreaseslen(*s_V0_CN0.RawDstAddrA) - i_V6 
 
   
   // decreases (slen((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) - i_V6
   while (i_V6 <
   (slen((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int))
-    invariant acc((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
+    //invariant acc((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
       4194304) &&
       acc(AbsSlice_Bytes_e630ae22_F((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
       0, (slen((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
       4194304)
-    invariant (slen((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
+    //invariant (slen((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) ==
       rawDstAddrLen_V1
-    invariant (slen((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
+    //invariant (slen((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
       2 ==
       0
-    invariant i_V6 % 2 == 0
-    invariant 0 <= i_V6 &&
+    //invariant i_V6 % 2 == 0
+    //invariant 0 <= i_V6 &&
       i_V6 <=
       (slen((ShStructget12of17(s_V0_CN0): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) 
   {
@@ -2951,12 +2951,12 @@ method pseudoHeaderChecksum_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref
     // decl 
     
     // 
-//   requires acc(*s_V0_CN0.RawDstAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawDstAddrA, 0, len(*s_V0_CN0.RawDstAddrA)), perm(1/4194304))
-//   requires 0 <= i_V6 && i_V6 < len(*s_V0_CN0.RawDstAddrA) && i_V6 % 2 == 0 && len(*s_V0_CN0.RawDstAddrA) % 2 == 0
-//   requires err_V0_CN4 == (nil:error_a4af0e5e_T°)
-//   ensures err_V0_CN4 == (nil:error_a4af0e5e_T°)
-//   ensures acc(*s_V0_CN0.RawDstAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawDstAddrA, 0, len(*s_V0_CN0.RawDstAddrA)), perm(1/4194304))
-//   ensures *s_V0_CN0.RawDstAddrA === old[before](*s_V0_CN0.RawDstAddrA)
+//   //requires acc(*s_V0_CN0.RawDstAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawDstAddrA, 0, len(*s_V0_CN0.RawDstAddrA)), perm(1/4194304))
+//   //requires 0 <= i_V6 && i_V6 < len(*s_V0_CN0.RawDstAddrA) && i_V6 % 2 == 0 && len(*s_V0_CN0.RawDstAddrA) % 2 == 0
+//   //requires err_V0_CN4 == (nil:error_a4af0e5e_T°)
+//   //ensures err_V0_CN4 == (nil:error_a4af0e5e_T°)
+//   //ensures acc(*s_V0_CN0.RawDstAddrA, perm(1/4194304)) && acc(AbsSlice_Bytes_e630ae22_F(*s_V0_CN0.RawDstAddrA, 0, len(*s_V0_CN0.RawDstAddrA)), perm(1/4194304))
+//   //ensures *s_V0_CN0.RawDstAddrA === old[before](*s_V0_CN0.RawDstAddrA)
 //   decreases  
 //   outline
     csum_V1 := pseudoHeaderChecksum_840d9458_PMSCION$L$66$2(s_V0_CN0, csum_V1,
@@ -3021,32 +3021,32 @@ method pseudoHeaderChecksum_840d9458_PMSCION(s_V0: ShStruct17[ShStruct2[Ref, Ref
 method pseudoHeaderChecksum_840d9458_PMSCION$L$45$2(s_V0_CN0$in: ShStruct17[ShStruct2[Ref, Ref], Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref],
   csum_V1$in: Int, i_V5$in: Int, err_V0_CN4$in: Tuple2[Ref, Types])
   returns (csum_V1$out: Int)
-  requires acc((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
+  //requires acc((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
     4194304) &&
     acc(AbsSlice_Bytes_e630ae22_F((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
     0, (slen((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
     4194304)
-  requires 0 <= i_V5$in &&
+  //requires 0 <= i_V5$in &&
     i_V5$in <
     (slen((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) &&
     i_V5$in % 2 == 0 &&
     (slen((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int) %
     2 ==
     0
-  requires err_V0_CN4$in == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
-  ensures err_V0_CN4$in == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
-  ensures acc((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
+  //requires err_V0_CN4$in == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  //ensures err_V0_CN4$in == (tuple2(null, nil_Types()): Tuple2[Ref, Types])
+  //ensures acc((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$, 1 /
     4194304) &&
     acc(AbsSlice_Bytes_e630ae22_F((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$,
     0, (slen((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$): Int)), 1 /
     4194304)
-  ensures (ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
+  //ensures (ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$ ==
     old((ShStructget13of17(s_V0_CN0$in): Ref).SliceIntbyte$$$_S_$$$$$$$_E_$$$)
 
 
 // decreases _
 method PutUint64_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
-  requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+  //requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     0)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     1)): Ref).Intbyte$$$$_E_$$$, write) &&
@@ -3054,7 +3054,7 @@ method PutUint64_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
     2)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     3)): Ref).Intbyte$$$$_E_$$$, write)
-  requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+  //requires acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     4)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     5)): Ref).Intbyte$$$$_E_$$$, write) &&
@@ -3062,7 +3062,7 @@ method PutUint64_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
     6)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     7)): Ref).Intbyte$$$$_E_$$$, write)
-  ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+  //ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     0)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     1)): Ref).Intbyte$$$$_E_$$$, write) &&
@@ -3070,7 +3070,7 @@ method PutUint64_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
     2)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     3)): Ref).Intbyte$$$$_E_$$$, write)
-  ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
+  //ensures acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     4)): Ref).Intbyte$$$$_E_$$$, write) &&
     acc((ShArrayloc((sarray(b_V0): ShArray[Ref]), sadd((soffset(b_V0): Int),
     5)): Ref).Intbyte$$$$_E_$$$, write) &&
@@ -3083,18 +3083,18 @@ method PutUint64_72f0d887_MbigEndian(e_V0: Int, b_V0: Slice[Ref], v_V0: Int)
 // decreases _
 method New_bfd5223e_F(msg_V0: Int, errCtx_V0: Slice[Ref])
   returns (res_V0: Tuple2[Ref, Types])
-  requires (forall i_V1: Int ::
+  //requires (forall i_V1: Int ::
       { (ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref) }
       0 <= i_V1 && i_V1 < (slen(errCtx_V0): Int) ==>
       acc((ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref).Interfaceempty_interface$$$$_E_$$$, 1 / 131072))
-  ensures (forall i_V1: Int ::
+  //ensures (forall i_V1: Int ::
       { (ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref) }
       0 <= i_V1 && i_V1 < (slen(errCtx_V0): Int) ==>
       acc((ShArrayloc((sarray(errCtx_V0): ShArray[Ref]), sadd((soffset(errCtx_V0): Int),
       i_V1)): Ref).Interfaceempty_interface$$$$_E_$$$, 1 / 131072))
-  ensures !(res_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
+  //ensures !(res_V0 == (tuple2(null, nil_Types()): Tuple2[Ref, Types])) &&
     acc(ErrorMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0), write)
-  ensures IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0)
+  //ensures IsDuplicableMem_a4af0e5e_SY$c04328b0_a4af0e5e_(res_V0)

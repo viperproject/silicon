@@ -49,19 +49,19 @@ method pairwise_sum(x: Ref, y: Ref) returns (z: Ref)
             prev_z.next := curr_z
 
             /*
-            package list(curr_x) --* list(x){
-                fold list(prev_x)
-                apply list(prev_x) --* list(x)
+            //package list(curr_x) --* list(x){
+                //fold list(prev_x)
+                //apply list(prev_x) --* list(x)
             }
             
-            package list(curr_y) --* list(y){
-                fold list(prev_y)
-                apply list(prev_y) --* list(y)
+            //package list(curr_y) --* list(y){
+                //fold list(prev_y)
+                //apply list(prev_y) --* list(y)
             }
 
-            package list(curr_z) --* list(z){
-                fold list(prev_z)
-                apply list(prev_z) --* list(z)
+            //package list(curr_z) --* list(z){
+                //fold list(prev_z)
+                //apply list(prev_z) --* list(z)
             }
             */
         }

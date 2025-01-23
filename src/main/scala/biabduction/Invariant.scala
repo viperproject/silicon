@@ -5,6 +5,7 @@ import viper.silicon.rules.producer.produces
 import viper.silicon.rules.{evaluator, executionFlowController, executor, producer}
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{Heap, State}
+import viper.silicon.utils.ast.BigAnd
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
@@ -24,35 +25,54 @@ object LoopInvariantSolver {
 
   private def pveLam(exp: Exp): PartialVerificationError = pve
 
-  // TODO this is oversimplified, we actually should solve a proper abduction question with the other invariant.
-  // In particular, we need to ensure that permissions are not doubled between the two. Whenever the two invariants describe the same
-  // point in time, we should make sure that there is no duplication going on, possible using abduction.
-  // Also we need to guarantee well-definedness of the invariants
   private def getInvariants(pres: Seq[Exp], posts: Seq[Exp], loopCon: Exp, existingInvs: Seq[Exp], s: State, v: Verifier)(Q: Seq[Exp] => VerificationResult): VerificationResult = {
 
     //TODO nklose probably we want to keep things that apply to non-reassigned variables just as part of the invariant.
-    val invs = pres.collect { case m: MagicWand => m.left } ++ posts
+    val lefts = pres.collect { case m: MagicWand => m.left }
+
+    val rest = (pres.filter {
+      case _: MagicWand => false
+      case _ => true
+    } ++ posts).distinct
 
     // If the loop condition requires permissions which are folded away in the invariant, we need to partially unfold it.
     executionFlowController.locallyWithResult[Seq[Exp]](s.copy(h = Heap()), v) { (s1, v1, Q1) =>
-      producer.produces(s1, freshSnap, invs ++ existingInvs, pveLam, v1) { (s2, v2) =>
-        executionFlowController.tryOrElse0(s2, v2) { (s3, v3, T) =>
-          evaluator.eval(s3, loopCon, pve, v3)((s4, _, _, v4) => T(s4, v4))
-        } {
-          (_, _) => Q1(invs)
-        } {
-          f =>
-            BiAbductionSolver.solveAbductionForError(s2, v2, f, stateAllowed = false, Some(loopCon)) { (_, _) =>
-              Success()
-            } match {
-              case f: Failure => f
-              case abdRes: NonFatalResult =>
-                // TODO nklose we do not guarantee length 1 here anymore
-                abductionUtils.getAbductionSuccesses(abdRes) match {
-                  case Seq(AbductionSuccess(s5, v5, _, Seq(), _, _, _)) =>
-                    val unfolded = VarTransformer(s5, v5, s5.g.values, s5.h).transformState(s5)
-                    Q1(unfolded)
-                }
+      producer.produces(s1, freshSnap, rest ++ existingInvs, pveLam, v1) { (s2, v2) =>
+
+
+        val leftRes = executor.exec(s2, Assert(BigAnd(lefts))(), v2, None) {
+          (_, _) => Success()
+        }
+        leftRes match {
+          case f: FatalResult => f
+          case nf: NonFatalResult =>
+            val leftsAbd = abductionUtils.getAbductionSuccesses(nf).flatMap(_.state).map(_._1)
+
+            producer.produces(s2, freshSnap, leftsAbd, pveLam, v2) { (s2a, v2a) =>
+              executionFlowController.tryOrElse0(s2a, v2a) { (s3, v3, T) =>
+                evaluator.eval(s3, loopCon, pve, v3)((s4, _, _, v4) => T(s4, v4))
+              } {
+                val res = abductionUtils.sortExps(rest ++ leftsAbd)
+                (_, _) => Q1(res)
+              } {
+                f =>
+                  val abd = BiAbductionSolver.solveAbductionForError(s2, v2, f, stateAllowed = false, Some(loopCon)) { (_, _) =>
+                    Success()
+                  }
+                  abd match {
+                    case f: Failure => f
+                    case abdRes: NonFatalResult =>
+                      // TODO nklose we do not guarantee length 1 here anymore
+                      abductionUtils.getAbductionSuccesses(abdRes) match {
+                        case Seq(AbductionSuccess(s5, v5, _, _, _, _, _)) =>
+                          val unfolded = VarTransformer(s5, v5, s5.g.values, s5.h).transformState(s5)
+                          Q1(unfolded)
+                      }
+                  }
+
+              }
+
+
             }
         }
       }
@@ -90,8 +110,8 @@ object LoopInvariantSolver {
         executor.follows(sFP, loopEdges, pveLam, vFP, joinPoint) {
           (_, _) => Success()
           //(s1, v1) =>
-            // We evaluate the loop condition at the end of loop so that we can start the next iteration from a valid state
-            //evaluator.evalWithAbduction(s1, loopConExp, pve, v1){(_, _, _, _) => Success()}
+          // We evaluate the loop condition at the end of loop so that we can start the next iteration from a valid state
+          //evaluator.evalWithAbduction(s1, loopConExp, pve, v1){(_, _, _, _) => Success()}
         }
       } match {
 
@@ -116,51 +136,51 @@ object LoopInvariantSolver {
           // Get the state at the beginning of the loop with the abduced things added
           producer.produces(sPreInv, freshSnap, newState, pveLam, vPreInv) { (sPreAbd, vPreAbd) =>
 
-              abductionUtils.findChunks(newState.collect {
-                case loc: FieldAccessPredicate => loc.loc
-                case loc: PredicateAccessPredicate => loc.loc
-              }, sPreAbd, vPreAbd, pve) { chunks =>
+            abductionUtils.findChunks(newState.collect {
+              case loc: FieldAccessPredicate => loc.loc
+              case loc: PredicateAccessPredicate => loc.loc
+            }, sPreAbd, vPreAbd, pve) { chunks =>
 
-                val allChunks = chunks.keys
+              val allChunks = chunks.keys
 
-                val newPreState0 = sPreAbd.copy(h = q.preHeap.+(Heap(allChunks)))
-                BiAbductionSolver.solveAbstraction(newPreState0, vPreAbd) {
-                  (newPreState, newPreAbstraction0, newPreV) =>
+              val newPreState0 = sPreAbd.copy(h = q.preHeap.+(Heap(allChunks)))
+              BiAbductionSolver.solveAbstraction(newPreState0, vPreAbd) {
+                (newPreState, newPreAbstraction0, newPreV) =>
 
-                    val preTran = VarTransformer(newPreState, newPreV, preStateVars, newPreState.h)
-                    val newPreAbstraction = newPreAbstraction0.map(e => preTran.transformExp(e, strict = false).get)
+                  val preTran = VarTransformer(newPreState, newPreV, preStateVars, newPreState.h)
+                  val newPreAbstraction = newPreAbstraction0.map(e => preTran.transformExp(e, strict = false).get)
 
-                    println("New pre abstraction:\n    " + newPreAbstraction.mkString("\n    "))
+                  println("New pre abstraction:\n    " + newPreAbstraction.mkString("\n    "))
 
-                    executor.follows(sPreAbd, loopEdges, pveLam, vPreAbd, joinPoint)((sPost, vPost) => {
+                  executor.follows(sPreAbd, loopEdges, pveLam, vPreAbd, joinPoint)((sPost, vPost) => {
 
-                      BiAbductionSolver.solveAbstraction(sPost, vPost) { (sPostAbs, postAbstraction0, vPostAbs) =>
+                    BiAbductionSolver.solveAbstraction(sPost, vPost) { (sPostAbs, postAbstraction0, vPostAbs) =>
 
-                        val postStateVars = sPostAbs.g.values.filter { case (v, _) => origVars.contains(v) }
-                        val postTran = VarTransformer(sPostAbs, vPostAbs, postStateVars, sPostAbs.h)
-                        val newpostAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
+                      val postStateVars = sPostAbs.g.values.filter { case (v, _) => origVars.contains(v) }
+                      val postTran = VarTransformer(sPostAbs, vPostAbs, postStateVars, sPostAbs.h)
+                      val newpostAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
 
-                        println("New post abstraction:\n    " + newpostAbstraction.mkString("\n    "))
+                      println("New post abstraction:\n    " + newpostAbstraction.mkString("\n    "))
 
-                        // If the pushed forward abstraction is the same as the previous one, we are done
-                        if (newPreAbstraction.toSet == q.preAbstraction.toSet && newpostAbstraction.toSet == q.postAbstraction.toSet) {
+                      // If the pushed forward abstraction is the same as the previous one, we are done
+                      if (newPreAbstraction.toSet == q.preAbstraction.toSet && newpostAbstraction.toSet == q.postAbstraction.toSet) {
 
-                          val loop = abductionUtils.getWhile(loopConExp, s.currentMember.get.asInstanceOf[Method])
-                          val existingInvs = loop.invs
-                          getInvariants(newPreAbstraction, newpostAbstraction, loopConExp, existingInvs, sPostAbs, vPostAbs) { res =>
-                            println("Invariants:\n    " + res.mkString("\n    "))
-                            Success(Some(LoopInvariantSuccess(sPostAbs, vPostAbs, invs = res, loop, vPostAbs.decider.pcs.duplicate())))
-                          }
-                        } else {
-                          //val newLoopCons = loopConBcs :+ loopCondTerm
-                          // Else continue with next iteration, using the state from the end of the loop
-                          solveLoopInvariants(sPostAbs, vPostAbs, origVars, loopHead, loopEdges, joinPoint, initialBcs, q.copy(preHeap = newPreState.h, preAbstraction = newPreAbstraction,
-                            postAbstraction = newpostAbstraction), iteration = iteration + 1)
+                        val loop = abductionUtils.getWhile(loopConExp, s.currentMember.get.asInstanceOf[Method])
+                        val existingInvs = loop.invs
+                        getInvariants(newPreAbstraction, newpostAbstraction, loopConExp, existingInvs, sPostAbs, vPostAbs) { res =>
+                          println("Invariants:\n    " + res.mkString("\n    "))
+                          Success(Some(LoopInvariantSuccess(sPostAbs, vPostAbs, invs = res, loop, vPostAbs.decider.pcs.duplicate())))
                         }
+                      } else {
+                        //val newLoopCons = loopConBcs :+ loopCondTerm
+                        // Else continue with next iteration, using the state from the end of the loop
+                        solveLoopInvariants(sPostAbs, vPostAbs, origVars, loopHead, loopEdges, joinPoint, initialBcs, q.copy(preHeap = newPreState.h, preAbstraction = newPreAbstraction,
+                          postAbstraction = newpostAbstraction), iteration = iteration + 1)
                       }
-                    })
-                }
+                    }
+                  })
               }
+            }
             //}
           }
       }

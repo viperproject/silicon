@@ -8,9 +8,9 @@ predicate Cell(x: Ref) {
 }
 
 method test0(x: Ref)
-requires acc(x.f) && Cell(x.f)
+//requires acc(x.f) && Cell(x.f)
 {
-    package acc(x.f) && Cell(x.f) --* acc(x.f) && acc(x.f.f) {
-        unfold Cell(x.f)
+    //package acc(x.f) && Cell(x.f) --* acc(x.f) && acc(x.f.f) {
+        //unfold Cell(x.f)
     }
 }

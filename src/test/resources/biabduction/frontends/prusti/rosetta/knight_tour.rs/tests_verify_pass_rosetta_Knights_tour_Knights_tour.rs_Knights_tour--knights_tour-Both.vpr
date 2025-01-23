@@ -589,49 +589,49 @@ field val_int: Int
 field val_ref: Ref
 
 function f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(_1: Snap$struct$m_VecCandidates): Int
-  requires true
-  requires true
-  ensures result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result >= 0
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(_1),
     true]
 
 
 function f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(_1: Snap$struct$m_VecVecWrapperI32,
   _2: Int, _3: Int): Int
-  requires true
-  requires 0 <= _2 && _2 < f_size__$TY$__$int$() &&
+  //requires true
+  //requires 0 <= _2 && _2 < f_size__$TY$__$int$() &&
     (0 <= _3 && _3 < f_size__$TY$__$int$())
-  ensures true
-  ensures [result ==
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_VecVecWrapperI32$$lookup__$TY$__Snap$struct$m_VecVecWrapperI32$$int$$$int$$$int$(_1,
     _2, _3),
     true]
 
 
 function f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(_1: Snap$struct$m_VecWrapperI32I32): Int
-  requires true
-  requires true
-  ensures result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures result >= 0
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(_1),
     true]
 
 
 function f_size__$TY$__$int$(): Int
-  requires true
-  requires true
-  ensures result == 8
-  ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
+  //requires true
+  //requires true
+  //ensures result == 8
+  //ensures [result == mirror_simple$f_size__$TY$__$int$(), true]
 
 
 function f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$bool$(_1: Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_): Bool
-  requires true
-  requires true
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$bool$(_1),
     true]
 {
@@ -656,9 +656,9 @@ function f_valid__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Poi
 }
 
 function m_std$$option$$Option$_beg_$struct$m_Board$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(self: Ref): Int
-  requires acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$())
-  ensures 0 <= result && result <= 1
-  ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(self)) ==
+  //requires acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$())
+  //ensures 0 <= result && result <= 1
+  //ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(self)) ==
     result
 {
   (unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$()) in
@@ -666,9 +666,9 @@ function m_std$$option$$Option$_beg_$struct$m_Board$_end_$$discriminant$$__$TY$_
 }
 
 function m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$discriminant$$__$TY$__m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(self: Ref): Int
-  requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
-  ensures 0 <= result && result <= 1
-  ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self)) ==
+  //requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
+  //ensures 0 <= result && result <= 1
+  //ensures discriminant$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$int$(snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self)) ==
     result
 {
   (unfolding acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$()) in
@@ -676,7 +676,7 @@ function m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$$discrimina
 }
 
 function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$m_std$$option$$Option$_beg_$struct$m_Board$_end_$Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_
-  requires acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$())
+  //requires acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$())
 {
   ((unfolding acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(self), read$()) in
     self.discriminant) ==
@@ -688,7 +688,7 @@ function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$struct$m_Board$_end_$m_st
 }
 
 function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_$Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self: Ref): Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_
-  requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
+  //requires acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$())
 {
   ((unfolding acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(self), read$()) in
     self.discriminant) ==
@@ -700,14 +700,14 @@ function snap$__$TY$__Snap$m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point
 }
 
 function snap$__$TY$__Snap$struct$m_Board$struct$m_Board$Snap$struct$m_Board(self: Ref): Snap$struct$m_Board
-  requires acc(struct$m_Board(self), read$())
+  //requires acc(struct$m_Board(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Board$Snap$struct$m_VecVecWrapperI32$Snap$struct$m_Board((unfolding acc(struct$m_Board(self), read$()) in
     snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(self.f$field)))
 }
 
 function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(self: Ref): Snap$struct$m_Point
-  requires acc(struct$m_Point(self), read$())
+  //requires acc(struct$m_Point(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Point$$int$$$int$$Snap$struct$m_Point((unfolding acc(struct$m_Point(self), read$()) in
     (unfolding acc(i32(self.f$x), read$()) in self.f$x.val_int)), (unfolding acc(struct$m_Point(self), read$()) in
@@ -715,40 +715,40 @@ function snap$__$TY$__Snap$struct$m_Point$struct$m_Point$Snap$struct$m_Point(sel
 }
 
 function snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(self: Ref): Snap$struct$m_VecCandidates
-  requires acc(struct$m_VecCandidates(self), read$())
+  //requires acc(struct$m_VecCandidates(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecCandidates$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_VecCandidates((unfolding acc(struct$m_VecCandidates(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_VecVecWrapperI32$struct$m_VecVecWrapperI32$Snap$struct$m_VecVecWrapperI32(self: Ref): Snap$struct$m_VecVecWrapperI32
-  requires acc(struct$m_VecVecWrapperI32(self), read$())
+  //requires acc(struct$m_VecVecWrapperI32(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecVecWrapperI32$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_VecVecWrapperI32((unfolding acc(struct$m_VecVecWrapperI32(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(self: Ref): Snap$struct$m_VecWrapperI32I32
-  requires acc(struct$m_VecWrapperI32I32(self), read$())
+  //requires acc(struct$m_VecWrapperI32I32(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_VecWrapperI32I32$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_VecWrapperI32I32((unfolding acc(struct$m_VecWrapperI32I32(self), read$()) in
     snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self.f$v)))
 }
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$struct$m_std$$vec$$Vec$i32$struct$m_std$$alloc$$Global$struct$m_std$$alloc$$Global(self), read$())
 
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$tuple2$i32$i32$struct$m_std$$alloc$$Global(self), read$())
 
 
 function snap$__$TY$__Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global$Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self: Ref): Snap$struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global
-  requires acc(struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self), read$())
+  //requires acc(struct$m_std$$vec$$Vec$tuple2$i32$struct$m_Point$struct$m_std$$alloc$$Global(self), read$())
 
 
 function snap$__$TY$__Snap$tuple2$i32$struct$m_Point$tuple2$i32$struct$m_Point$Snap$tuple2$i32$struct$m_Point(self: Ref): Snap$tuple2$i32$struct$m_Point
-  requires acc(tuple2$i32$struct$m_Point(self), read$())
+  //requires acc(tuple2$i32$struct$m_Point(self), read$())
 {
   cons$0$__$TY$__Snap$tuple2$i32$struct$m_Point$$int$$Snap$struct$m_Point$Snap$tuple2$i32$struct$m_Point((unfolding acc(tuple2$i32$struct$m_Point(self), read$()) in
     (unfolding acc(i32(self.tuple_0), read$()) in self.tuple_0.val_int)), (unfolding acc(tuple2$i32$struct$m_Point(self), read$()) in
@@ -756,8 +756,8 @@ function snap$__$TY$__Snap$tuple2$i32$struct$m_Point$tuple2$i32$struct$m_Point$S
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -1182,20 +1182,20 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _5 = _1
   _5 := builtin$havoc_ref()
   inhale acc(_5.val_int, write)
-  unfold acc(i32(_1), write)
+  //unfold acc(i32(_1), write)
   _5.val_int := _1.val_int
   label l2
   // [mir] StorageLive(_6)
   // [mir] _6 = _2
   _6 := builtin$havoc_ref()
   inhale acc(_6.val_int, write)
-  unfold acc(i32(_2), write)
+  //unfold acc(i32(_2), write)
   _6.val_int := _2.val_int
   label l3
   // [mir] _4 = Point { x: move _5, y: move _6 }
   _4 := builtin$havoc_ref()
   inhale acc(struct$m_Point(_4), write)
-  unfold acc(struct$m_Point(_4), write)
+  //unfold acc(struct$m_Point(_4), write)
   _4.f$x := _5
   label l4
   _4.f$y := _6
@@ -1220,7 +1220,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _10 = &mut (_3.0: VecVecWrapperI32)
   _10 := builtin$havoc_ref()
   inhale acc(_10.val_ref, write)
-  unfold acc(struct$m_Board(_3), write)
+  //unfold acc(struct$m_Board(_3), write)
   _10.val_ref := _3.f$field
   label l6
   // [mir] StorageLive(_11)
@@ -1246,9 +1246,9 @@ method m_knights_tour() returns (_0: Ref)
   assert 0 <= _11.val_int && _11.val_int < f_size__$TY$__$int$() &&
     (0 <= _12.val_int && _12.val_int < f_size__$TY$__$int$())
   assert true
-  fold acc(i32(_11), write)
-  fold acc(i32(_12), write)
-  fold acc(i32(_13), write)
+  //fold acc(i32(_11), write)
+  //fold acc(i32(_12), write)
+  //fold acc(i32(_13), write)
   exhale acc(_10.val_ref, write) &&
     (acc(struct$m_VecVecWrapperI32(_10.val_ref), write) &&
     (acc(i32(_11), write) && (acc(i32(_12), write) && acc(i32(_13), write))))
@@ -1330,8 +1330,8 @@ method m_knights_tour() returns (_0: Ref)
   inhale acc(_20.tuple_0.val_int, write)
   inhale acc(_20.tuple_1, write)
   inhale acc(_20.tuple_1.val_bool, write)
-  unfold acc(i32(_18), write)
-  unfold acc(i32(_19), write)
+  //unfold acc(i32(_18), write)
+  //unfold acc(i32(_19), write)
   _20.tuple_0.val_int := _18.val_int * _19.val_int
   _20.tuple_1.val_bool := false
   // [mir] assert(!move (_20.1: bool), "attempt to compute `{} * {}`, which would overflow", move _18, move _19) -> [success: bb6, unwind: bb94]
@@ -1392,20 +1392,20 @@ method m_knights_tour() returns (_0: Ref)
   _25.val_bool := false
   // [mir] switchInt(move _25) -> [0: bb11, otherwise: bb10]
   __t86 := _25.val_bool
-  // Ignore default target bb10, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb10, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb7)
-  fold acc(bool(_8), write)
+  // Assert and exhale the loop body //invariant (loop head: bb7)
+  //fold acc(bool(_8), write)
   // obtain acc(bool(_8), write)
-  fold acc(i32(_4.f$y), write)
-  fold acc(i32(_4.f$x), write)
-  fold acc(struct$m_Point(_4), write)
+  //fold acc(i32(_4.f$y), write)
+  //fold acc(i32(_4.f$x), write)
+  //fold acc(struct$m_Point(_4), write)
   // obtain acc(struct$m_Point(_4), write)
-  fold acc(i32(_7), write)
+  //fold acc(i32(_7), write)
   // obtain acc(i32(_7), write)
-  fold acc(bool(_15), write)
+  //fold acc(bool(_15), write)
   // obtain acc(bool(_15), write)
-  fold acc(struct$m_Board(_3), write)
+  //fold acc(struct$m_Board(_3), write)
   // obtain acc(struct$m_Board(_3), write)
   assert 0 <=
     (unfolding acc(struct$m_Point(_4), write) in
@@ -1615,7 +1615,7 @@ method m_knights_tour() returns (_0: Ref)
   __t98 := builtin$havoc_bool()
   __t99 := builtin$havoc_bool()
   // ========== loop7_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb7
+  // Inhale the loop permissions //invariant of block bb7
   inhale acc(bool(_8), write) &&
     (acc(struct$m_Point(_4), write) &&
     (acc(i32(_7), write) &&
@@ -1631,7 +1631,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _23 = _15
   _23 := builtin$havoc_ref()
   inhale acc(_23.val_bool, write)
-  unfold acc(bool(_15), write)
+  //unfold acc(bool(_15), write)
   _23.val_bool := _15.val_bool
   label l21
   // [mir] switchInt(move _23) -> [0: bb85, otherwise: bb9]
@@ -1654,9 +1654,9 @@ method m_knights_tour() returns (_0: Ref)
   _25.val_bool := false
   // [mir] switchInt(move _25) -> [0: bb11, otherwise: bb10]
   __t88 := _25.val_bool
-  // Ignore default target bb10, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb10, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb7
+  // Inhale the loop fnspec //invariant of block bb7
   inhale 0 <=
     (unfolding acc(struct$m_Point(_4), write) in
       (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) &&
@@ -1685,7 +1685,7 @@ method m_knights_tour() returns (_0: Ref)
   _29.val_bool := false
   // [mir] switchInt(move _29) -> [0: bb14, otherwise: bb13]
   __t89 := _29.val_bool
-  // Ignore default target bb13, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb13, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_bb14 ==========
   __t12 := true
   // [mir] _28 = const ()
@@ -1806,12 +1806,12 @@ method m_knights_tour() returns (_0: Ref)
   _42.val_bool := false
   // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
   __t91 := _42.val_bool
-  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop19_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb19)
-  fold acc(usize(_34), write)
+  // Assert and exhale the loop body //invariant (loop head: bb19)
+  //fold acc(usize(_34), write)
   // obtain acc(usize(_34), write)
-  fold acc(bool(_35), write)
+  //fold acc(bool(_35), write)
   // obtain acc(bool(_35), write)
   // obtain acc(struct$m_VecWrapperI32I32(_33), write)
   // obtain acc(struct$m_Point(_4), write)
@@ -1902,7 +1902,7 @@ method m_knights_tour() returns (_0: Ref)
   __t98 := builtin$havoc_bool()
   __t99 := builtin$havoc_bool()
   // ========== loop7_group3_loop19_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb19
+  // Inhale the loop permissions //invariant of block bb19
   inhale acc(usize(_34), write) &&
     (acc(bool(_35), write) &&
     (acc(struct$m_VecWrapperI32I32(_33), write) &&
@@ -1920,7 +1920,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _40 = _35
   _40 := builtin$havoc_ref()
   inhale acc(_40.val_bool, write)
-  unfold acc(bool(_35), write)
+  //unfold acc(bool(_35), write)
   _40.val_bool := _35.val_bool
   label l35
   // [mir] switchInt(move _40) -> [0: bb46, otherwise: bb21]
@@ -1948,9 +1948,9 @@ method m_knights_tour() returns (_0: Ref)
   _42.val_bool := false
   // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
   __t93 := _42.val_bool
-  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop19_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb19
+  // Inhale the loop fnspec //invariant of block bb19
   inhale 0 <= (unfolding acc(usize(_34), write) in _34.val_int) &&
     ((unfolding acc(usize(_34), write) in _34.val_int) <
     f_VecWrapperI32I32$$len__$TY$__Snap$struct$m_VecWrapperI32I32$$int$(snap$__$TY$__Snap$struct$m_VecWrapperI32I32$struct$m_VecWrapperI32I32$Snap$struct$m_VecWrapperI32I32(_33)) &&
@@ -1982,7 +1982,7 @@ method m_knights_tour() returns (_0: Ref)
   _46.val_bool := false
   // [mir] switchInt(move _46) -> [0: bb26, otherwise: bb25]
   __t94 := _46.val_bool
-  // Ignore default target bb25, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb25, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop19_group3_bb26 ==========
   __t22 := true
   // [mir] _45 = const ()
@@ -1999,7 +1999,7 @@ method m_knights_tour() returns (_0: Ref)
   _51.val_bool := false
   // [mir] switchInt(move _51) -> [0: bb29, otherwise: bb28]
   __t95 := _51.val_bool
-  // Ignore default target bb28, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb28, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop19_group3_bb29 ==========
   __t24 := true
   // [mir] _50 = const ()
@@ -2016,7 +2016,7 @@ method m_knights_tour() returns (_0: Ref)
   _55.val_bool := false
   // [mir] switchInt(move _55) -> [0: bb32, otherwise: bb31]
   __t96 := _55.val_bool
-  // Ignore default target bb31, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb31, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop19_group3_bb32 ==========
   __t26 := true
   // [mir] _54 = const ()
@@ -2035,7 +2035,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] StorageLive(_60)
   // [mir] _60 = _34
   _60 := builtin$havoc_int()
-  unfold acc(usize(_34), write)
+  //unfold acc(usize(_34), write)
   _60 := _34.val_int
   label l39
   // [mir] _58 = VecWrapperI32I32::lookup(move _59, move _60) -> [return: bb34, unwind: bb92]
@@ -2203,7 +2203,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] StorageDead(_68)
   // [mir] StorageDead(_67)
   // [mir] switchInt(move _66) -> [0: bb42, otherwise: bb38]
-  unfold acc(bool(_66), write)
+  //unfold acc(bool(_66), write)
   __t97 := _66.val_bool
   if (!__t97) {
     goto loop7_group1_bb7
@@ -2325,8 +2325,8 @@ method m_knights_tour() returns (_0: Ref)
   inhale acc(_95.tuple_0.val_int, write)
   inhale acc(_95.tuple_1, write)
   inhale acc(_95.tuple_1.val_bool, write)
-  unfold acc(i32(_93), write)
-  unfold acc(i32(_94), write)
+  //unfold acc(i32(_93), write)
+  //unfold acc(i32(_94), write)
   _95.tuple_0.val_int := _93.val_int * _94.val_int
   _95.tuple_1.val_bool := false
   // [mir] assert(!move (_95.1: bool), "attempt to compute `{} * {}`, which would overflow", move _93, move _94) -> [success: bb51, unwind: bb92]
@@ -2528,20 +2528,20 @@ method m_knights_tour() returns (_0: Ref)
   _25.val_bool := false
   // [mir] switchInt(move _25) -> [0: bb11, otherwise: bb10]
   __t117 := _25.val_bool
-  // Ignore default target bb10, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb10, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb7)
-  fold acc(bool(_8), write)
+  // Assert and exhale the loop body //invariant (loop head: bb7)
+  //fold acc(bool(_8), write)
   // obtain acc(bool(_8), write)
-  fold acc(i32(_4.f$y), write)
-  fold acc(i32(_4.f$x), write)
-  fold acc(struct$m_Point(_4), write)
+  //fold acc(i32(_4.f$y), write)
+  //fold acc(i32(_4.f$x), write)
+  //fold acc(struct$m_Point(_4), write)
   // obtain acc(struct$m_Point(_4), write)
-  fold acc(i32(_7), write)
+  //fold acc(i32(_7), write)
   // obtain acc(i32(_7), write)
-  fold acc(bool(_15), write)
+  //fold acc(bool(_15), write)
   // obtain acc(bool(_15), write)
-  fold acc(struct$m_Board(_3), write)
+  //fold acc(struct$m_Board(_3), write)
   // obtain acc(struct$m_Board(_3), write)
   assert 0 <=
     (unfolding acc(struct$m_Point(_4), write) in
@@ -2576,15 +2576,15 @@ method m_knights_tour() returns (_0: Ref)
   _99.val_bool := false
   // [mir] switchInt(move _99) -> [0: bb56, otherwise: bb55]
   __t111 := _99.val_bool
-  // Ignore default target bb55, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb55, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop52_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb52)
-  fold acc(i32(_92), write)
+  // Assert and exhale the loop body //invariant (loop head: bb52)
+  //fold acc(i32(_92), write)
   // obtain acc(i32(_92), write)
   // obtain acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
-  fold acc(usize(_86), write)
+  //fold acc(usize(_86), write)
   // obtain acc(usize(_86), write)
-  fold acc(bool(_87), write)
+  //fold acc(bool(_87), write)
   // obtain acc(bool(_87), write)
   // obtain acc(struct$m_VecCandidates(_32), write)
   assert 0 <= (unfolding acc(usize(_86), write) in _86.val_int) &&
@@ -2731,7 +2731,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _122 = (move _123, move _124)
   _122 := builtin$havoc_ref()
   inhale acc(tuple2$i32$struct$m_Point(_122), write)
-  unfold acc(tuple2$i32$struct$m_Point(_122), write)
+  //unfold acc(tuple2$i32$struct$m_Point(_122), write)
   _122.tuple_0 := _123
   label l111
   _122.tuple_1 := _124
@@ -2745,8 +2745,8 @@ method m_knights_tour() returns (_0: Ref)
     1
   // downcast _121 to enum_Some
 
-  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_121), write)
-  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_121.enum_Some), write)
+  //unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_121), write)
+  //unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_121.enum_Some), write)
   _121.enum_Some.f$0 := _122
   label l113
   // [mir] StorageDead(_122)
@@ -2757,10 +2757,10 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _116 = const ()
   // [mir] goto -> bb67
   // ========== l157 ==========
-  fold acc(i32(_91.enum_Some.f$0.tuple_0), write)
-  fold acc(tuple2$i32$struct$m_Point(_91.enum_Some.f$0), write)
-  fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_91.enum_Some), write)
-  fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
+  //fold acc(i32(_91.enum_Some.f$0.tuple_0), write)
+  //fold acc(tuple2$i32$struct$m_Point(_91.enum_Some.f$0), write)
+  //fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_91.enum_Some), write)
+  //fold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
   goto l22
   
   label loop7_group2a_bb8
@@ -2805,9 +2805,9 @@ method m_knights_tour() returns (_0: Ref)
   __t62 := true
   // [mir] StorageLive(_134)
   // [mir] _134 = move (((_91 as Some).0: (i32, Point)).1: Point)
-  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
-  unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_91.enum_Some), write)
-  unfold acc(tuple2$i32$struct$m_Point(_91.enum_Some.f$0), write)
+  //unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
+  //unfold acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_Some(_91.enum_Some), write)
+  //unfold acc(tuple2$i32$struct$m_Point(_91.enum_Some.f$0), write)
   _134 := _91.enum_Some.f$0.tuple_1
   label l125
   // [mir] StorageLive(_135)
@@ -2828,7 +2828,7 @@ method m_knights_tour() returns (_0: Ref)
   // drop Acc(_91[enum_Some].f$0.tuple_1, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
   // drop Acc(_91[enum_Some].f$0, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
   // drop Pred(_91[enum_Some].f$0.tuple_0, write) (Pred(_91[enum_Some].f$0.tuple_1, write))
-  unfold acc(bool(_8), write)
+  //unfold acc(bool(_8), write)
   goto loop7_group3_bb14
   
   label loop7_group3_bb12
@@ -2837,7 +2837,7 @@ method m_knights_tour() returns (_0: Ref)
   // ========== loop7_group3_bb71 ==========
   __t63 := true
   // [mir] _8 = const true
-  unfold acc(bool(_8), write)
+  //unfold acc(bool(_8), write)
   _8.val_bool := true
   // [mir] _132 = const ()
   // [mir] goto -> bb74
@@ -2854,29 +2854,29 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _137 = &mut (_3.0: VecVecWrapperI32)
   _137 := builtin$havoc_ref()
   inhale acc(_137.val_ref, write)
-  unfold acc(struct$m_Board(_3), write)
+  //unfold acc(struct$m_Board(_3), write)
   _137.val_ref := _3.f$field
   label l128
   // [mir] StorageLive(_138)
   // [mir] _138 = (_4.0: i32)
   _138 := builtin$havoc_ref()
   inhale acc(_138.val_int, write)
-  unfold acc(struct$m_Point(_4), write)
-  unfold acc(i32(_4.f$x), write)
+  //unfold acc(struct$m_Point(_4), write)
+  //unfold acc(i32(_4.f$x), write)
   _138.val_int := _4.f$x.val_int
   label l129
   // [mir] StorageLive(_139)
   // [mir] _139 = (_4.1: i32)
   _139 := builtin$havoc_ref()
   inhale acc(_139.val_int, write)
-  unfold acc(i32(_4.f$y), write)
+  //unfold acc(i32(_4.f$y), write)
   _139.val_int := _4.f$y.val_int
   label l130
   // [mir] StorageLive(_140)
   // [mir] _140 = _7
   _140 := builtin$havoc_ref()
   inhale acc(_140.val_int, write)
-  unfold acc(i32(_7), write)
+  //unfold acc(i32(_7), write)
   _140.val_int := _7.val_int
   label l131
   // [mir] _136 = VecVecWrapperI32::store(move _137, move _138, move _139, move _140) -> [return: bb75, unwind: bb92]
@@ -2884,9 +2884,9 @@ method m_knights_tour() returns (_0: Ref)
   assert 0 <= _138.val_int && _138.val_int < f_size__$TY$__$int$() &&
     (0 <= _139.val_int && _139.val_int < f_size__$TY$__$int$())
   assert true
-  fold acc(i32(_138), write)
-  fold acc(i32(_139), write)
-  fold acc(i32(_140), write)
+  //fold acc(i32(_138), write)
+  //fold acc(i32(_139), write)
+  //fold acc(i32(_140), write)
   exhale acc(_137.val_ref, write) &&
     (acc(struct$m_VecVecWrapperI32(_137.val_ref), write) &&
     (acc(i32(_138), write) &&
@@ -2970,8 +2970,8 @@ method m_knights_tour() returns (_0: Ref)
   inhale acc(_148.tuple_0.val_int, write)
   inhale acc(_148.tuple_1, write)
   inhale acc(_148.tuple_1.val_bool, write)
-  unfold acc(i32(_146), write)
-  unfold acc(i32(_147), write)
+  //unfold acc(i32(_146), write)
+  //unfold acc(i32(_147), write)
   _148.tuple_0.val_int := _146.val_int * _147.val_int
   _148.tuple_1.val_bool := false
   // [mir] assert(!move (_148.1: bool), "attempt to compute `{} * {}`, which would overflow", move _146, move _147) -> [success: bb82, unwind: bb92]
@@ -3117,8 +3117,8 @@ method m_knights_tour() returns (_0: Ref)
     1
   // downcast _0 to enum_Some
 
-  unfold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
-  unfold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(_0.enum_Some), write)
+  //unfold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
+  //unfold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(_0.enum_Some), write)
   _0.enum_Some.f$0 := _156
   label l152
   // [mir] drop(_156) -> [return: bb88, unwind: bb94]
@@ -3136,9 +3136,9 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] StorageDead(_3)
   // [mir] goto -> bb91
   // ========== l165 ==========
-  fold acc(struct$m_Board(_0.enum_Some.f$0), write)
-  fold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(_0.enum_Some), write)
-  fold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
+  //fold acc(struct$m_Board(_0.enum_Some.f$0), write)
+  //fold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_Some(_0.enum_Some), write)
+  //fold acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
   goto loop7_group3_loop19_group1_bb20
   
   label loop7_group3_loop19_group1_bb20
@@ -3149,12 +3149,12 @@ method m_knights_tour() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l154
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  // Fold the result
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  // //fold the result
   // obtain acc(m_std$$option$$Option$_beg_$struct$m_Board$_end_(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   // Exhale permissions of postcondition (2/3)
@@ -3175,12 +3175,12 @@ method m_knights_tour() returns (_0: Ref)
   _42.val_bool := false
   // [mir] switchInt(move _42) -> [0: bb23, otherwise: bb22]
   __t100 := _42.val_bool
-  // Ignore default target bb22, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb22, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop19_end_body ==========
-  // Assert and exhale the loop body invariant (loop head: bb19)
-  fold acc(usize(_34), write)
+  // Assert and exhale the loop body //invariant (loop head: bb19)
+  //fold acc(usize(_34), write)
   // obtain acc(usize(_34), write)
-  fold acc(bool(_35), write)
+  //fold acc(bool(_35), write)
   // obtain acc(bool(_35), write)
   // obtain acc(struct$m_VecWrapperI32I32(_33), write)
   // obtain acc(struct$m_Point(_4), write)
@@ -3249,9 +3249,9 @@ method m_knights_tour() returns (_0: Ref)
   _99.val_bool := false
   // [mir] switchInt(move _99) -> [0: bb56, otherwise: bb55]
   __t105 := _99.val_bool
-  // Ignore default target bb55, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb55, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop52_inv_post_fnspc ==========
-  // Inhale the loop fnspec invariant of block bb52
+  // Inhale the loop fnspec //invariant of block bb52
   inhale 0 <= (unfolding acc(usize(_86), write) in _86.val_int) &&
     ((unfolding acc(usize(_86), write) in _86.val_int) <
     f_VecCandidates$$len__$TY$__Snap$struct$m_VecCandidates$$int$(snap$__$TY$__Snap$struct$m_VecCandidates$struct$m_VecCandidates$Snap$struct$m_VecCandidates(_32)) &&
@@ -3272,7 +3272,7 @@ method m_knights_tour() returns (_0: Ref)
   _103.val_bool := false
   // [mir] switchInt(move _103) -> [0: bb59, otherwise: bb58]
   __t106 := _103.val_bool
-  // Ignore default target bb58, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb58, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop52_group3_bb59 ==========
   __t50 := true
   // [mir] _102 = const ()
@@ -3289,7 +3289,7 @@ method m_knights_tour() returns (_0: Ref)
   _108.val_bool := false
   // [mir] switchInt(move _108) -> [0: bb62, otherwise: bb61]
   __t107 := _108.val_bool
-  // Ignore default target bb61, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb61, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop52_group3_bb62 ==========
   __t52 := true
   // [mir] _107 = const ()
@@ -3308,7 +3308,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] StorageLive(_115)
   // [mir] _115 = _86
   _115 := builtin$havoc_int()
-  unfold acc(usize(_86), write)
+  //unfold acc(usize(_86), write)
   _115 := _86.val_int
   label l97
   // [mir] _113 = VecCandidates::lookup(move _114, move _115) -> [return: bb64, unwind: bb92]
@@ -3358,8 +3358,8 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] StorageLive(_111)
   // [mir] _111 = (_113.0: i32)
   _111 := builtin$havoc_int()
-  unfold acc(tuple2$i32$struct$m_Point(_113), write)
-  unfold acc(i32(_113.tuple_0), write)
+  //unfold acc(tuple2$i32$struct$m_Point(_113), write)
+  //unfold acc(i32(_113.tuple_0), write)
   _111 := _113.tuple_0.val_int
   label l101
   // [mir] StorageLive(_112)
@@ -3372,7 +3372,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] StorageLive(_118)
   // [mir] _118 = _92
   _118 := builtin$havoc_int()
-  unfold acc(i32(_92), write)
+  //unfold acc(i32(_92), write)
   _118 := _92.val_int
   label l103
   // [mir] StorageLive(_119)
@@ -3411,15 +3411,15 @@ method m_knights_tour() returns (_0: Ref)
   _99.val_bool := false
   // [mir] switchInt(move _99) -> [0: bb56, otherwise: bb55]
   __t103 := _99.val_bool
-  // Ignore default target bb55, as it is only used by Prusti to type-check a loop invariant.
+  // Ignore default target bb55, as it is only used by Prusti to type-check a loop //invariant.
   // ========== loop7_group3_loop52_inv_pre ==========
-  // Assert and exhale the loop body invariant (loop head: bb52)
-  fold acc(i32(_92), write)
+  // Assert and exhale the loop body //invariant (loop head: bb52)
+  //fold acc(i32(_92), write)
   // obtain acc(i32(_92), write)
   // obtain acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write)
-  fold acc(usize(_86), write)
+  //fold acc(usize(_86), write)
   // obtain acc(usize(_86), write)
-  fold acc(bool(_87), write)
+  //fold acc(bool(_87), write)
   // obtain acc(bool(_87), write)
   // obtain acc(struct$m_VecCandidates(_32), write)
   assert 0 <= (unfolding acc(usize(_86), write) in _86.val_int) &&
@@ -3479,7 +3479,7 @@ method m_knights_tour() returns (_0: Ref)
   __t58 := builtin$havoc_bool()
   __t59 := builtin$havoc_bool()
   // ========== loop7_group3_loop52_inv_post_perm ==========
-  // Inhale the loop permissions invariant of block bb52
+  // Inhale the loop permissions //invariant of block bb52
   inhale acc(i32(_92), write) &&
     (acc(m_std$$option$$Option$_beg_$tuple2$i32$struct$m_Point$_end_(_91), write) &&
     (acc(usize(_86), write) &&
@@ -3495,7 +3495,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _97 = _87
   _97 := builtin$havoc_ref()
   inhale acc(_97.val_bool, write)
-  unfold acc(bool(_87), write)
+  //unfold acc(bool(_87), write)
   _97.val_bool := _87.val_bool
   label l93
   // [mir] switchInt(move _97) -> [0: bb70, otherwise: bb54]
@@ -3596,7 +3596,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _77 = _70
   _77 := builtin$havoc_ref()
   inhale acc(_77.val_int, write)
-  unfold acc(i32(_70), write)
+  //unfold acc(i32(_70), write)
   _77.val_int := _70.val_int
   label l68
   // [mir] StorageLive(_78)
@@ -3606,7 +3606,7 @@ method m_knights_tour() returns (_0: Ref)
   // [mir] _76 = (move _77, move _78)
   _76 := builtin$havoc_ref()
   inhale acc(tuple2$i32$struct$m_Point(_76), write)
-  unfold acc(tuple2$i32$struct$m_Point(_76), write)
+  //unfold acc(tuple2$i32$struct$m_Point(_76), write)
   _76.tuple_0 := _77
   label l70
   _76.tuple_1 := _78
@@ -3632,8 +3632,8 @@ method m_knights_tour() returns (_0: Ref)
         _76.tuple_1.f$y.val_int)) <
     f_size__$TY$__$int$())
   assert true
-  fold acc(i32(_76.tuple_0), write)
-  fold acc(tuple2$i32$struct$m_Point(_76), write)
+  //fold acc(i32(_76.tuple_0), write)
+  //fold acc(tuple2$i32$struct$m_Point(_76), write)
   exhale acc(_75.val_ref, write) &&
     (acc(struct$m_VecCandidates(_75.val_ref), write) &&
     acc(tuple2$i32$struct$m_Point(_76), write))

@@ -454,14 +454,14 @@ field val_int: Int
 field val_ref: Ref
 
 function builtin$unreach__$TY$__$int$$$int$(): Int
-  requires false
+  //requires false
 
 
 function f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1: Snap$m_Link$_beg_$_end_): Bool
-  requires true
-  requires true
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1),
     true]
 {
@@ -470,13 +470,13 @@ function f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1: Snap$m_Link$
 }
 
 function f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1: Snap$m_Link$_beg_$_end_): Int
-  requires true
-  requires true
-  ensures (!f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1) ==>
+  //requires true
+  //requires true
+  //ensures (!f_Link$$is_empty__$TY$__Snap$m_Link$_beg_$_end_$$bool$(_1) ==>
     result > 0) &&
     result >= 0
-  ensures 0 <= result
-  ensures [result ==
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1),
     true]
 {
@@ -489,12 +489,12 @@ function f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1: Snap$m_Link$_beg_$
 
 function f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1: Snap$m_Link$_beg_$_end_,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 &&
+  //requires true
+  //requires 0 <= _2 &&
     _2 < f_Link$$len__$TY$__Snap$m_Link$_beg_$_end_$$int$(_1)
-  requires 0 <= _2
-  ensures true
-  ensures [result ==
+  //requires 0 <= _2
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1,
     _2),
     true]
@@ -509,11 +509,11 @@ function f_Link$$lookup__$TY$__Snap$m_Link$_beg_$_end_$$int$$$int$(_1: Snap$m_Li
 }
 
 function f_List$$len__$TY$__Snap$struct$m_List$$int$(_1: Snap$struct$m_List): Int
-  requires true
-  requires true
-  ensures true
-  ensures 0 <= result
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures 0 <= result
+  //ensures [result ==
     mirror_simple$f_List$$len__$TY$__Snap$struct$m_List$$int$(_1),
     true]
 {
@@ -522,11 +522,11 @@ function f_List$$len__$TY$__Snap$struct$m_List$$int$(_1: Snap$struct$m_List): In
 
 function f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1: Snap$struct$m_List,
   _2: Int): Int
-  requires true
-  requires 0 <= _2 && _2 < f_List$$len__$TY$__Snap$struct$m_List$$int$(_1)
-  requires 0 <= _2
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires 0 <= _2 && _2 < f_List$$len__$TY$__Snap$struct$m_List$$int$(_1)
+  //requires 0 <= _2
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1, _2),
     true]
 {
@@ -535,10 +535,10 @@ function f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(_1: Snap$struct$m_
 }
 
 function f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1: Snap$m_TrustedOption$_beg_$_end_): Bool
-  requires true
-  requires true
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1),
     true]
 {
@@ -547,10 +547,10 @@ function f_TrustedOption$$is_none__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$
 }
 
 function f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1: Snap$m_TrustedOption$_beg_$_end_): Bool
-  requires true
-  requires true
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires true
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1),
     true]
 {
@@ -559,10 +559,10 @@ function f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$
 }
 
 function f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(_1: Snap$m_TrustedOption$_beg_$_end_): Int
-  requires true
-  requires f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1)
-  ensures true
-  ensures [result ==
+  //requires true
+  //requires f_TrustedOption$$is_some__$TY$__Snap$m_TrustedOption$_beg_$_end_$$bool$(_1)
+  //ensures true
+  //ensures [result ==
     mirror_simple$f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(_1),
     true]
 {
@@ -573,18 +573,18 @@ function f_TrustedOption$$peek__$TY$__Snap$m_TrustedOption$_beg_$_end_$$int$(_1:
 }
 
 function m_Link$_beg_$_end_$$discriminant$$__$TY$__m_Link$_beg_$_end_$$int$(self: Ref): Int
-  requires acc(m_Link$_beg_$_end_(self), read$())
-  ensures 0 <= result && result <= 1
-  ensures discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self)) ==
+  //requires acc(m_Link$_beg_$_end_(self), read$())
+  //ensures 0 <= result && result <= 1
+  //ensures discriminant$__$TY$__Snap$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_$$int$(snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self)) ==
     result
 {
   (unfolding acc(m_Link$_beg_$_end_(self), read$()) in self.discriminant)
 }
 
 function m_TrustedOption$_beg_$_end_$$discriminant$$__$TY$__m_TrustedOption$_beg_$_end_$$int$(self: Ref): Int
-  requires acc(m_TrustedOption$_beg_$_end_(self), read$())
-  ensures 0 <= result && result <= 1
-  ensures discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(self)) ==
+  //requires acc(m_TrustedOption$_beg_$_end_(self), read$())
+  //ensures 0 <= result && result <= 1
+  //ensures discriminant$__$TY$__Snap$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_$$int$(snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(self)) ==
     result
 {
   (unfolding acc(m_TrustedOption$_beg_$_end_(self), read$()) in
@@ -592,7 +592,7 @@ function m_TrustedOption$_beg_$_end_$$discriminant$$__$TY$__m_TrustedOption$_beg
 }
 
 function snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self: Ref): Snap$m_Link$_beg_$_end_
-  requires acc(m_Link$_beg_$_end_(self), read$())
+  //requires acc(m_Link$_beg_$_end_(self), read$())
 {
   ((unfolding acc(m_Link$_beg_$_end_(self), read$()) in self.discriminant) ==
   1 ?
@@ -604,7 +604,7 @@ function snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_be
 }
 
 function snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_end_$Snap$m_TrustedOption$_beg_$_end_(self: Ref): Snap$m_TrustedOption$_beg_$_end_
-  requires acc(m_TrustedOption$_beg_$_end_(self), read$())
+  //requires acc(m_TrustedOption$_beg_$_end_(self), read$())
 {
   ((unfolding acc(m_TrustedOption$_beg_$_end_(self), read$()) in
     self.discriminant) ==
@@ -617,14 +617,14 @@ function snap$__$TY$__Snap$m_TrustedOption$_beg_$_end_$m_TrustedOption$_beg_$_en
 }
 
 function snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(self: Ref): Snap$struct$m_List
-  requires acc(struct$m_List(self), read$())
+  //requires acc(struct$m_List(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_List$Snap$m_Link$_beg_$_end_$Snap$struct$m_List((unfolding acc(struct$m_List(self), read$()) in
     snap$__$TY$__Snap$m_Link$_beg_$_end_$m_Link$_beg_$_end_$Snap$m_Link$_beg_$_end_(self.f$head)))
 }
 
 function snap$__$TY$__Snap$struct$m_Node$struct$m_Node$Snap$struct$m_Node(self: Ref): Snap$struct$m_Node
-  requires acc(struct$m_Node(self), read$())
+  //requires acc(struct$m_Node(self), read$())
 {
   cons$0$__$TY$__Snap$struct$m_Node$$int$$Snap$m_Link$_beg_$_end_$Snap$struct$m_Node((unfolding acc(struct$m_Node(self), read$()) in
     (unfolding acc(i32(self.f$elem), read$()) in self.f$elem.val_int)), (unfolding acc(struct$m_Node(self), read$()) in
@@ -632,8 +632,8 @@ function snap$__$TY$__Snap$struct$m_Node$struct$m_Node$Snap$struct$m_Node(self: 
 }
 
 function read$(): Perm
-  ensures none < result
-  ensures result < write
+  //ensures none < result
+  //ensures result < write
 
 
 predicate DeadBorrowToken$(borrow: Int) 
@@ -731,7 +731,7 @@ method m_List$$pop() returns (_0: Ref)
   // [mir] _4 = &mut ((*_1).0: Link)
   _4 := builtin$havoc_ref()
   inhale acc(_4.val_ref, write)
-  unfold acc(struct$m_List(_1.val_ref), write)
+  //unfold acc(struct$m_List(_1.val_ref), write)
   _4.val_ref := _1.val_ref.f$head
   label l0
   // [mir] _3 = &mut (*_4)
@@ -796,14 +796,14 @@ method m_List$$pop() returns (_0: Ref)
   __t3 := true
   // [mir] StorageLive(_7)
   // [mir] _7 = move ((_2 as More).0: std::boxed::Box<Node>)
-  unfold acc(m_Link$_beg_$_end_(_2), write)
-  unfold acc(m_Link$_beg_$_end_More(_2.enum_More), write)
+  //unfold acc(m_Link$_beg_$_end_(_2), write)
+  //unfold acc(m_Link$_beg_$_end_More(_2.enum_More), write)
   _7 := _2.enum_More.f$0
   label l7
   // [mir] StorageLive(_8)
   // [mir] _8 = move ((*_7).1: Link)
-  unfold acc(struct$m_std$$boxed$$Box$struct$m_Node$struct$m_std$$alloc$$Global(_7), write)
-  unfold acc(struct$m_Node(_7.val_ref), write)
+  //unfold acc(struct$m_std$$boxed$$Box$struct$m_Node$struct$m_std$$alloc$$Global(_7), write)
+  //unfold acc(struct$m_Node(_7.val_ref), write)
   _8 := _7.val_ref.f$next
   label l8
   // [mir] drop(((*_1).0: Link)) -> [return: bb6, unwind: bb7]
@@ -820,7 +820,7 @@ method m_List$$pop() returns (_0: Ref)
   // [mir] _9 = ((*_7).0: i32)
   _9 := builtin$havoc_ref()
   inhale acc(_9.val_int, write)
-  unfold acc(i32(_7.val_ref.f$elem), write)
+  //unfold acc(i32(_7.val_ref.f$elem), write)
   _9.val_int := _7.val_ref.f$elem.val_int
   label l10
   // [mir] _0 = TrustedOption::Some(move _9)
@@ -830,8 +830,8 @@ method m_List$$pop() returns (_0: Ref)
     0
   // downcast _0 to enum_Some
 
-  unfold acc(m_TrustedOption$_beg_$_end_(_0), write)
-  unfold acc(m_TrustedOption$_beg_$_end_Some(_0.enum_Some), write)
+  //unfold acc(m_TrustedOption$_beg_$_end_(_0), write)
+  //unfold acc(m_TrustedOption$_beg_$_end_Some(_0.enum_Some), write)
   _0.enum_Some.f$0 := _9
   label l11
   // [mir] StorageDead(_9)
@@ -841,9 +841,9 @@ method m_List$$pop() returns (_0: Ref)
   // [mir] StorageDead(_7)
   // [mir] goto -> bb10
   // ========== l12 ==========
-  fold acc(i32(_0.enum_Some.f$0), write)
-  fold acc(m_TrustedOption$_beg_$_end_Some(_0.enum_Some), write)
-  fold acc(m_TrustedOption$_beg_$_end_(_0), write)
+  //fold acc(i32(_0.enum_Some.f$0), write)
+  //fold acc(m_TrustedOption$_beg_$_end_Some(_0.enum_Some), write)
+  //fold acc(m_TrustedOption$_beg_$_end_(_0), write)
   // drop Acc(_2.discriminant, write) (Pred(_2[enum_More].f$0, write))
   // drop Acc(_2[enum_More], write) (Pred(_2[enum_More].f$0, write))
   // drop Acc(_2[enum_More].f$0, write) (Pred(_2[enum_More].f$0, write))
@@ -866,11 +866,11 @@ method m_List$$pop() returns (_0: Ref)
   // Target of any 'return' statement.
   // Exhale postcondition
   label l13
-  // Fold predicates for &mut args and transfer borrow permissions to old
-  fold acc(struct$m_List(_1.val_ref), write)
+  // //fold predicates for &mut args and transfer borrow permissions to old
+  //fold acc(struct$m_List(_1.val_ref), write)
   // obtain acc(struct$m_List(_1.val_ref), write)
   _old$pre$0 := _1.val_ref
-  // Fold the result
+  // //fold the result
   // obtain acc(m_TrustedOption$_beg_$_end_(_0), write)
   // Assert possible strengthening
   // Assert functional specification of postcondition
@@ -904,7 +904,7 @@ method m_List$$pop() returns (_0: Ref)
       _0_quant_0 + 1)) ==
       f_List$$lookup__$TY$__Snap$struct$m_List$$int$$$int$(snap$__$TY$__Snap$struct$m_List$struct$m_List$Snap$struct$m_List(_old$pre$0),
       _0_quant_0))))))))
-  // Assert type invariants
+  // Assert type //invariants
   assert true
   // Exhale permissions of postcondition (1/3)
   exhale acc(struct$m_List(_old$pre$0), write)

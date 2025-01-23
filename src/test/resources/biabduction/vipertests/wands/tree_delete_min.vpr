@@ -26,11 +26,11 @@ predicate Tree(x: Ref) {
 }
 
 function val(x: Ref): Int
-  requires x != null && acc(Tree(x))
+  //requires x != null && acc(Tree(x))
 { unfolding acc(Tree(x)) in x.v }
 
 function vals(x: Ref): Seq[Int]
-  requires acc(Tree(x))
+  //requires acc(Tree(x))
 { x == null ? Seq[Int]() : unfolding acc(Tree(x)) in vals(x.l) ++ Seq(x.v) ++ vals(x.r) }
 
 /* Deletes the minimal element of a binary tree, assuming that the
@@ -38,9 +38,9 @@ function vals(x: Ref): Seq[Int]
  * explicit in the definition of predicate Tree).
  */
 method tree_delete_min(x: Ref) returns (z: Ref)
-  requires x != null && acc(Tree(x))
-  ensures acc(Tree(z))                  /* POST1 */
-  ensures vals(z) == old(vals(x))[1..]  /* POST2 */
+  //requires x != null && acc(Tree(x))
+  //ensures acc(Tree(z))                  /* POST1 */
+  //ensures vals(z) == old(vals(x))[1..]  /* POST2 */
 {
   var p: Ref := x
   var plvs: Seq[Int]
@@ -48,7 +48,7 @@ method tree_delete_min(x: Ref) returns (z: Ref)
   define A acc(p.l) && acc(Tree(p.l)) && vals(p.l) == plvs[1..]
   define B acc(Tree(x)) && vals(x) == old(vals(x))[1..]
 
-  unfold acc(Tree(p))
+  //unfold acc(Tree(p))
   plvs := vals(p.l)
 
   if (p.l == null) {
@@ -56,35 +56,35 @@ method tree_delete_min(x: Ref) returns (z: Ref)
 
     assert vals(x.l) == Seq[Int]() /* TODO: Required by Silicon for POST2 */
   } else {
-    package (A) --* B {
-        fold acc(Tree(p))
+    //package (A) --* B {
+        //fold acc(Tree(p))
     }
 
     while (unfolding acc(Tree(p.l)) in p.l.l != null)
-      invariant p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
-      invariant plvs == vals(p.l)
-      invariant A --* B
+      //invariant p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
+      //invariant plvs == vals(p.l)
+      //invariant A --* B
     {
       var oldP: Ref := p
       var oldPlvs: Seq[Int] := plvs
 
-      unfold acc(Tree(p.l))
+      //unfold acc(Tree(p.l))
       p := p.l
       plvs := vals(p.l)
 
-      package (A) --* B {
-          fold Tree(p)
-          apply acc(oldP.l) && acc(Tree(oldP.l)) && vals(oldP.l) == oldPlvs[1..] --*
+      //package (A) --* B {
+          //fold Tree(p)
+          //apply acc(oldP.l) && acc(Tree(oldP.l)) && vals(oldP.l) == oldPlvs[1..] --*
           acc(Tree(x)) && vals(x) == old(vals(x))[1..]
       }
     }
 
-    unfold acc(Tree(p.l))
+    //unfold acc(Tree(p.l))
     assert vals(p.l.l) == Seq[Int]() /* TODO: Required by Silicon for POST2 */
 
     p.l := p.l.r
 
-    apply A --* B
+    //apply A --* B
 
     z := x
   }
