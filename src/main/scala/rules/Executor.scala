@@ -68,9 +68,9 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
-          executionFlowController.tryOrElse2[Term, Option[Exp]](s1, v) {(s1a, va, R) =>
-            eval(s1a, ce.condition, IfFailed(ce.condition), va)(R)
-          } {(s2, tCond, condNew, v1) =>
+          //executionFlowController.tryOrElse2[Term, Option[Exp]](s1, v) {(s1a, va, R) =>
+          evalWithAbduction(s1, ce.condition, IfFailed(ce.condition), v) {(s2, tCond, condNew, v1) =>
+            
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
@@ -83,13 +83,15 @@ object executor extends ExecutionRules {
               (_, v3) => {
                 v3.symbExLog.closeScope(sepIdentifier)
                 Success()
-              })} {
+              })} 
+            
+          /*{
             f =>
               BiAbductionSolver.solveAbductionForError(s1, v, f, stateAllowed = true, Some(ce.condition))((s5, v5) => {
                 follow(s5, edge, v5, joinPoint)(Q)
               }
               )
-          }
+          }*/
 
         case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
           val s1 = handleOutEdge(s, edge, v)
@@ -271,13 +273,18 @@ object executor extends ExecutionRules {
             }))
             val sBody = s.copy(g = gBody, h = Heap())
 
-            val invReses = if(s.doAbduction) {executionFlowController.locally(s, v)((sInv, vInv) =>
+            // TODO we are leaking PCs somehow, so we do this hack
+            val prePcs = v.decider.pcs.duplicate()
+
+            val invReses = if(s.doAbduction) {executionFlowController.locally(s.copy(h = Heap()), v)((sInv, vInv) =>
               // We have to consume the existing invariants once, because we produce them at the start of each iteration
               // We do this as an assert so that abduction guarantees it to exist
-              executor.exec(sInv, ast.Exhale(BigAnd(existingInvs))(), vInv) { (sInv1, vInv1) =>
-                LoopInvariantSolver.solveLoopInvariants(sInv1, vInv1, sInv1.g.values.keys.toSeq, block, otherEdges, joinPoint, vInv1.decider.pcs.branchConditions)
-              }
+              //executor.exec(sInv, ast.Exhale(BigAnd(existingInvs))(), vInv) { (sInv1, vInv1) =>
+                LoopInvariantSolver.solveLoopInvariants(sInv, vInv, sInv.g.values.keys.toSeq, block, otherEdges, joinPoint, vInv.decider.pcs.branchConditions)
+              //}
             )} else Success()
+
+            v.decider.setPcs(prePcs)
 
             invReses match {
 
@@ -412,7 +419,11 @@ object executor extends ExecutionRules {
         val loc = if (abdLoc.isDefined) abdLoc else Some(stmt)
         BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed = abdStateAllowed, loc)((s3, v3) => {
           v3.symbExLog.closeScope(sepIdentifier)
-          exec(s3, stmt, v3)(Q)
+          //if (v3.decider.checkSmoke()) {
+          //  f
+          //} else {
+            exec(s3, stmt, v3)(Q)
+          //}
         }
         )
     }

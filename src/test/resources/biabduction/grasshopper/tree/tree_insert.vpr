@@ -4,17 +4,18 @@ method insert(root: Ref, value: Int) returns (res: Ref)
 //requires tree(root)
 //ensures tree(res)
 {
+    
+    var curr: Ref := root
     if(root == null){
-        res := new(*)
+        res := new(left, right, val)
         res.left := null
+        fold tree(res.left)
         res.right := null
+        fold tree(res.right)
         res.val := value
-        //fold tree(res.left)
-        //fold tree(res.right)
         //fold tree(res)
     } else {
 
-        var curr: Ref := root
         //package tree(curr) --* tree(root)
         //unfold tree(curr)
 
@@ -24,19 +25,20 @@ method insert(root: Ref, value: Int) returns (res: Ref)
         //invariant tree(curr) --* tree(root)
         {
             var prev: Ref := curr
+            var t: Ref
             if(curr.val < value){
                 curr := curr.right
             } else {
                 curr := curr.left
             }
             if(curr == null){
-                var t: Ref := new(*)
+                t := new(left, right, val)
                 t.left := null
                 t.right := null
+                fold tree(t.left)
+                fold tree(t.right)
                 t.val := value
-                //fold tree(t.left)
-                //fold tree(t.right)
-                //fold tree(t)
+                fold tree(t)
                 if(prev.val < value){
                     prev.right := t
                 } else {
@@ -48,7 +50,7 @@ method insert(root: Ref, value: Int) returns (res: Ref)
             //package tree(curr) --* tree(root){
                 //fold tree(prev)
                 //apply tree(prev) --* tree(root)
-            }
+            //}
         }
         //fold tree(curr)
         //apply tree(curr) --* tree(root)

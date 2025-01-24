@@ -292,7 +292,7 @@ object AbductionUnfold extends AbductionRule {
                   case Seq() => checkPredicates(rest, q, goal)(Q)
                   case Seq(branch) =>
                     val condTerms = branch.distinct.filterNot(bcsBefore.contains)
-                    val varTran = VarTransformer(s = q.s, v = q.v, targetVars = q.s.g.values, targetHeap = q.s.h)
+                    val varTran = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
                     val conds = condTerms.map(varTran.transformTerm(_).get)
                     Q(Some(pred, predChunk, conds))
                   case _ => checkPredicates(rest, q, goal)(Q) // Multiple succ branches would require a disjunction. Left out for now
@@ -424,7 +424,7 @@ object AbductionPackage extends AbductionRule {
           case suc: NonFatalResult =>
 
             val abdRes = abductionUtils.getAbductionSuccesses(suc)
-            val stmts = abdRes.flatMap(_.stmts) //.reverse?
+            val stmts = abdRes.flatMap(_.stmts)//.reverse
             val state = abdRes.flatMap(_.state).reverse
 
             produces(q.s, freshSnap, state.map(_._1), _ => pve, q.v){ (s1, v1) =>

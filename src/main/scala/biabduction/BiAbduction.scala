@@ -27,8 +27,6 @@ trait BiAbductionSuccess extends BiAbductionResult
 
 case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[(Exp, Option[BasicChunk])] = Seq(), stmts: Seq[Stmt] = Seq(), newFieldChunks: Map[BasicChunk, LocationAccess], trigger: Option[Positioned] = None) extends BiAbductionSuccess {
 
-  val preTrans = VarTransformer
-
   override def toString: String = {
     "Abduced pres " + state.length + ", Abduced statements " + stmts.length
   }
@@ -87,20 +85,21 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
 
     v.decider.setPcs(pcs)
 
-    val varTrans = VarTransformer(s, v, s.g.values, s.h)
-    val bcExps = bcsTerms.map { t => varTrans.transformTerm(t) }
+    //val varTrans = VarTransformer(s, v, s.g.values, s.h)
+    //val preExps = bcExps.map {
+    //  case Some(t) => preTrans.transformExp(t, strict = false)
+    //  case None => None
+    //}
+    
 
     // If we can express as in vars, then we want to
     val ins = s.currentMember.get.asInstanceOf[Method].formalArgs.map(_.localVar)
     val preVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
-    val preTrans = VarTransformer(s, v, preVars, s.h)
-    val preExps = bcExps.map {
-      case Some(t) => preTrans.transformExp(t, strict = false)
-      case None => None
-    }
-
+    val varTrans = VarTransformer(s, v, preVars, s.h, otherVars = s.g.values)
+    val bcExps = bcsTerms.map { t => varTrans.transformTerm(t) }
+    
     v.decider.setPcs(prevPcs)
-    preExps
+    bcExps
   }
 
   def getStatements(bcExps: Seq[Exp]): Option[Seq[Stmt]] = {
@@ -330,6 +329,7 @@ object BiAbductionSolver {
 
                 if (q1.v.decider.checkSmoke()) {
                   Success(Some(BiAbductionFailure(s, v, initPcs)))
+                  //Unreachable()
                 } else {
                   val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
                   val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
@@ -414,7 +414,7 @@ object BiAbductionSolver {
         // That is why we do as much as possible on term level to avoid this as much as possible
         val expUnjoined = termJoined.map {
           case (reses, bcTerms) =>
-            reses -> reses.head.getBcExps(bcTerms).distinct.collect { case Some(bc) => bc }
+            reses -> reses.head.getBcExps(bcTerms).collect { case Some(bc) => bc }.flatMap(_.topLevelConjuncts).distinct
         }
         expUnjoined.groupBy(_._2).map { case (bcs, list) => list.head._1.head -> bcs }
     }

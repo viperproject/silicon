@@ -1,12 +1,14 @@
 package viper.silicon.biabduction
 
-import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.interfaces.{Failure, Success, VerificationResult}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources._
 import viper.silicon.rules._
 import viper.silicon.state._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
+import viper.silver.verifier.DummyReason
+import viper.silver.verifier.errors.FoldFailed
 
 import scala.annotation.tailrec
 
@@ -43,15 +45,18 @@ object AbstractionFold extends AbstractionRule {
           case None => checkChunks(rest, q)(Q)
           case Some(eArgs) =>
 
-
             executionFlowController.tryOrElse0(q.s, q.v) {
               (s1, v1, T) =>
 
                 val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), FullPerm()())())()
-                executor.exec(s1, fold, v1, None, abdStateAllowed = false)(T)
+                executor.exec(s1, fold, v1, None, abdStateAllowed = false)((s1a, v1a) =>
+                  //if (v1a.decider.checkSmoke()) {
+                  //  Failure(FoldFailed(fold, DummyReason))
+                  //} else {
+                  T(s1a, v1a)
+                  //}
+                )
 
-              // TODO nklose this can branch
-              //predicateSupporter.fold(s1, pred, List(chunk.args.head), None, terms.FullPerm, Some(FullPerm()()), wildcards, pveTransformed, v1)(T)
             } {
               (s2, v2) => Q(Some(q.copy(s = s2, v = v2)))
             } {

@@ -3,7 +3,7 @@ import "./tree.vpr"
 method destroy(root: Ref)
 //requires tree(root)
 {
-    if(root != null){
+    //if(root != null){
         var remaining: Ref := new(elem, tNext)
         remaining.tNext := null
         remaining.elem := root
@@ -16,6 +16,8 @@ method destroy(root: Ref)
             //unfold tList(remaining)
             var current: Ref := remaining.elem
             if(current != null){
+
+                var remaining_prev: Ref := remaining
 
                 //unfold tree(current)
 
@@ -33,11 +35,11 @@ method destroy(root: Ref)
                 //fold tList(rNode)
                 //fold tList(lNode)
             }
-            var remaining_root: Ref := remaining
+            
             remaining := remaining.tNext
-            freeL(remaining_root)
+            freeL(remaining_prev)
         }
-    }    
+   // }    
 }
 
 method freeT(root: Ref)

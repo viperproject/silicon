@@ -1,5 +1,13 @@
 import "./tree.vpr"
 
+method merge(leftT: Ref, rightT: Ref) returns (res: Ref)
+requires tree(leftT) && tree(rightT)
+ensures tree(res)
+
+method free(root: Ref)
+requires acc(root.left) && acc(root.right) && acc(root.val)
+
+
 method remove(root: Ref, value: Int) returns (res: Ref)
 //requires tree(root)
 {
@@ -40,6 +48,7 @@ method remove(root: Ref, value: Int) returns (res: Ref)
                     
                     // We found it to the right
                     if(curr.right != null && curr.right.val == value){
+                        found := true
                         var right_old: Ref := curr.right
                         var right_new: Ref
                         right_new := merge(curr.right.left, curr.right.right)
@@ -61,7 +70,7 @@ method remove(root: Ref, value: Int) returns (res: Ref)
                                 //package tree(curr) --* tree(root){
                                     //fold tree(curr_old)
                                     //apply tree(curr_old) --* tree(root)
-                                }
+                                //}
                             }
                         } else {
                             if(curr.left == null){
@@ -74,7 +83,7 @@ method remove(root: Ref, value: Int) returns (res: Ref)
                                 //package tree(curr) --* tree(root){
                                     //fold tree(curr_old)
                                     //apply tree(curr_old) --* tree(root)
-                                }
+                                //}
                             }
                         }
                     }

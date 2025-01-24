@@ -11,7 +11,7 @@ import viper.silver.ast
 
 import scala.annotation.tailrec
 
-case class VarTransformer(s: State, v: Verifier, targetVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap, newFieldChunks: Map[BasicChunk, ast.LocationAccess] = Map()) {
+case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap, newFieldChunks: Map[BasicChunk, ast.LocationAccess] = Map(), otherVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])] = Map()) {
 
   //val pve: PartialVerificationError = Internal()
 
@@ -24,15 +24,17 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[ast.AbstractLoc
 
     val allTerms: Seq[Term] = (s.g.values.values.map { case (t1, _) => t1 }
       ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten
-      ++ targetVars.values.map(_._1)
+      ++ prefVars.values.map(_._1) ++ otherVars.values.map(_._1)
       ++ v.decider.pcs.branchConditions.collect { case t => t.subterms.collect { case tVar: Var => tVar } }.flatten).toSeq.distinct
 
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
     //val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
-    val directTargets = targetVars.map(_.swap)
+    val directPrefTargets = prefVars.map{case (lv, (t, _)) => t -> lv}
+
+    val directTargets = directPrefTargets ++ otherVars.map{case (lv, (t, _)) => t -> lv}.filter { case (t, _) => !directPrefTargets.contains(t) }
 
     val directAliases = allTerms.map { t =>
-      t -> directTargets.collectFirst { case ((t1, _), e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
+      t -> directTargets.collectFirst { case (t1, e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
     }.collect { case (t2, Some(e)) => t2 -> e }.toMap
 
     val chunksToResolve = targetHeap.values.collect { case c: BasicChunk
@@ -164,6 +166,17 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[ast.AbstractLoc
   def transformExp(e: ast.Exp, strict: Boolean = true): Option[ast.Exp] = {
     try {
       val res = e.transform {
+        
+        // We do not want to resolve things to fields accesses for wands, as that would not be self-framing 
+        case ast.MagicWand(left: ast.AbstractLocalVar, right: ast.AbstractLocalVar) =>
+          val leftT = s.g.values(left)._1
+          val rightT = s.g.values(right)._1
+          val directPrefTargets = prefVars.map{case (lv, (t, _)) => t -> lv}
+          val otherTargets = otherVars.map{case (lv, (t, _)) => t -> lv}
+          val leftE = directPrefTargets.get(leftT).orElse(otherTargets.get(leftT)).get
+          val rightE = directPrefTargets.get(rightT).orElse(otherTargets.get(rightT)).get
+          ast.MagicWand(leftE, rightE)()
+        
         case ast.FieldAccessPredicate(fa, perm) =>
           
           // We do not want to transform the entire field access, this would resolve the snap!
@@ -196,8 +209,12 @@ case class VarTransformer(s: State, v: Verifier, targetVars: Map[ast.AbstractLoc
               ast.FieldAccess(rvcExp.get, field)()
           }
         case lv: ast.LocalVar => {
-          val term: Term = s.g.values.getOrElse(lv, targetVars(lv))._1
-          transformTerm(term).get
+          val term: Term = s.g.values.getOrElse(lv, (prefVars ++ otherVars)(lv))._1
+          if(strict){
+            transformTerm(term).get
+          } else {
+            transformTerm(term).getOrElse(lv)
+          }
         }
       }
       Some(res)

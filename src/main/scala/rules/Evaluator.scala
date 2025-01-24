@@ -86,7 +86,7 @@ object evaluator extends EvaluationRules {
         evals2(s1, es.tail, t :: ts,  pvef, v1)((s2, ts2, es2, v2) => Q(s2, ts2, eNew.map(eN => eN :: es2.get), v2)))
   }
 
-  /*
+  
   def evalWithAbduction(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
                        (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
   : VerificationResult = {
@@ -100,7 +100,7 @@ object evaluator extends EvaluationRules {
           evalWithAbduction(s2, e, pve, v2)(Q)
         }
     }
-  }*/
+  }
 
   /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. * */
   @inline

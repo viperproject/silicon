@@ -2,8 +2,11 @@ import "tree.vpr"
 import "../sl/sl.vpr"
 
 method insert(root: Ref, value: Int) returns (res: Ref)
-//requires tree(root)
-//ensures tree(res)
+requires tree(root)
+ensures tree(res)
+
+method free(l: Ref)
+requires acc(l.next) && acc(l.data)
 
 method list2tree(lst: Ref) returns (res: Ref)
 //requires list(lst)
@@ -22,5 +25,6 @@ method list2tree(lst: Ref) returns (res: Ref)
         //unfold list(curr)
         curr := curr.next
         res := insert(res, curr_old.data)
+        free(curr_old)
     }
 }

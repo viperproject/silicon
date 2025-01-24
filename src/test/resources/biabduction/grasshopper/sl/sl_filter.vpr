@@ -1,6 +1,66 @@
 import "./sl.vpr"
 
-method filter(x: Ref) returns (res: Ref)
+
+method free(x: Ref)
+requires acc(x.next) && acc(x.data)
+ensures true
+{
+    exhale acc(x.next) && acc(x.data)
+}
+
+method havoc() returns (b: Bool)
+
+
+method filter(x: Ref) //returns (res: Ref)
+//requires list(x)
+//ensures list(x)
+{
+    var curr: Ref := x
+    var nondet: Bool
+
+    /*
+    while(nondet && curr != null)
+    //invariant list(curr)
+    {
+        var prev: Ref := curr
+        //unfold list(curr)
+        curr := curr.next
+        free(prev)
+        nondet := havoc()
+    }*/
+
+    //res := curr
+
+    //package list(curr) --* list(res)
+    while(curr != null)
+    //invariant list(curr) --* list(res)
+    //invariant list(curr)
+    {
+        var old_curr: Ref := curr
+        
+        //unfold list(curr)
+        nondet := havoc()
+
+        if(nondet && curr.next != null) {
+            //unfold list(curr.next)
+            var n: Ref := curr.next
+            curr.next := n.next
+            exhale acc(n.next) && acc(n.data)
+            //fold list(curr)
+        
+        } else {
+            curr := curr.next
+            //package list(curr) --* list(res) {
+            //    fold list(old_curr)
+            //    apply list(old_curr) --* list(res)
+            //}
+        }  
+    }
+    //apply list(curr) --* list(res)
+}
+
+/*
+method filter1(x: Ref) returns (res: Ref)
 //requires list(x)
 //ensures list(x)
 {
@@ -17,7 +77,7 @@ method filter(x: Ref) returns (res: Ref)
         //invariant list(prev) --* list(x)
         //invariant acc(prev.next)
         //invariant acc(prev.data)
-        //invariant prev.next == curr
+        invariant prev.next == curr
         //invariant list(curr)
         {
             var old_curr: Ref := curr
@@ -45,7 +105,4 @@ method filter(x: Ref) returns (res: Ref)
          //fold list(prev)
          //apply list(prev) --* list(x)
     }
-}
-
-method free(x: Ref)
-requires acc(x.next) && acc(x.data)
+}*/

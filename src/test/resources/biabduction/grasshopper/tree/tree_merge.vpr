@@ -1,9 +1,17 @@
 import "./tree.vpr"
 
+
+method extract_max(root: Ref) returns (rest: Ref, max: Ref)
+requires tree(root) && root != null
+ensures tree(rest)
+ensures tree(max) && max != null
+
+
 method merge(leftT: Ref, rightT: Ref) returns (res: Ref)
 //requires tree(leftT) && tree(rightT)
 //ensures tree(res)
 {
+    var root: Ref
     if(leftT == null){
         res := rightT
     } else {
@@ -11,7 +19,6 @@ method merge(leftT: Ref, rightT: Ref) returns (res: Ref)
             res := leftT
         } else {
             var left_new: Ref
-            var root: Ref
             left_new, root := extract_max(leftT)
             //unfold tree(root)
             root.left := left_new
