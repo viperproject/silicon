@@ -13,7 +13,7 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.Counter
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.TrueLit
+import viper.silver.ast.{Exp, TrueLit}
 /*
  * Interfaces
  */
@@ -61,6 +61,7 @@ trait RecordedPathConditions {
 
 trait PathConditionStack extends RecordedPathConditions {
   def setCurrentBranchCondition(condition: Term, conditionExp: (ast.Exp, Option[ast.Exp])): Unit
+  def getBranchConditionsExp(): Seq[Exp]
   def add(assumption: Term): Unit
   def addDefinition(assumption: Term): Unit
   def add(declaration: Decl): Unit
@@ -457,6 +458,16 @@ private[decider] class LayeredPathConditionStack
 
     layers.head.branchCondition = condition
     layers.head.branchConditionExp = conditionExp
+  }
+
+  def getBranchConditionsExp(): Seq[Exp] = {
+    branchConditionExps.map(_._1)
+      .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
+      .sortBy(_.pos match {
+        /* Order branchconditions according to source position */
+        case pos: viper.silver.ast.HasLineColumn => (pos.line, pos.column)
+        case _ => (-1, -1)
+      })
   }
 
   def startDebugSubExp(): Unit = {

@@ -85,13 +85,7 @@ trait SymbolicExecutionRules {
     }
 
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
-      v.decider.pcs.branchConditionExps.map(_._1)
-        .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
-        .sortBy(_.pos match {
-          /* Order branchconditions according to source position */
-          case pos: viper.silver.ast.HasLineColumn => (pos.line, pos.column)
-          case _ => (-1, -1)
-        })
+      v.decider.pcs.getBranchConditionsExp()
     } else Seq()
 
     if (Verifier.config.enableDebugging()){

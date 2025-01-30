@@ -31,11 +31,13 @@ import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvid
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{BackendType, Member}
+import viper.silver.ast.{BackendType, Exp, Member}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
+import viper.silver.verifier.errors.PostconditionViolatedBranch
+import viper.silver.verifier.reasons.AssertionFalseAtBranch
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -51,10 +53,10 @@ trait MainVerifier extends Verifier {
 class DefaultMainVerifier(config: Config,
                           override val reporter: Reporter,
                           override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
-    extends BaseVerifier(config, "00")
-       with MainVerifier
-       with DefaultFunctionVerificationUnitProvider
-       with DefaultPredicateVerificationUnitProvider {
+  extends BaseVerifier(config, "00")
+    with MainVerifier
+    with DefaultFunctionVerificationUnitProvider
+    with DefaultPredicateVerificationUnitProvider {
 
   Verifier.config = config
 
@@ -266,6 +268,12 @@ class DefaultMainVerifier(config: Config,
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
+          val branchTree = BranchFailureState.get(method.name)
+          if (branchTree.isDefined){
+            val firstCond = branchTree.get.asInstanceOf[Branch].exp
+            val failure = viper.silver.verifier.Failure(Seq(PostconditionViolatedBranch(firstCond, AssertionFalseAtBranch(firstCond, BranchFailureState.prettyPrint(method.name)))))
+            reporter report BranchFailureMessage(s"silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable], failure)
+          }
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
           logger debug s"Silicon finished verification of method `${method.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
 

@@ -18,7 +18,7 @@ import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
-import viper.silver.ast.{LocalVarWithVersion, NoPosition}
+import viper.silver.ast.{Exp, LocalVarWithVersion, NoPosition}
 import viper.silver.components.StatefulComponent
 import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
@@ -129,7 +129,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
-    
+
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
 
@@ -255,6 +255,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()
+
+    def getBranchConditionsExp(): Seq[Exp] = {
+      this.pcs.branchConditionExps.map(_._1)
+        .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
+        .sortBy(_.pos match {
+          /* Order branchconditions according to source position */
+          case pos: viper.silver.ast.HasLineColumn => (pos.line, pos.column)
+          case _ => (-1, -1)
+        })
+    }
 
     /* Assuming facts */
 
