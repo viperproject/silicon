@@ -6,42 +6,22 @@ import viper.silver.ast.Exp
 
 import scala.collection.mutable
 
-object BranchFailureState extends mutable.HashMap[String, Tree] {
-  private def generateTree(exps : Seq[Exp], result: VerificationResult) : Tree = {
-    if (exps.length == 0) {
-      Leaf(result)
+class BranchFailureTreeMap extends mutable.HashMap[String, Tree] {
+  def storeIntoTree(method: String, branchConditions : Seq[Exp], result: VerificationResult): Unit = {
+    val branchTree = this.get(method)
+    if (branchTree.isDefined) {
+      branchTree.get.extend(branchConditions, result)
     } else {
-      val expsRev = exps.reverse
-      val headExp = expsRev.head
-      var tree = expsRev.head match {
-        case ast.Not(exp) => Branch(exp, Some(Leaf(result)), None)
-        case _ => Branch(headExp, None, Some(Leaf(result)))
-      }
-      for (elem <- expsRev.tail) {
-        var negated = false
-        elem match {
-          case ast.Not(exp) => {
-            negated = true
-            tree = Branch(exp, Some(tree), None)
-          }
-          case _ => {
-            tree = Branch(elem, None, Some(tree))
-          }
-        }
-      }
-      tree
+      this.put(method, Tree.generate(branchConditions, result))
     }
   }
-  def extendTree(methodName: String, branchConditions : Seq[Exp], result: VerificationResult)  = {
-    val entry = BranchFailureState.get(methodName)
-    var branchTree : Option[Tree] = None
-    if (!entry.isDefined) {
-      branchTree = Some(generateTree(branchConditions, result))
-      BranchFailureState.put(methodName, branchTree.get)
-    } else if (branchConditions.length > 1) {
-      branchTree = Option(entry.get)
-      var currNode = branchTree
-      var currBranch = currNode.get.asInstanceOf[Branch]
+}
+
+abstract class Tree {
+  def extend(branchConditions : Seq[Exp], result: VerificationResult)  = {
+    if (branchConditions.length > 1) {
+      var currNode = this
+      var currBranch = currNode.asInstanceOf[Branch]
       var negated = branchConditions.head match {
         case _: ast.Not => true
         case _ => false
@@ -55,15 +35,15 @@ object BranchFailureState extends mutable.HashMap[String, Tree] {
         }
         if (currBranch.left.isDefined && currBranch.left.get.isInstanceOf[Branch]
           && headExp.toString.equals(currBranch.left.get.asInstanceOf[Branch].exp.toString) && negated) {
-          currNode = Option(currBranch.left.get)
+          currNode = currBranch.left.get
           next = true
         } else if (currBranch.right.isDefined && currBranch.right.get.isInstanceOf[Branch]
           && headExp.toString.equals(currBranch.right.get.asInstanceOf[Branch].exp.toString) && !negated) {
-          currNode = Option(currBranch.right.get)
+          currNode = currBranch.right.get
           next = true
         }
-        if(next) {
-          currBranch = currNode.get.asInstanceOf[Branch]
+        if (next) {
+          currBranch = currNode.asInstanceOf[Branch]
           negated = tail.head match {
             case _: ast.Not => true
             case _ => false
@@ -72,18 +52,17 @@ object BranchFailureState extends mutable.HashMap[String, Tree] {
         }
       } while (tail.length != 0 && next)
       if (negated) {
-        val tailTree = generateTree(tail, result)
+        val tailTree = Tree.generate(tail, result)
         currBranch.left = Some(tailTree)
       } else {
-        val tailTree = generateTree(tail, result)
+        val tailTree = Tree.generate(tail, result)
         currBranch.right = Some(tailTree)
       }
-      BranchFailureState.put(methodName, branchTree.get)
     }
   }
-  private def buildTree(t: Option[Tree]) : (Vector[String], Int, Int) = {
-    t match {
-      case Some(Branch(exp, left, right)) => {
+  private def buildTree() : (Vector[String], Int, Int) = {
+    this match {
+      case Branch(exp, left, right) =>
         val expStr = exp.toString
         val expStrLen = expStr.length
         val even = (n: Int) => (n & 1) == 0
@@ -91,8 +70,8 @@ object BranchFailureState extends mutable.HashMap[String, Tree] {
         val boxLen = boxMiddle.length
         val halfBoxLen = boxLen / 2
 
-        var (leftStrVec, _, prevLeftRightBoxLen) = buildTree(left)
-        var (rightStrVec, prevRightLeftBoxLen, _) = buildTree(right)
+        var (leftStrVec, _, prevLeftRightBoxLen) = if(left.isDefined) left.get.buildTree() else (Vector("?"), 0, 0)
+        var (rightStrVec, prevRightLeftBoxLen, _) = if(right.isDefined) right.get.buildTree() else (Vector("?"), 0, 0)
 
         val halfExpStrLen = expStrLen / 2
         val leftBoxLen = leftStrVec.head.length
@@ -134,23 +113,43 @@ object BranchFailureState extends mutable.HashMap[String, Tree] {
           }
         }
         (boxTop +: boxMiddle +: boxBottom +: (leftStrVec zip rightStrVec).map(t => t._1 + t._2), leftFiller + halfBoxLen, rightFiller + halfBoxLen)
-      }
-      case Some(Leaf(result)) => {
+      case Leaf(result) =>
         result match {
           case _: FatalResult => (Vector("Error"), 2, 2) // ✘
           case _ => (Vector("✔"), 0, 0)
         }
-      }
-      case _ => (Vector("?"), 0, 0)
     }
   }
-  def prettyPrint(methodName : String): String = {
-    val entry = BranchFailureState.get(methodName)
-    val tree = buildTree(entry)
+  def prettyPrint() = {
+    val tree = this.buildTree()
     val result = tree._1.reduce((str, s) => str + "\n" + s) + "\n"
     result
   }
 }
-trait Tree
+object Tree {
+  def generate(expressions : Seq[Exp], result: VerificationResult) : Tree = {
+    if (expressions.length == 0) {
+      Leaf(result)
+    } else {
+      val reversedExpressions = expressions.reverse
+      val headExp = reversedExpressions.head
+      var tree = reversedExpressions.head match {
+        case ast.Not(exp) => Branch(exp, Some(Leaf(result)), None)
+        case _ => Branch(headExp, None, Some(Leaf(result)))
+      }
+      for (elem <- reversedExpressions.tail) {
+        var negated = false
+        elem match {
+          case ast.Not(exp) =>
+            negated = true
+            tree = Branch(exp, Some(tree), None)
+          case _ =>
+            tree = Branch(elem, None, Some(tree))
+        }
+      }
+      tree
+    }
+  }
+}
 private case class Leaf(result : VerificationResult) extends Tree
 case class Branch(exp : Exp, var left: Option[Tree], var right: Option[Tree]) extends Tree

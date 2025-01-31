@@ -621,14 +621,14 @@ object consumer extends ConsumptionRules {
           case true =>
             v2.decider.assume(t, Option.when(withExp)(e), eNew)
             val r = QS(s3, v2)
-            if (s3.currentMember.isDefined){
-              BranchFailureState.extendTree(s3.currentMember.get.name, v.decider.pcs.getBranchConditionsExp(),r)
+            if (s3.branchFailureTreeMap.isDefined && s3.currentMember.isDefined){
+              s3.branchFailureTreeMap.get.storeIntoTree(s3.currentMember.get.name, v.decider.pcs.getBranchConditionsExp(),r)
             }
             r
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
-            if (s3.currentMember.isDefined){
-              BranchFailureState.extendTree(s3.currentMember.get.name, v.decider.pcs.getBranchConditionsExp(),failure)
+            if (s3.branchFailureTreeMap.isDefined && s3.currentMember.isDefined){
+              s3.branchFailureTreeMap.get.storeIntoTree(s3.currentMember.get.name, v.decider.pcs.getBranchConditionsExp(),failure)
             }
             if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
               v2.decider.assume(t, Option.when(withExp)(e), eNew)

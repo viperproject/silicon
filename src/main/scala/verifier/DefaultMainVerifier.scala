@@ -260,7 +260,7 @@ class DefaultMainVerifier(config: Config,
       program.methods.filterNot(excludeMethod).map(method => {
 
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
-          Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
+          Verifier.config.parallelizeBranches(), branchFailureTreeMap = Option(new BranchFailureTreeMap())) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -268,10 +268,10 @@ class DefaultMainVerifier(config: Config,
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
-          val branchTree = BranchFailureState.get(method.name)
+          val branchTree = s.branchFailureTreeMap.get.get(method.name)
           if (branchTree.isDefined){
             val firstCond = branchTree.get.asInstanceOf[Branch].exp
-            val failure = viper.silver.verifier.Failure(Seq(PostconditionViolatedBranch(firstCond, AssertionFalseAtBranch(firstCond, BranchFailureState.prettyPrint(method.name)))))
+            val failure = viper.silver.verifier.Failure(Seq(PostconditionViolatedBranch(firstCond, AssertionFalseAtBranch(firstCond, branchTree.get.prettyPrint()))))
             reporter report BranchFailureMessage(s"silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable], failure)
           }
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
