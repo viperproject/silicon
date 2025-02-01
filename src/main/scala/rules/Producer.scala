@@ -321,7 +321,8 @@ object producer extends ProductionRules {
         val perm = accPred.perm
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, ePermNew, v2) =>
-            permissionSupporter.assertNotNegative(s2, tPerm, perm, ePermNew, pve, v2)((s3, v3) => {
+            permissionSupporter.assertNotNegative(s2, tPerm, perm, ePermNew, pve, v2)((s2a, v3) => {
+              val s3 = s2a.copy(constrainableARPs = s.constrainableARPs)
               val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
               val gain = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(field))
                 PermTimes(tPerm, s3.permissionScalingFactor)
@@ -347,7 +348,8 @@ object producer extends ProductionRules {
         val perm = accPred.perm
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, perm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
-            permissionSupporter.assertNotNegative(s1a, tPerm, perm, ePermNew, pve, v1a)((s2, v2) => {
+            permissionSupporter.assertNotNegative(s1a, tPerm, perm, ePermNew, pve, v1a)((s1b, v2) => {
+              val s2 = s1b.copy(constrainableARPs = s.constrainableARPs)
               val snap = sf(
                 predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
                               .getOrElse(sorts.Snap), v2)
@@ -430,8 +432,9 @@ object producer extends ProductionRules {
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), eCondNew, Some((Seq(tRcvr, tPerm), rcvrPerm, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
             val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ), acc.loc.field.name), v1)
+            val s1a = s1.copy(constrainableARPs = s.constrainableARPs)
             quantifiedChunkSupporter.produce(
-              s1,
+              s1a,
               forall,
               acc.loc.field,
               qvars, qvarExps, Seq(`?r`),
@@ -454,7 +457,7 @@ object producer extends ProductionRules {
               QPAssertionNotInjective(acc.loc),
               v1
             )(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -468,8 +471,9 @@ object producer extends ProductionRules {
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), eCondNew, Some((Seq(tPerm, tArgs @ _*), permArgs, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate), predicate.name), v1)
+            val s1a = s1.copy(constrainableARPs = s.constrainableARPs)
             quantifiedChunkSupporter.produce(
-              s1,
+              s1a,
               forall,
               predicate,
               qvars,
@@ -495,7 +499,7 @@ object producer extends ProductionRules {
               QPAssertionNotInjective(acc.loc),
               v1
             )(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
