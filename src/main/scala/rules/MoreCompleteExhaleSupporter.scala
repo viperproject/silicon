@@ -444,8 +444,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val eqCmps = ch.args.zip(args).map { case (t1, t2) => t1 === t2 }
         val eq = And(eqCmps)
         val eqExp = permsExp.map(pe => BigAnd(removeKnownToBeTrueExp(ch.argsExp.get.zip(argsExp.get).map{ case (t1, t2) => ast.EqCmp(t1, t2)(pe.pos, pe.info, pe.errT) }.toList, eqCmps.toList)))
-        val permTaken = v.decider.fresh("p", sorts.Perm, Option.when(withExp)(PPrimitiv(PReserved(PKw.Perm)((ast.NoPosition, ast.NoPosition)))()))
-        val permTakenExp = permsExp.map(pe => ast.LocalVar(simplifyVariableName(permTaken.id.name), ast.Perm)(pe.pos, pe.info, pe.errT))
+        val permTaken = v.decider.appliedFresh("p", sorts.Perm, s.functionRecorderQuantifiedVariables().map(_._1))
+        val permTakenExp = permsExp.map(pe => ast.LocalVar(simplifyVariableName(permTaken.applicable.id.name), ast.Perm)(pe.pos, pe.info, pe.errT))
 
         totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm))
         totalPermSumExp = totalPermSumExp.map(tps => ast.PermAdd(tps, ast.CondExp(eqExp.get, ch.permExp.get, ast.NoPerm()())(eqExp.get.pos, eqExp.get.info, eqExp.get.errT))(permsExp.get.pos, permsExp.get.info, permsExp.get.errT))
@@ -464,7 +464,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
 
         v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
-        newFr = newFr.recordConstrainedVar(permTaken, constraint)
+
+        newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
         ch.withPerm(PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)))
       })

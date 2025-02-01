@@ -108,7 +108,7 @@ package object utils {
     case or: Or => or.ts
     case _: PermLiteral => Nil
     case fp: FractionPerm => List(fp.n, fp.d)
-    case ivp: IsValidPermVar => List(ivp.v)
+    case ivp: IsValidPermVar => List(ivp.t)
     case irp: IsReadPermVar => List(irp.v)
     case app: Application[_] => app.args
     case sr: SeqRanged => List(sr.p0, sr.p1)

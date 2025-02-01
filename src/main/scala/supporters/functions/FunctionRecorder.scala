@@ -202,7 +202,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     else this
 
   def recordPathSymbol(symbol: Function): ActualFunctionRecorder =
-    if (depth <= 1) copy(freshPathSymbols = freshPathSymbols + symbol)
+    if (depth <= 2) copy(freshPathSymbols = freshPathSymbols + symbol)
     else this
 
   def recordFreshMacro(decl: MacroDecl): FunctionRecorder =
