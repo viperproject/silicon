@@ -444,7 +444,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val eqCmps = ch.args.zip(args).map { case (t1, t2) => t1 === t2 }
         val eq = And(eqCmps)
         val eqExp = permsExp.map(pe => BigAnd(removeKnownToBeTrueExp(ch.argsExp.get.zip(argsExp.get).map{ case (t1, t2) => ast.EqCmp(t1, t2)(pe.pos, pe.info, pe.errT) }.toList, eqCmps.toList)))
-        val permTaken = v.decider.appliedFresh("p", sorts.Perm, s.functionRecorderQuantifiedVariables().map(_._1))
+        val permTaken = v.decider.appliedFresh("p", sorts.Perm, s.functionRecorderQuantifiedVariables().map(_._1) ++ s.quantifiedVariables.map(_._1))
         val permTakenExp = permsExp.map(pe => ast.LocalVar(simplifyVariableName(permTaken.applicable.id.name), ast.Perm)(pe.pos, pe.info, pe.errT))
 
         totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm))

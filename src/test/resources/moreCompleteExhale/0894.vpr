@@ -1,0 +1,78 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+method foo(x: Ref, y: Ref)
+{
+  inhale acc(x.f) && acc(y.f)
+
+  var myseq: Seq[Ref] := Seq(x, y)
+
+  assert forall r: Ref :: r in myseq ==> fn(r) > 2
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+
+
+}
+
+function fn(x: Ref): Int
+  requires acc(x.f, wildcard)
+{5}
+
+function foo1(x: Ref, y: Ref, z: Ref, b: Bool): Int
+  requires b ? acc(x.f) : acc(y.f)
+  requires b ? z == x : z == y
+  requires bar(z) > 2
+{5}
+
+function foo2(x: Ref, y: Ref, z: Ref, b: Bool): Int
+  requires acc(x.f) && acc(y.f)
+  requires z == x || z == y
+  requires bar(z) > 2
+{5}
+
+function foo3(x: Ref, y: Ref, z: Ref, b: Bool): Int
+  requires acc(x.f, b ? write : none) && acc(y.f, b ? none : write)
+  requires (z == x && b && z != y) || (z == y && !b && z != x)
+  requires bar(z) > 2
+{5}
+
+
+function bar(x: Ref): Int
+  requires acc(x.f, wildcard)
+{
+  5
+}
+
+method caller1(x: Ref, y: Ref)
+{
+  inhale acc(x.f) && acc(y.f)
+  var res: Int
+  res := foo1(x, y, x, true)
+  res := foo1(x, y, y, false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method caller2(x: Ref, y: Ref)
+{
+  inhale acc(x.f) && acc(y.f)
+  var res: Int
+  res := foo2(x, y, x, true)
+  res := foo2(x, y, y, false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method caller3(x: Ref, y: Ref)
+{
+  inhale acc(x.f) && acc(y.f)
+  var res: Int
+  res := foo3(x, y, x, true)
+  res := foo3(x, y, y, false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
