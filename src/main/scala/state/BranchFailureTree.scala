@@ -17,9 +17,9 @@ class BranchFailureTreeMap extends mutable.HashMap[String, Tree] {
   }
 }
 
-abstract class Tree {
+class Tree {
   def extend(branchConditions : Seq[Exp], result: VerificationResult)  = {
-    if (branchConditions.length > 1) {
+    if (branchConditions.length > 0) {
       var currNode = this
       var currBranch = currNode.asInstanceOf[Branch]
       var negated = branchConditions.head match {
@@ -27,8 +27,9 @@ abstract class Tree {
         case _ => false
       }
       var tail = branchConditions.tail
-      var next = false
-      do {
+      var next = true
+      while (tail.length != 0 && next) {
+        next = false
         val headExp = tail.head match {
           case ast.Not(exp) => exp
           case _ => tail.head
@@ -36,10 +37,12 @@ abstract class Tree {
         if (currBranch.left.isDefined && currBranch.left.get.isInstanceOf[Branch]
           && headExp.toString.equals(currBranch.left.get.asInstanceOf[Branch].exp.toString) && negated) {
           currNode = currBranch.left.get
+          currBranch.isLeftFatal = result.isFatal || currBranch.isLeftFatal
           next = true
         } else if (currBranch.right.isDefined && currBranch.right.get.isInstanceOf[Branch]
           && headExp.toString.equals(currBranch.right.get.asInstanceOf[Branch].exp.toString) && !negated) {
           currNode = currBranch.right.get
+          currBranch.isRightFatal = result.isFatal || currBranch.isRightFatal
           next = true
         }
         if (next) {
@@ -50,19 +53,21 @@ abstract class Tree {
           }
           tail = tail.tail
         }
-      } while (tail.length != 0 && next)
+      }
       if (negated) {
         val tailTree = Tree.generate(tail, result)
         currBranch.left = Some(tailTree)
+        currBranch.isLeftFatal = result.isFatal || currBranch.isLeftFatal
       } else {
         val tailTree = Tree.generate(tail, result)
         currBranch.right = Some(tailTree)
+        currBranch.isRightFatal = result.isFatal || currBranch.isRightFatal
       }
     }
   }
   private def buildTree() : (Vector[String], Int, Int) = {
     this match {
-      case Branch(exp, left, right) =>
+      case Branch(exp, left, right, _, _) =>
         val expStr = exp.toString
         val expStrLen = expStr.length
         val even = (n: Int) => (n & 1) == 0
@@ -134,17 +139,17 @@ object Tree {
       val reversedExpressions = expressions.reverse
       val headExp = reversedExpressions.head
       var tree = reversedExpressions.head match {
-        case ast.Not(exp) => Branch(exp, Some(Leaf(result)), None)
-        case _ => Branch(headExp, None, Some(Leaf(result)))
+        case ast.Not(exp) => Branch(exp, Some(Leaf(result)), None, result.isFatal, false)
+        case _ => Branch(headExp, None, Some(Leaf(result)), false, result.isFatal)
       }
       for (elem <- reversedExpressions.tail) {
         var negated = false
         elem match {
           case ast.Not(exp) =>
             negated = true
-            tree = Branch(exp, Some(tree), None)
+            tree = Branch(exp, Some(tree), None, result.isFatal, false)
           case _ =>
-            tree = Branch(elem, None, Some(tree))
+            tree = Branch(elem, None, Some(tree), false, result.isFatal)
         }
       }
       tree
@@ -152,4 +157,4 @@ object Tree {
   }
 }
 private case class Leaf(result : VerificationResult) extends Tree
-case class Branch(exp : Exp, var left: Option[Tree], var right: Option[Tree]) extends Tree
+case class Branch(exp : Exp, var left: Option[Tree], var right: Option[Tree], var isLeftFatal: Boolean, var isRightFatal: Boolean) extends Tree

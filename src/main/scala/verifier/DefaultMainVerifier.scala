@@ -31,7 +31,7 @@ import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvid
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{BackendType, Exp, Member}
+import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
@@ -169,11 +169,11 @@ class DefaultMainVerifier(config: Config,
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
-      * up-front, before the program is verified in parallel.
-      * This is done bottom-up to ensure that nested quantifiers are transformed as well
-      * (top-down should also work, but the default of 'innermost' won't).
-      * See also [[viper.silicon.utils.ast.autoTrigger]].
-      */
+     * up-front, before the program is verified in parallel.
+     * This is done bottom-up to ensure that nested quantifiers are transformed as well
+     * (top-down should also work, but the default of 'innermost' won't).
+     * See also [[viper.silicon.utils.ast.autoTrigger]].
+     */
     var program: ast.Program =
       originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
@@ -264,15 +264,17 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val results = v.methodSupporter.verify(s, method)
+          var results = v.methodSupporter.verify(s, method)
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           val branchTree = s.branchFailureTreeMap.get.get(method.name)
-          if (branchTree.isDefined){
-            val firstCond = branchTree.get.asInstanceOf[Branch].exp
-            val failure = viper.silver.verifier.Failure(Seq(PostconditionViolatedBranch(firstCond, AssertionFalseAtBranch(firstCond, branchTree.get.prettyPrint()))))
-            reporter report BranchFailureMessage(s"silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable], failure)
+          if (branchTree.isDefined) {
+            val branch =  branchTree.get.asInstanceOf[Branch]
+            if (branch.isLeftFatal || branch.isRightFatal) {
+              val firstCond = branchTree.get.asInstanceOf[Branch].exp
+              results +:= Failure(PostconditionViolatedBranch(firstCond, AssertionFalseAtBranch(firstCond, branchTree.get.prettyPrint()), branch.isLeftFatal, branch.isRightFatal))
+            }
           }
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
           logger debug s"Silicon finished verification of method `${method.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -306,8 +308,8 @@ class DefaultMainVerifier(config: Config,
     reporter report VerificationTerminationMessage()
 
     val verificationResults = (   functionVerificationResults
-     ++ predicateVerificationResults
-     ++ methodVerificationResults)
+      ++ predicateVerificationResults
+      ++ methodVerificationResults)
 
     if (Verifier.config.enableDebugging()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
@@ -317,7 +319,7 @@ class DefaultMainVerifier(config: Config,
     verificationResults
   }
 
-    private def createInitialState(member: ast.Member,
+  private def createInitialState(member: ast.Member,
                                  program: ast.Program,
                                  functionData: Map[ast.Function, FunctionData],
                                  predicateData: Map[ast.Predicate, PredicateData]): State = {
@@ -401,18 +403,18 @@ class DefaultMainVerifier(config: Config,
     } else InsertionOrderedSet.empty
 
     State(program = program,
-          functionData = functionData,
-          predicateData = predicateData,
-          qpFields = quantifiedFields,
-          qpPredicates = quantifiedPredicates,
-          qpMagicWands = quantifiedMagicWands,
-          permLocations = permResources,
-          predicateSnapMap = predSnapGenerator.snapMap,
-          predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          currentMember = Some(member),
-          heapDependentTriggers = resourceTriggers,
-          moreCompleteExhale = mce,
-          moreJoins = moreJoins)
+      functionData = functionData,
+      predicateData = predicateData,
+      qpFields = quantifiedFields,
+      qpPredicates = quantifiedPredicates,
+      qpMagicWands = quantifiedMagicWands,
+      permLocations = permResources,
+      predicateSnapMap = predSnapGenerator.snapMap,
+      predicateFormalVarMap = predSnapGenerator.formalVarMap,
+      currentMember = Some(member),
+      heapDependentTriggers = resourceTriggers,
+      moreCompleteExhale = mce,
+      moreJoins = moreJoins)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -438,8 +440,8 @@ class DefaultMainVerifier(config: Config,
   }
 
   private def excludeMethod(method: ast.Method) = (
-       !method.name.matches(config.includeMethods())
-    || method.name.matches(config.excludeMethods()))
+    !method.name.matches(config.includeMethods())
+      || method.name.matches(config.excludeMethods()))
 
   /* Prover preamble: Static preamble */
 
@@ -609,13 +611,13 @@ class DefaultMainVerifier(config: Config,
 
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$T$" -> s"$$T$i$$",
-                "$S$" -> sanitizedSortString,
-                s"$$T$i$$" -> sortString),
+              "$S$" -> sanitizedSortString,
+              s"$$T$i$$" -> sortString),
             sink)
         } else {
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$S$" -> sanitizedSortString,
-                "$T$" -> sortString),
+              "$T$" -> sortString),
             sink)
         }
 
@@ -632,10 +634,10 @@ class DefaultMainVerifier(config: Config,
   }
 
   /**
-    * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
-    * config.numberOfErrorsToReport() have been encountered (per member)).
-    * This function combines the verification result with verification results stored in its `previous` field.
-    */
+   * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
+   * config.numberOfErrorsToReport() have been encountered (per member)).
+   * This function combines the verification result with verification results stored in its `previous` field.
+   */
   private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
     res :: res.previous.toList
 }
