@@ -602,6 +602,7 @@ object executor extends ExecutionRules {
               Q(s6, v3)})})})
 
       case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, predicateName), _)) =>
+        assert(s.constrainableARPs.isEmpty)
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
@@ -617,6 +618,7 @@ object executor extends ExecutionRules {
               )})))
 
       case unfold @ ast.Unfold(pap @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), _)) =>
+        assert(s.constrainableARPs.isEmpty)
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)

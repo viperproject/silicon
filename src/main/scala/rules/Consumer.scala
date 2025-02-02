@@ -277,7 +277,7 @@ object consumer extends ConsumptionRules {
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
-              v1)(Q)
+              v1)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
           case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
 
@@ -323,7 +323,7 @@ object consumer extends ConsumptionRules {
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
-              v1)(Q)
+              v1)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
           case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
 
@@ -365,8 +365,8 @@ object consumer extends ConsumptionRules {
               negativePermissionReason = NegativePermission(ePerm),
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
               insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
-              v1)(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
+              v1)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
+          case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), h, if (returnSnap) Some(Unit) else None, v1)
         }
 
       case accPred@ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
