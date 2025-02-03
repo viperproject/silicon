@@ -452,7 +452,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         totalPermTaken = PermPlus(totalPermTaken, permTaken)
         totalPermTakenExp = totalPermTakenExp.map(tpt => ast.PermAdd(tpt, permTakenExp.get)(permsExp.get.pos, permsExp.get.info, permsExp.get.errT))
 
-        val constraint = And(IsValidPermVar(permTaken),
+        val constraint = And(IsValidPermVal(permTaken),
           PermAtMost(permTaken, ch.perm),
           Implies(Not(eq), permTaken === NoPerm),
           Implies(And(eq, IsPositive(ch.perm)), PermLess(permTaken, ch.perm))
