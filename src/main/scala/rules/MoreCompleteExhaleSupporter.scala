@@ -130,7 +130,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                 case Some(v) =>
                   ReusedSummarisingSnapshot(v)
                 case None =>
-                  val ss = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables().map(_._1))
+                  val ss = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables().map(_._1) ++ s.quantifiedVariables.map(_._1))
                   FreshSummarisingSnapshot(ss)
               }
           }

@@ -1,0 +1,25 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate P(x: Ref) {
+    acc(x.f)
+}
+
+method foo(x: Ref, y: Ref)
+{
+  inhale acc(x.f) && x.f == 4 && acc(y.f) && y.f == 5
+  fold P(x)
+  fold P(y)
+
+  var myseq: Seq[Ref] := Seq(x, y)
+
+  assert forall r: Ref :: {r in myseq} r in myseq ==> unfolding P(r) in r.f > 2
+
+  assert x in myseq
+  assert y in myseq
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
