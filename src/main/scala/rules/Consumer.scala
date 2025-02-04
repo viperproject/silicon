@@ -589,6 +589,14 @@ object consumer extends ConsumptionRules {
     )
   }
 
+  private def storeIntoBranchTree(v: Verifier, s: State, r: VerificationResult) = {
+    if (s.branchTreeMap.isDefined && s.currentMember.isDefined){
+      val branchConditions = v.decider.pcs.getBranchConditionsExp()
+      if (branchConditions.length > 0) {
+        s.branchTreeMap.get.storeIntoTree(s.currentMember.get.name, branchConditions,r)
+      }
+    }
+  }
 
   private def evalAndAssert(s: State, e: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier)
                            (Q: (State, Option[Term], Verifier) => VerificationResult)
@@ -621,15 +629,11 @@ object consumer extends ConsumptionRules {
           case true =>
             v2.decider.assume(t, Option.when(withExp)(e), eNew)
             val r = QS(s3, v2)
-            if (s3.branchFailureTreeMap.isDefined && s3.currentMember.isDefined){
-              s3.branchFailureTreeMap.get.storeIntoTree(s3.currentMember.get.name, v.decider.pcs.getBranchConditionsExp(),r)
-            }
+            storeIntoBranchTree(v,s,r)
             r
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
-            if (s3.branchFailureTreeMap.isDefined && s3.currentMember.isDefined){
-              s3.branchFailureTreeMap.get.storeIntoTree(s3.currentMember.get.name, v.decider.pcs.getBranchConditionsExp(),failure)
-            }
+            storeIntoBranchTree(v,s,failure)
             if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
               v2.decider.assume(t, Option.when(withExp)(e), eNew)
               failure combine QS(s3, v2)

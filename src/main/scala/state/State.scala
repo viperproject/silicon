@@ -82,8 +82,8 @@ final case class State(g: Store = Store(),
                        moreCompleteExhale: Boolean = false,
                        moreJoins: JoinMode = JoinMode.Off,
 
-                       branchFailureTreeMap: Option[BranchFailureTreeMap] = None)
-  extends Mergeable[State] {
+                       branchTreeMap: Option[BranchTreeMap] = None)
+    extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
@@ -157,54 +157,54 @@ object State {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, program, member,
-      predicateData,
-      functionData,
-      oldHeaps1,
-      parallelizeBranches1,
-      recordVisited1, visited1,
-      methodCfg1, invariantContexts1,
-      constrainableARPs1,
-      quantifiedVariables1,
-      retrying1,
-      underJoin1,
-      functionRecorder1,
-      conservingSnapshotGeneration1,
-      recordPossibleTriggers1, possibleTriggers1,
-      triggerExp1,
-      partiallyConsumedHeap1,
-      permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
-      reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
-      ssCache1, hackIssue387DisablePermissionConsumption1,
-      qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
-      predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-      moreCompleteExhale, moreJoins,
-      branchFailureTreeMap) =>
+                 predicateData,
+                 functionData,
+                 oldHeaps1,
+                 parallelizeBranches1,
+                 recordVisited1, visited1,
+                 methodCfg1, invariantContexts1,
+                 constrainableARPs1,
+                 quantifiedVariables1,
+                 retrying1,
+                 underJoin1,
+                 functionRecorder1,
+                 conservingSnapshotGeneration1,
+                 recordPossibleTriggers1, possibleTriggers1,
+                 triggerExp1,
+                 partiallyConsumedHeap1,
+                 permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
+                 reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
+                 ssCache1, hackIssue387DisablePermissionConsumption1,
+                 qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
+                 predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
+                 moreCompleteExhale, moreJoins,
+                 branchTreeMap) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
           case State(`g1`, `h1`,
-          `program`, `member`,
-          `predicateData`, `functionData`,
-          `oldHeaps1`,
-          `parallelizeBranches1`,
-          `recordVisited1`, `visited1`,
-          `methodCfg1`, `invariantContexts1`,
-          constrainableARPs2,
-          quantifiedVariables2,
-          `retrying1`,
-          `underJoin1`,
-          functionRecorder2,
-          `conservingSnapshotGeneration1`,
-          `recordPossibleTriggers1`, possibleTriggers2,
-          triggerExp2,
-          `partiallyConsumedHeap1`,
-          `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
-          `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
-          ssCache2, `hackIssue387DisablePermissionConsumption1`,
-          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
-          `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-          moreCompleteExhale2, `moreJoins`,
-          `branchFailureTreeMap`) =>
+                     `program`, `member`,
+                     `predicateData`, `functionData`,
+                     `oldHeaps1`,
+                     `parallelizeBranches1`,
+                     `recordVisited1`, `visited1`,
+                     `methodCfg1`, `invariantContexts1`,
+                     constrainableARPs2,
+                     quantifiedVariables2,
+                     `retrying1`,
+                     `underJoin1`,
+                     functionRecorder2,
+                     `conservingSnapshotGeneration1`,
+                     `recordPossibleTriggers1`, possibleTriggers2,
+                     triggerExp2,
+                     `partiallyConsumedHeap1`,
+                     `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
+                     `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
+                     ssCache2, `hackIssue387DisablePermissionConsumption1`,
+                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
+                     `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
+                     moreCompleteExhale2, `moreJoins`,
+                      `branchTreeMap`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -336,7 +336,7 @@ object State {
       qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
       moreCompleteExhale, moreJoins,
-      branchFailureState) =>
+      branchTreeMap) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -361,7 +361,7 @@ object State {
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
           moreCompleteExhale2, `moreJoins`,
-          `branchFailureState`) =>
+           `branchTreeMap`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

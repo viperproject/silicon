@@ -6,7 +6,7 @@ import viper.silver.ast.Exp
 
 import scala.collection.mutable
 
-class BranchFailureTreeMap extends mutable.HashMap[String, Tree] {
+class BranchTreeMap extends mutable.HashMap[String, Tree] {
   def storeIntoTree(method: String, branchConditions : Seq[Exp], result: VerificationResult): Unit = {
     val branchTree = this.get(method)
     if (branchTree.isDefined) {
