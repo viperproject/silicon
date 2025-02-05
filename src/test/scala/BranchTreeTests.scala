@@ -7,7 +7,7 @@
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.utility.DiskLoader
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Paths}
 
 class BranchTreeTests extends AnyFunSuite {
   val frontend = tests.instantiateFrontend()
@@ -37,7 +37,7 @@ class BranchTreeTests extends AnyFunSuite {
   }
 
   def executeTest(fileName: String)
-  : Unit = {
+                 : Unit = {
     val expectedFile = getClass.getClassLoader.getResource(s"branchTreeTests/"+fileName+"_expected")
     val expected = DiskLoader.loadContent(Paths.get(expectedFile.toURI)).get
     val program = tests.loadProgram("branchTreeTests/",fileName, frontend)
