@@ -1,0 +1,13 @@
+define P(z) z == true
+
+method foo(a: Bool, bcde: Bool, c: Bool) returns (z: Bool)
+requires a ==> c
+ensures P(z) {
+    while (a) {
+       if (bcde) {
+            z := !(bcde && a)
+        } else {
+            z := !(bcde && !a)
+        }
+    }
+}

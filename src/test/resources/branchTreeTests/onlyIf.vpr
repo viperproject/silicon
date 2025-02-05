@@ -1,0 +1,14 @@
+define P(z) z == true
+
+method foo(a: Int, b: Int, d: Bool) returns (z: Bool)
+ensures P(z) {
+    var a_ : Int := a
+    var b_ : Int := b
+    if (d) {
+        a_ := 3
+        b_ := 3
+    }
+    var c: Int
+    c := a_ / b_
+    z := c > 1
+}

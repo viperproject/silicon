@@ -1,0 +1,6 @@
+define P(z) z == true
+
+method foo(b: Bool) returns (z: Bool)
+ensures P(z) {
+   z := true
+}
