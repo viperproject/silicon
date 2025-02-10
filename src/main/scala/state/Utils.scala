@@ -108,7 +108,7 @@ package object utils {
     case or: Or => or.ts
     case _: PermLiteral => Nil
     case fp: FractionPerm => List(fp.n, fp.d)
-    case ivp: IsValidPermVar => List(ivp.v)
+    case ivp: IsValidPermVal => List(ivp.t)
     case irp: IsReadPermVar => List(irp.v)
     case app: Application[_] => app.args
     case sr: SeqRanged => List(sr.p0, sr.p1)
@@ -192,7 +192,7 @@ package object utils {
       case AtLeast(t0, t1) => AtLeast(go(t0), go(t1))
       case _: PermLiteral => term
       case FractionPerm(n, d) => FractionPerm(go(n), go(d))
-      case IsValidPermVar(v) => IsValidPermVar(go(v))
+      case IsValidPermVal(t) => IsValidPermVal(go(t))
       case IsReadPermVar(v) => IsReadPermVar(go(v))
       case PermTimes(p0, p1) => PermTimes(go(p0), go(p1))
       case IntPermTimes(p0, p1) => IntPermTimes(go(p0), go(p1))

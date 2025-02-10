@@ -20,7 +20,7 @@ import scala.collection.mutable
   *
   */
 class ConditionalPermissionRewriter {
-  private def rewriter(implicit p: Program, alreadySeen: mutable.HashSet[Exp]) = ViperStrategy.Context[Condition]({
+  private def rewriter(implicit p: Program, allowCondWildcard: Boolean, alreadySeen: mutable.HashSet[Exp]) = ViperStrategy.Context[Condition]({
     // Does NOT rewrite ternary expressions; those have to be transformed to implications in advance
     // using the ternaryRewriter below.
     //
@@ -32,8 +32,8 @@ class ConditionalPermissionRewriter {
       // Transformation causes issues if the permission involve a wildcard, so we avoid that case.
       // Also, we cannot push perm and forperm expressions further in, since their value may be different at different
       // places in the same assertion.
-      val res = if (!acc.perm.contains[WildcardPerm] && !Expressions.containsPermissionIntrospection(cond))
-        (conditionalize(acc, cc.c &*& cond), cc) // Won't recurse into acc's children (see recurseFunc below)
+      val res = if ((allowCondWildcard || !acc.perm.contains[WildcardPerm]) && !Expressions.containsPermissionIntrospection(cond))
+        (conditionalize(acc, cc.c &*& cond, allowCondWildcard), cc) // Won't recurse into acc's children (see recurseFunc below)
       else
         (Implies(And(cc.c.exp, cond)(), acc)(i.pos, i.info, i.errT), cc)
       alreadySeen.add(res._1)
@@ -61,8 +61,8 @@ class ConditionalPermissionRewriter {
     case (acc: AccessPredicate, cc) if cc.c.optExp.nonEmpty =>
       // Found an accessibility predicate nested under some conditionals
       // Wildcards may cause issues, see above.
-      val res = if (!acc.perm.contains[WildcardPerm])
-        (conditionalize(acc, cc.c), cc) // Won't recurse into acc's children
+      val res = if (allowCondWildcard || !acc.perm.contains[WildcardPerm])
+        (conditionalize(acc, cc.c, allowCondWildcard), cc) // Won't recurse into acc's children
       else
         (Implies(cc.c.exp, acc)(acc.pos, acc.info, acc.errT), cc)
       alreadySeen.add(res._1)
@@ -101,9 +101,13 @@ class ConditionalPermissionRewriter {
   /** Conservatively transforms all conditional accessibility predicates in `root` into unconditional accessibility
     * predicates with suitable conditional permission expressions when this is safe to do.
     */
-  def rewrite(root: Program): Program = {
+  def rewrite(root: Program, allowTernaryWildcardsInFunctions: Boolean): Program = {
     val noTernaryProgram: Program = ternaryRewriter.execute(root)
-    val res: Program = rewriter(root, new mutable.HashSet[Exp]()).execute(noTernaryProgram)
+    val functionRewriter = rewriter(root, allowTernaryWildcardsInFunctions, new mutable.HashSet[Exp]())
+    val nonFunctionRewriter = rewriter(root, false, new mutable.HashSet[Exp]())
+    val res = noTernaryProgram.copy(functions = noTernaryProgram.functions.map(functionRewriter.execute[Function](_)),
+      predicates = noTernaryProgram.predicates.map(nonFunctionRewriter.execute[Predicate](_)),
+      methods = noTernaryProgram.methods.map(nonFunctionRewriter.execute[Method](_)))(noTernaryProgram.pos, noTernaryProgram.info, noTernaryProgram.errT)
     res
   }
 
@@ -114,7 +118,7 @@ class ConditionalPermissionRewriter {
 
   /** Makes `acc`'s permissions conditional w.r.t. `cond`.
     */
-  private def conditionalize(acc: AccessPredicate, cond: Condition)(implicit p: Program): Exp = {
+  private def conditionalize(acc: AccessPredicate, cond: Condition, isFunction: Boolean)(implicit p: Program): Exp = {
     // We have to be careful not to introduce well-definedness issues when conditionalizing.
     // For example, if we transform
     // i >= 0 && i < |s| ==> acc(s[i].f)
@@ -122,18 +126,19 @@ class ConditionalPermissionRewriter {
     // acc(s[i].f, i >= 0 && i < |s| ? write : none)
     // then backends may complain that s[i].f is not well-defined. Thus, we only perform the
     // transformation if receiver/argument expressions are always well-defined.
+    val defaultPerm = if (isFunction) WildcardPerm()() else FullPerm()()
     acc match {
       case FieldAccessPredicate(loc, perm) =>
         if (Expressions.proofObligations(loc.rcv)(p).isEmpty) {
-          FieldAccessPredicate(loc, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+          FieldAccessPredicate(loc, Some(makeCondExp(cond.exp, perm.getOrElse(defaultPerm))))(acc.pos, acc.info, acc.errT)
         } else {
           // Hack: use a conditional null as the receiver, that's always well-defined.
           val fieldAccess = loc.copy(rcv = makeCondExp(cond.exp, loc.rcv, NullLit()()))(loc.pos, loc.info, loc.errT)
-          FieldAccessPredicate(fieldAccess, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+          FieldAccessPredicate(fieldAccess, Some(makeCondExp(cond.exp, perm.getOrElse(defaultPerm))))(acc.pos, acc.info, acc.errT)
         }
       case PredicateAccessPredicate(loc, perm) =>
         if (!loc.args.exists(a => Expressions.proofObligations(a)(p).nonEmpty))
-          PredicateAccessPredicate(loc, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+          PredicateAccessPredicate(loc, Some(makeCondExp(cond.exp, perm.getOrElse(defaultPerm))))(acc.pos, acc.info, acc.errT)
         else
           Implies(cond.exp, acc)(acc.pos, acc.info, acc.errT)
       case wand: MagicWand =>

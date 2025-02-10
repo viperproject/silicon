@@ -6,8 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack

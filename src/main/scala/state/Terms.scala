@@ -1263,13 +1263,13 @@ object FractionPerm extends CondFlyweightFactory[(Term, Term), Permissions, Frac
   override def actualCreate(args: (Term, Term)): FractionPerm = new FractionPerm(args._1, args._2)
 }
 
-class IsValidPermVar private[terms] (val v: Var) extends BooleanTerm with ConditionalFlyweight[Var, IsValidPermVar] {
-  override val equalityDefiningMembers: Var = v
-  override lazy val toString = s"PVar($v)"
+class IsValidPermVal private[terms] (val t: Term) extends BooleanTerm with ConditionalFlyweight[Term, IsValidPermVal] {
+  override val equalityDefiningMembers: Term = t
+  override lazy val toString = s"PVal($t)"
 }
 
-object IsValidPermVar extends CondFlyweightTermFactory[Var, IsValidPermVar] {
-  override def actualCreate(args: Var): IsValidPermVar = new IsValidPermVar((args))
+object IsValidPermVal extends CondFlyweightTermFactory[Term, IsValidPermVal] {
+  override def actualCreate(args: Term): IsValidPermVal = new IsValidPermVal((args))
 }
 
 class IsReadPermVar private[terms] (val v: Var) extends BooleanTerm with ConditionalFlyweight[Var, IsReadPermVar] {

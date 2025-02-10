@@ -33,6 +33,7 @@ case class BasicChunk(resourceID: BaseID,
                       args: Seq[Term],
                       argsExp: Option[Seq[ast.Exp]],
                       snap: Term,
+                      snapExp: Option[ast.Exp],
                       perm: Term,
                       permExp: Option[ast.Exp])
     extends NonQuantifiedChunk {
@@ -49,8 +50,8 @@ case class BasicChunk(resourceID: BaseID,
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
   override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
-  override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = BasicChunk(resourceID, id, args, argsExp, snap, newPerm, newPermExp)
-  override def withSnap(newSnap: Term) = BasicChunk(resourceID, id, args, argsExp, newSnap, perm, permExp)
+  override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = BasicChunk(resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp)
+  override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]) = BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
 
   override lazy val toString = resourceID match {
     case FieldID => s"${args.head}.$id -> $snap # $perm"
@@ -239,9 +240,12 @@ case class MagicWandChunk(id: MagicWandIdentifier,
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
   override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = MagicWandChunk(id, bindings, args, argsExp, snap, newPerm, newPermExp)
 
-  override def withSnap(newSnap: Term) = newSnap match {
-    case s: MagicWandSnapshot => MagicWandChunk(id, bindings, args, argsExp, s, perm, permExp)
-    case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found ${newSnap.getClass}")
+  override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]) = {
+    assert(newSnapExp.isEmpty)
+    newSnap match {
+      case s: MagicWandSnapshot => MagicWandChunk(id, bindings, args, argsExp, s, perm, permExp)
+      case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found ${newSnap.getClass}")
+    }
   }
 
   override lazy val toString = {
