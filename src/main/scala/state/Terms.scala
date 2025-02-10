@@ -14,6 +14,8 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
+import viper.silver.utility.Common.Rational
+
 import scala.collection.concurrent.TrieMap
 
 sealed trait Node {
@@ -1124,6 +1126,7 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Conditio
 
 object BuiltinEquals extends CondFlyweightFactory[(Term, Term), BooleanTerm, BuiltinEquals] {
   override def apply(v0: (Term, Term)) = v0 match {
+    case (v0: Var, v1: Var) if v0 == v1 => True
     case (p0: PermLiteral, p1: PermLiteral) =>
       // NOTE: The else-case (False) is only justified because permission literals are stored in a normal form
       // such that two literals are semantically equivalent iff they are syntactically equivalent.
@@ -1216,51 +1219,6 @@ object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ CondFlywei
 }
 
 /*
-  Helper class for permissions
- */
-
-final class Rational(n: BigInt, d: BigInt) extends Ordered[Rational] {
-  require(d != 0, "Denominator of Rational must not be 0.")
-
-  private val g = n.gcd(d)
-  val numerator: BigInt = n / g * d.signum
-  val denominator: BigInt = d.abs / g
-
-  def +(that: Rational): Rational = {
-    val newNum = this.numerator * that.denominator + that.numerator * this.denominator
-    val newDen = this.denominator * that.denominator
-    Rational(newNum, newDen)
-  }
-  def -(that: Rational): Rational = this + (-that)
-  def unary_- = Rational(-numerator, denominator)
-  def abs = Rational(numerator.abs, denominator)
-  def signum = Rational(numerator.signum, 1)
-
-  def *(that: Rational): Rational = Rational(this.numerator * that.numerator, this.denominator * that.denominator)
-  def /(that: Rational): Rational = this * that.inverse
-  def inverse = Rational(denominator, numerator)
-
-  def compare(that: Rational) = (this.numerator * that.denominator - that.numerator * this.denominator).signum
-
-  override def equals(obj: Any) = obj match {
-    case that: Rational => this.numerator == that.numerator && this.denominator == that.denominator
-    case _ => false
-  }
-
-  override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(n, d)
-
-  override lazy val toString = s"$numerator/$denominator"
-}
-
-object Rational extends ((BigInt, BigInt) => Rational) {
-  val zero = Rational(0, 1)
-  val one = Rational(1, 1)
-
-  def apply(numer: BigInt, denom: BigInt) = new Rational(numer, denom)
-  def unapply(r: Rational) = Some(r.numerator, r.denominator)
-}
-
-/*
  * Permissions
  */
 
@@ -1305,13 +1263,13 @@ object FractionPerm extends CondFlyweightFactory[(Term, Term), Permissions, Frac
   override def actualCreate(args: (Term, Term)): FractionPerm = new FractionPerm(args._1, args._2)
 }
 
-class IsValidPermVar private[terms] (val v: Var) extends BooleanTerm with ConditionalFlyweight[Var, IsValidPermVar] {
-  override val equalityDefiningMembers: Var = v
-  override lazy val toString = s"PVar($v)"
+class IsValidPermVal private[terms] (val t: Term) extends BooleanTerm with ConditionalFlyweight[Term, IsValidPermVal] {
+  override val equalityDefiningMembers: Term = t
+  override lazy val toString = s"PVal($t)"
 }
 
-object IsValidPermVar extends CondFlyweightTermFactory[Var, IsValidPermVar] {
-  override def actualCreate(args: Var): IsValidPermVar = new IsValidPermVar((args))
+object IsValidPermVal extends CondFlyweightTermFactory[Term, IsValidPermVal] {
+  override def actualCreate(args: Term): IsValidPermVal = new IsValidPermVal((args))
 }
 
 class IsReadPermVar private[terms] (val v: Var) extends BooleanTerm with ConditionalFlyweight[Var, IsReadPermVar] {
@@ -2564,15 +2522,24 @@ object perms {
        * IsPositive and or
        */
 
+  def IsNonNegative(e: ast.Exp)(pos: ast.Position = ast.NoPosition, info: ast.Info = ast.NoInfo, errT: ast.ErrorTrafo = ast.NoTrafos): ast.Exp =
+    ast.GeCmp(e, ast.NoPerm()())(pos, info, errT)
+
   def IsPositive(p: Term): Term = p match {
     case p: PermLiteral => if (p.literal > Rational.zero) True else False
     case _ => PermLess(NoPerm, p)
   }
 
+  def IsPositive(e: ast.Exp)(pos: ast.Position = ast.NoPosition, info: ast.Info = ast.NoInfo, errT: ast.ErrorTrafo = ast.NoTrafos): ast.Exp =
+    ast.GtCmp(e, ast.NoPerm()())(pos, info, errT)
+
   def IsNonPositive(p: Term): Term = p match {
     case p: PermLiteral => if (p.literal <= Rational.zero) True else False
     case _ => Or(p === NoPerm, PermLess(p, NoPerm))
   }
+
+  def IsNonPositive(e: ast.Exp)(pos: ast.Position = ast.NoPosition, info: ast.Info = ast.NoInfo, errT: ast.ErrorTrafo = ast.NoTrafos): ast.Exp =
+    ast.LeCmp(e, ast.NoPerm()())(pos, info, errT)
 
   def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term = {
     def binaryPermPlus(t0: Term, t1: Term) = PermPlus(t0, t1)

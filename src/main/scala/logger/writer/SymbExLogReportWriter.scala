@@ -10,14 +10,14 @@ import spray.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsT
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.logger.{LogConfig, MemberSymbExLog}
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
 import viper.silicon.logger.records.structural.{BranchInfo, BranchingRecord, JoiningRecord}
 import viper.silicon.logger.records.{RecordData, SymbolicRecord}
+import viper.silicon.logger.{LogConfig, MemberSymbExLog}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.InverseFunctions
-import viper.silicon.state.terms.Term
 import viper.silicon.state._
+import viper.silicon.state.terms.Term
 import viper.silver.ast.AbstractLocalVar
 
 /** Wrapper for the SymbExLogReport conversion to JSON. */
@@ -31,7 +31,7 @@ object SymbExLogReportWriter {
   }
 
   private def heapChunkToJSON(chunk: Chunk) = chunk match {
-    case BasicChunk(PredicateID, id, args, snap, perm) =>
+    case BasicChunk(PredicateID, id, args, _, snap, _, perm, _) =>
       JsObject(
         "type" -> JsString("basic_predicate_chunk"),
         "predicate" -> JsString(id.toString),
@@ -40,7 +40,7 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case BasicChunk(FieldID, id, Seq(receiver), snap, perm) =>
+    case BasicChunk(FieldID, id, Seq(receiver), _, snap, _, perm, _) =>
       JsObject(
         "type" -> JsString("basic_field_chunk"),
         "field" -> JsString(id.toString),
@@ -50,7 +50,7 @@ object SymbExLogReportWriter {
       )
 
     // TODO: Are ID and bindings needed?
-    case MagicWandChunk(_, _, args, snap, perm) =>
+    case MagicWandChunk(_, _, args, _, snap, perm, _) =>
       JsObject(
         "type" -> JsString("basic_magic_wand_chunk"),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
@@ -58,32 +58,32 @@ object SymbExLogReportWriter {
         "perm" -> TermWriter.toJSON(perm)
       )
 
-    case QuantifiedFieldChunk(id, fvf, perm, invs, cond, receiver, hints) =>
+    case QuantifiedFieldChunk(id, fvf, condition, _, perm, _, invs, receiver, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_field_chunk"),
         "field" -> JsString(id.toString),
         "field_value_function" -> TermWriter.toJSON(fvf),
+        "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "receiver" -> receiver.map(TermWriter.toJSON).getOrElse(JsNull),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedPredicateChunk(id, vars, psf, perm, invs, cond, singletonArgs, hints) =>
+    case QuantifiedPredicateChunk(id, vars, _, psf, condition, _, perm, _, invs, singletonArgs, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_predicate_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
         "predicate" -> JsString(id.toString),
         "predicate_snap_function" -> TermWriter.toJSON(psf),
+        "condition" -> TermWriter.toJSON(condition),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedMagicWandChunk(id, vars, wsf, perm, invs, cond, singletonArgs, hints) =>
+    case QuantifiedMagicWandChunk(id, vars, _, wsf, perm, _, invs, singletonArgs, _, hints) =>
       JsObject(
         "type" -> JsString("quantified_magic_wand_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
@@ -91,7 +91,6 @@ object SymbExLogReportWriter {
         "wand_snap_function" -> TermWriter.toJSON(wsf),
         "perm" -> TermWriter.toJSON(perm),
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
-        "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
@@ -221,7 +220,7 @@ object SymbExLogReportWriter {
   }
 
   def toJSON(store: Store): JsArray = {
-    JsArray(store.values.map({
+    JsArray(store.termValues.map({
       case (AbstractLocalVar(name), value) =>
         JsObject(
           "name" -> JsString(name),

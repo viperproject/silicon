@@ -818,6 +818,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val enableDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDebugging",
+    descr = "Enable debugging mode",
+    default = Some(false),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {

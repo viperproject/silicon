@@ -153,7 +153,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   def axiomsAfterAnalysis: Iterable[Term] = collectedAxioms
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
-    axiomsAfterAnalysis foreach (ax => sink.assume(ax))
+    sink.assumeAxioms(collectedAxioms, "Axioms from builtin domains contributor")
   }
 
   /* Utility */
@@ -180,7 +180,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
 
     val resolver = viper.silver.parser.Resolver(parsedProgram)
-    val resolved = resolver.run.get
+    val resolved = resolver.run(false).get
     val translator = viper.silver.parser.Translator(resolved)
     val program = translator.translate.get
 

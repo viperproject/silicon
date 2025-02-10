@@ -8,6 +8,7 @@ package viper.silicon.state
 
 import scala.collection.mutable
 import viper.silicon.state.terms._
+import viper.silver.ast
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
@@ -30,7 +31,7 @@ package object utils {
     }
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
-    s.g.values.values foreach collect
+    s.g.termValues.values foreach collect
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
     s.h.values.foreach {
@@ -59,6 +60,45 @@ package object utils {
     disjointnessAssumptions.result()
   }
 
+  def computeReferenceDisjointnessesExp(s: State, ref: ast.Exp)
+  : Seq[ast.Exp] = {
+
+    val refs = mutable.HashSet[ast.Exp]()
+    val refSets = mutable.HashSet[ast.Exp]()
+    val refSeqs = mutable.HashSet[ast.Exp]()
+
+    def collect(e: ast.Exp): Unit = {
+      e.typ match {
+        case ast.Ref => if (e != ref) refs += e
+        case ast.SetType(ast.Ref) => refSets += e
+        case ast.SeqType(ast.Ref) => refSeqs += e
+        case _ =>
+      }
+    }
+
+    /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
+    s.g.values.values foreach (p => collect(p._2.get))
+
+    /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
+    s.h.values.foreach {
+      case bc: BasicChunk =>
+        bc.argsExp.get foreach collect
+      case qch: QuantifiedFieldChunk =>
+        qch.singletonRcvrExp.foreach(rcvr => {
+          collect(rcvr)
+        })
+      case _ =>
+    }
+
+    val disjointnessAssumptions = mutable.ListBuffer[ast.Exp]()
+
+    refs foreach (r => disjointnessAssumptions += ast.NeCmp(ref, r)())
+    refSets foreach (rs => disjointnessAssumptions += ast.Not(ast.AnySetContains(ref, rs)())())
+    refSeqs foreach (rs => disjointnessAssumptions += ast.Not(ast.SeqContains(ref, rs)())())
+
+    disjointnessAssumptions.result()
+  }
+
   def subterms(t: Term): Seq[Term] = t match {
     case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
@@ -68,7 +108,7 @@ package object utils {
     case or: Or => or.ts
     case _: PermLiteral => Nil
     case fp: FractionPerm => List(fp.n, fp.d)
-    case ivp: IsValidPermVar => List(ivp.v)
+    case ivp: IsValidPermVal => List(ivp.t)
     case irp: IsReadPermVar => List(irp.v)
     case app: Application[_] => app.args
     case sr: SeqRanged => List(sr.p0, sr.p1)
@@ -152,7 +192,7 @@ package object utils {
       case AtLeast(t0, t1) => AtLeast(go(t0), go(t1))
       case _: PermLiteral => term
       case FractionPerm(n, d) => FractionPerm(go(n), go(d))
-      case IsValidPermVar(v) => IsValidPermVar(go(v))
+      case IsValidPermVal(t) => IsValidPermVal(go(t))
       case IsReadPermVar(v) => IsReadPermVar(go(v))
       case PermTimes(p0, p1) => PermTimes(go(p0), go(p1))
       case IntPermTimes(p0, p1) => IntPermTimes(go(p0), go(p1))

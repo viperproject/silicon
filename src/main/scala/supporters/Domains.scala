@@ -121,14 +121,14 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
   def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
-    collectedAxioms foreach (ax => sink.assume(ax))
+    sink.assumeAxioms(collectedAxioms, "Domain axioms")
   }
 
   def uniquenessAssumptionsAfterAnalysis: Iterable[Term] =
     uniqueSymbols.map.values map Distinct
 
   def emitUniquenessAssumptionsAfterAnalysis(sink: ProverLike): Unit = {
-    uniquenessAssumptionsAfterAnalysis foreach (t => sink.assume(t))
+    sink.assumeAxioms(InsertionOrderedSet(uniquenessAssumptionsAfterAnalysis), "Uniqueness axioms")
   }
 
   def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
