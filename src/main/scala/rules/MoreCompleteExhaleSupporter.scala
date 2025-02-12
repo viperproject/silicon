@@ -19,7 +19,7 @@ import viper.silicon.utils.ast.{BigAnd, buildMinExp, removeKnownToBeTrueExp, rep
 import viper.silicon.verifier.Verifier
 import viper.silicon.{MList, MMap}
 import viper.silver.ast
-import viper.silver.parser.{PKw, PPrimitiv, PReserved}
+import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
 import scala.collection.mutable.ListBuffer
@@ -204,7 +204,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       if (v.decider.checkSmoke(true)) {
-        Success() // TODO: Mark branch as dead?
+        if (s.isInPackage) {
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          Q(s, snap, v)
+        } else {
+          Success() // TODO: Mark branch as dead?
+        }
       } else {
         createFailure(ve, v, s, False, "branch is dead")
       }
