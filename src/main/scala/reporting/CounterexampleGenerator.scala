@@ -499,11 +499,11 @@ object IntermediateCounterexampleModel {
   def detHeap(model: Model, h: Iterable[Chunk], predByName: scala.collection.immutable.Map[String, Predicate]): Set[BasicHeapEntry] = {
     var heap = Set[BasicHeapEntry]()
     h foreach {
-      case c@BasicChunk(FieldID, _, _, _, _) =>
+      case c@BasicChunk(FieldID, _, _, _, _, _, _, _) =>
         heap += detField(model, c)
-      case c@BasicChunk(PredicateID, _, _, _, _) =>
+      case c@BasicChunk(PredicateID, _, _, _, _, _, _, _) =>
         heap += detPredicate(model, c, predByName)
-      case c@BasicChunk(id, _, _, _, _) =>
+      case c@BasicChunk(id, _, _, _, _, _, _, _) =>
         println("This Basic Chunk couldn't be matched as a CE heap entry!")
       case c: st.QuantifiedFieldChunk =>
         val fieldName = c.id.name
@@ -530,7 +530,7 @@ object IntermediateCounterexampleModel {
           fSeq = possiblePerm._1.head.map(x => x.toString)
         }
         heap += BasicHeapEntry(Seq(predName), fSeq, "#undefined", possiblePerm._2, QPPredicateType, None)
-      case c@MagicWandChunk(_, _, _, _, _) =>
+      case c@MagicWandChunk(_, _, _, _, _, _, _) =>
         heap += detMagicWand(model, c)
       case _ => //println("This case is not supported in detHeap")
     }
@@ -606,8 +606,8 @@ object IntermediateCounterexampleModel {
   }
 
   def evalExp(exp: Exp, lookup: scala.collection.immutable.Map[Exp, ModelEntry]): Boolean = exp match {
-    case NeCmp(left, right) => !(lookup.getOrElse(left, ConstantEntry(left.toString())).toString.equalsIgnoreCase(lookup.getOrElse(right, ConstantEntry(right.toString())).toString))
-    case ast.EqCmp(left, right) => (lookup.getOrElse(left, ConstantEntry(left.toString())).toString.equalsIgnoreCase(lookup.getOrElse(right, ConstantEntry(right.toString())).toString))
+    case NeCmp(left, right) => !(lookup.getOrElse(left, ConstantEntry(left.toString)).toString.equalsIgnoreCase(lookup.getOrElse(right, ConstantEntry(right.toString)).toString))
+    case ast.EqCmp(left, right) => (lookup.getOrElse(left, ConstantEntry(left.toString)).toString.equalsIgnoreCase(lookup.getOrElse(right, ConstantEntry(right.toString)).toString))
     case _ => false
   }
 
@@ -816,7 +816,7 @@ object IntermediateCounterexampleModel {
         }
       case FractionPermLiteral(r) => Some(Rational.apply(r.numerator, r.denominator))
       case FractionPerm(v1, v2) => if (v1.isInstanceOf[IntLiteral] && v2.isInstanceOf[IntLiteral]) Some(Rational(v1.asInstanceOf[IntLiteral].n, v2.asInstanceOf[IntLiteral].n)) else None
-      case IsValidPermVar(v) => evalPerm(v, model)
+      case IsValidPermVal(v) => evalPerm(v, model)
       case IsReadPermVar(v) => evalPerm(v, model)
       case Let(_) => None
       case BuiltinEquals(t0, t1) =>
