@@ -10,7 +10,8 @@ import viper.silver.ast.utility.{GenericArithmeticSolver, GenericTriggerGenerato
 import viper.silicon.utils.Counter
 import viper.silicon.state.{Identifier, terms}
 
-class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
+class Trigger private[terms] (val p: Seq[Term]) extends StructuralEquality {
+  override val equalityDefiningMembers: Seq[Any] = p
   override lazy val toString = s"{${p.mkString(",")}}"
 }
 

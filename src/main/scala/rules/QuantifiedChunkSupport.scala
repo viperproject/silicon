@@ -1621,17 +1621,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
       val permsProvided = ch.perm
       val permsProvidedExp = ch.permExp
-      val permsTaken = if (declareMacro) {
-        val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
+      val permsTakenTerm = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
+      val permsTaken = if (declareMacro && permsTakenTerm.depth >= 5) {
         val permsTakenArgs = codomainQVars ++ additionalArgs
-        val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
+        val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenTerm)
         val permsTakenMacro = Macro(permsTakenDecl.id, permsTakenDecl.args.map(_.sort), permsTakenDecl.body.sort)
         currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(permsTakenDecl)
         val permsTakenApp = App(permsTakenMacro, permsTakenArgs)
-        v.symbExLog.addMacro(permsTakenApp, permsTakenBody)
+        v.symbExLog.addMacro(permsTakenApp, permsTakenTerm)
         permsTakenApp
       } else {
-        Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
+        permsTakenTerm
       }
       val permsTakenExp = conditionExp.map(c => ast.CondExp(c, buildMinExp(Seq(permsProvidedExp.get, permsNeededExp.get), ast.Perm), ast.NoPerm()())())
 

@@ -333,7 +333,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
             val takenTerm = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
             val pTakenExp = permsExp.map(pe => ast.CondExp(eqExp.get, buildMinExp(Seq(ch.permExp.get, pNeededExp.get), ast.Perm), ast.NoPerm()(pe.pos, pe.info, pe.errT))(eqExp.get.pos, eqExp.get.info, eqExp.get.errT))
-            val pTaken = if (takenTerm.isInstanceOf[PermLiteral] || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
+            val pTaken = if (takenTerm.depth < 5 || s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
               // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
               // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
               // that already exists.

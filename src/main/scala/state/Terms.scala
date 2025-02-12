@@ -11,6 +11,7 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.state.terms.utils.maxDepth
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
@@ -263,6 +264,8 @@ class Var private[terms] (val id: Identifier, val sort: Sort, val isWildcard: Bo
 
   override lazy val toString = id.toString
 
+  override val depth = 0
+
   def copy(id: Identifier = id, sort: Sort = sort, isWildcard: Boolean = isWildcard) = Var(id, sort, isWildcard)
 }
 
@@ -276,6 +279,8 @@ class App private[terms] (val applicable: Applicable, val args: Seq[Term])
        /*with PossibleTrigger*/
 
   utils.assertExpectedSorts(applicable, args)
+
+  override val depth = maxDepth(args) + 1
 
   val sort: Sort = applicable.resultSort
   val equalityDefiningMembers = (applicable, args)
@@ -298,6 +303,7 @@ object App extends CondFlyweightTermFactory[(Applicable, Seq[Term]), App] {
  */
 case class AppHint(applicable: Applicable) extends Term {
   val sort = applicable.resultSort
+  override val depth = 0
 }
 
 /*
@@ -320,6 +326,8 @@ case class AppHint(applicable: Applicable) extends Term {
 
 sealed trait Term extends Node {
   def sort: Sort
+
+  val depth: Int
 
   def ===(t: Term): Term = Equals(this, t)
   def !==(t: Term): Term = Not(Equals(this, t))
@@ -414,20 +422,24 @@ sealed trait Term extends Node {
   }
 }
 
-trait UnaryOp[E] {
+trait UnaryOp[E <: Term] { this: Term =>
   def op: String = getClass.getSimpleName.stripSuffix("$") + ":"
   /* If UnaryOp is extended by a case-class then getSimpleName returns
    * the class name suffixed with a dollar sign.
    */
   def p: E
 
+  val depth = p.depth + 1
+
   override lazy val toString = s"$op($p)"
 }
 
-trait BinaryOp[E] {
+trait BinaryOp[E <: Term] { this: Term =>
   def op: String = getClass.getSimpleName.stripSuffix("$")
   def p0: E
   def p1: E
+
+  val depth = Math.max(p0.depth, p1.depth) + 1
 
   override lazy val toString = s"$p0 $op $p1"
 }
@@ -451,7 +463,7 @@ trait StructuralEquality { self: AnyRef =>
     }))
 }
 
-trait StructuralEqualityUnaryOp[E] extends UnaryOp[E] {
+trait StructuralEqualityUnaryOp[E <: Term] extends UnaryOp[E] { this: Term =>
   override def equals(other: Any) =
     this.eq(other.asInstanceOf[AnyRef]) || (other match {
       case uop: UnaryOp[_] if uop.getClass.eq(this.getClass) => p == uop.p
@@ -461,7 +473,7 @@ trait StructuralEqualityUnaryOp[E] extends UnaryOp[E] {
   override def hashCode(): Int = p.hashCode
 }
 
-trait StructuralEqualityBinaryOp[E] extends BinaryOp[E] {
+trait StructuralEqualityBinaryOp[E <: Term] extends BinaryOp[E] { this: Term =>
   override def equals(other: Any) =
     this.eq(other.asInstanceOf[AnyRef]) || (other match {
       case bop: BinaryOp[_] if bop.getClass.eq(this.getClass) =>
@@ -590,7 +602,9 @@ trait GeneralCondFlyweightFactory[IF, T <: IF, U, V <: U with ConditionalFlyweig
 
 /* Literals */
 
-sealed trait Literal extends Term
+sealed trait Literal extends Term {
+  override val depth = 0
+}
 
 case object Unit extends SnapshotTerm with Literal {
   override lazy val toString = "_"
@@ -724,6 +738,8 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
        with ConditionalFlyweight[(Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean, Option[Int]), Quantification] {
 
   val equalityDefiningMembers = (q, vars, body, triggers, name, isGlobal, weight)
+
+  override val depth = body.depth + 1
 
   def copy(q: Quantifier = q,
            vars: Seq[Var] = vars,
@@ -942,6 +958,8 @@ class Or private[terms] (val ts: Seq[Term]) extends BooleanTerm
 
   val equalityDefiningMembers = ts
 
+  override val depth = maxDepth(ts) + 1
+
   override lazy val toString = ts.mkString(" || ")
 }
 
@@ -988,6 +1006,8 @@ class And private[terms](val ts: Seq[Term]) extends BooleanTerm
   assert(ts.nonEmpty, "Expected at least one term, but found none")
 
   val equalityDefiningMembers = ts
+
+  override val depth = maxDepth(ts) + 1
 
   override lazy val toString = ts.mkString(" && ")
 }
@@ -1058,6 +1078,7 @@ class Ite private[terms] (val t0: Term, val t1: Term, val t2: Term)
 
   val equalityDefiningMembers = (t0, t1, t2)
   val sort = t1.sort
+  override val depth = Math.max(t0.depth, Math.max(t1.depth, t2.depth)) + 1
   override lazy val toString = s"($t0 ? $t1 : $t2)"
 }
 
@@ -1226,7 +1247,7 @@ sealed trait Permissions extends Term {
   val sort = sorts.Perm
 }
 
-sealed abstract class PermLiteral(val literal: Rational) extends Permissions
+sealed abstract class PermLiteral(val literal: Rational) extends Permissions with Literal
 
 case object NoPerm extends PermLiteral(Rational.zero) { override lazy val toString = "Z" }
 case object FullPerm extends PermLiteral(Rational.one) { override lazy val toString = "W" }
@@ -1251,6 +1272,7 @@ class FractionPerm private[terms] (val n: Term, val d: Term)
        with ConditionalFlyweight[(Term, Term), FractionPerm] {
 
   val equalityDefiningMembers = (n, d)
+  override val depth = Math.max(n.depth, d.depth) + 1
   override lazy val toString = s"$n/$d"
 }
 
@@ -1265,6 +1287,7 @@ object FractionPerm extends CondFlyweightFactory[(Term, Term), Permissions, Frac
 
 class IsValidPermVal private[terms] (val t: Term) extends BooleanTerm with ConditionalFlyweight[Term, IsValidPermVal] {
   override val equalityDefiningMembers: Term = t
+  override val depth = t.depth + 1
   override lazy val toString = s"PVal($t)"
 }
 
@@ -1274,6 +1297,7 @@ object IsValidPermVal extends CondFlyweightTermFactory[Term, IsValidPermVal] {
 
 class IsReadPermVar private[terms] (val v: Var) extends BooleanTerm with ConditionalFlyweight[Var, IsReadPermVar] {
   override val equalityDefiningMembers: Var = v
+  override val depth = v.depth + 1
   override lazy val toString = s"RdVar($v)"
 }
 
@@ -1518,6 +1542,7 @@ class SeqRanged private[terms] (val p0: Term, val p1: Term) extends SeqTerm /* w
   val sort = sorts.Seq(elementsSort)
 
   override val equalityDefiningMembers: (Term, Term) = (p0, p1)
+  override val depth = Math.max(p0.depth, p1.depth) + 1
 
   override lazy val toString = s"[$p0..$p1]"
 }
@@ -1540,6 +1565,7 @@ class SeqSingleton private[terms] (val p: Term) extends SeqTerm /* with UnaryOp[
   val elementsSort = p.sort
   val sort = sorts.Seq(elementsSort)
   override val equalityDefiningMembers: Term = p
+  override val depth = p.depth + 1
 
   override lazy val toString = s"[$p]"
 }
@@ -1682,6 +1708,7 @@ class SeqUpdate private[terms] (val t0: Term, val t1: Term, val t2: Term)
   val sort = t0.sort.asInstanceOf[sorts.Seq]
   val elementsSort = sort.elementsSort
   val equalityDefiningMembers = (t0, t1, t2)
+  override val depth = Math.max(t0.depth, Math.max(t1.depth, t2.depth)) + 1
   override lazy val toString = s"$t0[$t1] := $t2"
 }
 
@@ -1730,6 +1757,7 @@ class SingletonSet private [terms] (val p: Term) extends ConditionalFlyweight[Te
   val sort = sorts.Set(elementsSort)
 
   override lazy val toString = s"{$p}"
+  override val depth = p.depth + 1
   override val equalityDefiningMembers: Term = p
 }
 
@@ -1891,6 +1919,7 @@ object EmptyMultiset extends PreciseCondFlyweightFactory[Sort, EmptyMultiset] {
 class SingletonMultiset private[terms] (val p: Term) extends MultisetTerm /* with UnaryOp[Term] */ with ConditionalFlyweight[Term, SingletonMultiset] {
   val elementsSort = p.sort
   val sort = sorts.Multiset(elementsSort)
+  override val depth = p.depth + 1
 
   override lazy val toString = s"{$p}"
   override val equalityDefiningMembers: Term = p
@@ -2065,6 +2094,7 @@ class MapUpdate private[terms] (val base: Term, val key: Term, val value: Term) 
   override val keySort: Sort = sort.keySort
   override val valueSort: Sort = sort.valueSort
   override val equalityDefiningMembers = (base, key, value)
+  override val depth = Math.max(base.depth, Math.max(key.depth, value.depth)) + 1
 }
 
 object MapUpdate extends PreciseCondFlyweightFactory[(Term, Term, Term), MapUpdate] {
@@ -2168,6 +2198,7 @@ class Lookup(val field: String, val fvf: Term, val at: Term) extends Term with C
 
   override val equalityDefiningMembers: (String, Term, Term) = (field, fvf, at)
   val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  override val depth = Math.max(fvf.depth, at.depth) + 1
 }
 
 object Lookup extends PreciseCondFlyweightFactory[(String, Term, Term), Lookup] {
@@ -2180,6 +2211,7 @@ class PermLookup(val field: String, val pm: Term, val at: Term) extends Term wit
 
   override val equalityDefiningMembers: (String, Term, Term) = (field, pm, at)
   val sort = sorts.Perm
+  override val depth = Math.max(pm.depth, at.depth) + 1
 }
 
 object PermLookup extends PreciseCondFlyweightFactory[(String, Term, Term), PermLookup] {
@@ -2192,6 +2224,7 @@ class Domain(val field: String, val fvf: Term) extends SetTerm /*with PossibleTr
   val elementsSort = sorts.Ref
   val sort = sorts.Set(elementsSort)
   override val equalityDefiningMembers: (String, Term) = (field, fvf)
+  override val depth = fvf.depth + 1
 }
 
 object Domain extends CondFlyweightTermFactory[(String, Term), Domain] {
@@ -2204,6 +2237,7 @@ class FieldTrigger(val field: String, val fvf: Term, val at: Term) extends Term 
 
   val sort = sorts.Bool
   override val equalityDefiningMembers: (String, Term, Term) = (field, fvf, at)
+  override val depth = Math.max(fvf.depth, at.depth) + 1
 }
 
 object FieldTrigger extends PreciseCondFlyweightFactory[(String, Term, Term), FieldTrigger] {
@@ -2217,6 +2251,7 @@ class PredicateLookup(val predname: String, val psf: Term, val args: Seq[Term]) 
 
   val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
   override val equalityDefiningMembers: (String, Term, Seq[Term]) = (predname, psf, args)
+  override val depth = Math.max(psf.depth, maxDepth(args)) + 1
 }
 
 object PredicateLookup extends PreciseCondFlyweightFactory[(String, Term, Seq[Term]), PredicateLookup] {
@@ -2228,6 +2263,7 @@ class PredicatePermLookup(val predname: String, val pm: Term, val args: Seq[Term
 
   val sort = sorts.Perm
   override val equalityDefiningMembers: (String, Term, Seq[Term]) = (predname, pm, args)
+  override val depth = Math.max(pm.depth, maxDepth(args)) + 1
 }
 
 object PredicatePermLookup extends PreciseCondFlyweightFactory[(String, Term, Seq[Term]), PredicatePermLookup] {
@@ -2239,6 +2275,7 @@ class PredicateDomain(val predname: String, val psf: Term) extends SetTerm /*wit
   val elementsSort = sorts.Snap
   val sort = sorts.Set(elementsSort)
   override val equalityDefiningMembers: (String, Term) = (predname, psf)
+  override val depth = psf.depth + 1
 }
 
 object PredicateDomain extends CondFlyweightTermFactory[(String, Term), PredicateDomain] {
@@ -2250,6 +2287,7 @@ class PredicateTrigger(val predname: String, val psf: Term, val args: Seq[Term])
 
   val sort = sorts.Bool
   override val equalityDefiningMembers: (String, Term, Stack[Term]) = (predname, psf, args)
+  override val depth = Math.max(psf.depth, maxDepth(args)) + 1
 }
 
 object PredicateTrigger extends PreciseCondFlyweightFactory[(String, Term, Seq[Term]), PredicateTrigger] {
@@ -2273,6 +2311,8 @@ class MagicWandSnapshot(val mwsf: Term) extends Term with ConditionalFlyweight[T
   override lazy val toString = s"wandSnap($mwsf)"
 
   override val equalityDefiningMembers: Term = mwsf
+
+  override val depth = mwsf.depth + 1
 
   /**
    * Apply the given snapshot of the left-hand side to the magic wand map to get the snapshot of the right-hand side
@@ -2321,6 +2361,7 @@ class MagicWandChunkTerm(val chunk: MagicWandChunk) extends Term with Conditiona
   override val sort = sorts.Unit /* TODO: Does this make sense? */
   override lazy val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
   override val equalityDefiningMembers: MagicWandChunk = chunk
+  override val depth = 1
 }
 
 object MagicWandChunkTerm extends CondFlyweightTermFactory[MagicWandChunk, MagicWandChunkTerm] {
@@ -2452,6 +2493,7 @@ class SortWrapper(val t: Term, val to: Sort)
 //  override lazy val toString = s"SortWrapper($t, $to)"
   override lazy val toString = t.toString
   override val sort = to
+  override val depth = t.depth + 1
 }
 
 object SortWrapper extends CondFlyweightTermFactory[(Term, Sort), SortWrapper] {
@@ -2471,6 +2513,7 @@ class Distinct(val ts: Set[DomainFun]) extends BooleanTerm with ConditionalFlywe
 
   val equalityDefiningMembers = ts
   override lazy val toString = s"Distinct($ts)"
+  override val depth = 1
 }
 
 object Distinct extends CondFlyweightTermFactory[Set[DomainFun], Distinct] {
@@ -2486,6 +2529,7 @@ class Let(val bindings: Map[Var, Term], val body: Term) extends Term with Condit
 
   val sort = body.sort
   val equalityDefiningMembers = (bindings, body)
+  override val depth = Math.max(body.depth, maxDepth(bindings.values)) + 1
 
   override lazy val toString = s"let ${bindings.map(p => s"${p._1} = ${p._2}")} in $body"
 }
@@ -2612,6 +2656,11 @@ object utils {
    */
   def cartesianProduct[A](xs: Iterable[Iterable[A]]): Seq[Seq[A]] =
     xs.foldLeft(Seq(Seq.empty[A])){(x, y) => for (a <- x; b <- y) yield a :+ b}
+
+  def maxDepth(ts: Iterable[Term]) = {
+    if (ts.isEmpty) 0
+    else ts.map(_.depth).max
+  }
 }
 
 object implicits {

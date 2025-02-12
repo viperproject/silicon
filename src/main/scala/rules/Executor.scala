@@ -754,8 +754,12 @@ object executor extends ExecutionRules {
          } else {
             (None, None)
          }
+         // Assume the equality so that rhs appears on the SMT level and can trigger quantifiers.
          v.decider.assumeDefinition(BuiltinEquals(t, rhs), debugExp)
-         (t, eNew)
+         if (rhs.depth < 5)
+          (rhs, eNew)  // just use the original term since it's small
+         else
+           (t, eNew)   // use the fresh symbol to avoid huge terms
      }
    }
 
