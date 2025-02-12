@@ -1247,7 +1247,9 @@ sealed trait Permissions extends Term {
   val sort = sorts.Perm
 }
 
-sealed abstract class PermLiteral(val literal: Rational) extends Permissions with Literal
+sealed abstract class PermLiteral(val literal: Rational) extends Permissions {
+  override val depth = 0
+}
 
 case object NoPerm extends PermLiteral(Rational.zero) { override lazy val toString = "Z" }
 case object FullPerm extends PermLiteral(Rational.one) { override lazy val toString = "W" }
