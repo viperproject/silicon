@@ -256,7 +256,12 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(true) =>
-        Success() // TODO: Mark branch as dead?
+        if (s.isInPackage) {
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          Q(s, snap, v)
+        } else {
+          Success() // TODO: Mark branch as dead?
+        }
       case _ =>
         createFailure(ve, v, s, "looking up chunk", true)
     }

@@ -494,7 +494,7 @@ object executor extends ExecutionRules {
         consume(s, a, false, pve, v)((s1, _, v1) =>
           Q(s1, v1))
 
-      case assert @ ast.Assert(a: ast.FalseLit) =>
+      case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
           if (v1.decider.checkSmoke(true))
@@ -653,7 +653,7 @@ object executor extends ExecutionRules {
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-          magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
+          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
 
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
@@ -692,7 +692,7 @@ object executor extends ExecutionRules {
               case _ => s2.smCache
             }
 
-            continuation(s2.copy(smCache = smCache3), v1)
+            continuation(s2.copy(smCache = smCache3, isInPackage = s.isInPackage), v1)
           })
 
       case apply @ ast.Apply(e) =>
