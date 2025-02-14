@@ -859,6 +859,8 @@ object evaluator extends EvaluationRules {
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
+          val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fapp.pos)
+          val s1a = if (Verifier.config.enableDebugging()) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> s1.h)) else s1
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
            *       in an expression that is used as a function argument?
@@ -869,7 +871,7 @@ object evaluator extends EvaluationRules {
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1)((s2, v2, QB) => {
+          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1)((s2, v2, QB) => {
             val pres = func.pres.map(_.transform {
               /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
                * for Carbon issue #210, fail if the subsequent code that strips out triggers from
@@ -955,7 +957,11 @@ object evaluator extends EvaluationRules {
                                moreJoins = s2.moreJoins,
                                assertReadAccessOnly = s2.assertReadAccessOnly)
               val funcAppNew = eArgsNew.map(args => ast.FuncApp(funcName, args)(fapp.pos, fapp.info, fapp.typ, fapp.errT))
-              QB(s5, (tFApp, funcAppNew), v3)})
+              val funcAppNewOld = Option.when(withExp)({
+                if (s5.isEvalInOld || pres.forall(_.isPure)) funcAppNew.get
+                else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
+              })
+              QB(s5, (tFApp, funcAppNewOld), v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
              */
