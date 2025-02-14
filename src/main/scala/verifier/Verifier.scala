@@ -59,7 +59,7 @@ trait Verifier {
     */
   def getDebugOldLabel(s: State, pos: ast.Position, h: Option[Heap] = None): (String, String) = {
     val posString = pos match {
-      case column: ast.HasLineColumn => s"l:${column.line + 1}.${column.column + 1}"
+      case column: ast.HasLineColumn => s"l:${column.line}.${column.column}"
       case _ => s"l:unknown"
     }
     val heap = h match {
