@@ -53,10 +53,10 @@ trait MainVerifier extends Verifier {
 class DefaultMainVerifier(config: Config,
                           override val reporter: Reporter,
                           override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
-  extends BaseVerifier(config, "00")
-    with MainVerifier
-    with DefaultFunctionVerificationUnitProvider
-    with DefaultPredicateVerificationUnitProvider {
+    extends BaseVerifier(config, "00")
+       with MainVerifier
+       with DefaultFunctionVerificationUnitProvider
+       with DefaultPredicateVerificationUnitProvider {
 
   Verifier.config = config
 
@@ -169,11 +169,11 @@ class DefaultMainVerifier(config: Config,
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
-     * up-front, before the program is verified in parallel.
-     * This is done bottom-up to ensure that nested quantifiers are transformed as well
-     * (top-down should also work, but the default of 'innermost' won't).
-     * See also [[viper.silicon.utils.ast.autoTrigger]].
-     */
+      * up-front, before the program is verified in parallel.
+      * This is done bottom-up to ensure that nested quantifiers are transformed as well
+      * (top-down should also work, but the default of 'innermost' won't).
+      * See also [[viper.silicon.utils.ast.autoTrigger]].
+      */
     var program: ast.Program =
       originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
@@ -273,7 +273,16 @@ class DefaultMainVerifier(config: Config,
             val branch =  branchTree.get.asInstanceOf[Branch]
             if (branch.isLeftFatal || branch.isRightFatal) {
               val firstCond = branchTree.get.asInstanceOf[Branch].exp
-              results +:= Failure(PostconditionViolatedBranch(firstCond, AssertionFalseAtBranch(firstCond, branchTree.get.prettyPrint()), branch.isLeftFatal, branch.isRightFatal))
+              results +:= Failure(
+                PostconditionViolatedBranch(
+                  firstCond,
+                  AssertionFalseAtBranch(
+                    firstCond,
+                    branchTree.get.prettyPrint(v.reportFurtherErrors())
+                  ),
+                  branch.isLeftFatal,
+                  branch.isRightFatal)
+              )
             }
           }
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
