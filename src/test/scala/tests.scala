@@ -6,7 +6,7 @@
 
 import java.nio.file.{Path, Paths}
 import viper.silver.ast.Program
-import viper.silver.frontend.{SilFrontend, SilFrontendConfig, DefaultStates}
+import viper.silver.frontend.{DefaultStates, SilFrontend, SilFrontendConfig}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, VerificationResult, Verifier, Failure => SilFailure}
 import viper.silicon.Silicon
 
@@ -34,11 +34,11 @@ package object tests {
     override def verifier: Verifier = this._verifier.get
   }
 
-  def instantiateFrontend(): SilFrontend = {
+  def instantiateFrontend(args: List[String] = List.empty): SilFrontend = {
     val frontend = new DummyFrontend
 
     val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
+    backend.parseCommandLine(List("--ignoreFile", "dummy.sil")++args)
     backend.start()
 
     frontend.init(backend)
