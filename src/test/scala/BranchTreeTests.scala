@@ -6,13 +6,11 @@
 
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.utility.DiskLoader
-import viper.silver.frontend.SilFrontend
 
-import java.nio.file.Paths
+import java.nio.file.{Paths}
 
 class BranchTreeTests extends AnyFunSuite {
-  val defaultFrontend = tests.instantiateFrontend()
-  val frontendAllErrors = tests.instantiateFrontend(List("--numberOfErrorsToReport", "0"))
+  def executeTestDefault(fileName: String) : Unit = executeTest(fileName, "default")
 
   test("FirstPathFailsPath") {
     executeTestDefault("firstPathFails")
@@ -33,34 +31,32 @@ class BranchTreeTests extends AnyFunSuite {
     executeTestDefault("noBranches")
   }
 
-  def executeTestDefault(fileName: String) : Unit = executeTest(fileName, defaultFrontend, "default")
-
+  def executeTestReportAllErrors(fileName: String) : Unit = executeTest(fileName, "reportAllErrors", List("--numberOfErrorsToReport", "0"))
 
   test("FirstPathFailsTree") {
-    executeTestDefault("firstPathFails")
+    executeTestReportAllErrors("firstPathFails")
   }
   test("LastPathFailsTree") {
-    executeTestDefault("lastPathFails")
+    executeTestReportAllErrors("lastPathFails")
   }
   test("WhileTree") {
-    executeTestDefault("while")
+    executeTestReportAllErrors("while")
   }
   test("OnlyIfTree") {
-    executeTestDefault("onlyIf")
+    executeTestReportAllErrors("onlyIf")
   }
   test("AllPathsCorrectTree") {
-    executeTestDefault("allPathsCorrect")
+    executeTestReportAllErrors("allPathsCorrect")
   }
   test("NoBranchesTree") {
-    executeTestDefault("noBranches")
+    executeTestReportAllErrors("noBranches")
   }
 
-  def executeTestReportAllErrors(fileName: String) : Unit = executeTest(fileName, frontendAllErrors, "reportAllErrors")
-
-  def executeTest(fileName: String, frontend : SilFrontend, expectedFolder : String)
+  def executeTest(fileName: String, expectedFolder : String, args: List[String] = List.empty)
   : Unit = {
     val expectedFile = getClass.getClassLoader.getResource(s"branchTreeTests/$expectedFolder/"+fileName+"_expected")
     val expected = DiskLoader.loadContent(Paths.get(expectedFile.toURI)).get
+    val frontend = tests.instantiateFrontend(args)
     val program = tests.loadProgram("branchTreeTests/",fileName, frontend)
     val actual = frontend.verifier.verify(program)
     assert(actual.toString.contains(expected))
