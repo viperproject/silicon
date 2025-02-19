@@ -7,7 +7,7 @@
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.utility.DiskLoader
 
-import java.nio.file.{Paths}
+import java.nio.file.Paths
 
 class BranchTreeTests extends AnyFunSuite {
   def executeTestDefault(fileName: String) : Unit = executeTest(fileName, "default")
@@ -30,26 +30,38 @@ class BranchTreeTests extends AnyFunSuite {
   test("NoBranchesPath") {
     executeTestDefault("noBranches")
   }
+  test("MultipleMethodsPath") {
+    executeTestDefault("multipleMethods")
+  }
 
   def executeTestReportAllErrors(fileName: String) : Unit = executeTest(fileName, "reportAllErrors", List("--numberOfErrorsToReport", "0"))
 
-  test("FirstPathFailsTree") {
+  test("FirstPathFailsTreeAll") {
     executeTestReportAllErrors("firstPathFails")
   }
-  test("LastPathFailsTree") {
+  test("LastPathFailsTreeAll") {
     executeTestReportAllErrors("lastPathFails")
   }
-  test("WhileTree") {
+  test("WhileTreeAll") {
     executeTestReportAllErrors("while")
   }
-  test("OnlyIfTree") {
+  test("OnlyIfTreeAll") {
     executeTestReportAllErrors("onlyIf")
   }
-  test("AllPathsCorrectTree") {
+  test("AllPathsCorrectTreeAll") {
     executeTestReportAllErrors("allPathsCorrect")
   }
-  test("NoBranchesTree") {
+  test("NoBranchesTreeAll") {
     executeTestReportAllErrors("noBranches")
+  }
+
+  def executeTestReportTwoErrors(fileName: String) : Unit = executeTest(fileName, "reportTwoErrors", List("--numberOfErrorsToReport", "2"))
+
+  test("FirstPathFailsTree") {
+    executeTestReportTwoErrors("firstPathFails")
+  }
+  test("LastPathFailsTree") {
+    executeTestReportTwoErrors("lastPathFails")
   }
 
   def executeTest(fileName: String, expectedFolder : String, args: List[String] = List.empty)
@@ -58,8 +70,10 @@ class BranchTreeTests extends AnyFunSuite {
     val expected = DiskLoader.loadContent(Paths.get(expectedFile.toURI)).get
     val frontend = tests.instantiateFrontend(args)
     val program = tests.loadProgram("branchTreeTests/",fileName, frontend)
-    val actual = frontend.verifier.verify(program)
-    assert(actual.toString.contains(expected))
+    val actual = frontend.verifier.verify(program).toString.split("\n")
+      .filterNot(l => l.startsWith(" (")||l.startsWith("  [")||l.startsWith("Verification failed"))
+      .map(str => str+"\n").reduce((str,s)=>str+s)
+    assert(actual.contains(expected))
   }
 }
 

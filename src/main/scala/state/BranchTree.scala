@@ -1,26 +1,30 @@
 package viper.silicon.state
 
-import viper.silicon.interfaces.{VerificationResult}
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Exp
 
 import scala.collection.mutable
 
-class BranchTreeMap extends mutable.HashMap[String, Tree] {
-  def storeIntoTree(method: String, branchConditions : Seq[Exp], result: VerificationResult): Unit = {
-    val branchTree = this.get(method)
+class BranchTreeMap {
+  private val map : mutable.Map[String, Tree] = new mutable.HashMap[String,Tree]()
+  def Map(): mutable.Map[String, Tree] = map
+
+  def storeIntoTree(method: String, branchConditions : Seq[Exp], isResultFatal: Boolean): Unit = {
+    val branchTree = map.get(method)
     if (branchTree.isDefined) {
-      branchTree.get.extend(branchConditions, result)
+      branchTree.get.extend(branchConditions, isResultFatal)
     } else {
-      this.put(method, Tree.generate(branchConditions, result))
+      map.put(method, Tree.generate(branchConditions, isResultFatal))
     }
   }
 }
 
 class Tree {
-  private def combine(isCurrBranchResultFatal: Option[Boolean], result: VerificationResult) : Option[Boolean] =
-    if (result.isFatal) Some(true) else isCurrBranchResultFatal
-  def extend(branchConditions : Seq[Exp], result: VerificationResult)  = {
+  private def incrementIfFatal(currBranchResultFatal: Int, isResultFatal: Boolean) : Int =
+    if (isResultFatal) Math.max(currBranchResultFatal,0)+1 else currBranchResultFatal
+
+  def extend(branchConditions : Seq[Exp], isResultFatal: Boolean)  = {
     if (branchConditions.length > 0) {
       var currNode = this
       var currBranch = currNode.asInstanceOf[Branch]
@@ -39,12 +43,12 @@ class Tree {
         if (currBranch.left.isInstanceOf[Branch]
           && headExp.toString.equals(currBranch.left.asInstanceOf[Branch].exp.toString) && negated) {
           currNode = currBranch.left
-          currBranch.leftResultFatal = combine(currBranch.leftResultFatal,result)
+          currBranch.leftResFatalCount = incrementIfFatal(currBranch.leftResFatalCount,isResultFatal)
           next = true
         } else if (currBranch.right.isInstanceOf[Branch]
           && headExp.toString.equals(currBranch.right.asInstanceOf[Branch].exp.toString) && !negated) {
           currNode = currBranch.right
-          currBranch.rightResultFatal = combine(currBranch.rightResultFatal,result)
+          currBranch.rightResFatalCount = incrementIfFatal(currBranch.rightResFatalCount,isResultFatal)
           next = true
         }
         if (next) {
@@ -56,31 +60,31 @@ class Tree {
           tail = tail.tail
         }
       }
+      val errorCount = if (isResultFatal) 1 else -1 // -1 for successful result
       if (negated) {
-        currBranch.left = Tree.generate(tail, result)
-        currBranch.leftResultFatal = combine(currBranch.leftResultFatal,result)
+        currBranch.left = Tree.generate(tail, errorCount)
+        currBranch.leftResFatalCount = errorCount
       } else {
-        currBranch.right = Tree.generate(tail, result)
-        currBranch.rightResultFatal = combine(currBranch.rightResultFatal,result)
+        currBranch.right = Tree.generate(tail, errorCount)
+        currBranch.rightResFatalCount = errorCount
       }
     }
   }
-  private def recurse(tree: Tree, isFatal: Boolean) : (Vector[String], Int, Int) = {
+
+  private def recurse(tree: Tree, fatalCount: Int) : (Vector[String], Int, Int) = {
     tree match {
-        case Leaf =>
-          if (isFatal) {
-            (Vector("Error"), 2, 2) // ✘
-          } else {
-            (Vector("✔"), 0, 0)
-          }
+        case Leaf if fatalCount == -1 => (Vector("✔"), 0, 0)
+        case Leaf if fatalCount > 0 => (Vector("Error"), 2, 2) // ✘
         case _ : Branch => tree.buildTree()
-        case _=> (Vector("?"), 0, 0)
+        case _ => (Vector("?"), 0, 0)
     }
   }
+
   private def even(n: Int) = (n & 1) == 0
+
   private def buildTree() : (Vector[String], Int, Int) = {
     this match {
-      case b@Branch(exp, left, right, _, _) =>
+      case Branch(exp, left, right, leftErrCount, rightErrCount) =>
         val expStr = exp.toString
         val expStrLen = expStr.length
 
@@ -88,8 +92,8 @@ class Tree {
         val boxLen = boxMiddle.length
         val halfBoxLen = boxLen / 2
 
-        var (leftStrVec, _, prevLeftRightBoxLen) = recurse(left, b.isLeftFatal)
-        var (rightStrVec, prevRightLeftBoxLen, _) = recurse(right, b.isRightFatal)
+        var (leftStrVec, _, prevLeftRightBoxLen) = recurse(left, leftErrCount)
+        var (rightStrVec, prevRightLeftBoxLen, _) = recurse(right, rightErrCount)
 
         val halfExpStrLen = expStrLen / 2
         val leftBoxLen = leftStrVec.head.length
@@ -145,6 +149,7 @@ class Tree {
         )
     }).toVector
   }
+
   private def printSinglePath() : String = {
     var currTree : Tree = this
     var maxBoxLen = 5 // for 'Error'
@@ -152,7 +157,7 @@ class Tree {
     var side = Vector[String]()
     while (currTree != Leaf) {
       currTree match {
-        case b@Branch(e, l, r, _, _) =>
+        case b@Branch(e, l, r, lc, rc) =>
           val expStr = e.toString
           val halfExpStrLen = expStr.length / 2
           val pathTaken = if (b.isLeftFatal) "F" else "T"
@@ -169,11 +174,10 @@ class Tree {
           if (maxBoxLen > boxLen) box = fill(box, filler) else path = fill(path, filler)
           maxBoxLen = Math.max(maxBoxLen, boxLen)
 
-          val sideResultFatal = if(b.isLeftFatal) b.rightResultFatal else b.leftResultFatal
-          sideResultFatal match {
-            case Some(false) => side ++= Vector("\n"," Error\n","\n","\n")
-            case Some(_) => side ++= Vector("\n"," ✔\n","\n","\n")
-            case _ => side ++= Vector("\n"," ?\n","\n","\n")
+          (if(b.isLeftFatal) rc else lc) match {
+            case -1 => side ++= Vector("\n"," ✔\n","\n","\n")
+            case 0 => side ++= Vector("\n"," ?\n","\n","\n")
+            case _ => side ++= Vector("\n"," Error\n","\n","\n")
           }
 
           path ++= box
@@ -186,45 +190,48 @@ class Tree {
     ((" "*filler + "│" + " "*filler + "\n") +: combined :+ (" "*(filler-2)+"Error\n"))
       .reduce((str, s) => str + s)
   }
-  def prettyPrint(reportFurtherErrors: Boolean = false) : String = {
-    if (reportFurtherErrors) {
-      this.buildTree()._1.reduce((str, s) => str + "\n" + s) + "\n"
-    } else {
+
+  def getErrorCount(): Int = {
+    this match {
+      case Branch(_,_,_,lf,rf) => lf + rf
+      case _ => 0
+    }
+  }
+
+  def prettyPrint() : String = {
+    if (Verifier.config.numberOfErrorsToReport() == 1 || this.getErrorCount() == 1) {
       this.printSinglePath()
-    }
-  }
-}
-object Tree {
-  def generate(expressions : Seq[Exp], result: VerificationResult) : Tree = {
-    if (expressions.length == 0) {
-      Leaf
     } else {
-      val reversedExpressions = expressions.reverse
-      val headExp = reversedExpressions.head
-      var tree = reversedExpressions.head match {
-        case ast.Not(exp) => Branch(exp, Leaf, Leaf, Some(result.isFatal), None)
-        case _ => Branch(headExp, Leaf, Leaf, None, Some(result.isFatal))
-      }
-      for (elem <- reversedExpressions.tail) {
-        var negated = false
-        elem match {
-          case ast.Not(exp) =>
-            negated = true
-            tree = Branch(exp, tree, Leaf, Some(result.isFatal), None)
-          case _ =>
-            tree = Branch(elem, Leaf, tree, None, Some(result.isFatal))
-        }
-      }
-      tree
+      this.buildTree()._1.reduce((str, s) => str + "\n" + s) + "\n"
     }
   }
 }
+
+object Tree {
+  private def generate(expressions : Seq[Exp], errorCount: Int) : Tree = {
+    expressions.length match {
+      case 0 => Leaf
+      case _ =>
+        val subtree = generate(expressions.tail, errorCount)
+        expressions.head match {
+          case ast.Not(exp) =>
+            Branch(exp, subtree, Leaf, errorCount, 0)
+          case _ =>
+            Branch(expressions.head, Leaf, subtree, 0, errorCount)
+        }
+    }
+  }
+
+  def generate(expressions : Seq[Exp], isFatal: Boolean) : Tree =
+    generate(expressions, if (isFatal) 1 else -1) // -1 or distinguishing successful from no result at leaves
+}
+
 private object Leaf extends Tree
 case class Branch(var exp : Exp,
                   var left: Tree,
                   var right: Tree,
-                  var leftResultFatal: Option[Boolean],
-                  var rightResultFatal: Option[Boolean]) extends Tree {
-  def isLeftFatal = leftResultFatal.isDefined && leftResultFatal.get
-  def isRightFatal = rightResultFatal.isDefined && rightResultFatal.get
+                  var leftResFatalCount: Int,
+                  var rightResFatalCount: Int) extends Tree {
+  def isLeftFatal = leftResFatalCount > 0
+  def isRightFatal = rightResFatalCount > 0
 }

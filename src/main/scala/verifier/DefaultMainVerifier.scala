@@ -260,7 +260,7 @@ class DefaultMainVerifier(config: Config,
       program.methods.filterNot(excludeMethod).map(method => {
 
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
-          Verifier.config.parallelizeBranches(), branchTreeMap = Option(new BranchTreeMap())) /* [BRANCH-PARALLELISATION] */
+          Verifier.config.parallelizeBranches(), branchTreeMap = Some(new BranchTreeMap())) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -268,7 +268,7 @@ class DefaultMainVerifier(config: Config,
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
-          val branchTree = s.branchTreeMap.get.get(method.name)
+          val branchTree = s.branchTreeMap.get.Map().get(method.name)
           if (branchTree.isDefined) {
             val branch =  branchTree.get.asInstanceOf[Branch]
             if (branch.isLeftFatal || branch.isRightFatal) {
@@ -278,7 +278,7 @@ class DefaultMainVerifier(config: Config,
                   firstCond,
                   AssertionFalseAtBranch(
                     firstCond,
-                    branchTree.get.prettyPrint(v.reportFurtherErrors())
+                    branchTree.get.prettyPrint()
                   ),
                   branch.isLeftFatal,
                   branch.isRightFatal)

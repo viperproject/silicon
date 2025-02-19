@@ -1,0 +1,37 @@
+define P(z) z == true
+
+method foo(a: Bool, bcde: Bool, c: Bool) returns (z: Bool)
+requires a ==> c
+ensures P(z) {
+    if (a) {
+       if (bcde) {
+            z := !(bcde && a) // failure
+       } else {
+            z := (bcde && !a)
+       }
+    } else {
+        if (c) {
+            z := !(c && a)
+        } else {
+            z := !(!c && !a)
+        }
+    }
+}
+
+method bar(a: Bool, bcde: Bool, c: Bool) returns (z: Bool)
+requires a ==> c
+ensures P(z) {
+    if (a) {
+       if (bcde) {
+            z := (bcde && a)
+       } else {
+            z := !(bcde && !a)
+       }
+    } else {
+        if (c) {
+            z := !(c && a)
+        } else {
+            z := !(!c && !a) // failure
+        }
+    }
+}
