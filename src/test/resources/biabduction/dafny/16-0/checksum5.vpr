@@ -1,5 +1,10 @@
 //import "examples-16.0.vpr"
 
+function Hash(s: Int): Int
+{
+    s % 137
+}
+
 field checksumData: Int
 
 adt Option[T] {
@@ -16,12 +21,8 @@ predicate ChecksumMachineOCS(this: Ref)
 }
 
 method ChecksumOCS(this: Ref) returns (checksum: Int)
-    //requires ChecksumMachineOCS(this)
-    //requires unfolding ChecksumMachineOCS(this) in this.ocs.isNone || this.ocs.value == Hash(this.checksumData)
+    requires ChecksumMachineOCS(this)
     //ensures ChecksumMachineOCS(this)
-    //ensures unfolding ChecksumMachineOCS(this) in this.checksumData == old(unfolding ChecksumMachineOCS(this) in this.checksumData)
-    //ensures unfolding ChecksumMachineOCS(this) in checksum == Hash(this.checksumData)
-    //ensures unfolding ChecksumMachineOCS(this) in this.ocs == Some(checksum)
 {
     //unfold ChecksumMachineOCS(this)
     if (this.ocs.isNone)

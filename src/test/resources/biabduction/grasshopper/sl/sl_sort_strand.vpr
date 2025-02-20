@@ -10,8 +10,6 @@ method pull_strands(lst: Ref) returns (sorted: Ref, rest: Ref)
 //ensures list(rest)
 {
     
-    var prev: Ref
-    
     //unfold list(lst)
     var curr: Ref := lst.next
 
@@ -22,45 +20,56 @@ method pull_strands(lst: Ref) returns (sorted: Ref, rest: Ref)
     //package list(sorted) --* list(sorted)
 
 
-    while(curr != null && unfolding list(curr) in curr.data >= curr_sorted.data)
-    //invariant list(curr)
-    //invariant acc(curr_sorted.next) && acc(curr_sorted.data)
+    var done: Bool := false
+    while(curr != null && !done)
+    invariant list(curr)
+    invariant acc(curr_sorted.next) && acc(curr_sorted.data)
     //invariant list(curr_sorted) --* list(sorted)
     {
-        prev := curr
+        var prev1: Ref
+        prev1 := curr
         //unfold list(curr)
-        curr := curr.next
+        done := curr.data < curr_sorted.data
 
-        var prev_sorted: Ref := curr_sorted
-        prev.next := null
-        curr_sorted.next := prev
-        curr_sorted := prev
-        //package list(curr_sorted) --* list(sorted){
-            //fold list(prev_sorted)
-            //apply list(prev_sorted) --* list(sorted)
-        //}
+        if(!done){
+            curr := curr.next
+
+            var prev_sorted: Ref := curr_sorted
+            prev1.next := null
+            curr_sorted.next := prev1
+            curr_sorted := prev1
+            //package list(curr_sorted) --* list(sorted){
+                //fold list(prev_sorted)
+                //apply list(prev_sorted) --* list(sorted)
+            //}
+        }
+        
+
     }
 
     rest := curr
+    var sorted_mid: Ref := curr_sorted
 
     if(rest != null){
         
-        prev := rest
+        var prev: Ref := rest
         //package list(prev) --* list(rest)
         //unfold list(prev)
         curr := curr.next
 
         while(curr != null)
         //invariant list(prev) --* list(rest)
-        //invariant acc(prev.next) && acc(prev.data)
-        //invariant prev.next == curr
-        //invariant list(curr)
-        //invariant acc(curr_sorted.next) && acc(curr_sorted.data)
-        //invariant list(curr_sorted) --* list(sorted)
+        invariant acc(prev.next)
+        invariant acc(prev.data)
+        invariant prev.next == curr
+        invariant list(curr)
+        invariant acc(curr_sorted.next) && acc(curr_sorted.data)
+        invariant list(curr_sorted) --* list(sorted_mid)
         {
             //unfold list(curr)
             
-            if(curr.data >= curr_sorted.data){
+            var cond: Bool := curr.data >= curr_sorted.data
+            if(cond){
                 var old_prev: Ref := prev
                 var old_curr: Ref := curr
                 var old_curr_sorted: Ref := curr_sorted
@@ -70,12 +79,11 @@ method pull_strands(lst: Ref) returns (sorted: Ref, rest: Ref)
                 curr_sorted := old_curr
                 old_curr.next := null
                 prev.next := curr
-                assert acc(prev.next)
 
-                //package list(curr_sorted) --* list(sorted){
-                    //fold list(old_curr_sorted)
-                    //apply list(old_curr_sorted) --* list(sorted)
-                //}
+                package list(curr_sorted) --* list(sorted_mid){
+                    fold list(old_curr_sorted)
+                    apply list(old_curr_sorted) --* list(sorted_mid)
+                }
             } else {
                 var prev_prev: Ref := prev
                 prev := curr
@@ -86,16 +94,13 @@ method pull_strands(lst: Ref) returns (sorted: Ref, rest: Ref)
                 //}
             }
         }
-
         //fold list(prev)
         //apply list(prev) --* list(rest)
-
-
     }
 
-    if(rest == null){
+    //if(rest == null){
         //fold list(rest)
-    }
+    //}
 
     curr_sorted.next := null
     //fold list(curr_sorted.next)

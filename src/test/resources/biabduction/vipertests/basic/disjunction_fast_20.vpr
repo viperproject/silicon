@@ -15,193 +15,97 @@ method test(this: Ref)
     var tmp: Int
     tmp := havoc()
     this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
+    tmp := havoc()
+    this.val := tmp
     tmp := havoc()
     this.val := tmp
     //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-    //unfold Slow(this)
-    tmp := havoc()
-    this.val := tmp
-    //fold Slow(this)
-
 }
-
-
-

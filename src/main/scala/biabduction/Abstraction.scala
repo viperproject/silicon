@@ -1,14 +1,12 @@
 package viper.silicon.biabduction
 
-import viper.silicon.interfaces.{Failure, Success, VerificationResult}
+import viper.silicon.interfaces.{NonFatalResult, VerificationResult}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources._
 import viper.silicon.rules._
 import viper.silicon.state._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
-import viper.silver.verifier.DummyReason
-import viper.silver.verifier.errors.FoldFailed
 
 import scala.annotation.tailrec
 
@@ -73,52 +71,95 @@ object AbstractionFold extends AbstractionRule {
   }
 }
 
-
+/*
 object AbstractionPackage extends AbstractionRule {
-
-  // TODO if the fold fails for a different reason than the recursive predicate missing, then this will do nonsense
-  // We should actually check what is missing and be smarter about what we package.
-  private def checkField(bc: BasicChunk, q: AbstractionQuestion): Option[MagicWand] = {
+  private def getFieldPredicate(bc: BasicChunk, q: AbstractionQuestion): Option[(Predicate, Exp)] = {
     if (bc.resourceID != FieldID) None else {
-
-      // TODO this fails if the sorts don't line up
       q.s.g.termValues.collectFirst { case (lv, term) if term.sort == bc.snap.sort && q.v.decider.check(terms.Equals(term, bc.snap), Verifier.config.checkTimeout()) => lv } match {
         case None => None
         case Some(lhsArgExp) =>
           val field = abductionUtils.getField(bc.id, q.s.program)
+          val pred = q.s.program.predicates.collectFirst { case pred if pred.collect { case fa: FieldAccess => fa.field }.toSeq.contains(field) => pred }
+          (pred, lhsArgExp)
+      }    }}
+  private def checkChunks(chunks: Seq[(BasicChunk, Predicate, Exp)], q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
+    chunks match {
+      case _ if chunks.isEmpty => Q(None)
+      case (chunk, pred, lhsArg) +: rest =>
+        q.varTran.transformTerm(chunk.args.head) match {
+          case None => checkChunks(rest, q)(Q)
+          case Some(eArgs) =>
+            val rhs = PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), FullPerm()())()
+            val foldRes = executionFlowController.locally(q.s, q.v) { (s1, v1) =>
+              executor.exec(s1, Fold(rhs)(), v1, None) { (_, _) =>
+                Success()
+              }           }
+            foldRes match {
+              case f: FatalResult => checkChunks(rest, q)(Q)
+              case nf: NonFatalResult =>
+                val missingState = abductionUtils.getAbductionSuccesses(nf).flatMap(_.state.flatMap(_._1.topLevelConjuncts))
+                val fieldAccess = FieldAccess(eArgs, field)()
+                val lhs = missingState.collectFirst {
+                  case pred: PredicateAccessPredicate if pred.map{case FieldAccess(_, field) => field}.contains(field) => pred
+                }}
+*/
+
+object AbstractionPackage extends AbstractionRule {
+
+  // TODO if the fold fails for a different reason than the recursive predicate missing, then this will do nonsense
+  // TODO TODO TODO We should actually check what is missing and be smarter about what we package.
+  // Do a fold with abduction, see what the result is and go from there
+  private def checkField(bc: BasicChunk, q: AbstractionQuestion)(Q: Option[MagicWand] => VerificationResult): VerificationResult = {
+
+    // We can only create a magic wand if we have a local variable that is equal to the field
+    q.s.g.termValues.collectFirst { case (lv, term) if term.sort == bc.snap.sort && q.v.decider.check(terms.Equals(term, bc.snap), Verifier.config.checkTimeout()) => lv } match {
+        case None => Q(None)
+        case Some(lhsArgExp) =>
+
+          // Now we check whether the predicate contains a predicate call on the field
+          val field = abductionUtils.getField(bc.id, q.s.program)
           // TODO we assume each field only appears in at most one predicate
-          val predOpt = q.s.program.predicates.collectFirst { case pred if pred.collect { case fa: FieldAccess => fa.field }.toSeq.contains(field) => pred }
-          predOpt.flatMap { pred =>
-            val recPredOpt = pred.collectFirst {
-              case recPred@PredicateAccess(Seq(FieldAccess(_, field2)), _) if field == field2 => recPred
-            }
-            recPredOpt.flatMap { recPred =>
-              val lhs = PredicateAccessPredicate(PredicateAccess(Seq(lhsArgExp), recPred.predicateName)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
-              val rhsArg = q.varTran.transformTerm(bc.args.head).get
-              val rhs = PredicateAccessPredicate(PredicateAccess(Seq(rhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
-              Some(MagicWand(lhs, rhs)())
-            }
+          q.s.program.predicates.collectFirst { case pred if pred.collect { case fa: FieldAccess => fa.field }.toSeq.contains(field) => pred } match {
+            case None => Q(None)
+            case Some(pred) =>
+                pred.collectFirst {
+                  case recPred@PredicateAccess(Seq(FieldAccess(_, field2)), _) if field == field2 => recPred
+                } match {
+                  case None => Q(None)
+                  case Some(recPred) =>
+                    val lhs = PredicateAccessPredicate(PredicateAccess(Seq(lhsArgExp), recPred.predicateName)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
+
+                    // We only want to create the wand if the inner predicate is not present in the current state.
+                    abductionUtils.findChunkFromExp(lhs.loc, q.s, q.v, pve){
+                      case Some(_) => Q(None)
+                      case None =>
+                        q.varTran.transformTerm(bc.args.head) match {
+                          case None => Q(None)
+                          case Some(rhsArg) =>
+                            val rhs = PredicateAccessPredicate(PredicateAccess(Seq(rhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
+                            Q(Some(MagicWand(lhs, rhs)()))
+                        }
+                    }
+                }
           }
       }
-    }
   }
 
-  @tailrec
-  private def findWand(chunks: Seq[Chunk], q: AbstractionQuestion): Option[MagicWand] = {
+  private def findWand(chunks: Seq[Chunk], q: AbstractionQuestion)(Q: Option[MagicWand] => VerificationResult): VerificationResult = {
     chunks match {
-      case Seq() => None
-      case (chunk: BasicChunk) +: rest =>
-        checkField(chunk, q) match {
-          case None => findWand(rest, q)
-          case wand => wand
+      case Seq() => Q(None)
+      case (chunk: BasicChunk) +: rest if chunk.resourceID == FieldID =>
+        checkField(chunk, q){
+          case None => findWand(rest, q)(Q)
+          case wand => Q(wand)
         }
-      case (_: Chunk) +: rest => findWand(rest, q)
+      case (_: Chunk) +: rest => findWand(rest, q)(Q)
     }
   }
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
 
-    findWand(q.s.h.values.toSeq, q) match {
+    findWand(q.s.h.values.toSeq, q) {
       case None => Q(None)
       case Some(wand) =>
         executor.exec(q.s, Assert(wand)(), q.v) {

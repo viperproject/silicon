@@ -8,12 +8,12 @@ method traverse(x: Ref)
     //package OuterNode(currO) --* OuterNode(x)
 
     while(currO != null)
-    //invariant OuterNode(currO)
-    //invariant OuterNode(currO) --* OuterNode(x)
+    invariant OuterNode(currO)
+    invariant OuterNode(currO) --* OuterNode(x)
     {
         var currO_old: Ref := currO
 
-        //unfold OuterNode(currO)
+        unfold OuterNode(currO)
         var ic: Ref := currO.down
 
         var currI: Ref := ic
@@ -32,15 +32,15 @@ method traverse(x: Ref)
                 //apply InnerNode(currI_old) --* InnerNode(ic)
             //}
         }
-        //apply InnerNode(currI) --* InnerNode(ic)
+        apply InnerNode(currI) --* InnerNode(ic)
 
         currO := currO.onext
         
 
-        //package OuterNode(currO) --* OuterNode(x) {
-            //fold OuterNode(currO_old)
-            //apply OuterNode(currO_old) --* OuterNode(x)
-        //}
+        package OuterNode(currO) --* OuterNode(x) {
+            fold OuterNode(currO_old)
+            apply OuterNode(currO_old) --* OuterNode(x)
+        }
     } 
     //apply OuterNode(currO) --* OuterNode(x)
 }

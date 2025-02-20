@@ -1,0 +1,25 @@
+import "coffee.vpr"
+
+method GrinderConstructor() returns (this: Ref)
+    ensures Grinder(this) 
+
+method CoffeeMakerDispense(this: Ref, double: Bool) returns (c: Ref)
+    requires CoffeeMaker(this)
+    requires CoffeeMakerReady(this)
+    //ensures CoffeeMaker(this)
+    //ensures Cup(c)
+{
+    //unfold CoffeeMaker(this)
+    GrinderGrind(this.CMGrinder)
+    if (double)
+    {
+        WaterTankUse(this.CMWaterTank)
+        WaterTankUse(this.CMWaterTank)
+    }
+    else 
+    {
+        WaterTankUse(this.CMWaterTank)
+    }
+    c := CupConstructor()
+    //fold CoffeeMaker(this)
+}

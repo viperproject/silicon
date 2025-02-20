@@ -1,0 +1,13 @@
+import "coffee.vpr"
+
+method GrinderConstructor() returns (this: Ref)
+    ensures Grinder(this) 
+
+method CoffeeMakerChangeGrinder(this: Ref)
+    //requires CoffeeMaker(this)
+    //ensures CoffeeMaker(this)
+{
+    //unfold CoffeeMaker(this)
+    this.CMGrinder := GrinderConstructor()
+    //fold CoffeeMaker(this)
+}

@@ -3,10 +3,6 @@ import "./sl.vpr"
 
 method free(x: Ref)
 requires acc(x.next) && acc(x.data)
-ensures true
-{
-    exhale acc(x.next) && acc(x.data)
-}
 
 method havoc() returns (b: Bool)
 
@@ -41,18 +37,19 @@ method filter(x: Ref) //returns (res: Ref)
         //unfold list(curr)
         nondet := havoc()
 
-        if(nondet && curr.next != null) {
+        var cond: Bool := nondet && curr.next != null
+        if(cond) {
             //unfold list(curr.next)
             var n: Ref := curr.next
             curr.next := n.next
-            exhale acc(n.next) && acc(n.data)
+            free(n)
             //fold list(curr)
         
         } else {
             curr := curr.next
-            //package list(curr) --* list(res) {
+            //package list(curr) --* list(x) {
             //    fold list(old_curr)
-            //    apply list(old_curr) --* list(res)
+            //    apply list(old_curr) --* list(x)
             //}
         }  
     }

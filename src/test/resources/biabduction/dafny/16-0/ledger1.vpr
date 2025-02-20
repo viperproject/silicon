@@ -15,8 +15,6 @@ predicate Ledger(this: Ref)
 
 method LedgerConstructor() returns (this: Ref)
     //ensures Ledger(this)
-    //ensures unfolding Ledger(this) in this.LedgerTransactions == Seq()
-    //ensures unfolding Ledger(this) in this.LedgerBalance == 0
 {
     this := new(LedgerTransactions, LedgerBalance)
     this.LedgerTransactions := Seq()

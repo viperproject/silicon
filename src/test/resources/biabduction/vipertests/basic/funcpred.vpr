@@ -7,9 +7,9 @@ field next: Ref
 field f: Int
 
 function itemat(node: Ref, i: Int): Int
-    requires acc(valid(node), wildcard) && i >= 0
+    requires acc(valid(node)) && i >= 0
 {
-    unfolding acc(valid(node), wildcard) in ((i == 0 || node.next == null) ? node.value : itemat(node.next, i-1))
+    unfolding acc(valid(node)) in ((i == 0 || node.next == null) ? node.value : itemat(node.next, i-1))
 }
 
 predicate valid(this: Ref) {
@@ -19,7 +19,8 @@ predicate valid(this: Ref) {
 }
 
 method a(this: Ref)
-    //requires acc(valid(this), write) && acc(this.f, write)
+    //requires acc(valid(this), write)
+    //acc(this.f, write)
     //ensures acc(valid(this), write)
 {
     //unfold acc(valid(this), write)
@@ -32,4 +33,3 @@ method a(this: Ref)
 method void(this: Ref)
     requires acc(this.f, write)
     ensures acc(this.f, write)
-{}

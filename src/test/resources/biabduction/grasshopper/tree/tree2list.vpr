@@ -2,8 +2,15 @@ import "tree.vpr"
 import "../sl/sl.vpr"
 
 method insert(x: Ref, newVal: Int) returns (res: Ref)
-//requires list(x)
-//ensures list(res)
+requires list(x)
+ensures list(res)
+
+method freeT(root: Ref)
+requires root != null ==> acc(root.left) && acc(root.right) && acc(root.val)
+requires root == null ==> tree(root)
+
+method freeL(node: Ref)
+requires acc(node.elem) && acc(node.tNext)
 
 method tree2list(root: Ref) returns (res: Ref)
 //requires tree(root)
@@ -14,14 +21,14 @@ method tree2list(root: Ref) returns (res: Ref)
     
     if(root != null){
 
-        var remaining: Ref := new(*)
+        var remaining: Ref := new(elem, tNext)
         remaining.tNext := null
         remaining.elem := root
         //fold tList(remaining.tNext)
         //fold tList(remaining)
 
         while(remaining != null)
-        //invariant tList(remaining)
+        invariant tList(remaining)
         //invariant list(res)
         {
             //unfold tList(remaining)
@@ -30,8 +37,8 @@ method tree2list(root: Ref) returns (res: Ref)
 
                 //unfold tree(current)
 
-                var lNode: Ref := new(*)
-                var rNode: Ref := new(*)
+                var lNode: Ref := new(elem, tNext)
+                var rNode: Ref := new(elem, tNext)
                 lNode.elem := current.left
                 rNode.elem := current.right
 
@@ -46,7 +53,10 @@ method tree2list(root: Ref) returns (res: Ref)
                 //fold tList(rNode)
                 //fold tList(lNode)
             }
+            freeT(current)
+            var remaining_prev: Ref := remaining
             remaining := remaining.tNext
+            freeL(remaining_prev)
         }
     }    
 }

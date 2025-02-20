@@ -300,7 +300,7 @@ object executor extends ExecutionRules {
                     (allInvs, Success(Some(LoopInvariantSuccess(s, v, allInvs, invSucs.head.loop, v.decider.pcs.duplicate()))))
                   case Seq() if !s.doAbduction => (Seq(), Success())
                 }
-                val invs = foundInvs ++ existingInvs
+                val invs = abductionUtils.sortExps(foundInvs ++ existingInvs)
 
                 type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
                 var phase1data: Vector[PhaseData] = Vector.empty
@@ -347,7 +347,10 @@ object executor extends ExecutionRules {
                                 follows(s5, otherEdges, WhileFailed, v5, joinPoint)((s6, v6) => {
                                   // We have to check the inferred invariants after loop manually here instead of
                                   // relying on the reentry of the loop head, as this will not have the found invariants
-                                  checkInvariants(s6, v6, foundInvs, endStmt, stateAllowed = false)((_, _) => Success())
+                                  // Existing invariants may be required for framing and stuff, so we produce them again first
+                                  producer.produces(s6, freshSnap, existingInvs, ContractNotWellformed, v6) { (s7, v7) =>
+                                    checkInvariants(s7, v7, foundInvs, endStmt, stateAllowed = false)((_, _) => Success())
+                                  }
                                 }
                                 )
                               })
@@ -422,7 +425,7 @@ object executor extends ExecutionRules {
           //if (v3.decider.checkSmoke()) {
           //  f
           //} else {
-            exec(s3, stmt, v3)(Q)
+            exec(s3, stmt, v3, abdLoc)(Q)
           //}
         }
         )

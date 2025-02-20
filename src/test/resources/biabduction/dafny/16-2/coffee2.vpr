@@ -1,0 +1,13 @@
+import "coffee.vpr"
+
+
+method WaterTankConstructor() returns (this: Ref)
+    //ensures WaterTank(this)
+    //ensures getLevel(this) == 0
+{
+    this := new(Level)
+    this.Level := 0
+    //fold WaterTank(this)
+}
+
+

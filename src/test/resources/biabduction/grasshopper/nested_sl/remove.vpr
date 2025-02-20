@@ -4,6 +4,7 @@ method remove(x: Ref) returns (res: Ref)
 //requires OuterNode(x)
 //ensures OuterNode(res)
 {
+    var iprev: Ref 
     if(x != null) {
         var nondet: Bool
         var currO: Ref := x
@@ -32,9 +33,11 @@ method remove(x: Ref) returns (res: Ref)
         var prev: Ref := currO
         currO := currO.onext
         
-        if(currO != null){
+        var cond1: Bool := currO != null
+        if(cond1){
             //unfold OuterNode(currO)
-            if(currO.down != null) {
+            var cond2: Bool := currO.down != null
+            if(cond2) {
                 var ic: Ref := currO.down
                 var currI: Ref := ic
                 //package InnerNode(currI) --* InnerNode(ic)
@@ -57,24 +60,27 @@ method remove(x: Ref) returns (res: Ref)
                     //}
                 }
 
-                if(!nondet && currI.inext == null && currO.down == currI) {
+                var cond3: Bool := !nondet && currI.inext == null && currO.down == currI
+                if(cond3) {
                     currO.down := null
                     freeI(currI)
                 } else {
-                    var iprev: Ref := currI
+                    iprev := currI
                     currI := currI.inext
                     
-                    if(currI != null){
+                    var cond4: Bool := currI != null
+                    if(cond4){
                         //unfold InnerNode(currI)
                         iprev.inext := currI.inext
                         freeI(currI)
                         currI := iprev
                     }
                     //fold InnerNode(iprev)
-                    //apply InnerNode(iprev) --* InnerNode(ic)
+                    apply InnerNode(iprev) --* InnerNode(ic)
                 }
 
-                if(currO.down == null) {
+                var cond5: Bool := currO.down == null
+                if(cond5) {
                     prev.onext := currO.onext
                     freeO(currO)
                     currO := prev.onext

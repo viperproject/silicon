@@ -18,11 +18,9 @@ predicate ChecksumMachineOCS(this: Ref)
 
 
 method AppendOCS(this: Ref, d: Int)
-    //requires ChecksumMachineOCS(this)
-    //requires 0 <= d
+    requires ChecksumMachineOCS(this)
+    requires 0 <= d
     //ensures ChecksumMachineOCS(this)
-    //ensures unfolding ChecksumMachineOCS(this) in this.checksumData == old(unfolding ChecksumMachineOCS(this) in this.checksumData) + d
-    //ensures unfolding ChecksumMachineOCS(this) in this.ocs.isNone
 {
     //unfold ChecksumMachineOCS(this)
     this.checksumData := this.checksumData + d

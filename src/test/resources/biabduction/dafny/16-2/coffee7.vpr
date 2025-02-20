@@ -1,0 +1,12 @@
+import "coffee.vpr"
+
+
+method CoffeeMakerInstallCustomGrinder(this: Ref, grinder: Ref)
+    //requires CoffeeMaker(this)
+    //requires Grinder(grinder)
+    //ensures CoffeeMaker(this)
+{
+    //unfold CoffeeMaker(this)
+    this.CMGrinder := grinder
+    //fold CoffeeMaker(this)
+}

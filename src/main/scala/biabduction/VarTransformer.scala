@@ -3,9 +3,9 @@ package viper.silicon.biabduction
 import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.chunkSupporter.findChunk
-import viper.silicon.state.terms.{BuiltinEquals, Term, Var}
+import viper.silicon.state.terms.{BuiltinEquals, Null, Term, Var}
 import viper.silicon.state._
-import viper.silicon.utils.ast.BigAnd
+import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
@@ -23,13 +23,16 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
   private def resolveMatches(): Map[Term, ast.Exp] = {
 
     val allTerms: Seq[Term] = (s.g.values.values.map { case (t1, _) => t1 }
-      ++ s.h.values.collect { case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap) }.flatten
+      ++ s.h.values.collect {
+      case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap)
+      case c: BasicChunk if c.resourceID == PredicateID => c.args
+    }.flatten
       ++ prefVars.values.map(_._1) ++ otherVars.values.map(_._1)
       ++ v.decider.pcs.branchConditions.collect { case t => t.subterms.collect { case tVar: Var => tVar } }.flatten).toSeq.distinct
 
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
     //val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
-    val directPrefTargets = prefVars.map{case (lv, (t, _)) => t -> lv}
+    val directPrefTargets = prefVars.map{case (lv, (t, _)) => t -> lv} //++ Map(terms.Null -> ast.NullLit()())
 
     val directTargets = directPrefTargets ++ otherVars.map{case (lv, (t, _)) => t -> lv}.filter { case (t, _) => !directPrefTargets.contains(t) }
 
@@ -38,7 +41,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
     }.collect { case (t2, Some(e)) => t2 -> e }.toMap
 
     val chunksToResolve = targetHeap.values.collect { case c: BasicChunk
-      if c.resourceID == FieldID && !(directAliases.contains(c.args.head) && directAliases.contains(c.snap)) => c
+      if c.resourceID == FieldID && !(directAliases.contains(c.args.head) && directAliases.contains(c.snap)) && c.snap != Null => c
     }.toSeq
 
     resolveChunks(directAliases, chunksToResolve, allTerms.filter(!directAliases.contains(_)))
@@ -80,6 +83,9 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case and: terms.And =>
         val subs = and.ts.map(transformTerm)
         if (subs.contains(None)) None else Some(BigAnd(subs.map(_.get)))
+      case or: terms.Or =>
+        val subs = or.ts.map(transformTerm)
+        if (subs.contains(None)) None else Some(BigOr(subs.map(_.get)))
       /*
       case app: terms.App =>
         app.applicable match {

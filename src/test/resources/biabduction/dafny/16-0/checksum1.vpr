@@ -14,5 +14,3 @@ method ChecksumMachineConstructor() returns (this: Ref)
     this.checksumData := 0
     //fold ChecksumMachine(this)
 }
-
-

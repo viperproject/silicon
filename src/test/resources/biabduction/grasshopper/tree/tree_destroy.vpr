@@ -11,13 +11,14 @@ method destroy(root: Ref)
         //fold tList(remaining)
 
         while(remaining != null)
-        //invariant tList(remaining)
+        invariant tList(remaining)
         {
             //unfold tList(remaining)
             var current: Ref := remaining.elem
-            if(current != null){
 
-                var remaining_prev: Ref := remaining
+            
+            var cond: Bool := current != null
+            if(cond){
 
                 //unfold tree(current)
 
@@ -30,20 +31,23 @@ method destroy(root: Ref)
                 lNode.tNext := rNode
                 remaining.tNext := lNode
 
-                freeT(current)
-
                 //fold tList(rNode)
                 //fold tList(lNode)
+
             }
-            
+
+            freeT(current)
+            var remaining_prev: Ref := remaining
             remaining := remaining.tNext
             freeL(remaining_prev)
+
         }
    // }    
 }
 
 method freeT(root: Ref)
-requires acc(root.left) && acc(root.right) && acc(root.val)
+requires root != null ==> acc(root.left) && acc(root.right) && acc(root.val)
+requires root == null ==> tree(root)
 
 method freeL(node: Ref)
 requires acc(node.elem) && acc(node.tNext)

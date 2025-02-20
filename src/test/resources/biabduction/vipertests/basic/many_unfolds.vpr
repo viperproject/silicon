@@ -7,9 +7,17 @@ predicate node(this: Ref) {
   acc(this.next) && (this.next != null ==> acc(node(this.next)))
 }
 
+function length(this: Ref): Int
+  requires acc(node(this))
+  ensures  result > 0
+{
+  1 + unfolding acc(node(this)) in
+          this.next == null ? 0 : length(this.next)
+}
+
 method test02(n4: Ref)
-  //requires acc(node(n4))
-  //requires length(n4) == 4
+  requires acc(node(n4))
+  requires length(n4) == 4
 {
   //unfold acc(node(n4))
   //unfold acc(node(n4.next))

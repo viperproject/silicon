@@ -1,0 +1,25 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* These tests are intended to test Silicon's internal concept of 'snapshots'. */
+
+field f: Int
+field g: Bool
+field b: Bool
+
+predicate P(x: Ref) {
+  acc(x.b) && (x.b ? acc(x.f) : acc(x.g))
+}
+
+method test2(x: Ref)
+  //requires acc(P(x, b))
+  //ensures b ? acc(x.f) : acc(x.g)
+{
+  //unfold acc(P(x, b))
+
+  if (x.b) {
+    x.f := x.f + 1
+  } else {
+    x.g := !x.g
+  }
+}

@@ -1,0 +1,43 @@
+import "./tree.vpr"
+
+method extract_max(root: Ref) returns (rest: Ref, max: Ref)
+requires tree(root)
+ensures tree(rest) && tree(max)
+{
+  unfold tree(root)
+  var curr: Ref := root.right
+  if(curr == null){
+    rest := root.left
+    max := root
+    root.left := null
+    fold tree(root.left)
+    fold tree(root)
+  } else {
+    var prev: Ref := root
+    package tree(curr) --* tree(root)
+    while(curr.right != null)
+    invariant tree(curr)
+    invariant tree(curr) --* tree(root)
+    {
+      unfold tree(curr)
+      var prev_old: Ref := prev
+      prev := curr
+      curr := curr.right
+      package tree(curr) --* tree(root){
+        fold tree(prev)
+        apply tree(prev) --* tree(root)
+      }
+    }
+    apply tree(curr) --* tree(root)
+    unfold tree(root)
+    unfold tree(prev)
+    unfold tree(curr)
+    prev.right := curr.left
+    rest := root
+    curr.left := null
+    max := curr
+    fold tree(curr)
+    fold tree(prev)
+    fold tree(root)
+  }
+}

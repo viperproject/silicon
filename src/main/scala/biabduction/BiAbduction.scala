@@ -7,12 +7,14 @@ import viper.silicon.rules.consumer.consumes
 import viper.silicon.rules.{evaluator, executionFlowController}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, True}
-import viper.silicon.utils.ast.BigAnd
+import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{DummyReason, PartialVerificationError, VerificationError}
+
+import scala.annotation.tailrec
 
 trait BiAbductionResult {
   def s: State
@@ -25,7 +27,7 @@ trait BiAbductionSuccess extends BiAbductionResult
 // TODO nklose BiAbductionSuccess should be able to provide arbitrary transformations of methods. Then we can just
 // use this for all cases and need less dummy stuff
 
-case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[(Exp, Option[BasicChunk])] = Seq(), stmts: Seq[Stmt] = Seq(), newFieldChunks: Map[BasicChunk, LocationAccess], trigger: Option[Positioned] = None) extends BiAbductionSuccess {
+case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[(Exp, Option[BasicChunk])] = Seq(), stmts: Seq[Stmt] = Seq(), newFieldChunks: Map[BasicChunk, LocationAccess], allNewChunks: Seq[BasicChunk], trigger: Option[Positioned] = None) extends BiAbductionSuccess {
 
   override def toString: String = {
     "Abduced pres " + state.length + ", Abduced statements " + stmts.length
@@ -95,7 +97,9 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
     // If we can express as in vars, then we want to
     val ins = s.currentMember.get.asInstanceOf[Method].formalArgs.map(_.localVar)
     val preVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
-    val varTrans = VarTransformer(s, v, preVars, s.h, otherVars = s.g.values)
+
+    val otherVars: Map[AbstractLocalVar, (Term, Option[Exp])] = s.g.values
+    val varTrans = VarTransformer(s, v, preVars, s.h, otherVars = otherVars)
     val bcExps = bcsTerms.map { t => varTrans.transformTerm(t) }
     
     v.decider.setPcs(prevPcs)
@@ -111,8 +115,8 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
     } else {
       val con = BigAnd(bcExps)
       con match {
-        case _: TrueLit => Some(stmts)
-        case _ => Some(Seq(If(con, Seqn(stmts, Seq())(), Seqn(Seq(), Seq())())()))
+        case _: TrueLit => Some(stmts.reverse)
+        case _ => Some(Seq(If(con, Seqn(stmts.reverse, Seq())(), Seqn(Seq(), Seq())())()))
       }
     }
   }
@@ -124,8 +128,9 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
     } else {
 
       val varTrans = VarTransformer(s, v, preVars, preHeap, newFieldChunks)
-      val presTransformed = state.map { pre =>
-        varTrans.transformExp(pre._1)
+      val presTransformed = state.collect {
+        case (pre, Some(ch)) => varTrans.transformChunk(ch)
+        //case (pre, None) => varTrans.transformExp(pre)
       }
       val bcPreExps = bcExps.collect {
         case exp => varTrans.transformExp(exp)
@@ -185,12 +190,11 @@ case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), l
 case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positioned, pcs: PathConditionStack, varTran: VarTransformer) extends BiAbductionSuccess {
   override def toString: String = "Successful framing"
 
-  def getBcExps(bcsTerms: Seq[Term], targetVars: Map[AbstractLocalVar, (Term, Option[Exp])]): Seq[Exp] = {
-    val varTrans = VarTransformer(s, v, targetVars, s.h)
+  def getBcExps(bcsTerms: Seq[Term], prefVars: Map[AbstractLocalVar, (Term, Option[Exp])], otherVars: Map[AbstractLocalVar, (Term, Option[Exp])]): Seq[Exp] = {
+    val varTrans = VarTransformer(s, v, prefVars, s.h, otherVars = otherVars)
     val bcExps = bcsTerms.map { t => varTrans.transformTerm(t) }
 
-    // TODO this is possibly unsound but better in practise
-    bcExps.collect { case Some(e) => e }
+    bcExps.collect { case Some(e) => e.topLevelConjuncts }.flatten.distinct
     /*
     if (bcExps.contains(None)) {
       None
@@ -321,7 +325,9 @@ object BiAbductionSolver {
             case Some(trafo) => trafo.f(qPre).asInstanceOf[AbductionQuestion]
             case _ => qPre
           }
-          AbductionApplier.applyRules(q) {
+          // We skip the first rule because we know that an error occured, so we cannot be done
+          // This allows us to fold on null references multiple times, as is required for e.g. trees.
+          AbductionApplier.applyRules(q, currentRule = 1) {
             q1 =>
               if (q1.goal.isEmpty) {
                 val newState = q1.foundState.reverse
@@ -332,11 +338,11 @@ object BiAbductionSolver {
                   //Unreachable()
                 } else {
                   val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
-                  val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
-                  val s1 = q1.s.copy(oldHeaps = newOldHeaps)
+                  //val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
+                  //val s1 = q1.s.copy(oldHeaps = newOldHeaps)
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
-                  val abd = AbductionSuccess(s1, q1.v, q1.v.decider.pcs.duplicate(), newState, newStmts, fieldChunks, trigger)
-                  Success(Some(abd)) && Q(s1, q1.v)
+                  val abd = AbductionSuccess(q1.s, q1.v, q1.v.decider.pcs.duplicate(), newState, newStmts, fieldChunks, newChunks, trigger)
+                  Success(Some(abd)) && Q(q1.s, q1.v)
                 }
               } else {
                 f
@@ -349,7 +355,8 @@ object BiAbductionSolver {
   def solveAbstraction(s: State, v: Verifier)(Q: (State, Seq[Exp], Verifier) => VerificationResult): VerificationResult = {
     val q = AbstractionQuestion(s, v)
     AbstractionApplier.applyRules(q) { q1 =>
-      val res = VarTransformer(q1.s, q1.v, q1.s.g.values, q1.s.h).transformState(q1.s)
+      val absTransForm = VarTransformer(q1.s, q1.v, q1.s.g.values, q1.s.h)
+      val res = absTransForm.transformState(q1.s)
       Q(q1.s, res, q1.v)
     }
   }
@@ -403,12 +410,15 @@ object BiAbductionSolver {
     val abdCases = abdReses.groupBy(res => (res.trigger.get, res.trigger.get.pos, res.stmts, res.state))
 
     // Try to join by bc terms
-    val joinedCases = abdCases.flatMap {
+    val joinedCases = abdCases.map {
       case (_, reses) =>
         val unjoined = reses.map(res =>
 
-          (Seq(res), res.pcs.branchConditions.distinct.filter(_ != True)))
-        val termJoined = abductionUtils.joinBcs(unjoined)
+          (Seq(res), res.pcs.branchConditions.flatMap{
+            case terms.And(terms) => terms
+            case term => Seq(term)
+          }.distinct.filter(_ != True)))
+        val termJoined = abductionUtils.joinBcsTerms(unjoined)
 
         // Now transform to exp, remove Nones and join again. TODO: Removing Nones here might be unsound
         // That is why we do as much as possible on term level to avoid this as much as possible
@@ -416,13 +426,18 @@ object BiAbductionSolver {
           case (reses, bcTerms) =>
             reses -> reses.head.getBcExps(bcTerms).collect { case Some(bc) => bc }.flatMap(_.topLevelConjuncts).distinct
         }
-        expUnjoined.groupBy(_._2).map { case (bcs, list) => list.head._1.head -> bcs }
+        val expJoined = abductionUtils.joinBcsExps(expUnjoined)
+
+        val abdRes = expJoined.head._1.head
+        val finalBcs = BigOr(expJoined.map(e => BigAnd(e._2)))
+        (abdRes -> finalBcs)
+        //expJoined.groupBy(_._2).map { case (bcs, list) => list.head._1.head -> bcs) }
     }
 
     // We want to add things in the reverse order of the abduction results.
     abdReses.reverse.foldLeft[Option[Method]](Some(m)) { (mOpt, res) =>
       mOpt match {
-        case Some(m1) if joinedCases.contains(res) => res.addToMethod(m1, joinedCases(res), newMatches)
+        case Some(m1) if joinedCases.contains(res) => res.addToMethod(m1, Seq(joinedCases(res)), newMatches)
         case _ => mOpt
       }
     }
@@ -437,10 +452,18 @@ object BiAbductionSolver {
     // So postconditions that are in every branch can just be added without any bcs
     val everyPosts = frames.head.posts.filter { p => frames.forall(_.posts.contains(p)) }
 
-    val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
-    val vars = frames.head.s.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
+    //val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
+    val bcs = frames.map(_.pcs.branchConditions)
 
-    val cases = frames.map(f => (f.posts.diff(everyPosts), f.getBcExps(f.pcs.branchConditions.distinct.filter(_ != True), vars))).distinct
+    val cases = frames.map { f =>
+      val prefVars = f.s.g.values.collect { case (var2, t) if m.formalArgs.map(_.localVar).contains(var2) => (var2, t) }
+      val otherVars = f.s.g.values.collect { case (var2, t) if m.formalReturns.map(_.localVar).contains(var2) => (var2, t) }
+      val bcs = f.pcs.branchConditions.flatMap {
+        case terms.And(terms) => terms
+        case term => Seq(term)
+      }.distinct.filter(_ != True)
+      (f.posts.diff(everyPosts), f.getBcExps(bcs, prefVars, otherVars))
+    }.distinct
 
     // We can remove bcs that hold in every branch
     val everyTerms = cases.head._2.filter { t => cases.forall(_._2.contains(t)) }
@@ -498,7 +521,8 @@ object BiAbductionSolver {
       val body = m1.body.get
       val newBody = body.transform {
         case l: While if l.cond == loop.cond && l.cond.pos == loop.cond.pos =>
-          l.copy(invs = inv ++ l.invs)(pos = l.pos, info = l.info, errT = l.errT)
+          val newInvs = abductionUtils.sortExps(inv ++ l.invs)
+          l.copy(invs = newInvs)(pos = l.pos, info = l.info, errT = l.errT)
         case other => other
       }
       m1.copy(body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT)
@@ -601,34 +625,59 @@ object abductionUtils {
     }.get
   }
 
-  def joinBcs[T](bcs: Seq[(Seq[T], Seq[Term])]): Seq[(Seq[T], Seq[Term])] = {
+  @tailrec
+  def joinBcsTerms[T](bcs: Seq[(Seq[T], Seq[Term])]): Seq[(Seq[T], Seq[Term])] = {
     bcs.combinations(2).collectFirst {
-      case Seq((a_res, a_pcs), (b_res, b_pcs)) if canJoin(a_pcs, b_pcs).isDefined => Seq((a_res, a_pcs), (b_res, b_pcs))
+      case Seq((a_res, a_pcs), (b_res, b_pcs)) if canJoinTerms(a_pcs, b_pcs).isDefined => Seq((a_res, a_pcs), (b_res, b_pcs))
     } match {
       case Some(Seq((a_res, a_pcs), (b_res, b_pcs))) =>
         val rest = bcs.filter { case (c_res, _) => c_res != a_res && c_res != b_res }
-        val joined = canJoin(a_pcs, b_pcs).get
-        joinBcs(rest :+ (a_res ++ b_res, joined))
+        val joined = canJoinTerms(a_pcs, b_pcs).get
+        joinBcsTerms(rest :+ (a_res ++ b_res, joined))
       case None => bcs
     }
   }
 
-  private def canJoin(a: Seq[Term], b: Seq[Term]): Option[Seq[Term]] = {
+  private def canJoinTerms(a: Seq[Term], b: Seq[Term]): Option[Seq[Term]] = {
     (a.diff(b), b.diff(a)) match {
-      case (Seq(eq: terms.BuiltinEquals), Seq(terms.Not(t))) if eq == t => Some(a.filter(_ != eq))
-      case (Seq(terms.Not(t)), Seq(eq: terms.BuiltinEquals)) if eq == t => Some(b.filter(_ != eq))
+      case (Seq(eq), Seq(terms.Not(t))) if eq == t => Some(a.filter(_ != eq))
+      case (Seq(terms.Not(t)), Seq(eq)) if eq == t => Some(b.filter(_ != eq))
       case (Seq(), _) => Some(a)
       case (_, Seq()) => Some(b)
       case _ => None
     }
   }
 
-  private def findChunkFromExp(loc: LocationAccess, s: State, v: Verifier, pve: PartialVerificationError)(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
+  @tailrec
+  def joinBcsExps[T](bcs: Seq[(Seq[T], Seq[Exp])]): Seq[(Seq[T], Seq[Exp])] = {
+    bcs.combinations(2).collectFirst {
+      case Seq((a_res, a_pcs), (b_res, b_pcs)) if canJoinExps(a_pcs, b_pcs).isDefined => Seq((a_res, a_pcs), (b_res, b_pcs))
+    } match {
+      case Some(Seq((a_res, a_pcs), (b_res, b_pcs))) =>
+        val rest = bcs.filter { case (c_res, _) => c_res != a_res && c_res != b_res }
+        val joined = canJoinExps(a_pcs, b_pcs).get
+        joinBcsExps(rest :+ (a_res ++ b_res, joined))
+      case None => bcs
+    }
+  }
+
+  private def canJoinExps(a: Seq[Exp], b: Seq[Exp]): Option[Seq[Exp]] = {
+    (a.diff(b), b.diff(a)) match {
+      case (Seq(eq), Seq(Not(t))) if eq == t => Some(a.filter(_ != eq))
+      case (Seq(Not(t)), Seq(eq)) if eq == t => Some(b.filter(_ != eq))
+      case (Seq(), _) => Some(a)
+      case (_, Seq()) => Some(b)
+      case _ => None
+    }
+  }
+
+  def findChunkFromExp(loc: LocationAccess, s: State, v: Verifier, pve: PartialVerificationError)(Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
 
     val arg = loc match {
       case FieldAccess(rcv, _) => rcv
       case PredicateAccess(args, _) => args.head
     }
+    // TODO this can fail for field access args that don't exist
     evaluator.eval(s, arg, pve, v) { (s2, term, _, v2) =>
       val resource = loc.res(s2.program)
       val id = ChunkIdentifier(resource, s2.program)
@@ -647,10 +696,30 @@ object abductionUtils {
     }
   }
 
+  def findOptChunks(locs: Seq[LocationAccess], s: State, v: Verifier, pve: PartialVerificationError)(Q: Map[BasicChunk, LocationAccess] => VerificationResult): VerificationResult = {
+    locs match {
+      case Seq() => Q(Map())
+      case loc +: rest =>
+        findChunkFromExp(loc, s, v, pve) {
+          case Some(chunk) => findOptChunks(rest, s, v, pve) { chunks => Q(chunks + (chunk -> loc)) }
+          case None => findOptChunks(rest, s, v, pve) { Q }
+        }
+    }
+  }
+
   // We need to sort exps before producing them because we have to create fields before creating stuff on the fields
   // The idea is that the length of something on the field will always be greater than the field itself.
   def sortExps(exps: Seq[Exp]): Seq[Exp] = {
-    exps.sortBy(e => e.size)
+    val fields = exps.collect {
+      case f: FieldAccessPredicate => f
+      case impF@Implies(_, _: FieldAccessPredicate) => impF
+    }.sortBy(e => e.size)
+    val preds = exps.collect {
+      case p: PredicateAccessPredicate => p
+      case impP@Implies(_, _: PredicateAccessPredicate) => impP
+    }
+    val others = exps.diff(fields ++ preds)
+    fields ++ preds ++ others
   }
 
 }

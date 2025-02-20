@@ -372,7 +372,7 @@ object AbductionApply extends AbductionRule {
                 } else {
                   magicWandSupporter.applyWand(lhsRes.s, wand, pve, lhsRes.v) { (s2, v2) =>
                     val g1 = q.goal.filterNot(_ == wand.right)
-                    val stmts = (q.foundStmts ++ lhsRes.foundStmts :+ Apply(wand)()).distinct // TODO there is a weird duplication here sometimes
+                    val stmts: Seq[Stmt] = ((q.foundStmts :+ Apply(wand)()) ++ lhsRes.foundStmts ).distinct // TODO there is a weird duplication here sometimes
                     val state = q.foundState ++ lhsRes.foundState
                     val lost = q.lostAccesses ++ lhsRes.lostAccesses
                     Q(Some(AbductionQuestion(s2, v2, g1, lost, state, stmts, q.trigger, q.stateAllowed)))
@@ -410,12 +410,12 @@ object AbductionPackage extends AbductionRule {
             val packQ = q.copy(s = s1, v = v1, goal = wand.right.topLevelConjuncts)
             AbductionApplier.applyRules(packQ) { packRes =>
               if (packRes.goal.nonEmpty) {
-                Failure(pve dueTo(DummyReason))
+                Failure(pve dueTo (DummyReason))
                 //T(BiAbductionFailure(packRes.s, packRes.v, packRes.v.decider.pcs.duplicate()))
               } else {
                 val newState = packRes.foundState
                 val newStmts = packRes.foundStmts
-                Success(Some(AbductionSuccess(packRes.s, packRes.v, packRes.v.decider.pcs.duplicate(), newState, newStmts, Map(), None)))
+                Success(Some(AbductionSuccess(packRes.s, packRes.v, packRes.v.decider.pcs.duplicate(), newState, newStmts, Map(), Seq(), None)))
               }
             }
           }
@@ -424,18 +424,38 @@ object AbductionPackage extends AbductionRule {
           case suc: NonFatalResult =>
 
             val abdRes = abductionUtils.getAbductionSuccesses(suc)
-            val stmts = abdRes.flatMap(_.stmts)//.reverse
+            val stmts = abdRes.flatMap(_.stmts).reverse
             val state = abdRes.flatMap(_.state).reverse
+            
+            
 
-            produces(q.s, freshSnap, state.map(_._1), _ => pve, q.v){ (s1, v1) =>
-              val script = Seqn(stmts, Seq())()
-              magicWandSupporter.packageWand(s1, wand, script, pve, v1) {
-                (s2, wandChunk, v2) =>
-                  val g1 = q.goal.filterNot(_ == wand)
-                  val finalStmts = q.foundStmts :+ Package(wand, script)()
-                  val finalState = q.foundState ++ state
-                  //val lost = q.lostAccesses ++ packRes.lostAccesses
-                  Q(Some(q.copy(s = s2.copy(h = s2.reserveHeaps.head.+(wandChunk)), v = v2, goal = g1, foundStmts = finalStmts, foundState = finalState)))
+            produces(q.s, freshSnap, state.map(_._1), _ => pve, q.v) { (s1, v1) =>
+              val locs: Seq[LocationAccess] = state.map {
+                case (p: FieldAccessPredicate, _) => p.loc
+                case (p: PredicateAccessPredicate, _) => p.loc
+              }
+              abductionUtils.findChunks(locs, s1, v1, Internal()) { newChunks =>
+
+                val newOldHeaps = s1.oldHeaps.map{ case (s, h) => (s, h + Heap(newChunks.keys))}
+                val sPack = s1.copy(oldHeaps = newOldHeaps)
+
+                // TODO the script needs to be self-framing (so field accesses need to be resolved to vars)
+                val script = Seqn(stmts, Seq())()
+                val tran = VarTransformer(sPack, v1, sPack.g.values, sPack.h)
+                script.transform{
+                  case e: FieldAccess => 
+                    val lv = tran.transformExp(e, strict = false)
+                    lv.get
+                }
+                
+                magicWandSupporter.packageWand(sPack, wand, script, pve, v1) {
+                  (s2, wandChunk, v2) =>
+                    val g1 = q.goal.filterNot(_ == wand)
+                    val finalStmts = q.foundStmts :+ Package(wand, script)()
+                    val finalState = q.foundState ++ state
+                    //val lost = q.lostAccesses ++ packRes.lostAccesses
+                    Q(Some(q.copy(s = s2.copy(h = s2.reserveHeaps.head.+(wandChunk)), v = v2, goal = g1, foundStmts = finalStmts, foundState = finalState)))
+                }
               }
             }
         }
@@ -459,11 +479,15 @@ object AbductionMissing extends AbductionRule {
     } else {
       val g1 = q.goal.filterNot(accs.contains)
       producer.produces(q.s, freshSnap, accs, _ => pve, q.v) { (s1, v1) =>
-        val locs: Map[LocationAccess, Exp] = accs.map {p => p.loc -> p}.toMap
+        val locs: Map[LocationAccess, Exp] = accs.map { p => p.loc -> p }.toMap
         abductionUtils.findChunks(locs.keys.toSeq, s1, v1, Internal()) { newChunks =>
-          val newState = newChunks.map {case (c, loc) => (locs(loc), Some(c))}
-          Q(Some(q.copy(s = s1, v = v1, goal = g1, foundState = q.foundState ++ newState)))
-      }
+          
+          val newOldHeaps = s1.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks.keys)) }
+          val s2 = s1.copy(oldHeaps = newOldHeaps)
+          
+          val newState = newChunks.map { case (c, loc) => (locs(loc), Some(c)) }
+          Q(Some(q.copy(s = s2, v = v1, goal = g1, foundState = q.foundState ++ newState)))
+        }
       }
     }
   }

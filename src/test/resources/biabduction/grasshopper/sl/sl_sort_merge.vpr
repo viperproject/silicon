@@ -37,15 +37,17 @@ method merge(a: Ref, b: Ref) returns (res: Ref)
 
             while (aIt != null || bIt != null)
             //invariant list(aIt) && list(bIt)
-            //invariant acc(last.next) && acc(last.data)
-            //invariant last.next == aIt || last.next == bIt
+            invariant acc(last.next) 
+            //invariant acc(last.data)
+            invariant last.next == aIt || last.next == bIt
             //invariant list(last) --* list(res)
             {
                 var old_last: Ref := last
                 
                 //unfold list(aIt)
                 //unfold list(bIt)
-                if(aIt == null || bIt != null && aIt.data > bIt.data){
+                var cond: Bool := aIt == null || bIt != null && aIt.data > bIt.data
+                if(cond){
                     last.next := bIt
                     last := bIt
                     bIt := bIt.next
@@ -67,54 +69,6 @@ method merge(a: Ref, b: Ref) returns (res: Ref)
     }
 }
 
-method split(x: Ref) returns (y: Ref, z: Ref)
-//requires list(x)
-//ensures list(y) && list(z)
-{
-    var mid: Int
-    mid := length(x) / 2
-
-    var i: Int := 0
-
-    var curr: Ref := x
-
-    //package list(curr) --* list(x)
-
-    while (i < mid && curr != null)
-    //invariant list(curr) --* list(x)
-    //invariant list(curr)
-    {
-
-        var prev: Ref := curr
-        //unfold list(curr)
-        curr := curr.next
-
-        i := i + 1
-
-        //package list(curr) --* list(x){
-            //fold list(prev)
-            //apply list(prev) --* list(x)
-        //}
-    }
-
-    if(curr != null){
-        var tmp: Ref := curr
-        //unfold list(curr)
-        curr := curr.next
-        tmp.next := null
-        //fold list(tmp.next)
-        //fold list(tmp)
-        //apply list(tmp) --* list(x)
-
-        y := x
-        z := curr
-    } else {
-        y := x
-        //apply list(curr) --* list(x)
-        z := null
-        //fold list(z)
-    }
-}
 /*
 method merge_sort(x: Ref) returns (res: Ref)
 //requires list(x)

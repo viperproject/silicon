@@ -86,6 +86,23 @@ object evaluator extends EvaluationRules {
         evals2(s1, es.tail, t :: ts,  pvef, v1)((s2, ts2, es2, v2) => Q(s2, ts2, eNew.map(eN => eN :: es2.get), v2)))
   }
 
+  def evalsWithAbduction(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier)
+           (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
+  : VerificationResult =
+
+    evals2WithAbduction(s, es, Nil, pvef, v)(Q)
+
+  private def evals2WithAbduction(s: State, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, v: Verifier)
+                    (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
+  : VerificationResult = {
+
+    if (es.isEmpty)
+      Q(s, ts.reverse, if (withExp) Some(List.empty) else None, v)
+    else
+      evalWithAbduction(s, es.head, pvef(es.head), v)((s1, t, eNew, v1) =>
+        evals2WithAbduction(s1, es.tail, t :: ts,  pvef, v1)((s2, ts2, es2, v2) => Q(s2, ts2, eNew.map(eN => eN :: es2.get), v2)))
+  }
+
   
   def evalWithAbduction(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
                        (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)

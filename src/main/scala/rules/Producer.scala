@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
+import viper.silicon.biabduction.BiAbductionSolver
 
 import scala.collection.mutable
 import viper.silver.ast
@@ -40,7 +41,8 @@ trait ProductionRules extends SymbolicExecutionRules {
               sf: (Sort, Verifier) => Term,
               a: ast.Exp,
               pve: PartialVerificationError,
-              v: Verifier)
+              v: Verifier,
+              withAbduction: Boolean = false)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -102,11 +104,26 @@ object producer extends ProductionRules {
               sf: (Sort, Verifier) => Term,
               a: ast.Exp,
               pve: PartialVerificationError,
-              v: Verifier)
+              v: Verifier,
+              withAbduction: Boolean = false)
              (Q: (State, Verifier) => VerificationResult)
-             : VerificationResult =
+             : VerificationResult = {
 
+    if(!withAbduction){
     produceR(s, sf, a.whenInhaling, pve, v)(Q)
+    } else {
+      executionFlowController.tryOrElse0(s, v) { (s1, v1, T) =>
+        produceR(s1, sf, a.whenInhaling, pve, v1)(T)
+      } {
+        Q
+      } {
+        f =>
+          BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed = true, Some(a)) { (s2, v2) =>
+            produce(s2, sf, a, pve, v2, withAbduction)(Q)
+          }
+      }
+    }
+  }
 
   /** @inheritdoc */
   def produces(s: State,

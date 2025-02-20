@@ -7,35 +7,95 @@ ensures tree(res)
 method free(root: Ref)
 requires acc(root.left) && acc(root.right) && acc(root.val)
 
-
 method remove(root: Ref, value: Int) returns (res: Ref)
-//requires tree(root)
+  //requires tree(root)
+  //ensures tree(res)
 {
+    
+    var found: Bool := false
     if(root == null){
         res := root
     } else {
 
         var curr: Ref := root
-        //package tree(curr) --* tree(root)    
-        //unfold tree(root)
-
+           
+        unfold tree(root)
         if(root.val == value){
             res := merge(root.left, root.right)
             free(root)
         } else {
+            
+            //fold tree(curr)
+            //package tree(curr) --* tree(root) 
 
-            var found: Bool := false
-
-            while(curr != null && !found)
-            //invariant acc(curr.left) && acc(curr.right) && acc(curr.val)
-            //invariant tree(curr.left) && tree(curr.right)
+            while(!found)
             //invariant tree(curr) --* tree(root)
+            invariant tree(curr)
             {
+                
+                var prev: Ref := curr
+                //unfold tree(curr)
+
+                var cond: Bool := curr.val < value
+                if(cond){
+                    curr := curr.right
+                    
+                    if(curr != null){
+                        //unfold tree(curr)
+                        var cond1: Bool := curr.val == value
+                        if(cond1){
+                            found := true
+                            prev.right := merge(curr.left, curr.right)
+                            free(curr)
+                            curr := prev.right
+                        }
+                    } else {
+                        curr := prev
+                        found := true
+                    } 
+                } else {
+                    curr := curr.left
+                    if(curr != null){
+                        //unfold tree(curr)
+                        var cond2: Bool := curr.val == value
+                        if(cond2){
+                            found := true
+                            prev.left := merge(curr.left, curr.right)
+                            free(curr)
+                            curr := prev.left
+                        }
+                    } else {
+                        curr := prev
+                        found := true
+                    } 
+                }
+
+                //if(!found){
+                //    fold tree(curr)
+                //} 
+                //package tree(curr) --* tree(root){
+                //        fold tree(prev)
+                //        apply tree(prev) --* tree(root)
+                //}
+            }
+            //apply tree(curr) --* tree(root)
+            res := root
+        }
+    }
+}
+
+
+                                    
+                
+                
+                
+                /*
                 //unfold tree(curr.left)
                 //unfold tree(curr.right)
 
                 // We found it to the left
-                if(curr.left != null && curr.left.val == value){
+                var lefCond: Bool := curr.left != null && curr.left.val == value
+                if(lefCond){
                     found := true
                     var left_old: Ref := curr.left
                     var left_new: Ref
@@ -47,7 +107,8 @@ method remove(root: Ref, value: Int) returns (res: Ref)
                 } else {
                     
                     // We found it to the right
-                    if(curr.right != null && curr.right.val == value){
+                    var rightCond: Bool := curr.right != null && curr.right.val == value
+                    if(rightCond){
                         found := true
                         var right_old: Ref := curr.right
                         var right_new: Ref
@@ -59,8 +120,10 @@ method remove(root: Ref, value: Int) returns (res: Ref)
 
                         // We progress along the tree
                         var curr_old: Ref := curr
-                        if(curr.val < value){
-                            if(curr.right == null){
+                        var rCond: Bool := curr.val < value
+                        if(rCond){
+                            var rCond1: Bool := curr.right == null
+                            if(rCond1){
                                 found := true
                                 //fold tree(curr.left)
                                 //fold tree(curr.right)
@@ -73,7 +136,8 @@ method remove(root: Ref, value: Int) returns (res: Ref)
                                 //}
                             }
                         } else {
-                            if(curr.left == null){
+                            var lCond: Bool := curr.left == null
+                            if(lCond){
                                 found := true
                                 //fold tree(curr.left)
                                 //fold tree(curr.right)
@@ -87,12 +151,4 @@ method remove(root: Ref, value: Int) returns (res: Ref)
                             }
                         }
                     }
-                }
-            }
-
-            //fold tree(curr)
-            //apply tree(curr) --* tree(root)
-            res := root
-        }
-    }
-}
+                }*/

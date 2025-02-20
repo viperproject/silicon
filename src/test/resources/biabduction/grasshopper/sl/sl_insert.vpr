@@ -5,14 +5,15 @@ method insert(x: Ref, elt: Ref) returns (res: Ref)
 //requires acc(elt.next) && acc(elt.data)
 //ensures list(res)
 {
+    var curr: Ref := x
+    var nondet: Bool
+    
     if(x == null){
         elt.next := null
         //fold list(elt.next)
         //fold list(elt)
         res := elt
     } else {
-        var nondet: Bool
-        var curr: Ref := x
 
         //package list(curr) --* list(x)
         //unfold list(curr)
@@ -38,7 +39,6 @@ method insert(x: Ref, elt: Ref) returns (res: Ref)
         //apply list(curr) --* list(x)
         res := x
     }
-    assert acc(elt.next, write)
 }
 
 

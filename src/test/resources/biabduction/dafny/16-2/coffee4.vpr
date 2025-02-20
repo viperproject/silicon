@@ -1,0 +1,17 @@
+import "coffee.vpr"
+
+method GrinderConstructor() returns (this: Ref)
+    ensures Grinder(this) 
+
+method WaterTankConstructor() returns (this: Ref)
+    ensures WaterTank(this)
+
+method CoffeeMakerConstructor() returns (this: Ref)
+    //ensures CoffeeMaker(this)
+{
+    this := new(CMGrinder, CMWaterTank)
+    this.CMGrinder := GrinderConstructor()
+    this.CMWaterTank := WaterTankConstructor()
+    //fold CoffeeMaker(this)
+}
+

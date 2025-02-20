@@ -12,7 +12,8 @@ method extract_max(root: Ref) returns (rest: Ref, max: Ref)
         rest := root.left
         max := root
         root.left := null
-        //fold tree(max.left)
+        fold tree(max.left)
+        fold tree(max.right)
         //fold tree(max)
     } else {
         var prev: Ref := root
@@ -21,12 +22,13 @@ method extract_max(root: Ref) returns (rest: Ref, max: Ref)
         //unfold tree(curr)
 
         while(curr.right != null)
-        //invariant acc(prev.left) && acc(prev.right) && acc(prev.val)
+        //invariant tree(prev) --* tree(root)
+        //invariant acc(prev.left) && acc(prev.val)
+        invariant acc(prev.right)
+        invariant prev.right == curr
         //invariant tree(prev.left)
         //invariant acc(curr.left) && acc(curr.right) && acc(curr.val)
         //invariant tree(curr.left) && tree(curr.right)
-        //invariant tree(prev) --* tree(root)
-        //invariant prev.right == curr
         {
             var prev_old: Ref := prev
             prev := curr
@@ -35,7 +37,7 @@ method extract_max(root: Ref) returns (rest: Ref, max: Ref)
             //package tree(prev) --* tree(root){
                 //fold tree(prev_old)
                 //apply tree(prev_old) --* tree(root)
-            }
+            //}
         }
 
         prev.right := curr.left
@@ -45,9 +47,7 @@ method extract_max(root: Ref) returns (rest: Ref, max: Ref)
 
         curr.left := null
         max := curr
-        //fold tree(curr.left)
+        fold tree(curr.left)
         //fold tree(curr)
     }
-
-    assert tree(max)
 }

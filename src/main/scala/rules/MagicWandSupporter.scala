@@ -376,6 +376,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                            h = Heap(),
                            reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
+                           doAbduction = false,
                            exhaleExt = true,
                            oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
                            conservingSnapshotGeneration = s.conservingSnapshotGeneration)
@@ -401,7 +402,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             wand.right, pve, proofScriptVerifier
           )((s3, snapRhs, v3) => {
 
-            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs, v3)
+            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps, doAbduction = s.doAbduction), freshSnapRoot, snapRhs, v3)
           })
         })
       })

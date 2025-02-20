@@ -8,18 +8,19 @@ predicate TrueListNode(x: Ref) {
 }
 
 function getNext(x: Ref): Ref
-//requires TrueListNode(x) {
+requires TrueListNode(x) {
     unfolding TrueListNode(x) in x.next
 }
 
 method test0(x: Ref)
-//requires acc(x.next){
+//requires acc(x.next)
+{
     var n: Ref
     n := new(next)
     x.next := n
-    //package true --* TrueListNode(x) && getNext(x) == n {
+    package true --* TrueListNode(x) && getNext(x) == n {
         var tmp: Ref := n
         assert acc(x.next) && x.next == tmp
-        //fold TrueListNode(x)
+        fold TrueListNode(x)
     }
 }

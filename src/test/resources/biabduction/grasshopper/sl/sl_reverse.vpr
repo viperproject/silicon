@@ -20,4 +20,4 @@ method reverse(x: Ref) returns (res: Ref)
         assert res.data == tmp.data
         //fold list(tmp)
     }
-}
+}wor

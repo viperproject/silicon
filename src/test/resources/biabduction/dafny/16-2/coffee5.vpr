@@ -1,0 +1,12 @@
+import "coffee.vpr"
+
+
+method CoffeeMakerRestock(this: Ref)
+    //requires CoffeeMaker(this)
+    //ensures CoffeeMaker(this)
+{
+    //unfold CoffeeMaker(this)
+    GrinderAddBeans(this.CMGrinder)
+    WaterTankFill(this.CMWaterTank)
+    //fold CoffeeMaker(this)
+}

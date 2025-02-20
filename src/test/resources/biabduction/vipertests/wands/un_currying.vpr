@@ -28,35 +28,34 @@
  */
 
 /* The predicates are abstract (no bodies) - in principle, these represent any self-framing assertion */
-predicate P()
-predicate Q()
-predicate R()
+predicate P(x: Ref){true}
+predicate Q(x: Ref){true}
+predicate R(x: Ref){true}
 
 /* Define short-hands for the sake of readability */
-define A acc(P())
-define B acc(Q())
-define C acc(R())
+define A acc(P(x))
+define B acc(Q(x))
+define C acc(R(x))
 
 /* A --* B --* C  ==>  A * B --* C */
-method uncurry() 
-  //requires A --* (B --* C)
-  //ensures A && B --* C
+method uncurry(x: Ref) 
+  requires A --* (B --* C)
+  ensures A && B --* C
 {
   //package (A && B) --* C {
       //apply A --* (B --* C)
       //apply B --* C
-  }
+  //}
 }
 
 /* A * B --* C  ==>  A --* B --* C */
-method curry()
-  //requires A && B --* C
-  //ensures A --* (B --* C)
+method curry(x: Ref)
+  requires A && B --* C
+  ensures A --* (B --* C)
 {
   //package (A) --* B --* C {
       //package (B --* C) {
           //apply A && B --* C
-      }
-
-  }
+     // }
+  //}
 }

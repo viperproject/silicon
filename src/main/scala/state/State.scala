@@ -8,6 +8,7 @@ package viper.silicon.state
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.Config.JoinMode.JoinMode
+import viper.silicon.biabduction.BiAbductionResult
 import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
@@ -35,6 +36,7 @@ final case class State(g: Store = Store(),
 
                        parallelizeBranches: Boolean = false,
                        doAbduction: Boolean = false,
+                       abductionResults: Seq[BiAbductionResult] = Seq(),
 
                        recordVisited: Boolean = false,
                        visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
@@ -161,6 +163,7 @@ object State {
                  oldHeaps1,
                  parallelizeBranches1,
                  doAbduction1,
+                 abductionResults1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
                  constrainableARPs1,
@@ -187,6 +190,7 @@ object State {
                      `oldHeaps1`,
                      `parallelizeBranches1`,
                       `doAbduction1`,
+                      `abductionResults1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
                      constrainableARPs2,
@@ -313,6 +317,7 @@ object State {
       oldHeaps1,
       parallelizeBranches1,
       doAbduction1,
+      abductionResults1,
       recordVisited1, visited1,
       methodCfg1, invariantContexts1,
       constrainableARPs1,
@@ -338,6 +343,7 @@ object State {
           oldHeaps2,
           `parallelizeBranches1`,
           `doAbduction1`,
+          `abductionResults1`,
           `recordVisited1`, `visited1`,
           `methodCfg1`, invariantContexts2,
           constrainableARPs2,

@@ -6,7 +6,7 @@ predicate Grinder(this: Ref)
 }
 
 function getHasBeans(this: Ref): Bool
-    //requires Grinder(this)
+    requires Grinder(this)
 {
     unfolding Grinder(this) in
     this.hasBeans
@@ -20,41 +20,41 @@ predicate WaterTank(this: Ref)
 }
 
 function getLevel(this: Ref): Int
-    //requires WaterTank(this)
-    //ensures 0 <= result
+    requires WaterTank(this)
+    ensures 0 <= result
 {
     unfolding WaterTank(this) in
     this.Level
 }
 
 method GrinderAddBeans(this: Ref)
-    //requires Grinder(this)
-    //ensures Grinder(this)
-    //ensures getHasBeans(this)
+    requires Grinder(this)
+    ensures Grinder(this)
+    ensures getHasBeans(this)
 
 method GrinderGrind(this: Ref)
-    //requires Grinder(this)
-    //requires getHasBeans(this)
-    //ensures Grinder(this)
-    //ensures !getHasBeans(this)
+    requires Grinder(this)
+    requires getHasBeans(this)
+    ensures Grinder(this)
+    ensures !getHasBeans(this)
 
     method WaterTankFill(this: Ref)
-    //requires WaterTank(this)
-    //ensures WaterTank(this)
-    //ensures getLevel(this) == 10
+    requires WaterTank(this)
+    ensures WaterTank(this)
+    ensures getLevel(this) == 10
 
 method WaterTankUse(this: Ref)
-    //requires WaterTank(this)
-    //requires getLevel(this) != 0
-    //ensures WaterTank(this)
-    //ensures getLevel(this) == old(getLevel(this)) - 1
+    requires WaterTank(this)
+    requires getLevel(this) != 0
+    ensures WaterTank(this)
+    ensures getLevel(this) == old(getLevel(this)) - 1
 
 
 predicate Cup(this: Ref)
 
 
 method CupConstructor() returns (this: Ref)
-    //ensures Cup(this)
+    ensures Cup(this)
 
 
 field CMGrinder: Ref
@@ -67,23 +67,22 @@ predicate CoffeeMaker(this: Ref)
 }
 
 function getCoffeeMakerGrinder(this: Ref): Ref
-    //requires CoffeeMaker(this)
+    requires CoffeeMaker(this)
 {
     unfolding CoffeeMaker(this) in
     this.CMGrinder
 }
 
 function getCoffeeMakerWaterTank(this: Ref): Ref
-    //requires CoffeeMaker(this)
+    requires CoffeeMaker(this)
 {
     unfolding CoffeeMaker(this) in
     this.CMWaterTank
 }
 
 function CoffeeMakerReady(this: Ref): Bool
-    //requires CoffeeMaker(this)
+    requires CoffeeMaker(this)
 {
-    true
-    //unfolding CoffeeMaker(this) in
-    //getHasBeans(this.CMGrinder) && 2 <= getLevel(this.CMWaterTank)
+    unfolding CoffeeMaker(this) in
+    getHasBeans(this.CMGrinder) && 2 <= getLevel(this.CMWaterTank)
 }

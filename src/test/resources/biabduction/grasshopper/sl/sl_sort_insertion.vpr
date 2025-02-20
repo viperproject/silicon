@@ -6,28 +6,19 @@ ensures list(x)
 
 method insertion_sort(lst: Ref) returns (res: Ref)
 //requires list(lst)
-//ensures list(lst)
+//ensures list(res)
 {
-    if(lst == null){
-        res := lst
-    } else {
-        //unfold list(lst)
-        var curr: Ref := lst.next
-        res := lst
-        res.next := null
-        //fold list(res.next)
-        //fold list(res)
-        
-        while(curr != null)
-        //invariant list(curr)
-        //invariant list(res)
-        {
-            var add: Ref := curr
-            //unfold list(curr)
-            curr := curr.next
-            insert(res, add)
-        }
-        
+    res := null
+    var curr: Ref := lst
+    //fold list(res)
+    while(curr != null)
+    //invariant list(curr)
+    //invariant list(res)
+    {
+        var add: Ref := curr
+        //unfold list(curr)
+        curr := curr.next
+        insert(res, add)
     }
 }
 

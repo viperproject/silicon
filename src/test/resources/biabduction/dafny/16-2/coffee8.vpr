@@ -1,0 +1,15 @@
+import "coffee.vpr"
+
+method GrinderConstructor() returns (this: Ref)
+    ensures Grinder(this) 
+
+method CoffeemakerRemoveGrinder(this: Ref) returns (grinder: Ref)
+    requires CoffeeMaker(this)
+    //ensures CoffeeMaker(this)
+    //ensures Grinder(grinder)
+{
+    //unfold CoffeeMaker(this)
+    grinder := this.CMGrinder
+    this.CMGrinder := GrinderConstructor()
+    //fold CoffeeMaker(this)
+}

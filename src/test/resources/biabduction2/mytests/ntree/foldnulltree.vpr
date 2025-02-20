@@ -1,0 +1,15 @@
+field l: Ref
+field r: Ref
+
+predicate tree(x: Ref){
+    x != null ==> acc(x.l) && tree(x.l) && acc(x.r) && tree(x.r)
+}
+
+
+method test()
+{
+    var x: Ref := new(l, r)
+    x.l := null
+    x.r := null
+    assert tree(x)
+}

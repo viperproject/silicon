@@ -15,17 +15,12 @@ predicate valid(this: Ref) {
     acc(this.b) && (this.b ? acc(this.f, write) : acc(this.g, write))
 }
 
-method t1(this: Ref)
+
+method t2(this: Ref)
     //requires acc(this.unrelatedField, write)
-    //requires acc(valid(this), write)
-    //ensures acc(valid(this), write)
+    //requires acc(this.f, write)
+    ensures acc(valid(this), write)
 {
-    //unfold acc(valid(this), write)
-    if (this.b) {
-        this.f := 1
-    } else {
-        this.g := 2
-    }
-    //fold acc(valid(this), write)
+    //fold acc(valid(this, true), write)
     unrelated(this)
 }

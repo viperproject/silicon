@@ -1,0 +1,26 @@
+field onext: Ref
+field down: Ref
+
+field inext: Ref
+
+predicate OuterNode(x: Ref) {
+    x != null ==> acc(x.onext) && acc(x.down) && OuterNode(x.onext) && InnerNode(x.down)
+}
+
+predicate InnerNode(x: Ref) {
+    x != null ==> acc(x.inext) && InnerNode(x.inext)
+}
+
+method test(x: Ref, y: Ref, z: Ref)
+requires acc(x.down) && acc(x.onext)
+requires InnerNode(y)
+{
+
+    x.down := y
+    x.onext := z
+
+    //package OuterNode(z) --* OuterNode(x){
+    //    fold OuterNode(x)
+    //}
+
+}

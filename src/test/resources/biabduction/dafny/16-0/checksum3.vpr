@@ -17,8 +17,6 @@ predicate ChecksumMachineOCS(this: Ref)
 
 method ChecksumMachineOCSConstructor() returns (this: Ref)
     //ensures ChecksumMachineOCS(this)
-    //ensures unfolding ChecksumMachineOCS(this) in this.checksumData == 0
-    //ensures unfolding ChecksumMachineOCS(this) in this.ocs.isNone
 {
     this := new(checksumData, ocs)
     this.checksumData := 0

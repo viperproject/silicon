@@ -4,14 +4,16 @@ method insert(x: Ref) returns (res: Ref)
 //requires OuterNode(x)
 //ensures OuterNode(res)
 {
+    var inn: Ref
     if(x == null){
-        var inn: Ref := new(*)
+        inn := new(inext)
         inn.inext := null
-        //fold InnerNode(inn.inext)
+        fold InnerNode(inn.inext)
         //fold InnerNode(inn)
-        res := new(*)
+        res := new(onext, down)
         res.down := inn
         res.onext := null
+        fold OuterNode(res.onext)
         //fold OuterNode(res)
     } else {
         var nondet: Bool
@@ -89,7 +91,7 @@ method insert(x: Ref) returns (res: Ref)
             //fold InnerNode(i)
             currI.inext := i
             //fold InnerNode(currI)
-            //apply InnerNode(currI) --* InnerNode(ic)
+            apply InnerNode(currI) --* InnerNode(ic)
         }
         
         //fold OuterNode(currO)

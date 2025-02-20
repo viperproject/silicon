@@ -5,12 +5,18 @@ field m: Int
 field j: Int
 
 function getJ(this: Ref): Int
-    requires Tokenizer(this)
-    ensures 0 <= result <= unfolding Tokenizer(this) in |this.suffix|
+    requires TokenizerWithPruning(this)
+    ensures 0 <= result <= unfolding TokenizerWithPruning(this) in |this.suffix|
 {
-    unfolding Tokenizer(this) in this.j
+    unfolding TokenizerWithPruning(this) in this.j
 }
 
+function getSuffix(this: Ref): Seq[Int]
+    requires TokenizerWithPruning(this)
+    //ensures 0 <= result <= unfolding TokenizerWithPruning(this) in |this.suffix|
+{
+    unfolding TokenizerWithPruning(this) in this.suffix
+}
 
 predicate TokenizerWithPruning(this: Ref)
 {
@@ -23,29 +29,14 @@ predicate TokenizerWithPruning(this: Ref)
 
 method ReadWithPruning(this: Ref) returns (cat: Category, p: Int, token: Seq[Int])
     //requires TokenizerWithPruning(this)
-    //ensures 0 <= p
     //ensures TokenizerWithPruning(this)
-    //ensures unfolding TokenizerWithPruning(this) in this.source == old(unfolding TokenizerWithPruning(this) in this.source)
-    //ensures unfolding TokenizerWithPruning(this) in this.m == old(unfolding TokenizerWithPruning(this) in this.m) 
-    //ensures !cat.isWhitespace
-    //ensures unfolding TokenizerWithPruning(this) in old(unfolding TokenizerWithPruning(this) in this.n) <= p <= this.n <= |this.source|
-    //ensures unfolding TokenizerWithPruning(this) in cat.isEnd <==> p == |this.source|
-    //ensures unfolding TokenizerWithPruning(this) in cat.isEnd || cat.isError <==> p == this.n
-    //ensures unfolding TokenizerWithPruning(this) in forall i: Int :: old(unfolding TokenizerWithPruning(this) in this.n) <= i < p ==> Is(this.source[i], Whitespace())
-    //ensures unfolding TokenizerWithPruning(this) in forall i: Int :: p <= i < this.n ==> Is(this.source[i], cat)
-    //ensures unfolding TokenizerWithPruning(this) in p < this.n ==> this.n == |this.source| || !Is(this.source[this.n], cat)
-    //ensures unfolding TokenizerWithPruning(this) in token == this.suffix[p-this.m..this.j]
 {
     //unfold TokenizerWithPruning(this)
-    assert 0 <= getJ(this) <= |this.suffix|
+    assert 0 <= getJ(this) <= |getSuffix(this)|
     //fold TokenizerWithPruning(this)
     // skip whitespace
     while (unfolding TokenizerWithPruning(this) in this.j != |this.suffix| && Is(this.suffix[this.j], Whitespace()))
         //invariant TokenizerWithPruning(this)
-        //invariant unfolding TokenizerWithPruning(this) in this.m == old(unfolding TokenizerWithPruning(this) in this.m) 
-        //invariant unfolding TokenizerWithPruning(this) in this.source == old(unfolding TokenizerWithPruning(this) in this.source)
-        //invariant unfolding TokenizerWithPruning(this) in old(unfolding TokenizerWithPruning(this) in this.n) <= this.n <= |this.source|
-        //invariant unfolding TokenizerWithPruning(this) in forall i: Int :: old(unfolding TokenizerWithPruning(this) in this.n) <= i < this.n ==> Is(this.source[i], Whitespace())
     {
         //unfold TokenizerWithPruning(this)
         this.n := this.n + 1
@@ -80,22 +71,18 @@ method ReadWithPruning(this: Ref) returns (cat: Category, p: Int, token: Seq[Int
         cat := Error()
         token := Seq()
         return := true
-        assert unfolding TokenizerWithPruning(this) in p - this.m == this.j
+        //assert unfolding TokenizerWithPruning(this) in p - this.m == this.j
     }
     // read token
     if (!return)
     {
-        //unfold TokenizerWithPruning(this)
+        unfold TokenizerWithPruning(this)
         var start: Int := this.j
         this.n := this.n + 1
         this.j := this.j + 1
         //fold TokenizerWithPruning(this)
         while (unfolding TokenizerWithPruning(this) in this.n != |this.source| && Is(this.source[this.n], cat))
             //invariant TokenizerWithPruning(this)
-            //invariant unfolding TokenizerWithPruning(this) in this.m == old(unfolding TokenizerWithPruning(this) in this.m) 
-            //invariant unfolding TokenizerWithPruning(this) in this.source == old(unfolding TokenizerWithPruning(this) in this.source)
-            //invariant unfolding TokenizerWithPruning(this) in p <= this.n <= |this.source|
-            //invariant unfolding TokenizerWithPruning(this) in forall i: Int :: p <= i < this.n ==> Is(this.source[i], cat)
         {
             //unfold TokenizerWithPruning(this)
             this.n := this.n + 1
@@ -104,6 +91,6 @@ method ReadWithPruning(this: Ref) returns (cat: Category, p: Int, token: Seq[Int
         }
         //unfold TokenizerWithPruning(this)
         token := this.suffix[start..this.j]
-        //fold TokenizerWithPruning(this)
+        fold TokenizerWithPruning(this)
     }    
 }

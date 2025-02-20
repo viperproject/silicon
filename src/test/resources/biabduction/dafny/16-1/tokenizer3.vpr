@@ -16,19 +16,7 @@ function IsFollow(ch: Int, cat: Category): Bool
 
 method ReadModifedIdentifier(this: Ref) returns (cat: Category, p: Int, token: Seq[Int])
     //requires Tokenizer(this)
-    //ensures 0 <= p
     //ensures Tokenizer(this)
-    //ensures getSource(this) == old(getSource(this))
-    //ensures !cat.isWhitespace
-    //ensures old(getN(this)) <= p <= getN(this) <= |getSource(this)|
-    //ensures cat.isEnd <==> p == |getSource(this)|
-    //ensures cat.isEnd || cat.isError <==> p == getN(this)
-    //ensures forall i: Int :: old(getN(this)) <= i < p ==> 
-    //    Is(getSource(this)[i], Whitespace())
-    //ensures forall i: Int :: p <= i < getN(this) ==> Is(getSource(this)[i], cat)
-    //ensures p < getN(this) ==> getN(this) == |getSource(this)| || !Is(getSource(this)[getN(this)], cat)
-    //ensures token == getSource(this)[p..getN(this)]
-    //ensures cat.isIdentifier ==> IsStart(token[0], cat) && forall i: Int :: 1 <= i < |token| ==> IsFollow(token[i], cat)
 {
     // skip whitespace
     var oldSource: Seq[Int] := getSource(this)
@@ -39,7 +27,7 @@ method ReadModifedIdentifier(this: Ref) returns (cat: Category, p: Int, token: S
         invariant oldN <= getN(this) <= |getSource(this)|
         invariant forall i: Int :: oldN <= i < getN(this) ==> Is(getSource(this)[i], Whitespace())
     {
-        //unfold Tokenizer(this)
+        //unfold Tokenizer(this
         this.n := this.n + 1
         //fold Tokenizer(this)
     }

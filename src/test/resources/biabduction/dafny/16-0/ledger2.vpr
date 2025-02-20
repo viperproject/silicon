@@ -14,11 +14,9 @@ predicate Ledger(this: Ref)
 }
 
 method LedgerDeposit(this: Ref, n: Int)
-    //requires Ledger(this)
-    //requires 0 <= n
+    requires Ledger(this)
+    requires 0 <= n
     //ensures Ledger(this)
-    //ensures unfolding Ledger(this) in this.LedgerTransactions == Seq(n) ++ old(unfolding Ledger(this) in this.LedgerTransactions)
-    //ensures unfolding Ledger(this) in this.LedgerBalance == n + old(unfolding Ledger(this) in this.LedgerBalance)
 {
     //unfold Ledger(this)
     this.LedgerTransactions := Seq(n) ++ this.LedgerTransactions

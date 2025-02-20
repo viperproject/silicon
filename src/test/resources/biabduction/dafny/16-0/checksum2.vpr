@@ -7,13 +7,11 @@ predicate ChecksumMachine(this: Ref)
 }
 
 method Append(this: Ref, d: Int)
-    //requires ChecksumMachine(this)
-    //requires 0 <= d
+    requires ChecksumMachine(this)
+    requires 0 <= d
     //ensures ChecksumMachine(this)
 {
     //unfold ChecksumMachine(this)
     this.checksumData := this.checksumData + d
     //fold ChecksumMachine(this)
 }
-
-
