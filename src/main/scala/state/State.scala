@@ -135,7 +135,7 @@ Verifier.config.respectFunctionPrePermAmounts()
     functionRecorder.data.fold(Seq.empty[(Var, Option[ast.AbstractLocalVar])])(d => d.arguments.zip(d.argumentExps))
 
   def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[(Var, Option[ast.AbstractLocalVar])] = (
-    functionRecorderQuantifiedVariables()
+       functionRecorderQuantifiedVariables()
     ++ quantifiedVariables.filter(x => filterPredicate(x._1))
   )
 
@@ -248,7 +248,7 @@ object State {
                 err ++= s"\n- Field index ${s1.productElementName(ix)} not equal."
               }
             }
-            sys.error(s"State merging failed: unexpected mismatch between symbolic states: $err")
+          sys.error(s"State merging failed: unexpected mismatch between symbolic states: $err")
         }
     }
   }
