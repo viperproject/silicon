@@ -249,7 +249,7 @@ object State {
               }
             }
           sys.error(s"State merging failed: unexpected mismatch between symbolic states: $err")
-        }
+      }
     }
   }
 
