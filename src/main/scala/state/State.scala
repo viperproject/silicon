@@ -248,7 +248,7 @@ object State {
                 err ++= s"\n- Field index ${s1.productElementName(ix)} not equal."
               }
             }
-          sys.error(s"State merging failed: unexpected mismatch between symbolic states: $err")
+            sys.error(s"State merging failed: unexpected mismatch between symbolic states: $err")
       }
     }
   }
