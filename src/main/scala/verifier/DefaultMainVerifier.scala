@@ -317,8 +317,8 @@ class DefaultMainVerifier(config: Config,
     reporter report VerificationTerminationMessage()
 
     val verificationResults = (   functionVerificationResults
-      ++ predicateVerificationResults
-      ++ methodVerificationResults)
+     ++ predicateVerificationResults
+     ++ methodVerificationResults)
 
     if (Verifier.config.enableDebugging()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
@@ -328,7 +328,7 @@ class DefaultMainVerifier(config: Config,
     verificationResults
   }
 
-  private def createInitialState(member: ast.Member,
+    private def createInitialState(member: ast.Member,
                                  program: ast.Program,
                                  functionData: Map[ast.Function, FunctionData],
                                  predicateData: Map[ast.Predicate, PredicateData]): State = {
@@ -412,18 +412,18 @@ class DefaultMainVerifier(config: Config,
     } else InsertionOrderedSet.empty
 
     State(program = program,
-      functionData = functionData,
-      predicateData = predicateData,
-      qpFields = quantifiedFields,
-      qpPredicates = quantifiedPredicates,
-      qpMagicWands = quantifiedMagicWands,
-      permLocations = permResources,
-      predicateSnapMap = predSnapGenerator.snapMap,
-      predicateFormalVarMap = predSnapGenerator.formalVarMap,
-      currentMember = Some(member),
-      heapDependentTriggers = resourceTriggers,
-      moreCompleteExhale = mce,
-      moreJoins = moreJoins)
+          functionData = functionData,
+          predicateData = predicateData,
+          qpFields = quantifiedFields,
+          qpPredicates = quantifiedPredicates,
+          qpMagicWands = quantifiedMagicWands,
+          permLocations = permResources,
+          predicateSnapMap = predSnapGenerator.snapMap,
+          predicateFormalVarMap = predSnapGenerator.formalVarMap,
+          currentMember = Some(member),
+          heapDependentTriggers = resourceTriggers,
+          moreCompleteExhale = mce,
+          moreJoins = moreJoins)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -449,8 +449,8 @@ class DefaultMainVerifier(config: Config,
   }
 
   private def excludeMethod(method: ast.Method) = (
-    !method.name.matches(config.includeMethods())
-      || method.name.matches(config.excludeMethods()))
+       !method.name.matches(config.includeMethods())
+    || method.name.matches(config.excludeMethods()))
 
   /* Prover preamble: Static preamble */
 
@@ -620,13 +620,13 @@ class DefaultMainVerifier(config: Config,
 
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$T$" -> s"$$T$i$$",
-              "$S$" -> sanitizedSortString,
-              s"$$T$i$$" -> sortString),
+                "$S$" -> sanitizedSortString,
+                s"$$T$i$$" -> sortString),
             sink)
         } else {
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$S$" -> sanitizedSortString,
-              "$T$" -> sortString),
+                "$T$" -> sortString),
             sink)
         }
 
@@ -643,10 +643,10 @@ class DefaultMainVerifier(config: Config,
   }
 
   /**
-   * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
-   * config.numberOfErrorsToReport() have been encountered (per member)).
-   * This function combines the verification result with verification results stored in its `previous` field.
-   */
+    * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
+    * config.numberOfErrorsToReport() have been encountered (per member)).
+    * This function combines the verification result with verification results stored in its `previous` field.
+    */
   private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
     res :: res.previous.toList
 }
