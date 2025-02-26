@@ -28,7 +28,7 @@ trait BranchingRules extends SymbolicExecutionRules {
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
              fFalse: (State, Verifier) => VerificationResult)
-  : VerificationResult
+            : VerificationResult
 }
 
 object brancher extends BranchingRules {
@@ -39,7 +39,7 @@ object brancher extends BranchingRules {
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
-  : VerificationResult = {
+            : VerificationResult = {
 
     val negatedCondition = Not(condition)
     val negatedConditionExp = ast.Not(conditionExp._1)(pos = conditionExp._1.pos, info = conditionExp._1.info, ast.NoTrafos)
@@ -51,29 +51,29 @@ object brancher extends BranchingRules {
      *   (2) the branch condition contains a quantified variable
      */
     val skipPathFeasibilityCheck = (
-      fromShortCircuitingAnd
-        || (   s.quantifiedVariables.nonEmpty
-        && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
-      )
+         fromShortCircuitingAnd
+      || (   s.quantifiedVariables.nonEmpty
+          && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
+    )
 
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
-      skipPathFeasibilityCheck
-        || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+         skipPathFeasibilityCheck
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
-      !executeThenBranch /* Assumes that ast least one branch is feasible */
-        || skipPathFeasibilityCheck
-        || !v.decider.check(condition, Verifier.config.checkTimeout()))
+         !executeThenBranch /* Assumes that ast least one branch is feasible */
+      || skipPathFeasibilityCheck
+      || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
-    //    val additionalPaths =
-    //      if (executeThenBranch && exploreFalseBranch) 1
-    //      else 0
+//    val additionalPaths =
+//      if (executeThenBranch && exploreFalseBranch) 1
+//      else 0
 
-    //    bookkeeper.branches += additionalPaths
+//    bookkeeper.branches += additionalPaths
 
     val cnt = v.counter(this).next()
 
@@ -190,16 +190,16 @@ object brancher extends BranchingRules {
 
     val res = {
       val thenRes = if (executeThenBranch) {
-        v.symbExLog.markReachable(uidBranchPoint)
-        executionFlowController.locally(s, v)((s1, v1) => {
-          v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-          v1.decider.setCurrentBranchCondition(condition, conditionExp)
+          v.symbExLog.markReachable(uidBranchPoint)
+          executionFlowController.locally(s, v)((s1, v1) => {
+            v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
+            v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
-          fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
-        })
-      } else {
-        Unreachable()
-      }
+            fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
+          })
+        } else {
+          Unreachable()
+        }
       if (thenRes.isFatal && !thenRes.isReported && s.parallelizeBranches && s.isLastRetry) {
         thenRes.isReported = true
         v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
