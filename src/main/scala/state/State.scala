@@ -23,6 +23,7 @@ import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopF
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, Stack}
+import viper.silver.ast.Exp
 import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),
@@ -150,6 +151,14 @@ Verifier.config.respectFunctionPrePermAmounts()
 
   lazy val relevantQuantifiedVariables: Seq[(Var, Option[ast.AbstractLocalVar])] =
     relevantQuantifiedVariables(_ => true)
+
+  def storeIntoTree(branchConditions: Seq[Exp], isResultFatal: Boolean) = {
+    if (this.branchTreeMap.isDefined && this.currentMember.isDefined){
+      if (branchConditions.length > 0) {
+        this.branchTreeMap.get.storeIntoTree(this.currentMember.get.name, branchConditions, isResultFatal)
+      }
+    }
+  }
 
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
