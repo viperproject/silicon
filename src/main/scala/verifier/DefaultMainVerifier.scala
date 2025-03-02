@@ -37,7 +37,7 @@ import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
 import viper.silver.verifier.errors.PostconditionViolatedBranch
-import viper.silver.verifier.reasons.AssertionFalseAtBranch
+import viper.silver.verifier.reasons.BranchFailure
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -276,7 +276,7 @@ class DefaultMainVerifier(config: Config,
               results +:= Failure(
                 PostconditionViolatedBranch(
                   firstCond,
-                  AssertionFalseAtBranch(
+                  BranchFailure(
                     firstCond,
                     branchTree.get.prettyPrint()
                   ),
