@@ -154,7 +154,7 @@ Verifier.config.respectFunctionPrePermAmounts()
 
   def storeIntoTree(branchConditions: Seq[Exp], isResultFatal: Boolean) = {
     if (this.branchTreeMap.isDefined && this.currentMember.isDefined){
-      if (branchConditions.length > 0) {
+      if (branchConditions.nonEmpty) {
         this.branchTreeMap.get.storeIntoTree(this.currentMember.get.name, branchConditions, isResultFatal)
       }
     }
