@@ -193,7 +193,7 @@ class Tree {
 
   def getErrorCount(): Int = {
     this match {
-      case Branch(_,_,_,lf,rf) => lf + rf
+      case Branch(_,_,_,lf,rf) => Math.max(lf,0) + Math.max(rf,0)
       case _ => 0
     }
   }
