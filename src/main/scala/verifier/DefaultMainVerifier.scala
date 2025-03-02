@@ -268,7 +268,7 @@ class DefaultMainVerifier(config: Config,
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
-          val branchTree = s.branchTreeMap.get.Map().get(method.name)
+          val branchTree = s.branchTreeMap.get.Map.get(method.name)
           if (branchTree.isDefined) {
             val branch =  branchTree.get.asInstanceOf[Branch]
             if (branch.isLeftFatal || branch.isRightFatal) {

@@ -8,7 +8,7 @@ import scala.collection.mutable
 
 class BranchTreeMap {
   private val map : mutable.Map[String, Tree] = new mutable.HashMap[String,Tree]()
-  def Map(): mutable.Map[String, Tree] = map
+  def Map: mutable.Map[String, Tree] = map
 
   def storeIntoTree(method: String, branchConditions : Seq[Exp], isResultFatal: Boolean): Unit = {
     val branchTree = map.get(method)
