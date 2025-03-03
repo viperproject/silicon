@@ -8,7 +8,7 @@ import scala.collection.mutable
 
 class BranchTreeMap {
   private val map : mutable.Map[String, Tree] = new mutable.HashMap[String,Tree]()
-  def Map: mutable.Map[String, Tree] = map
+  def Map : mutable.Map[String, Tree] = map
 
   def storeIntoTree(method: String, branchConditions : Seq[Exp], isResultFatal: Boolean): Unit = {
     val branchTree = map.get(method)
@@ -73,10 +73,10 @@ class Tree {
 
   private def recurse(tree: Tree, fatalCount: Int) : (Vector[String], Int, Int) = {
     tree match {
-        case Leaf if fatalCount == -1 => (Vector("✔"), 0, 0)
-        case Leaf if fatalCount > 0 => (Vector("Error"), 2, 2) // ✘
-        case _ : Branch => tree.buildTree()
-        case _ => (Vector("?"), 0, 0)
+      case Leaf if fatalCount == -1 => (Vector("✔"), 0, 0)
+      case Leaf if fatalCount > 0 => (Vector("Error"), 2, 2) // ✘
+      case _ : Branch => tree.buildTree()
+      case _ => (Vector("?"), 0, 0)
     }
   }
 
@@ -147,7 +147,7 @@ class Tree {
           " "*filler + elems(2) + " "*filler,
           " "*filler + elems(3) + " "*filler
         )
-    }).toVector
+      }).toVector
   }
 
   private def printSinglePath() : String = {

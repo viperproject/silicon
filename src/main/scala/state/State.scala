@@ -17,7 +17,7 @@ import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.{And, Ite, NoPerm}
+import viper.silicon.state.terms.{And, Ite}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.BigAnd
@@ -191,8 +191,7 @@ object State {
                  ssCache1, assertReadAccessOnly1,
                  qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-                 moreCompleteExhale, moreJoins,
-                 branchTreeMap) =>
+                 moreCompleteExhale, moreJoins, branchTreeMap) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -217,8 +216,7 @@ object State {
                      ssCache2, `assertReadAccessOnly1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2, `moreJoins`,
-                      `branchTreeMap`) =>
+                     moreCompleteExhale2, `moreJoins`, `branchTreeMap`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -349,8 +347,7 @@ object State {
       ssCache1, assertReadAccessOnly1,
       qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-      moreCompleteExhale, moreJoins,
-      branchTreeMap) =>
+      moreCompleteExhale, moreJoins, branchTreeMap) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -374,8 +371,7 @@ object State {
           ssCache2, `assertReadAccessOnly1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-          moreCompleteExhale2, `moreJoins`,
-           `branchTreeMap`) =>
+          moreCompleteExhale2, `moreJoins`, `branchTreeMap`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

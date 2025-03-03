@@ -84,10 +84,8 @@ trait SymbolicExecutionRules {
       None
     }
 
-    val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
-      v.decider.pcs.getBranchConditionsExp()
-    } else Seq()
-    s.storeIntoTree(branchconditions, true)
+    val branchConditions = v.decider.pcs.getBranchConditionsExp()
+    s.storeIntoTree(branchConditions, true)
 
     if (Verifier.config.enableDebugging()){
       val assumptions = v.decider.pcs.assumptionExps
@@ -95,10 +93,10 @@ trait SymbolicExecutionRules {
         counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
         v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get))
     } else {
-      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
+      val branchConditionsReported = if (Verifier.config.enableBranchconditionReporting()) branchConditions else Seq()
+      res.failureContexts = Seq(SiliconFailureContext(branchConditionsReported, counterexample, reasonUnknown))
     }
 
     Failure(res, v.reportFurtherErrors())
-
   }
 }

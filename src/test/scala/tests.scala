@@ -9,6 +9,7 @@ import viper.silver.ast.Program
 import viper.silver.frontend.{DefaultStates, SilFrontend, SilFrontendConfig}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, VerificationResult, Verifier, Failure => SilFailure}
 import viper.silicon.Silicon
+import viper.silver.reporter.Reporter
 
 package object tests {
   class DummyFrontend extends SilFrontend {
@@ -34,7 +35,7 @@ package object tests {
     override def verifier: Verifier = this._verifier.get
   }
 
-  def instantiateFrontend(args: List[String] = List.empty): SilFrontend = {
+  def instantiateFrontend(args: List[String] = List.empty, reporter : Option[Reporter] = None): SilFrontend = {
     val frontend = new DummyFrontend
 
     val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))

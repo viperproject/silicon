@@ -14,11 +14,11 @@ import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.{Branch, BranchTreeMap, Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.AnnotationWarning
+import viper.silver.reporter.{AnnotationWarning, BeamInfo, BranchTreeReport}
 import viper.silicon.{Map, toMap}
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
@@ -84,7 +84,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val s = sInit.copy(g = g,
                          h = Heap(),
                          oldHeaps = OldHeaps(),
-                         methodCfg = body)
+                         methodCfg = body,
+                         branchTreeMap = Some(new BranchTreeMap()))
 
       if (Verifier.config.printMethodCFGs()) {
         viper.silicon.common.io.toFile(
@@ -117,6 +118,20 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       v.decider.resetProverOptions()
 
       symbExLog.closeMemberScope()
+
+      s.branchTreeMap.get.Map.get(method.name).foreach(
+        branchTree => {
+          val branch = branchTree.asInstanceOf[Branch]
+          if (branch.getErrorCount() > 0) {
+            v.reporter.report(
+              BranchTreeReport(s.currentMember.get.asInstanceOf[ast.Method],
+                s"Branch fails.\n${branchTree.prettyPrint()}",
+                Seq(BeamInfo(branch.exp, branch.isLeftFatal, branch.isRightFatal))
+              ))
+          }
+        }
+      )
+
       Seq(result)
     }
 
