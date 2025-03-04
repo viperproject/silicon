@@ -207,14 +207,6 @@ class Tree extends BranchTree {
     }
   }
 
-  /*digraph {
-    a -> b[label="0.2"];
-    a -> c[label="0.4",weight="0.4"];
-    c -> b[label="0.6",weight="0.6"];
-    c -> e[label="0.6",weight="0.6"];
-    e -> e[label="0.1",weight="0.1"];
-    e -> b[label="0.7",weight="0.7"];
-  }*/
   protected def leafToDotNodeContent(fatalCount : Int): String = {
     fatalCount match {
       case -1 => "label=\"✔\",shape=\"octagon\",style=\"filled\", fillcolor=\"palegreen\""
@@ -228,54 +220,47 @@ class Tree extends BranchTree {
       case Branch(exp,left,right,leftResFatalCount,rightResFatalCount) =>
         val parentIdn = s"B$visitedCount"
         writer.write(s"  $parentIdn[shape=\"square\",label=\"${exp.toString}\"];\n")
+        val newVisitedCountLeft = visitedCount + 1
         val visitedCountLeft = left match {
           case b1 : Branch =>
-            val newVisitedCount = visitedCount + 1
-            val leftBranchIdn = s"B$newVisitedCount"
-            val visitedCountLeft_ = b1.writeDotFileRec(writer, newVisitedCount)
+            val leftBranchIdn = s"B$newVisitedCountLeft"
+            val visitedCountLeft_ = b1.writeDotFileRec(writer, newVisitedCountLeft)
             writer.write(s"  $parentIdn -> $leftBranchIdn[label=\"F\"];\n")
             visitedCountLeft_
           case Leaf =>
-            val newVisitedCount = visitedCount + 1
-            val leftLeafIdn = s"B$newVisitedCount"
+            val leftLeafIdn = s"B$newVisitedCountLeft"
             writer.write(s"  $leftLeafIdn[${leafToDotNodeContent(leftResFatalCount)}];\n")
             writer.write(s"  $parentIdn -> $leftLeafIdn [label=\"F\"];\n")
-            newVisitedCount
+            newVisitedCountLeft
         }
+        val newVisitedCountRight = visitedCountLeft + 1
         val visitedCountRight = right match {
           case b2 : Branch =>
-            val newVisitedCount = visitedCountLeft + 1
-            val rightBranchIdn = s"B$newVisitedCount"
-            val visitedCountRight_ = b2.writeDotFileRec(writer, newVisitedCount)
+            val rightBranchIdn = s"B$newVisitedCountRight"
+            val visitedCountRight_ = b2.writeDotFileRec(writer, newVisitedCountRight)
             writer.write(s"  $parentIdn -> $rightBranchIdn[label=\"T\"];\n")
             visitedCountRight_
           case Leaf =>
-            val newVisitedCount = visitedCountLeft + 1
-            val rightLeafIdn = s"B$newVisitedCount"
+            val rightLeafIdn = s"B$newVisitedCountRight"
             writer.write(s"  $rightLeafIdn[${leafToDotNodeContent(rightResFatalCount)}];\n")
             writer.write(s"  $parentIdn -> $rightLeafIdn [label=\"T\"];\n")
-            newVisitedCount
+            newVisitedCountRight
         }
         visitedCountRight
       case _ => 0
     }
   }
   def toDotFile(): Unit = {
-    println("TEST TEST TEST TEST TEST")
-    println(Tree.DotFilePath)
     val writer = PrintWriter(new java.io.File(Tree.DotFilePath),true)
     writer.write("digraph {\n")
     this.writeDotFileRec(writer)
     writer.write("}\n")
     writer.close()
-    /*viper.silicon.common.io.toFile(
-      dotString,
-      new java.io.File(Tree.DotFilePath))*/
   }
 }
 
 object Tree {
-  val DotFilePath = s"${Verifier.config.tempDirectory()}/BranchTree.dot"
+  val DotFilePath = s"${System.getProperty("user.dir")}/${Verifier.config.tempDirectory()}/BranchTree.dot"
 
   private def generate(expressions : Seq[Exp], errorCount: Int) : Tree = {
     expressions.length match {
