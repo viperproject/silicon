@@ -5,17 +5,16 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Exp
 import viper.silver.reporter.BranchTree
-
-import scala.collection.mutable
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 
 class BranchTreeMap {
-  private val map : mutable.Map[String, Tree] = new mutable.HashMap[String,Tree]()
-  def Map : mutable.Map[String, Tree] = map
+  private val map : ConcurrentMap[String, Tree] = new ConcurrentHashMap[String,Tree]()
 
+  def get(method: String) : Tree = map.get(method)
   def storeIntoTree(method: String, branchConditions : Seq[Exp], isResultFatal: Boolean): Unit = {
-    val branchTree = map.get(method)
-    if (branchTree.isDefined) {
-      branchTree.get.extend(branchConditions, isResultFatal)
+    if (map.containsKey(method)) {
+      val branchTree = map.get(method)
+      branchTree.extend(branchConditions, isResultFatal)
     } else {
       map.put(method, Tree.generate(branchConditions, isResultFatal))
     }

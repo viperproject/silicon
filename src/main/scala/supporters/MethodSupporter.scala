@@ -119,7 +119,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       symbExLog.closeMemberScope()
 
-      s.branchTreeMap.get.Map.get(method.name).foreach(
+      Option(branchTreeMap.get(method.name)).foreach(
         branchTree => {
           val branch = branchTree.asInstanceOf[Branch]
           if (branch.getErrorCount() > 0) {
