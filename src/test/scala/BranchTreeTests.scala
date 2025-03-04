@@ -17,7 +17,7 @@ class DummyReporter extends Reporter {
   else "Verification successful."
   def report(msg: Message): Unit = {
     msg match {
-      case m : BranchTreeReport => this.breports += m.tree
+      case m : BranchTreeReport => this.breports += m.tree.prettyPrint()
       case _ =>
     }
   }

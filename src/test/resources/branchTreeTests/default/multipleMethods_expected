@@ -1,4 +1,3 @@
-Branch fails.
     │    
   ┌─┴─┐ F   
   │ a ├──── ?
@@ -10,7 +9,6 @@ Branch fails.
     │T   
   Error
 
-Branch fails.
   │  
 ┌─┴─┐ T 
 │ a ├── ✔

@@ -125,7 +125,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           if (branch.getErrorCount() > 0) {
             v.reporter.report(
               BranchTreeReport(s.currentMember.get.asInstanceOf[ast.Method],
-                s"Branch fails.\n${branchTree.prettyPrint()}",
+                branchTree,
                 Seq(BeamInfo(branch.exp, branch.isLeftFatal, branch.isRightFatal))
               ))
           }
