@@ -24,7 +24,7 @@ jobs:
 
       # Checkout Silicon (note: all checkouts delete the contents of their working directory)
       - name: Checkout Silicon
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -45,7 +45,7 @@ jobs:
         # Cache path is relative to the directory in which sbt is invoked
         run: echo "SBT_OPTS=-Dsbt.global.base=sbt-cache/.sbtboot -Dsbt.boot.directory=sbt-cache/.boot -Dsbt.ivy.home=sbt-cache/.ivy" >> $GITHUB_ENV
       - name: Cache sbt
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             sbt-cache/.sbtboot
@@ -85,7 +85,7 @@ jobs:
     steps:
       # Checkout Silicon (deletes content of working directory)
       - name: Checkout Silicon
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -147,7 +147,7 @@ jobs:
           keep_num: 2
           keep_tags: false
       - name: Create GitHub pre-release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_NAME }}
@@ -158,7 +158,7 @@ jobs:
 
 # #       - name: Create an official release
 # #         if: startsWith(github.ref, 'refs/tags/releases/')
-# #         uses: softprops/action-gh-release@v1
+# #         uses: softprops/action-gh-release@v2
 # #         with:
 # #           prerelease: false
 # #           files: ${{ env.RELEASE_DIR }}     
