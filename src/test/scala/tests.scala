@@ -38,7 +38,10 @@ package object tests {
   def instantiateFrontend(args: List[String] = List.empty, reporter : Option[Reporter] = None): SilFrontend = {
     val frontend = new DummyFrontend
 
-    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
+    val backend = reporter match {
+      case Some(r) => new Silicon(r,List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
+      case _ => new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
+    }
     backend.parseCommandLine(List("--ignoreFile", "dummy.sil")++args)
     backend.start()
 
