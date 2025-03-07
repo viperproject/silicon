@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
-import viper.silicon.interfaces._
+import viper.silicon.interfaces.{Failure, _}
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
@@ -18,8 +18,9 @@ import viper.silicon.state.{Branch, BranchTreeMap, Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.{AnnotationWarning, BeamInfo, BranchTreeReport}
+import viper.silver.reporter.AnnotationWarning
 import viper.silicon.{Map, toMap}
+import viper.silver.verifier.reasons.BranchFails
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -120,20 +121,21 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       symbExLog.closeMemberScope()
 
-      Option(branchTreeMap.get(method.name)).foreach(
-        branchTree => {
-          val branch = branchTree.asInstanceOf[Branch]
-          if (branch.getErrorCount() > 0) {
-            v.reporter.report(
-              BranchTreeReport(s.currentMember.get.asInstanceOf[ast.Method],
+      Option(branchTreeMap.get(method.name)).collect({
+        case branchTree : Branch if branchTree.getErrorCount() > 0 =>
+          val method = s.currentMember.get.asInstanceOf[ast.Method]
+          Seq(result, Failure(
+            BranchFailed(
+              method,
+              BranchFails(
+                method,
                 branchTree,
-                Seq(BeamInfo(branch.exp, branch.isLeftFatal, branch.isRightFatal))
-              ))
-          }
-        }
-      )
-
-      Seq(result)
+                Seq(BeamInfo(branchTree.exp, branchTree.isLeftFatal, branchTree.isRightFatal))
+              )
+            )
+          ))
+        case _=> Seq(result)
+      }).getOrElse(Seq(result))
     }
 
     /* Lifetime */

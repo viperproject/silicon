@@ -4,7 +4,7 @@ import viper.silicon.common.io.PrintWriter
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Exp
-import viper.silver.reporter.BranchTree
+import viper.silver.verifier.errors.BranchTree
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 
 class BranchTreeMap {

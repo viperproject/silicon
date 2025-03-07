@@ -6,22 +6,8 @@
 
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.utility.DiskLoader
-import viper.silver.reporter.{BranchTreeReport, Message, Reporter}
 
 import java.nio.file.Paths
-
-class DummyReporter extends Reporter {
-  val name: String = "DummyReporter"
-  var breports: Set[String] = Set()
-  def getBranchTreeMessage = if (breports.nonEmpty) breports.mkString("\n")
-  else "Verification successful."
-  def report(msg: Message): Unit = {
-    msg match {
-      case m : BranchTreeReport => this.breports += m.tree.prettyPrint()
-      case _ =>
-    }
-  }
-}
 
 class BranchTreeTests extends AnyFunSuite {
   def executeTestDefault(fileName: String) : Unit = executeTest(fileName, "default")
@@ -87,12 +73,11 @@ class BranchTreeTests extends AnyFunSuite {
   : Unit = {
     val expected = getExpectedString(fileName, expectedFolder)
 
-    val dummyReporter = new DummyReporter()
-    val frontend = tests.instantiateFrontend(args, Some(dummyReporter))
+    val frontend = tests.instantiateFrontend(args)
     val program = tests.loadProgram("branchTreeTests/",fileName, frontend)
-    frontend.verifier.verify(program)
-
-    val actual = dummyReporter.getBranchTreeMessage
+    val actual = frontend.verifier.verify(program).toString.split("\n")
+      .filterNot(l => l.startsWith(" (")||l.startsWith("  [")||l.startsWith("Verification failed"))
+      .map(str => str+"\n").reduce((str,s)=>str+s)
     assert(actual.contains(expected))
   }
 }
