@@ -81,11 +81,12 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ outs.map(x => (x, decider.fresh(x)))
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
+      val branchTreeMap = new BranchTreeMap()
       val s = sInit.copy(g = g,
                          h = Heap(),
                          oldHeaps = OldHeaps(),
                          methodCfg = body,
-                         branchTreeMap = Some(new BranchTreeMap()))
+                         branchTreeMap = Some(branchTreeMap))
 
       if (Verifier.config.printMethodCFGs()) {
         viper.silicon.common.io.toFile(
