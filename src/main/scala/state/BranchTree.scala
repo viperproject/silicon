@@ -5,6 +5,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Exp
 import viper.silver.verifier.errors.BranchTree
+
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 
 class BranchTreeMap {
@@ -22,6 +23,7 @@ class BranchTreeMap {
 }
 
 class Tree extends BranchTree {
+
   private def incrementIfFatal(currBranchResultFatal: Int, isResultFatal: Boolean) : Int =
     if (isResultFatal) Math.max(currBranchResultFatal,0)+1 else currBranchResultFatal
 
@@ -41,16 +43,16 @@ class Tree extends BranchTree {
           case ast.Not(exp) => exp
           case _ => tail.head
         }
-        if (currBranch.left.isInstanceOf[Branch]
-          && headExp.toString.equals(currBranch.left.asInstanceOf[Branch].exp.toString) && negated) {
-          currNode = currBranch.left
-          currBranch.leftResFatalCount = incrementIfFatal(currBranch.leftResFatalCount,isResultFatal)
-          next = true
-        } else if (currBranch.right.isInstanceOf[Branch]
-          && headExp.toString.equals(currBranch.right.asInstanceOf[Branch].exp.toString) && !negated) {
-          currNode = currBranch.right
-          currBranch.rightResFatalCount = incrementIfFatal(currBranch.rightResFatalCount,isResultFatal)
-          next = true
+        (currBranch.left, currBranch.right) match {
+          case (Branch(exp,_,_,_,_),_) if headExp.toString == exp.toString && negated =>
+            currNode = currBranch.left
+            currBranch.leftResFatalCount = incrementIfFatal(currBranch.leftResFatalCount,isResultFatal)
+            next = true
+          case (_,Branch(exp,_,_,_,_)) if headExp.toString == exp.toString && !negated =>
+            currNode = currBranch.right
+            currBranch.rightResFatalCount = incrementIfFatal(currBranch.rightResFatalCount,isResultFatal)
+            next = true
+          case _ =>
         }
         if (next) {
           currBranch = currNode.asInstanceOf[Branch]
@@ -62,28 +64,30 @@ class Tree extends BranchTree {
         }
       }
       val errorCount = if (isResultFatal) 1 else -1 // -1 for successful result
-      if (negated) {
-        currBranch.left = Tree.generate(tail, errorCount)
-        currBranch.leftResFatalCount = errorCount
-      } else {
-        currBranch.right = Tree.generate(tail, errorCount)
-        currBranch.rightResFatalCount = errorCount
+      negated match {
+        case true =>
+          currBranch.left = Tree.generate(tail, errorCount)
+          currBranch.leftResFatalCount = errorCount
+        case _ =>
+          currBranch.right = Tree.generate(tail, errorCount)
+          currBranch.rightResFatalCount = errorCount
       }
     }
   }
 
-  private def recurse(tree: Tree, fatalCount: Int) : (Vector[String], Int, Int) = {
-    tree match {
+
+  private def even(n: Int) = (n & 1) == 0
+
+  private def buildTreeStrRec(fatalCount: Int) : (Vector[String], Int, Int) = {
+    this match {
       case Leaf if fatalCount == -1 => (Vector("✔"), 0, 0)
       case Leaf if fatalCount > 0 => (Vector("Error"), 2, 2) // ✘
-      case _ : Branch => tree.buildTree()
+      case _ : Branch => this.buildTreeStr()
       case _ => (Vector("?"), 0, 0)
     }
   }
 
-  private def even(n: Int) = (n & 1) == 0
-
-  private def buildTree() : (Vector[String], Int, Int) = {
+  private def buildTreeStr() : (Vector[String], Int, Int) = {
     this match {
       case Branch(exp, left, right, leftErrCount, rightErrCount) =>
         val expStr = exp.toString
@@ -93,8 +97,8 @@ class Tree extends BranchTree {
         val boxLen = boxMiddle.length
         val halfBoxLen = boxLen / 2
 
-        var (leftStrVec, _, prevLeftRightBoxLen) = recurse(left, leftErrCount)
-        var (rightStrVec, prevRightLeftBoxLen, _) = recurse(right, rightErrCount)
+        var (leftStrVec, _, prevLeftRightBoxLen) = left.buildTreeStrRec(leftErrCount)
+        var (rightStrVec, prevRightLeftBoxLen, _) = right.buildTreeStrRec(rightErrCount)
 
         val halfExpStrLen = expStrLen / 2
         val leftBoxLen = leftStrVec.head.length
@@ -139,6 +143,8 @@ class Tree extends BranchTree {
       case _ => (Vector.empty, -1, -1) // Should not happen
     }
   }
+
+
   private def fill(vec : Vector[String], filler :Int): Vector[String] = {
     vec.grouped(4)
       .flatMap(elems => {
@@ -151,7 +157,7 @@ class Tree extends BranchTree {
       }).toVector
   }
 
-  private def printSinglePath() : String = {
+  private def buildPathStr() : String = {
     var currTree : Tree = this
     var maxBoxLen = 5 // for 'Error'
     var path = Vector[String]()
@@ -201,13 +207,14 @@ class Tree extends BranchTree {
 
   def prettyPrint() : String = {
     if (Verifier.config.numberOfErrorsToReport() == 1 || this.getErrorCount() == 1) {
-      this.printSinglePath()
+      this.buildPathStr()
     } else {
-      this.buildTree()._1.reduce((str, s) => str + "\n" + s) + "\n"
+      this.buildTreeStr()._1.reduce((str, s) => str + "\n" + s) + "\n"
     }
   }
 
-  protected def leafToDotNodeContent(fatalCount : Int): String = {
+
+  private def leafToDotNodeContent(fatalCount : Int): String = {
     fatalCount match {
       case -1 => "label=\"✔\",shape=\"octagon\",style=\"filled\", fillcolor=\"palegreen\""
       case 1 => "label=\"Error\",shape=\"octagon\",style=\"filled\", fillcolor=\"lightsalmon\""
@@ -215,16 +222,16 @@ class Tree extends BranchTree {
     }
   }
 
-  protected def writeDotFileRec(writer: java.io.PrintWriter, visitedCount : Int = 0) : Int = {
+  private def writeDotFileRec(writer: java.io.PrintWriter, visitedCount : Int = 0) : Int = {
     this match {
       case Branch(exp,left,right,leftResFatalCount,rightResFatalCount) =>
         val parentIdn = s"B$visitedCount"
         writer.write(s"  $parentIdn[shape=\"square\",label=\"${exp.toString}\"];\n")
         val newVisitedCountLeft = visitedCount + 1
         val visitedCountLeft = left match {
-          case b1 : Branch =>
+          case _ : Branch =>
             val leftBranchIdn = s"B$newVisitedCountLeft"
-            val visitedCountLeft_ = b1.writeDotFileRec(writer, newVisitedCountLeft)
+            val visitedCountLeft_ = left.writeDotFileRec(writer, newVisitedCountLeft)
             writer.write(s"  $parentIdn -> $leftBranchIdn[label=\"F\"];\n")
             visitedCountLeft_
           case Leaf =>
@@ -235,9 +242,9 @@ class Tree extends BranchTree {
         }
         val newVisitedCountRight = visitedCountLeft + 1
         val visitedCountRight = right match {
-          case b2 : Branch =>
+          case _ : Branch =>
             val rightBranchIdn = s"B$newVisitedCountRight"
-            val visitedCountRight_ = b2.writeDotFileRec(writer, newVisitedCountRight)
+            val visitedCountRight_ = right.writeDotFileRec(writer, newVisitedCountRight)
             writer.write(s"  $parentIdn -> $rightBranchIdn[label=\"T\"];\n")
             visitedCountRight_
           case Leaf =>
@@ -250,6 +257,7 @@ class Tree extends BranchTree {
       case _ => 0
     }
   }
+
   def toDotFile(): Unit = {
     val writer = PrintWriter(new java.io.File(Tree.DotFilePath),true)
     writer.write("digraph {\n")
@@ -284,8 +292,8 @@ private object Leaf extends Tree
 case class Branch(var exp : Exp,
                   var left: Tree,
                   var right: Tree,
-                  var leftResFatalCount: Int,
-                  var rightResFatalCount: Int) extends Tree {
+                  protected[state] var leftResFatalCount: Int,
+                  protected[state] var rightResFatalCount: Int) extends Tree {
   def isLeftFatal = leftResFatalCount > 0
   def isRightFatal = rightResFatalCount > 0
 }
