@@ -33,12 +33,13 @@ sealed abstract class VerificationResult {
   var isReported: Boolean = false
 
   def getExploredBranchPaths(r: VerificationResult = this) : Vector[(Seq[Exp], Boolean)] = {
-    r.exploredBranchPaths ++ r.previous.map(x => x.previous.length match {
-    case 0 => x.exploredBranchPaths
-    case _ =>
-      val recRes = x.previous.map(getExploredBranchPaths).flatten
-      x.exploredBranchPaths ++ recRes
-  }).flatten}
+    r.exploredBranchPaths ++ r.previous.flatMap(x => x.previous.length match {
+      case 0 => x.exploredBranchPaths
+      case _ =>
+        val recRes = x.previous.flatMap(getExploredBranchPaths)
+        x.exploredBranchPaths ++ recRes
+    })
+  }
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult

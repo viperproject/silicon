@@ -5,6 +5,8 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Exp
 
+import scala.annotation.tailrec
+
 class BranchTree extends viper.silver.verifier.errors.BranchTree {
 
   private def incrementIfFatal(currBranchResultFatal: Int, isResultFatal: Boolean) : Int =
@@ -247,6 +249,7 @@ class BranchTree extends viper.silver.verifier.errors.BranchTree {
 object BranchTree {
   val DotFilePath = s"${System.getProperty("user.dir")}/${Verifier.config.tempDirectory()}/BranchTree.dot"
 
+  @tailrec
   private def generatePathRec(expressions: Seq[Exp], errorCount: Int, result: BranchTree): BranchTree = {
     expressions.length match {
       case 0 => result
@@ -261,6 +264,7 @@ object BranchTree {
     }
   }
 
+  @tailrec
   private def generateRec(exploredPaths: Vector[(Seq[Exp], Boolean)], result: BranchTree): BranchTree = { // result.instanceOf[Branch] must hold
     exploredPaths.length match {
       case 0 => result
