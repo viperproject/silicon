@@ -27,8 +27,8 @@ class Tree extends BranchTree {
   private def incrementIfFatal(currBranchResultFatal: Int, isResultFatal: Boolean) : Int =
     if (isResultFatal) Math.max(currBranchResultFatal,0)+1 else currBranchResultFatal
 
-  def extend(branchConditions : Seq[Exp], isResultFatal: Boolean)  = {
-    if (branchConditions.length > 0) {
+  def extend(branchConditions : Seq[Exp], isResultFatal: Boolean) : Unit  = {
+    if (branchConditions.nonEmpty) {
       var currNode = this
       var currBranch = currNode.asInstanceOf[Branch]
       var negated = branchConditions.head match {
@@ -37,7 +37,7 @@ class Tree extends BranchTree {
       }
       var tail = branchConditions.tail
       var next = true
-      while (tail.length != 0 && next) {
+      while (tail.nonEmpty && next) {
         next = false
         val headExp = tail.head match {
           case ast.Not(exp) => exp
@@ -64,13 +64,12 @@ class Tree extends BranchTree {
         }
       }
       val errorCount = if (isResultFatal) 1 else -1 // -1 for successful result
-      negated match {
-        case true =>
-          currBranch.left = Tree.generate(tail, errorCount)
-          currBranch.leftResFatalCount = errorCount
-        case _ =>
-          currBranch.right = Tree.generate(tail, errorCount)
-          currBranch.rightResFatalCount = errorCount
+      if (negated) {
+        currBranch.left = Tree.generate(tail, errorCount)
+        currBranch.leftResFatalCount = errorCount
+      } else {
+        currBranch.right = Tree.generate(tail, errorCount)
+        currBranch.rightResFatalCount = errorCount
       }
     }
   }
@@ -198,7 +197,7 @@ class Tree extends BranchTree {
       .reduce((str, s) => str + s)
   }
 
-  def getErrorCount(): Int = {
+  def getErrorCount: Int = {
     this match {
       case Branch(_,_,_,lf,rf) => Math.max(lf,0) + Math.max(rf,0)
       case _ => 0
@@ -206,7 +205,7 @@ class Tree extends BranchTree {
   }
 
   def prettyPrint() : String = {
-    if (Verifier.config.numberOfErrorsToReport() == 1 || this.getErrorCount() == 1) {
+    if (Verifier.config.numberOfErrorsToReport() == 1 || this.getErrorCount == 1) {
       this.buildPathStr()
     } else {
       this.buildTreeStr()._1.reduce((str, s) => str + "\n" + s) + "\n"
@@ -259,7 +258,7 @@ class Tree extends BranchTree {
   }
 
   def toDotFile(): Unit = {
-    val writer = PrintWriter(new java.io.File(Tree.DotFilePath),true)
+    val writer = PrintWriter(new java.io.File(Tree.DotFilePath),append=true)
     writer.write("digraph {\n")
     this.writeDotFileRec(writer)
     writer.write("}\n")
@@ -294,6 +293,6 @@ case class Branch(var exp : Exp,
                   var right: Tree,
                   protected[state] var leftResFatalCount: Int,
                   protected[state] var rightResFatalCount: Int) extends Tree {
-  def isLeftFatal = leftResFatalCount > 0
-  def isRightFatal = rightResFatalCount > 0
+  def isLeftFatal : Boolean = leftResFatalCount > 0
+  def isRightFatal : Boolean = rightResFatalCount > 0
 }

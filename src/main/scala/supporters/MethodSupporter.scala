@@ -122,7 +122,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       symbExLog.closeMemberScope()
 
       Option(branchTreeMap.get(method.name)).collect({
-        case branchTree : Branch if branchTree.getErrorCount() > 0 =>
+        case branchTree : Branch if branchTree.getErrorCount > 0 =>
           val method = s.currentMember.get.asInstanceOf[ast.Method]
           Seq(result, Failure(
             BranchFailed(
