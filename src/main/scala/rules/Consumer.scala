@@ -620,7 +620,7 @@ object consumer extends ConsumptionRules {
           case true =>
             v2.decider.assume(t, Option.when(withExp)(e), eNew)
             val r = QS(s3, v2)
-            s.storeIntoTree(v.decider.pcs.getBranchConditionsExp(),false)
+            r.exploredBranchPaths +:= (v.decider.pcs.getBranchConditionsExp(),false)
             r
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)

@@ -57,10 +57,10 @@ class BranchTreeTests extends AnyFunSuite {
 
   def executeTestReportTwoErrors(fileName: String) : Unit = executeTest(fileName, "reportTwoErrors", List("--numberOfErrorsToReport", "2"))
 
-  test("FirstPathFailsTree") {
+  test("FirstPathFailsTreeTwo") {
     executeTestReportTwoErrors("firstPathFails")
   }
-  test("LastPathFailsTree") {
+  test("LastPathFailsTreeTwo") {
     executeTestReportTwoErrors("lastPathFails")
   }
 

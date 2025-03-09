@@ -14,7 +14,7 @@ import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Term}
 import viper.silicon.state.{State, Store}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.Program
+import viper.silver.ast.{Exp, Program}
 import viper.silver.verifier._
 
 /*
@@ -28,8 +28,17 @@ import viper.silver.verifier._
 /* TODO: Make VerificationResult immutable */
 sealed abstract class VerificationResult {
   var previous: Vector[VerificationResult] = Vector() //Sets had problems with equality
+  var exploredBranchPaths: Vector[(Seq[Exp],Boolean)] = Vector()
   val continueVerification: Boolean = true
   var isReported: Boolean = false
+
+  def getExploredBranchPaths(r: VerificationResult = this) : Vector[(Seq[Exp], Boolean)] = {
+    r.exploredBranchPaths ++ r.previous.map(x => x.previous.length match {
+    case 0 => x.exploredBranchPaths
+    case _ =>
+      val recRes = x.previous.map(getExploredBranchPaths).flatten
+      x.exploredBranchPaths ++ recRes
+  }).flatten}
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
@@ -61,7 +70,6 @@ sealed abstract class VerificationResult {
       }
       this
     }
-
   }
 }
 
@@ -100,7 +108,6 @@ case class Failure/*[ST <: Store[ST],
                    S <: State[ST, H, S]]*/
                   (message: VerificationError, override val continueVerification: Boolean = true)
   extends FatalResult {
-
   override lazy val toString: String = message.readableMessage
 }
 

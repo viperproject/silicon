@@ -1,82 +1,65 @@
-package viper.silicon.state
+package viper.silicon.state.branchTree
 
 import viper.silicon.common.io.PrintWriter
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Exp
-import viper.silver.verifier.errors.BranchTree
 
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
-
-class BranchTreeMap {
-  private val map : ConcurrentMap[String, Tree] = new ConcurrentHashMap[String,Tree]()
-
-  def get(method: String) : Tree = map.get(method)
-  def storeIntoTree(method: String, branchConditions : Seq[Exp], isResultFatal: Boolean): Unit = {
-    if (map.containsKey(method)) {
-      val branchTree = map.get(method)
-      branchTree.extend(branchConditions, isResultFatal)
-    } else {
-      map.put(method, Tree.generate(branchConditions, isResultFatal))
-    }
-  }
-}
-
-class Tree extends BranchTree {
+class BranchTree extends viper.silver.verifier.errors.BranchTree {
 
   private def incrementIfFatal(currBranchResultFatal: Int, isResultFatal: Boolean) : Int =
     if (isResultFatal) Math.max(currBranchResultFatal,0)+1 else currBranchResultFatal
 
-  def extend(branchConditions : Seq[Exp], isResultFatal: Boolean) : Unit  = {
-    if (branchConditions.nonEmpty) {
-      var currNode = this
-      var currBranch = currNode.asInstanceOf[Branch]
-      var negated = branchConditions.head match {
-        case _: ast.Not => true
-        case _ => false
-      }
-      var tail = branchConditions.tail
-      var next = true
-      while (tail.nonEmpty && next) {
-        next = false
-        val headExp = tail.head match {
-          case ast.Not(exp) => exp
-          case _ => tail.head
+  protected[branchTree] def extend(branchConditions : Seq[Exp], isResultFatal: Boolean) : Unit  = {
+    (this, branchConditions) match {
+      case (b:Branch, bcs) if bcs.nonEmpty =>
+        var currBranch = b
+        var negated = branchConditions.head match {
+          case _: ast.Not => true
+          case _ => false
         }
-        (currBranch.left, currBranch.right) match {
-          case (Branch(exp,_,_,_,_),_) if headExp.toString == exp.toString && negated =>
-            currNode = currBranch.left
-            currBranch.leftResFatalCount = incrementIfFatal(currBranch.leftResFatalCount,isResultFatal)
-            next = true
-          case (_,Branch(exp,_,_,_,_)) if headExp.toString == exp.toString && !negated =>
-            currNode = currBranch.right
-            currBranch.rightResFatalCount = incrementIfFatal(currBranch.rightResFatalCount,isResultFatal)
-            next = true
-          case _ =>
-        }
-        if (next) {
-          currBranch = currNode.asInstanceOf[Branch]
-          negated = tail.head match {
-            case _: ast.Not => true
-            case _ => false
+        var tail = branchConditions.tail
+        var next = true
+        while (tail.nonEmpty && next) {
+          next = false
+          val headExp = tail.head match {
+            case ast.Not(exp) => exp
+            case _ => tail.head
           }
-          tail = tail.tail
+          (currBranch.left, currBranch.right) match {
+            case (lb@Branch(exp,_,_,_,_),_) if headExp.toString == exp.toString && negated =>
+              currBranch.leftResFatalCount = incrementIfFatal(currBranch.leftResFatalCount,isResultFatal)
+              currBranch = lb
+              next = true
+            case (_,rb@Branch(exp,_,_,_,_)) if headExp.toString == exp.toString && !negated =>
+              currBranch.rightResFatalCount = incrementIfFatal(currBranch.rightResFatalCount,isResultFatal)
+              currBranch = rb
+              next = true
+            case _ =>
+          }
+          if (next) {
+            negated = tail.head match {
+              case _: ast.Not => true
+              case _ => false
+            }
+            tail = tail.tail
+          }
         }
-      }
-      val errorCount = if (isResultFatal) 1 else -1 // -1 for successful result
-      if (negated) {
-        currBranch.left = Tree.generate(tail, errorCount)
-        currBranch.leftResFatalCount = errorCount
-      } else {
-        currBranch.right = Tree.generate(tail, errorCount)
-        currBranch.rightResFatalCount = errorCount
-      }
+        val errorCount = if (isResultFatal) 1 else -1
+        val subTree = BranchTree.generate(Vector((tail, isResultFatal)))// -1 for successful result // TODO
+        if (negated) {
+          currBranch.left = subTree.get
+          currBranch.leftResFatalCount = errorCount
+        } else {
+          currBranch.right = subTree.get
+          currBranch.rightResFatalCount = errorCount
+        }
+      case _=>
     }
   }
 
 
   private def even(n: Int) = (n & 1) == 0
-
   private def buildTreeStrRec(fatalCount: Int) : (Vector[String], Int, Int) = {
     this match {
       case Leaf if fatalCount == -1 => (Vector("✔"), 0, 0)
@@ -85,7 +68,6 @@ class Tree extends BranchTree {
       case _ => (Vector("?"), 0, 0)
     }
   }
-
   private def buildTreeStr() : (Vector[String], Int, Int) = {
     this match {
       case Branch(exp, left, right, leftErrCount, rightErrCount) =>
@@ -155,9 +137,8 @@ class Tree extends BranchTree {
         )
       }).toVector
   }
-
   private def buildPathStr() : String = {
-    var currTree : Tree = this
+    var currTree : BranchTree = this
     var maxBoxLen = 5 // for 'Error'
     var path = Vector[String]()
     var side = Vector[String]()
@@ -166,8 +147,7 @@ class Tree extends BranchTree {
         case b@Branch(e, l, r, lc, rc) =>
           val expStr = e.toString
           val halfExpStrLen = expStr.length / 2
-          val pathTaken = if (b.isLeftFatal) "F" else "T"
-          val pathNotTaken = if (b.isLeftFatal) "T" else "F"
+          val (pathTaken, pathNotTaken) = if (b.isRightFatal) ("T", "F") else ("F","T")
 
           val boxTop = "┌─" + ("─" * halfExpStrLen) + "┴" + ("─" * halfExpStrLen) + s"─┐ $pathNotTaken "
           val boxMiddle = "│ " + expStr + (if (even(expStr.length)) " " else "") + " ├──"
@@ -180,14 +160,14 @@ class Tree extends BranchTree {
           if (maxBoxLen > boxLen) box = fill(box, filler) else path = fill(path, filler)
           maxBoxLen = Math.max(maxBoxLen, boxLen)
 
-          (if(b.isLeftFatal) rc else lc) match {
+          (if(b.isRightFatal) lc else rc) match {
             case -1 => side ++= Vector("\n"," ✔\n","\n","\n")
             case 0 => side ++= Vector("\n"," ?\n","\n","\n")
             case _ => side ++= Vector("\n"," Error\n","\n","\n")
           }
 
           path ++= box
-          currTree = if (b.isLeftFatal) l else r
+          currTree = if (b.isRightFatal) r else l // influenced by order of verification results (true branch results before left)
         case _ => currTree = Leaf
       }
     }
@@ -212,7 +192,6 @@ class Tree extends BranchTree {
     }
   }
 
-
   private def leafToDotNodeContent(fatalCount : Int): String = {
     fatalCount match {
       case -1 => "label=\"✔\",shape=\"octagon\",style=\"filled\", fillcolor=\"palegreen\""
@@ -220,7 +199,6 @@ class Tree extends BranchTree {
       case _ => "label=\"?\",shape=\"octagon\",style=\"filled\", fillcolor=\"lightgoldenrodyellow\""
     }
   }
-
   private def writeDotFileRec(writer: java.io.PrintWriter, visitedCount : Int = 0) : Int = {
     this match {
       case Branch(exp,left,right,leftResFatalCount,rightResFatalCount) =>
@@ -258,7 +236,7 @@ class Tree extends BranchTree {
   }
 
   def toDotFile(): Unit = {
-    val writer = PrintWriter(new java.io.File(Tree.DotFilePath),append=true)
+    val writer = PrintWriter(new java.io.File(BranchTree.DotFilePath),append=true)
     writer.write("digraph {\n")
     this.writeDotFileRec(writer)
     writer.write("}\n")
@@ -266,33 +244,50 @@ class Tree extends BranchTree {
   }
 }
 
-object Tree {
+object BranchTree {
   val DotFilePath = s"${System.getProperty("user.dir")}/${Verifier.config.tempDirectory()}/BranchTree.dot"
 
-  private def generate(expressions : Seq[Exp], errorCount: Int) : Tree = {
+  private def generatePathRec(expressions: Seq[Exp], errorCount: Int, result: BranchTree): BranchTree = {
     expressions.length match {
-      case 0 => Leaf
+      case 0 => result
       case _ =>
-        val subtree = generate(expressions.tail, errorCount)
-        expressions.head match {
+        val lastExp = expressions.last
+        lastExp match {
           case ast.Not(exp) =>
-            Branch(exp, subtree, Leaf, errorCount, 0)
+            generatePathRec(expressions.init, errorCount, Branch(exp, result, Leaf, errorCount, 0))
           case _ =>
-            Branch(expressions.head, Leaf, subtree, 0, errorCount)
+            generatePathRec(expressions.init, errorCount, Branch(lastExp, Leaf, result, 0, errorCount))
         }
     }
   }
 
-  def generate(expressions : Seq[Exp], isFatal: Boolean) : Tree =
-    generate(expressions, if (isFatal) 1 else -1) // -1 or distinguishing successful from no result at leaves
+  private def generateRec(exploredPaths: Vector[(Seq[Exp], Boolean)], result: BranchTree): BranchTree = { // result.instanceOf[Branch] must hold
+    exploredPaths.length match {
+      case 0 => result
+      case _ =>
+        val (expressions, isResultFatal) = exploredPaths.head
+        result.extend(expressions, isResultFatal)
+        generateRec(exploredPaths.tail, result)
+    }
+  }
+
+  def generate(exploredPaths: Vector[(Seq[Exp], Boolean)]): Option[BranchTree] = {
+    exploredPaths.length match {
+      case 0 => None
+      case _ =>
+        val (expressions, isResultFatal) = exploredPaths.head
+        val path = generatePathRec(expressions, if (isResultFatal) 1 else -1, Leaf) // -1 or distinguishing successful from no result at leaves
+        Some(generateRec(exploredPaths.tail, path))
+    }
+  }
 }
 
-private object Leaf extends Tree
+object Leaf extends BranchTree
 case class Branch(var exp : Exp,
-                  var left: Tree,
-                  var right: Tree,
-                  protected[state] var leftResFatalCount: Int,
-                  protected[state] var rightResFatalCount: Int) extends Tree {
+                  var left: BranchTree,
+                  var right: BranchTree,
+                  protected[branchTree] var leftResFatalCount: Int,
+                  protected[branchTree] var rightResFatalCount: Int) extends BranchTree {
   def isLeftFatal : Boolean = leftResFatalCount > 0
   def isRightFatal : Boolean = rightResFatalCount > 0
 }

@@ -81,10 +81,8 @@ final case class State(g: Store = Store(),
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false,
-                       moreJoins: JoinMode = JoinMode.Off,
-
-                       branchTreeMap: Option[BranchTreeMap] = None)
-    extends Mergeable[State] {
+                       moreJoins: JoinMode = JoinMode.Off)
+   extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
@@ -152,14 +150,6 @@ Verifier.config.respectFunctionPrePermAmounts()
   lazy val relevantQuantifiedVariables: Seq[(Var, Option[ast.AbstractLocalVar])] =
     relevantQuantifiedVariables(_ => true)
 
-  def storeIntoTree(branchConditions: Seq[Exp], isResultFatal: Boolean) = {
-    if (this.branchTreeMap.isDefined && this.currentMember.isDefined){
-      if (branchConditions.nonEmpty) {
-        this.branchTreeMap.get.storeIntoTree(this.currentMember.get.name, branchConditions, isResultFatal)
-      }
-    }
-  }
-
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
 
@@ -191,7 +181,7 @@ object State {
                  ssCache1, assertReadAccessOnly1,
                  qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-                 moreCompleteExhale, moreJoins, branchTreeMap) =>
+                 moreCompleteExhale, moreJoins) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -216,7 +206,7 @@ object State {
                      ssCache2, `assertReadAccessOnly1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2, `moreJoins`, `branchTreeMap`) =>
+                     moreCompleteExhale2, `moreJoins`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -347,7 +337,7 @@ object State {
       ssCache1, assertReadAccessOnly1,
       qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-      moreCompleteExhale, moreJoins, branchTreeMap) =>
+      moreCompleteExhale, moreJoins) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -371,7 +361,7 @@ object State {
           ssCache2, `assertReadAccessOnly1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-          moreCompleteExhale2, `moreJoins`, `branchTreeMap`) =>
+          moreCompleteExhale2, `moreJoins`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

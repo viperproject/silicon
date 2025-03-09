@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
-import viper.silicon.state.{State}
+import viper.silicon.state.State
 import viper.silicon.state.terms.{False, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -85,7 +85,6 @@ trait SymbolicExecutionRules {
     }
 
     val branchConditions = v.decider.pcs.getBranchConditionsExp()
-    s.storeIntoTree(branchConditions, true)
 
     if (Verifier.config.enableDebugging()){
       val assumptions = v.decider.pcs.assumptionExps
@@ -97,6 +96,8 @@ trait SymbolicExecutionRules {
       res.failureContexts = Seq(SiliconFailureContext(branchConditionsReported, counterexample, reasonUnknown))
     }
 
-    Failure(res, v.reportFurtherErrors())
+    val f = Failure(res,  v.reportFurtherErrors())
+    f.exploredBranchPaths +:= (branchConditions, true)
+    f
   }
 }

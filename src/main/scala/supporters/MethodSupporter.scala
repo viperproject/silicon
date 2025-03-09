@@ -14,8 +14,9 @@ import viper.silicon.interfaces.{Failure, _}
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{Branch, BranchTreeMap, Heap, State, Store}
+import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.branchTree.{Branch, BranchTree}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 import viper.silver.reporter.AnnotationWarning
@@ -82,12 +83,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ outs.map(x => (x, decider.fresh(x)))
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
-      val branchTreeMap = new BranchTreeMap()
       val s = sInit.copy(g = g,
                          h = Heap(),
                          oldHeaps = OldHeaps(),
-                         methodCfg = body,
-                         branchTreeMap = Some(branchTreeMap))
+                         methodCfg = body)
 
       if (Verifier.config.printMethodCFGs()) {
         viper.silicon.common.io.toFile(
@@ -121,8 +120,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       symbExLog.closeMemberScope()
 
-      Option(branchTreeMap.get(method.name)).collect({
-        case branchTree : Branch if branchTree.getErrorCount > 0 =>
+      BranchTree.generate(result.getExploredBranchPaths()) match {
+        case Some(branchTree : Branch) if branchTree.getErrorCount > 0 =>
           val method = s.currentMember.get.asInstanceOf[ast.Method]
           Seq(result, Failure(
             BranchFailed(
@@ -130,12 +129,15 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
               BranchFails(
                 method,
                 branchTree,
-                Seq(BeamInfo(branchTree.exp, branchTree.isLeftFatal, branchTree.isRightFatal))
+                Seq(BeamInfo(branchTree.exp,
+                  branchTree.isLeftFatal,
+                  branchTree.isRightFatal)
+                )
               )
             )
           ))
         case _=> Seq(result)
-      }).getOrElse(Seq(result))
+      }
     }
 
     /* Lifetime */
