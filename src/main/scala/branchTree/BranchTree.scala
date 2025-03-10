@@ -1,4 +1,4 @@
-package viper.silicon.state.branchTree
+package viper.silicon.branchTree
 
 import viper.silicon.common.io.PrintWriter
 import viper.silicon.verifier.Verifier

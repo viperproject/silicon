@@ -9,7 +9,6 @@ import viper.silver.ast.Program
 import viper.silver.frontend.{DefaultStates, SilFrontend, SilFrontendConfig}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, VerificationResult, Verifier, Failure => SilFailure}
 import viper.silicon.Silicon
-import viper.silver.reporter.Reporter
 
 package object tests {
   class DummyFrontend extends SilFrontend {
