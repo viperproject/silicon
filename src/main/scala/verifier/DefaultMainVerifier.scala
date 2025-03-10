@@ -36,8 +36,6 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
-import viper.silver.verifier.errors.PostconditionViolatedBranch
-import viper.silver.verifier.reasons.BranchFailure
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -260,31 +258,14 @@ class DefaultMainVerifier(config: Config,
       program.methods.filterNot(excludeMethod).map(method => {
 
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
-          Verifier.config.parallelizeBranches(), branchTreeMap = Some(new BranchTreeMap())) /* [BRANCH-PARALLELISATION] */
+          Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          var results = v.methodSupporter.verify(s, method)
+          val results = v.methodSupporter.verify(s, method)
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
-          val branchTree = s.branchTreeMap.get.Map.get(method.name)
-          if (branchTree.isDefined) {
-            val branch =  branchTree.get.asInstanceOf[Branch]
-            if (branch.isLeftFatal || branch.isRightFatal) {
-              val firstCond = branchTree.get.asInstanceOf[Branch].exp
-              results +:= Failure(
-                PostconditionViolatedBranch(
-                  firstCond,
-                  BranchFailure(
-                    firstCond,
-                    branchTree.get.prettyPrint()
-                  ),
-                  branch.isLeftFatal,
-                  branch.isRightFatal)
-              )
-            }
-          }
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
           logger debug s"Silicon finished verification of method `${method.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
 

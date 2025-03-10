@@ -23,7 +23,6 @@ import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopF
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, Stack}
-import viper.silver.ast.Exp
 import viper.silver.utility.Sanitizer
 
 final case class State(g: Store = Store(),
@@ -82,7 +81,7 @@ final case class State(g: Store = Store(),
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false,
                        moreJoins: JoinMode = JoinMode.Off)
-   extends Mergeable[State] {
+    extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
@@ -90,8 +89,7 @@ final case class State(g: Store = Store(),
   }
 
   val mayAssumeUpperBounds: Boolean = {
-    currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] ||
-Verifier.config.respectFunctionPrePermAmounts()
+    currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrePermAmounts()
   }
 
   val isLastRetry: Boolean = retryLevel == 0
