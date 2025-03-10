@@ -132,7 +132,6 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
     case PIntLit(value) => Some(LitIntEntry(value), None)
     case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some(LitIntEntry(-value), None)
     case PBinExp(PIntLit(n), r, PIntLit(d)) if r.rs == PSymOp.Div => Some(LitPermEntry(Rational(n, d)), None)
-    case idnuse: PIdnUse => model.entries.get(idnuse.name).map((_, None))
     case idnuse: PIdnUseExp => model.entries.get(idnuse.name).map((_, None))
     case PFieldAccess(rcv, _, idnuse) => resolveWoPerm(rcv, model).flatMap {
       case RefEntry(_, fields) => fields.get(idnuse.name)
