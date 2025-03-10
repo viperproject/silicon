@@ -12,7 +12,7 @@ import fastparse._
 import viper.silicon.interfaces.SiliconMappedCounterexample
 import viper.silicon.reporting.{ExtractedModel, ExtractedModelEntry, LitIntEntry, LitPermEntry, NullRefEntry, RecursiveRefEntry, RefEntry, SeqEntry}
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIdnUseExp, PIntLit, PLookup, PSymOp, PUnExp}
+import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUseExp, PIntLit, PLookup, PSymOp, PUnExp}
 import viper.silver.utility.Common.Rational
 import viper.silver.verifier.{FailureContext, VerificationError}
 
