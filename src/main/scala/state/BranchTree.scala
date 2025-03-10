@@ -48,7 +48,7 @@ class BranchTree extends viper.silver.verifier.errors.BranchTree {
           }
         }
         val errorCount = if (isResultFatal) 1 else -1
-        val subTree = BranchTree.generate(Vector((tail, isResultFatal)))// -1 for successful result // TODO
+        val subTree = BranchTree.generate(Vector((tail, isResultFatal)))// -1 for successful result
         if (negated) {
           currBranch.left = subTree.get
           currBranch.leftResFatalCount = errorCount
