@@ -112,13 +112,13 @@ class SiliconQuantifierWeightTests extends AnyFunSuite {
     // A small weight should allow the axiom to be instantiated
     verifyUsingWeight(1) match {
       case Success => // Ok
-      case Failure(errors) => assert(false)
+      case Failure(errors,_) => assert(false)
     }
 
     // A big weight should prevent the axiom from being instantiated
     verifyUsingWeight(999) match {
       case Success => assert(false)
-      case Failure(errors) => // Ok
+      case Failure(errors,_) => // Ok
     }
   }
 }

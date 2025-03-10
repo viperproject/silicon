@@ -7,23 +7,35 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
+import reporting.branchTree.Branch
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
-import viper.silicon.interfaces.{Failure, _}
+import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.branchTree.{Branch, BranchTree}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.AnnotationWarning
+import viper.silver.reporter.{AnnotationWarning, BeamInfo, BranchTreeReport}
 import viper.silicon.{Map, toMap}
-import viper.silver.verifier.reasons.BranchFails
+import viper.silver.ast.Method
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
+
+class BranchTree(method: Method, tree: Branch, beams: Seq[BeamInfo]) extends viper.silver.reporter.BranchTree {
+  override val DotFilePath: String = reporting.branchTree.BranchTree.DotFilePath
+  override def getMethod(): Method = method
+  override def getBeams(): Seq[BeamInfo] = beams
+  override def prettyPrint(): String = tree.prettyPrint()
+  override def toDotFile(): Unit = tree.toDotFile()
+}
+
+object BranchTree {
+  def apply(method: Method, tree: Branch, beams: Seq[BeamInfo]): BranchTree = new BranchTree(method, tree, beams)
+}
 
 trait MethodVerificationUnit extends VerificationUnit[ast.Method]
 
@@ -120,24 +132,19 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       symbExLog.closeMemberScope()
 
-      BranchTree.generate(result.getExploredBranchPaths()) match {
+      reporting.branchTree.BranchTree.generate(result.getExploredBranchPaths()) match {
         case Some(branchTree : Branch) if branchTree.getErrorCount > 0 =>
           val method = s.currentMember.get.asInstanceOf[ast.Method]
-          Seq(result, Failure(
-            BranchFailed(
-              method,
-              BranchFails(
-                method,
-                branchTree,
-                Seq(BeamInfo(branchTree.exp,
-                  branchTree.isLeftFatal,
-                  branchTree.isRightFatal)
-                )
-              )
-            )
-          ))
-        case _=> Seq(result)
+          val beams = Seq(BeamInfo(branchTree.exp, branchTree.isLeftFatal, branchTree.isRightFatal))
+          val wrappedBranchTree = BranchTree(method, branchTree, beams)
+          result match {
+            case failure:Failure => failure.branchTree = Some(wrappedBranchTree)
+            case _ =>
+          }
+          v.reporter.report(BranchTreeReport(wrappedBranchTree))
+        case _=>
       }
+      Seq(result)
     }
 
     /* Lifetime */

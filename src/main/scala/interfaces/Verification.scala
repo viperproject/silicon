@@ -15,6 +15,7 @@ import viper.silicon.state.{State, Store}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.{Exp, Program}
+import viper.silver.reporter.BranchTree
 import viper.silver.verifier._
 
 /*
@@ -107,7 +108,7 @@ case class Unreachable() extends NonFatalResult {
 case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
-                  (message: VerificationError, override val continueVerification: Boolean = true)
+                  (message: VerificationError, override val continueVerification: Boolean = true, var branchTree : Option[BranchTree] = None)
   extends FatalResult {
   override lazy val toString: String = message.readableMessage
 }

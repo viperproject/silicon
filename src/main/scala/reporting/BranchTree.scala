@@ -1,4 +1,4 @@
-package viper.silicon.state.branchTree
+package reporting.branchTree
 
 import viper.silicon.common.io.PrintWriter
 import viper.silicon.verifier.Verifier
@@ -7,8 +7,7 @@ import viper.silver.ast.Exp
 
 import scala.annotation.tailrec
 
-class BranchTree extends viper.silver.verifier.errors.BranchTree {
-
+class BranchTree {
   private def incrementIfFatal(currBranchResultFatal: Int, isResultFatal: Boolean) : Int =
     if (isResultFatal) Math.max(currBranchResultFatal,0)+1 else currBranchResultFatal
 

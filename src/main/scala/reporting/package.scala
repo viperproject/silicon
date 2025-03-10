@@ -46,7 +46,7 @@ package object reporting {
   def convertToViperResult(result: VerificationResult): VprVerificationResult = {
     result match {
       case Success() | Unreachable() => VprSuccess
-      case Failure(message, _) => VprFailure(Seq(message))
+      case Failure(message, _, branchTree) => VprFailure(Seq(message), branchTree)
     }
   }
 
@@ -58,7 +58,7 @@ package object reporting {
            .collect { case failure: VprFailure => failure.errors }
            .flatten match {
               case Seq() => VprSuccess
-              case errors => VprFailure(errors)
+              case errors => VprFailure(errors, results.collectFirst({case Failure(_,_,Some(branchTree)) => branchTree}))
             }
   }
 }
