@@ -35,14 +35,11 @@ package object tests {
     override def verifier: Verifier = this._verifier.get
   }
 
-  def instantiateFrontend(args: List[String] = List.empty, reporter : Option[Reporter] = None): SilFrontend = {
+  def instantiateFrontend(): SilFrontend = {
     val frontend = new DummyFrontend
 
-    val backend = reporter match {
-      case Some(r) => new Silicon(r,List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-      case _ => new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-    }
-    backend.parseCommandLine(List("--ignoreFile", "dummy.sil")++args)
+    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
+    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
     backend.start()
 
     frontend.init(backend)
@@ -63,11 +60,11 @@ package object tests {
 
   def verifyProgram(program: Program, frontend: SilFrontend): VerificationResult = {
     frontend.verifier.verify(program) match {
-      case SilFailure(errors,branchTree) =>
+      case SilFailure(errors,exploredBranches) =>
         SilFailure(errors.map {
           case a: AbstractVerificationError => a.transformedError()
           case rest => rest
-        },branchTree)
+        },exploredBranches)
       case rest => rest
     }
   }

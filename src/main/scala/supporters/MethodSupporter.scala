@@ -7,7 +7,6 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import reporting.branchTree.Branch
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
@@ -19,23 +18,11 @@ import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.{AnnotationWarning, BeamInfo, BranchTreeReport}
+import viper.silver.reporter.{AnnotationWarning, ExploredBranches, ExploredBranchesReport}
 import viper.silicon.{Map, toMap}
 import viper.silver.ast.Method
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
-
-class BranchTree(method: Method, tree: Branch, beams: Seq[BeamInfo]) extends viper.silver.reporter.BranchTree {
-  override val DotFilePath: String = reporting.branchTree.BranchTree.DotFilePath
-  override def getMethod(): Method = method
-  override def getBeams(): Seq[BeamInfo] = beams
-  override def prettyPrint(): String = tree.prettyPrint()
-  override def toDotFile(): Unit = tree.toDotFile()
-}
-
-object BranchTree {
-  def apply(method: Method, tree: Branch, beams: Seq[BeamInfo]): BranchTree = new BranchTree(method, tree, beams)
-}
 
 trait MethodVerificationUnit extends VerificationUnit[ast.Method]
 
@@ -132,17 +119,24 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       symbExLog.closeMemberScope()
 
-      reporting.branchTree.BranchTree.generate(result.getExploredBranchPaths()) match {
-        case Some(branchTree : Branch) if branchTree.getErrorCount > 0 =>
-          val method = s.currentMember.get.asInstanceOf[ast.Method]
-          val beams = Seq(BeamInfo(branchTree.exp, branchTree.isLeftFatal, branchTree.isRightFatal))
-          val wrappedBranchTree = BranchTree(method, branchTree, beams)
-          result match {
-            case failure:Failure => failure.branchTree = Some(wrappedBranchTree)
-            case _ =>
-          }
-          v.reporter.report(BranchTreeReport(wrappedBranchTree))
-        case _=>
+      val exploredBranchPaths = result.getExploredBranchPaths()
+      result match {
+        case f: Failure if exploredBranchPaths.nonEmpty =>
+          val transformedPaths = exploredBranchPaths.map(eb => {
+            val (exps, isResultFatal) = eb
+            val transformedExps = exps.map(e => {
+              val (exprStr, negated) = e match {
+                case ast.Not(expr) => (expr.toString, true)
+                case _ => (e.toString, false)
+              }
+              (exprStr, negated)
+            }).toVector
+            (transformedExps, isResultFatal)
+          })
+          val exploredBranches = ExploredBranches(method, transformedPaths)
+          f.exploredBranches = Some(exploredBranches)
+          v.reporter.report(ExploredBranchesReport(exploredBranches))
+        case _ =>
       }
       Seq(result)
     }

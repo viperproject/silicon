@@ -75,7 +75,7 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
         case Nil => super.result
         case s1:Seq[AbstractError] => super.result match{
           case SilSuccess => SilFailure(s1)
-          case SilFailure(s2,branchTree) => SilFailure(s2 ++ s1,branchTree)
+          case SilFailure(s2,exploredBranches) => SilFailure(s2 ++ s1,exploredBranches)
         }
       }
     }
