@@ -20,7 +20,6 @@ import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 import viper.silver.reporter.{AnnotationWarning, ExploredBranches, ExploredBranchesReport}
 import viper.silicon.{Map, toMap}
-import viper.silver.ast.Method
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
