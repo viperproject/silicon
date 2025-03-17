@@ -99,7 +99,6 @@ object AbductionRemove extends AbductionRule {
         val g1 = q.goal.filterNot(g == _)
         checkChunk(loc, q.s, q.v, q.lostAccesses) {
           case Some(_) => Q(Some(q.copy(goal = g1)))
-          //consumeChunks(Seq(c), q.copy(goal = g1))(q2 => Q(Some(q2)))
           case None => apply(q.copy(goal = g1)) {
             case Some(q2) => Q(Some(q2.copy(goal = g +: q2.goal)))
             case None => Q(None)
@@ -107,23 +106,6 @@ object AbductionRemove extends AbductionRule {
         }
     }
   }
-
-  /**
-    * This will crash if the chunks do not exist. This is by design. Only call this if you are sure that the chunks exist.
-    *
-    * private def consumeChunks(chunks: Seq[BasicChunk], q: AbductionQuestion)(Q: AbductionQuestion => VerificationResult): VerificationResult = {
-    * chunks match {
-    * case Seq() => Q(q)
-    * case c +: cs =>
-    * val c1 = findChunk[BasicChunk](q.s.h.values, c.id, c.args, q.v).get
-    * val resource: Resource = c.resourceID match {
-    * case PredicateID => q.s.program.predicates.head
-    * case FieldID => q.s.program.fields.head
-    * }
-    * chunkSupporter.consume(q.s, q.s.h, resource, c1.args, None, c1.perm, None, ve, q.v, "")((s1, _, _, v1) => consumeChunks(cs, q.copy(s = s1, v = v1))(Q))
-    * }
-    * } */
-
 }
 
 /**
@@ -212,42 +194,12 @@ object AbductionFold extends AbductionRule {
           // If we find a chunk, then we definitely have to fold. So we attempt to and abduce anything else that might be missing.
           // TODO nklose if the predicate is conditional in a weird way, then this might be wrong?
           case Some((field, chunk)) =>
-            //val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
-
-            //val fargs = pred.formalArgs.map(_.localVar)
-            //val eArgs = a.loc.args
-            //val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
-            //val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
-            //val pveTransformed = pve.withReasonNodeTransformed(reasonTransformer)
-
             val fold = Fold(a)()
             executor.exec(q.s, fold, q.v, q.trigger, q.stateAllowed) { (s1, v1) =>
               val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, chunk.snap.sort))
               val q2 = q.copy(s = s1, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
               Q(Some(q2))
             }
-
-          /*
-          val tryFold = predicateSupporter.fold(q.s, pred, chunk.args.toList, None, terms.FullPerm, None, wildcards, pveTransformed, q.v) {
-            (s1, v1) =>
-              consumer.consume(s1, a, pve, v1) { (s2, _, v2) =>
-                Success(Some(AbductionSuccess(s1, v1, v1.decider.pcs.duplicate(), Seq(), Seq(Fold(a)()), newFieldChunks=Map())))
-            }
-          }
-          tryFold match {
-            case nf: NonFatalResult =>
-              // TODO nklose make sure the pcs are correct here
-              abductionUtils.getAbductionSuccesses(nf) match {
-                case Seq(suc) =>
-                  val fold = Fold(a)()
-                  val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, chunk.snap.sort))
-                  val q2 = q.copy(s = suc.s, v = suc.v, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
-                  Q(Some(q2))
-              }
-            case f: Failure =>
-              BiAbductionSolver.solveAbduction(q.s, q.v, f, q.trigger){(s3, res, v3) =>
-                apply(q.copy(s = s3, v = v3, foundState = res.state ++ q.foundState, foundStmts = res.stmts ++ q.foundStmts))(Q)}
-          }*/
 
           case None => {
             // If we do not find a chunk, we recurse to try the others by calling this
@@ -376,10 +328,6 @@ object AbductionApply extends AbductionRule {
                     val state = q.foundState ++ lhsRes.foundState
                     val lost = q.lostAccesses ++ lhsRes.lostAccesses
                     Q(Some(AbductionQuestion(s2, v2, g1, lost, state, stmts, q.trigger, q.stateAllowed)))
-                    /*val g1 = q.goal.filterNot(_ == wand.right) :+ wand.left
-                    consumer.consume(s1, wand, pve, v1)((s2, _, v2) =>
-                      Q(Some(q.copy(s = s2, v = v2, goal = g1, foundStmts = q.foundStmts :+ Apply(wand)())))
-                    )*/
                   }
                 }
               }
@@ -411,7 +359,6 @@ object AbductionPackage extends AbductionRule {
             AbductionApplier.applyRules(packQ) { packRes =>
               if (packRes.goal.nonEmpty) {
                 Failure(pve dueTo (DummyReason))
-                //T(BiAbductionFailure(packRes.s, packRes.v, packRes.v.decider.pcs.duplicate()))
               } else {
                 val newState = packRes.foundState
                 val newStmts = packRes.foundStmts

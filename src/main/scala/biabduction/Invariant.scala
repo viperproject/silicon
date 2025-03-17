@@ -179,8 +179,6 @@ object LoopInvariantSolver {
           println("New state:\n    " + newState.mkString("\n    "))
         //}
 
-        //executionFlowController.locallyWithResult[(State, Seq[Exp])](s.copy(h = q.preHeap), v) { (s1, v1, R) =>
-
         val preState = s.copy(h = q.preHeap)
         val preTran = VarTransformer(preState, v, preLoopVars, preState.h)
 

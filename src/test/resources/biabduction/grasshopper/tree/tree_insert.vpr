@@ -9,11 +9,11 @@ method insert(root: Ref, value: Int) returns (res: Ref)
     if(root == null){
         res := new(left, right, val)
         res.left := null
-        fold tree(res.left)
+        //fold tree(res.left)
         res.right := null
-        fold tree(res.right)
+        //fold tree(res.right)
         res.val := value
-        //fold tree(res)
+        fold tree(res)
     } else {
 
         //package tree(curr) --* tree(root)
@@ -35,8 +35,8 @@ method insert(root: Ref, value: Int) returns (res: Ref)
                 t := new(left, right, val)
                 t.left := null
                 t.right := null
-                fold tree(t.left)
-                fold tree(t.right)
+                //fold tree(t.left)
+                //fold tree(t.right)
                 t.val := value
                 fold tree(t)
                 if(prev.val < value){

@@ -33,55 +33,6 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
     "Abduced pres " + state.length + ", Abduced statements " + stmts.length
   }
 
-  def addToMethod(m: Method, bcExps: Seq[Exp], newFieldChunks: Map[BasicChunk, LocationAccess]): Option[Method] = {
-    val ins = m.formalArgs.map(_.localVar)
-    val preHeap = s.oldHeaps.head._2
-    val preVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
-    val prevPcs = v.decider.pcs
-    v.decider.setPcs(pcs)
-    val pres = getPreconditions(preVars, preHeap, bcExps, newFieldChunks)
-    val finalStmts = getStatements(bcExps)
-    v.decider.setPcs(prevPcs)
-    if (pres.isEmpty || finalStmts.isEmpty) {
-      None
-    } else {
-      val finalStmt = finalStmts.get
-      val body = m.body.get
-      val newBody: Seqn = trigger match {
-        case None => body
-        case Some(t: Stmt) if t == abductionUtils.dummyEndStmt =>
-          addToInnerBody(body, finalStmt)
-        //Seqn(, body.scopedSeqnDeclarations)(body.pos, body.info, body.errT)
-
-        case Some(t: Stmt) if abductionUtils.isEndOfLoopStmt(t) =>
-          val loop = abductionUtils.getWhile(t.asInstanceOf[Label].invs.head, m)
-          val newLoopBody = loop.body.copy(ss = loop.body.ss ++ finalStmt)(pos = loop.body.pos, info = loop.body.info, errT = loop.body.errT)
-          val newLoop = loop.copy(body = newLoopBody)(loop.pos, loop.info, loop.errT)
-          body.transform { case stmt if stmt == loop => newLoop }
-        case Some(t: Stmt) =>
-          body.transform {
-            case stmt: Stmt if stmt == t && stmt.pos == t.pos =>
-              Seqn(finalStmt :+ t, Seq())(t.pos, t.info, t.errT)
-          }
-        case Some(e: Exp) => body.transform {
-          case ifStmt: If if ifStmt.cond == e && ifStmt.cond.pos == e.pos => Seqn(stmts :+ ifStmt, Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
-          case whileStmt: While if whileStmt.cond == e && whileStmt.cond.pos == e.pos => Seqn(stmts :+ whileStmt, Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
-        }
-      }
-      
-      Some(m.copy(pres = abductionUtils.sortExps(pres.get ++ m.pres).distinct, body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
-    }
-  }
-
-  private def addToInnerBody(outer: Seqn, bcStmts: Seq[Stmt]): Seqn = {
-    outer match {
-      case o@Seqn(Seq(in: Seqn), _) =>
-        val newInner = addToInnerBody(in, bcStmts)
-        o.copy(ss = Seq(newInner))(o.pos, o.info, o.errT)
-      case in => in.copy(ss = in.ss ++ bcStmts)(pos = in.pos, info = in.info, errT = in.errT)
-    }
-  }
-
   def getBcExps(bcsTerms: Seq[Term]): Seq[Option[Exp]] = {
     val prevPcs = v.decider.pcs
 
@@ -163,28 +114,6 @@ case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), l
     v.decider.setPcs(prevPcs)
     bcExps
   }
-
-  /*
-  def addToMethod(m: Method, bcs: Seq[Term]): Option[Method] = {
-
-    val bcExps = getBcsExps(bcs)
-    if (bcExps.contains(None)) {
-      None
-    } else {
-      val con = BigAnd(bcExps.map { case Some(e) => e })
-      val inv = con match {
-        case _: TrueLit => BigAnd(invs)
-        case _ => Implies(con, BigAnd(invs))()
-      }
-      val body = m.body.get
-      val newBody = body.transform {
-        case l: While if l.cond == loop.cond =>
-          l.copy(invs = l.invs :+ inv)(pos = l.pos, info = l.info, errT = l.errT)
-        case other => other
-      }
-      Some(m.copy(body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
-    }
-  }*/
 }
 
 case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positioned, pcs: PathConditionStack, varTran: VarTransformer) extends BiAbductionSuccess {
@@ -193,43 +122,8 @@ case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positione
   def getBcExps(bcsTerms: Seq[Term], prefVars: Map[AbstractLocalVar, (Term, Option[Exp])], otherVars: Map[AbstractLocalVar, (Term, Option[Exp])]): Seq[Exp] = {
     val varTrans = VarTransformer(s, v, prefVars, s.h, otherVars = otherVars)
     val bcExps = bcsTerms.map { t => varTrans.transformTerm(t) }
-
     bcExps.collect { case Some(e) => e.topLevelConjuncts }.flatten.distinct
-    /*
-    if (bcExps.contains(None)) {
-      None
-    } else {
-      Some(BigAnd(bcExps.map { case Some(e) => e }))
-    }*/
   }
-
-  /*
-    def addToMethod(m: Method, bcs: Seq[Term]): Option[Method] = {
-      val prevPcs = v.decider.pcs
-      v.decider.setPcs(pcs)
-      val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
-      val vars = s.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
-      val bcExps = getBcExps(bcs, vars)
-      v.decider.setPcs(prevPcs)
-
-      /*
-      val bcStmts = (bcExps, stmts) match {
-        case (_, Seq()) => Seq()
-        case (_: TrueLit, _) => stmts
-        case _ => Seq(If(bcExps, Seqn(stmts, Seq())(), Seqn(Seq(), Seq())())())
-      }*/
-
-      val bcPost = (bcExps, posts) match {
-        case (_, Seq()) => Seq()
-        case (Seq(), _) => posts
-        case _ => Seq(Implies(BigAnd(bcExps), BigAnd(posts))())
-      }
-
-      //val body = m.body.get
-      //val newBody = body.copy(ss = body.ss ++ bcStmts)(pos = body.pos, info = body.info, errT = body.errT)
-      Some(m.copy(posts = m.posts ++ bcPost)(pos = m.pos, info = m.info, errT = m.errT))
-
-    }*/
 }
 
 case class BiAbductionFailure(s: State, v: Verifier, pcs: PathConditionStack) extends BiAbductionResult {
@@ -431,17 +325,67 @@ object BiAbductionSolver {
         val abdRes = expJoined.head._1.head
         val finalBcs = BigOr(expJoined.map(e => BigAnd(e._2)))
         (abdRes -> finalBcs)
-        //expJoined.groupBy(_._2).map { case (bcs, list) => list.head._1.head -> bcs) }
     }
 
     // We want to add things in the reverse order of the abduction results.
     abdReses.reverse.foldLeft[Option[Method]](Some(m)) { (mOpt, res) =>
       mOpt match {
-        case Some(m1) if joinedCases.contains(res) => res.addToMethod(m1, Seq(joinedCases(res)), newMatches)
+        case Some(m1) if joinedCases.contains(res) => addToMethod(m1, Seq(joinedCases(res)), newMatches, res)
         case _ => mOpt
       }
     }
-    //joinedCases.foldLeft[Option[Method]](Some(m))((m1, res) => m1.flatMap { mm => res._1.addToMethod(mm, res._2, newMatches) })
+  }
+
+  def addToMethod(m: Method, bcExps: Seq[Exp], newFieldChunks: Map[BasicChunk, LocationAccess], abdRes: AbductionSuccess): Option[Method] = {
+
+    val s = abdRes.s
+    val v = abdRes.v
+
+    val ins = m.formalArgs.map(_.localVar)
+    val preHeap = s.oldHeaps.head._2
+    val preVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
+    val prevPcs = v.decider.pcs
+    v.decider.setPcs(abdRes.pcs)
+    val pres = abdRes.getPreconditions(preVars, preHeap, bcExps, newFieldChunks)
+    val finalStmts = abdRes.getStatements(bcExps)
+    v.decider.setPcs(prevPcs)
+    if (pres.isEmpty || finalStmts.isEmpty) {
+      None
+    } else {
+      val finalStmt = finalStmts.get
+      val body = m.body.get
+      val newBody: Seqn = abdRes.trigger match {
+        case None => body
+        case Some(t: Stmt) if t == abductionUtils.dummyEndStmt =>
+          addToInnerBody(body, finalStmt)
+
+        case Some(t: Stmt) if abductionUtils.isEndOfLoopStmt(t) =>
+          val loop = abductionUtils.getWhile(t.asInstanceOf[Label].invs.head, m)
+          val newLoopBody = loop.body.copy(ss = loop.body.ss ++ finalStmt)(pos = loop.body.pos, info = loop.body.info, errT = loop.body.errT)
+          val newLoop = loop.copy(body = newLoopBody)(loop.pos, loop.info, loop.errT)
+          body.transform { case stmt if stmt == loop => newLoop }
+        case Some(t: Stmt) =>
+          body.transform {
+            case stmt: Stmt if stmt == t && stmt.pos == t.pos =>
+              Seqn(finalStmt :+ t, Seq())(t.pos, t.info, t.errT)
+          }
+        case Some(e: Exp) => body.transform {
+          case ifStmt: If if ifStmt.cond == e && ifStmt.cond.pos == e.pos => Seqn(abdRes.stmts :+ ifStmt, Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
+          case whileStmt: While if whileStmt.cond == e && whileStmt.cond.pos == e.pos => Seqn(abdRes.stmts :+ whileStmt, Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
+        }
+      }
+
+      Some(m.copy(pres = abductionUtils.sortExps(pres.get ++ m.pres).distinct, body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
+    }
+  }
+
+  private def addToInnerBody(outer: Seqn, bcStmts: Seq[Stmt]): Seqn = {
+    outer match {
+      case o@Seqn(Seq(in: Seqn), _) =>
+        val newInner = addToInnerBody(in, bcStmts)
+        o.copy(ss = Seq(newInner))(o.pos, o.info, o.errT)
+      case in => in.copy(ss = in.ss ++ bcStmts)(pos = in.pos, info = in.info, errT = in.errT)
+    }
   }
 
 
@@ -453,7 +397,7 @@ object BiAbductionSolver {
     val everyPosts = frames.head.posts.filter { p => frames.forall(_.posts.contains(p)) }
 
     //val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
-    val bcs = frames.map(_.pcs.branchConditions)
+    //val bcs = frames.map(_.pcs.branchConditions)
 
     val cases = frames.map { f =>
       val prefVars = f.s.g.values.collect { case (var2, t) if m.formalArgs.map(_.localVar).contains(var2) => (var2, t) }

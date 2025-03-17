@@ -6,7 +6,7 @@ method destroy(x: Ref)
     var currO: Ref := x
 
     while(currO != null)
-        invariant OuterNode(currO)
+        //invariant OuterNode(currO)
     {
         var currO_old: Ref := currO
         //unfold OuterNode(currO)
@@ -20,7 +20,7 @@ method destroy(x: Ref)
             currI := currI.inext
             freeI(currI_old)
         }
-        unfold InnerNode(currI)
+        freeN(currI)
         currO := currO.onext
         freeO(currO_old)
     } 
@@ -33,3 +33,6 @@ requires acc(x.onext) && acc(x.down)
 
 method freeI(x: Ref)
 requires acc(x.inext)
+
+method freeN(x: Ref)
+requires InnerNode(x) && x == null
