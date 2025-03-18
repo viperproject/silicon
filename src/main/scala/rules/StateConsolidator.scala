@@ -207,14 +207,14 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       assert(l.quantifiedVars == Seq(`?r`))
       assert(r.quantifiedVars == Seq(`?r`))
       // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
-      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, fvf1, fvf2, l.perm, r.perm, v)
+      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, qvars, fvf1, fvf2, l.perm, r.perm, v)
       val permSum = PermPlus(perm1, perm2)
       val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
       val bestHints = if (hints1.nonEmpty) hints1 else hints2
       Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, condition1Exp, permSum, permSumExp, invs1, singletonRcvr1, singletonRcvr1Exp, bestHints), snapEq)
     case (l@QuantifiedPredicateChunk(id1, qVars1, qVars1Exp, psf1, _, _, perm1, perm1Exp, _, _, _, _),
           r@QuantifiedPredicateChunk(_, qVars2, qVars2Exp, psf2, condition2, condition2Exp, perm2, perm2Exp, invs2, singletonArgs2, singletonArgs2Exp, hints2)) =>
-      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
+      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, qvars, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
 
       val permSum = PermPlus(perm1.replace(qVars1, qVars2), perm2)
       val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1.replace(qVars1Exp.get.zip(qVars2Exp.get).toMap), perm2Exp.get)())
