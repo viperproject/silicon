@@ -18,6 +18,8 @@ import viper.silver.ast
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
+import scala.collection.immutable.HashSet
+
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
@@ -120,19 +122,18 @@ object brancher extends BranchingRules {
             // executing the else branch on a different verifier, need to adapt the state
             wasElseExecutedOnDifferentVerifier = true
 
-            if (s.underJoin)
-              v0.decider.pushSymbolStack()
             val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
-            val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
+            val v0FreshMacros = HashSet.from(v0.decider.freshMacros)
+            val newMacros = macrosOfCurrentDecider.filter(m => !v0FreshMacros.contains(m))
 
             v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
             proverArgsOfElseBranchDecider = v0.decider.getProverOptions()
             v0.decider.resetProverOptions()
             v0.decider.setProverOptions(proverArgsOfCurrentDecider)
             v0.decider.prover.comment(s"Bulk-declaring functions")
-            v0.decider.declareAndRecordAsFreshFunctions(newFunctions, false)
+            v0.decider.declareAndRecordAsFreshFunctions(newFunctions)
             v0.decider.prover.comment(s"Bulk-declaring macros")
-            v0.decider.declareAndRecordAsFreshMacros(newMacros, false)
+            v0.decider.declareAndRecordAsFreshMacros(newMacros)
 
             v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
             v0.decider.setPcs(pcsForElseBranch)
@@ -144,17 +145,24 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
 
-            if (v.uniqueId != v0.uniqueId)
+            var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
+            var nMacrosOfElseBranchDeciderBefore: Int = 0
+
+            if (v.uniqueId != v0.uniqueId) {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+              if (s.underJoin) {
+                nMacrosOfElseBranchDeciderBefore = v1.decider.freshMacros.size
+                functionsOfElseBranchdDeciderBefore = v1.decider.freshFunctions
+              }
+            }
 
             val result = fElse(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
             if (wasElseExecutedOnDifferentVerifier) {
               v1.decider.resetProverOptions()
               v1.decider.setProverOptions(proverArgsOfElseBranchDecider)
               if (s.underJoin) {
-                val newSymbols = v1.decider.popSymbolStack()
-                functionsOfElseBranchDecider = newSymbols._1
-                macrosOfElseBranchDecider = newSymbols._2
+                functionsOfElseBranchDecider = v1.decider.freshFunctions -- functionsOfElseBranchdDeciderBefore
+                macrosOfElseBranchDecider = v1.decider.freshMacros.drop(nMacrosOfElseBranchDeciderBefore)
               }
             }
             result
@@ -243,10 +251,9 @@ object brancher extends BranchingRules {
 
       v.decider.prover.comment(s"[To continue after join, adding else branch functions and macros to current verifier.]")
       v.decider.prover.comment(s"Bulk-declaring functions")
-      v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider, true)
+      v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider)
       v.decider.prover.comment(s"Bulk-declaring macros")
-      // Declare macros without duplicates; we keep only the last occurrence of every declaration to avoid errors.
-      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider.reverse.distinct.reverse, true)
+      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider)
     }
     res
   }

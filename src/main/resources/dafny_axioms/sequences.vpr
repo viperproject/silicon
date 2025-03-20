@@ -123,7 +123,7 @@ domain $Seq[E] {
     axiom {
         forall s: $Seq[E], t: $Seq[E], n: Int ::
         { Seq_take(Seq_append(s, t), n) }
-        n > 0 && n > Seq_length(s) ==> Seq_add(Seq_sub(n, Seq_length(s)), Seq_length(s)) == n && Seq_take(Seq_append(s, t), n) == Seq_append(s, Seq_take(t, Seq_sub(n, Seq_length(s))))
+        n > 0 && n > Seq_length(s) && n < Seq_length(Seq_append(s, t)) ==> Seq_add(Seq_sub(n, Seq_length(s)), Seq_length(s)) == n && Seq_take(Seq_append(s, t), n) == Seq_append(s, Seq_take(t, Seq_sub(n, Seq_length(s))))
     }
     axiom {
         forall s: $Seq[E], t: $Seq[E], n: Int ::

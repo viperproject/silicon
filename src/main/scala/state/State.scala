@@ -18,7 +18,7 @@ import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.{And, Ite, NoPerm}
+import viper.silicon.state.terms.{And, Ite}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.BigAnd
@@ -65,9 +65,10 @@ final case class State(g: Store = Store(),
                        conservedPcs: Stack[Vector[RecordedPathConditions]] = Stack(),
                        recordPcs: Boolean = false,
                        exhaleExt: Boolean = false,
+                       isInPackage: Boolean = false,
 
                        ssCache: SsCache = Map.empty,
-                       hackIssue387DisablePermissionConsumption: Boolean = false,
+                       assertReadAccessOnly: Boolean = false,
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
@@ -89,6 +90,10 @@ final case class State(g: Store = Store(),
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
     currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
+  }
+
+  val mayAssumeUpperBounds: Boolean = {
+    currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrePermAmounts()
   }
 
   val isLastRetry: Boolean = retryLevel == 0
@@ -176,8 +181,8 @@ object State {
                  triggerExp1,
                  partiallyConsumedHeap1,
                  permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
-                 reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
-                 ssCache1, hackIssue387DisablePermissionConsumption1,
+                 reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1, isInPackage1,
+                 ssCache1, assertReadAccessOnly1,
                  qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
                  moreCompleteExhale, moreJoins) =>
@@ -203,8 +208,8 @@ object State {
                      triggerExp2,
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
-                     `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
-                     ssCache2, `hackIssue387DisablePermissionConsumption1`,
+                     `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`, `isInPackage1`,
+                     ssCache2, `assertReadAccessOnly1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
                      moreCompleteExhale2, `moreJoins`) =>
@@ -221,6 +226,11 @@ object State {
             val ssCache3 = ssCache1 ++ ssCache2
             val moreCompleteExhale3 = moreCompleteExhale || moreCompleteExhale2
 
+            assert(conservedPcs1.length == conservedPcs2.length)
+            val conservedPcs3 = conservedPcs1
+              .zip(conservedPcs1)
+              .map({ case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct })
+
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
@@ -229,7 +239,8 @@ object State {
                     ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3,
-                    moreCompleteExhale = moreCompleteExhale3)
+                    moreCompleteExhale = moreCompleteExhale3,
+                    conservedPcs = conservedPcs3)
 
           case _ =>
             val err = new StringBuilder()
@@ -287,7 +298,7 @@ object State {
     h map (c => {
       c match {
         case c: GeneralChunk =>
-          c.withPerm(Ite(cond, c.perm, NoPerm), condExp.map(ce => ast.CondExp(ce, c.permExp.get, ast.NoPerm()())()))
+          c.applyCondition(cond, condExp)
         case _ => sys.error("Chunk type not conditionalizable.")
       }
     })
@@ -330,8 +341,8 @@ object State {
       triggerExp1,
       partiallyConsumedHeap1,
       permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
-      reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
-      ssCache1, hackIssue387DisablePermissionConsumption1,
+      reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1, isInPackage1,
+      ssCache1, assertReadAccessOnly1,
       qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
       moreCompleteExhale, moreJoins) =>
@@ -356,8 +367,8 @@ object State {
           triggerExp2,
           partiallyConsumedHeap2,
           `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
-          reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
-          ssCache2, `hackIssue387DisablePermissionConsumption1`,
+          reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`, `isInPackage1`,
+          ssCache2, `assertReadAccessOnly1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
           moreCompleteExhale2, `moreJoins`) =>

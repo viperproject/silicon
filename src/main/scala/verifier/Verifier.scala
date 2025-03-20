@@ -11,7 +11,7 @@ import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.rules.StateConsolidationRules
-import viper.silicon.state.{IdentifierFactory, State, SymbolConverter}
+import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silicon.Config
@@ -49,13 +49,29 @@ trait Verifier {
   def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > errorsReportedSoFar.get()
     || Verifier.config.numberOfErrorsToReport() == 0);
 
-  def getDebugOldLabel(s: State): String = {
-    val equalHeaps = s.oldHeaps.filter(h => h._1.startsWith("debug@") && h._2.equals(s.h)).keys
+  /**
+    * Returns debug labels for 1) the given heap (will reuse an existing one if one already exists), independently of
+    * the position of the current expression, and 2) the current expression in the given heap.
+    * @param s the current state
+    * @param pos the position of the current expression
+    * @param h the heap to consider, if not the heap from state s
+    * @return a pair containing the label of the given heap, and the label of the current expression in the given heap
+    */
+  def getDebugOldLabel(s: State, pos: ast.Position, h: Option[Heap] = None): (String, String) = {
+    val posString = pos match {
+      case column: ast.HasLineColumn => s"l:${column.line}.${column.column}"
+      case _ => s"l:unknown"
+    }
+    val heap = h match {
+      case Some(heap) => heap
+      case None => s.h
+    }
+    val equalHeaps = s.oldHeaps.filter(h => h._1.startsWith("debug@") && h._2.equals(heap)).keys
     if (equalHeaps.nonEmpty){
-      equalHeaps.head
+      (equalHeaps.head, s"${equalHeaps.head}#$posString")
     } else {
       val counter = debugHeapCounter.getAndIncrement()
-      s"debug@$counter"
+      (s"debug@$counter", s"debug@$counter#$posString")
     }
   }
 }

@@ -141,7 +141,8 @@ case class SiliconAbductionFailureContext(trafo: Option[AbductionQuestionTransfo
   def counterExample: Option[Counterexample] = None
 }
 
-case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Exp)],
+case class SiliconDebuggingFailureContext(branchConditions: Seq[Term],
+                                          branchConditionExps: Seq[(ast.Exp, ast.Exp)],
                                           counterExample: Option[Counterexample],
                                           reasonUnknown: Option[String],
                                           state: Option[State],
@@ -153,59 +154,8 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Ex
                                           assumptions: InsertionOrderedSet[DebugExp],
                                           failedAssertion: Term,
                                           failedAssertionExp: DebugExp) extends FailureContext {
-  lazy val branchConditionString: String = {
-    if (branchConditions.nonEmpty) {
-      val branchConditionsString =
-        branchConditions
-          .map(_._2)
-          .map(bc => s"$bc [ ${bc.pos} ] ")
-          .mkString("\t\t", " ~~> ", "")
 
-      s"\n\t\tunder branch conditions:\n$branchConditionsString"
-    } else {
-      ""
-    }
-  }
-
-  lazy val counterExampleString: String = {
-    counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
-  }
-
-  lazy val reasonUnknownString: String = {
-    if (reasonUnknown.isDefined) {
-      s"\nPotential prover incompleteness: ${reasonUnknown.get}"
-    } else {
-      ""
-    }
-  }
-
-  lazy val stateString: String = {
-    if (state.isDefined){
-      s"\n\nStore:\n\t\t${state.get.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${state.get.h.values.mkString("\n\t\t")}"
-    } else {
-      ""
-    }
-  }
-
-  lazy val allAssumptionsString: String = {
-    if (assumptions.nonEmpty) {
-      val config = new DebugExpPrintConfiguration
-      config.isPrintInternalEnabled = true
-      s"\n\nassumptions:\n\t${assumptions.tail.foldLeft[String](assumptions.head.toString(config))((s, de) => de.toString(config) + s)}"
-    } else {
-      ""
-    }
-  }
-
-  lazy val failedAssertionString: String ={
-    if (failedAssertionExp.finalExp.isDefined){
-      s"\n\nFailed Assertion:\n\t\t${failedAssertionExp.finalExp.get.toString}"
-    } else {
-      failedAssertionExp.description.get
-    }
-  }
-
-  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString + stateString + allAssumptionsString + failedAssertionString
+  override lazy val toString: String = ""
 }
 
 trait SiliconCounterexample extends Counterexample {

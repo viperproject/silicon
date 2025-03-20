@@ -135,7 +135,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                       )
                     }
                   } else {
-                    consumes(s4, posts, postViolated, v4)((_, _, _) =>
+                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
                       Success())
                   }
                 }

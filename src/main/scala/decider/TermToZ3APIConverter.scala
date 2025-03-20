@@ -340,7 +340,7 @@ class TermToZ3APIConverter
         val e1 = convert(t1).asInstanceOf[ArithExpr]
         ctx.mkITE(ctx.mkLe(e0, e1), e0, e1)
       }
-      case IsValidPermVar(v) => {
+      case IsValidPermVal(v) => {
         /*
         (define-fun $Perm.isValidVar ((p $Perm)) Bool
 	        (<= $Perm.No p))

@@ -345,10 +345,10 @@ object Converter {
   def extractHeap(h: Iterable[Chunk], model: Model): ExtractedHeap = {
     var entries: Vector[HeapEntry] = Vector()
     h foreach {
-      case c @ BasicChunk(FieldID, _, _, _, _, _, _) =>
+      case c @ BasicChunk(FieldID, _, _, _, _, _, _, _) =>
         val entry = extractField(c, model)
         entries = entries :+ entry
-      case c @ BasicChunk(PredicateID, _, _, _, _, _, _) =>
+      case c @ BasicChunk(PredicateID, _, _, _, _, _, _, _) =>
         val entry = extractPredicate(c, model)
         entries = entries :+ entry
       case c: BasicChunk =>
@@ -422,7 +422,7 @@ object Converter {
       case FullPerm => Some(Rational.one)
       case FractionPermLiteral(r) => Some(r)
       case _: FractionPerm => None
-      case IsValidPermVar(_) => None
+      case IsValidPermVal(_) => None
       case IsReadPermVar(_) => None
       case PermTimes(v1, v2) =>
         evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x * y))
