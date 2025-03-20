@@ -276,7 +276,7 @@ object AbductionUnfold extends AbductionRule {
             produces(q.s, freshSnap, conds, _ => pve, q.v)((s1, v1) => {
               val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
               predicateSupporter.unfold(s1, pred.loc(q.s.program), predChunk.args.toList, None, terms.FullPerm, None, wildcards, pve, v1, pred) { (s2, v2) =>
-                Q(Some(q.copy(s = s2, v = v2, foundStmts = q.foundStmts :+ Unfold(PredicateAccessPredicate(pred, FullPerm()())())(), foundState = q.foundState ++ conds.map(c => c -> None))))
+                Q(Some(q.copy(s = s2, v = v2, foundStmts = q.foundStmts :+ Unfold(PredicateAccessPredicate(pred, Some(FullPerm()()))())(), foundState = q.foundState ++ conds.map(c => c -> None))))
               }
             })
         }

@@ -135,8 +135,8 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
         val rcv = transformTerm(bc.args.head)
         (bc, rcv) match {
           case (_, None) => None
-          case (BasicChunk(FieldID, _, _, _, _, _, _), rcv) => Some(ast.FieldAccessPredicate(ast.FieldAccess(rcv.get, abductionUtils.getField(bc.id, s.program))(), transformTerm(b.perm).get)())
-          case (BasicChunk(PredicateID, id, _, _, _, _, _), rcv) => Some(ast.PredicateAccessPredicate(ast.PredicateAccess(Seq(rcv.get), id.name)(), transformTerm(b.perm).get)())
+          case (BasicChunk(FieldID, _, _, _, _, _, _, _), rcv) => Some(ast.FieldAccessPredicate(ast.FieldAccess(rcv.get, abductionUtils.getField(bc.id, s.program))(), Some(transformTerm(b.perm).get))())
+          case (BasicChunk(PredicateID, id, _, _, _, _, _, _), rcv) => Some(ast.PredicateAccessPredicate(ast.PredicateAccess(Seq(rcv.get), id.name)(), Some(transformTerm(b.perm).get))())
 
         }
       case mwc: MagicWandChunk =>

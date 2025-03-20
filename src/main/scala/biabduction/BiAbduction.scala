@@ -199,8 +199,8 @@ object BiAbductionSolver {
       val reason = f.message.reason match {
         case reason: InsufficientPermission =>
           val acc = reason.offendingNode match {
-            case n: FieldAccess => FieldAccessPredicate(n, FullPerm()())()
-            case n: PredicateAccess => PredicateAccessPredicate(n, FullPerm()())()
+            case n: FieldAccess => FieldAccessPredicate(n, Some(FullPerm()()))()
+            case n: PredicateAccess => PredicateAccessPredicate(n, Some(FullPerm()()))()
           }
           Some(acc)
         case reason: MagicWandChunkNotFound => Some(reason.offendingNode)
@@ -258,9 +258,9 @@ object BiAbductionSolver {
   def solveFraming(s: State, v: Verifier, pvef: Exp => PartialVerificationError, tra: VarTransformer, loc: Positioned, knownPosts: Seq[Exp], stateAllowed: Boolean)(Q: FramingSuccess => VerificationResult): VerificationResult = {
 
     //val tra = VarTransformer(s, v, targetVars, s.h)
-    executionFlowController.tryOrElse1[Term](s, v) { (s, v, QS) =>
-      consumes(s, knownPosts, pvef, v)(QS)
-    } { (s1: State, _: Term, v1: Verifier) =>
+    executionFlowController.tryOrElse1[Option[Term]](s, v) { (s, v, QS) =>
+      consumes(s, knownPosts, false, pvef, v)(QS)
+    } { (s1: State, _: Option[Term], v1: Verifier) =>
       executionFlowController.locallyWithResult[Seq[Exp]](s1, v1) { (s1a, v1a, T) =>
         BiAbductionSolver.solveAbstraction(s1a, v1a) { (s2, framedPosts, v2) =>
           val newPosts = framedPosts.map { e => tra.transformExp(e) }.collect { case Some(e) => e }

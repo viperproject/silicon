@@ -6,13 +6,12 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
 import viper.silicon.Config.ExhaleMode
-import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 
 trait ExecutionFlowRules extends SymbolicExecutionRules {
   def locallyWithResult[R](s: State, v: Verifier)

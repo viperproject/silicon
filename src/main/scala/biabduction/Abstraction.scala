@@ -41,7 +41,7 @@ object AbstractionFold extends AbstractionRule {
 
             executionFlowController.tryOrElse0(q.s, q.v) {
               (s1, v1, T) =>
-                val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), FullPerm()())())()
+                val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), Some(FullPerm()()))())()
                 executor.exec(s1, fold, v1, None, abdStateAllowed = false)((s1a, v1a) =>
                   T(s1a, v1a)
                 )
@@ -84,7 +84,7 @@ object AbstractionPackage extends AbstractionRule {
             } match {
               case None => Q(None)
               case Some(recPred) =>
-                val lhs = PredicateAccessPredicate(PredicateAccess(Seq(lhsArgExp), recPred.predicateName)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
+                val lhs = PredicateAccessPredicate(PredicateAccess(Seq(lhsArgExp), recPred.predicateName)(NoPosition, NoInfo, NoTrafos), Some(FullPerm()()))()
 
                 // We only want to create the wand if the inner predicate is not present in the current state.
                 abductionUtils.findChunkFromExp(lhs.loc, q.s, q.v, pve) {
@@ -93,7 +93,7 @@ object AbstractionPackage extends AbstractionRule {
                     q.varTran.transformTerm(bc.args.head) match {
                       case None => Q(None)
                       case Some(rhsArg) =>
-                        val rhs = PredicateAccessPredicate(PredicateAccess(Seq(rhsArg), pred)(NoPosition, NoInfo, NoTrafos), FullPerm()())()
+                        val rhs = PredicateAccessPredicate(PredicateAccess(Seq(rhsArg), pred)(NoPosition, NoInfo, NoTrafos), Some(FullPerm()()))()
                         Q(Some(MagicWand(lhs, rhs)()))
                     }
                 }

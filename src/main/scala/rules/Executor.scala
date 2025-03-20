@@ -384,7 +384,7 @@ object executor extends ExecutionRules {
     if (invs.isEmpty) {
       Q(s, v)
     } else {
-      executionFlowController.tryOrElse1[Term](s, v) {
+      executionFlowController.tryOrElse1[Option[Term]](s, v) {
         (s1, v1, QS) =>
           consumes(s1, invs, false, LoopInvariantNotPreserved, v1)(QS)
       } {
