@@ -225,12 +225,15 @@ object chunkSupporter extends ChunkSupportRules {
     val id = ChunkIdentifier(resource, s.program)
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
-      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
+      case Some(ch) if v.decider.check(Implies(And(ch.args zip args map (x => x._1 === x._2)), IsPositive(ch.perm)), Verifier.config.checkTimeout()) =>
         Q(s, ch.snap, v)
-      case _ if v.decider.checkSmoke(true) =>
-        Success() // TODO: Mark branch as dead?
       case _ =>
-        createFailure(ve, v, s, true)
+        val freshVars = args map (arg => v.decider.fresh(arg.sort))
+        if ((v.decider.check(Implies(And(args zip freshVars map (x => x._1 === x._2)), False()), Verifier.config.assertTimeout.getOrElse(0)))) {
+          Success() // TODO: Mark branch as dead?
+        } else {
+          createFailure(ve, v, s, true)
+        }
     }
   }
 
