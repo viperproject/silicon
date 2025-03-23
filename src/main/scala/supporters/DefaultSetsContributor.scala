@@ -47,7 +47,7 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
     }) {
       program.fields foreach {f => setTypeInstances += ast.SetType(f.typ)}
 
-      setTypeInstances += ast.SetType(ast.Ref) /* $FVF.domain_f is of type Set[Ref] */
+      //setTypeInstances += ast.SetType(ast.Ref) /* $FVF.domain_f is of type Set[Ref] */
 
       /* $PSF.domain_p is of type Set[Snap], and a corresponding instantiation of the set axioms
        * is thus needed. Currently, such an instantiation is supported only for Viper types.
