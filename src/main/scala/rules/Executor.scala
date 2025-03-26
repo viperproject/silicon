@@ -22,7 +22,7 @@ import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.FieldID
 import viper.silicon.rules.producer.withExp
-import viper.silicon.rules.quantifiedChunkSupporter.withExp
+import viper.silicon.rules.quantifiedChunkSupporter.{mostCommonTag, withExp}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
@@ -334,6 +334,7 @@ object executor extends ExecutionRules {
            : VerificationResult = {
 
     val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
+    v.decider.prover.comment(s"list of qp chunks: ${state.h.values}")
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
 
@@ -381,53 +382,56 @@ object executor extends ExecutionRules {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
+            executionFlowController.tryOrFail0(s2, v2)((s21, v21, QS) => {
             val (relevantChunks, otherChunks) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
+              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s21.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-            val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v2)
-            val s2p = if (s2.heapDependentTriggers.contains(field)){
+            val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v21)
+            val s2p = if (s21.heapDependentTriggers.contains(field)){
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
-                  s2, field, Seq(`?r`), relevantChunks, v1)
+                  s21, field, Seq(`?r`), relevantChunks, v21)
               val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: (${eRcvrNew.toString()}).${field.name}"))
-              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
-              s2.copy(smCache = smCache1)
+              v21.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
+              s21.copy(smCache = smCache1)
             } else {
-              s2
+              s21
             }
             v2.decider.clearModel()
-            val result = quantifiedChunkSupporter.removePermissions(
-              s2p,
-              relevantChunks,
-              Seq(`?r`),
-              Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
-              `?r` === tRcvr,
-              eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)()),
-              Some(Seq(tRcvr)),
-              field,
-              FullPerm,
-              Option.when(withExp)(ast.FullPerm()()),
-              chunkOrderHeuristics,
-              v2
-            )
-            result match {
-              case (Complete(), s3, remainingChunks, untouchedChunks) =>
-                val h3 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
-                val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
-                v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-                val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-                v1.decider.assumeDefinition(smValueDef, debugExp)
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program)
-                if (s3.heapDependentTriggers.contains(field)) {
-                  val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
-                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
-                }
-                val s4 = s3.copy(h = h3 + ch)
-                val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (v.getDebugOldLabel(s4) -> magicWandSupporter.getEvalHeap(s4))) else s4
-                Q(s5, v2)
-              case (Incomplete(_, _), s3, _, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
+              val result = quantifiedChunkSupporter.removePermissions(
+                s2p,
+                relevantChunks,
+                Seq(`?r`),
+                Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
+                `?r` === tRcvr,
+                eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)()),
+                Some(Seq(tRcvr)),
+                field,
+                FullPerm,
+                Option.when(withExp)(ast.FullPerm()()),
+                chunkOrderHeuristics,
+                v21
+              )
+              result match {
+                case (Complete(), s3, remainingChunks, untouchedChunks) =>
+                  val newTag =  Some(quantifiedChunkSupporter.mostCommonTag(relevantChunks.diff(untouchedChunks)).getOrElse(v.counter(this).next()))  // extract tags from all involved chunks and pick majority
+                  val h3 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
+                  val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
+                  v21.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+                  val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
+                  v21.decider.assumeDefinition(smValueDef, debugExp)
+                  val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
+                    field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, newTag, s.program)
+                  if (s3.heapDependentTriggers.contains(field)) {
+                    val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
+                    v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
+                  }
+                  val s4 = s3.copy(h = h3 + ch)
+                  val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (v.getDebugOldLabel(s4) -> magicWandSupporter.getEvalHeap(s4))) else s4
+                  QS(s5, v2)
+                case (Incomplete(_, _), s3, _, _) =>
+                  createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}})(Q)
+            }))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
@@ -465,7 +469,7 @@ object executor extends ExecutionRules {
             val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
             v.decider.assumeDefinition(smValueDef, debugExp)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT))),
-              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program)
+              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, Some(v.counter(this).next()), s.program)
           } else {
             BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, p, pExp)
           }

@@ -64,6 +64,7 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
   override def permMinus(perm: Term, permExp: Option[ast.Exp]): QuantifiedBasicChunk
   override def permPlus(perm: Term, permExp: Option[ast.Exp]): QuantifiedBasicChunk
   override def withSnapshotMap(snap: Term): QuantifiedBasicChunk
+  override def addSingleRcvr(rcvr: Seq[Term]): QuantifiedBasicChunk
   def singletonArguments: Seq[Seq[Term]]
   def singletonArgumentExps: Seq[Seq[ast.Exp]]
   def hints: Seq[Term]
@@ -76,6 +77,7 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
  */
 case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 fvf: Term,
+                                orgCondition: Term,
                                 condition: Term,
                                 conditionExp: Option[ast.Exp],
                                 permValue: Term,
@@ -83,6 +85,8 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 invs: Option[InverseFunctions],
                                 singletonRcvr: Seq[Seq[Term]],
                                 singletonRcvrExp: Seq[Seq[ast.Exp]],
+                                tag: Option[Int],
+                                singleRcvr: Seq[Seq[Term]],
                                 hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
@@ -110,23 +114,27 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
   }
 
   def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) =
-    QuantifiedFieldChunk(id, fvf, condition, conditionExp, newPerm, newPermExp, invs, singletonRcvr, singletonRcvrExp, hints)
+    QuantifiedFieldChunk(id, fvf, orgCondition, condition, conditionExp, newPerm, newPermExp, invs, singletonRcvr, singletonRcvrExp, tag, singleRcvr, hints)
   override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
-    QuantifiedFieldChunk(id, fvf, terms.And(newCond, condition), newCondExp.map(nce => ast.And(nce, conditionExp.get)()), permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
+    QuantifiedFieldChunk(id, fvf, orgCondition, terms.And(newCond, condition), newCondExp.map(nce => ast.And(nce, conditionExp.get)()), permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, tag, singleRcvr, hints)
   override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermMinus(permValue, newPerm), newPermExp.map(npe => ast.PermSub(permValueExp.get, npe)()))
   override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(permValue, newPerm), newPermExp.map(npe => ast.PermAdd(permValueExp.get, npe)()))
   override def withSnapshotMap(newFvf: Term) =
-    QuantifiedFieldChunk(id, newFvf, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
+    QuantifiedFieldChunk(id, newFvf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, tag, singleRcvr, hints)
 
-  override lazy val toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$id -> $fvf # $perm"
+  override def addSingleRcvr(rcvr: Seq[Term]) =
+    QuantifiedFieldChunk(id, fvf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, tag, singleRcvr :+ rcvr, hints)
+
+  override lazy val toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$id -> $fvf # $perm # $tag # $orgCondition # $singleRcvr"
 }
 
 case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     quantifiedVars: Seq[Var],
                                     quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
                                     psf: Term,
+                                    orgCondition: Term,
                                     condition: Term,
                                     conditionExp: Option[ast.Exp],
                                     permValue: Term,
@@ -134,6 +142,8 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     invs: Option[InverseFunctions],
                                     singletonArgs: Seq[Seq[Term]],
                                     singletonArgExps: Seq[Seq[ast.Exp]],
+                                    tag: Option[Int],
+                                    singleRcvr: Seq[Seq[Term]],
                                     hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
@@ -151,28 +161,33 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
   override def valueAt(args: Seq[Term]) = PredicateLookup(id.name, psf, args)
 
   def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) =
-    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, condition, conditionExp, newPerm, newPermExp, invs, singletonArgs, singletonArgExps, hints)
+    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, newPerm, newPermExp, invs, singletonArgs, singletonArgExps, tag, singleRcvr, hints)
   override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
-    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, terms.And(newCond, condition), newCondExp.map(nce => ast.And(nce, conditionExp.get)()), permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
+    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, terms.And(newCond, condition), newCondExp.map(nce => ast.And(nce, conditionExp.get)()), permValue, permValueExp, invs, singletonArgs, singletonArgExps, tag, singleRcvr, hints)
   override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermMinus(permValue, newPerm), newPermExp.map(npe => ast.PermSub(permValueExp.get, npe)()))
   override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(permValue, newPerm), newPermExp.map(npe => ast.PermAdd(permValueExp.get, npe)()))
   override def withSnapshotMap(newPsf: Term) =
-    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, newPsf, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
+    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, newPsf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, tag, singleRcvr, hints)
+  override def addSingleRcvr(rcvr: Seq[Term]) =
+    QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, orgCondition, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, tag, singleRcvr :+ rcvr, hints)
 
-  override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm"
+  override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm # $tag # $orgCondition # $singleRcvr"
 }
 
 case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     quantifiedVars: Seq[Var],
                                     quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
                                     wsf: Term,
+                                    orgCondition: Term,
                                     perm: Term,
                                     permExp: Option[ast.Exp],
                                     invs: Option[InverseFunctions],
                                     singletonArgs: Seq[Seq[Term]],
                                     singletonArgExps: Seq[Seq[ast.Exp]],
+                                    tag: Option[Int],
+                                    singleRcvr: Seq[Seq[Term]],
                                     hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
@@ -194,11 +209,13 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
   override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
   def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) =
-    QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, newPerm, newPermExp, invs, singletonArgs, singletonArgExps, hints)
+    QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, newPerm, newPermExp, invs, singletonArgs, singletonArgExps, tag, singleRcvr, hints)
   override def withSnapshotMap(newWsf: Term) =
-    QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, newWsf, perm, permExp, invs, singletonArgs, singletonArgExps, hints)
+    QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, newWsf, orgCondition, perm, permExp, invs, singletonArgs, singletonArgExps, tag, singleRcvr, hints)
+  override def addSingleRcvr(rcvr: Seq[Term]) =
+    QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, orgCondition, perm, permExp, invs, singletonArgs, singletonArgExps, tag, singleRcvr :+ rcvr, hints)
 
-  override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $wsf # $perm"
+  override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $wsf # $perm # $tag # $orgCondition # $singleRcvr"
 }
 
 case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand)(override val hashCode: Int) extends ChunkIdentifer {

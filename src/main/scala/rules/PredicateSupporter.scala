@@ -88,7 +88,7 @@ object predicateSupporter extends PredicateSupportRules {
         v1.decider.assumeDefinition(smValueDef, debugExp)
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program)
+            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s2.qpTag, s.program)
         val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
         val smCache = if (s2.heapDependentTriggers.contains(predicate)) {
@@ -110,7 +110,8 @@ object predicateSupporter extends PredicateSupportRules {
                          smCache = smCache,
                          permissionScalingFactor = s.permissionScalingFactor,
                          permissionScalingFactorExp = s.permissionScalingFactorExp,
-                         functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
+                         functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef),
+                         qpTag = None)
         Q(s3, v1)
       } else {
         val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.convert(sorts.Snap), tPerm, ePerm)
@@ -173,7 +174,8 @@ object predicateSupporter extends PredicateSupportRules {
           }
           Q(s4.copy(g = s.g,
                     permissionScalingFactor = s.permissionScalingFactor,
-                    permissionScalingFactorExp = s.permissionScalingFactorExp),
+                    permissionScalingFactorExp = s.permissionScalingFactorExp,
+                    qpTag = None),
             v2)})
       })
     } else {

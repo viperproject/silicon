@@ -209,17 +209,6 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
       Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, PermPlus(perm1, perm2), perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())), Seq(snapEq))
     case (l : QuantifiedBasicChunk, r: QuantifiedBasicChunk) =>
-//      (l, r) match {
-//        case (l1: QuantifiedFieldChunk, r1: QuantifiedFieldChunk) => {
-//          v.decider.prover.comment("Merging qp chunks")
-//          v.decider.prover.comment(s"left chunk: ${l1}")
-//          v.decider.prover.comment(s"left chunk cond: ${l1.condition}")
-//          //v.decider.prover.comment(s"left perm: ${l.perm}")
-//          v.decider.prover.comment(s"right chunk: ${r1}")
-//          v.decider.prover.comment(s"right chunk cond: ${r1.condition}")
-//        }
-//      }
-      // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
 
       v.decider.prover.comment("Merging qp chunks")
       v.decider.prover.comment(s"left chunk: ${l}")
@@ -257,6 +246,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         quantifiedChunkSupporter.summarise(s, Seq(l, r), formalQVars, resource , None, v)
       }
       val fr3 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, valueDefinitions, optSmDomainDefinition.toSeq))
+      val combinedSingleRcvr = l.singleRcvr ++ r.singleRcvr
+      v.decider.prover.comment(s"combined Single rcvr: ${combinedRecvr}")
 //      val fr4 = if(true) {//s.heapDependentTriggers.contains(resource)) {
 //        val heapTrigger: Term => Term = l.resourceID match {
 //          case FieldID => FieldTrigger(resource.name, _, formalQVars.head)
@@ -282,17 +273,17 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 //            val (fr2, combinedSnap, snapEq) =
 //              quantifiedChunkSupporter.combineSnapshotMaps(fr1, valueFn, l.quantifiedVars, l.snapshotMap, r.snapshotMap, l.perm, replacedPerm, v)
           //val fr3 = combineHeapTrigger(fr2, s, l, r, combinedSnap, v)
-          //We cannot keep singleton arguments because we, don't know on which chunk we should apply them. TODO Markus: detailed explaination.
-          Some(fr3, QuantifiedFieldChunk(BasicChunkIdentifier(l.id.toString), sm, True, condExp, permSum,
-            permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, combinedHints), valueDefinitions)
+          //We cannot keep singleton arguments because we, don't know on which chunk we should apply them.
+          Some(fr3, QuantifiedFieldChunk(BasicChunkIdentifier(l.id.toString), sm, l.orgCondition, True, condExp, permSum,
+            permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, l.tag, combinedSingleRcvr, combinedHints), valueDefinitions)
         }
         case PredicateID => {
           //val valueFn: Term => Term = (sm => PredicateLookup(l.id.toString, sm, l.quantifiedVars))
 //          val (fr2, combinedSnap, snapEq) =
 //            quantifiedChunkSupporter.combineSnapshotMaps(fr1, valueFn, l.quantifiedVars, l.snapshotMap, r.snapshotMap, l.perm, replacedPerm, v)
           //val fr3 = combineHeapTrigger(fr2, s, l, r, combinedSnap, v)
-          Some(fr3, QuantifiedPredicateChunk(BasicChunkIdentifier(l.id.toString), l.quantifiedVars, l.quantifiedVarExps, sm, True,
-            condExp, permSum, permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, combinedHints), valueDefinitions)
+          Some(fr3, QuantifiedPredicateChunk(BasicChunkIdentifier(l.id.toString), l.quantifiedVars, l.quantifiedVarExps, sm, l.orgCondition, True,
+            condExp, permSum, permSumExp, combinedInvs, combinedRecvr, combinedRecvrExp, l.tag, combinedSingleRcvr, combinedHints), valueDefinitions)
         }
         case MagicWandID => None
       }

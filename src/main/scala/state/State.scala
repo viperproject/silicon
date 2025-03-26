@@ -73,6 +73,7 @@ final case class State(g: Store = Store(),
                        smCache: SnapshotMapCache = SnapshotMapCache.empty,
                        pmCache: PmCache = Map.empty,
                        smDomainNeeded: Boolean = false,
+                       qpTag: Option[Int] = None,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
@@ -173,7 +174,7 @@ object State {
                  permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
-                 qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
+                 qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, qpTag1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
                  moreCompleteExhale, moreJoins) =>
 
@@ -198,7 +199,7 @@ object State {
                      `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
                      `reserveHeaps1`, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
-                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
+                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`, qpTag1,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
                      moreCompleteExhale2, `moreJoins`) =>
 
@@ -329,7 +330,7 @@ object State {
       permissionScalingFactor1, permissionScalingFactorExp1, isEvalInOld,
       reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
       ssCache1, hackIssue387DisablePermissionConsumption1,
-      qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
+      qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1, qpTag1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
       moreCompleteExhale, moreJoins) =>
 
@@ -353,7 +354,7 @@ object State {
           `permissionScalingFactor1`, `permissionScalingFactorExp1`, `isEvalInOld`,
           reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
           ssCache2, `hackIssue387DisablePermissionConsumption1`,
-          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
+          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2, qpTag1,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
           moreCompleteExhale2, `moreJoins`) =>
 
