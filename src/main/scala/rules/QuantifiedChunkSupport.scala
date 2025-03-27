@@ -987,11 +987,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val receiverInjectivityCheck =
           if (!Verifier.config.assumeInjectivityOnInhale()) {
             val simplifiedAssumptions = FunctionPreconditionTransformer.transform(Forall(qvars, Implies.actualCreate((And(tCond, IsPositive(tPerm)), And(tArgs.map(a => BuiltinEquals.actualCreate((a, a)))))), Nil, s"$qid-rcvrInjPreconditions"), s.program)
-            val simplifiedAssumptionsWithTrigger = simplifiedAssumptions match {
-              case quantification: Quantification => v.quantifierSupporter.autoTrigger(quantification)
-              case _ => simplifiedAssumptions
-            }
-            v.decider.assume(simplifiedAssumptionsWithTrigger, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
+            v.decider.assume(simplifiedAssumptions, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
             quantifiedChunkSupporter.injectivityAxiom(
               qvars     = qvars,
               // TODO: Adding ResourceTriggerFunction requires a summarising snapshot map of the current heap
@@ -1259,11 +1255,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
         val simplifiedAssumptions = FunctionPreconditionTransformer.transform(Forall(qvars, Implies.actualCreate((And(tCond, IsPositive(tPerm)), And(tArgs.map(a => BuiltinEquals.actualCreate((a, a)))))), Nil, s"$qid-rcvrInjNew"), s.program)
-        val simplifiedAssumptionsWithTrigger = simplifiedAssumptions match {
-          case quantification: Quantification => v.quantifierSupporter.autoTrigger(quantification)
-          case _ => simplifiedAssumptions
-        }
-        v.decider.assume(simplifiedAssumptionsWithTrigger, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
+        v.decider.assume(simplifiedAssumptions, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
