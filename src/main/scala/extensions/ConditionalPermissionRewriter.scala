@@ -40,7 +40,7 @@ class ConditionalPermissionRewriter {
       res
 
     case (i@Implies(cond, l: Let), cc) if !l.isPure =>
-      if (Expressions.proofObligations(l.exp)(p).isEmpty && !Expressions.containsPermissionIntrospection(cond)) {
+      if (Expressions.isKnownWellDefined(l.exp, Some(p)) && !Expressions.containsPermissionIntrospection(cond)) {
         (l, cc.updateContext(cc.c &*& cond))
       } else {
         // bound expression might only be well-defined under context condition;
@@ -68,7 +68,7 @@ class ConditionalPermissionRewriter {
       alreadySeen.add(res._1)
       res
 
-    case (l: Let, cc) if Expressions.proofObligations(l.exp)(p).nonEmpty =>
+    case (l: Let, cc) if !Expressions.isKnownWellDefined(l.exp, Some(p)) =>
       // Bound expression might only be well-defined under context conditions;
       // thus, don't push conditions further in.
       val res = (Implies(cc.c.exp, l)(l.pos, l.info, l.errT), cc)
@@ -129,7 +129,7 @@ class ConditionalPermissionRewriter {
     val defaultPerm = if (isFunction) WildcardPerm()() else FullPerm()()
     acc match {
       case FieldAccessPredicate(loc, perm) =>
-        if (Expressions.proofObligations(loc.rcv)(p).isEmpty) {
+        if (Expressions.isKnownWellDefined(loc.rcv, Some(p))) {
           FieldAccessPredicate(loc, Some(makeCondExp(cond.exp, perm.getOrElse(defaultPerm))))(acc.pos, acc.info, acc.errT)
         } else {
           // Hack: use a conditional null as the receiver, that's always well-defined.
@@ -137,7 +137,7 @@ class ConditionalPermissionRewriter {
           FieldAccessPredicate(fieldAccess, Some(makeCondExp(cond.exp, perm.getOrElse(defaultPerm))))(acc.pos, acc.info, acc.errT)
         }
       case PredicateAccessPredicate(loc, perm) =>
-        if (!loc.args.exists(a => Expressions.proofObligations(a)(p).nonEmpty))
+        if (!loc.args.exists(a => !Expressions.isKnownWellDefined(a, Some(p))))
           PredicateAccessPredicate(loc, Some(makeCondExp(cond.exp, perm.getOrElse(defaultPerm))))(acc.pos, acc.info, acc.errT)
         else
           Implies(cond.exp, acc)(acc.pos, acc.info, acc.errT)

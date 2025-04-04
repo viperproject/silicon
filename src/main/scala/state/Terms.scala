@@ -1068,6 +1068,22 @@ object Ite extends CondFlyweightTermFactory[(Term, Term, Term), Ite] {
     case (False, _, e2) => e2
     case (e0, True, False) => e0
     case (e0, False, True) => Not(e0)
+    case (e0, Ite(e10, e11, e12), e2) if e11 == e2 =>
+      Ite(And(e0, Not(e10)), e12, e2)
+    case (e0, Ite(e10, e11, e12), e2) if e12 == e2 =>
+      Ite(And(e0, e10), e11, e2)
+    case (e0, e1, Ite(e20, e21, e22)) if e1 == e21 =>
+      Ite(Or(e0, e20), e1, e22)
+    case (e0, e1, Ite(e20, e21, e22)) if e1 == e22 =>
+      Ite(Or(e0, Not(e20)), e1, e21)
+    case (e0, Ite(e10, e11, _), e2) if e0 == e10 =>
+      Ite(e0, e11, e2)
+    case (e0, Ite(e10, _, e12), e2) if e0 == Not(e10) =>
+      Ite(e0, e12, e2)
+    case (e0, e1, Ite(e20, _, e22)) if e0 == e20 =>
+      Ite(e0, e1, e22)
+    case (e0, e1, Ite(e20, e21, _)) if e0 == Not(e20) =>
+      Ite(e0, e1, e21)
     case _ => createIfNonExistent(v0)
   }
 
