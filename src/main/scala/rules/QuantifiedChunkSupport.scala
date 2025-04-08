@@ -981,9 +981,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     v.decider.assert(nonNegTerm) {
       case true =>
 
+        val comment = "Check receiver injectivity"
+        v.decider.prover.comment(comment)
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
         val receiverInjectivityCheck =
           if (!Verifier.config.assumeInjectivityOnInhale()) {
+            val simplifiedAssumptions = FunctionPreconditionTransformer.transform(Forall(qvars, Implies.actualCreate((And(tCond, IsPositive(tPerm)), And(tArgs.map(a => BuiltinEquals.actualCreate((a, a)))))), Nil, s"$qid-rcvrInjPreconditions"), s.program)
+            v.decider.assume(simplifiedAssumptions, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
             quantifiedChunkSupporter.injectivityAxiom(
               qvars     = qvars,
               // TODO: Adding ResourceTriggerFunction requires a summarising snapshot map of the current heap
@@ -996,10 +1000,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           } else {
             True
           }
-        val comment = "Check receiver injectivity"
-        v.decider.prover.comment(comment)
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
-          Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
@@ -1072,8 +1072,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                      conservedPcs = conservedPcs,
                      smCache = smCache1)
             Q(s1, v)
-          case false =>
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")}
+          case false => {
+            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
+          }
+        }
       case false =>
         createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)}
   }
@@ -1252,7 +1254,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
+        val simplifiedAssumptions = FunctionPreconditionTransformer.transform(Forall(qvars, Implies.actualCreate((And(tCond, IsPositive(tPerm)), And(tArgs.map(a => BuiltinEquals.actualCreate((a, a)))))), Nil, s"$qid-rcvrInjNew"), s.program)
+        v.decider.assume(simplifiedAssumptions, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
@@ -1395,8 +1398,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 case (Incomplete(_, _), s2, _) =>
                   createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
             }
-          case false =>
+          case false => {
             createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")}
+        }
       case false =>
         createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)}
   }
@@ -1701,7 +1705,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     v.decider.prover.comment("Done removing quantified permissions")
     v.symbExLog.closeScope(sepIdentifier)
-    
+
     (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks)
   }
 
