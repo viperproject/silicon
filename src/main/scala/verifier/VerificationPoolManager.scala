@@ -27,6 +27,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     def emit(content: String): Unit = workerVerifiers foreach (_.decider.prover.emit(content))
     override def emit(contents: Iterable[String]): Unit = workerVerifiers foreach (_.decider.prover.emit(contents))
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))
+    def assume(term: Term, label: String): Unit = workerVerifiers foreach (_.decider.prover.assume(term, label))
     override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxioms(terms, description))
     def declare(decl: Decl): Unit =  workerVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = workerVerifiers foreach (_.decider.prover.comment(content))

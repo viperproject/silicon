@@ -309,11 +309,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
       }
 
-      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(filteredAssumptions map (_._1), isDefinition=isDefinition)
+
+      if (filteredAssumptions.nonEmpty){
+        val d = filteredAssumptions.head._2 // FIXME ake
+        val labelPrefix = if (d.isDefined) "debugExp_" + d.get.id else ""
+        assumeWithoutSmokeChecks(filteredAssumptions map (_._1), isDefinition=isDefinition, labelPrefix=labelPrefix)
+      }
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit = {
-      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions))
+      val labelPrefix = if(debugExps.isDefined) "debugExp_" + debugExps.get.head.id else "" // FIXME ake
+      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions), labelPrefix=labelPrefix)
       if (debugMode) {
         debugExps.get foreach (e => addDebugExp(e))
       }
@@ -328,7 +334,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
       }
 
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms))
+      val labelPrefix = if(debugExp.isDefined) "debugExp_" + debugExp.get.id else "" // FIXME ake
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), labelPrefix=labelPrefix)
     }
 
     def debuggerAssume(terms: Iterable[Term], de: DebugExp) = {
@@ -341,7 +348,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], isDefinition: Boolean = false) = {
+    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], isDefinition: Boolean = false, labelPrefix: String = "") = {
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
 
@@ -353,7 +360,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       /* Add terms to the prover's assumptions */
-      terms foreach prover.assume
+      terms.zipWithIndex.iterator.foreach{case (t, tid) => prover.assume(t, if(labelPrefix.isEmpty) "" else labelPrefix + "_" + tid)}
 
       symbExLog.closeScope(sepIdentifier)
       None

@@ -34,6 +34,7 @@ trait ProverLike {
   }
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
+  def assume(term: Term, label: String): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
   def saturate(timeout: Int, comment: String): Unit

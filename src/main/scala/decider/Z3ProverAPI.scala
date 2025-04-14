@@ -263,6 +263,10 @@ class Z3ProverAPI(uniqueId: String,
     throw new ProverInteractionFailed(uniqueId, "Dynamically setting prover options via Z3 API is currently not supported.")
   }
 
+  def assume(term: Term, label: String): Unit = {
+    assume(term) // TODO ake
+  }
+
   def assume(term: Term): Unit = {
     try {
       if (preamblePhaseOver)

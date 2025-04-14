@@ -39,6 +39,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected var output: PrintWriter = _
   protected var allDecls: Seq[Decl] = Seq()
   protected var allEmits: Seq[String] = Seq()
+  protected var proverLabelId: Int = 0
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
@@ -220,6 +221,11 @@ abstract class ProverStdIO(uniqueId: String,
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
   def assume(term: Term): Unit = {
+    assume(term, "prover_" + proverLabelId)
+    proverLabelId += 1
+  }
+
+  def assume(term: Term, label: String): Unit = {
 //    /* Detect certain simple problems with quantifiers.
 //     * Note that the current checks don't take in account whether or not a
 //     * quantification occurs in positive or negative position.
@@ -233,14 +239,18 @@ abstract class ProverStdIO(uniqueId: String,
 //        problems.foreach(p => quantificationLogger.println(s"  $p"))
 //      }
 //    })
-
-    assume(termConverter.convert(term))
+    if(label.isEmpty){
+      assume(term, "prover_" + proverLabelId)
+      proverLabelId += 1
+    }else{
+      assume(termConverter.convert(term), label)
+    }
   }
 
-  def assume(term: String): Unit = {
+  def assume(term: String, label: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    writeLine("(assert " + term + ")")
+    writeLine("(assert (!" + term + ":named " + label + "))")
     readSuccess()
   }
 
@@ -394,6 +404,10 @@ abstract class ProverStdIO(uniqueId: String,
          .replaceAll("\n", "\n; ")
 
     logToFile("; " + sanitisedStr)
+    if(sanitisedStr.equals("unsat")){
+      writeLine("(get-unsat-core)")
+      comment("unsat core: " + input.readLine())
+    }
   }
 
   def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = {
