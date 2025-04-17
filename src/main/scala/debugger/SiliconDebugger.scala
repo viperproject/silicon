@@ -261,7 +261,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
   }
 
   private def initVerifier(obl: ProofObligation, proverName: String, userArgsString: Option[String]): ProofObligation = {
-    val v = new WorkerVerifier(this.mainVerifier, obl.v.uniqueId, NoopReporter, false)
+    val v = new WorkerVerifier(this.mainVerifier, "debugger_01", NoopReporter, false)
     counter += 1
     v.start()
     v.decider.createProver(proverName, userArgsString)
