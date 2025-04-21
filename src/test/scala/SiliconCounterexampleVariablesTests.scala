@@ -7,10 +7,9 @@
 package viper.silicon.tests
 
 import viper.silicon.Silicon
-import viper.silver.testing.{AbstractOutput, CounterexampleVariablesTests, CustomAnnotation, ExpectedCounterexample, OutputAnnotationId, SilOutput, TestCustomError, TestError}
+import viper.silver.testing.{AbstractOutput, CounterexampleComparison, CounterexampleVariablesTests, CustomAnnotation, ExpectedCounterexample, OutputAnnotationId, SilOutput, TestCustomError, TestError}
 import viper.silicon.interfaces.SiliconVariableCounterexample
-import viper.silver.parser.{PBinExp, PBoolLit, PExp, PIdnUseExp, PIntLit, PSymOp, PUnExp}
-import viper.silver.verifier.{ConstantEntry, FailureContext, Model, ModelEntry, VerificationError}
+import viper.silver.verifier.{FailureContext, VerificationError}
 
 import java.nio.file.Path
 
@@ -43,37 +42,9 @@ case class ExpectedValuesCounterexampleAnnotation(id: OutputAnnotationId, file: 
 
   def containsExpectedCounterexample(failureContext: FailureContext): Boolean =
     failureContext.counterExample match {
-      case Some(silCounterexample: SiliconVariableCounterexample) => meetsExpectations(expectedCounterexample, silCounterexample.model)
+      case Some(silCounterexample: SiliconVariableCounterexample) => CounterexampleComparison.meetsExpectations(expectedCounterexample, silCounterexample.model)
       case _ => false
     }
-
-  /** returns true if model2 contains at least the content expressed by model1 */
-  def meetsExpectations(model1: ExpectedCounterexample, model2: Model): Boolean = {
-    model1.exprs.forall {
-      case PBinExp(lhs, r, rhs) if r.rs == PSymOp.EqEq => containsEquality(lhs, rhs, model2)
-    }
-  }
-
-  def containsEquality(lhs: PExp, rhs: PExp, model: Model): Boolean =
-    resolve(Vector(lhs, rhs), model).exists { case Vector(resolvedLhs, resolvedRhs) =>
-      areEqualEntries(resolvedLhs, resolvedRhs) }
-
-  /** resolves `expr` to a model entry in the given model. In case it's a field access, the corresponding permissions are returned as well */
-  def resolve(expr: PExp, model: Model): Option[ModelEntry] = expr match {
-    case PIntLit(value) => Some(ConstantEntry(value.toString()))
-    case PBoolLit(value) => Some(ConstantEntry(value.rs.keyword))
-    case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some(ConstantEntry((-value).toString()))
-    case idnuse: PIdnUseExp => model.entries.get(idnuse.name)
-  }
-
-  def resolve(exprs: Vector[PExp], model: Model): Option[Vector[ModelEntry]] = {
-    val entries = exprs.map(expr => resolve(expr, model)).collect{ case Some(entry) => entry }
-    if (exprs.size == entries.size) Some(entries) else None
-  }
-
-  def areEqualEntries(entry1: ModelEntry, entry2: ModelEntry): Boolean = (entry1, entry2) match {
-    case (ConstantEntry(value1), ConstantEntry(value2)) => value1 == value2
-  }
 
   override def notFoundError: TestError = TestCustomError(s"Expected the following counterexample on line $forLineNr: $expectedCounterexample")
 
