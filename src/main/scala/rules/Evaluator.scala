@@ -256,22 +256,28 @@ object evaluator extends EvaluationRules {
                   val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
                   v1.decider.assume(trigger, triggerExp)
                 }
-                val (permCheck, permCheckExp) =
+                val (permCheck, permCheckExp, s1a) =
                   if (s1.triggerExp) {
-                    (True, Option.when(withExp)(TrueLit()()))
+                    (True, Option.when(withExp)(TrueLit()()), s1)
                   } else {
+                    // Make sure the receiver exists on the SMT level and is thus able to trigger any relevant quantifiers.
+                    val rcvrVar = v1.decider.appliedFresh("rcvr", tRcvr.sort, s1.relevantQuantifiedVariables.map(_._1))
+                    val debugExp = Option.when(withExp)(DebugExp.createInstance("temp var for field access receiver"))
+                    v1.decider.assumeDefinition(BuiltinEquals(rcvrVar, tRcvr), debugExp)
+                    val newFuncRec = s1.functionRecorder.recordFreshSnapshot(rcvrVar.applicable.asInstanceOf[Function])
+                    val s1a = s1.copy(functionRecorder = newFuncRec)
                     val permVal = relevantChunks.head.perm
                     val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
-                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
+                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)), s1a)
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1a, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
                     val fr2 =
-                      s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                    val s2 = s1.copy(functionRecorder = fr2)
+                      s1a.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
+                    val s2 = s1a.copy(functionRecorder = fr2)
                     Q(s2, smLookup, newFa, v1)
                 }
               } else {
