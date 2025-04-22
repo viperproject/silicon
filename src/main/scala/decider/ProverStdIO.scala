@@ -250,7 +250,7 @@ abstract class ProverStdIO(uniqueId: String,
   def assume(term: String, label: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    writeLine("(assert (!" + term + ":named " + label + "))")
+    writeLine("(assert (! " + term + " :named " + label + "))")
     readSuccess()
   }
 
