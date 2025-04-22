@@ -1,0 +1,19 @@
+
+
+predicate greater0(n: Int)
+{
+  n > 0
+}
+
+method foo(n: Int)
+  requires greater0(n)
+{
+  
+    var x: Int := 1
+    
+    x := n + x
+    unfold greater0(n)
+    fold greater0(x)
+    
+    assert x > 1
+}

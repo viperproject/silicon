@@ -9,6 +9,7 @@ method test(n: Int)
 {
   var a: Int
   a := foo(n)
+  assert a >= 0
   assert a < 0
 }
 
