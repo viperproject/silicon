@@ -260,19 +260,17 @@ object evaluator extends EvaluationRules {
                   if (s1.triggerExp) {
                     (True, Option.when(withExp)(TrueLit()()), s1)
                   } else {
-                    val s1a = tRcvr match {
-                      case _: Literal | _: Var => s1
+                    val (s1a, lhs) = tRcvr match {
+                      case _: Literal | _: Var => (s1, True)
                       case _ =>
                         // Make sure the receiver exists on the SMT level and is thus able to trigger any relevant quantifiers.
                         val rcvrVar = v1.decider.appliedFresh("rcvr", tRcvr.sort, s1.relevantQuantifiedVariables.map(_._1))
-                        val debugExp = Option.when(withExp)(DebugExp.createInstance("temp var for field access receiver"))
-                        v1.decider.assumeDefinition(BuiltinEquals(rcvrVar, tRcvr), debugExp)
                         val newFuncRec = s1.functionRecorder.recordFreshSnapshot(rcvrVar.applicable.asInstanceOf[Function])
-                        s1.copy(functionRecorder = newFuncRec)
+                        (s1.copy(functionRecorder = newFuncRec), BuiltinEquals(rcvrVar, tRcvr))
                     }
                     val permVal = relevantChunks.head.perm
                     val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
-                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)), s1a)
+                    (Implies(lhs, IsPositive(totalPermissions)), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)), s1a)
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
