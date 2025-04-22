@@ -824,6 +824,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val enableAssumptionAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableAssumptionAnalysis",
+    descr = "Enable assumption analysis mode",
+    default = Some(false),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
