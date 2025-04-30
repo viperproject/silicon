@@ -1,0 +1,13 @@
+
+method foo()
+{
+    var n: Int
+    assume n > 0 && n < 100
+    var b: Bool
+    var a: Int
+    a := 2*n
+    n := (a+1) * 4
+    a := 2*n
+
+    assert a == 4*n
+}

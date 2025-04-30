@@ -7,7 +7,7 @@
 package viper.silicon.decider
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.debugger.DebugExp
+import viper.silicon.debugger.{AssumptionAnalyzer, DebugExp, DefaultAssumptionAnalyzer, NoAssumptionAnalyzer}
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -34,8 +34,6 @@ import scala.collection.mutable
 
 trait Decider {
   def functionDecls: Set[FunctionDecl]
-  def pushStatementScope(stmt: ast.Stmt): Unit
-  def popStatementScope(): (Set[Term], Set[DebugExp])
 
   def macroDecls: Vector[MacroDecl]
   def prover: Prover
@@ -103,6 +101,8 @@ trait Decider {
   def setPcs(other: PathConditionStack): Unit
 
   def statistics(): Map[String, String]
+
+  val assumptionAnalyzer: AssumptionAnalyzer
 }
 
 /*
@@ -131,6 +131,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
+
+    val assumptionAnalyzer: AssumptionAnalyzer = new DefaultAssumptionAnalyzer() // TODO ake: only if analysis is enabled
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -140,21 +142,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def pcs: PathConditionStack = pathConditions
 
     var debugVariableTypes : Map[String, PType] = Map.empty
-
-    var stmtAssumptions: Set[DebugExp] = Set.empty
-    var stmtAssertions: Set[Term] = Set.empty
-
-    override def pushStatementScope(stmt: ast.Stmt): Unit = {
-      stmtAssertions = Set.empty
-      stmtAssumptions = Set.empty
-    }
-
-    override def popStatementScope(): (Set[Term], Set[DebugExp]) = {
-      val res = (stmtAssertions, stmtAssumptions)
-      stmtAssertions = Set.empty
-      stmtAssumptions = Set.empty
-      res
-    }
 
     def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */
@@ -171,8 +158,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def getProver(prover: String): Prover = prover match {
-      case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
-      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+      case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter, assumptionAnalyzer)
+      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter, assumptionAnalyzer)
       case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
       case prover =>
         val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
@@ -324,7 +311,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if (debugMode) {
         filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
-        stmtAssumptions = stmtAssumptions.++(filteredAssumptions filter(t => t._2.isDefined) map(t => t._2.get.withTerm(t._1)))
+        assumptionAnalyzer.addAssumptions(filteredAssumptions filter(t => t._2.isDefined) map(t => t._2.get.withTerm(t._1)))
       }
 
 
@@ -336,7 +323,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit = {
-      if(debugExps.isDefined) stmtAssumptions = stmtAssumptions.++(debugExps.get)
+      if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get)
       val labelPrefix = if(debugExps.isDefined) "debugExp_" + debugExps.get.head.id else "" // FIXME ake
       assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions), labelPrefix=labelPrefix)
       if (debugMode) {
@@ -352,7 +339,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if (debugMode && filteredTerms.nonEmpty) {
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
-        if(debugExp.isDefined) stmtAssumptions = stmtAssumptions.+(debugExp.get.withTerm(And(filteredTerms)))
+        if(debugExp.isDefined) assumptionAnalyzer.addAssumptions(Set(debugExp.get.withTerm(And(filteredTerms))))
       }
 
       val labelPrefix = if(debugExp.isDefined) "debugExp_" + debugExp.get.id else "" // FIXME ake
@@ -418,7 +405,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      stmtAssertions = stmtAssertions.+(t)
+      assumptionAnalyzer.addAssertion(t)
 
       val asserted = if(Verifier.config.enableAssumptionAnalysis()) false else isKnownToBeTrue(t)
       val result = asserted || proverAssert(t, timeout)

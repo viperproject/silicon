@@ -1,0 +1,23 @@
+field f: Int
+
+method sum(x: Int, y: Int) returns(res: Int)
+  requires x >= 0 && y >= 0
+  ensures res == x + y
+//{
+//  res := x + y
+//}
+
+
+method foo(x: Int, y: Int)
+{
+  assume x >= 0
+  assume y >= 0
+  assume x < y
+  var n: Int := sum(x, y)
+  var n2: Int := sum(x, y)
+  n := n + n2
+
+  assert n == 2*x + 2*y
+  assert n < 0
+
+}

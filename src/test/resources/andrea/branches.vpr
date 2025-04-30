@@ -1,0 +1,31 @@
+
+field f: Int
+
+method foo(a: Ref, b: Ref)
+  requires acc(a.f) && acc(b.f)
+{
+  var n:Int, c: Bool
+
+  assume a.f > 0
+  assume b.f > 0
+
+  if(c){
+    n := a.f
+  }else{
+    n := b.f
+  }
+
+  var x : Int := a.f
+
+  if(x > n){
+    x := 2*x
+  }else{
+    x := 2*n
+    b.f := 10
+    assert x >= 1
+  }
+
+  n := b.f
+
+  assert x > 0
+}

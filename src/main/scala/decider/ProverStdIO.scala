@@ -11,6 +11,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
+import viper.silicon.debugger.AssumptionAnalyzer
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
@@ -26,7 +27,8 @@ import scala.collection.mutable
 abstract class ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
                     identifierFactory: IdentifierFactory,
-                    reporter: Reporter)
+                    reporter: Reporter,
+                    assumptionAnalyzer: AssumptionAnalyzer)
     extends Prover
        with LazyLogging {
 
@@ -286,11 +288,21 @@ abstract class ProverStdIO(uniqueId: String,
     if (!result) {
       retrieveAndSaveModel()
       retrieveReasonUnknown()
+    }else{
+      val unsatCore = extractUnsatCore()
+      assumptionAnalyzer.addDependency(unsatCore)
     }
 
     pop()
 
     (result, endTime - startTime)
+  }
+
+  def extractUnsatCore(): String = {
+    writeLine("(get-unsat-core)")
+    val unsatCore = input.readLine()
+    comment("unsat core: " + unsatCore)
+    unsatCore
   }
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
@@ -404,10 +416,6 @@ abstract class ProverStdIO(uniqueId: String,
          .replaceAll("\n", "\n; ")
 
     logToFile("; " + sanitisedStr)
-    if(sanitisedStr.equals("unsat")){
-      writeLine("(get-unsat-core)")
-      comment("unsat core: " + input.readLine())
-    }
   }
 
   def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = {

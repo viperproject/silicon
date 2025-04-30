@@ -1,8 +1,16 @@
 field f: Int
+field g: Int
 
 method foo(x: Ref, y: Ref)
-	requires acc(x.f) && acc(y.f)
+
 {
+    var b1: Bool, b2: Bool, b3: Bool
+    inhale b1 ==> acc(x.f)
+    inhale b2 ==> acc(y.f)
+    inhale b3 ==> acc(y.g)
+	assume b1
+	assume b2
+	assume b3
 	assume 0 < x.f
 	assume 0 < y.f
 	assume x.f < 100
