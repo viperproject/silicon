@@ -998,9 +998,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
         val comment = "Check receiver injectivity"
         v.decider.prover.comment(comment)
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
-          Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
-        v.decider.assert(receiverInjectivityCheck) {
+        val completeReceiverInjectivityCheck = Implies(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
+          receiverInjectivityCheck)
+        v.decider.assert(completeReceiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
@@ -1072,8 +1072,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                      conservedPcs = conservedPcs,
                      smCache = smCache1)
             Q(s1, v)
-          case false =>
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")}
+          case false => {
+            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
+          }
+        }
       case false =>
         createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)}
   }
@@ -1252,8 +1254,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)))
-        v.decider.assert(receiverInjectivityCheck) {
+        val completeReceiverInjectivityCheck = Implies(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), receiverInjectivityCheck)
+        v.decider.assert(completeReceiverInjectivityCheck) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
