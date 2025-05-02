@@ -1,4 +1,6 @@
 
+import "quickTestDep.vpr"
+
 method foo()
 {
     var n: Int
@@ -6,7 +8,7 @@ method foo()
     var b: Bool
     var a: Int
     a := 2*n
-    n := (a+1) * 4
+    n := bar(a)
     a := 2*n
 
     assert a == 4*n
