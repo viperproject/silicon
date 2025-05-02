@@ -6,12 +6,12 @@
 
 package viper.silicon.decider
 
+import assumptionAnalysis.AssumptionAnalyzer
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.debugger.AssumptionAnalyzer
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory

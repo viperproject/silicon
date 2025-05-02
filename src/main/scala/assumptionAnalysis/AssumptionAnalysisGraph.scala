@@ -1,6 +1,5 @@
-package debugger
+package assumptionAnalysis
 
-import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 

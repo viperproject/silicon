@@ -1,6 +1,6 @@
-package viper.silicon.debugger
+package assumptionAnalysis
 
-import debugger._
+import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 import viper.silver.ast.Stmt
@@ -68,6 +68,5 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   }
 
   override def addDependency(dep: String): Unit = {
-
   }
 }

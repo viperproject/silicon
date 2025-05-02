@@ -6,13 +6,13 @@
 
 package viper.silicon.decider
 
+import assumptionAnalysis.AssumptionAnalyzer
 import java.nio.file.{Path, Paths}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silver.reporter.Reporter
 import viper.silicon.common.config.Version
-import viper.silicon.debugger.AssumptionAnalyzer
 
 
 object Z3ProverStdIO {
