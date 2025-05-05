@@ -6,11 +6,12 @@
 
 package viper.silicon.rules
 
+import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionAssumptionNode}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
-import viper.silicon.rules.chunkSupporter.findChunksWithID
+import viper.silicon.rules.chunkSupporter.{findChunksWithID, withExp}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
@@ -360,6 +361,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pSumExp = eqExp.map(eq => ast.PermAdd(pSumExp.get, ast.CondExp(eq, ch.permExp.get, ast.NoPerm()())(eq.pos, eq.info, eq.errT))())
 
             val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)))
+            Option.when(withExp)(v.decider.assumptionAnalyzer.addChunkNode(Set(ch), new PermissionAssumptionNode(permsExp.get, newChunk, AssumptionType.Unknown)))
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
@@ -472,7 +474,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
-        ch.withPerm(PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)))
+        val newChunk = ch.withPerm(PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)))
+        Option.when(withExp)(v.decider.assumptionAnalyzer.addChunkNode(Set(ch), new PermissionAssumptionNode(permsExp.get, newChunk, AssumptionType.Unknown)))
+        newChunk
       })
 
     val totalTakenBounds =

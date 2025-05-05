@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
+import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionAssumptionNode}
 
 import scala.collection.mutable
 import viper.silver.ast
@@ -16,6 +17,7 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
+import viper.silicon.rules.predicateSupporter.withExp
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
@@ -337,6 +339,7 @@ object producer extends ProductionRules {
                 val (debugHeapName, debugLabel) = v3.getDebugOldLabel(s3, accPred.pos)
                 val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, field)(), debugLabel)(accPred.pos, accPred.info, accPred.errT))
                 val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), snap, snapExp, gain, gainExp)
+                Option.when(withExp)(v1.decider.assumptionAnalyzer.addAssumptionNode(new PermissionAssumptionNode(gainExp.get, ch, AssumptionType.Unknown)))
                 chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) => {
                   val s5 = s4.copy(h = h4)
                   val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s5
@@ -364,6 +367,7 @@ object producer extends ProductionRules {
               } else {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgsNew, snap1, None, gain, gainExp)
+                Option.when(withExp)(v1.decider.assumptionAnalyzer.addAssumptionNode(new PermissionAssumptionNode(gainExp.get, ch, AssumptionType.Unknown)))
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                   if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {

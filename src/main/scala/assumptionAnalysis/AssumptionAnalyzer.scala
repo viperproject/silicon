@@ -1,6 +1,8 @@
-package assumptionAnalysis
+package viper.silicon.assumptionAnalysis
 
 import viper.silicon.debugger.DebugExp
+import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.BasicChunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 import viper.silver.ast.Stmt
@@ -11,8 +13,10 @@ import scala.collection.mutable
 trait AssumptionAnalyzer {
   def pushScope(stmt: ast.Stmt): Unit
   def closeScope(): Unit
+  def addAssumptionNode(assumption: AssumptionAnalysisNode): Unit
   def addAssumptions(assumptions: Iterable[DebugExp]): Unit
   def addAssertion(assertion: Term): Unit
+  def addChunkNode(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode)
   def addDependency(dep: String): Unit
 
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
@@ -30,7 +34,7 @@ class DefaultAssumptionAnalyzer extends AssumptionAnalyzer {
   }
 
   override def closeScope(): Unit = {
-    assumptionGraph.addNode(new StatementGroupNode(scopeStmt, scope.toSet))
+//    assumptionGraph.addNode(new StatementGroupNode(scopeStmt, scope.toSet))
     scope = mutable.Set.empty
     isScopeOpen = false
   }
@@ -51,6 +55,18 @@ class DefaultAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addDependency(dep: String): Unit = {
     val assumptions = dep.split(" ")
   }
+
+  override def addAssumptionNode(assumption: AssumptionAnalysisNode): Unit = {
+    assumptionGraph.addNode(assumption)
+  }
+
+  override def addChunkNode(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
+    val analysisChunks = assumptionGraph.nodes.values
+      .filter(c => c.isInstanceOf[ChunkAnalysisInfo] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
+      .map(_.id).toSet
+    addAssumptionNode(newChunkNode)
+    assumptionGraph.addEdges(analysisChunks, newChunkNode.id)
+  }
 }
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
@@ -68,5 +84,11 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   }
 
   override def addDependency(dep: String): Unit = {
+  }
+
+  override def addAssumptionNode(assumption: AssumptionAnalysisNode): Unit = {
+  }
+
+  override def addChunkNode(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
   }
 }

@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionAssumptionNode}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
@@ -181,6 +182,8 @@ object chunkSupporter extends ChunkSupportRules {
           val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, toTakeExp.get)(pe.pos, pe.info, pe.errT))
           val newChunk = ch.withPerm(PermMinus(ch.perm, toTake), newPermExp)
           val takenChunk = Some(ch.withPerm(toTake, toTakeExp))
+          Option.when(withExp)(v.decider.assumptionAnalyzer.addChunkNode(Set(ch), new PermissionAssumptionNode(permsExp.get, newChunk, AssumptionType.Unknown)))
+          Option.when(withExp)(v.decider.assumptionAnalyzer.addChunkNode(Set(ch), new PermissionAssumptionNode(permsExp.get, takenChunk.get, AssumptionType.Unknown)))
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk
@@ -195,6 +198,8 @@ object chunkSupporter extends ChunkSupportRules {
             val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, pe)(pe.pos, pe.info, pe.errT))
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms), newPermExp)
             val takenChunk = ch.withPerm(perms, permsExp)
+            Option.when(withExp)(v.decider.assumptionAnalyzer.addChunkNode(Set(ch), new PermissionAssumptionNode(permsExp.get, newChunk, AssumptionType.Unknown)))
+            Option.when(withExp)(v.decider.assumptionAnalyzer.addChunkNode(Set(ch), new PermissionAssumptionNode(permsExp.get, takenChunk, AssumptionType.Unknown)))
             val newHeap = h - ch + newChunk
             assumeProperties(newChunk, newHeap)
             (Complete(), s, newHeap, Some(takenChunk))

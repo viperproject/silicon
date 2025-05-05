@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionAssumptionNode}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
@@ -114,6 +115,7 @@ object predicateSupporter extends PredicateSupportRules {
         Q(s3, v1)
       } else {
         val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm)
+        Option.when(withExp)(v1.decider.assumptionAnalyzer.addAssumptionNode(new PermissionAssumptionNode(ePerm.get, ch, AssumptionType.Unknown)))
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor,

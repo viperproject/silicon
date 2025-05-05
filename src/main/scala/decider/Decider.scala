@@ -6,7 +6,7 @@
 
 package viper.silicon.decider
 
-import assumptionAnalysis.{AssumptionAnalyzer, DefaultAssumptionAnalyzer, NoAssumptionAnalyzer}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, DefaultAssumptionAnalyzer, NoAssumptionAnalyzer}
 import com.typesafe.scalalogging.Logger
 import viper.silicon.debugger.DebugExp
 import viper.silicon._

@@ -8,10 +8,12 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config
+import viper.silicon.assumptionAnalysis.{AssumptionType, ChunkGroupNode, PermissionAssumptionNode}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
+import viper.silicon.rules.predicateSupporter.withExp
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
@@ -200,8 +202,10 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = (chunk1, chunk2) match {
     case (BasicChunk(rid1, id1, args1, args1Exp, snap1, snap1Exp, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, _, perm2, perm2Exp)) =>
       val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, qvars, v)
-
-      Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2), perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())), snapEq)
+      val newExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
+      val newChunk = BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2), newExp)
+      Option.when(withExp)(v.decider.assumptionAnalyzer.addChunkNode(Set(chunk1, chunk2), new ChunkGroupNode("mergeChunks", newChunk, AssumptionType.Implicit)))
+      Some(fr2, newChunk, snapEq)
     case (l@QuantifiedFieldChunk(id1, fvf1, condition1, condition1Exp,  perm1, perm1Exp, invs1, singletonRcvr1, singletonRcvr1Exp, hints1),
           r@QuantifiedFieldChunk(_, fvf2, _, _, perm2, perm2Exp, _, _, _, hints2)) =>
       assert(l.quantifiedVars == Seq(`?r`))

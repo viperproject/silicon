@@ -6,7 +6,7 @@
 
 package viper.silicon.decider
 
-import assumptionAnalysis.AssumptionAnalyzer
+import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
 import java.nio.file.{Path, Paths}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.verifier.Verifier

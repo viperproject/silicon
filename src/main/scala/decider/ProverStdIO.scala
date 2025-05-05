@@ -6,7 +6,7 @@
 
 package viper.silicon.decider
 
-import assumptionAnalysis.AssumptionAnalyzer
+import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit

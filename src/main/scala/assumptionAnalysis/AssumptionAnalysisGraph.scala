@@ -1,10 +1,17 @@
-package assumptionAnalysis
+package viper.silicon.assumptionAnalysis
 
+import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
+
+object AssumptionType extends Enumeration {
+  type AssumptionType = Value
+  val Explicit, PathCondition, Implicit, Unknown = Value
+}
+import AssumptionType._
 
 trait AssumptionAnalysisGraph {
   var nodes: mutable.Map[Int, AssumptionAnalysisNode]
@@ -16,8 +23,8 @@ trait AssumptionAnalysisGraph {
 
   def addNode(node: AssumptionAnalysisNode): Unit
   def addNodes(nodes: Set[AssumptionAnalysisNode]): Unit
-  def createAndAddNode(assumptions: Set[ast.Exp], assertions: Set[Term]): Unit
   def addEdges(source: Int, targets: Set[Int]): Unit
+  def addEdges(sources: Set[Int], target: Int): Unit
 
   // def findDependentAssumptions(assertion, enableTransitivity=false)
   // def findDependentAssertions(assumption, enableTransitivity=false)
@@ -30,17 +37,6 @@ object AssumptionAnalysisGraphHelper {
 
   def nextId(): Int = {
     idCounter.getAndIncrement()
-  }
-
-  def createNode(assumptions: Set[ast.Exp], assertions: Set[Term]): Set[AssumptionAnalysisNode] = {
-    (assumptions.size, assertions.size) match {
-      case (0, _) => assertions.map(new SimpleAssertionNode(_))
-      case (_, 0) => assumptions.map(new SimpleAssumptionNode(_))
-      case (_, _) =>
-        val a0 = assertions.map(new SimpleAssertionNode(_))
-        val a1 = assumptions.map(new SimpleAssumptionNode(_))
-        Set{new ComplexAssumptionNode(a0, a1)}
-    }
   }
 }
 
@@ -62,20 +58,39 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
     edges.update(source, oldTargets ++ targets)
   }
 
-  def createAndAddNode(assumptions: Set[ast.Exp], assertions: Set[Term]): Unit = {
-    AssumptionAnalysisGraphHelper.createNode(assumptions, assertions).foreach(addNode)
+  override def addEdges(sources: Set[Int], target: Int): Unit = {
+    sources.foreach(addEdges(_, Set(target)))
   }
 }
 
 trait AssumptionAnalysisNode {
   val id: Int = AssumptionAnalysisGraphHelper.nextId()
+  val assumptionType: AssumptionType
 
   def equals(other: AssumptionAnalysisNode): Boolean
+
+  override def toString: String = id.toString
+
+  def isIncludedInAnalysis: Boolean = assumptionType match {
+    case Explicit => true
+    case PathCondition => true
+    case Implicit => true
+    case Unknown => true
+  }
 }
 
-class SimpleAssumptionNode(assumption: ast.Exp) extends AssumptionAnalysisNode {
 
-  override def toString: String = assumption.toString
+trait ChunkAnalysisInfo {
+  val chunk: Chunk
+
+  override def toString: String = super.toString + " with chunk " + chunk.toString
+
+  def getChunk: Chunk = chunk
+}
+
+class SimpleAssumptionNode(assumption: ast.Exp, val assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode {
+
+  override def toString: String = super.toString + ": " + assumption.toString
 
   def getAssumption: ast.Exp = assumption
 
@@ -90,7 +105,8 @@ class SimpleAssumptionNode(assumption: ast.Exp) extends AssumptionAnalysisNode {
 
 // TODO ake: ast.Exp instead of Term
 class SimpleAssertionNode(assertion: Term) extends AssumptionAnalysisNode {
-  override def toString: String = assertion.toString
+  override val assumptionType: AssumptionType = AssumptionType.Explicit
+  override def toString: String = super.toString + ": " + assertion.toString
 
   def getAssertion: Term = assertion
 
@@ -102,27 +118,49 @@ class SimpleAssertionNode(assertion: Term) extends AssumptionAnalysisNode {
   }
 }
 
-class StatementGroupNode(stmt: ast.Stmt, nodes: Set[AssumptionAnalysisNode]) extends AssumptionAnalysisNode {
-  override def toString: String = stmt.toString + " --> " + nodes.mkString(" && ")
-
-  def getStmt: ast.Stmt = stmt
-
+class PermissionAssumptionNode(assumption: ast.Exp, val chunk: Chunk, assumptionType: AssumptionType = Unknown) extends SimpleAssumptionNode(assumption, assumptionType) with ChunkAnalysisInfo {
   override def equals(other: AssumptionAnalysisNode): Boolean = {
     other match {
-      case node: StatementGroupNode =>
-        node.getStmt.equals(this.stmt) && node.getStmt.pos.equals(this.stmt.pos)
+      case node: PermissionAssumptionNode =>
+        node.getChunk.equals(this.chunk) && super.equals(other)
       case _ => false
     }
   }
 }
 
-// TODO ake: or maybe instead have an map from Stmt -> (Set[Int], Set[Int]) in Assumption Graph
-class ComplexAssumptionNode(assertions: Set[SimpleAssertionNode], assumptions: Set[SimpleAssumptionNode]) extends AssumptionAnalysisNode {
-
-  override def toString: String =
-    assertions.mkString(" && ") + " --> " + assumptions.mkString(" && ")
-
+class PermissionAssertionNode(assertion: Term, val chunk: Chunk, assumptionType: AssumptionType = Unknown) extends SimpleAssertionNode(assertion) with ChunkAnalysisInfo {
   override def equals(other: AssumptionAnalysisNode): Boolean = {
-    false // TODO ake
+    other match {
+      case node: PermissionAssertionNode =>
+        node.getChunk.equals(this.chunk) && super.equals(other)
+      case _ => false
+    }
   }
 }
+
+class ChunkGroupNode(description: String, val chunk: Chunk, val assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode with ChunkAnalysisInfo {
+  override def toString: String = description + " - " + super.toString
+
+
+  override def equals(other: AssumptionAnalysisNode): Boolean = {
+    other match {
+      case node: ChunkAnalysisInfo =>
+        node.getChunk.equals(this.chunk)
+      case _ => false
+    }
+  }
+}
+
+//class StatementGroupNode(stmt: ast.Stmt, nodes: Set[AssumptionAnalysisNode], val assumptionType: AssumptionType) extends AssumptionAnalysisNode {
+//  override def toString: String = super.toString + ": " + stmt.toString + " --> " + nodes.mkString(" && ")
+//
+//  def getStmt: ast.Stmt = stmt
+//
+//  override def equals(other: AssumptionAnalysisNode): Boolean = {
+//    other match {
+//      case node: StatementGroupNode =>
+//        node.getStmt.equals(this.stmt) && node.getStmt.pos.equals(this.stmt.pos)
+//      case _ => false
+//    }
+//  }
+//}
