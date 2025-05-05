@@ -561,7 +561,6 @@ object executor extends ExecutionRules {
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
-        v.decider.assumptionAnalyzer.pushScope(call)
         val meth = s.program.findMethod(methodName)
         val fargs = meth.formalArgs.map(_.localVar)
         val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
@@ -604,7 +603,6 @@ object executor extends ExecutionRules {
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
               v3.symbExLog.closeScope(sepIdentifier)
-              v3.decider.assumptionAnalyzer.closeScope()
               Q(s6, v3)})})})
 
       case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, predicateName), _)) =>
