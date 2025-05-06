@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silicon.interfaces.state._
 import viper.silicon.resources._
 import viper.silicon.rules.InverseFunctions
+import viper.silicon.state.BasicChunk.createDerivedChunk
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
@@ -28,7 +29,35 @@ case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
   override def toString = name
 }
 
-case class BasicChunk(resourceID: BaseID,
+object BasicChunk {
+  def apply(resourceID: BaseID,
+            id: BasicChunkIdentifier,
+            args: Seq[Term],
+            argsExp: Option[Seq[ast.Exp]],
+            snap: Term,
+            snapExp: Option[ast.Exp],
+            perm: Term,
+            permExp: Option[ast.Exp]): BasicChunk = {
+    new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
+    // TODO ake: add to assumption graph
+  }
+
+  def createDerivedChunk(oldChunk: BasicChunk,
+                         resourceID: BaseID,
+                         id: BasicChunkIdentifier,
+                         args: Seq[Term],
+                         argsExp: Option[Seq[ast.Exp]],
+                         snap: Term,
+                         snapExp: Option[ast.Exp],
+                         perm: Term,
+                         permExp: Option[ast.Exp]): BasicChunk = {
+    val newChunk = apply(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
+    // TODO ake: add edge
+    newChunk
+  }
+}
+
+case class BasicChunk private (resourceID: BaseID,
                       id: BasicChunkIdentifier,
                       args: Seq[Term],
                       argsExp: Option[Seq[ast.Exp]],
@@ -50,8 +79,8 @@ case class BasicChunk(resourceID: BaseID,
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
   override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
-  override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = BasicChunk(resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp)
-  override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]) = BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
+  override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = createDerivedChunk(this, resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp)
+  override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]) = createDerivedChunk(this, resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
 
   override lazy val toString = resourceID match {
     case FieldID => s"${args.head}.$id -> $snap # $perm"
@@ -75,7 +104,7 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
  *       to potentially multiple locations, consider using regular, non-quantified
  *       chunks instead.
  */
-case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
+case class QuantifiedFieldChunk private(id: BasicChunkIdentifier,
                                 fvf: Term,
                                 condition: Term,
                                 conditionExp: Option[ast.Exp],

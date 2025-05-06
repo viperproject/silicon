@@ -199,32 +199,37 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
   // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)
   // and returns the merged chunk or None, if the chunks could not be merged
-  private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = (chunk1, chunk2) match {
-    case (BasicChunk(rid1, id1, args1, args1Exp, snap1, snap1Exp, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, _, perm2, perm2Exp)) =>
-      val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, qvars, v)
-      val newExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
-      val newChunk = BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2), newExp)
-      Option.when(withExp)(v.decider.assumptionAnalyzer.addChunkNode(Set(chunk1, chunk2), new ChunkGroupNode("mergeChunks", newChunk, AssumptionType.Implicit)))
-      Some(fr2, newChunk, snapEq)
-    case (l@QuantifiedFieldChunk(id1, fvf1, condition1, condition1Exp,  perm1, perm1Exp, invs1, singletonRcvr1, singletonRcvr1Exp, hints1),
-          r@QuantifiedFieldChunk(_, fvf2, _, _, perm2, perm2Exp, _, _, _, hints2)) =>
-      assert(l.quantifiedVars == Seq(`?r`))
-      assert(r.quantifiedVars == Seq(`?r`))
-      // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
-      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, fvf1, fvf2, l.perm, r.perm, v)
-      val permSum = PermPlus(perm1, perm2)
-      val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
-      val bestHints = if (hints1.nonEmpty) hints1 else hints2
-      Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, condition1Exp, permSum, permSumExp, invs1, singletonRcvr1, singletonRcvr1Exp, bestHints), snapEq)
-    case (l@QuantifiedPredicateChunk(id1, qVars1, qVars1Exp, psf1, _, _, perm1, perm1Exp, _, _, _, _),
-          r@QuantifiedPredicateChunk(_, qVars2, qVars2Exp, psf2, condition2, condition2Exp, perm2, perm2Exp, invs2, singletonArgs2, singletonArgs2Exp, hints2)) =>
-      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
+  private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {
+    val result = (chunk1, chunk2) match {
+      case (BasicChunk(rid1, id1, args1, args1Exp, snap1, snap1Exp, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, _, perm2, perm2Exp)) =>
+        val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, qvars, v)
+        val newExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
+        Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2), newExp), snapEq)
+      case (l@QuantifiedFieldChunk(id1, fvf1, condition1, condition1Exp,  perm1, perm1Exp, invs1, singletonRcvr1, singletonRcvr1Exp, hints1),
+      r@QuantifiedFieldChunk(_, fvf2, _, _, perm2, perm2Exp, _, _, _, hints2)) =>
+        assert(l.quantifiedVars == Seq(`?r`))
+        assert(r.quantifiedVars == Seq(`?r`))
+        // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
+        val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, fvf1, fvf2, l.perm, r.perm, v)
+        val permSum = PermPlus(perm1, perm2)
+        val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
+        val bestHints = if (hints1.nonEmpty) hints1 else hints2
+        Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, condition1Exp, permSum, permSumExp, invs1, singletonRcvr1, singletonRcvr1Exp, bestHints), snapEq)
+      case (l@QuantifiedPredicateChunk(id1, qVars1, qVars1Exp, psf1, _, _, perm1, perm1Exp, _, _, _, _),
+      r@QuantifiedPredicateChunk(_, qVars2, qVars2Exp, psf2, condition2, condition2Exp, perm2, perm2Exp, invs2, singletonArgs2, singletonArgs2Exp, hints2)) =>
+        val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
 
-      val permSum = PermPlus(perm1.replace(qVars1, qVars2), perm2)
-      val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1.replace(qVars1Exp.get.zip(qVars2Exp.get).toMap), perm2Exp.get)())
-      Some(fr2, QuantifiedPredicateChunk(id1, qVars2, qVars2Exp, combinedSnap, condition2, condition2Exp, permSum, permSumExp, invs2, singletonArgs2, singletonArgs2Exp, hints2), snapEq)
-    case _ =>
-      None
+        val permSum = PermPlus(perm1.replace(qVars1, qVars2), perm2)
+        val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1.replace(qVars1Exp.get.zip(qVars2Exp.get).toMap), perm2Exp.get)())
+        Some(fr2, QuantifiedPredicateChunk(id1, qVars2, qVars2Exp, combinedSnap, condition2, condition2Exp, permSum, permSumExp, invs2, singletonArgs2, singletonArgs2Exp, hints2), snapEq)
+      case _ =>
+        None
+    }
+    if(result.isDefined){
+      val (_, newChunk, _) = result.get
+      v.decider.assumptionAnalyzer.addChunkNode(Set(chunk1, chunk2), new ChunkGroupNode("mergeChunks", newChunk, AssumptionType.Implicit))
+    }
+    result
   }
 
   /** Merge the snapshots of two chunks that denote the same location, i.e. whose ids and arguments

@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon._
+import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionAssumptionNode}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -92,10 +93,12 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   v: Verifier)
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
-    evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1) =>
-      Q(s1, MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
-        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT))), v1)
-    )
+    evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1) => {
+      val newChunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
+        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+      v.decider.assumptionAnalyzer.addAssumptionNode(new PermissionAssumptionNode(wand, newChunk, AssumptionType.Explicit))
+      Q(s1, newChunk, v1)
+    })
   }
 
   /**
