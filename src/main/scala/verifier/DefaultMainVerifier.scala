@@ -17,6 +17,7 @@ import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
+import viper.silicon.assumptionAnalysis.DefaultAssumptionAnalyzer
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
@@ -309,6 +310,11 @@ class DefaultMainVerifier(config: Config,
     if (Verifier.config.enableDebugging()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
       debugger.startDebugger()
+    }
+
+    if(Verifier.config.enableAssumptionAnalysis()){
+      val assumptionAnalyzers = verificationResults.filter(_.assumptionAnalyzer.isInstanceOf[DefaultAssumptionAnalyzer]).map(_.assumptionAnalyzer)
+      logger debug s"assumption analyzers ${assumptionAnalyzers.mkString(", ")}"
     }
 
     verificationResults

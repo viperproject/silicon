@@ -11,6 +11,7 @@ method foo(a: Ref) returns(n:Int)
 
 method framing1(a: Ref)
   requires acc(a.f) && a.f > 0
+  ensures acc(a.f)
 {
   var n: Int
   n := foo(a)

@@ -6,6 +6,7 @@
 
 package viper.silicon.interfaces
 
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, NoAssumptionAnalyzer}
 import viper.silicon.debugger.{DebugAxiom, DebugExp, DebugExpPrintConfiguration}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
@@ -30,6 +31,7 @@ sealed abstract class VerificationResult {
   var previous: Vector[VerificationResult] = Vector() //Sets had problems with equality
   val continueVerification: Boolean = true
   var isReported: Boolean = false
+  var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer() // TODO ake
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult

@@ -7,6 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
+import viper.silicon.assumptionAnalysis.{DefaultAssumptionAnalyzer, NoAssumptionAnalyzer}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
@@ -19,7 +20,7 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 import viper.silver.reporter.AnnotationWarning
-import viper.silicon.{Map, toMap}
+import viper.silicon.{Config, Map, toMap}
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -45,6 +46,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
     def verify(sInit: State, method: ast.Method): Seq[VerificationResult] = {
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
+
+      v.decider.assumptionAnalyzer = if(Verifier.config.enableAssumptionAnalysis()) new DefaultAssumptionAnalyzer(method) else new NoAssumptionAnalyzer()
 
       val proverOptions: Map[String, String] = method.info.getUniqueInfo[ast.AnnotationInfo] match {
         case Some(ai) if ai.values.contains("proverArgs") =>
@@ -114,6 +117,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})
 
+      result.assumptionAnalyzer = v.decider.assumptionAnalyzer
+      v.decider.assumptionAnalyzer = new NoAssumptionAnalyzer()
       v.decider.resetProverOptions()
 
       symbExLog.closeMemberScope()

@@ -103,7 +103,7 @@ trait Decider {
 
   def statistics(): Map[String, String]
 
-  val assumptionAnalyzer: AssumptionAnalyzer
+  var assumptionAnalyzer: AssumptionAnalyzer // TODO ake
 }
 
 /*
@@ -133,7 +133,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
 
-    val assumptionAnalyzer: AssumptionAnalyzer = new DefaultAssumptionAnalyzer() // TODO ake: only if analysis is enabled
+    var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -406,9 +406,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      assumptionAnalyzer.addAssertion(t)
 
-      val asserted = if(Verifier.config.enableAssumptionAnalysis()) false else isKnownToBeTrue(t)
+
+      val asserted = if(Verifier.config.enableAssumptionAnalysis()) t.equals(True) else isKnownToBeTrue(t)
+      if(!asserted) assumptionAnalyzer.addAssertion(t)
       val result = asserted || proverAssert(t, timeout)
 
       symbExLog.closeScope(sepIdentifier)
