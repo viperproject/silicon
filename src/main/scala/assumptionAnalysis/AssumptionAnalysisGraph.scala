@@ -14,7 +14,7 @@ object AssumptionType extends Enumeration {
 import AssumptionType._
 
 trait AssumptionAnalysisGraph {
-  var nodes: mutable.Map[Int, AssumptionAnalysisNode]
+  var nodes: Seq[AssumptionAnalysisNode]
 
   // TODO ake
   // var groups: mutable.Map[GroupNode, Set[Int]] // e.g. statements -> assumptions/assertions
@@ -41,12 +41,12 @@ object AssumptionAnalysisGraphHelper {
 }
 
 class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
-  override var nodes: mutable.Map[Int, AssumptionAnalysisNode] = mutable.Map.empty
+  override var nodes: Seq[AssumptionAnalysisNode] = Seq()
   override var edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
 
   override def addNode(node: AssumptionAnalysisNode): Unit = {
-    val identicalNodes = nodes.values.filter(node.equals) // TODO ake: when to merge identical nodes?
-    nodes.update(node.id, node)
+    val identicalNodes = nodes.filter(node.equals) // TODO ake: when to merge identical nodes?
+    nodes = nodes :+ node
   }
 
   override def addNodes(nodes: Set[AssumptionAnalysisNode]): Unit = {
