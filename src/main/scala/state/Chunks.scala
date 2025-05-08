@@ -46,7 +46,7 @@ object BasicChunk {
             v: Verifier,
             sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): BasicChunk = {
     val chunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    v.decider.assumptionAnalyzer.addNode(PermissionInhaleNode(chunk, sourceInfo, assumptionType))
+    v.decider.assumptionAnalyzer.addPermissionNode(chunk, sourceInfo, assumptionType)
     chunk
   }
 

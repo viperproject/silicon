@@ -295,7 +295,7 @@ abstract class ProverStdIO(uniqueId: String,
       retrieveReasonUnknown()
     }else{
       val unsatCore = extractUnsatCore()
-      assumptionAnalyzer.processUnsatCore(unsatCore)
+      assumptionAnalyzer.processUnsatCoreAndAddDependencies(unsatCore)
     }
 
     pop()

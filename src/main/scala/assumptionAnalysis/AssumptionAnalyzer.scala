@@ -9,22 +9,29 @@ import viper.silver.ast.NoPosition
 
 
 trait AssumptionAnalyzer {
-//  def pushScope(stmt: ast.Stmt): Unit
-//  def closeScope(): Unit
-  def addNode(assumption: AssumptionAnalysisNode): Unit
+  //  def pushScope(stmt: ast.Stmt): Unit
+  //  def closeScope(): Unit
+  def addPermissionNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+
   def addSingleAssumption(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+
   def addSingleAssumption(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+
   def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int]
+
   def addSingleAssumption(assumption: DebugExp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+
   def addAssumptions(assumptions: Iterable[DebugExp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int]
+
   def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
+
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit
-  def processUnsatCore(dep: String): Unit
+
+  def processUnsatCoreAndAddDependencies(dep: String): Unit
 
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
   def getMethod: Option[ast.Method]
-
 }
 
 object AssumptionAnalyzer {
@@ -51,26 +58,30 @@ object AssumptionAnalyzer {
 }
 
 class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
-//  private var scope : mutable.Set[AssumptionAnalysisNode] = mutable.Set.empty
-//  private var isScopeOpen: Boolean = false
-//  private var scopeStmt: ast.Stmt = ???
+  //  private var scope : mutable.Set[AssumptionAnalysisNode] = mutable.Set.empty
+  //  private var isScopeOpen: Boolean = false
+  //  private var scopeStmt: ast.Stmt = ???
 
 
-//  override def pushScope(stmt: ast.Stmt): Unit = {
-////    scopeStmt = stmt
-//    scope = mutable.Set.empty
-//    isScopeOpen = true
-//  }
-//
-//  override def closeScope(): Unit = {
-////    assumptionGraph.addNode(new StatementGroupNode(scopeStmt, scope.toSet))
-//    scope = mutable.Set.empty
-//    isScopeOpen = false
-//  }
+  //  override def pushScope(stmt: ast.Stmt): Unit = {
+  ////    scopeStmt = stmt
+  //    scope = mutable.Set.empty
+  //    isScopeOpen = true
+  //  }
+  //
+  //  override def closeScope(): Unit = {
+  ////    assumptionGraph.addNode(new StatementGroupNode(scopeStmt, scope.toSet))
+  //    scope = mutable.Set.empty
+  //    isScopeOpen = false
+  //  }
+
+  def addNode(node: AssumptionAnalysisNode): Unit = {
+    assumptionGraph.addNode(node)
+  }
 
   override def addSingleAssumption(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
     val node = SimpleAssumptionNode(assumption, sourceInfo, assumptionType)
-    assumptionGraph.addNode(node)
+    addNode(node)
     Some(node.id)
   }
 
@@ -105,7 +116,7 @@ class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
     Some(newNode.id)
   }
 
-  override def processUnsatCore(dep: String): Unit = {
+  override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
     val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
     if(assumptionLabels.size < 2) return
     val assumptionIds = assumptionLabels.filter(AssumptionAnalyzer.isAssumptionLabel).map(AssumptionAnalyzer.getIdFromLabel)
@@ -113,8 +124,10 @@ class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(assumptionIds, assertionIds)
   }
 
-  override def addNode(node: AssumptionAnalysisNode): Unit = {
-    assumptionGraph.addNode(node)
+  override def addPermissionNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = PermissionInhaleNode(chunk, sourceInfo, assumptionType)
+    addNode(node)
+    Some(node.id)
   }
 
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
@@ -135,11 +148,10 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
 
-  override def processUnsatCore(dep: String): Unit = {
+  override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
   }
 
-  override def addNode(assumption: AssumptionAnalysisNode): Unit = {
-  }
+  override def addPermissionNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
   }
