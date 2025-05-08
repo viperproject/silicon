@@ -10,8 +10,9 @@ trait AssumptionAnalyzer {
 //  def pushScope(stmt: ast.Stmt): Unit
 //  def closeScope(): Unit
   def addAssumptionNode(assumption: AssumptionAnalysisNode): Unit
-  def addAssumptions(assumptions: Iterable[DebugExp]): Unit
-  def addAssertion(assertion: Term): Unit
+  def addSingleAssumption(assumption: DebugExp): Option[Int]
+  def addAssumptions(assumptions: Iterable[DebugExp]): Seq[Int]
+  def addAssertion(assertion: Term): Option[Int]
   def addChunkNode(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode)
   def addDependency(dep: String): Unit
 
@@ -39,19 +40,32 @@ class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
 //    isScopeOpen = false
 //  }
 
-  override def addAssumptions(assumptions: Iterable[DebugExp]): Unit = {
+  override def addSingleAssumption(assumption: DebugExp): Option[Int] = {
+    val node = if(assumption.originalExp.isDefined) new SimpleAssumptionNode(assumption.originalExp.get)
+    else new StringAssumptionNode(assumption.description.getOrElse("unknown"))
+    assumptionGraph.addNode(node)
+    Some(node.id)
+  }
+
+  override def addAssumptions(assumptions: Iterable[DebugExp]): Seq[Int] = {
     val newNodes = assumptions.filter(_.originalExp.isDefined)
       .map(a => new SimpleAssumptionNode(a.originalExp.get))
     assumptionGraph.addNodes(newNodes.toSet)
+    newNodes.map(_.id).toSeq
   }
 
-  override def addAssertion(assertion: Term): Unit = {
+  override def addAssertion(assertion: Term): Option[Int] = {
     val newNode = new SimpleAssertionNode(assertion)
     assumptionGraph.addNode(newNode)
+    Some(newNode.id)
   }
 
   override def addDependency(dep: String): Unit = {
-    val assumptions = dep.split(" ")
+    val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
+    if(assumptionLabels.size < 2) return
+    val ids: Iterable[Int] = assumptionLabels map (l => l.split("_").tail.head.toInt)
+    val maxId: Int = ids.reduce[Int]{case (a, b) => math.max(a, b)}
+    assumptionGraph.addEdges(ids.filter(_ != maxId), maxId)
   }
 
   override def addAssumptionNode(assumption: AssumptionAnalysisNode): Unit = {
@@ -67,14 +81,17 @@ class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
   }
 
   override def getMethod: Option[ast.Method] = Some(method)
+
 }
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
-  override def addAssumptions(assumptions: Iterable[DebugExp]): Unit = {
+  override def addAssumptions(assumptions: Iterable[DebugExp]): Seq[Int] = {
+    Seq.empty
   }
 
-  override def addAssertion(assertion: Term): Unit = {
+  override def addAssertion(assertion: Term): Option[Int] = {
+    None
   }
 
   override def addDependency(dep: String): Unit = {
@@ -87,4 +104,8 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   }
 
   override def getMethod: Option[ast.Method] = None
+
+  override def addSingleAssumption(assumption: DebugExp): Option[Int] = {
+    None
+  }
 }

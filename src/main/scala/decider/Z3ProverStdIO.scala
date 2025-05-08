@@ -29,9 +29,8 @@ object Z3ProverStdIO {
 class Z3ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
                     identifierFactory: IdentifierFactory,
-                    reporter: Reporter,
-                    assumptionAnalyzer: AssumptionAnalyzer)
-    extends ProverStdIO(uniqueId, termConverter, identifierFactory, reporter, assumptionAnalyzer) {
+                    reporter: Reporter)
+    extends ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) {
     
   val name = Z3ProverStdIO.name
   val minVersion = Z3ProverStdIO.minVersion

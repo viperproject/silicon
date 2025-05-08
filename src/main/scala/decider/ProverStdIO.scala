@@ -6,7 +6,8 @@
 
 package viper.silicon.decider
 
-import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, NoAssumptionAnalyzer}
+
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -27,8 +28,7 @@ import scala.collection.mutable
 abstract class ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
                     identifierFactory: IdentifierFactory,
-                    reporter: Reporter,
-                    assumptionAnalyzer: AssumptionAnalyzer)
+                    reporter: Reporter)
     extends Prover
        with LazyLogging {
 
@@ -42,6 +42,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected var allDecls: Seq[Decl] = Seq()
   protected var allEmits: Seq[String] = Seq()
   protected var proverLabelId: Int = 0
+  var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
@@ -53,6 +54,10 @@ abstract class ProverStdIO(uniqueId: String,
 
   protected def setTimeout(timeout: Option[Int]): Unit
   protected def getProverPath: Path
+
+  override def setAssumptionAnalyzer(assumptionAnalyzer: AssumptionAnalyzer): Unit = {
+    this.assumptionAnalyzer = assumptionAnalyzer
+  }
 
   @inline
   private def readLineFromInput(): String = {

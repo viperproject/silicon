@@ -20,6 +20,7 @@ import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
+import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
 import viper.silicon.reporting.ExternalToolError
 import viper.silicon.reporting.ProverInteractionFailed
 
@@ -561,5 +562,9 @@ class Z3ProverAPI(uniqueId: String,
 
   lazy val randomizeSeedsOptions: Seq[String] = {
     Seq(Z3ProverAPI.randomizeSeedsSetting)
+  }
+
+  override def setAssumptionAnalyzer(assumptionAnalyzer: AssumptionAnalyzer): Unit = {
+    // TODO ake
   }
 }

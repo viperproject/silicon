@@ -6,7 +6,7 @@
 
 package viper.silicon.decider
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, DefaultAssumptionAnalyzer, NoAssumptionAnalyzer}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraphHelper, AssumptionAnalyzer, AssumptionLabel, DefaultAssumptionAnalyzer, NoAssumptionAnalyzer}
 import com.typesafe.scalalogging.Logger
 import viper.silicon.debugger.DebugExp
 import viper.silicon._
@@ -104,6 +104,8 @@ trait Decider {
   def statistics(): Map[String, String]
 
   var assumptionAnalyzer: AssumptionAnalyzer // TODO ake
+  def initAssumptionAnalyzer(method: ast.Method): Unit
+  def removeAssumptionAnalyzer(): Unit
 }
 
 /*
@@ -134,6 +136,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
 
     var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
+
+    override def initAssumptionAnalyzer(method: ast.Method): Unit = {
+      if(Verifier.config.enableAssumptionAnalysis()){
+        assumptionAnalyzer = new DefaultAssumptionAnalyzer(method)
+        prover.setAssumptionAnalyzer(assumptionAnalyzer)
+      }
+    }
+
+    override def removeAssumptionAnalyzer(): Unit = {
+      assumptionAnalyzer = new NoAssumptionAnalyzer
+      prover.setAssumptionAnalyzer(assumptionAnalyzer)
+    }
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -159,8 +173,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def getProver(prover: String): Prover = prover match {
-      case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter, assumptionAnalyzer)
-      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter, assumptionAnalyzer)
+      case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
       case prover =>
         val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
@@ -312,21 +326,25 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if (debugMode) {
         filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
-        assumptionAnalyzer.addAssumptions(filteredAssumptions filter(t => t._2.isDefined) map(t => t._2.get.withTerm(t._1)))
       }
 
+      val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, de) =>
+        val assumptionId: Option[Int] = if(de.isDefined) assumptionAnalyzer.addSingleAssumption(de.get) else None
+        (t, new AssumptionLabel("a", assumptionId).toString)
+      }
 
       if (filteredAssumptions.nonEmpty){
-        val d = filteredAssumptions.head._2 // FIXME ake
-        val labelPrefix = if (d.isDefined) "debugExp_" + d.get.id else ""
-        assumeWithoutSmokeChecks(filteredAssumptions map (_._1), isDefinition=isDefinition, labelPrefix=labelPrefix)
+        assumeWithoutSmokeChecks(filteredAssumptionsWithLabels, isDefinition=isDefinition)
       }
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit = {
-      if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get)
-      val labelPrefix = if(debugExps.isDefined) "debugExp_" + debugExps.get.head.id else "" // FIXME ake
-      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptions), labelPrefix=labelPrefix)
+      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get) else Seq.empty
+
+      val assumptionsWithLabels =
+        if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, new AssumptionLabel("a", Some(id)).toString)}
+        else assumptions map (t => (t, ""))
+      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
       if (debugMode) {
         debugExps.get foreach (e => addDebugExp(e))
       }
@@ -338,13 +356,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (debugMode && filteredTerms.nonEmpty) {
-        addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
-        if(debugExp.isDefined) assumptionAnalyzer.addAssumptions(Set(debugExp.get.withTerm(And(filteredTerms))))
-      }
+      if(filteredTerms.isEmpty) return
 
-      val labelPrefix = if(debugExp.isDefined) "debugExp_" + debugExp.get.id else "" // FIXME ake
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms), labelPrefix=labelPrefix)
+      if (debugMode) {
+        addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
+        val assumptionId: Option[Int] = if(debugExp.isDefined) assumptionAnalyzer.addSingleAssumption(debugExp.get.withTerm(And(filteredTerms))) else None
+        val termsWithLabel = filteredTerms.zipWithIndex.iterator.map {case (t, idx) => (t, new AssumptionLabel("a", assumptionId, idx).toString)}.toSeq
+        assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
+      }else{
+        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map ((_, ""))))
+      }
     }
 
     def debuggerAssume(terms: Iterable[Term], de: DebugExp) = {
@@ -357,7 +378,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], isDefinition: Boolean = false, labelPrefix: String = "") = {
+    private def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], isDefinition: Boolean = false) = {
+      val terms = termsWithLabel map (_._1)
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
 
@@ -369,7 +391,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       /* Add terms to the prover's assumptions */
-      terms.zipWithIndex.iterator.foreach{case (t, tid) => prover.assume(t, if(labelPrefix.isEmpty) "" else labelPrefix + "_" + tid)}
+      termsWithLabel foreach{case (t, label) => prover.assume(t, label)}
 
       symbExLog.closeScope(sepIdentifier)
       None

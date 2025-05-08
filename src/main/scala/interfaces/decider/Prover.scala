@@ -6,6 +6,7 @@
 
 package viper.silicon.interfaces.decider
 
+import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
 import viper.silicon.debugger.DebugAxiom
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
@@ -68,4 +69,6 @@ trait Prover extends ProverLike with StatefulComponent {
   def getAllDecls(): Seq[Decl]
 
   def getAllEmits(): Seq[String]
+
+  def setAssumptionAnalyzer(assumptionAnalyzer: AssumptionAnalyzer): Unit
 }

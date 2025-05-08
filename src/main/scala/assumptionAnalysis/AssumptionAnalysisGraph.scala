@@ -13,6 +13,22 @@ object AssumptionType extends Enumeration {
 }
 import AssumptionType._
 
+// TODO ake: make sure that the string does not contain invalid characters
+class AssumptionLabel(description: String, id: Option[Int], offset: Int = 0) {
+  override def toString: String =
+    if(id.isDefined) description.trim + "_" + id.get + "_" + offset
+    else ""
+}
+
+
+object AssumptionAnalysisGraphHelper {
+  private val idCounter: AtomicInteger = new AtomicInteger(0)
+
+  def nextId(): Int = {
+    idCounter.getAndIncrement()
+  }
+}
+
 trait AssumptionAnalysisGraph {
   var nodes: Seq[AssumptionAnalysisNode]
 
@@ -23,8 +39,8 @@ trait AssumptionAnalysisGraph {
 
   def addNode(node: AssumptionAnalysisNode): Unit
   def addNodes(nodes: Set[AssumptionAnalysisNode]): Unit
-  def addEdges(source: Int, targets: Set[Int]): Unit
-  def addEdges(sources: Set[Int], target: Int): Unit
+  def addEdges(source: Int, targets: Iterable[Int]): Unit
+  def addEdges(sources: Iterable[Int], target: Int): Unit
 
   // def findDependentAssumptions(assertion, enableTransitivity=false)
   // def findDependentAssertions(assumption, enableTransitivity=false)
@@ -32,13 +48,6 @@ trait AssumptionAnalysisGraph {
   // def mergeIdenticalNodes()
 }
 
-object AssumptionAnalysisGraphHelper {
-  private val idCounter: AtomicInteger = new AtomicInteger(0)
-
-  def nextId(): Int = {
-    idCounter.getAndIncrement()
-  }
-}
 
 class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
   override var nodes: Seq[AssumptionAnalysisNode] = Seq()
@@ -53,12 +62,12 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
     nodes foreach addNode
   }
 
-  override def addEdges(source: Int, targets: Set[Int]): Unit = {
+  override def addEdges(source: Int, targets: Iterable[Int]): Unit = {
     val oldTargets = edges.getOrElse(source, Set.empty)
     edges.update(source, oldTargets ++ targets)
   }
 
-  override def addEdges(sources: Set[Int], target: Int): Unit = {
+  override def addEdges(sources: Iterable[Int], target: Int): Unit = {
     sources.foreach(addEdges(_, Set(target)))
   }
 }
@@ -100,6 +109,18 @@ class SimpleAssumptionNode(assumption: ast.Exp, val assumptionType: AssumptionTy
         node.getAssumption.equals(this.assumption) && node.getAssumption.pos.equals(this.assumption.pos)
       case _ => false
     }
+  }
+}
+
+// TODO ake: remove this
+class StringAssumptionNode(description: String, val assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode {
+
+  override def toString: String = super.toString + ": " + description
+
+  def getAssumption: String = description
+
+  override def equals(other: AssumptionAnalysisNode): Boolean = {
+    other.id == this.id
   }
 }
 

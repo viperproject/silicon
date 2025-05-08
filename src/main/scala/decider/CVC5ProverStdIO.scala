@@ -6,7 +6,8 @@
 
 package viper.silicon.decider
 
-import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, NoAssumptionAnalyzer}
+
 import java.nio.file.{Path, Paths}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.verifier.Verifier
@@ -28,9 +29,8 @@ object Cvc5ProverStdIO {
 class Cvc5ProverStdIO(uniqueId: String,
                       termConverter: TermToSMTLib2Converter,
                       identifierFactory: IdentifierFactory,
-                      reporter: Reporter,
-                      assumptionAnalyzer: AssumptionAnalyzer)
-    extends ProverStdIO(uniqueId, termConverter, identifierFactory, reporter, assumptionAnalyzer) {
+                      reporter: Reporter)
+    extends ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) {
     
   val name: String = Cvc5ProverStdIO.name
   val minVersion: Version = Cvc5ProverStdIO.minVersion
