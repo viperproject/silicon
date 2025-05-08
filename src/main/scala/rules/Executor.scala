@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode}
+import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode, StmtAnalysisSourceInfo}
 
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
@@ -457,7 +457,7 @@ object executor extends ExecutionRules {
         val debugExp = Option.when(withExp)(ast.NeCmp(x, ast.NullLit()())())
         val debugExpSubst = Option.when(withExp)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
         val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, stmt.pos)
-        v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst)
+        v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst, StmtAnalysisSourceInfo(stmt), AssumptionType.Implicit)
         val newChunks = fields map (field => {
           val p = FullPerm
           val pExp = Option.when(withExp)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))

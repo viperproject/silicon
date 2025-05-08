@@ -1,5 +1,6 @@
 package viper.silicon.assumptionAnalysis
 
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.Term
@@ -10,9 +11,12 @@ import viper.silver.ast.NoPosition
 trait AssumptionAnalyzer {
 //  def pushScope(stmt: ast.Stmt): Unit
 //  def closeScope(): Unit
-  def addAssumptionNode(assumption: AssumptionAnalysisNode): Unit
-  def addSingleAssumption(assumption: DebugExp): Option[Int]
-  def addAssumptions(assumptions: Iterable[DebugExp]): Seq[Int]
+  def addNode(assumption: AssumptionAnalysisNode): Unit
+  def addSingleAssumption(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addSingleAssumption(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int]
+  def addSingleAssumption(assumption: DebugExp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addAssumptions(assumptions: Iterable[DebugExp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int]
   def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit
   def processUnsatCore(dep: String): Unit
@@ -64,23 +68,40 @@ class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
 //    isScopeOpen = false
 //  }
 
-  override def addSingleAssumption(assumption: DebugExp): Option[Int] = {
-    val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, ExpAnalysisSourceInfo(assumption.originalExp.get), AssumptionType.Unknown)
-    else StringAssumptionNode(assumption.description.getOrElse("unknown"), StringAnalysisSourceInfo(assumption.description.getOrElse("unknown"), NoPosition), AssumptionType.Unknown)
+  override def addSingleAssumption(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = SimpleAssumptionNode(assumption, sourceInfo, assumptionType)
     assumptionGraph.addNode(node)
     Some(node.id)
   }
 
-  override def addAssumptions(assumptions: Iterable[DebugExp]): Seq[Int] = {
+  override def addSingleAssumption(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = StringAssumptionNode(description, sourceInfo, assumptionType)
+    addNode(node)
+    Some(node.id)
+  }
+
+  override def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int] = {
+    if(assumption.originalExp.isDefined) addSingleAssumption(assumption, ExpAnalysisSourceInfo(assumption.originalExp.get), assumptionType)
+    else addSingleAssumption(assumption, StringAnalysisSourceInfo(assumption.description.getOrElse("unknown"), NoPosition), assumptionType)
+  }
+
+  override def addSingleAssumption(assumption: DebugExp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, sourceInfo, assumptionType)
+    else StringAssumptionNode(assumption.description.getOrElse("unknown"), sourceInfo, assumptionType)
+    addNode(node)
+    Some(node.id)
+  }
+
+  override def addAssumptions(assumptions: Iterable[DebugExp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = {
     val newNodes = assumptions.filter(_.originalExp.isDefined)
-      .map(a => SimpleAssumptionNode(a.originalExp.get, ExpAnalysisSourceInfo(a.originalExp.get), AssumptionType.Unknown))
-    assumptionGraph.addNodes(newNodes.toSet)
+      .map(a => SimpleAssumptionNode(a.originalExp.get, sourceInfo, assumptionType))
+    newNodes foreach addNode
     newNodes.map(_.id).toSeq
   }
 
   override def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = {
     val newNode = SimpleAssertionNode(assertion, isAsserted, sourceInfo)
-    assumptionGraph.addNode(newNode)
+    addNode(newNode)
     Some(newNode.id)
   }
 
@@ -92,15 +113,15 @@ class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(assumptionIds, assertionIds)
   }
 
-  override def addAssumptionNode(assumption: AssumptionAnalysisNode): Unit = {
-    assumptionGraph.addNode(assumption)
+  override def addNode(node: AssumptionAnalysisNode): Unit = {
+    assumptionGraph.addNode(node)
   }
 
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
     val analysisChunks = assumptionGraph.nodes
       .filter(c => c.isInstanceOf[ChunkAnalysisInfo] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.id).toSet
-    addAssumptionNode(newChunkNode)
+    addNode(newChunkNode)
     assumptionGraph.addEdges(analysisChunks, newChunkNode.id)
   }
 
@@ -110,18 +131,14 @@ class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
-  override def addAssumptions(assumptions: Iterable[DebugExp]): Seq[Int] = {
-    Seq.empty
-  }
+  override def addAssumptions(assumptions: Iterable[DebugExp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = Seq.empty
 
-  override def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    None
-  }
+  override def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
 
   override def processUnsatCore(dep: String): Unit = {
   }
 
-  override def addAssumptionNode(assumption: AssumptionAnalysisNode): Unit = {
+  override def addNode(assumption: AssumptionAnalysisNode): Unit = {
   }
 
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
@@ -129,7 +146,8 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def getMethod: Option[ast.Method] = None
 
-  override def addSingleAssumption(assumption: DebugExp): Option[Int] = {
-    None
-  }
+  override def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int] = None
+  override def addSingleAssumption(assumption: DebugExp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addSingleAssumption(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addSingleAssumption(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 }
