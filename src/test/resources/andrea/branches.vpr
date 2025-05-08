@@ -15,17 +15,12 @@ method foo(a: Ref, b: Ref)
     n := b.f
   }
 
-  var x : Int := a.f
-
-  if(x > n){
-    x := 2*x
+  var x: Int := 0
+  if(a.f > n){
+    x := a.f + b.f
   }else{
-    x := 2*n
-    b.f := 10
+    x := n
     assert x >= 1
   }
-
-  n := b.f
-
   assert x > 0
 }

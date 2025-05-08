@@ -1,19 +1,11 @@
 field f: Int
 
+function id(n: Int): Int
+    ensures n == result
 
-method foo(a: Ref)
-    requires acc(a.f, 1/2)
-    ensures acc(a.f, 1/2)
-
-
-method copyAndInc(x: Ref, y: Ref, z: Ref, p: Perm)
-  requires p > none
-  requires acc(x.f) && acc(y.f, p) && acc(z.f, 1/2)
-  ensures  acc(x.f) && acc(y.f, p)
+method foo(x: Ref, n: Int)
 {
-  assume p > 1/2
-  x.f := y.f + 1
-  assume y == z
-  foo(x)
-  assert x.f == z.f + 1
+  var a: Int
+  a := id(5)
+  assert a > 0
 }

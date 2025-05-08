@@ -2,7 +2,7 @@ field f: Int
 
 
 method foo(a: Ref)
-    requires acc(a.f, 1/2)
+    requires acc(a.f, 1/2) && a.f >= 0
     ensures acc(a.f, 1/2)
 
 
@@ -11,9 +11,13 @@ method copyAndInc(x: Ref, y: Ref, z: Ref, p: Perm)
   requires acc(x.f) && acc(y.f, p) && acc(z.f, 1/2)
   ensures  acc(x.f) && acc(y.f, p)
 {
-  assume p > 1/2
+  assume p < 1/2
+  assume y.f == 1
   x.f := y.f + 1
   assume y == z
   foo(x)
+  foo(x)
   assert x.f == z.f + 1
+  x.f := 5
+  assert x.f > 0
 }
