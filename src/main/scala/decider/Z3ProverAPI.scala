@@ -299,7 +299,8 @@ class Z3ProverAPI(uniqueId: String,
     cleanTerm
   }
 
-  def assert(goal: Term, timeout: Option[Int]): Boolean = {
+  // TODO ake: label
+  def assert(goal: Term, timeout: Option[Int], label: String = ""): Boolean = {
     endPreamblePhase()
 
     try {

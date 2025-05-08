@@ -261,15 +261,15 @@ abstract class ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None): Boolean =
-    assert(termConverter.convert(goal), timeout)
+  def assert(goal: Term, timeout: Option[Int] = None, label: String = ""): Boolean =
+    assert(termConverter.convert(goal), timeout, label)
 
-  def assert(goal: String, timeout: Option[Int]): Boolean = {
+  def assert(goal: String, timeout: Option[Int], label: String): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
     val (result, duration) = Verifier.config.assertionMode() match {
       case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
-      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout, label)
     }
 
     comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")
@@ -278,11 +278,11 @@ abstract class ProverStdIO(uniqueId: String,
     result
   }
 
-  protected def assertUsingPushPop(goal: String, timeout: Option[Int]): (Boolean, Long) = {
+  protected def assertUsingPushPop(goal: String, timeout: Option[Int], label: String): (Boolean, Long) = {
     push()
     setTimeout(timeout)
 
-    writeLine("(assert (not " + goal + "))")
+    writeLine("(assert (! (not " + goal + ") :named " + label + "))")
     readSuccess()
 
     val startTime = System.currentTimeMillis()
@@ -295,7 +295,7 @@ abstract class ProverStdIO(uniqueId: String,
       retrieveReasonUnknown()
     }else{
       val unsatCore = extractUnsatCore()
-      assumptionAnalyzer.addDependency(unsatCore)
+      assumptionAnalyzer.processUnsatCore(unsatCore)
     }
 
     pop()

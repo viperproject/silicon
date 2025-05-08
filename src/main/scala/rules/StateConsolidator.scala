@@ -6,14 +6,13 @@
 
 package viper.silicon.rules
 
-import viper.silicon.debugger.DebugExp
 import viper.silicon.Config
-import viper.silicon.assumptionAnalysis.{AssumptionType, ChunkGroupNode, PermissionAssumptionNode}
+import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionInhaleNode, StringAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
-import viper.silicon.rules.predicateSupporter.withExp
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
@@ -21,7 +20,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.parser.PUnknown
+import viper.silver.ast.NoPosition
 
 import scala.annotation.unused
 
@@ -227,7 +226,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     }
     if(result.isDefined){
       val (_, newChunk, _) = result.get
-      v.decider.assumptionAnalyzer.addChunkNode(Set(chunk1, chunk2), new ChunkGroupNode("mergeChunks", newChunk, AssumptionType.Implicit))
+      val newChunkNode = PermissionInhaleNode(newChunk, StringAnalysisSourceInfo("state consolidation", NoPosition), AssumptionType.Internal)
+      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), newChunkNode)
     }
     result
   }

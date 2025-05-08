@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionAssumptionNode}
+import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
@@ -16,6 +16,7 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.{NoInfo, NoPosition, NoTrafos, PredicateAccess}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -114,8 +115,8 @@ object predicateSupporter extends PredicateSupportRules {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm)
-        Option.when(withExp)(v1.decider.assumptionAnalyzer.addAssumptionNode(new PermissionAssumptionNode(ePerm.get, ch, AssumptionType.Unknown)))
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm,
+          v1, ExpAnalysisSourceInfo(PredicateAccess(Seq(), predicate)(NoPosition, NoInfo, NoTrafos)), AssumptionType.Unknown)
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor,

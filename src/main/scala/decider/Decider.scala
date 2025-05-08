@@ -6,11 +6,11 @@
 
 package viper.silicon.decider
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraphHelper, AssumptionAnalyzer, AssumptionLabel, DefaultAssumptionAnalyzer, NoAssumptionAnalyzer}
 import com.typesafe.scalalogging.Logger
-import viper.silicon.debugger.DebugExp
 import viper.silicon._
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, DefaultAssumptionAnalyzer, NoAssumptionAnalyzer, StringAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
@@ -26,8 +26,8 @@ import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 import viper.silver.verifier.{DependencyNotFoundError, Model}
 
 import scala.collection.immutable.HashSet
-import scala.reflect.{ClassTag, classTag}
 import scala.collection.mutable
+import scala.reflect.{ClassTag, classTag}
 
 /*
  * Interfaces
@@ -330,7 +330,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, de) =>
         val assumptionId: Option[Int] = if(de.isDefined) assumptionAnalyzer.addSingleAssumption(de.get) else None
-        (t, new AssumptionLabel("a", assumptionId).toString)
+        (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
       }
 
       if (filteredAssumptions.nonEmpty){
@@ -342,7 +342,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get) else Seq.empty
 
       val assumptionsWithLabels =
-        if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, new AssumptionLabel("a", Some(id)).toString)}
+        if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, AssumptionAnalyzer.createAssumptionLabel(Some(id)))}
         else assumptions map (t => (t, ""))
       assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
       if (debugMode) {
@@ -361,7 +361,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (debugMode) {
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
         val assumptionId: Option[Int] = if(debugExp.isDefined) assumptionAnalyzer.addSingleAssumption(debugExp.get.withTerm(And(filteredTerms))) else None
-        val termsWithLabel = filteredTerms.zipWithIndex.iterator.map {case (t, idx) => (t, new AssumptionLabel("a", assumptionId, idx).toString)}.toSeq
+        val termsWithLabel = filteredTerms.zipWithIndex.iterator.map {case (t, idx) => (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId, idx))}.toSeq
         assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
       }else{
         assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map ((_, ""))))
@@ -431,8 +431,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
 
       val asserted = if(Verifier.config.enableAssumptionAnalysis()) t.equals(True) else isKnownToBeTrue(t)
-      if(!asserted) assumptionAnalyzer.addAssertion(t)
-      val result = asserted || proverAssert(t, timeout)
+      val assertionId: Option[Int] = if(!asserted) assumptionAnalyzer.addAssertion(t, false, StringAnalysisSourceInfo("deciderAssert", NoPosition)) else None
+      val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertionId))
 
       symbExLog.closeScope(sepIdentifier)
       result
@@ -452,11 +452,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         }
     }
 
-    private def proverAssert(t: Term, timeout: Option[Int]) = {
+    private def proverAssert(t: Term, timeout: Option[Int], label: String) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val result = prover.assert(t, timeout)
+      val result = prover.assert(t, timeout, label)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))
@@ -574,7 +574,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False, Verifier.config.assertTimeout.toOption)
+    override def generateModel(): Unit = proverAssert(False, Verifier.config.assertTimeout.toOption, "")
 
     override def getModel(): Model = prover.getModel()
 

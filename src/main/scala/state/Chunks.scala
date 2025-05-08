@@ -6,14 +6,15 @@
 
 package viper.silicon.state
 
-import viper.silver.ast
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, PermissionInhaleNode}
 import viper.silicon.interfaces.state._
 import viper.silicon.resources._
 import viper.silicon.rules.InverseFunctions
-import viper.silicon.state.BasicChunk.createDerivedChunk
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 
 object ChunkIdentifier {
   def apply(from: ast.Resource, program: ast.Program): ChunkIdentifer = {
@@ -30,19 +31,26 @@ case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
 }
 
 object BasicChunk {
-  def apply(resourceID: BaseID,
-            id: BasicChunkIdentifier,
-            args: Seq[Term],
-            argsExp: Option[Seq[ast.Exp]],
-            snap: Term,
-            snapExp: Option[ast.Exp],
-            perm: Term,
-            permExp: Option[ast.Exp]): BasicChunk = {
+  // TODO ake: remove once every apply was adapted to the new version
+  def apply(resourceID: BaseID, id: BasicChunkIdentifier,
+            args: Seq[Term], argsExp: Option[Seq[ast.Exp]],
+            snap: Term, snapExp: Option[ast.Exp],
+            perm: Term, permExp: Option[ast.Exp]): BasicChunk = {
     new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    // TODO ake: add to assumption graph
   }
 
-  def createDerivedChunk(oldChunk: BasicChunk,
+  def apply(resourceID: BaseID, id: BasicChunkIdentifier,
+            args: Seq[Term], argsExp: Option[Seq[ast.Exp]],
+            snap: Term, snapExp: Option[ast.Exp],
+            perm: Term, permExp: Option[ast.Exp],
+            v: Verifier,
+            sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): BasicChunk = {
+    val chunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
+    v.decider.assumptionAnalyzer.addAssumptionNode(PermissionInhaleNode(chunk, sourceInfo, assumptionType))
+    chunk
+  }
+
+  def createDerivedChunk(oldChunks: Set[Chunk],
                          resourceID: BaseID,
                          id: BasicChunkIdentifier,
                          args: Seq[Term],
@@ -50,9 +58,29 @@ object BasicChunk {
                          snap: Term,
                          snapExp: Option[ast.Exp],
                          perm: Term,
-                         permExp: Option[ast.Exp]): BasicChunk = {
+                         permExp: Option[ast.Exp], v: Verifier, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): BasicChunk = {
     val newChunk = apply(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    // TODO ake: add edge
+    v.decider.assumptionAnalyzer.addPermissionDependencies(oldChunks, PermissionInhaleNode(newChunk, sourceInfo, assumptionType))
+    newChunk
+  }
+}
+
+object GeneralChunk {
+  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], v: Verifier, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): GeneralChunk = {
+    val newChunk = chunk.applyCondition(newCond, newCondExp)
+    v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, sourceInfo, assumptionType))
+    newChunk
+  }
+
+  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], v: Verifier, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): GeneralChunk = {
+    val newChunk = chunk.permMinus(newPerm, newPermExp)
+    v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, sourceInfo, assumptionType))
+    newChunk
+  }
+
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], v: Verifier, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): GeneralChunk = {
+    val newChunk = chunk.permPlus(newPerm, newPermExp)
+    v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, sourceInfo, assumptionType))
     newChunk
   }
 }
@@ -73,14 +101,14 @@ case class BasicChunk private (resourceID: BaseID,
     case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
   }
 
-  override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
+  override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): BasicChunk =
     withPerm(Ite(newCond, perm, NoPerm), newCondExp.map(nce => ast.CondExp(nce, permExp.get, ast.NoPerm()())()))
-  override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
-  override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
-  override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = createDerivedChunk(this, resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp)
-  override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]) = createDerivedChunk(this, resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
+  override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp)
+  override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
 
   override lazy val toString = resourceID match {
     case FieldID => s"${args.head}.$id -> $snap # $perm"

@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionAssumptionNode}
+import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode}
 
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
@@ -440,8 +440,8 @@ object executor extends ExecutionRules {
             chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, v3) => {
               val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
               val id = BasicChunkIdentifier(field.name)
-              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)))
-              v3.decider.assumptionAnalyzer.addAssumptionNode(new PermissionAssumptionNode(eRcvr, newChunk, AssumptionType.Implicit))
+              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
+                v3, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit)
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                 val s5 = s4.copy(h = h4)
                 val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
@@ -471,8 +471,8 @@ object executor extends ExecutionRules {
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT))),
               field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program)
           } else {
-            val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp)
-            Option.when(withExp)(v.decider.assumptionAnalyzer.addAssumptionNode(new PermissionAssumptionNode(pExp.get, newChunk, AssumptionType.Explicit)))
+            val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp,
+              v, ExpAnalysisSourceInfo(x), AssumptionType.Explicit)
             newChunk
           }
         })
