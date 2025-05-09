@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode, StmtAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode, StmtAnalysisSourceInfo}
 
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
@@ -441,7 +441,7 @@ object executor extends ExecutionRules {
               val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                v3, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit)
+                AnalysisInfo(v3, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit))
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                 val s5 = s4.copy(h = h4)
                 val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
@@ -472,7 +472,7 @@ object executor extends ExecutionRules {
               field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program)
           } else {
             val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp,
-              v, ExpAnalysisSourceInfo(x), AssumptionType.Explicit)
+              AnalysisInfo(v, ExpAnalysisSourceInfo(ast.FieldAccess(x, field)(field.pos, field.info, field.errT)), AssumptionType.Explicit))
             newChunk
           }
         })

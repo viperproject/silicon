@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, StringAnalysisSourceInfo}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
@@ -16,6 +17,7 @@ import viper.silicon.state.terms.{And, Or, Term}
 import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.NoPosition
 
 import scala.annotation.unused
 
@@ -24,12 +26,12 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
   // we can directly merge JoinDataEntries to obtain new States,
   // and the join data entries themselves provide information about the path conditions to State.merge.
   def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
-    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
     v.stateConsolidator(s).consolidate(res, v)
   }
 
-  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], @unused v: Verifier): State = {
-    State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
   }
 }
 

@@ -7,7 +7,7 @@
 package viper.silicon.state
 
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, PermissionInhaleNode}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AnalysisSourceInfo, PermissionInhaleNode}
 import viper.silicon.interfaces.state._
 import viper.silicon.resources._
 import viper.silicon.rules.InverseFunctions
@@ -43,10 +43,9 @@ object BasicChunk {
             args: Seq[Term], argsExp: Option[Seq[ast.Exp]],
             snap: Term, snapExp: Option[ast.Exp],
             perm: Term, permExp: Option[ast.Exp],
-            v: Verifier,
-            sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): BasicChunk = {
+            analysisInfo: AnalysisInfo): BasicChunk = {
     val chunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    v.decider.assumptionAnalyzer.addPermissionNode(chunk, sourceInfo, assumptionType)
+    analysisInfo.getAssumptionAnalyzer.addPermissionNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
     chunk
   }
 
@@ -58,29 +57,29 @@ object BasicChunk {
                          snap: Term,
                          snapExp: Option[ast.Exp],
                          perm: Term,
-                         permExp: Option[ast.Exp], v: Verifier, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): BasicChunk = {
+                         permExp: Option[ast.Exp], analysisInfo: AnalysisInfo): BasicChunk = {
     val newChunk = apply(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    v.decider.assumptionAnalyzer.addPermissionDependencies(oldChunks, PermissionInhaleNode(newChunk, sourceInfo, assumptionType))
+    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(oldChunks, PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
     newChunk
   }
 }
 
 object GeneralChunk {
-  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], v: Verifier, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): GeneralChunk = {
+  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
     val newChunk = chunk.applyCondition(newCond, newCondExp)
-    v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, sourceInfo, assumptionType))
+    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
     newChunk
   }
 
-  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], v: Verifier, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): GeneralChunk = {
+  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
     val newChunk = chunk.permMinus(newPerm, newPermExp)
-    v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, sourceInfo, assumptionType))
+    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
     newChunk
   }
 
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], v: Verifier, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): GeneralChunk = {
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
     val newChunk = chunk.permPlus(newPerm, newPermExp)
-    v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, sourceInfo, assumptionType))
+    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
     newChunk
   }
 }
