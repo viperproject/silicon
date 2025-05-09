@@ -81,5 +81,13 @@ trait QuantifiedChunk extends GeneralChunk {
   override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): QuantifiedChunk
   override protected def permMinus(perm: Term, permExp: Option[ast.Exp]): QuantifiedChunk
   override protected def permPlus(perm: Term, permExp: Option[ast.Exp]): QuantifiedChunk
-  def withSnapshotMap(snap: Term): QuantifiedChunk
+  protected def withSnapshotMap(snap: Term): QuantifiedChunk
+}
+
+object QuantifiedChunk {
+  def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfo: AnalysisInfo): QuantifiedChunk = {
+    val newChunk = chunk.withSnapshotMap(snap)
+    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    newChunk
+  }
 }

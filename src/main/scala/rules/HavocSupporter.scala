@@ -10,7 +10,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
 import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, StmtAnalysisSourceInfo}
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
+import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
 import viper.silicon.state._
@@ -58,7 +58,7 @@ object havocSupporter extends SymbolicExecutionRules {
         // the HavocHelperData inside of a HavocOneData case (as opposed to HavocAllData).
         val newChunks =
           if (usesQPChunks(s1, resource))
-            havocQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
+            havocQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1, analysisInfo)
           else
             havocNonQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1, analysisInfo)
 
@@ -157,7 +157,7 @@ object havocSupporter extends SymbolicExecutionRules {
             // the HavocHelperData inside of a HavocAllData case.
             val newChunks =
               if (usesQPChunks(s1, resource))
-                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
+                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1, analysisInfo)
               else
                 havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1, analysisInfo)
 
@@ -227,7 +227,8 @@ object havocSupporter extends SymbolicExecutionRules {
                                       lhs: Term,
                                       resource: ast.Resource,
                                       condInfo: HavocHelperData,
-                                      v: Verifier)
+                                      v: Verifier,
+                                      analysisInfo: AnalysisInfo)
                                      : Seq[Chunk] = {
 
     // Quantified field chunks are of the form R(r; sm, pm).
@@ -284,7 +285,7 @@ object havocSupporter extends SymbolicExecutionRules {
       val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
       v.decider.assume(newAxiom, debugExp)
 
-      ch.withSnapshotMap(newSm)
+      QuantifiedChunk.withSnapshotMap(ch, newSm, analysisInfo)
     }
     newChunks ++ otherChunks
   }

@@ -20,7 +20,7 @@ import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state.NonQuantifiedChunk
+import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
@@ -541,6 +541,7 @@ object executor extends ExecutionRules {
       case methCall @ ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
+        val analysisInfo = AnalysisInfo(v, StmtAnalysisSourceInfo(methCall), AssumptionType.Unknown)
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
         val member = s.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
@@ -548,11 +549,11 @@ object executor extends ExecutionRules {
         }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
         val h1 = Heap(s.h.values.map {
           case bc: BasicChunk if bc.id.name == member.name =>
-            NonQuantifiedChunk.withSnap(bc, freshSnap(bc.snap.sort, v), None, AnalysisInfo(v, StmtAnalysisSourceInfo(methCall), AssumptionType.Unknown))
+            NonQuantifiedChunk.withSnap(bc, freshSnap(bc.snap.sort, v), None, analysisInfo)
           case qfc: QuantifiedFieldChunk if qfc.id.name == member.name =>
-            qfc.withSnapshotMap(freshSnap(qfc.fvf.sort, v))
+            QuantifiedChunk.withSnapshotMap(qfc,freshSnap(qfc.fvf.sort, v), analysisInfo)
           case qpc: QuantifiedPredicateChunk if qpc.id.name == member.name =>
-            qpc.withSnapshotMap(freshSnap(qpc.psf.sort, v))
+            QuantifiedChunk.withSnapshotMap(qpc, freshSnap(qpc.psf.sort, v), analysisInfo)
           case other =>
             other})
         Q(s.copy(h = h1), v)
