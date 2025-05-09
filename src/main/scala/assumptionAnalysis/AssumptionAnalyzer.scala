@@ -5,7 +5,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast
-import viper.silver.ast.NoPosition
+import viper.silver.ast.{Member, NoPosition}
 
 
 trait AssumptionAnalyzer {
@@ -57,7 +57,7 @@ object AssumptionAnalyzer {
   def isAssumptionLabel(label: String): Boolean = label.startsWith("assumption_")
 }
 
-class DefaultAssumptionAnalyzer(method: ast.Method) extends AssumptionAnalyzer {
+class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
   //  private var scope : mutable.Set[AssumptionAnalysisNode] = mutable.Set.empty
   //  private var isScopeOpen: Boolean = false
   //  private var scopeStmt: ast.Stmt = ???

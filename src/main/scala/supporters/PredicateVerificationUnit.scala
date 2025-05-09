@@ -82,6 +82,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
     def verify(sInit: State, predicate: ast.Predicate): Seq[VerificationResult] = {
       logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
+      v.decider.initAssumptionAnalyzer(predicate)
       decider.prover.comment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
       openSymbExLogger(predicate)
@@ -104,6 +105,8 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       }
 
       symbExLog.closeMemberScope()
+      result.assumptionAnalyzer = v.decider.assumptionAnalyzer
+      v.decider.removeAssumptionAnalyzer()
       Seq(result)
     }
 

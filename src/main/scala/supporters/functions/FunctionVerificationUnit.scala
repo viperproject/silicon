@@ -148,6 +148,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     def verify(sInit: State, function: ast.Function): Seq[VerificationResult] = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + ("-" * 10)
+      v.decider.initAssumptionAnalyzer(function)
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
@@ -157,9 +158,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      val res = Seq(handleFunction(sInit, function))
+      val res = handleFunction(sInit, function)
       symbExLog.closeMemberScope()
-      res
+      res.assumptionAnalyzer = v.decider.assumptionAnalyzer
+      v.decider.removeAssumptionAnalyzer()
+      Seq(res)
     }
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {

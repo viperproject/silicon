@@ -20,7 +20,7 @@ import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
-import viper.silver.ast.{LocalVarWithVersion, NoPosition}
+import viper.silver.ast.{LocalVarWithVersion, Member, NoPosition}
 import viper.silver.components.StatefulComponent
 import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
@@ -107,7 +107,7 @@ trait Decider {
   def statistics(): Map[String, String]
 
   var assumptionAnalyzer: AssumptionAnalyzer // TODO ake
-  def initAssumptionAnalyzer(method: ast.Method): Unit
+  def initAssumptionAnalyzer(member: Member): Unit
   def removeAssumptionAnalyzer(): Unit
 }
 
@@ -140,9 +140,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
 
-    override def initAssumptionAnalyzer(method: ast.Method): Unit = {
+    override def initAssumptionAnalyzer(member: Member): Unit = {
       if(Verifier.config.enableAssumptionAnalysis()){
-        assumptionAnalyzer = new DefaultAssumptionAnalyzer(method)
+        assumptionAnalyzer = new DefaultAssumptionAnalyzer(member)
         prover.setAssumptionAnalyzer(assumptionAnalyzer)
       }
     }
