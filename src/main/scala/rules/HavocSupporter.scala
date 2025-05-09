@@ -43,7 +43,7 @@ object havocSupporter extends SymbolicExecutionRules {
                 s: State)
                 (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
-    val analysisInfo = AnalysisInfo(v, StmtAnalysisSourceInfo(havoc), AssumptionType.Explicit)
+    val analysisInfo = AnalysisInfo(v.decider.assumptionAnalyzer, StmtAnalysisSourceInfo(havoc), AssumptionType.Explicit)
     val pve = QuasihavocFailed(havoc)
 
     // If there is no havoc condition, use True as the condition
@@ -83,7 +83,7 @@ object havocSupporter extends SymbolicExecutionRules {
                    s: State)
                    (Q: (State, Verifier) => VerificationResult)
                   : VerificationResult = {
-    val analysisInfo = AnalysisInfo(v, StmtAnalysisSourceInfo(havocall), AssumptionType.Explicit)
+    val analysisInfo = AnalysisInfo(v.decider.assumptionAnalyzer, StmtAnalysisSourceInfo(havocall), AssumptionType.Explicit)
     val pve = HavocallFailed(havocall)
     val ast.Quasihavocall(vars, lhs, eRsc) = havocall
     val qid = resourceName(s, eRsc)

@@ -270,7 +270,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp)
-              consumes(s2, posts, false, postconditionViolated, v, AnalysisInfo(v, if(posts.isEmpty) StringAnalysisSourceInfo("no postcondition", ast.NoPosition) else ExpAnalysisSourceInfo(posts.head), AssumptionType.Assertion))((s3, _, _) => {
+              consumes(s2, posts, false, postconditionViolated, v, AnalysisInfo(v.decider.assumptionAnalyzer, if(posts.isEmpty) StringAnalysisSourceInfo("no postcondition", ast.NoPosition) else ExpAnalysisSourceInfo(posts.head), AssumptionType.Assertion))((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

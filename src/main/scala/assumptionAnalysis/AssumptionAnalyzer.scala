@@ -13,15 +13,15 @@ trait AssumptionAnalyzer {
   //  def closeScope(): Unit
   def addPermissionNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
-  def addSingleAssumption(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addSingleAssumption(assumption: ast.Exp, analysisInfo: AnalysisInfo): Option[Int]
 
-  def addSingleAssumption(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addSingleAssumption(description: String, analysisInfo: AnalysisInfo): Option[Int]
 
   def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int]
 
-  def addSingleAssumption(assumption: DebugExp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addSingleAssumption(assumption: DebugExp, analysisInfo: AnalysisInfo): Option[Int]
 
-  def addAssumptions(assumptions: Iterable[DebugExp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int]
+  def addAssumptions(assumptions: Iterable[DebugExp], analysisInfo: AnalysisInfo): Seq[Int]
 
   def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
 
@@ -31,10 +31,36 @@ trait AssumptionAnalyzer {
 
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
+  var currentAnalysisInfo: AnalysisInfo = new NoAnalysisInfo()
+
+  def setCurrentAnalysisInfo(analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): AnalysisInfo = {
+    currentAnalysisInfo = AnalysisInfo(this, analysisSourceInfo, assumptionType)
+    currentAnalysisInfo
+  }
+
+  def clearCurrentAnalysisInfo(): AnalysisInfo = {
+    currentAnalysisInfo = new NoAnalysisInfo()
+    currentAnalysisInfo
+  }
+
+  def updateCurrentAnalysisInfo(at: AssumptionType): AnalysisInfo = {
+    setCurrentAnalysisInfo(currentAnalysisInfo.sourceInfo, at)
+  }
+
+  def updateCurrentAnalysisInfo(si: AnalysisSourceInfo): AnalysisInfo = {
+    setCurrentAnalysisInfo(si, currentAnalysisInfo.assumptionType)
+  }
+
+  def updateCurrentAnalysisInfo(si: AnalysisSourceInfo, at: AssumptionType): AnalysisInfo = {
+    setCurrentAnalysisInfo(si, at)
+  }
+
   def getMember: Option[Member]
 }
 
 object AssumptionAnalyzer {
+  val noAssumptionAnalyzerSingelton = new NoAssumptionAnalyzer()
+
   def createAssumptionLabel(id: Option[Int], offset: Int = 0): String = {
     createLabel("assumption", id, offset)
   }
@@ -79,33 +105,33 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     assumptionGraph.addNode(node)
   }
 
-  override def addSingleAssumption(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, sourceInfo, assumptionType)
+  override def addSingleAssumption(assumption: ast.Exp, analysisInfo: AnalysisInfo): Option[Int] = {
+    val node = SimpleAssumptionNode(assumption, analysisInfo.sourceInfo, analysisInfo.assumptionType)
     addNode(node)
     Some(node.id)
   }
 
-  override def addSingleAssumption(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = StringAssumptionNode(description, sourceInfo, assumptionType)
+  override def addSingleAssumption(description: String, analysisInfo: AnalysisInfo): Option[Int] = {
+    val node = StringAssumptionNode(description, analysisInfo.sourceInfo, analysisInfo.assumptionType)
     addNode(node)
     Some(node.id)
   }
 
   override def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int] = {
-    if(assumption.originalExp.isDefined) addSingleAssumption(assumption, ExpAnalysisSourceInfo(assumption.originalExp.get), assumptionType)
-    else addSingleAssumption(assumption, StringAnalysisSourceInfo(assumption.description.getOrElse("unknown"), NoPosition), assumptionType)
+    if(assumption.originalExp.isDefined) addSingleAssumption(assumption, AnalysisInfo(this, ExpAnalysisSourceInfo(assumption.originalExp.get), assumptionType))
+    else addSingleAssumption(assumption, AnalysisInfo(this, StringAnalysisSourceInfo(assumption.description.getOrElse("unknown"), NoPosition), assumptionType))
   }
 
-  override def addSingleAssumption(assumption: DebugExp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, sourceInfo, assumptionType)
-    else StringAssumptionNode(assumption.description.getOrElse("unknown"), sourceInfo, assumptionType)
+  override def addSingleAssumption(assumption: DebugExp, analysisInfo: AnalysisInfo): Option[Int] = {
+    val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    else StringAssumptionNode(assumption.description.getOrElse("unknown"), analysisInfo.sourceInfo, analysisInfo.assumptionType)
     addNode(node)
     Some(node.id)
   }
 
-  override def addAssumptions(assumptions: Iterable[DebugExp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = {
+  override def addAssumptions(assumptions: Iterable[DebugExp], analysisInfo: AnalysisInfo): Seq[Int] = {
     val newNodes = assumptions.filter(_.originalExp.isDefined)
-      .map(a => SimpleAssumptionNode(a.originalExp.get, sourceInfo, assumptionType))
+      .map(a => SimpleAssumptionNode(a.originalExp.get, analysisInfo.sourceInfo, analysisInfo.assumptionType))
     newNodes foreach addNode
     newNodes.map(_.id).toSeq
   }
@@ -144,7 +170,7 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
-  override def addAssumptions(assumptions: Iterable[DebugExp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = Seq.empty
+  override def addAssumptions(assumptions: Iterable[DebugExp], analysisInfo: AnalysisInfo): Seq[Int] = Seq.empty
 
   override def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
 
@@ -159,7 +185,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def getMember: Option[Member] = None
 
   override def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int] = None
-  override def addSingleAssumption(assumption: DebugExp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
-  override def addSingleAssumption(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
-  override def addSingleAssumption(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addSingleAssumption(assumption: DebugExp, analysisInfo: AnalysisInfo): Option[Int] = None
+  override def addSingleAssumption(assumption: ast.Exp, analysisInfo: AnalysisInfo): Option[Int] = None
+  override def addSingleAssumption(description: String, analysisInfo: AnalysisInfo): Option[Int] = None
 }

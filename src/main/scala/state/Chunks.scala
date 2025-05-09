@@ -45,7 +45,7 @@ object BasicChunk {
             perm: Term, permExp: Option[ast.Exp],
             analysisInfo: AnalysisInfo): BasicChunk = {
     val chunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    analysisInfo.getAssumptionAnalyzer.addPermissionNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
     chunk
   }
 
@@ -59,7 +59,7 @@ object BasicChunk {
                          perm: Term,
                          permExp: Option[ast.Exp], analysisInfo: AnalysisInfo): BasicChunk = {
     val newChunk = apply(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(oldChunks, PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(oldChunks, PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
     newChunk
   }
 }

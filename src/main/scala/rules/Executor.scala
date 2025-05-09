@@ -270,7 +270,7 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, AnalysisInfo(v0, ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion))((sLeftover, _, v1) => {
+                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, AnalysisInfo(v0.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion))((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -304,7 +304,7 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, AnalysisInfo(v, ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion))((_, _, _) =>
+            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion))((_, _, _) =>
               Success())
         }
     }
@@ -324,8 +324,10 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
+    v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(StmtAnalysisSourceInfo(stmt), AssumptionType.Implicit)
     exec2(s, stmt, v)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
+      v.decider.assumptionAnalyzer.clearCurrentAnalysisInfo()
       Q(s1, v1)})
   }
 
@@ -409,7 +411,7 @@ object executor extends ExecutionRules {
               Option.when(withExp)(ast.FullPerm()()),
               chunkOrderHeuristics,
               v2,
-              AnalysisInfo(v2, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit)
+              AnalysisInfo(v2.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit)
             )
             result match {
               case (Complete(), s3, remainingChunks) =>
@@ -439,12 +441,12 @@ object executor extends ExecutionRules {
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            val analysisInfo = AnalysisInfo(v2, ExpAnalysisSourceInfo(fa), AssumptionType.Assertion)
+            val analysisInfo = AnalysisInfo(v2.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fa), AssumptionType.Assertion)
             chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description, analysisInfo)((s3, h3, _, v3) => {
               val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                AnalysisInfo(v3, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit))
+                AnalysisInfo(v3.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit))
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                 val s5 = s4.copy(h = h4)
                 val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
@@ -460,7 +462,7 @@ object executor extends ExecutionRules {
         val debugExp = Option.when(withExp)(ast.NeCmp(x, ast.NullLit()())())
         val debugExpSubst = Option.when(withExp)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
         val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, stmt.pos)
-        v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst, StmtAnalysisSourceInfo(stmt), AssumptionType.Implicit)
+        v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst)
         val newChunks = fields map (field => {
           val p = FullPerm
           val pExp = Option.when(withExp)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))
@@ -475,7 +477,7 @@ object executor extends ExecutionRules {
               field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program)
           } else {
             val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp,
-              AnalysisInfo(v, ExpAnalysisSourceInfo(ast.FieldAccess(x, field)(field.pos, field.info, field.errT)), AssumptionType.Explicit))
+              AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(ast.FieldAccess(x, field)(field.pos, field.info, field.errT)), AssumptionType.Explicit))
             newChunk
           }
         })
@@ -486,23 +488,28 @@ object executor extends ExecutionRules {
         v.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
         Q(s2, v)
 
-      case inhale @ ast.Inhale(a) => a match {
-        case _: ast.FalseLit =>
-          /* We're done */
-          Success()
-        case _ =>
-          produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
-            v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            Q(s1, v1)})
-      }
+      case inhale @ ast.Inhale(a) =>
+        v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Explicit)
+        a match {
+          case _: ast.FalseLit =>
+            /* We're done */
+            Success()
+          case _ =>
+            produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
+              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+              Q(s1, v1)})
+        }
+
 
       case exhale @ ast.Exhale(a) =>
+        val analysisInfo = v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Assertion)
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v, AnalysisInfo(v, ExpAnalysisSourceInfo(a), AssumptionType.Assertion))((s1, _, v1) =>
+        consume(s, a, false, pve, v, analysisInfo)((s1, _, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
+        v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Assertion)
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
           if (v1.decider.checkSmoke(true))
             QS(s1.copy(h = s.h), v1)
@@ -511,13 +518,15 @@ object executor extends ExecutionRules {
         })((_, _) => Success())
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
+        val analysisInfo = v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Assertion)
         val r =
-          consume(s, a, false, AssertFailed(assert), v, AnalysisInfo(v, ExpAnalysisSourceInfo(a), AssumptionType.Assertion))((_, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v, analysisInfo)((_, _, _) =>
             Success())
 
         r combine Q(s, v)
 
       case assert @ ast.Assert(a) =>
+        val analysisInfo = v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Assertion)
         val pve = AssertFailed(assert)
 
         if (s.exhaleExt) {
@@ -528,11 +537,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v, AnalysisInfo(v, ExpAnalysisSourceInfo(a), AssumptionType.Assertion))((s2, _, v1) => {
+          consume(s, a, false, pve, v, analysisInfo)((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v, AnalysisInfo(v, ExpAnalysisSourceInfo(a), AssumptionType.Assertion))((s1, _, v1) => {
+          consume(s, a, false, pve, v, analysisInfo)((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -541,7 +550,7 @@ object executor extends ExecutionRules {
       case methCall @ ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
-        val analysisInfo = AnalysisInfo(v, StmtAnalysisSourceInfo(methCall), AssumptionType.Unknown)
+        val analysisInfo = v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
         val member = s.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
@@ -591,13 +600,14 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1, AnalysisInfo(v1, StmtAnalysisSourceInfo(call), AssumptionType.Assertion))((s3, _, v2) => {
+          consumes(s2, meth.pres, false, _ => pvePre, v1, v1.decider.assumptionAnalyzer.currentAnalysisInfo.withAssumptionType(AssumptionType.Assertion))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            v2.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
@@ -619,7 +629,7 @@ object executor extends ExecutionRules {
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, AnalysisInfo(v3, ExpAnalysisSourceInfo(predAcc), AssumptionType.Unknown))((s4, v4) => {
+              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, AnalysisInfo(v3.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(predAcc), AssumptionType.Unknown))((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }

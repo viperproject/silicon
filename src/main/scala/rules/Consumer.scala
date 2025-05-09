@@ -581,7 +581,7 @@ object consumer extends ConsumptionRules {
               State.mergeHeap(
                 entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
                 entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
-                AnalysisInfo(v, StringAnalysisSourceInfo("conditional join", e0.pos), AssumptionType.Implicit)
+                AnalysisInfo(v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("conditional join", e0.pos), AssumptionType.Implicit)
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {

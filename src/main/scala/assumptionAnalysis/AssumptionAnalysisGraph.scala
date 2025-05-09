@@ -71,7 +71,9 @@ trait AssumptionAnalysisNode {
   val sourceInfo: AnalysisSourceInfo
   val assumptionType: AssumptionType
 
-  override def toString: String = id.toString + " " + sourceInfo.toString
+  override def toString: String = id.toString + ": " + getNodeString + " at " + sourceInfo.toString
+
+  def getNodeString: String
 
   def isIncludedInAnalysis: Boolean = assumptionType match {
     case Explicit => true
@@ -86,32 +88,31 @@ trait AssumptionAnalysisNode {
 trait ChunkAnalysisInfo {
   val chunk: Chunk
 
-  override def toString: String = super.toString + " with chunk " + chunk.toString
-
   def getChunk: Chunk = chunk
 }
 
 case class SimpleAssumptionNode(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode {
 
-  override def toString: String = super.toString + ": " + assumption.toString
+  override def getNodeString: String ="assumed " + assumption.toString
 
 }
 
 case class StringAssumptionNode(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode {
 
-  override def toString: String = super.toString + ": " + description
+  override def getNodeString: String = "assumed " + description
 
 }
 
 // TODO ake: ast.Exp instead of Term
 case class SimpleAssertionNode(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo) extends AssumptionAnalysisNode {
   override val assumptionType: AssumptionType = AssumptionType.Explicit
-  override def toString: String = super.toString + ": " + assertion.toString
+  override def getNodeString: String = "asserted " + assertion.toString
 
 
 }
 
 case class PermissionInhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode with ChunkAnalysisInfo {
+  override def getNodeString: String = "inhaled " + chunk.toString
 }
 
 
