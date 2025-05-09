@@ -31,7 +31,7 @@ trait AssumptionAnalyzer {
 
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
-  def getMethod: Option[ast.Method]
+  def getMember: Option[Member]
 }
 
 object AssumptionAnalyzer {
@@ -138,7 +138,7 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(analysisChunks, newChunkNode.id)
   }
 
-  override def getMethod: Option[ast.Method] = Some(method)
+  override def getMember: Option[Member] = Some(member)
 
 }
 
@@ -156,7 +156,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
   }
 
-  override def getMethod: Option[ast.Method] = None
+  override def getMember: Option[Member] = None
 
   override def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int] = None
   override def addSingleAssumption(assumption: DebugExp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
