@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, StmtAnalysisSourceInfo}
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
@@ -42,7 +43,7 @@ object havocSupporter extends SymbolicExecutionRules {
                 s: State)
                 (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
-
+    val analysisInfo = AnalysisInfo(v, StmtAnalysisSourceInfo(havoc), AssumptionType.Explicit)
     val pve = QuasihavocFailed(havoc)
 
     // If there is no havoc condition, use True as the condition
@@ -59,7 +60,7 @@ object havocSupporter extends SymbolicExecutionRules {
           if (usesQPChunks(s1, resource))
             havocQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
           else
-            havocNonQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
+            havocNonQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1, analysisInfo)
 
         Q(s1.copy(h = Heap(newChunks)), v1)
       })
@@ -82,7 +83,7 @@ object havocSupporter extends SymbolicExecutionRules {
                    s: State)
                    (Q: (State, Verifier) => VerificationResult)
                   : VerificationResult = {
-
+    val analysisInfo = AnalysisInfo(v, StmtAnalysisSourceInfo(havocall), AssumptionType.Explicit)
     val pve = HavocallFailed(havocall)
     val ast.Quasihavocall(vars, lhs, eRsc) = havocall
     val qid = resourceName(s, eRsc)
@@ -158,7 +159,7 @@ object havocSupporter extends SymbolicExecutionRules {
               if (usesQPChunks(s1, resource))
                 havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
               else
-                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
+                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1, analysisInfo)
 
             Q(s1.copy(h = Heap(newChunks)), v1)
         }
@@ -183,7 +184,8 @@ object havocSupporter extends SymbolicExecutionRules {
                                          lhs: Term,
                                          resource: ast.Resource,
                                          condInfo: HavocHelperData,
-                                         v: Verifier)
+                                         v: Verifier,
+                                         analysisInfo: AnalysisInfo)
                                         : Seq[Chunk] = {
 
     val id = ChunkIdentifier(resource, s.program)
@@ -194,12 +196,12 @@ object havocSupporter extends SymbolicExecutionRules {
         val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
         val cond = replacementCond(lhs, ch.args, condInfo)
         val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
-        ch.withSnap(magicWandSnapshot, None)
+        NonQuantifiedChunk.withSnap(ch, magicWandSnapshot, None, analysisInfo)
 
       case ch =>
         val havockedSnap = freshSnap(ch.snap.sort, v)
         val cond = replacementCond(lhs, ch.args, condInfo)
-        ch.withSnap(Ite(cond, havockedSnap, ch.snap), None)
+        NonQuantifiedChunk.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, analysisInfo)
     }
     otherChunks ++ newChunks
   }

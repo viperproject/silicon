@@ -20,6 +20,7 @@ import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
@@ -537,7 +538,7 @@ object executor extends ExecutionRules {
 
       // Calling hack407_R() results in Silicon efficiently havocking all instances of resource R.
       // See also Silicon issue #407.
-      case ast.MethodCall(methodName, _, _)
+      case methCall @ ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
@@ -547,7 +548,7 @@ object executor extends ExecutionRules {
         }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
         val h1 = Heap(s.h.values.map {
           case bc: BasicChunk if bc.id.name == member.name =>
-            bc.withSnap(freshSnap(bc.snap.sort, v), None)
+            NonQuantifiedChunk.withSnap(bc, freshSnap(bc.snap.sort, v), None, AnalysisInfo(v, StmtAnalysisSourceInfo(methCall), AssumptionType.Unknown))
           case qfc: QuantifiedFieldChunk if qfc.id.name == member.name =>
             qfc.withSnapshotMap(freshSnap(qfc.fvf.sort, v))
           case qpc: QuantifiedPredicateChunk if qpc.id.name == member.name =>

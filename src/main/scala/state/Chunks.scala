@@ -87,7 +87,7 @@ case class BasicChunk private (resourceID: BaseID,
   override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
   override protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp)
-  override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
+  override protected def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
 
   override lazy val toString = resourceID match {
     case FieldID => s"${args.head}.$id -> $snap # $perm"
@@ -286,7 +286,7 @@ case class MagicWandChunk(id: MagicWandIdentifier,
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
   override protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = MagicWandChunk(id, bindings, args, argsExp, snap, newPerm, newPermExp)
 
-  override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]) = {
+  override protected def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]) = {
     assert(newSnapExp.isEmpty)
     newSnap match {
       case s: MagicWandSnapshot => MagicWandChunk(id, bindings, args, argsExp, s, perm, permExp)
