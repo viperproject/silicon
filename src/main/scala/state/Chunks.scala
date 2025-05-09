@@ -64,26 +64,6 @@ object BasicChunk {
   }
 }
 
-object GeneralChunk {
-  def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
-    val newChunk = chunk.applyCondition(newCond, newCondExp)
-    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
-    newChunk
-  }
-
-  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
-    val newChunk = chunk.permMinus(newPerm, newPermExp)
-    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
-    newChunk
-  }
-
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
-    val newChunk = chunk.permPlus(newPerm, newPermExp)
-    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
-    newChunk
-  }
-}
-
 case class BasicChunk private (resourceID: BaseID,
                       id: BasicChunkIdentifier,
                       args: Seq[Term],
@@ -100,11 +80,11 @@ case class BasicChunk private (resourceID: BaseID,
     case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
   }
 
-  override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): BasicChunk =
+  override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): BasicChunk =
     withPerm(Ite(newCond, perm, NoPerm), newCondExp.map(nce => ast.CondExp(nce, permExp.get, ast.NoPerm()())()))
-  override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
+  override protected def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
-  override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
+  override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
   override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp)
   override def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]): BasicChunk = BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
@@ -115,11 +95,21 @@ case class BasicChunk private (resourceID: BaseID,
   }
 }
 
+object QuantifiedBasicChunk {
+  def applyCondition(chunk: QuantifiedBasicChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfo: AnalysisInfo): QuantifiedBasicChunk = {
+    GeneralChunk.applyCondition(chunk, newCond, newCondExp, analysisInfo).asInstanceOf[QuantifiedBasicChunk]
+  }
+  def permMinus(chunk: QuantifiedBasicChunk, perm: Term, permExp: Option[ast.Exp], analysisInfo: AnalysisInfo): QuantifiedBasicChunk =
+    GeneralChunk.permMinus(chunk, perm, permExp, analysisInfo).asInstanceOf[QuantifiedBasicChunk]
+  def permPlus(chunk: QuantifiedBasicChunk, perm: Term, permExp: Option[ast.Exp], analysisInfo: AnalysisInfo): QuantifiedBasicChunk =
+    GeneralChunk.permPlus(chunk, perm, permExp, analysisInfo).asInstanceOf[QuantifiedBasicChunk]
+}
+
 sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
   override val id: ChunkIdentifer
-  override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): QuantifiedBasicChunk
-  override def permMinus(perm: Term, permExp: Option[ast.Exp]): QuantifiedBasicChunk
-  override def permPlus(perm: Term, permExp: Option[ast.Exp]): QuantifiedBasicChunk
+  override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): QuantifiedBasicChunk
+  override protected def permMinus(perm: Term, permExp: Option[ast.Exp]): QuantifiedBasicChunk
+  override protected def permPlus(perm: Term, permExp: Option[ast.Exp]): QuantifiedBasicChunk
   override def withSnapshotMap(snap: Term): QuantifiedBasicChunk
   def singletonArguments: Option[Seq[Term]]
   def singletonArgumentExps: Option[Seq[ast.Exp]]
@@ -168,11 +158,11 @@ case class QuantifiedFieldChunk private(id: BasicChunkIdentifier,
 
   def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) =
     QuantifiedFieldChunk(id, fvf, condition, conditionExp, newPerm, newPermExp, invs, singletonRcvr, singletonRcvrExp, hints)
-  override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
+  override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
     QuantifiedFieldChunk(id, fvf, terms.And(newCond, condition), newCondExp.map(nce => ast.And(nce, conditionExp.get)()), permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
-  override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override protected def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermMinus(permValue, newPerm), newPermExp.map(npe => ast.PermSub(permValueExp.get, npe)()))
-  override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(permValue, newPerm), newPermExp.map(npe => ast.PermAdd(permValueExp.get, npe)()))
   override def withSnapshotMap(newFvf: Term) =
     QuantifiedFieldChunk(id, newFvf, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
@@ -209,11 +199,11 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
 
   def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) =
     QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, condition, conditionExp, newPerm, newPermExp, invs, singletonArgs, singletonArgExps, hints)
-  override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
+  override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
     QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, terms.And(newCond, condition), newCondExp.map(nce => ast.And(nce, conditionExp.get)()), permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
-  override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override protected def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermMinus(permValue, newPerm), newPermExp.map(npe => ast.PermSub(permValueExp.get, npe)()))
-  override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(permValue, newPerm), newPermExp.map(npe => ast.PermAdd(permValueExp.get, npe)()))
   override def withSnapshotMap(newPsf: Term) =
     QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, newPsf, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
@@ -244,11 +234,11 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
 
   override def valueAt(args: Seq[Term]) = PredicateLookup(id.toString, wsf, args)
 
-  override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
+  override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
     withPerm(Ite(newCond, perm, NoPerm), newCondExp.map(nce => ast.CondExp(nce, permExp.get, ast.NoPerm()())()))
-  override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override protected def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
-  override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
   def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) =
     QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, newPerm, newPermExp, invs, singletonArgs, singletonArgExps, hints)
@@ -288,11 +278,11 @@ case class MagicWandChunk(id: MagicWandIdentifier,
 
   override val resourceID = MagicWandID
 
-  override def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
+  override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]) =
     withPerm(Ite(newCond, perm, NoPerm), newCondExp.map(nce => ast.CondExp(nce, permExp.get, ast.NoPerm()())()))
-  override def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override protected def permMinus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
-  override def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
+  override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
   override def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = MagicWandChunk(id, bindings, args, argsExp, snap, newPerm, newPermExp)
 

@@ -1667,7 +1667,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
           v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp)
           remainingChunks =
-            remainingChunks :+ GeneralChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, analysisInfo)
+            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, analysisInfo)
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
           val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
@@ -1678,7 +1678,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks = remainingChunks :+ ithChunk
             } else {
               remainingChunks =
-                remainingChunks :+ GeneralChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, analysisInfo)
+                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, analysisInfo)
             }
           }
         }
