@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionInhaleNode}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, PermissionInhaleNode}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
@@ -33,7 +33,8 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               returnSnap: Boolean,
               ve: VerificationError,
               v: Verifier,
-              description: String)
+              description: String,
+              analysisInfo: AnalysisInfo)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult
 
@@ -76,11 +77,12 @@ object chunkSupporter extends ChunkSupportRules {
               returnSnap: Boolean,
               ve: VerificationError,
               v: Verifier,
-              description: String)
+              description: String,
+              analysisInfo: AnalysisInfo)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v)((s2, h2, optSnap, v2) =>
+    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, analysisInfo)((s2, h2, optSnap, v2) =>
       optSnap match {
         case Some(snap) =>
           Q(s2, h2, Some(snap.convert(sorts.Snap)), v2)
@@ -108,14 +110,15 @@ object chunkSupporter extends ChunkSupportRules {
                        permsExp: Option[ast.Exp],
                        returnSnap: Boolean,
                        ve: VerificationError,
-                       v: Verifier)
+                       v: Verifier,
+                       analysisInfo: AnalysisInfo)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                       : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, "chunk consume in package")
-      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _))((s1, optCh, v1) =>
+      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _, analysisInfo))((s1, optCh, v1) =>
         if (returnSnap){
           Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1)
         } else {
@@ -124,11 +127,11 @@ object chunkSupporter extends ChunkSupportRules {
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
         if (s1.moreCompleteExhale) {
-          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1)((s2, h2, snap2, v2) => {
+          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1, analysisInfo)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
         } else {
-          consumeGreedy(s1, s1.h, id, args, perms, permsExp, v1) match {
+          consumeGreedy(s1, s1.h, id, args, perms, permsExp, v1, analysisInfo) match {
             case (Complete(), s2, h2, optCh2) =>
               val snap = optCh2 match {
                 case Some(ch) if returnSnap =>
@@ -156,7 +159,8 @@ object chunkSupporter extends ChunkSupportRules {
                             args: Seq[Term],
                             perms: Term,
                             permsExp: Option[ast.Exp],
-                            v: Verifier)
+                            v: Verifier,
+                            analysisInfo: AnalysisInfo)
                            : (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk]) = {
 
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
@@ -180,8 +184,8 @@ object chunkSupporter extends ChunkSupportRules {
           val toTake = PermMin(ch.perm, perms)
           val toTakeExp = permsExp.map(pe => buildMinExp(Seq(ch.permExp.get, pe), ast.Perm))
           val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, toTakeExp.get)(pe.pos, pe.info, pe.errT))
-          val newChunk = ch.withPerm(PermMinus(ch.perm, toTake), newPermExp)
-          val takenChunk = Some(ch.withPerm(toTake, toTakeExp))
+          val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, toTake), newPermExp, analysisInfo).asInstanceOf[NonQuantifiedChunk]
+          val takenChunk = Some(GeneralChunk.withPerm(ch, toTake, toTakeExp, analysisInfo).asInstanceOf[NonQuantifiedChunk])
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk
@@ -194,8 +198,8 @@ object chunkSupporter extends ChunkSupportRules {
             val constraintExp = permsExp.map(pe => ast.PermLtCmp(pe, ch.permExp.get)(pe.pos, pe.info, pe.errT))
             v.decider.assume(PermLess(perms, ch.perm), Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
             val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, pe)(pe.pos, pe.info, pe.errT))
-            val newChunk = ch.withPerm(PermMinus(ch.perm, perms), newPermExp)
-            val takenChunk = ch.withPerm(perms, permsExp)
+            val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, perms), newPermExp, analysisInfo).asInstanceOf[NonQuantifiedChunk]
+            val takenChunk = GeneralChunk.withPerm(ch, perms, permsExp, analysisInfo).asInstanceOf[NonQuantifiedChunk]
             val newHeap = h - ch + newChunk
             assumeProperties(newChunk, newHeap)
             (Complete(), s, newHeap, Some(takenChunk))

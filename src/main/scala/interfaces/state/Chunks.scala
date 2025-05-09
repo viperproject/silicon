@@ -22,6 +22,7 @@ trait GeneralChunk extends Chunk {
   protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): GeneralChunk
   protected def permMinus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
   protected def permPlus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
+  protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): GeneralChunk
 
   val permExp: Option[ast.Exp]
 }
@@ -44,6 +45,12 @@ object GeneralChunk {
     analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
     newChunk
   }
+
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
+    val newChunk = chunk.withPerm(newPerm, newPermExp)
+    analysisInfo.getAssumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    newChunk
+  }
 }
 
 trait NonQuantifiedChunk extends GeneralChunk {
@@ -53,7 +60,7 @@ trait NonQuantifiedChunk extends GeneralChunk {
   override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): NonQuantifiedChunk
   override protected def permMinus(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
   override protected def permPlus(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
-  def withPerm(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
+  override protected def withPerm(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
   def withSnap(snap: Term, snapExp: Option[ast.Exp]): NonQuantifiedChunk
 }
 
