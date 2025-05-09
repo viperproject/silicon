@@ -7,6 +7,7 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silicon.debugger.DebugExp
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
@@ -266,7 +267,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp)
-              consumes(s2, posts, false, postconditionViolated, v)((s3, _, _) => {
+              consumes(s2, posts, false, postconditionViolated, v, AnalysisInfo(v, if(posts.isEmpty) StringAnalysisSourceInfo("no postcondition", ast.NoPosition) else ExpAnalysisSourceInfo(posts.head), AssumptionType.Assertion))((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

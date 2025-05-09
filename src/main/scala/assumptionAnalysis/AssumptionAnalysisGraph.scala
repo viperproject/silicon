@@ -9,7 +9,7 @@ import scala.collection.mutable
 
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
-  val Explicit, PathCondition, Internal, Implicit, Unknown = Value
+  val Explicit, PathCondition, Internal, Implicit, Assertion, Unknown = Value
 }
 import viper.silicon.assumptionAnalysis.AssumptionType._
 

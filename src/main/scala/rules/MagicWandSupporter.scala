@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon._
-import viper.silicon.assumptionAnalysis.{AssumptionType, PermissionInhaleNode}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -400,7 +400,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
-            wand.right, true, pve, proofScriptVerifier
+            wand.right, true, pve, proofScriptVerifier, AnalysisInfo(proofScriptVerifier, ExpAnalysisSourceInfo(wand.right), AssumptionType.Assertion)
           )((s3, snapRhs, v3) => {
 
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3)
@@ -459,9 +459,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
-    consume(s, wand, true, pve, v)((s1, snapWand, v1) => {
+    consume(s, wand, true, pve, v, AnalysisInfo(v, ExpAnalysisSourceInfo(wand), AssumptionType.Assertion))((s1, snapWand, v1) => {
       // Consume the wand's LHS "A".
-      consume(s1, wand.left, true, pve, v1)((s2, snapLhs, v2) => {
+      consume(s1, wand.left, true, pve, v1, AnalysisInfo(v1, ExpAnalysisSourceInfo(wand.left), AssumptionType.Assertion))((s2, snapLhs, v2) => {
         /* It is assumed that snap and MagicWandSnapshot.abstractLhs are structurally the same.
          * Equating the two snapshots is sound iff a wand is applied only once.
          * The old solution in this case did use this assumption:

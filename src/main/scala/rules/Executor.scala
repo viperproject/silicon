@@ -269,7 +269,7 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
+                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, AnalysisInfo(v0, ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion))((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -303,7 +303,7 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
+            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, AnalysisInfo(v, ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion))((_, _, _) =>
               Success())
         }
     }
@@ -399,15 +399,16 @@ object executor extends ExecutionRules {
               s2p,
               relevantChunks,
               Seq(`?r`),
-              Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
+              Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)(eRcvr.pos, eRcvr.info, eRcvr.errT))),
               `?r` === tRcvr,
-              eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)()),
+              eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)(eRcvr.pos, eRcvr.info, eRcvr.errT)),
               Some(Seq(tRcvr)),
               field,
               FullPerm,
               Option.when(withExp)(ast.FullPerm()()),
               chunkOrderHeuristics,
-              v2
+              v2,
+              AnalysisInfo(v2, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit)
             )
             result match {
               case (Complete(), s3, remainingChunks) =>
@@ -495,7 +496,7 @@ object executor extends ExecutionRules {
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v)((s1, _, v1) =>
+        consume(s, a, false, pve, v, AnalysisInfo(v, ExpAnalysisSourceInfo(a), AssumptionType.Assertion))((s1, _, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
@@ -509,7 +510,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, false, AssertFailed(assert), v)((_, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v, AnalysisInfo(v, ExpAnalysisSourceInfo(a), AssumptionType.Assertion))((_, _, _) =>
             Success())
 
         r combine Q(s, v)
@@ -525,11 +526,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v)((s2, _, v1) => {
+          consume(s, a, false, pve, v, AnalysisInfo(v, ExpAnalysisSourceInfo(a), AssumptionType.Assertion))((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v)((s1, _, v1) => {
+          consume(s, a, false, pve, v, AnalysisInfo(v, ExpAnalysisSourceInfo(a), AssumptionType.Assertion))((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -587,7 +588,7 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, v2) => {
+          consumes(s2, meth.pres, false, _ => pvePre, v1, AnalysisInfo(v1, StmtAnalysisSourceInfo(call), AssumptionType.Assertion))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
@@ -615,7 +616,7 @@ object executor extends ExecutionRules {
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
+              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, AnalysisInfo(v3, ExpAnalysisSourceInfo(predAcc), AssumptionType.Unknown))((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }
