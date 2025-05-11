@@ -86,7 +86,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def analyze(program: ast.Program): Unit = {
       this.program = program
 
-      val heights = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder()).toSeq.sortBy(_._2).reverse
+      val functionOrderInProgram = program.functions.zipWithIndex.map(fi => (fi._1.name, fi._2)).toMap
+      val heightMap = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder()).toSeq
+      // Order functions with the same height by the order in which they are declared in the program.
+      // The order here is relevant because it determines the output of units(), which determines verification order.
+      val heights = heightMap.sortBy(fh => (fh._2, -functionOrderInProgram(fh._1))).reverse
 
       functionData = toMap(
         heights.map { case (funcName, height) =>
