@@ -369,7 +369,7 @@ object producer extends ProductionRules {
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {
                     val argsString = eArgsNew.mkString(", ")
                     val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp)
+                    v3.decider.assume(App(s3.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp)
                   }
                   Q(s3.copy(h = h3), v3)})
               }})))

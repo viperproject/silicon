@@ -35,7 +35,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
   private var ignoreAccessPredicates = false
   private var failed = false
 
-  var functionData: Map[ast.Function, FunctionData] = _
+  var functionData: Map[String, FunctionData] = _
 
   def translate(program: ast.Program,
                 func: ast.Function,
@@ -147,7 +147,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height
-        val calleeHeight = functionData(eFApp.func(program)).height
+        val calleeHeight = functionData(eFApp.funcname).height
 
         if (callerHeight < calleeHeight)
           fapp

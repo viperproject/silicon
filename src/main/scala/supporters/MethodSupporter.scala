@@ -124,9 +124,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
     def start(): Unit = {}
 
-    def reset(): Unit = {
-      _units = Seq.empty
-    }
+    def reset(): Unit = {}
 
     def stop(): Unit = {}
   }
