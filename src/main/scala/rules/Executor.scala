@@ -371,84 +371,15 @@ object executor extends ExecutionRules {
        *       and benchmark possible performance effects.
        */
 
-      /* Assignment for a field that contains quantified chunks */
-      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
-              if s.qpFields.contains(field) =>
-
+      case ass @ ast.FieldAssign(ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
-          eval(s1, rhs, pve, v1)((s2, tRhs, _, v2) => {
-            val (relevantChunks, otherChunks) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
-            val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-            val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v2)
-            val s2p = if (s2.heapDependentTriggers.contains(field)){
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
-                  s2, field, Seq(`?r`), relevantChunks, v1)
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: (${eRcvrNew.toString()}).${field.name}"))
-              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
-              s2.copy(smCache = smCache1)
-            } else {
-              s2
-            }
-            v2.decider.clearModel()
-            val result = quantifiedChunkSupporter.removePermissions(
-              s2p,
-              relevantChunks,
-              Seq(`?r`),
-              Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
-              `?r` === tRcvr,
-              eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)()),
-              Some(Seq(tRcvr)),
-              field,
-              FullPerm,
-              Option.when(withExp)(ast.FullPerm()()),
-              chunkOrderHeuristics,
-              v2
-            )
-            result match {
-              case (Complete(), s3, remainingChunks) =>
-                val h3 = Heap(remainingChunks ++ otherChunks)
-                val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
-                v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-                val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-                v1.decider.assumeDefinition(smValueDef, debugExp)
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program)
-                if (s3.heapDependentTriggers.contains(field)) {
-                  val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
-                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
-                }
-                val s4 = s3.copy(h = h3 + ch)
-                val (debugHeapName, _) = v.getDebugOldLabel(s4, fa.pos)
-                val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
-                Q(s5, v2)
-              case (Incomplete(_, _), s3, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
-
-      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
-        assert(!s.exhaleExt)
-        val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
-          eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
-            val resource = fa.res(s.program)
-            val ve = pve dueTo InsufficientPermission(fa)
-            val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, v3) => {
-              val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
-              val id = BasicChunkIdentifier(field.name)
-              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)))
-              chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
-                val s5 = s4.copy(h = h4)
-                val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
-                val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
-                Q(s6, v4)
-              })
-            })
+        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) => {
+          eval(s1, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
+            val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2)
+            v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)(Q)
           })
-        )
+        })
 
       case stmt@ast.NewStmt(x, fields) =>
         val (tRcvr, eRcvrNew) = v.decider.fresh(x)
@@ -456,25 +387,20 @@ object executor extends ExecutionRules {
         val debugExpSubst = Option.when(withExp)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
         val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, stmt.pos)
         v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst)
-        val newChunks = fields map (field => {
-          val p = FullPerm
-          val pExp = Option.when(withExp)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))
+
+        val eRcvr = Option.when(withExp)(Seq(x))
+        val p = FullPerm
+        val pExp = Option.when(withExp)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))
+
+        var newHeap = s.h
+        fields foreach (field => {
           val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ), Option.when(withExp)(extractPTypeFromExp(x)))
           val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, field)(), debugLabel)(stmt.pos, stmt.info, stmt.errT))
-          if (s.qpFields.contains(field)) {
-            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
-            v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-            val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-            v.decider.assumeDefinition(smValueDef, debugExp)
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT))),
-              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program)
-          } else {
-            BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp)
-          }
+          newHeap = v.heapSupporter.addToHeap(s, newHeap, field, Seq(tRcvr), eRcvr, snap, snapExp, p, pExp, v)
         })
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
-        val s1 = s.copy(g = s.g + (x, (tRcvr, eRcvrNew)), h = s.h + Heap(newChunks))
+        val s1 = s.copy(g = s.g + (x, (tRcvr, eRcvrNew)), h = newHeap)
         val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
         v.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
         Q(s2, v)
@@ -625,25 +551,15 @@ object executor extends ExecutionRules {
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
-
-            val smCache1 = if (s2.qpPredicates.contains(predicate) && s2.heapDependentTriggers.contains(predicate)) {
-              val (relevantChunks, _) =
-                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s2.h, BasicChunkIdentifier(predicateName))
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
-                  s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-              val eArgsStr = eArgsNew.mkString(", ")
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(Some(s"PredicateTrigger(${predicate.name}($eArgsStr))"), Some(pa),
-                Some(ast.PredicateAccess(eArgsNew.get, predicateName)(pa.pos, pa.info, pa.errT)), None, isInternal_ = true, InsertionOrderedSet.empty))
-              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
-              smCache1
+            val s2a = if (s2.heapDependentTriggers.contains(predicate)) {
+              v2.heapSupporter.triggerPredicate(s2, pa, tArgs, eArgsNew, v2)
             } else {
-              s2.smCache
+              s2
             }
 
-            permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2a, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
+              predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   Q(s4, v4)

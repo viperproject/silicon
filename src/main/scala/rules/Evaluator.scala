@@ -209,7 +209,7 @@ object evaluator extends EvaluationRules {
             else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugLabel)(fa.pos, fa.info, fa.errT)
           })
           val ve = pve dueTo InsufficientPermission(fa)
-          v.heapSupporter.evalFieldAccess(s, fa, tRcvr, eRcvr, ve, v)((s2, snap, v2) => {
+          v.heapSupporter.evalFieldAccess(s1, fa, tRcvr, eRcvr, ve, v1)((s2, snap, v2) => {
             val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld)
               s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2)))
             else s2
