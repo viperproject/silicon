@@ -489,12 +489,12 @@ object executor extends ExecutionRules {
         Q(s2, v)
 
       case inhale @ ast.Inhale(a) =>
-        v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Explicit)
         a match {
           case _: ast.FalseLit =>
             /* We're done */
             Success()
           case _ =>
+            v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Explicit)
             produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
               Q(s1, v1)})
@@ -502,14 +502,12 @@ object executor extends ExecutionRules {
 
 
       case exhale @ ast.Exhale(a) =>
-        val analysisInfo = v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Assertion)
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v, analysisInfo)((s1, _, v1) =>
+        consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s1, _, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
-        v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Assertion)
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
           if (v1.decider.checkSmoke(true))
             QS(s1.copy(h = s.h), v1)
@@ -518,15 +516,13 @@ object executor extends ExecutionRules {
         })((_, _) => Success())
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
-        val analysisInfo = v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Assertion)
         val r =
-          consume(s, a, false, AssertFailed(assert), v, analysisInfo)((_, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((_, _, _) =>
             Success())
 
         r combine Q(s, v)
 
       case assert @ ast.Assert(a) =>
-        val analysisInfo = v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Assertion)
         val pve = AssertFailed(assert)
 
         if (s.exhaleExt) {
@@ -537,17 +533,17 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v, analysisInfo)((s2, _, v1) => {
+          consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v, analysisInfo)((s1, _, v1) => {
+          consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
       // Calling hack407_R() results in Silicon efficiently havocking all instances of resource R.
       // See also Silicon issue #407.
-      case methCall @ ast.MethodCall(methodName, _, _)
+      case ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
         val analysisInfo = v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
@@ -570,6 +566,7 @@ object executor extends ExecutionRules {
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
+        v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
         val s1 = v.stateConsolidator(s).consolidate(s, v)
         Q(s1, v)
 
@@ -600,7 +597,7 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1, v1.decider.assumptionAnalyzer.currentAnalysisInfo.withAssumptionType(AssumptionType.Assertion))((s3, _, v2) => {
+          consumes(s2, meth.pres, false, _ => pvePre, v1, v1.decider.assumptionAnalyzer.currentAnalysisInfo)((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
@@ -629,7 +626,7 @@ object executor extends ExecutionRules {
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, AnalysisInfo(v3.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(predAcc), AssumptionType.Unknown))((s4, v4) => {
+              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, v3.decider.assumptionAnalyzer.currentAnalysisInfo)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }

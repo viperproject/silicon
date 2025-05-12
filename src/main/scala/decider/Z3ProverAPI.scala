@@ -6,24 +6,22 @@
 
 package viper.silicon.decider
 
+import com.microsoft.z3._
+import com.microsoft.z3.enumerations.Z3_param_kind
 import com.typesafe.scalalogging.LazyLogging
+import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
+import viper.silicon.interfaces.decider._
+import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Not, Quantification, Sort, SortDecl, SortWrapperDecl, Term, TriggerGenerator, Var, sorts}
-import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
+import viper.silicon.{Config, Map}
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
 
 import java.nio.file.Path
 import scala.collection.mutable
-import com.microsoft.z3._
-import com.microsoft.z3.enumerations.Z3_param_kind
-import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
-import viper.silicon.reporting.ExternalToolError
-import viper.silicon.reporting.ProverInteractionFailed
-
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
 

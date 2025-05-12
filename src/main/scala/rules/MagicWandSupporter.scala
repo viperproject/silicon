@@ -94,8 +94,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1) => {
-      val newChunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
-        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+      val newChunk = MagicWandChunk.apply(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
+        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), v.decider.assumptionAnalyzer.currentAnalysisInfo)
       Q(s1, newChunk, v1)
     })
   }
@@ -400,7 +400,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
-            wand.right, true, pve, proofScriptVerifier, AnalysisInfo(proofScriptVerifier.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(wand.right), AssumptionType.Assertion)
+            wand.right, true, pve, proofScriptVerifier, proofScriptVerifier.decider.assumptionAnalyzer.currentAnalysisInfo
           )((s3, snapRhs, v3) => {
 
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3)
@@ -459,9 +459,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
-    consume(s, wand, true, pve, v, AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(wand), AssumptionType.Assertion))((s1, snapWand, v1) => {
+    consume(s, wand, true, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s1, snapWand, v1) => {
       // Consume the wand's LHS "A".
-      consume(s1, wand.left, true, pve, v1, AnalysisInfo(v1.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(wand.left), AssumptionType.Assertion))((s2, snapLhs, v2) => {
+      consume(s1, wand.left, true, pve, v1, v1.decider.assumptionAnalyzer.currentAnalysisInfo)((s2, snapLhs, v2) => {
         /* It is assumed that snap and MagicWandSnapshot.abstractLhs are structurally the same.
          * Equating the two snapshots is sound iff a wand is applied only once.
          * The old solution in this case did use this assumption:

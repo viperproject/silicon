@@ -6,14 +6,13 @@
 
 package viper.silicon.decider
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, NoAssumptionAnalyzer}
-
-import java.nio.file.{Path, Paths}
+import viper.silicon.common.config.Version
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silver.reporter.Reporter
-import viper.silicon.common.config.Version
+import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
+
+import java.nio.file.{Path, Paths}
 
 object Cvc5ProverStdIO {
   val name = "cvc5"

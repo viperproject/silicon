@@ -265,6 +265,21 @@ object MagicWandIdentifier {
   }
 }
 
+object MagicWandChunk {
+  def apply(id: MagicWandIdentifier,
+            bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
+            args: Seq[Term],
+            argsExp: Option[Seq[ast.Exp]],
+            snap: MagicWandSnapshot,
+            perm: Term,
+            permExp: Option[ast.Exp],
+            analysisInfo: AnalysisInfo): MagicWandChunk = {
+    val chunk = MagicWandChunk(id, bindings, args, argsExp, snap, perm, permExp)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    chunk
+  }
+}
+
 case class MagicWandChunk(id: MagicWandIdentifier,
                           bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
                           args: Seq[Term],

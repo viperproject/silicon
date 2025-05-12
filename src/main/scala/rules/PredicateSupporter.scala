@@ -74,7 +74,7 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v, AnalysisInfo(v.decider.assumptionAnalyzer, analysisInfo.sourceInfo, AssumptionType.Assertion))((s1a, snap, v1) => {
+    consume(s1, body, true, pve, v, analysisInfo)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
@@ -117,8 +117,7 @@ object predicateSupporter extends PredicateSupportRules {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm,
-          AnalysisInfo(v1.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(PredicateAccess(Seq(), predicate)(NoPosition, NoInfo, NoTrafos)), AssumptionType.Unknown))
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm, v1.decider.assumptionAnalyzer.currentAnalysisInfo)
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor,
@@ -141,7 +140,6 @@ object predicateSupporter extends PredicateSupportRules {
              pa: ast.PredicateAccess)
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
-    val analysisInfo = AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(pa), AssumptionType.Assertion) // TODO ake: check that this is valid
     val tArgsWithE = if (withExp)
       tArgs zip eArgs.get.map(Some(_))
     else
@@ -165,7 +163,7 @@ object predicateSupporter extends PredicateSupportRules {
         None,
         pve,
         v,
-        analysisInfo
+        v.decider.assumptionAnalyzer.currentAnalysisInfo
       )((s2, h2, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
@@ -186,7 +184,7 @@ object predicateSupporter extends PredicateSupportRules {
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description, analysisInfo)((s2, h1, snap, v1) => {
+      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {

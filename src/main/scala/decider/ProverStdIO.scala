@@ -227,6 +227,7 @@ abstract class ProverStdIO(uniqueId: String,
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
+  // TODO ake: we should always have a label?
   def assume(term: Term): Unit = {
     assume(term, "prover_" + proverLabelId)
     proverLabelId += 1
@@ -257,7 +258,12 @@ abstract class ProverStdIO(uniqueId: String,
   def assume(term: String, label: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    writeLine("(assert (! " + term + " :named " + label + "))")
+    if(Verifier.config.enableAssumptionAnalysis() && label.nonEmpty){
+      writeLine("(assert (! " + term + " :named " + label + "))")
+    }else{
+      writeLine("(assert " + term + ")")
+    }
+
     readSuccess()
   }
 
@@ -282,7 +288,12 @@ abstract class ProverStdIO(uniqueId: String,
     push()
     setTimeout(timeout)
 
-    writeLine("(assert (! (not " + goal + ") :named " + label + "))")
+    if(Verifier.config.enableAssumptionAnalysis() && label.nonEmpty){
+      writeLine("(assert (! (not " + goal + ") :named " + label + "))")
+    }else{
+      writeLine("(assert (not " + goal + "))")
+    }
+
     readSuccess()
 
     val startTime = System.currentTimeMillis()
@@ -293,7 +304,7 @@ abstract class ProverStdIO(uniqueId: String,
     if (!result) {
       retrieveAndSaveModel()
       retrieveReasonUnknown()
-    }else{
+    }else if(Verifier.config.enableAssumptionAnalysis()){
       val unsatCore = extractUnsatCore()
       assumptionAnalyzer.processUnsatCoreAndAddDependencies(unsatCore)
     }

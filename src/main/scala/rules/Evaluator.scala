@@ -260,15 +260,15 @@ object evaluator extends EvaluationRules {
                 }
                 val (permCheck, permCheckExp) =
                   if (s1.triggerExp) {
-                    (True, TrueLit()(fa.pos, fa.info, fa.errT))
+                    (True, Option.when(withExp)(TrueLit()(fa.pos, fa.info, fa.errT)))
                   } else {
                     val permVal = relevantChunks.head.perm
                     val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
-                    (IsPositive(totalPermissions), ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT))
+                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
                   }
-                v1.decider.assert(permCheck, Option.when(withExp)(permCheckExp)) {
+                v1.decider.assert(permCheck, permCheckExp) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, Option.when(withExp)(permCheckExp))
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
                     val fr2 =
@@ -293,14 +293,14 @@ object evaluator extends EvaluationRules {
                 }
                 val (permCheck, permCheckExp) =
                   if (s2.triggerExp) {
-                    (True, TrueLit()(fa.pos, fa.info, fa.errT))
+                    (True, Option.when(withExp)(TrueLit()(fa.pos, fa.info, fa.errT)))
                   } else {
                     val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
-                    (IsPositive(totalPermissions), ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT))
+                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
                   }
-                v1.decider.assert(permCheck, Option.when(withExp)(permCheckExp)) {
+                v1.decider.assert(permCheck, permCheckExp) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, Option.when(withExp)(permCheckExp))
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                     val fr2 =
@@ -977,11 +977,10 @@ object evaluator extends EvaluationRules {
         val predicate = s.program.findPredicate(predicateName)
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           v.decider.startDebugSubExp()
-          evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
-            val ePermOrFull = ePerm.getOrElse(ast.FullPerm()(u.pos, u.info, u.errT))
-            eval(s1, ePermOrFull, pve, v1)((s2, tPerm, ePermNew, v2) =>
+          evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+            eval(s1, ePerm.getOrElse(ast.FullPerm()(u.pos, u.info, u.errT)), pve, v1)((s2, tPerm, ePermNew, v2) =>
               // TODO: Replace with permissionSupporter.assertNotNegative
-              v2.decider.assert(IsPositive(tPerm), Option.when(withExp)(ast.PermGtCmp(ePermOrFull, ast.NoPerm()())(ePermOrFull.pos, ePermOrFull.info, ePermOrFull.errT))) {
+              v2.decider.assert(IsPositive(tPerm), Option.when(withExp)(ast.PermGtCmp(ePerm.getOrElse(ast.FullPerm()()), ast.NoPerm()())(u.pos, u.info, u.errT))) {
                 case true =>
                   joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
@@ -1035,7 +1034,7 @@ object evaluator extends EvaluationRules {
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
                   createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))})
-          })
+          )
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
           Q(s, unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)

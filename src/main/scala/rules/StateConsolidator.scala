@@ -199,7 +199,17 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)
   // and returns the merged chunk or None, if the chunks could not be merged
   private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {
-    val result = (chunk1, chunk2) match {
+    val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v)
+    if(result.isDefined){
+      val (_, newChunk, _) = result.get
+      val newChunkNode = PermissionInhaleNode(newChunk, StringAnalysisSourceInfo("state consolidation", NoPosition), AssumptionType.Internal)
+      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), newChunkNode)
+    }
+    result
+  }
+
+  private def mergeChunks1(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {
+    (chunk1, chunk2) match {
       case (BasicChunk(rid1, id1, args1, args1Exp, snap1, snap1Exp, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, _, perm2, perm2Exp)) =>
         val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, qvars, v)
         val newExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
@@ -224,12 +234,6 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       case _ =>
         None
     }
-    if(result.isDefined){
-      val (_, newChunk, _) = result.get
-      val newChunkNode = PermissionInhaleNode(newChunk, StringAnalysisSourceInfo("state consolidation", NoPosition), AssumptionType.Internal)
-      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), newChunkNode)
-    }
-    result
   }
 
   /** Merge the snapshots of two chunks that denote the same location, i.e. whose ids and arguments

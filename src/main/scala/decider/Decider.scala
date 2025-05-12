@@ -61,15 +61,10 @@ trait Decider {
   def startDebugSubExp(): Unit
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit
-  def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfo: AnalysisInfo): Unit
   def assume(t: Term, debugExp: Option[DebugExp]): Unit
-  def assume(t: Term, debugExp: Option[DebugExp], analysisInfo: AnalysisInfo): Unit
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit
-  def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfo: AnalysisInfo): Unit
   def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit
-  def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfo: AnalysisInfo): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
-  def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfo: AnalysisInfo): Unit
 
   def check(t: Term, timeout: Int): Boolean
 
@@ -300,35 +295,20 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp]): Unit = {
-      assume(t, e, finalExp, decider.assumptionAnalyzer.currentAnalysisInfo)
-    }
-
-    def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfo: AnalysisInfo): Unit = {
       if (finalExp.isDefined) {
-        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), analysisInfo, false, false)
+        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), assumptionAnalyzer.currentAnalysisInfo, false, false)
       } else {
-        assume(assumptions=InsertionOrderedSet((t, None)), analysisInfo, false, false)
+        assume(assumptions=InsertionOrderedSet((t, None)), assumptionAnalyzer.currentAnalysisInfo, false, false)
       }
     }
 
     def assume(t: Term, debugExp: Option[DebugExp]): Unit = {
-      assume(t, debugExp, assumptionAnalyzer.currentAnalysisInfo)
-    }
-
-    def assume(t: Term, debugExp: Option[DebugExp], analysisInfo: AnalysisInfo): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), analysisInfo, false, false)
+      assume(InsertionOrderedSet(Seq((t, debugExp))), assumptionAnalyzer.currentAnalysisInfo, false, false)
     }
 
     def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit = {
-      assumeDefinition(t, debugExp, assumptionAnalyzer.currentAnalysisInfo)
+      assume(InsertionOrderedSet(Seq((t, debugExp))), assumptionAnalyzer.currentAnalysisInfo, enforceAssumption=false, isDefinition=true)
     }
-
-    def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfo: AnalysisInfo): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), analysisInfo, enforceAssumption=false, isDefinition=true)
-    }
-
-    def assume(assumptions: Iterable[(Term, Option[DebugExp])], analysisInfo: AnalysisInfo): Unit =
-      assume(InsertionOrderedSet(assumptions), analysisInfo, false, false)
 
     def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], analysisInfo: AnalysisInfo, enforceAssumption: Boolean, isDefinition: Boolean): Unit = {
       val filteredAssumptions =
@@ -351,11 +331,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit = {
-      assume(assumptions, debugExps, assumptionAnalyzer.currentAnalysisInfo)
-    }
-
-    def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], analysisInfo: AnalysisInfo): Unit = {
-      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, analysisInfo) else Seq.empty
+      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, assumptionAnalyzer.currentAnalysisInfo) else Seq.empty
 
       val assumptionsWithLabels =
         if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, AssumptionAnalyzer.createAssumptionLabel(Some(id)))}
@@ -367,10 +343,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit = {
-      assume(terms, debugExp, enforceAssumption, assumptionAnalyzer.currentAnalysisInfo)
-    }
-
-    def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, analysisInfo: AnalysisInfo): Unit = {
 
       val filteredTerms =
         if (enforceAssumption) terms
@@ -380,7 +352,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if (debugMode) {
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
-        val assumptionId: Option[Int] = if(debugExp.isDefined) assumptionAnalyzer.addSingleAssumption(debugExp.get.withTerm(And(filteredTerms)), analysisInfo) else None
+        val assumptionId: Option[Int] = if(debugExp.isDefined) assumptionAnalyzer.addSingleAssumption(debugExp.get.withTerm(And(filteredTerms)), assumptionAnalyzer.currentAnalysisInfo) else None
         val termsWithLabel = filteredTerms.zipWithIndex.iterator.map {case (t, idx) => (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId, idx))}.toSeq
         assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
       }else{
