@@ -177,7 +177,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                      permissions: Term,
                                      permissionsExp: Option[ast.Exp],
                                      sm: Term,
-                                     program: ast.Program)
+                                     program: ast.Program,
+                                     v: Verifier)
                                     : QuantifiedBasicChunk
 
   /** Creates a quantified chunk corresponding to the assertion
@@ -269,7 +270,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      permissions: Term,
                                      permissionsExp: Option[ast.Exp],
                                      sm: Term,
-                                     program: ast.Program)
+                                     program: ast.Program,
+                                     v: Verifier)
                                     : QuantifiedBasicChunk = {
 
     val condition =
@@ -297,7 +299,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       Some(arguments),
       argumentsExp,
       hints,
-      program)
+      program,
+      v)
   }
 
   /** @inheritdoc [[QuantifiedChunkSupport.createQuantifiedChunk]] */
@@ -358,7 +361,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         None,
         None,
         hints,
-        program)
+        program,
+        v)
 
     (ch, inverseFunctions)
   }
@@ -400,7 +404,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      optSingletonArguments: Option[Seq[Term]],
                                      optSingletonArgumentsExp: Option[Seq[ast.Exp]],
                                      hints: Seq[Term],
-                                     program: ast.Program)
+                                     program: ast.Program,
+                                     v: Verifier)
                                     : QuantifiedBasicChunk = {
 
     resource match {
@@ -419,7 +424,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optInverseFunctions,
           optSingletonArguments.map(_.head),
           optSingletonArgumentsExp.map(_.head),
-          hints)
+          hints,
+          v.decider.assumptionAnalyzer.currentAnalysisInfo)
 
       case predicate: ast.Predicate =>
         QuantifiedPredicateChunk(
@@ -434,7 +440,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optInverseFunctions,
           optSingletonArguments,
           optSingletonArgumentsExp,
-          hints)
+          hints,
+          v.decider.assumptionAnalyzer.currentAnalysisInfo)
 
       case wand: ast.MagicWand =>
         val conditionalizedPermissions = Ite(condition, permissions, NoPerm)
@@ -449,7 +456,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optInverseFunctions,
           optSingletonArguments,
           optSingletonArgumentsExp,
-          hints)
+          hints,
+          v.decider.assumptionAnalyzer.currentAnalysisInfo)
 
       case other =>
         sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
@@ -1102,7 +1110,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
-    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program)
+    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program, v)
     val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
@@ -1476,7 +1484,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         }
         val consumedChunk =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program)
+            codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program, v1)
         val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
                          smCache = smCache1)
         (result, s3, h2, Some(consumedChunk))

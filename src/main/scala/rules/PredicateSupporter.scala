@@ -92,7 +92,7 @@ object predicateSupporter extends PredicateSupportRules {
         v1.decider.assumeDefinition(smValueDef, debugExp)
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program)
+            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program, v1)
         val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
         val smCache = if (s2.heapDependentTriggers.contains(predicate)) {

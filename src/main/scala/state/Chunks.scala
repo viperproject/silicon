@@ -6,8 +6,7 @@
 
 package viper.silicon.state
 
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AnalysisSourceInfo, PermissionInhaleNode}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, PermissionInhaleNode}
 import viper.silicon.interfaces.state._
 import viper.silicon.resources._
 import viper.silicon.rules.InverseFunctions
@@ -36,7 +35,7 @@ object BasicChunk {
             args: Seq[Term], argsExp: Option[Seq[ast.Exp]],
             snap: Term, snapExp: Option[ast.Exp],
             perm: Term, permExp: Option[ast.Exp]): BasicChunk = {
-    new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
+    BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
   }
 
   def apply(resourceID: BaseID, id: BasicChunkIdentifier,
@@ -44,7 +43,7 @@ object BasicChunk {
             snap: Term, snapExp: Option[ast.Exp],
             perm: Term, permExp: Option[ast.Exp],
             analysisInfo: AnalysisInfo): BasicChunk = {
-    val chunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
+    val chunk = BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
     analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
     chunk
   }
@@ -116,6 +115,24 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
   def hints: Seq[Term]
 }
 
+object QuantifiedFieldChunk {
+  def apply(id: BasicChunkIdentifier,
+            fvf: Term,
+            condition: Term,
+            conditionExp: Option[ast.Exp],
+            permValue: Term,
+            permValueExp: Option[ast.Exp],
+            invs: Option[InverseFunctions],
+            singletonRcvr: Option[Term],
+            singletonRcvrExp: Option[ast.Exp],
+            hints: Seq[Term] = Nil,
+            analysisInfo: AnalysisInfo): QuantifiedFieldChunk = {
+    val chunk = QuantifiedFieldChunk(id, fvf, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints, analysisInfo)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    chunk
+  }
+}
+
 /* TODO: Instead of using the singletonRcvr to differentiate between QP chunks that
  *       provide permissions to a single location and those providing permissions
  *       to potentially multiple locations, consider using regular, non-quantified
@@ -130,7 +147,7 @@ case class QuantifiedFieldChunk private(id: BasicChunkIdentifier,
                                 invs: Option[InverseFunctions],
                                 singletonRcvr: Option[Term],
                                 singletonRcvrExp: Option[ast.Exp],
-                                hints: Seq[Term] = Nil)
+                                hints: Seq[Term])
     extends QuantifiedBasicChunk {
 
   require(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
@@ -170,7 +187,28 @@ case class QuantifiedFieldChunk private(id: BasicChunkIdentifier,
   override lazy val toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$id -> $fvf # $perm"
 }
 
-case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
+object QuantifiedPredicateChunk {
+  def apply(id: BasicChunkIdentifier,
+             quantifiedVars: Seq[Var],
+             quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
+             psf: Term,
+             condition: Term,
+             conditionExp: Option[ast.Exp],
+             permValue: Term,
+             permValueExp: Option[ast.Exp],
+             invs: Option[InverseFunctions],
+             singletonArgs: Option[Seq[Term]],
+             singletonArgExps: Option[Seq[ast.Exp]],
+             hints: Seq[Term] = Nil,
+            analysisInfo: AnalysisInfo): QuantifiedPredicateChunk = {
+    val chunk = QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    chunk
+  }
+}
+
+
+case class QuantifiedPredicateChunk private(id: BasicChunkIdentifier,
                                     quantifiedVars: Seq[Var],
                                     quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
                                     psf: Term,
@@ -181,7 +219,7 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     invs: Option[InverseFunctions],
                                     singletonArgs: Option[Seq[Term]],
                                     singletonArgExps: Option[Seq[ast.Exp]],
-                                    hints: Seq[Term] = Nil)
+                                    hints: Seq[Term])
     extends QuantifiedBasicChunk {
 
   require(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
@@ -211,7 +249,25 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
   override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm"
 }
 
-case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
+object QuantifiedMagicWandChunk {
+  def apply(id: MagicWandIdentifier,
+            quantifiedVars: Seq[Var],
+            quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
+            wsf: Term,
+            perm: Term,
+            permExp: Option[ast.Exp],
+            invs: Option[InverseFunctions],
+            singletonArgs: Option[Seq[Term]],
+            singletonArgExps: Option[Seq[ast.Exp]],
+            hints: Seq[Term] = Nil,
+            analysisInfo: AnalysisInfo): QuantifiedMagicWandChunk = {
+    val chunk = QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, perm, permExp, invs, singletonArgs, singletonArgExps, hints)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    chunk
+  }
+}
+
+case class QuantifiedMagicWandChunk private(id: MagicWandIdentifier,
                                     quantifiedVars: Seq[Var],
                                     quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
                                     wsf: Term,
@@ -220,7 +276,7 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     invs: Option[InverseFunctions],
                                     singletonArgs: Option[Seq[Term]],
                                     singletonArgExps: Option[Seq[ast.Exp]],
-                                    hints: Seq[Term] = Nil)
+                                    hints: Seq[Term])
     extends QuantifiedBasicChunk {
 
   require(wsf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction] && wsf.sort.asInstanceOf[terms.sorts.PredicateSnapFunction].codomainSort == sorts.Snap, s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")
@@ -280,7 +336,7 @@ object MagicWandChunk {
   }
 }
 
-case class MagicWandChunk(id: MagicWandIdentifier,
+case class MagicWandChunk private(id: MagicWandIdentifier,
                           bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
                           args: Seq[Term],
                           argsExp: Option[Seq[ast.Exp]],
