@@ -92,27 +92,31 @@ trait ChunkAnalysisInfo {
 }
 
 case class SimpleAssumptionNode(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode {
-
-  override def getNodeString: String ="assumed " + assumption.toString
-
+  override def getNodeString: String ="assume " + assumption.toString
 }
 
 case class StringAssumptionNode(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode {
-
-  override def getNodeString: String = "assumed " + description
-
+  override def getNodeString: String = "assume " + description
 }
 
-// TODO ake: ast.Exp instead of Term
-case class SimpleAssertionNode(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo) extends AssumptionAnalysisNode {
-  override val assumptionType: AssumptionType = AssumptionType.Explicit
-  override def getNodeString: String = "asserted " + assertion.toString
+case class SimpleAssertionNode(assertion: ast.Exp, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends AssumptionAnalysisNode {
+  override def getNodeString: String = "assert " + assertion.toString
+}
 
-
+case class StringAssertionNode(description: String, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends AssumptionAnalysisNode {
+  override def getNodeString: String = "assert " + description
 }
 
 case class PermissionInhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode with ChunkAnalysisInfo {
-  override def getNodeString: String = "inhaled " + chunk.toString
+  override def getNodeString: String = "inhale " + chunk.toString
+}
+
+case class PermissionExhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends AssumptionAnalysisNode with ChunkAnalysisInfo {
+  override def getNodeString: String = "exhale " + chunk.toString
+}
+
+case class PermissionAssertNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends AssumptionAnalysisNode with ChunkAnalysisInfo {
+  override def getNodeString: String = "assert " + chunk.toString
 }
 
 

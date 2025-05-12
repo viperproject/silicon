@@ -23,7 +23,7 @@ trait AssumptionAnalyzer {
 
   def addAssumptions(assumptions: Iterable[DebugExp], analysisInfo: AnalysisInfo): Seq[Int]
 
-  def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
+  def addAssertion(assertion: Either[String, ast.Exp], isAsserted: Boolean, analysisInfo: AnalysisInfo): Option[Int]
 
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit
 
@@ -136,8 +136,11 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     newNodes.map(_.id).toSeq
   }
 
-  override def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val newNode = SimpleAssertionNode(assertion, isAsserted, sourceInfo)
+  override def addAssertion(assertion: Either[String, ast.Exp], isAsserted: Boolean, analysisInfo: AnalysisInfo): Option[Int] = {
+    val newNode = assertion match {
+      case Left(description) => StringAssertionNode(description, isAsserted, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+      case Right(exp) => SimpleAssertionNode(exp, isAsserted, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    }
     addNode(newNode)
     Some(newNode.id)
   }
@@ -172,7 +175,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def addAssumptions(assumptions: Iterable[DebugExp], analysisInfo: AnalysisInfo): Seq[Int] = Seq.empty
 
-  override def addAssertion(assertion: Term, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
+  override def addAssertion(assertion: Either[String, ast.Exp], isAsserted: Boolean, analysisInfo: AnalysisInfo): Option[Int] = None
 
   override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
   }

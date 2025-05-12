@@ -77,7 +77,8 @@ trait Decider {
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, description: String, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, e: Option[ast.Exp], timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -423,13 +424,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       prover.check(timeout) == Unsat
     }
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
+    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Left("check"), Some(timeout)) // TODO ake
 
-    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
-              (Q: Boolean => VerificationResult)
-              : VerificationResult = {
 
-      val success = deciderAssert(t, timeout)
+    def assert(t: Term, description: String, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult = {
+      assert(t, Left(description), timeout)(Q)
+    }
+
+    def assert(t: Term, e: Option[ast.Exp], timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q: Boolean => VerificationResult): VerificationResult = {
+      assert(t, e.map(Right(_)).getOrElse(Left("unknown assertion")), timeout)(Q)
+    }
+
+    private def assert(t: Term, e: Either[String, ast.Exp], timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
+      val success = deciderAssert(t, e, timeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -443,14 +450,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, timeout: Option[Int]) = {
+    private def deciderAssert(t: Term, e: Either[String, ast.Exp], timeout: Option[Int]) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-
-
       val asserted = if(Verifier.config.enableAssumptionAnalysis()) t.equals(True) else isKnownToBeTrue(t)
-      val assertionId: Option[Int] = if(!asserted) assumptionAnalyzer.addAssertion(t, false, decider.assumptionAnalyzer.currentAnalysisInfo.sourceInfo) else None
+      val assertionId: Option[Int] = if(!asserted) assumptionAnalyzer.addAssertion(e, false, decider.assumptionAnalyzer.currentAnalysisInfo) else None
       val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertionId))
 
       symbExLog.closeScope(sepIdentifier)

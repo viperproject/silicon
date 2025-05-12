@@ -23,10 +23,10 @@ object permissionSupporter extends SymbolicExecutionRules {
       case k: Var if s.constrainableARPs.contains(k) =>
         Q(s, v)
       case _ =>
-        v.decider.assert(perms.IsNonNegative(tPerm)) {
+        val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
+        v.decider.assert(perms.IsNonNegative(tPerm), assertExp) {
           case true => Q(s, v)
           case false =>
-            val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
             createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), assertExp)
         }
     }
@@ -40,9 +40,10 @@ object permissionSupporter extends SymbolicExecutionRules {
       case k: Var if s.constrainableARPs.contains(k) =>
         Q(s, v)
       case _ =>
-        v.decider.assert(perms.IsPositive(tPerm)) {
+        val assertExp = Option.when(withExp)(perms.IsPositive(ePerm)(ePerm.pos, ePerm.info, ePerm.errT))
+        v.decider.assert(perms.IsPositive(tPerm), assertExp) {
           case true => Q(s, v)
-          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), Option.when(withExp)(perms.IsPositive(ePerm)()))
+          case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), assertExp)
         }
     }
   }
