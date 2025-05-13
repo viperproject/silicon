@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode, StmtAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode, StmtAnalysisSourceInfo, StringAnalysisSourceInfo}
 
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
@@ -262,6 +262,7 @@ object executor extends ExecutionRules {
             (executionFlowController.locally(sBody, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
                 val mark = v0.decider.setPathConditionMark()
+              v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(invs.isEmpty) StringAnalysisSourceInfo("invariants", ast.NoPosition) else ExpAnalysisSourceInfo(invs.head), AssumptionType.Explicit)
                 produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
@@ -270,7 +271,8 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, AnalysisInfo(v0.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion))((sLeftover, _, v1) => {
+                v0.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(invs.isEmpty) StringAnalysisSourceInfo("no invariants", ast.NoPosition) else ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion)
+                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, v0.decider.assumptionAnalyzer.currentAnalysisInfo)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -304,7 +306,8 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion))((_, _, _) =>
+            v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(invs.isEmpty) StringAnalysisSourceInfo("no invariants", ast.NoPosition) else ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion)
+            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((_, _, _) =>
               Success())
         }
     }
