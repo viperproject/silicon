@@ -12,7 +12,9 @@ import viper.silver.ast.{Member, NoPosition}
 trait AssumptionAnalyzer {
   //  def pushScope(stmt: ast.Stmt): Unit
   //  def closeScope(): Unit
-  def addPermissionNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addPermissionInhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addPermissionAssertNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int]
+  def addPermissionExhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int]
 
   def addSingleAssumption(assumption: ast.Exp, analysisInfo: AnalysisInfo): Option[Int]
 
@@ -155,8 +157,20 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(assumptionIds, assertionIds)
   }
 
-  override def addPermissionNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+  override def addPermissionInhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
     val node = PermissionInhaleNode(chunk, sourceInfo, assumptionType)
+    addNode(node)
+    Some(node.id)
+  }
+
+  override def addPermissionAssertNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int] = {
+    val node = PermissionAssertNode(chunk, sourceInfo, assumptionType)
+    addNode(node)
+    Some(node.id)
+  }
+
+  override def addPermissionExhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int] = {
+    val node = PermissionExhaleNode(chunk, sourceInfo, assumptionType)
     addNode(node)
     Some(node.id)
   }
@@ -182,7 +196,9 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
   }
 
-  override def addPermissionNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addPermissionInhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addPermissionExhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addPermissionAssertNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
   }

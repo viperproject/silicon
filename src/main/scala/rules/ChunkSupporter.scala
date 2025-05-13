@@ -176,6 +176,7 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) =>
         if (s.assertReadAccessOnly) {
           if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0))) {
+            v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, v.decider.assumptionAnalyzer.currentAnalysisInfo.sourceInfo)
             (Complete(), s, h, Some(ch))
           } else {
             (Incomplete(perms, permsExp), s, h, None)
@@ -259,6 +260,7 @@ object chunkSupporter extends ChunkSupportRules {
     val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
     findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
+        v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, v.decider.assumptionAnalyzer.currentAnalysisInfo.sourceInfo)
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(true) =>
         if (s.isInPackage) {

@@ -43,6 +43,17 @@ trait AssumptionAnalysisGraph {
     nodes.filter(n => n.assumptionType.equals(assumptionType))
   }
 
+  def getNodesPerChunk(): mutable.HashMap[Chunk, Seq[AssumptionAnalysisNode]] = {
+    val res = new mutable.HashMap[Chunk, Seq[AssumptionAnalysisNode]]()
+    nodes filter (_.isInstanceOf[ChunkAnalysisInfo]) foreach {n =>
+      res.updateWith(n.asInstanceOf[ChunkAnalysisInfo].getChunk)({
+        case Some(ns) => Some(ns ++ Seq(n))
+        case None => Some(Seq(n))
+      })
+    }
+    res
+  }
+
   // def findDependentAssumptions(assertion, enableTransitivity=false)
   // def findDependentAssertions(assumption, enableTransitivity=false)
   // def findUnnecessaryAssumptions(enableTransitivity=false)
