@@ -6,12 +6,14 @@
 
 package viper.silicon.interfaces.state
 
+import viper.silicon
 import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
 
-trait Chunk
-
+trait Chunk {
+  def substitute(terms: silicon.Map[Term, Term]): Chunk
+}
 trait ChunkIdentifer
 
 trait GeneralChunk extends Chunk {

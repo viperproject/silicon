@@ -12,13 +12,14 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition}
 import viper.silicon.{Map, Stack}
 import viper.silicon.state.terms._
+import viper.silver.ast.AbstractLocalVar
 
 // TODO: FunctionRecorder records Function, Var, etc., which are later on turned into corresponding
 //       declarations (e.g. FunctionDecl), see FunctionData's field freshSymbolsAcrossAllPhases.
 //       Only macros are already recorded as MacroDecls — this should be the case for Functions,
 //       etc. as well.
 trait FunctionRecorder extends Mergeable[FunctionRecorder] {
-  def data: Option[FunctionData]
+  def arguments: Option[Seq[(Var, Option[ast.AbstractLocalVar])]]
   private[functions] def locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]]
   def locToSnap: Map[ast.LocationAccess, Term]
   private[functions] def fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]]
@@ -43,7 +44,7 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def changeDepthBy(delta: Int): FunctionRecorder
 }
 
-case class ActualFunctionRecorder(private val _data: FunctionData,
+case class ActualFunctionRecorder(private val _data: Either[FunctionData, (ast.Predicate, Seq[Var])],
                                   private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet(),
@@ -90,7 +91,10 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
    * unfolding's in-clause, which, as argued before, are not part of f.
    */
 
-  val data = Some(_data)
+  override def arguments: Option[Stack[(Var, Option[AbstractLocalVar])]] = _data match {
+    case Left(fd) => Some(fd.arguments.zip(fd.argumentExps))
+    case Right((_, args)) => Some(args.map((_, None)))
+  }
 
   private def exprToSnap[E <: ast.Exp]
                         (recordings: Map[E, InsertionOrderedSet[(Stack[Term], Term)]])
@@ -198,7 +202,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     else this
 
   def recordFreshSnapshot(snap: Function): ActualFunctionRecorder =
-    if (depth <= 1) copy(freshSnapshots = freshSnapshots + snap)
+    if (depth <= 2) copy(freshSnapshots = freshSnapshots + snap)
     else this
 
   def recordPathSymbol(symbol: Function): ActualFunctionRecorder =
@@ -216,7 +220,6 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     if (depth > 1) return this
 
     assert(other.getClass == this.getClass)
-    assert(other.asInstanceOf[ActualFunctionRecorder]._data eq this._data)
 
     var lts = locToSnaps
     var fts = fappToSnaps
@@ -270,7 +273,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 }
 
 case object NoopFunctionRecorder extends FunctionRecorder {
-  val data: Option[FunctionData] = None
+  def arguments: Option[Seq[(viper.silicon.state.terms.Var, Option[viper.silver.ast.AbstractLocalVar])]] = None
   private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val fappToSnap: Map[ast.FuncApp, Term] = Map.empty
   private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty

@@ -25,11 +25,58 @@ import viper.silver.ast.LocalVarWithVersion
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
 
-/* TODO: Refactor FunctionData!
- *       Separate computations from "storing" the final results and sharing
- *       them with other components. Computations should probably be moved to the
- *       FunctionVerificationUnit.
- */
+trait FunctionRecorderHandler {
+
+  protected[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
+  protected[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
+  protected[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
+  protected[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
+  protected[this] var freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  protected[this] var freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  protected[this] var freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  protected[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  protected[this] var freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
+  protected[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
+
+  private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
+
+  private[functions] def getFreshConstrainedVars: InsertionOrderedSet[Var] = freshConstrainedVars.map(_._1)
+
+  def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = freshSymbolsAcrossAllPhases
+
+  def addRecorders(recorders: Seq[FunctionRecorder]): Unit = {
+    val mergedFunctionRecorder: FunctionRecorder =
+      if (recorders.isEmpty)
+        NoopFunctionRecorder
+      else
+        recorders.tail.foldLeft(recorders.head)((summaryRec, nextRec) => summaryRec.merge(nextRec))
+
+    locToSnap = mergedFunctionRecorder.locToSnap
+    fappToSnap = mergedFunctionRecorder.fappToSnap
+    freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
+    freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
+    freshConstrainedVars = mergedFunctionRecorder.freshConstrainedVars
+    freshConstraints = mergedFunctionRecorder.freshConstraints
+    freshSnapshots = mergedFunctionRecorder.freshSnapshots
+    freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
+    freshMacros = mergedFunctionRecorder.freshMacros
+
+    freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
+    freshSymbolsAcrossAllPhases ++= freshConstrainedVars.map(pair => FunctionDecl(pair._1))
+    freshSymbolsAcrossAllPhases ++= freshSnapshots map FunctionDecl
+    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(i => (i.inverses ++ i.images) map FunctionDecl)
+    freshSymbolsAcrossAllPhases ++= freshMacros
+
+    freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains map (fvfDef =>
+      fvfDef.sm match {
+        case x: Var => ConstDecl(x)
+        case App(f: Function, _) => FunctionDecl(f)
+        case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
+      })
+  }
+
+}
+
 class FunctionData(val programFunction: ast.Function,
                    val height: Int,
                    val quantifiedFields: InsertionOrderedSet[ast.Field],
@@ -45,9 +92,7 @@ class FunctionData(val programFunction: ast.Function,
                    predicateData: ast.Predicate => PredicateData,
                    @unused config: Config,
                    @unused reporter: Reporter)
-    extends LazyLogging {
-
-  private[this] var phase = 0
+    extends LazyLogging with FunctionRecorderHandler {
 
   /*
    * Properties computed from the constructor arguments
@@ -100,55 +145,16 @@ class FunctionData(val programFunction: ast.Function,
    */
 
   private[functions] var verificationFailures: Seq[FatalResult] = Vector.empty
-  private[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
-  private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
-  private[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
-  private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
-  private[this] var freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
-  private[this] var freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
-  private[this] var freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
-  private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
-  private[this] var freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
-  private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
 
-  private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
-  private[functions] def getFreshConstrainedVars: InsertionOrderedSet[Var] = freshConstrainedVars.map(_._1)
-  private[functions] def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = freshSymbolsAcrossAllPhases
+  private[this] var phase = 0
 
   private[functions] def advancePhase(recorders: Seq[FunctionRecorder]): Unit = {
     assert(0 <= phase && phase <= 1, s"Cannot advance from phase $phase")
 
-    val mergedFunctionRecorder: FunctionRecorder =
-      if (recorders.isEmpty)
-        NoopFunctionRecorder
-      else
-        recorders.tail.foldLeft(recorders.head)((summaryRec, nextRec) => summaryRec.merge(nextRec))
-
-    locToSnap = mergedFunctionRecorder.locToSnap
-    fappToSnap = mergedFunctionRecorder.fappToSnap
-    freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
-    freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
-    freshConstrainedVars = mergedFunctionRecorder.freshConstrainedVars
-    freshConstraints = mergedFunctionRecorder.freshConstraints
-    freshSnapshots = mergedFunctionRecorder.freshSnapshots
-    freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
-    freshMacros = mergedFunctionRecorder.freshMacros
-
-    freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
-    freshSymbolsAcrossAllPhases ++= freshConstrainedVars.map(pair => FunctionDecl(pair._1))
-    freshSymbolsAcrossAllPhases ++= freshSnapshots map FunctionDecl
-    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(i => (i.inverses ++ i.images) map FunctionDecl)
-    freshSymbolsAcrossAllPhases ++= freshMacros
-
-    freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains map (fvfDef =>
-      fvfDef.sm match {
-        case x: Var => ConstDecl(x)
-        case App(f: Function, _) => FunctionDecl(f)
-        case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
-      })
-
+    addRecorders(recorders)
     phase += 1
   }
+
 
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = {
     val freshSymbols: Set[Identifier] = freshSymbolsAcrossAllPhases.map(_.id)

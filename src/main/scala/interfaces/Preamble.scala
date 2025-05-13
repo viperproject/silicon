@@ -29,10 +29,8 @@ trait PreambleContributor[+SO, +SY, +AX] extends StatefulComponent {
   def sortsAfterAnalysis: Iterable[SO]
   def declareSortsAfterAnalysis(sink: ProverLike): Unit
 
-  def symbolsAfterAnalysis: Iterable[SY]
   def declareSymbolsAfterAnalysis(sink: ProverLike): Unit
 
-  def axiomsAfterAnalysis: Iterable[AX]
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit
 }
 
