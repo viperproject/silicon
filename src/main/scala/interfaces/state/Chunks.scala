@@ -24,6 +24,8 @@ trait GeneralChunk extends Chunk {
   def permMinus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
   def permPlus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
 
+  def permScale(perm: Term): GeneralChunk
+
   val permExp: Option[ast.Exp]
 }
 

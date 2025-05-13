@@ -134,7 +134,7 @@ object predicateSupporter extends PredicateSupportRules {
     tree match {
       case PredLeafNode(h, assumptions) =>
         v.decider.assume(assumptions.map(_.replace(toReplace)).toSeq, None)
-        val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk])
+        val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk].permScale(s.permissionScalingFactor))
 
         val quantifiedResourceIdentifiers: Set[ChunkIdentifer] = s.qpPredicates.map(p => BasicChunkIdentifier(p.name)) ++ s.qpFields.map(f => BasicChunkIdentifier(f.name)) ++ s.qpMagicWands
 
