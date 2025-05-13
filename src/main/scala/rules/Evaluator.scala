@@ -933,7 +933,7 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            consumes(s3, pres, true, _ => pvePre, v2, AnalysisInfo(v2.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fapp), AssumptionType.Assertion))((s4, snap, v3) => {
+            consumes(s3, pres, true, _ => pvePre, v2, AnalysisInfo(v2.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fapp), AssumptionType.Assertion))((s4, snap, consumedChunks, v3) => { // TODO ake: add edges from consumedChunks
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
@@ -996,7 +996,7 @@ object evaluator extends EvaluationRules {
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(s4, acc, true, pve, v3, AnalysisInfo(v3.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(acc), AssumptionType.Implicit))((s5, snap, v4) => {
+                    consume(s4, acc, true, pve, v3, AnalysisInfo(v3.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(acc), AssumptionType.Implicit))((s5, snap, consumedChunks, v4) => {
                       val fr6 =
                         s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap.get)
                                            .changeDepthBy(+1)
@@ -1018,7 +1018,7 @@ object evaluator extends EvaluationRules {
                       val argsPairs: List[(Term, Option[ast.Exp])] = if (withExp) tArgs zip eArgsNew.get.map(Some(_)) else tArgs zip Seq.fill(tArgs.size)(None)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg).setConstrainable(s7.constrainableARPs, false)
-                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
+                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => { // TODO ake: add edges from consumedChunks
                         val s9 = s8.copy(g = s7.g,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,
@@ -1051,7 +1051,7 @@ object evaluator extends EvaluationRules {
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
-        consume(s, eAss, false, pve, v, AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(eAss), AssumptionType.Assertion))((s2, _, v2) => {
+        consume(s, eAss, false, pve, v, AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(eAss), AssumptionType.Assertion))((s2, _, consumedChunks, v2) => { // TODO ake: what to do with chunks here?
           val s3 = s2.copy(g = s.g, h = s.h)
           eval(s3, eIn, pve, v2)(Q)
         })

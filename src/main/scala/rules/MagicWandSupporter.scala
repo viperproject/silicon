@@ -401,7 +401,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
             wand.right, true, pve, proofScriptVerifier, proofScriptVerifier.decider.assumptionAnalyzer.currentAnalysisInfo
-          )((s3, snapRhs, v3) => {
+          )((s3, snapRhs, consumedChunks, v3) => { // TODO ake: what to do with consumedChunks?
 
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3)
           })
@@ -459,9 +459,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
-    consume(s, wand, true, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s1, snapWand, v1) => {
+    consume(s, wand, true, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s1, snapWand, consumedChunksWand, v1) => {
       // Consume the wand's LHS "A".
-      consume(s1, wand.left, true, pve, v1, v1.decider.assumptionAnalyzer.currentAnalysisInfo)((s2, snapLhs, v2) => {
+      consume(s1, wand.left, true, pve, v1, v1.decider.assumptionAnalyzer.currentAnalysisInfo)((s2, snapLhs, consumedChunksLeft, v2) => {
         /* It is assumed that snap and MagicWandSnapshot.abstractLhs are structurally the same.
          * Equating the two snapshots is sound iff a wand is applied only once.
          * The old solution in this case did use this assumption:
@@ -484,7 +484,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         }
 
         // Produce the wand's RHS.
-        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2)((s4, v3) => {
+        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2)((s4, v3) => { // TODO ake: add edges from consumedChunks
           // Recreate old state without the magic wand, and the state with the oldHeap called lhs.
           val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
 
