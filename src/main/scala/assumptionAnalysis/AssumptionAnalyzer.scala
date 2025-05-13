@@ -1,9 +1,10 @@
 package viper.silicon.assumptionAnalysis
 
+import viper.silicon.Stack
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.Term
 import viper.silver.ast
 import viper.silver.ast.{Member, NoPosition}
 
@@ -32,6 +33,7 @@ trait AssumptionAnalyzer {
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
   var currentAnalysisInfo: AnalysisInfo = new NoAnalysisInfo()
+  var currentExpStack: InsertionOrderedSet[ast.Exp] = InsertionOrderedSet.empty
 
   def setCurrentAnalysisInfo(analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): AnalysisInfo = {
     currentAnalysisInfo = AnalysisInfo(this, analysisSourceInfo, assumptionType)

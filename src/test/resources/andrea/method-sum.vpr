@@ -14,7 +14,7 @@ method foo(x: Int, y: Int)
   assume y >= 0
   assume x < y
   var n: Int := sum(x, y)
-  var n2: Int := sum(x, y)
+  var n2: Int := sum(x/y, y)
   n := n + n2
 
   assert n == 2*x + 2*y

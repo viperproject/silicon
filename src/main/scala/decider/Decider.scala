@@ -321,6 +321,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, de) =>
+        val sourceExp = assumptionAnalyzer.currentExpStack.headOption
         val assumptionId: Option[Int] = if(de.isDefined) assumptionAnalyzer.addSingleAssumption(de.get, analysisInfo) else None
         (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
       }
@@ -333,6 +334,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]]): Unit = {
       val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, assumptionAnalyzer.currentAnalysisInfo) else Seq.empty
 
+      val sourceExp = assumptionAnalyzer.currentExpStack.headOption
       val assumptionsWithLabels =
         if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, AssumptionAnalyzer.createAssumptionLabel(Some(id)))}
         else assumptions map (t => (t, ""))
@@ -352,6 +354,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if (debugMode) {
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
+
+        val sourceExp = assumptionAnalyzer.currentExpStack.headOption
         val assumptionId: Option[Int] = if(debugExp.isDefined) assumptionAnalyzer.addSingleAssumption(debugExp.get.withTerm(And(filteredTerms)), assumptionAnalyzer.currentAnalysisInfo) else None
         val termsWithLabel = filteredTerms.zipWithIndex.iterator.map {case (t, idx) => (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId, idx))}.toSeq
         assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
@@ -427,7 +431,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
       val asserted = if(Verifier.config.enableAssumptionAnalysis()) t.equals(True) else isKnownToBeTrue(t)
-      val assertionId: Option[Int] = if(!asserted) assumptionAnalyzer.addAssertion(e, false, decider.assumptionAnalyzer.currentAnalysisInfo) else None
+      val sourceExp = assumptionAnalyzer.currentExpStack.headOption
+      val assertionId: Option[Int] = if(!asserted) assumptionAnalyzer.addAssertion(e, false, decider.assumptionAnalyzer.currentAnalysisInfo.withAssumptionType(AssumptionType.Assertion)) else None
       val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertionId))
 
       symbExLog.closeScope(sepIdentifier)

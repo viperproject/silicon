@@ -93,7 +93,9 @@ object evaluator extends EvaluationRules {
           : VerificationResult = {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
+    v.decider.assumptionAnalyzer.currentExpStack = InsertionOrderedSet(Set(e) ++ v.decider.assumptionAnalyzer.currentExpStack)
     eval3(s, e, pve, v)((s1, t, eNew, v1) => {
+      v.decider.assumptionAnalyzer.currentExpStack = v.decider.assumptionAnalyzer.currentExpStack.tail
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, t, eNew, v1)})
   }

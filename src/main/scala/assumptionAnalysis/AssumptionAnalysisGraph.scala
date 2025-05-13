@@ -1,7 +1,6 @@
 package viper.silicon.assumptionAnalysis
 
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.Term
 import viper.silver.ast
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -31,6 +30,18 @@ trait AssumptionAnalysisGraph {
   def addEdges(source: Int, targets: Iterable[Int]): Unit
   def addEdges(sources: Iterable[Int], target: Int): Unit
   def addEdges(sources: Iterable[Int],  targets: Iterable[Int]): Unit
+
+  def getExplicitAndAssertNodesOnly(): Seq[AssumptionAnalysisNode] = {
+    nodes.filter(n => n.assumptionType.equals(AssumptionType.Explicit) || n.isInstanceOf[GeneralAssertionNode])
+  }
+
+  def getImplicitNodesOnly(): Seq[AssumptionAnalysisNode] = {
+    getNodesByAssumptionType(AssumptionType.Implicit)
+  }
+
+  def getNodesByAssumptionType(assumptionType: AssumptionType): Seq[AssumptionAnalysisNode] = {
+    nodes.filter(n => n.assumptionType.equals(assumptionType))
+  }
 
   // def findDependentAssumptions(assertion, enableTransitivity=false)
   // def findDependentAssertions(assumption, enableTransitivity=false)
@@ -84,6 +95,8 @@ trait AssumptionAnalysisNode {
   }
 }
 
+trait GeneralAssumptionNode extends AssumptionAnalysisNode {}
+trait GeneralAssertionNode extends AssumptionAnalysisNode {}
 
 trait ChunkAnalysisInfo {
   val chunk: Chunk
@@ -91,31 +104,31 @@ trait ChunkAnalysisInfo {
   def getChunk: Chunk = chunk
 }
 
-case class SimpleAssumptionNode(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode {
+case class SimpleAssumptionNode(assumption: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends GeneralAssumptionNode {
   override def getNodeString: String ="assume " + assumption.toString
 }
 
-case class StringAssumptionNode(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode {
+case class StringAssumptionNode(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + description
 }
 
-case class SimpleAssertionNode(assertion: ast.Exp, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends AssumptionAnalysisNode {
+case class SimpleAssertionNode(assertion: ast.Exp, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + assertion.toString
 }
 
-case class StringAssertionNode(description: String, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends AssumptionAnalysisNode {
+case class StringAssertionNode(description: String, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + description
 }
 
-case class PermissionInhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends AssumptionAnalysisNode with ChunkAnalysisInfo {
+case class PermissionInhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends GeneralAssumptionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "inhale " + chunk.toString
 }
 
-case class PermissionExhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends AssumptionAnalysisNode with ChunkAnalysisInfo {
+case class PermissionExhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "exhale " + chunk.toString
 }
 
-case class PermissionAssertNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends AssumptionAnalysisNode with ChunkAnalysisInfo {
+case class PermissionAssertNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "assert " + chunk.toString
 }
 
