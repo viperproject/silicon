@@ -94,7 +94,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1) => {
-      val newChunk = MagicWandChunk.apply(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
+      val newChunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
         Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), v.decider.assumptionAnalyzer.currentAnalysisInfo)
       Q(s1, newChunk, v1)
     })
