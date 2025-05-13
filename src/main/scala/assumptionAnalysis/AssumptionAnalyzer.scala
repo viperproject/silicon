@@ -165,22 +165,22 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
 
   override def addPermissionAssertNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int] = {
     val node = PermissionAssertNode(chunk, sourceInfo, assumptionType)
-    addNode(node)
+    addPermissionDependencies(Set(chunk), node)
     Some(node.id)
   }
 
   override def addPermissionExhaleNode(chunk: Chunk, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int] = {
     val node = PermissionExhaleNode(chunk, sourceInfo, assumptionType)
-    addNode(node)
+    addPermissionDependencies(Set(chunk), node)
     Some(node.id)
   }
 
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: AssumptionAnalysisNode): Unit = {
-    val analysisChunks = assumptionGraph.nodes
-      .filter(c => c.isInstanceOf[ChunkAnalysisInfo] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
+    val oldChunkNodeIds = assumptionGraph.nodes
+      .filter(c => !c.isInstanceOf[PermissionAssertNode] && c.isInstanceOf[ChunkAnalysisInfo] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.id).toSet
     addNode(newChunkNode)
-    assumptionGraph.addEdges(analysisChunks, newChunkNode.id)
+    assumptionGraph.addEdges(oldChunkNodeIds, newChunkNode.id)
   }
 
   override def getMember: Option[Member] = Some(member)
