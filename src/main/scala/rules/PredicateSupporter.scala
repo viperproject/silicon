@@ -169,7 +169,13 @@ object predicateSupporter extends PredicateSupportRules {
           }
         })
         val substHeap = Heap(substChunksOptQps)
-        val s1 = s.copy(h = s.h + substHeap, functionRecorder = newFr)
+        val s1 = if (true) {  // merge or just append?
+          val (fr1, h1) = v.stateConsolidator(s).merge(newFr, s, s.h, substHeap, v)
+          s.copy(h = h1, functionRecorder = fr1)
+        } else {
+          s.copy(h = s.h + substHeap, functionRecorder = newFr)
+        }
+
         Q(s1, v)
       case PredBranchNode(cond, left, right) =>
         val substCond = cond.replace(toReplace)
