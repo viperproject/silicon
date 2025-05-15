@@ -11,44 +11,49 @@ import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
 
-trait Chunk
+trait Chunk {
+  val perm: Term
+  val permExp: Option[ast.Exp]
+}
 
 trait ChunkIdentifer
 
 trait GeneralChunk extends Chunk {
   val resourceID: ResourceID
   val id: ChunkIdentifer
-  val perm: Term
+
   protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): GeneralChunk
   protected def permMinus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
   protected def permPlus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
   protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): GeneralChunk
-
-  val permExp: Option[ast.Exp]
 }
 
 object GeneralChunk {
   def applyCondition(chunk: GeneralChunk, newCond: Term, newCondExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
     val newChunk = chunk.applyCondition(newCond, newCondExp)
-    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionInhaleNode(newChunk, newChunk.permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), newNodeId)
     newChunk
   }
 
-  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
+  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo, isExhale: Boolean=false): GeneralChunk = {
     val newChunk = chunk.permMinus(newPerm, newPermExp)
-    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, newPermExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), newNodeId)
     newChunk
   }
 
-  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
+  def permPlus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo, isExhale: Boolean=false): GeneralChunk = {
     val newChunk = chunk.permPlus(newPerm, newPermExp)
-    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, newPermExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), newNodeId)
     newChunk
   }
 
-  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo, isExhale: Boolean=false): GeneralChunk = {
     val newChunk = chunk.withPerm(newPerm, newPermExp)
-    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, newPermExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), newNodeId)
     newChunk
   }
 }
@@ -67,7 +72,8 @@ trait NonQuantifiedChunk extends GeneralChunk {
 object NonQuantifiedChunk {
   def withSnap(chunk: NonQuantifiedChunk, snap: Term, snapExp: Option[ast.Exp], analysisInfo: AnalysisInfo): NonQuantifiedChunk = {
     val newChunk = chunk.withSnap(snap, snapExp)
-    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionInhaleNode(newChunk, newChunk.permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), newNodeId)
     newChunk
   }
 }
@@ -87,7 +93,8 @@ trait QuantifiedChunk extends GeneralChunk {
 object QuantifiedChunk {
   def withSnapshotMap(chunk: QuantifiedChunk, snap: Term, analysisInfo: AnalysisInfo): QuantifiedChunk = {
     val newChunk = chunk.withSnapshotMap(snap)
-    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+    val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionInhaleNode(newChunk, newChunk.permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), newNodeId)
     newChunk
   }
 }

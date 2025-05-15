@@ -176,7 +176,7 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) =>
         if (s.assertReadAccessOnly) {
           if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0))) {
-            v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, v.decider.assumptionAnalyzer.currentAnalysisInfo.sourceInfo)
+            v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, ch.permExp.map(pe => IsPositive(pe)(pe.pos, pe.info, pe.errT)), v.decider.assumptionAnalyzer.currentAnalysisInfo.sourceInfo)
             (Complete(), s, h, Some(ch))
           } else {
             (Incomplete(perms, permsExp), s, h, None)
@@ -186,7 +186,7 @@ object chunkSupporter extends ChunkSupportRules {
           val toTakeExp = permsExp.map(pe => buildMinExp(Seq(ch.permExp.get, pe), ast.Perm))
           val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, toTakeExp.get)(pe.pos, pe.info, pe.errT))
           val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, toTake), newPermExp, analysisInfo).asInstanceOf[NonQuantifiedChunk]
-          val takenChunk = Some(GeneralChunk.withPerm(ch, toTake, toTakeExp, analysisInfo).asInstanceOf[NonQuantifiedChunk])
+          val takenChunk = Some(GeneralChunk.withPerm(ch, toTake, toTakeExp, analysisInfo, isExhale = true).asInstanceOf[NonQuantifiedChunk])
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk
@@ -200,7 +200,7 @@ object chunkSupporter extends ChunkSupportRules {
             v.decider.assume(PermLess(perms, ch.perm), Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
             val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, pe)(pe.pos, pe.info, pe.errT))
             val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, perms), newPermExp, analysisInfo).asInstanceOf[NonQuantifiedChunk]
-            val takenChunk = GeneralChunk.withPerm(ch, perms, permsExp, analysisInfo).asInstanceOf[NonQuantifiedChunk]
+            val takenChunk = GeneralChunk.withPerm(ch, perms, permsExp, analysisInfo, isExhale=true).asInstanceOf[NonQuantifiedChunk]
             val newHeap = h - ch + newChunk
             assumeProperties(newChunk, newHeap)
             (Complete(), s, newHeap, Some(takenChunk))
@@ -260,7 +260,7 @@ object chunkSupporter extends ChunkSupportRules {
     val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
     findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
-        v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, v.decider.assumptionAnalyzer.currentAnalysisInfo.sourceInfo)
+        v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, ch.permExp.map(pe => IsPositive(pe)(pe.pos, pe.info, pe.errT)), v.decider.assumptionAnalyzer.currentAnalysisInfo.sourceInfo)
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(true) =>
         if (s.isInPackage) {

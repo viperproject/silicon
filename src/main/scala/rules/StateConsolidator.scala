@@ -202,8 +202,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v)
     if(result.isDefined){
       val (_, newChunk, _) = result.get
-      val newChunkNode = PermissionInhaleNode(newChunk, StringAnalysisSourceInfo("state consolidation", NoPosition), AssumptionType.Internal)
-      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), newChunkNode)
+      val newChunkNode = PermissionInhaleNode(newChunk, newChunk.permExp, StringAnalysisSourceInfo("state consolidation", NoPosition), AssumptionType.Internal)
+      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), Some(newChunkNode.id))
     }
     result
   }

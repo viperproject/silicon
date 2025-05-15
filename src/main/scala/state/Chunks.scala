@@ -41,9 +41,9 @@ object BasicChunk {
             args: Seq[Term], argsExp: Option[Seq[ast.Exp]],
             snap: Term, snapExp: Option[ast.Exp],
             perm: Term, permExp: Option[ast.Exp],
-            analysisInfo: AnalysisInfo): BasicChunk = {
+            analysisInfo: AnalysisInfo, isExhale: Boolean=false): BasicChunk = {
     val chunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    analysisInfo.assumptionAnalyzer.addPermissionInhaleNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
     chunk
   }
 
@@ -55,9 +55,12 @@ object BasicChunk {
                          snap: Term,
                          snapExp: Option[ast.Exp],
                          perm: Term,
-                         permExp: Option[ast.Exp], analysisInfo: AnalysisInfo): BasicChunk = {
-    val newChunk = BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp, analysisInfo)
-    analysisInfo.assumptionAnalyzer.addPermissionDependencies(oldChunks, PermissionInhaleNode(newChunk, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+                         permExp: Option[ast.Exp],
+                         analysisInfo: AnalysisInfo,
+                         isExhale: Boolean=false): BasicChunk = {
+    val newChunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
+    val newNode = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(oldChunks, newNode)
     newChunk
   }
 }
@@ -138,9 +141,10 @@ object QuantifiedFieldChunk {
             singletonRcvr: Option[Term],
             singletonRcvrExp: Option[ast.Exp],
             hints: Seq[Term] = Nil,
-            analysisInfo: AnalysisInfo): QuantifiedFieldChunk = {
+            analysisInfo: AnalysisInfo,
+            isExhale: Boolean=false): QuantifiedFieldChunk = {
     val chunk = new QuantifiedFieldChunk(id, fvf, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
-    analysisInfo.assumptionAnalyzer.addPermissionInhaleNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permValueExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
     chunk
   }
 }
@@ -228,9 +232,10 @@ object QuantifiedPredicateChunk {
              singletonArgs: Option[Seq[Term]],
              singletonArgExps: Option[Seq[ast.Exp]],
              hints: Seq[Term] = Nil,
-            analysisInfo: AnalysisInfo): QuantifiedPredicateChunk = {
+            analysisInfo: AnalysisInfo,
+            isExhale: Boolean=false): QuantifiedPredicateChunk = {
     val chunk = new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
-    analysisInfo.assumptionAnalyzer.addPermissionInhaleNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permValueExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
     chunk
   }
 }
@@ -301,9 +306,10 @@ object QuantifiedMagicWandChunk {
             singletonArgs: Option[Seq[Term]],
             singletonArgExps: Option[Seq[ast.Exp]],
             hints: Seq[Term] = Nil,
-            analysisInfo: AnalysisInfo): QuantifiedMagicWandChunk = {
+            analysisInfo: AnalysisInfo,
+            isExhale: Boolean=false): QuantifiedMagicWandChunk = {
     val chunk = new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, perm, permExp, invs, singletonArgs, singletonArgExps, hints)
-    analysisInfo.assumptionAnalyzer.addPermissionInhaleNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
     chunk
   }
 }
@@ -380,9 +386,10 @@ object MagicWandChunk {
             snap: MagicWandSnapshot,
             perm: Term,
             permExp: Option[ast.Exp],
-            analysisInfo: AnalysisInfo): MagicWandChunk = {
+            analysisInfo: AnalysisInfo,
+            isExhale: Boolean=false): MagicWandChunk = {
     val chunk = new MagicWandChunk(id, bindings, args, argsExp, snap, perm, permExp)
-    analysisInfo.assumptionAnalyzer.addPermissionInhaleNode(chunk, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
     chunk
   }
 }
