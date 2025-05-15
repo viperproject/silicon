@@ -1,7 +1,32 @@
 
 field f: Int
 
-method foo(a: Ref, b: Ref)
+
+method foo(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume a > 0
+  assume b > 0
+
+  if(c){
+    n := a + 1
+  }else{
+    n := b + 1
+  }
+
+  var x: Int
+  if(a >= n){
+    x := a + b
+  }else{
+    x := n + 1
+    assert x >= 1
+  }
+  assert x > n
+}
+
+
+method fooPerm(a: Ref, b: Ref)
   requires acc(a.f) && acc(b.f)
 {
   var n:Int, c: Bool
@@ -22,5 +47,5 @@ method foo(a: Ref, b: Ref)
     x := n
     assert x >= 1
   }
-  assert x > 0
+  assert x >= n
 }

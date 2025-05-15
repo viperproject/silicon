@@ -329,8 +329,8 @@ object executor extends ExecutionRules {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(StmtAnalysisSourceInfo(stmt), AssumptionType.Implicit)
     exec2(s, stmt, v)((s1, v1) => {
-      v1.symbExLog.closeScope(sepIdentifier)
       v.decider.assumptionAnalyzer.clearCurrentAnalysisInfo()
+      v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 

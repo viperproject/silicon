@@ -77,3 +77,12 @@ method bar(x: Ref, y: Ref, p: Perm)
   foo(x)
   assert x.f == y.f + 1
 }
+
+method transitivity(a: Ref, n: Int)
+    requires n > 0
+    requires acc(a.f) && a.f > 0
+{
+    var res: Int
+    res := a.f / n
+    assert res >= 0
+}
