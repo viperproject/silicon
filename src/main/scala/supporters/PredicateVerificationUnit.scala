@@ -22,7 +22,7 @@ import viper.silicon.rules.executionFlowController
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 
-class PredicateData(predicate: ast.Predicate)
+class PredicateData(val predicate: ast.Predicate)
                    /* Note: Holding a reference to a fixed symbol converter (instead of going
                     *       through a verifier) is only safe if the converter is effectively
                     *       independent of the verifiers.
@@ -38,7 +38,7 @@ class PredicateData(predicate: ast.Predicate)
 trait PredicateVerificationUnit
     extends VerifyingPreambleContributor[Sort, Fun, Term, ast.Predicate] {
 
-  def data: Map[ast.Predicate, PredicateData]
+  def data: Map[String, PredicateData]
 }
 
 trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Verifier =>
@@ -49,16 +49,15 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
   object predicateSupporter extends PredicateVerificationUnit with StatefulComponent {
     import viper.silicon.rules.producer._
 
-    /*private*/ var predicateData: Map[ast.Predicate, PredicateData] = Map.empty
+    /*private*/ var predicateData: Map[String, PredicateData] = Map.empty
 
     def data = predicateData
-    def units = predicateData.keys.toSeq
-
+    def units = predicateData.values.map(_.predicate).toSeq
     /* Preamble contribution */
 
     def analyze(program: Program): Unit = {
       this.predicateData = toMap(
-        program.predicates map (pred => pred -> new PredicateData(pred)(symbolConverter)))
+        program.predicates map (pred => pred.name -> new PredicateData(pred)(symbolConverter)))
     }
 
     /* Predicate supporter generates no sorts */
