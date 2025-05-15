@@ -1,7 +1,11 @@
 package viper.silicon.assumptionAnalysis
 
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.verifier.Verifier
+object AssumptionType extends Enumeration {
+  type AssumptionType = Value
+  val Explicit, PathCondition, Internal, Implicit, Assertion, Unknown = Value
+}
+import viper.silicon.assumptionAnalysis.AssumptionType._
+
 
 case class AnalysisInfo(assumptionAnalyzer: AssumptionAnalyzer, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType) {
 

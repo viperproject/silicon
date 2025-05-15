@@ -1,15 +1,11 @@
 package viper.silicon.assumptionAnalysis
 
 import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.terms.Term
 import viper.silver.ast
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
-
-object AssumptionType extends Enumeration {
-  type AssumptionType = Value
-  val Explicit, PathCondition, Internal, Implicit, Assertion, Unknown = Value
-}
 import viper.silicon.assumptionAnalysis.AssumptionType._
 
 
@@ -66,7 +62,6 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
   override var edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
 
   override def addNode(node: AssumptionAnalysisNode): Unit = {
-    val identicalNodes = nodes.filter(node.equals) // TODO ake: when to merge identical nodes?
     nodes = nodes :+ node
   }
 
@@ -107,7 +102,9 @@ trait AssumptionAnalysisNode {
 }
 
 trait GeneralAssumptionNode extends AssumptionAnalysisNode {}
-trait GeneralAssertionNode extends AssumptionAnalysisNode {}
+trait GeneralAssertionNode extends AssumptionAnalysisNode {
+   var isAsserted = false
+}
 
 trait ChunkAnalysisInfo {
   val chunk: Chunk
@@ -123,12 +120,16 @@ case class StringAssumptionNode(description: String, sourceInfo: AnalysisSourceI
   override def getNodeString: String = "assume " + description
 }
 
-case class SimpleAssertionNode(assertion: ast.Exp, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode {
+case class SimpleAssertionNode(assertion: ast.Exp, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + assertion.toString
 }
 
-case class StringAssertionNode(description: String, isAsserted: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode {
+case class StringAssertionNode(description: String, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + description
+}
+
+case class SimpleCheckNode(t: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends GeneralAssertionNode {
+  override def getNodeString: String = "check " + t
 }
 
 case class PermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends GeneralAssumptionNode with ChunkAnalysisInfo {
@@ -136,12 +137,15 @@ case class PermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourc
 }
 
 case class PermissionExhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode with ChunkAnalysisInfo {
+  isAsserted = true
   override def getNodeString: String = "exhale " + chunk.toString
 }
 
 case class PermissionAssertNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode with ChunkAnalysisInfo {
+  isAsserted = true
   override def getNodeString: String = "assert " + chunk.toString
 }
+
 
 
 

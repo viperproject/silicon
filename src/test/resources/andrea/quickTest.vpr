@@ -1,11 +1,8 @@
 field f: Int
 
-function id(n: Int): Int
-    ensures n == result
-
-method foo(x: Ref, n: Int)
+method simple(x: Ref, y: Ref, p: Perm)
+  requires acc(x.f) && acc(y.f)
+  ensures  acc(x.f) && acc(y.f)
 {
-  var a: Int
-  a := id(5)
-  assert a > 0
+  x.f := y.f + 1
 }

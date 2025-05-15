@@ -4,6 +4,7 @@ import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.terms.Term
 import viper.silver.ast
 import viper.silver.ast.{Exp, Member, NoPosition}
 
@@ -26,7 +27,7 @@ trait AssumptionAnalyzer {
 
   def addAssumptions(assumptions: Iterable[DebugExp], analysisInfo: AnalysisInfo): Seq[Int]
 
-  def addAssertion(assertion: Either[String, ast.Exp], isAsserted: Boolean, analysisInfo: AnalysisInfo): Option[Int]
+  def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisInfo: AnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode]
 
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit
 
@@ -140,13 +141,13 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     newNodes.map(_.id).toSeq
   }
 
-  override def addAssertion(assertion: Either[String, ast.Exp], isAsserted: Boolean, analysisInfo: AnalysisInfo): Option[Int] = {
-    val newNode = assertion match {
-      case Left(description) => StringAssertionNode(description, isAsserted, analysisInfo.sourceInfo, analysisInfo.assumptionType)
-      case Right(exp) => SimpleAssertionNode(exp, isAsserted, analysisInfo.sourceInfo, analysisInfo.assumptionType)
-    }
-    addNode(newNode)
-    Some(newNode.id)
+  override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisInfo: AnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
+    if(isCheck) return Some(SimpleCheckNode(term, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+
+    Some(assertion match {
+      case Left(description) => StringAssertionNode(description, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+      case Right(exp) => SimpleAssertionNode(exp, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+    })
   }
 
   override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
@@ -199,7 +200,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def addAssumptions(assumptions: Iterable[DebugExp], analysisInfo: AnalysisInfo): Seq[Int] = Seq.empty
 
-  override def addAssertion(assertion: Either[String, ast.Exp], isAsserted: Boolean, analysisInfo: AnalysisInfo): Option[Int] = None
+  override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisInfo: AnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
 
   override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
   }

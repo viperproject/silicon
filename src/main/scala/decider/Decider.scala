@@ -400,7 +400,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       prover.check(timeout) == Unsat
     }
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Left("check"), Some(timeout)) // TODO ake
+    def check(t: Term, timeout: Int): Boolean = {
+      deciderAssert(t, Left("check " + t.toString), Some(timeout), isCheck=true)
+    }
 
 
     def assert(t: Term, description: String, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult = {
@@ -426,14 +428,20 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, e: Either[String, ast.Exp], timeout: Option[Int]) = {
+    private def deciderAssert(t: Term, e: Either[String, ast.Exp], timeout: Option[Int], isCheck: Boolean=false) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
       val asserted = if(Verifier.config.enableAssumptionAnalysis()) t.equals(True) else isKnownToBeTrue(t)
       val sourceExp = assumptionAnalyzer.currentExpStack.headOption
-      val assertionId: Option[Int] = if(!asserted) assumptionAnalyzer.addAssertion(e, false, decider.assumptionAnalyzer.currentAnalysisInfo.withAssumptionType(AssumptionType.Assertion)) else None
-      val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertionId))
+      val assertNode = if(!asserted) assumptionAnalyzer.createAssertOrCheckNode(t, e, decider.assumptionAnalyzer.currentAnalysisInfo, isCheck) else None
+
+      val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertNode map (_.id)))
+
+      assertNode foreach (_.isAsserted = result)
+      if(result || !isCheck) assertNode foreach assumptionAnalyzer.assumptionGraph.addNode
+
+
 
       symbExLog.closeScope(sepIdentifier)
       result
