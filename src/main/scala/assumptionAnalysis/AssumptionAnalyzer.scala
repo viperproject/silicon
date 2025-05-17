@@ -6,7 +6,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast
-import viper.silver.ast.{Exp, Member, NoPosition}
+import viper.silver.ast._
 
 
 trait AssumptionAnalyzer {
@@ -61,6 +61,8 @@ trait AssumptionAnalyzer {
   }
 
   def getMember: Option[Member]
+
+  def exportGraph(): Unit
 }
 
 object AssumptionAnalyzer {
@@ -194,6 +196,18 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
 
   override def getMember: Option[Member] = Some(member)
 
+  override def exportGraph(): Unit = {
+    val filename: Option[String] = getMember map {
+      case Method(name, _, _, _, _, _) => name
+      case ast.Function(name, _, _, _, _, _) => name
+      case Domain(name, _, _, _, _) => name
+      case contracted: Contracted => contracted.toString()
+      case location: Location => location.pos.toString
+      case member: ExtensionMember => member.pos.toString
+    }
+    assumptionGraph.exportGraph("graphExports/" + filename.getOrElse("latestExport") + ".txt")
+  }
+
 }
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
@@ -219,4 +233,6 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addSingleAssumption(assumption: DebugExp, analysisInfo: AnalysisInfo): Option[Int] = None
   override def addSingleAssumption(assumption: ast.Exp, analysisInfo: AnalysisInfo): Option[Int] = None
   override def addSingleAssumption(description: String, analysisInfo: AnalysisInfo): Option[Int] = None
+
+  override def exportGraph(): Unit = {}
 }

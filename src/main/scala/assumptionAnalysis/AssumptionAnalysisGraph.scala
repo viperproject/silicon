@@ -1,12 +1,13 @@
 package viper.silicon.assumptionAnalysis
 
+import viper.silicon.assumptionAnalysis.AssumptionType._
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
+import java.io.PrintWriter
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
-import viper.silicon.assumptionAnalysis.AssumptionType._
 
 
 object AssumptionAnalysisGraphHelper {
@@ -84,6 +85,23 @@ trait AssumptionAnalysisGraph {
   // def findDependentAssertions(assumption, enableTransitivity=false)
   // def findUnnecessaryAssumptions(enableTransitivity=false)
   // def mergeIdenticalNodes()
+
+  def getNodeExportString(node: AssumptionAnalysisNode): String = {
+    node.id + " | " + node.getClass.getSimpleName + " | " + node.assumptionType + " | " + node.getNodeString + " | " + node.sourceInfo.getStringForExport
+  }
+
+  def exportGraph(fileName: String): Unit = {
+    val writer = new PrintWriter(fileName)
+    writer.println("======         Nodes         ======")
+    writer.println("id | node type | assumption type | node info | source info")
+    nodes foreach (n => writer.println(getNodeExportString(n)))
+    writer.println("======         Edges         ======")
+    edges foreach (e => writer.println(e._1 + " -> " + e._2.mkString(",")))
+    writer.println("======    Transitive Edges   ======")
+    transitiveEdges foreach (e => writer.println(e._1 + " -> " + e._2.mkString(",")))
+    writer.println("======          End          ======")
+    writer.close()
+  }
 }
 
 
@@ -119,7 +137,7 @@ trait AssumptionAnalysisNode {
   val sourceInfo: AnalysisSourceInfo
   val assumptionType: AssumptionType
 
-  override def toString: String = id.toString + ": " + getNodeString + " at " + sourceInfo.toString
+  override def toString: String = id.toString + " | " + getNodeString + " | " + sourceInfo.toString
 
   def getNodeString: String
 
@@ -164,17 +182,17 @@ case class SimpleCheckNode(t: Term, sourceInfo: AnalysisSourceInfo, assumptionTy
 }
 
 case class PermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends GeneralAssumptionNode with ChunkAnalysisInfo {
-  override def getNodeString: String = "inhale " + permAmount.getOrElse("") + " at chunk " + chunk.toString
+  override def getNodeString: String = "inhale " + chunk.getAnalysisInfo
 }
 
 case class PermissionExhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode with ChunkAnalysisInfo {
   isAsserted = true
-  override def getNodeString: String = "exhale " + permAmount.getOrElse("") + " at chunk " + chunk.toString
+  override def getNodeString: String = "exhale " + chunk.getAnalysisInfo
 }
 
 case class PermissionAssertNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode with ChunkAnalysisInfo {
   isAsserted = true
-  override def getNodeString: String = "assert " + permAmount.getOrElse("") + " at chunk " + chunk.toString
+  override def getNodeString: String = "assert " + permAmount.getOrElse("") + " for " + chunk.getAnalysisInfo
 }
 
 

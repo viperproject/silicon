@@ -310,6 +310,7 @@ class DefaultMainVerifier(config: Config,
     if(Verifier.config.enableAssumptionAnalysis()){
       val assumptionAnalyzers = verificationResults.filter(_.assumptionAnalyzer.isInstanceOf[DefaultAssumptionAnalyzer]).map(_.assumptionAnalyzer)
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
+      assumptionAnalyzers foreach (_.exportGraph())
       logger debug s"assumption analyzers ${assumptionAnalyzers.mkString(", ")}"
     }
 
