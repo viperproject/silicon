@@ -20,6 +20,7 @@ object AssumptionAnalysisGraphHelper {
 trait AssumptionAnalysisGraph {
   var nodes: Seq[AssumptionAnalysisNode]
   var edges: mutable.Map[Int, Set[Int]]
+  var transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
 
   def addNode(node: AssumptionAnalysisNode): Unit
   def addNodes(nodes: Set[AssumptionAnalysisNode]): Unit
@@ -50,6 +51,35 @@ trait AssumptionAnalysisGraph {
     res
   }
 
+  def getNodesPerSourceInfo(): mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]] = {
+    val res = new mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]]()
+    nodes foreach {n =>
+      res.updateWith(n.sourceInfo)({
+        case Some(ns) => Some(ns ++ Seq(n))
+        case None => Some(Seq(n))
+      })
+    }
+    res
+  }
+
+  def addTransitiveEdges(source: Int, targets: Iterable[Int]): Unit = {
+    val oldTargets = transitiveEdges.getOrElse(source, Set.empty)
+    val newTargets = targets filter(t => t > source) // we only want forward edges
+    if(newTargets.nonEmpty) transitiveEdges.update(source, oldTargets ++ newTargets)
+  }
+
+  def addTransitiveEdges(source: Iterable[Int], targets: Iterable[Int]): Unit = {
+    source foreach (s => addTransitiveEdges(s, targets))
+  }
+
+  def addTransitiveEdges(): Unit = {
+    val nodesPerSourceInfo = getNodesPerSourceInfo()
+    nodesPerSourceInfo foreach {nodes =>
+      val asserts = nodes._2.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.id)
+      val assumes = nodes._2.filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.id)
+      addTransitiveEdges(asserts, assumes)
+    }
+  }
   // def findDependentAssumptions(assertion, enableTransitivity=false)
   // def findDependentAssertions(assumption, enableTransitivity=false)
   // def findUnnecessaryAssumptions(enableTransitivity=false)
@@ -71,7 +101,8 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
 
   override def addEdges(source: Int, targets: Iterable[Int]): Unit = {
     val oldTargets = edges.getOrElse(source, Set.empty)
-    edges.update(source, oldTargets ++ targets)
+    val newTargets = targets filter(t => t > source) // TODO ake: only forward edges?
+    edges.update(source, oldTargets ++ newTargets)
   }
 
   override def addEdges(sources: Iterable[Int], target: Int): Unit = {
@@ -133,17 +164,17 @@ case class SimpleCheckNode(t: Term, sourceInfo: AnalysisSourceInfo, assumptionTy
 }
 
 case class PermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends GeneralAssumptionNode with ChunkAnalysisInfo {
-  override def getNodeString: String = "inhale " + chunk.toString
+  override def getNodeString: String = "inhale " + permAmount.getOrElse("") + " at chunk " + chunk.toString
 }
 
 case class PermissionExhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode with ChunkAnalysisInfo {
   isAsserted = true
-  override def getNodeString: String = "exhale " + chunk.toString
+  override def getNodeString: String = "exhale " + permAmount.getOrElse("") + " at chunk " + chunk.toString
 }
 
 case class PermissionAssertNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Explicit) extends GeneralAssertionNode with ChunkAnalysisInfo {
   isAsserted = true
-  override def getNodeString: String = "assert " + chunk.toString
+  override def getNodeString: String = "assert " + permAmount.getOrElse("") + " at chunk " + chunk.toString
 }
 
 
