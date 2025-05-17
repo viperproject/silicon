@@ -17,11 +17,6 @@ trait AssumptionAnalyzer {
   def addPermissionExhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int]
   def addPermissionNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion, isExhale: Boolean=false): Option[Int]
 
-  def addSingleAssumption(assumption: ast.Exp, analysisInfo: AnalysisInfo): Option[Int]
-
-  def addSingleAssumption(description: String, analysisInfo: AnalysisInfo): Option[Int]
-
-  def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int]
 
   def addSingleAssumption(assumption: DebugExp, analysisInfo: AnalysisInfo): Option[Int]
 
@@ -30,6 +25,7 @@ trait AssumptionAnalyzer {
   def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisInfo: AnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode]
 
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit
+  def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
 
   def processUnsatCoreAndAddDependencies(dep: String): Unit
 
@@ -112,23 +108,6 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     assumptionGraph.addNode(node)
   }
 
-  override def addSingleAssumption(assumption: ast.Exp, analysisInfo: AnalysisInfo): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, analysisInfo.sourceInfo, analysisInfo.assumptionType)
-    addNode(node)
-    Some(node.id)
-  }
-
-  override def addSingleAssumption(description: String, analysisInfo: AnalysisInfo): Option[Int] = {
-    val node = StringAssumptionNode(description, analysisInfo.sourceInfo, analysisInfo.assumptionType)
-    addNode(node)
-    Some(node.id)
-  }
-
-  override def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int] = {
-    if(assumption.originalExp.isDefined) addSingleAssumption(assumption, AnalysisInfo(this, ExpAnalysisSourceInfo(assumption.originalExp.get), assumptionType))
-    else addSingleAssumption(assumption, AnalysisInfo(this, StringAnalysisSourceInfo(assumption.description.getOrElse("unknown"), NoPosition), assumptionType))
-  }
-
   override def addSingleAssumption(assumption: DebugExp, analysisInfo: AnalysisInfo): Option[Int] = {
     val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, analysisInfo.sourceInfo, analysisInfo.assumptionType)
     else StringAssumptionNode(assumption.description.getOrElse("unknown"), analysisInfo.sourceInfo, analysisInfo.assumptionType)
@@ -194,6 +173,13 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(oldChunkNodeIds, newChunkNodeId.get)
   }
 
+  override def addPermissionDependencies(oldChunks: Set[Chunk], newChunk: Chunk): Unit = {
+    val newChunkId = assumptionGraph.nodes
+      .filter(c => c.isInstanceOf[PermissionInhaleNode] && c.isInstanceOf[ChunkAnalysisInfo] && newChunk.equals(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
+      .map(_.id).toSet
+    addPermissionDependencies(oldChunks, newChunkId.headOption)
+  }
+
   override def getMember: Option[Member] = Some(member)
 
   override def exportGraph(): Unit = {
@@ -227,12 +213,11 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: Option[Int]): Unit = {
   }
 
+  override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit = {}
+
   override def getMember: Option[Member] = None
 
-  override def addSingleAssumption(assumption: DebugExp, assumptionType: AssumptionType = AssumptionType.Unknown): Option[Int] = None
   override def addSingleAssumption(assumption: DebugExp, analysisInfo: AnalysisInfo): Option[Int] = None
-  override def addSingleAssumption(assumption: ast.Exp, analysisInfo: AnalysisInfo): Option[Int] = None
-  override def addSingleAssumption(description: String, analysisInfo: AnalysisInfo): Option[Int] = None
 
   override def exportGraph(): Unit = {}
 }

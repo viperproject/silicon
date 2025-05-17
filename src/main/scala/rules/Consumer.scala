@@ -6,15 +6,9 @@
 
 package viper.silicon.rules
 
-import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
-
-import scala.collection.mutable
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons._
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, StringAnalysisSourceInfo}
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
@@ -23,6 +17,12 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons._
+
+import scala.collection.mutable
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 

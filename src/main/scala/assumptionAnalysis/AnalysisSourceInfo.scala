@@ -9,7 +9,7 @@ abstract class AnalysisSourceInfo {
 
   def getStringForExport: String = {
     getPosition match {
-      case NoPosition => "unknown position"
+      case NoPosition => "???"
       case column: HasLineColumn => "line " + column.line.toString
       case VirtualPosition(identifier) => "label " + identifier
     }

@@ -78,10 +78,11 @@ object chunkSupporter extends ChunkSupportRules {
               ve: VerificationError,
               v: Verifier,
               description: String,
-              analysisInfo: AnalysisInfo)
+              analysisInfo0: AnalysisInfo)
              (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
              : VerificationResult = {
 
+    val analysisInfo = v.decider.assumptionAnalyzer.currentAnalysisInfo
     consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, analysisInfo)((s2, h2, optSnap, chunk, v2) =>
       optSnap match {
         case Some(snap) =>
@@ -111,10 +112,11 @@ object chunkSupporter extends ChunkSupportRules {
                        returnSnap: Boolean,
                        ve: VerificationError,
                        v: Verifier,
-                       analysisInfo: AnalysisInfo)
+                       analysisInfo0: AnalysisInfo)
                       (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
                       : VerificationResult = {
 
+    val analysisInfo = v.decider.assumptionAnalyzer.currentAnalysisInfo
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, "chunk consume in package")
@@ -160,9 +162,9 @@ object chunkSupporter extends ChunkSupportRules {
                             perms: Term,
                             permsExp: Option[ast.Exp],
                             v: Verifier,
-                            analysisInfo: AnalysisInfo)
+                            analysisInfo0: AnalysisInfo)
                            : (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk]) = {
-
+    val analysisInfo = v.decider.assumptionAnalyzer.currentAnalysisInfo
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
 
     def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap): Unit = {

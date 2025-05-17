@@ -67,21 +67,24 @@ object executor extends ExecutionRules {
         case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
+          v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(ExpAnalysisSourceInfo(ce.condition), AssumptionType.PathCondition)
           val s1 = handleOutEdge(s, edge, v)
-          eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, condNew, v1) =>
+          eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, condNew, v1) => {
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
+            v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Implicit)
             brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1)(
               (s3, v3) =>
                 exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
+                  v.decider.assumptionAnalyzer.clearCurrentAnalysisInfo()
                   v4.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
                 }),
               (_, v3) => {
                 v3.symbExLog.closeScope(sepIdentifier)
                 Success()
-              }))
+              })})
 
         case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
           val s1 = handleOutEdge(s, edge, v)
@@ -497,7 +500,7 @@ object executor extends ExecutionRules {
             /* We're done */
             Success()
           case _ =>
-            v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(ExpAnalysisSourceInfo(a), AssumptionType.Explicit)
+            v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
             produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
               Q(s1, v1)})

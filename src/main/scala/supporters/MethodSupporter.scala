@@ -111,14 +111,17 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val sepIdentifier = symbExLog.openScope(impLog)
                   v3.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(posts.isEmpty) StringAnalysisSourceInfo("no postcondition", ast.NoPosition) else ExpAnalysisSourceInfo(posts.head), AssumptionType.Implicit)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
+                    v3.decider.assumptionAnalyzer.clearCurrentAnalysisInfo()
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) =>{
                     v4.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(posts.isEmpty) StringAnalysisSourceInfo("no postcondition", ast.NoPosition) else ExpAnalysisSourceInfo(posts.head), AssumptionType.Assertion)
-                    consumes(s4, posts, false, postViolated, v4, v4.decider.assumptionAnalyzer.currentAnalysisInfo)((_, _, _, _) =>
-                      Success())})}) }  )})})
+                    consumes(s4, posts, false, postViolated, v4, v4.decider.assumptionAnalyzer.currentAnalysisInfo)((_, _, _, _) => {
+                        v3.decider.assumptionAnalyzer.clearCurrentAnalysisInfo()
+                        Success()
+                      })})}) }  )})})
 
       result.assumptionAnalyzer = v.decider.assumptionAnalyzer
       v.decider.removeAssumptionAnalyzer()

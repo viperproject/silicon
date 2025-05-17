@@ -87,7 +87,7 @@ trait AssumptionAnalysisGraph {
   // def mergeIdenticalNodes()
 
   def getNodeExportString(node: AssumptionAnalysisNode): String = {
-    node.id + " | " + node.getClass.getSimpleName + " | " + node.assumptionType + " | " + node.getNodeString + " | " + node.sourceInfo.getStringForExport
+    node.id + " | " + node.getClass.getSimpleName + " | " + node.assumptionType + " | " + node.getNodeString + " | " + node.sourceInfo.toString
   }
 
   def exportGraph(fileName: String): Unit = {
