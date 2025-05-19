@@ -7,6 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
+import viper.silicon.assumptionAnalysis.AssumptionType
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
@@ -100,7 +101,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
           /*    locallyXXX {
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
-                  produce(s1, freshSnap, body, err, v)((_, _) =>
+                  produce(s1, freshSnap, body, err, v, AssumptionType.Internal)((_, _) =>
                     Success())})
       }
 

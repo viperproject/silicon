@@ -6,24 +6,24 @@
 
 package viper.silicon.rules
 
-import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode}
-
-import scala.collection.mutable
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.PartialVerificationError
+import viper.silicon.assumptionAnalysis.AssumptionType
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.rules.predicateSupporter.withExp
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
+
+import scala.collection.mutable
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -34,6 +34,7 @@ trait ProductionRules extends SymbolicExecutionRules {
     * @param a The assertion to produce.
     * @param pve The error to report in case the production fails.
     * @param v The verifier to use.
+    * @param assumptionType The assumption type used for analysis purposes
     * @param Q The continuation to invoke if the production succeeded, with the state and
     *          the verifier resulting from the production as arguments.
     * @return The result of the continuation.
@@ -42,7 +43,8 @@ trait ProductionRules extends SymbolicExecutionRules {
               sf: (Sort, Verifier) => Term,
               a: ast.Exp,
               pve: PartialVerificationError,
-              v: Verifier)
+              v: Verifier,
+              assumptionType: AssumptionType = AssumptionType.Implicit)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -58,6 +60,7 @@ trait ProductionRules extends SymbolicExecutionRules {
     * @param pvef The error to report in case the production fails. Given assertions `as`, an error
     *             `pvef(as_i)` will be reported if producing assertion `as_i` fails.
     * @param v @see [[produce]]
+    * @param assumptionType @see [[produce]]
     * @param Q @see [[produce]]
     * @return @see [[produce]]
     */
@@ -65,7 +68,8 @@ trait ProductionRules extends SymbolicExecutionRules {
                sf: (Sort, Verifier) => Term,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
-               v: Verifier)
+               v: Verifier,
+               assumptionType: AssumptionType = AssumptionType.Implicit)
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult
 }
@@ -104,18 +108,20 @@ object producer extends ProductionRules {
               sf: (Sort, Verifier) => Term,
               a: ast.Exp,
               pve: PartialVerificationError,
-              v: Verifier)
+              v: Verifier,
+              assumptionType: AssumptionType = AssumptionType.Implicit)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult =
 
-    produceR(s, sf, a.whenInhaling, pve, v)(Q)
+    produceR(s, sf, a.whenInhaling, pve, v, assumptionType)(Q)
 
   /** @inheritdoc */
   def produces(s: State,
                sf: (Sort, Verifier) => Term,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
-               v: Verifier)
+               v: Verifier,
+               assumptionType: AssumptionType = AssumptionType.Implicit)
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult = {
 
@@ -130,14 +136,15 @@ object producer extends ProductionRules {
       allPves ++= pves
     })
 
-    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v)(Q)
+    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v, assumptionType)(Q)
   }
 
   private def produceTlcs(s: State,
                           sf: (Sort, Verifier) => Term,
                           as: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
-                          v: Verifier)
+                          v: Verifier,
+                          assumptionType: AssumptionType)
                          (Q: (State, Verifier) => VerificationResult)
                          : VerificationResult = {
 
@@ -148,7 +155,7 @@ object producer extends ProductionRules {
       val pve = pves.head
 
       if (as.tail.isEmpty)
-        wrappedProduceTlc(s, sf, a, pve, v)(Q)
+        wrappedProduceTlc(s, sf, a, pve, v, assumptionType)(Q)
       else {
         try {
           val (sf0, sf1) =
@@ -159,8 +166,8 @@ object producer extends ProductionRules {
            *       over and over again.
            */
 
-          wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
-            produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+          wrappedProduceTlc(s, sf0, a, pve, v, assumptionType)((s1, v1) =>
+            produceTlcs(s1, sf1, as.tail, pves.tail, v1, assumptionType)(Q))
         } catch {
           // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
           // This should never happen if we're in a reachable state, so here we check for that
@@ -177,14 +184,15 @@ object producer extends ProductionRules {
                        sf: (Sort, Verifier) => Term,
                        a: ast.Exp,
                        pve: PartialVerificationError,
-                       v: Verifier)
+                       v: Verifier,
+                       assumptionType: AssumptionType)
                       (Q: (State, Verifier) => VerificationResult)
                       : VerificationResult = {
 
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
 
-    produceTlcs(s, sf, tlcs, pves, v)(Q)
+    produceTlcs(s, sf, tlcs, pves, v, assumptionType)(Q)
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -194,12 +202,13 @@ object producer extends ProductionRules {
                                 sf: (Sort, Verifier) => Term,
                                 a: ast.Exp,
                                 pve: PartialVerificationError,
-                                v: Verifier)
+                                v: Verifier,
+                                assumptionType: AssumptionType)
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
     val sepIdentifier = v.symbExLog.openScope(new ProduceRecord(a, s, v.decider.pcs))
-    produceTlc(s, sf, a, pve, v)((s1, v1) => {
+    produceTlc(s, sf, a, pve, v, assumptionType)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
@@ -208,7 +217,8 @@ object producer extends ProductionRules {
                          sf: (Sort, Verifier) => Term,
                          a: ast.Exp,
                          pve: PartialVerificationError,
-                         v: Verifier)
+                         v: Verifier,
+                         assumptionType: AssumptionType)
                         (continuation: (State, Verifier) => VerificationResult)
                         : VerificationResult = {
 
@@ -228,7 +238,7 @@ object producer extends ProductionRules {
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
             branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a0, pve, v2)((s3, v3) => {
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a0, pve, v2, assumptionType)((s3, v3) => {
                 v3.symbExLog.closeScope(uidImplies)
                 QB(s3, null, v3)
               }),
@@ -259,7 +269,7 @@ object producer extends ProductionRules {
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           branch(s1, t0, (e0, e0New), v1)(
-            (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
+            (s2, v2) => produceR(s2, sf, a0, pve, v2, assumptionType)((s3, v3) => {
               v3.symbExLog.closeScope(uidImplies)
               Q(s3, v3)
             }),
@@ -281,11 +291,11 @@ object producer extends ProductionRules {
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
             branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a1, pve, v2)((s3, v3) => {
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a1, pve, v2, assumptionType)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }),
-              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a2, pve, v2)((s3, v3) => {
+              (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a2, pve, v2, assumptionType)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }))
@@ -307,18 +317,18 @@ object producer extends ProductionRules {
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           branch(s1, t0, (e0, e0New), v1)(
-            (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
+            (s2, v2) => produceR(s2, sf, a1, pve, v2, assumptionType)((s3, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             }),
-            (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
+            (s2, v2) => produceR(s2, sf, a2, pve, v2, assumptionType)((s3, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             })))
 
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>
-          produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
+          produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1, assumptionType)(Q))
 
       case accPred@ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), _) =>
         val perm = accPred.perm
@@ -335,12 +345,12 @@ object producer extends ProductionRules {
               if (s3.qpFields.contains(field)) {
                 val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
                 quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT))),
-                  Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), snap, gain, gainExp, trigger, v3)(Q)
+                  Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), snap, gain, gainExp, trigger, v3, assumptionType)(Q)
               } else {
                 val (debugHeapName, debugLabel) = v3.getDebugOldLabel(s3, accPred.pos)
                 val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, field)(), debugLabel)(accPred.pos, accPred.info, accPred.errT))
                 val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), snap, snapExp, gain, gainExp,
-                  v1.decider.assumptionAnalyzer.currentAnalysisInfo)
+                  v1.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
                 chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) => {
                   val s5 = s4.copy(h = h4)
                   val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s5
@@ -364,11 +374,11 @@ object producer extends ProductionRules {
                 val formalArgs = s2.predicateFormalVarMap(predicate)
                 val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
                 quantifiedChunkSupporter.produceSingleLocation(
-                  s2, predicate, formalArgs, Option.when(withExp)(predicate.formalArgs), tArgs, eArgsNew, snap, gain, gainExp, trigger, v2)(Q)
+                  s2, predicate, formalArgs, Option.when(withExp)(predicate.formalArgs), tArgs, eArgsNew, snap, gain, gainExp, trigger, v2, assumptionType)(Q)
               } else {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgsNew, snap1, None, gain, gainExp,
-                  v1.decider.assumptionAnalyzer.currentAnalysisInfo)
+                  v1.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                   if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {
@@ -395,7 +405,7 @@ object producer extends ProductionRules {
             else s1.conservedPcs
           val ch =
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args, bodyVarsNew,
-              FullPerm, Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), sm, s.program, v1)
+              FullPerm, Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), sm, s.program, v1, assumptionType)
           val h2 = s1.h + ch
           val smCache1 = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))){
             val (relevantChunks, _) =
@@ -420,7 +430,7 @@ object producer extends ProductionRules {
 
       case wand: ast.MagicWand =>
         val snap = sf(v.snapshotSupporter.optimalSnapshotSort(wand, s, v), v)
-        magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snap), pve, v)((s1, chWand, v1) =>
+        magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snap), pve, v, assumptionType)((s1, chWand, v1) =>
           chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
             Q(s2.copy(h = h2), v2)))
 
@@ -458,7 +468,8 @@ object producer extends ProductionRules {
               pve,
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
-              v1
+              v1,
+              assumptionType
             )(Q)
           case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
         }
@@ -500,7 +511,8 @@ object producer extends ProductionRules {
               pve,
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
-              v1
+              v1,
+              assumptionType
             )(Q)
           case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
         }
@@ -541,7 +553,8 @@ object producer extends ProductionRules {
               pve,
               NegativePermission(ast.FullPerm()()),
               QPAssertionNotInjective(wand),
-              v1
+              v1,
+              assumptionType
             )(Q)
           case (s1, _, _, _, _, None, v1) => Q(s1, v1)
         }
@@ -554,7 +567,7 @@ object producer extends ProductionRules {
         v.decider.assume(sf(sorts.Snap, v) === Unit,
           Option.when(withExp)(DebugExp.createInstance("Empty snapshot", isInternal_ = true)), AssumptionType.Internal) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, aNew, v1) => {
-          v1.decider.assume(t, Option.when(withExp)(a), aNew, AssumptionType.Explicit) // TODO ake: always explicit?
+          v1.decider.assume(t, Option.when(withExp)(a), aNew, assumptionType)
           Q(s1, v1)})
     }
 

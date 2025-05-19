@@ -29,8 +29,12 @@ trait AssumptionAnalyzer {
 
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
-  var currentAnalysisInfo: AnalysisInfo = new NoAnalysisInfo()
+  private var currentAnalysisInfo: AnalysisInfo = new NoAnalysisInfo()
   var currentExpStack: InsertionOrderedSet[ast.Exp] = InsertionOrderedSet.empty
+
+  def getAnalysisInfo: AnalysisInfo = currentAnalysisInfo
+
+  def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, currentAnalysisInfo.sourceInfo, assumptionType)
 
   def getFullSourceInfo: AnalysisSourceInfo = {
     if(currentExpStack.nonEmpty){
@@ -45,21 +49,8 @@ trait AssumptionAnalyzer {
     currentAnalysisInfo
   }
 
-  def clearCurrentAnalysisInfo(): AnalysisInfo = {
+  def clearCurrentAnalysisInfo(): Unit = {
     currentAnalysisInfo = new NoAnalysisInfo()
-    currentAnalysisInfo
-  }
-
-  def updateCurrentAnalysisInfo(at: AssumptionType): AnalysisInfo = {
-    setCurrentAnalysisInfo(currentAnalysisInfo.sourceInfo, at)
-  }
-
-  def updateCurrentAnalysisInfo(si: AnalysisSourceInfo): AnalysisInfo = {
-    setCurrentAnalysisInfo(si, currentAnalysisInfo.assumptionType)
-  }
-
-  def updateCurrentAnalysisInfo(si: AnalysisSourceInfo, at: AssumptionType): AnalysisInfo = {
-    setCurrentAnalysisInfo(si, at)
   }
 
   def getMember: Option[Member]

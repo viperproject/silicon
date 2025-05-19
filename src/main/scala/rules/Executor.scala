@@ -75,7 +75,6 @@ object executor extends ExecutionRules {
             brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1)(
               (s3, v3) =>
                 exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
-                  v.decider.assumptionAnalyzer.clearCurrentAnalysisInfo()
                   v4.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
                 }),
@@ -263,8 +262,7 @@ object executor extends ExecutionRules {
             (executionFlowController.locally(sBody, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
                 val mark = v0.decider.setPathConditionMark()
-              v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(invs.isEmpty) StringAnalysisSourceInfo("invariants", ast.NoPosition) else ExpAnalysisSourceInfo(invs.head), AssumptionType.LoopInvariant)
-                produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
+                produces(s0, freshSnap, invs, ContractNotWellformed, v0, AssumptionType.LoopInvariant)((s1, v1) => { // TODO ake: set source
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
                                               v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */)
@@ -272,8 +270,8 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                v0.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(invs.isEmpty) StringAnalysisSourceInfo("no invariants", ast.NoPosition) else ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion)
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, v0.decider.assumptionAnalyzer.currentAnalysisInfo)((sLeftover, _, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
+              // TODO ake: set source
+                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, v0.decider.assumptionAnalyzer.getAnalysisInfo)((sLeftover, _, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -307,8 +305,8 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(invs.isEmpty) StringAnalysisSourceInfo("no invariants", ast.NoPosition) else ExpAnalysisSourceInfo(invs.head), AssumptionType.Assertion)
-            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((_, _, _, _) =>
+            // TODO ake: set source
+            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, v.decider.assumptionAnalyzer.getAnalysisInfo)((_, _, _, _) =>
               Success())
         }
     }
@@ -425,7 +423,7 @@ object executor extends ExecutionRules {
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
                 v1.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1)
+                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, AssumptionType.Implicit) // TODO ake: or internal?
                 if (s3.heapDependentTriggers.contains(field)) {
                   val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Internal)
@@ -478,7 +476,7 @@ object executor extends ExecutionRules {
             val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
             v.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT))),
-              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v)
+              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v, AssumptionType.Implicit)
           } else {
             val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp,
               AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(ast.FieldAccess(x, field)(field.pos, field.info, field.errT)), AssumptionType.Explicit))
@@ -498,8 +496,7 @@ object executor extends ExecutionRules {
             /* We're done */
             Success()
           case _ =>
-            v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
-            produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
+            produce(s, freshSnap, a, InhaleFailed(inhale), v, AssumptionType.Explicit)((s1, v1) => {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
               Q(s1, v1)})
         }
@@ -507,7 +504,7 @@ object executor extends ExecutionRules {
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s1, _, consumedChunks, v1) =>
+        consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s1, _, consumedChunks, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
@@ -521,7 +518,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, false, AssertFailed(assert), v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((_, _, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v, v.decider.assumptionAnalyzer.getAnalysisInfo)((_, _, _, _) =>
             Success())
 
         r combine Q(s, v)
@@ -537,11 +534,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s2, _, _, v1) => {
+          consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s2, _, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.currentAnalysisInfo)((s1, _, _, v1) => {
+          consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s1, _, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -550,7 +547,7 @@ object executor extends ExecutionRules {
       case ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
-        val analysisInfo = v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
+        val analysisInfo = v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Explicit)
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
         val member = s.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
@@ -570,8 +567,7 @@ object executor extends ExecutionRules {
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
-        v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
-        val s1 = v.stateConsolidator(s).consolidate(s, v)
+        val s1 = v.stateConsolidator(s).consolidate(s, v) // TODO ake: AssumptionType.Explicit
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
@@ -601,15 +597,14 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1, v1.decider.assumptionAnalyzer.currentAnalysisInfo)((s3, _, consumedChunks, v2) => { // TODO ake: add edges from consumedChunks
+          consumes(s2, meth.pres, false, _ => pvePre, v1, v1.decider.assumptionAnalyzer.getAnalysisInfo)((s3, _, consumedChunks, v2) => { // TODO ake: add edges from consumedChunks
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            v2.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Explicit)
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
+            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, AssumptionType.Explicit)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
@@ -630,7 +625,7 @@ object executor extends ExecutionRules {
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, v3.decider.assumptionAnalyzer.currentAnalysisInfo)((s4, v4) => {
+              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, v3.decider.assumptionAnalyzer.getAnalysisInfo)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }
