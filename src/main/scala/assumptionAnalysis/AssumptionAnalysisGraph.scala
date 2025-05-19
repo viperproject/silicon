@@ -94,7 +94,7 @@ trait AssumptionAnalysisGraph {
     val writer = new PrintWriter(fileName)
     writer.println("======         Nodes         ======")
     writer.println("id | node type | assumption type | node info | source info")
-    nodes foreach (n => writer.println(getNodeExportString(n)))
+    nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
     writer.println("======         Edges         ======")
     edges foreach (e => writer.println(e._1 + " -> " + e._2.mkString(",")))
     writer.println("======    Transitive Edges   ======")
