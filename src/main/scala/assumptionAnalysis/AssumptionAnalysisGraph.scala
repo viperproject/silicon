@@ -55,7 +55,7 @@ trait AssumptionAnalysisGraph {
   def getNodesPerSourceInfo(): mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]] = {
     val res = new mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]]()
     nodes foreach {n =>
-      res.updateWith(n.sourceInfo)({
+      res.updateWith(n.sourceInfo.getTopLevelSource)({
         case Some(ns) => Some(ns ++ Seq(n))
         case None => Some(Seq(n))
       })
@@ -119,7 +119,7 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
 
   override def addEdges(source: Int, targets: Iterable[Int]): Unit = {
     val oldTargets = edges.getOrElse(source, Set.empty)
-    val newTargets = targets filter(t => t > source) // TODO ake: only forward edges?
+    val newTargets = targets filter(t => t > source) // only forward edges
     edges.update(source, oldTargets ++ newTargets)
   }
 

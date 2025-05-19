@@ -30,7 +30,7 @@ trait AssumptionAnalyzer {
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
   private var currentSourceInfo: AnalysisSourceInfo = NoAnalysisSourceInfo()
-  var currentExpStack: InsertionOrderedSet[ast.Exp] = InsertionOrderedSet.empty
+  private var currentExpStack: List[ast.Exp] = List.empty
 
   def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
 
@@ -56,7 +56,7 @@ trait AssumptionAnalyzer {
   }
 
   def addExpToStack(e: ast.Exp): Unit = {
-    currentExpStack = InsertionOrderedSet(Set(e) ++ currentExpStack)
+    currentExpStack = e +: currentExpStack
   }
 
   def popExpFromStack(): Unit = {
