@@ -63,7 +63,7 @@ trait Decider {
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit
   def assume(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], assumptionType: AssumptionType): Unit
-  def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit
+  def assumeDefinition(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, assumptionType: AssumptionType): Unit
 
   def check(t: Term, timeout: Int): Boolean
@@ -306,8 +306,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       assume(InsertionOrderedSet(Seq((t, debugExp))), assumptionAnalyzer.currentAnalysisInfo.sourceInfo, enforceAssumption = false, isDefinition = false, assumptionType)
     }
 
-    def assumeDefinition(t: Term, debugExp: Option[DebugExp]): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), assumptionAnalyzer.currentAnalysisInfo.sourceInfo, enforceAssumption=false, isDefinition=true, assumptionType=AssumptionType.Implicit)
+    def assumeDefinition(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit = {
+      assume(InsertionOrderedSet(Seq((t, debugExp))), assumptionAnalyzer.currentAnalysisInfo.sourceInfo, enforceAssumption=false, isDefinition=true, assumptionType)
     }
 
     def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], analysisSourceInfo: AnalysisSourceInfo, enforceAssumption: Boolean, isDefinition: Boolean, assumptionType: AssumptionType): Unit = {

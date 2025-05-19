@@ -388,8 +388,8 @@ object producer extends ProductionRules {
             quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(v1.snapshotSupporter.optimalSnapshotSort(wand, s1, v1), v1), v1)
           v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val definitionalAxiomMark = v1.decider.setPathConditionMark()
-          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-          v1.decider.assumeDefinition(smValueDef, debugExp)
+          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", isInternal_ = true))
+          v1.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
           val conservedPcs =
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs

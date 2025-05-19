@@ -120,7 +120,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       abstractLhs,
       MWSFLookup(mwsf, abstractLhs) === rhsSnapshot,
       Trigger(MWSFLookup(mwsf, abstractLhs))
-    ), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot definition", true)))
+    ), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot definition", isInternal_ = true)), AssumptionType.Internal)
     magicWandSnapshot
   }
 
@@ -323,8 +323,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val snapshotTerm = Combine(freshSnapRoot, snapRhs)
           val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, snapshotTerm, v4)
           v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-          v4.decider.assumeDefinition(smValueDef, debugExp)
+          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", isInternal_ = true))
+          v4.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args,
             Option.when(withExp)(bodyVars), FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program, v4)
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
