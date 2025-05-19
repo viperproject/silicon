@@ -109,7 +109,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val s4 = s3.copy(h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  v3.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(posts.isEmpty) StringAnalysisSourceInfo("no postcondition", ast.NoPosition) else ExpAnalysisSourceInfo(posts.head), AssumptionType.Implicit)
+                  v3.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(posts.isEmpty) StringAnalysisSourceInfo("no postcondition", ast.NoPosition) else ExpAnalysisSourceInfo(posts.head), AssumptionType.Internal)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
                     v3.decider.assumptionAnalyzer.clearCurrentAnalysisInfo()
                     symbExLog.closeScope(sepIdentifier)

@@ -10,8 +10,6 @@ import viper.silver.ast._
 
 
 trait AssumptionAnalyzer {
-  //  def pushScope(stmt: ast.Stmt): Unit
-  //  def closeScope(): Unit
   def addPermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
   def addPermissionAssertNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int]
   def addPermissionExhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Assertion): Option[Int]
@@ -22,7 +20,7 @@ trait AssumptionAnalyzer {
 
   def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int]
 
-  def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisInfo: AnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode]
+  def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
 
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
@@ -33,6 +31,14 @@ trait AssumptionAnalyzer {
 
   var currentAnalysisInfo: AnalysisInfo = new NoAnalysisInfo()
   var currentExpStack: InsertionOrderedSet[ast.Exp] = InsertionOrderedSet.empty
+
+  def getFullSourceInfo: AnalysisSourceInfo = {
+    if(currentExpStack.nonEmpty){
+      CompositeAnalysisSourceInfo(currentAnalysisInfo.sourceInfo, ExpAnalysisSourceInfo(currentExpStack.head))
+    }else{
+      currentAnalysisInfo.sourceInfo
+    }
+  }
 
   def setCurrentAnalysisInfo(analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): AnalysisInfo = {
     currentAnalysisInfo = AnalysisInfo(this, analysisSourceInfo, assumptionType)
@@ -87,23 +93,6 @@ object AssumptionAnalyzer {
 }
 
 class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
-  //  private var scope : mutable.Set[AssumptionAnalysisNode] = mutable.Set.empty
-  //  private var isScopeOpen: Boolean = false
-  //  private var scopeStmt: ast.Stmt = ???
-
-
-  //  override def pushScope(stmt: ast.Stmt): Unit = {
-  ////    scopeStmt = stmt
-  //    scope = mutable.Set.empty
-  //    isScopeOpen = true
-  //  }
-  //
-  //  override def closeScope(): Unit = {
-  ////    assumptionGraph.addNode(new StatementGroupNode(scopeStmt, scope.toSet))
-  //    scope = mutable.Set.empty
-  //    isScopeOpen = false
-  //  }
-
   def addNode(node: AssumptionAnalysisNode): Unit = {
     assumptionGraph.addNode(node)
   }
@@ -122,12 +111,12 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     newNodes.map(_.id).toSeq
   }
 
-  override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisInfo: AnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
-    if(isCheck) return Some(SimpleCheckNode(term, analysisInfo.sourceInfo, analysisInfo.assumptionType))
+  override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
+    if(isCheck) return Some(SimpleCheckNode(term, analysisSourceInfo, AssumptionType.Implicit))
 
     Some(assertion match {
-      case Left(description) => StringAssertionNode(description, analysisInfo.sourceInfo, analysisInfo.assumptionType)
-      case Right(exp) => SimpleAssertionNode(exp, analysisInfo.sourceInfo, analysisInfo.assumptionType)
+      case Left(description) => StringAssertionNode(description, analysisSourceInfo, AssumptionType.Explicit)
+      case Right(exp) => SimpleAssertionNode(exp, analysisSourceInfo, AssumptionType.Explicit)
     })
   }
 
@@ -200,7 +189,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = Seq.empty
 
-  override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisInfo: AnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
+  override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
 
   override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
   }

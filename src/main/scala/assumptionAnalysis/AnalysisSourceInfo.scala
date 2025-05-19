@@ -54,6 +54,7 @@ case class StringAnalysisSourceInfo(description: String, position: Position) ext
   override def getPosition: Position = position
 }
 
-case class CombinedAnalysisSourceInfo(mainSource: AnalysisSourceInfo, sndSource: AnalysisSourceInfo) extends AnalysisSourceInfo {
-  override def getPosition: Position = mainSource.getPosition
+case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, fineGrainedSource: AnalysisSourceInfo) extends AnalysisSourceInfo {
+  override def toString: String = coarseGrainedSource.toString + " (" + super.toString + ")"
+  override def getPosition: Position = coarseGrainedSource.getPosition
 }

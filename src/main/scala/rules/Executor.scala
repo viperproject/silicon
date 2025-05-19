@@ -67,13 +67,11 @@ object executor extends ExecutionRules {
         case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-          v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(ExpAnalysisSourceInfo(ce.condition), AssumptionType.PathCondition)
           val s1 = handleOutEdge(s, edge, v)
           eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, condNew, v1) => {
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
-            v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(AssumptionType.Implicit)
             brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1)(
               (s3, v3) =>
                 exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
@@ -265,7 +263,7 @@ object executor extends ExecutionRules {
             (executionFlowController.locally(sBody, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
                 val mark = v0.decider.setPathConditionMark()
-              v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(invs.isEmpty) StringAnalysisSourceInfo("invariants", ast.NoPosition) else ExpAnalysisSourceInfo(invs.head), AssumptionType.Explicit)
+              v.decider.assumptionAnalyzer.setCurrentAnalysisInfo(if(invs.isEmpty) StringAnalysisSourceInfo("invariants", ast.NoPosition) else ExpAnalysisSourceInfo(invs.head), AssumptionType.LoopInvariant)
                 produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
