@@ -440,19 +440,20 @@ object executor extends ExecutionRules {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
+            v2.decider.assumptionAnalyzer.addExpToStack(fa)
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            val analysisInfo = AnalysisInfo(v2.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fa), AssumptionType.Assertion)
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description, analysisInfo)((s3, h3, _, consumedChunks, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description, v2.decider.assumptionAnalyzer.getAnalysisInfo)((s3, h3, _, consumedChunks, v3) => {
               val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk.createDerivedChunk(consumedChunks.toSet, FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                AnalysisInfo(v3.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit))
+                v3.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Implicit))
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                 val s5 = s4.copy(h = h4)
                 val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
                 val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
+                v4.decider.assumptionAnalyzer.popExpFromStack()
                 Q(s6, v4)
               })
             })
@@ -768,7 +769,7 @@ object executor extends ExecutionRules {
          } else {
             (None, None)
          }
-         v.decider.assumeDefinition(BuiltinEquals(t, rhs), debugExp, AssumptionType.Internal)
+         v.decider.assumeDefinition(BuiltinEquals(t, rhs), debugExp, AssumptionType.Implicit)
          (t, eNew)
      }
    }

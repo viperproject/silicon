@@ -1,7 +1,7 @@
 field f: Int
 
 method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
-    requires acc(a.f, 1/2) && acc(b.f, 1/2)
+    requires acc(a.f) && acc(b.f, 1/2)
     requires c ==> a == b
     requires a.f > 0 && n > 0
 {

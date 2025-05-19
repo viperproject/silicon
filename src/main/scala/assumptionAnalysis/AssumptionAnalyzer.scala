@@ -34,13 +34,15 @@ trait AssumptionAnalyzer {
 
   def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
 
-  def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, currentSourceInfo, assumptionType)
+  def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, getFullSourceInfo, assumptionType)
 
   def getFullSourceInfo: AnalysisSourceInfo = {
-    if(currentExpStack.nonEmpty){
-      CompositeAnalysisSourceInfo(currentSourceInfo, ExpAnalysisSourceInfo(currentExpStack.head))
-    }else{
+    if(currentExpStack.isEmpty){
       currentSourceInfo
+    }else if(currentSourceInfo.isInstanceOf[NoAnalysisSourceInfo]){
+      ExpAnalysisSourceInfo(currentExpStack.head)
+    }else{
+      CompositeAnalysisSourceInfo(currentSourceInfo, ExpAnalysisSourceInfo(currentExpStack.head))
     }
   }
 
@@ -50,12 +52,22 @@ trait AssumptionAnalyzer {
   }
 
   def clearCurrentAnalysisInfo(): Unit = {
-    currentSourceInfo = new NoAnalysisSourceInfo()
+    currentSourceInfo = NoAnalysisSourceInfo()
+  }
+
+  def addExpToStack(e: ast.Exp): Unit = {
+    currentExpStack = InsertionOrderedSet(Set(e) ++ currentExpStack)
+  }
+
+  def popExpFromStack(): Unit = {
+    if(currentExpStack.nonEmpty)
+      currentExpStack = currentExpStack.tail
   }
 
   def getMember: Option[Member]
 
   def exportGraph(): Unit
+
 }
 
 object AssumptionAnalyzer {

@@ -179,8 +179,10 @@ object consumer extends ConsumptionRules {
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
+      v.decider.assumptionAnalyzer.addExpToStack(a)
 
       consumeTlc(s1, h0, a, returnSnap, pve, v1, analysisInfo)((s2, h2, snap2, chunks, v2) => {
+        v.decider.assumptionAnalyzer.popExpFromStack()
         v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, chunks, v2)})
     })(Q)
@@ -198,7 +200,6 @@ object consumer extends ConsumptionRules {
      */
 
     v.logger.debug(s"\nCONSUME ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
-//    v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(ExpAnalysisSourceInfo(a)) // TODO ake
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
     v.logger.debug("h = " + v.stateFormatter.format(h))
     if (s.reserveHeaps.nonEmpty)
