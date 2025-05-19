@@ -223,11 +223,11 @@ object evaluator extends EvaluationRules {
                * quantifier in whose body field 'fa.field' was accessed)
                * which is protected by a trigger term that we currently don't have.
                */
-              v1.decider.assume(And(fvfDef.valueDefinitions), Option.when(withExp)(DebugExp.createInstance("Value definitions", isInternal_ = true)))
+              v1.decider.assume(And(fvfDef.valueDefinitions), Option.when(withExp)(DebugExp.createInstance("Value definitions", isInternal_ = true)), AssumptionType.Internal)
               if (s1.heapDependentTriggers.contains(fa.field)){
                 val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
                 val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                v1.decider.assume(trigger, triggerExp)
+                v1.decider.assume(trigger, triggerExp, AssumptionType.Internal)
               }
               if (s1.triggerExp) {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
@@ -258,7 +258,7 @@ object evaluator extends EvaluationRules {
                 if (s1.heapDependentTriggers.contains(fa.field)) {
                   val trigger = FieldTrigger(fa.field.name, relevantChunks.head.fvf, tRcvr)
                   val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                  v1.decider.assume(trigger, triggerExp)
+                  v1.decider.assume(trigger, triggerExp, AssumptionType.Internal)
                 }
                 val (permCheck, permCheckExp) =
                   if (s1.triggerExp) {
@@ -291,7 +291,7 @@ object evaluator extends EvaluationRules {
                 if (s2.heapDependentTriggers.contains(fa.field)) {
                   val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
                   val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                  v1.decider.assume(trigger, triggerExp)
+                  v1.decider.assume(trigger, triggerExp, AssumptionType.Internal)
                 }
                 val (permCheck, permCheckExp) =
                   if (s2.triggerExp) {
@@ -561,7 +561,7 @@ object evaluator extends EvaluationRules {
                   val (s2, pmDef) = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))) {
                     val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
                     val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${identifier.toString}($eArgsString))", isInternal_ = true))
-                    v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args), debugExp)
+                    v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args), debugExp, AssumptionType.Internal)
                     (s2, pmDef)
                   } else {
                     val (pmDef, pmCache) =
@@ -578,7 +578,7 @@ object evaluator extends EvaluationRules {
                   val (s2, pmDef) = if (s1.heapDependentTriggers.contains(field)) {
                     val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
                     val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: ${eArgsNew.head}.${field.name}"))
-                    v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head), debugExp)
+                    v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head), debugExp, AssumptionType.Internal)
                     (s2, pmDef)
                   } else {
                     val (pmDef, pmCache) =
@@ -591,7 +591,7 @@ object evaluator extends EvaluationRules {
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
                   val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, resacc.pos, Some(h))
                   val exp = Option.when(withExp)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resacc)(), debugLabel)(), ast.FullPerm()())())
-                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)))
+                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)), AssumptionType.Internal)
                   val s3 = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> h)) else s2
                   (s3, currentPermAmount)
 
@@ -604,7 +604,7 @@ object evaluator extends EvaluationRules {
                   if (s2.heapDependentTriggers.contains(predicate)){
                     val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
                     val argsString = eArgsNew.mkString(", ")
-                    v1.decider.assume(trigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true)))
+                    v1.decider.assume(trigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true)), AssumptionType.Internal)
                   }
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
               }
@@ -826,10 +826,10 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false)
+            v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
-            v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false)
+            v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
 
             if (qantOp == Exists) {
               // For universal quantification, the non-global auxiliary assumptions will contain the information that
@@ -843,7 +843,7 @@ object evaluator extends EvaluationRules {
                 val exp = ast.Forall(eQuant.variables, eTriggers, body)(sourceQuant.pos, sourceQuant.info, sourceQuant.errT)
                 DebugExp.createInstance(exp, expNew)
               })
-              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name, quantWeight), debugExp)
+              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name, quantWeight), debugExp, AssumptionType.Unknown)
             }
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name, quantWeight)
@@ -939,7 +939,7 @@ object evaluator extends EvaluationRules {
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
-              v3.decider.assume(preFApp, preExp)
+              v3.decider.assume(preFApp, preExp, AssumptionType.Implicit)
               val funcAnn = func.info.getUniqueInfo[AnnotationInfo]
               val tFApp = funcAnn match {
                 case Some(a) if a.values.contains("opaque") =>
@@ -1011,7 +1011,7 @@ object evaluator extends EvaluationRules {
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
                         val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true))
-                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp)
+                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp, AssumptionType.Internal)
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm, ePermNew)
@@ -1082,21 +1082,21 @@ object evaluator extends EvaluationRules {
                   case false =>
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExp)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew)
+                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Unknown)
                       failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     } else failure}
               case false =>
 
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, idxGe0, idxGe0ExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew)
+                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Unknown)
                   v1.decider.assert(idxLtLength, idxLtLengthExp) {
                     case true =>
                       failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     case false =>
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExpNew)
                       if (v1.reportFurtherErrors()) {
-                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew)
+                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Unknown)
                         failure2 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                       } else failure2}
                 } else failure1}}})
@@ -1133,20 +1133,20 @@ object evaluator extends EvaluationRules {
                   case false =>
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExpNew)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew)
+                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Unknown)
                       failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)}
                     else failure}
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, idxGe0, idxGe0ExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew)
+                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Unknown)
                   v1.decider.assert(idxLtLength, idxLtLengthExp) {
                     case true =>
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                     case false =>
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExpNew)
                       if (v1.reportFurtherErrors()) {
-                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew)
+                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Unknown)
                         failure2 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                       } else failure2}
             } else failure1}}})
@@ -1161,7 +1161,7 @@ object evaluator extends EvaluationRules {
             val exp = ast.EqCmp(ast.SeqLength(seq)(), ast.IntLit(es.size)())(seq.pos, seq.info, seq.errT)
             DebugExp.createInstance(exp, expNew)
           })
-          v1.decider.assume(SeqLength(tSeq) === IntLiteral(es.size), debugExp)
+          v1.decider.assume(SeqLength(tSeq) === IntLiteral(es.size), debugExp, AssumptionType.Implicit)
           Q(s1, tSeq, esNew.map(en => ast.ExplicitSeq(en)(e.pos, e.info, e.errT)), v1)})
 
       /* Sets and multisets */
@@ -1265,7 +1265,7 @@ object evaluator extends EvaluationRules {
               case false =>
                 val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1, SetIn(keyT, MapDomain(baseT)), assertExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(SetIn(keyT, MapDomain(baseT)), assertExp, assertExpNew)
+                  v1.decider.assume(SetIn(keyT, MapDomain(baseT)), assertExp, assertExpNew, AssumptionType.Unknown)
                   failure1 combine Q(s1, MapLookup(baseT, keyT), eNew, v1)
                 } else {
                   failure1
@@ -1519,7 +1519,7 @@ object evaluator extends EvaluationRules {
       case false =>
         val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s, tDivisor !== tZero, notZeroExpNew)
         if (s.retryLevel == 0  && v.reportFurtherErrors()) {
-          v.decider.assume(tDivisor !== tZero, notZeroExp, notZeroExpNew)
+          v.decider.assume(tDivisor !== tZero, notZeroExp, notZeroExpNew, AssumptionType.Unknown)
           failure combine Q(s, t, v)
         } else failure
     }
@@ -1663,7 +1663,7 @@ object evaluator extends EvaluationRules {
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
-        v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
+        v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
         Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
         for (e <- remainingTriggerExpressions)
@@ -1705,7 +1705,7 @@ object evaluator extends EvaluationRules {
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
         sJoined = sJoined.copy(functionRecorder = sJoined.functionRecorder.recordPathSymbol(joinSymbol))
 
-        joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew)}
+        joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew, AssumptionType.Unknown)}
 
         (sJoined, (joinTerm, joinExp))
     }
@@ -1740,7 +1740,7 @@ object evaluator extends EvaluationRules {
     }
 
     val triggerString = exps.mkString(", ")
-    v.decider.assume(triggerAxioms, Option.when(withExp)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false)
+    v.decider.assume(triggerAxioms, Option.when(withExp)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false, assumptionType=AssumptionType.Internal)
     var fr = s.functionRecorder
     for (smDef <- smDefs){
       fr = fr.recordFvfAndDomain(smDef)

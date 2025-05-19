@@ -233,7 +233,7 @@ object producer extends ProductionRules {
                 QB(s3, null, v3)
               }),
               (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))
+                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", isInternal_ = true)), AssumptionType.Internal)
                 /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -264,7 +264,7 @@ object producer extends ProductionRules {
               Q(s3, v3)
             }),
             (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))
+                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", isInternal_ = true)), AssumptionType.Internal)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -374,7 +374,7 @@ object producer extends ProductionRules {
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {
                     val argsString = eArgsNew.mkString(", ")
                     val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp)
+                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp, AssumptionType.Internal)
                   }
                   Q(s3.copy(h = h3), v3)})
               }})))
@@ -405,7 +405,7 @@ object producer extends ProductionRules {
                 s1, wand, formalVars, relevantChunks, v1)
             val argsStr = bodyVarsNew.mkString(", ")
             val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}($argsStr))", isInternal_ = true))
-            v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args), debugExp)
+            v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args), debugExp, AssumptionType.Internal)
             smCache1
           } else {
             s1.smCache
@@ -552,9 +552,9 @@ object producer extends ProductionRules {
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
         v.decider.assume(sf(sorts.Snap, v) === Unit,
-          Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true))) /* TODO: See comment for case ast.Implies above */
+          Option.when(withExp)(DebugExp.createInstance("Empty snapshot", isInternal_ = true)), AssumptionType.Internal) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, aNew, v1) => {
-          v1.decider.assume(t, Option.when(withExp)(a), aNew)
+          v1.decider.assume(t, Option.when(withExp)(a), aNew, AssumptionType.Explicit) // TODO ake: always explicit?
           Q(s1, v1)})
     }
 

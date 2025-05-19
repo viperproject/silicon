@@ -390,7 +390,7 @@ object consumer extends ConsumptionRules {
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, field, Seq(`?r`), relevantChunks, v2)
               val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: ${eRcvrNew.get.toString}.${field.name}"))
-              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
+              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp, AssumptionType.Internal)
               //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
               s2.copy(smCache = smCache1)
             } else {
@@ -436,7 +436,7 @@ object consumer extends ConsumptionRules {
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
               val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}(${eArgsNew.mkString(", ")}))", isInternal_ = true))
-              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
+              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp, AssumptionType.Internal)
               s2.copy(smCache = smCache1)
             } else {
               s2
@@ -507,7 +507,7 @@ object consumer extends ConsumptionRules {
             val argsString = bodyVarsNew.mkString(", ")
             val predName = MagicWandIdentifier(wand, s.program).toString
             val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger($predName($argsString))", isInternal_ = true))
-            v1.decider.assume(PredicateTrigger(predName, smDef1.sm, tArgs), debugExp)
+            v1.decider.assume(PredicateTrigger(predName, smDef1.sm, tArgs), debugExp, AssumptionType.Internal)
             s1.copy(smCache = smCache1)
           } else {
             s1
@@ -627,18 +627,18 @@ object consumer extends ConsumptionRules {
         val termToAssert = t match {
           case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
             val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
-            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Option.when(withExp)(e), eNew)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Option.when(withExp)(e), eNew, AssumptionType.Internal)
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
         v2.decider.assert(termToAssert, Some(e)) {
           case true =>
-            v2.decider.assume(t, Option.when(withExp)(e), eNew)
+            v2.decider.assume(t, Option.when(withExp)(e), eNew, AssumptionType.Unknown)
             QS(s3, v2)
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
             if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
-              v2.decider.assume(t, Option.when(withExp)(e), eNew)
+              v2.decider.assume(t, Option.when(withExp)(e), eNew, AssumptionType.Unknown)
               failure combine QS(s3, v2)
             } else failure}})
     })((s4, v4) => {

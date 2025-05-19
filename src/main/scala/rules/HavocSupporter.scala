@@ -126,8 +126,8 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
         val comment = "QP receiver injectivity check is well-defined"
-        val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance(comment, true))
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp)
+        val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true))
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp, AssumptionType.Internal)
         v.decider.assert(receiverInjectivityCheck, comment, Verifier.config.checkTimeout.toOption) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
           case true =>
@@ -148,7 +148,7 @@ object havocSupporter extends SymbolicExecutionRules {
             )
             val comment = "Definitional axioms for havocall inverse functions"
             v.decider.prover.comment(comment)
-            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
             // which may be havocked. Since we are executing a Havocall statement, we wrap
@@ -279,7 +279,7 @@ object havocSupporter extends SymbolicExecutionRules {
 
       v.decider.prover.comment("axiomatized snapshot map after havoc")
       val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
-      v.decider.assume(newAxiom, debugExp)
+      v.decider.assume(newAxiom, debugExp, AssumptionType.Unknown)
 
       QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.assumptionAnalyzer.currentAnalysisInfo)
     }
