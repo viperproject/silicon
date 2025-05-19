@@ -193,7 +193,7 @@ object havocSupporter extends SymbolicExecutionRules {
         val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
         val cond = replacementCond(lhs, ch.args, condInfo)
         val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
-        NonQuantifiedChunk.withSnap(ch, magicWandSnapshot, None, v.decider.assumptionAnalyzer.getAnalysisInfo)
+        NonQuantifiedChunk.withSnap(ch, magicWandSnapshot, None, v.decider.assumptionAnalyzer.getAnalysisInfo) // TODO ake: assumptionType?
 
       case ch =>
         val havockedSnap = freshSnap(ch.snap.sort, v)
@@ -279,9 +279,9 @@ object havocSupporter extends SymbolicExecutionRules {
 
       v.decider.prover.comment("axiomatized snapshot map after havoc")
       val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
-      v.decider.assume(newAxiom, debugExp, AssumptionType.Unknown)
+      v.decider.assume(newAxiom, debugExp, AssumptionType.Internal)
 
-      QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.assumptionAnalyzer.getAnalysisInfo)
+      QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.assumptionAnalyzer.getAnalysisInfo) // TODO ake: assumption type?
     }
     newChunks ++ otherChunks
   }

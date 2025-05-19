@@ -1361,7 +1361,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   qid,
                   v2,
                   s.program,
-                  AssumptionType.Unknown
+                  AssumptionType.Unknown // TODO ake: should be exhale
                 )
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Inverse functions for quantified permission", isInternal_ = true))
                 v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program), debugExp, AssumptionType.Internal)
@@ -1689,7 +1689,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
           v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, AssumptionType.Unknown)
           remainingChunks =
-            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo)
+            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo) // TODO ake: assumptionType?
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
           val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
@@ -1700,7 +1700,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks = remainingChunks :+ ithChunk
             } else {
               remainingChunks =
-                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo)
+                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo)// TODO ake: assumptionType?
             }
           }
         }
