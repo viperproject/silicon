@@ -9,7 +9,7 @@ package viper.silicon.decider
 import com.typesafe.scalalogging.Logger
 import viper.silicon._
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AnalysisSourceInfo, AssumptionAnalyzer, AssumptionType, DefaultAssumptionAnalyzer, NoAssumptionAnalyzer, StringAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._

@@ -1587,6 +1587,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       else
         Incomplete(PermMinus(permsAvailable, perms), permsAvailableExp.map(pa => ast.PermSub(pa, permsExp.get)()))
 
+    // TODO ake: add permission assert node?
     result
   }
 

@@ -83,10 +83,10 @@ object chunkSupporter extends ChunkSupportRules {
              : VerificationResult = {
 
     val analysisInfo = v.decider.assumptionAnalyzer.getAnalysisInfo
-    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, analysisInfo)((s2, h2, optSnap, chunk, v2) =>
+    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, analysisInfo)((s2, h2, optSnap, consumedChunks, v2) =>
       optSnap match {
         case Some(snap) =>
-          Q(s2, h2, Some(snap.convert(sorts.Snap)), chunk, v2)
+          Q(s2, h2, Some(snap.convert(sorts.Snap)), consumedChunks, v2)
         case None if returnSnap =>
           /* Not having consumed anything could mean that we are in an infeasible
            * branch, or that the permission amount to consume was zero.
@@ -97,8 +97,8 @@ object chunkSupporter extends ChunkSupportRules {
            */
           val fresh = v2.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
-          Q(s3, h2, Some(fresh), chunk, v2)
-        case None => Q(s2, h2, None, chunk, v2)
+          Q(s3, h2, Some(fresh), consumedChunks, v2)
+        case None => Q(s2, h2, None, consumedChunks, v2)
       })
   }
 
@@ -121,7 +121,7 @@ object chunkSupporter extends ChunkSupportRules {
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, "chunk consume in package")
       magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _, analysisInfo))((s1, optCh, v1) =>
-        if (returnSnap){
+        if (returnSnap){ // TODO ake: check that optCh is indeed the consumed chunks
           Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), optCh, v1)
         } else {
           Q(s1, h, None, optCh, v1)
@@ -129,8 +129,8 @@ object chunkSupporter extends ChunkSupportRules {
     } else {
       executionFlowController.tryOrFail3[Heap, Option[Term], Iterable[Chunk]](s.copy(h = h), v)((s1, v1, QS) =>
         if (s1.moreCompleteExhale) {
-          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1, analysisInfo)((s2, h2, snap2, chunks, v2) => {
-            QS(s2.copy(h = s.h), h2, snap2, chunks, v2)
+          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1, analysisInfo)((s2, h2, snap2, consumedChunks, v2) => {
+            QS(s2.copy(h = s.h), h2, snap2, consumedChunks, v2)
           })
         } else {
           consumeGreedy(s1, s1.h, id, args, perms, permsExp, v1, analysisInfo) match {
@@ -178,6 +178,7 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) =>
         if (s.assertReadAccessOnly) {
           if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0))) {
+            // TODO ake: add edge from check to permission assert node
             v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, ch.permExp.map(pe => IsPositive(pe)(pe.pos, pe.info, pe.errT)), v.decider.assumptionAnalyzer.getFullSourceInfo)
             (Complete(), s, h, Some(ch))
           } else {
@@ -188,7 +189,7 @@ object chunkSupporter extends ChunkSupportRules {
           val toTakeExp = permsExp.map(pe => buildMinExp(Seq(ch.permExp.get, pe), ast.Perm))
           val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, toTakeExp.get)(pe.pos, pe.info, pe.errT))
           val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, toTake), newPermExp, analysisInfo).asInstanceOf[NonQuantifiedChunk]
-          val takenChunk = Some(GeneralChunk.withPerm(ch, toTake, toTakeExp, analysisInfo, isExhale = true).asInstanceOf[NonQuantifiedChunk])
+          val takenChunk = Some(GeneralChunk.withPerm(ch, toTake, toTakeExp, analysisInfo, isExhale=true).asInstanceOf[NonQuantifiedChunk])
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk

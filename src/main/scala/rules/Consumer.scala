@@ -80,10 +80,10 @@ object consumer extends ConsumptionRules {
              (Q: (State, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consumeR(s, s.h, a.whenExhaling, returnSnap, pve, v, analysisInfo)((s1, h1, snap, chunks, v1) => {
+    consumeR(s, s.h, a.whenExhaling, returnSnap, pve, v, analysisInfo)((s1, h1, snap, consumedChunks, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
-      Q(s2, snap, chunks, v1)})
+      Q(s2, snap, consumedChunks, v1)})
   }
 
   /** @inheritdoc */
@@ -133,12 +133,12 @@ object consumer extends ConsumptionRules {
       if (tlcs.tail.isEmpty)
         wrappedConsumeTlc(s, h, a, returnSnap, pve, v, analysisInfo)(Q)
       else
-        wrappedConsumeTlc(s, h, a, returnSnap, pve, v, analysisInfo)((s1, h1, snap1, chunksHead, v1) => {
-          consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1, analysisInfo)((s2, h2, snap2, chunksTail, v2) =>
+        wrappedConsumeTlc(s, h, a, returnSnap, pve, v, analysisInfo)((s1, h1, snap1, consumedChunksHead, v1) => {
+          consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1, analysisInfo)((s2, h2, snap2, consumedChunksTail, v2) =>
 
             (snap1, snap2) match {
-              case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(Combine(sn1, sn2)), chunksHead ++ chunksTail, v2)
-              case (None, None) if !returnSnap => Q(s2, h2, None, chunksHead ++ chunksTail, v2)
+              case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(Combine(sn1, sn2)), consumedChunksHead ++ consumedChunksTail, v2)
+              case (None, None) if !returnSnap => Q(s2, h2, None, consumedChunksHead ++ consumedChunksTail, v2)
               case (_, _) =>  sys.error(s"Consume returned unexpected snapshot: ${(returnSnap, (snap1, snap2))}")
             })
         })
@@ -181,10 +181,10 @@ object consumer extends ConsumptionRules {
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
       v.decider.assumptionAnalyzer.addExpToStack(a)
 
-      consumeTlc(s1, h0, a, returnSnap, pve, v1, analysisInfo)((s2, h2, snap2, chunks, v2) => {
+      consumeTlc(s1, h0, a, returnSnap, pve, v1, analysisInfo)((s2, h2, snap2, consumedChunks, v2) => {
         v.decider.assumptionAnalyzer.popExpFromStack()
         v2.symbExLog.closeScope(sepIdentifier)
-        QS(s2, h2, snap2, chunks, v2)})
+        QS(s2, h2, snap2, consumedChunks, v2)})
     })(Q)
   }
 
@@ -217,9 +217,9 @@ object consumer extends ConsumptionRules {
 
         evaluator.eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           branch(s1, t0, (e0, e0New), v1)(
-            (s2, v2) => consumeR(s2, h, a0, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, chunks, v3) => {
+            (s2, v2) => consumeR(s2, h, a0, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, consumedChunks, v3) => {
               v3.symbExLog.closeScope(uidImplies)
-              Q(s3, h1, t1, chunks, v3)
+              Q(s3, h1, t1, consumedChunks, v3)
             }),
             (s2, v2) => {
               v2.symbExLog.closeScope(uidImplies)
@@ -237,13 +237,13 @@ object consumer extends ConsumptionRules {
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           branch(s1, t0, (e0, e0New), v1)(
-            (s2, v2) => consumeR(s2, h, a1, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, chunks, v3) => {
+            (s2, v2) => consumeR(s2, h, a1, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, consumedChunks, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
-              Q(s3, h1, t1, chunks, v3)
+              Q(s3, h1, t1, consumedChunks, v3)
             }),
-            (s2, v2) => consumeR(s2, h, a2, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, chunks, v3) => {
+            (s2, v2) => consumeR(s2, h, a2, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, consumedChunks, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
-              Q(s3, h1, t1, chunks, v3)
+              Q(s3, h1, t1, consumedChunks, v3)
             })))
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer
@@ -285,8 +285,8 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1,
-              analysisInfo)((s2, h2, snap, chunks, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, chunks, v2))
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, Seq.empty, v1) // TODO ake: verify this
+              analysisInfo)((s2, h2, snap, consumedChunks, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, consumedChunks, v2))
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, Seq.empty, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -332,7 +332,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1,
-              analysisInfo)((s2, h2, snap, chunks, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, chunks, v2))
+              analysisInfo)((s2, h2, snap, consumedChunks, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, consumedChunks, v2))
           case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, Seq.empty, v1)
         }
 
@@ -375,7 +375,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
               insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
               v1,
-              analysisInfo)((s2, h2, snap, chunks, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, chunks, v2))
+              analysisInfo)((s2, h2, snap, consumedChunks, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, consumedChunks, v2))
           case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), h, if (returnSnap) Some(Unit) else None, Seq.empty, v1)
         }
 
@@ -417,10 +417,10 @@ object consumer extends ConsumptionRules {
               pve,
               v2,
               analysisInfo
-            )((s3, h3, snap, chunks, v3) => {
+            )((s3, h3, snap, consumedChunks, v3) => {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
                                partiallyConsumedHeap = Some(h3))
-              Q(s4, h3, snap, chunks, v3)})}))
+              Q(s4, h3, snap, consumedChunks, v3)})}))
 
       case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
               if s.qpPredicates.contains(s.program.findPredicate(predname)) =>
@@ -463,10 +463,10 @@ object consumer extends ConsumptionRules {
               pve,
               v2,
               analysisInfo
-            )((s3, h3, snap, chunks, v3) => {
+            )((s3, h3, snap, consumedChunks, v3) => {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
                                partiallyConsumedHeap = Some(h3))
-              Q(s4, h3, snap, chunks, v3)})}))
+              Q(s4, h3, snap, consumedChunks, v3)})}))
 
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
@@ -485,10 +485,10 @@ object consumer extends ConsumptionRules {
               val lossExp = permNew.map(p => ast.PermMul(p, s3.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
               val ve = pve dueTo InsufficientPermission(locacc)
               val description = s"consume ${a.pos}: $a"
-              chunkSupporter.consume(s3, h, resource, tArgs, eArgs, loss, lossExp, returnSnap, ve, v3, description, analysisInfo)((s4, h1, snap1, chunks, v4) => {
+              chunkSupporter.consume(s3, h, resource, tArgs, eArgs, loss, lossExp, returnSnap, ve, v3, description, analysisInfo)((s4, h1, snap1, consumedChunks, v4) => {
                 val s5 = s4.copy(partiallyConsumedHeap = Some(h1),
                                  constrainableARPs = s.constrainableARPs)
-                Q(s5, h1, snap1, chunks, v4)})})))
+                Q(s5, h1, snap1, consumedChunks, v4)})})))
 
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s, "valid AST")
@@ -530,10 +530,10 @@ object consumer extends ConsumptionRules {
             pve,
             v1,
             analysisInfo
-          )((s3, h3, snap, chunks, v3) => {
+          )((s3, h3, snap, consumedChunks, v3) => {
             val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
                              partiallyConsumedHeap = Some(h3))
-            Q(s4, h3, snap, chunks, v3)})})
+            Q(s4, h3, snap, consumedChunks, v3)})})
 
       case wand: ast.MagicWand =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, eArgs, v1) => {
@@ -547,7 +547,6 @@ object consumer extends ConsumptionRules {
           Q(s1, h, t, Seq.empty, v1)
         })
     }
-
     consumed
   }
 
@@ -558,22 +557,22 @@ object consumer extends ConsumptionRules {
                                             (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
                                             : VerificationResult = {
     eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-      joiner.join[(Heap, Option[Term]), (Heap, Option[Term])](s1, v1, resetState = false)((s1, v1, QB) => { // TODO ake: what to do with chunks?
+      joiner.join[(Heap, Option[Term], Iterable[Chunk]), (Heap, Option[Term], Iterable[Chunk])](s1, v1, resetState = false)((s1, v1, QB) => {
         branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
           (s2, v2) =>
-            consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a1, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, chunks, v3) => {
+            consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a1, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, consumedChunks, v3) => {
             v3.symbExLog.closeScope(scopeUid)
-            QB(s3, (h1, t1), v3)
+            QB(s3, (h1, t1, consumedChunks), v3)
           }),
           (s2, v2) =>
             a2 match {
-              case Some(a2) => consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a2, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, chunks, v3) => {
+              case Some(a2) => consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a2, returnSnap, pve, v2, analysisInfo)((s3, h1, t1, consumedChunks, v3) => {
                 v3.symbExLog.closeScope(scopeUid)
-                QB(s3, (h1, t1), v3)
+                QB(s3, (h1, t1, consumedChunks), v3)
               })
               case None =>
                 v2.symbExLog.closeScope(scopeUid)
-                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (h, if (returnSnap) Some(Unit) else None), v2)
+                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (h, if (returnSnap) Some(Unit) else None, Seq.empty), v2)
             })
       })(entries => {
         val s2 = entries match {
@@ -591,7 +590,8 @@ object consumer extends ConsumptionRules {
                 case (Some(t1), Some(t2)) if returnSnap => Some(Ite(And(entry1.pathConditions.branchConditions), t1, t2))
                 case (None, None) if !returnSnap => None
                 case (_, _) => sys.error(s"Unexpected join data entries: $entries")
-              }
+              },
+              entry1.data._3 ++ entry2.data._3
             )
             (entry1.pathConditionAwareMergeWithoutConsolidation(entry2, v1), mergedData)
           case _ =>
@@ -599,7 +599,7 @@ object consumer extends ConsumptionRules {
         }
         s2
       })((s4, data, v4) => {
-        Q(s4, data._1, data._2, Seq.empty, v4) // TODO ake: get chunks
+        Q(s4, data._1, data._2, data._3, v4)
       })
     )
   }
