@@ -7,12 +7,11 @@
 package viper.silicon.tests
 
 import viper.silicon.Silicon
-import viper.silver.testing.{AbstractOutput, CustomAnnotation, DefaultAnnotatedTestInput, DefaultTestInput, OutputAnnotationId, SilOutput, TestAnnotation, TestAnnotationParser, TestCustomError, TestError, TestInput}
+import viper.silver.testing.{AbstractOutput, CounterexampleParser, CustomAnnotation, DefaultAnnotatedTestInput, DefaultTestInput, ExpectedCounterexample, OutputAnnotationId, SilOutput, TestAnnotation, TestAnnotationParser, TestCustomError, TestError, TestInput}
 import fastparse._
 import viper.silicon.interfaces.SiliconMappedCounterexample
 import viper.silicon.reporting.{ExtractedModel, ExtractedModelEntry, LitIntEntry, LitPermEntry, NullRefEntry, RecursiveRefEntry, RefEntry, SeqEntry}
-import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIntLit, PLookup, PSymOp, PUnExp}
+import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUseExp, PIntLit, PLookup, PSymOp, PUnExp}
 import viper.silver.utility.Common.Rational
 import viper.silver.verifier.{FailureContext, VerificationError}
 
@@ -132,7 +131,7 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
     case PIntLit(value) => Some(LitIntEntry(value), None)
     case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some(LitIntEntry(-value), None)
     case PBinExp(PIntLit(n), r, PIntLit(d)) if r.rs == PSymOp.Div => Some(LitPermEntry(Rational(n, d)), None)
-    case idnuse: PIdnUse => model.entries.get(idnuse.name).map((_, None))
+    case idnuse: PIdnUseExp => model.entries.get(idnuse.name).map((_, None))
     case PFieldAccess(rcv, _, idnuse) => resolveWoPerm(rcv, model).flatMap {
       case RefEntry(_, fields) => fields.get(idnuse.name)
     }
@@ -166,25 +165,4 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
   override def notFoundError: TestError = TestCustomError(s"Expected the following counterexample on line $forLineNr: $expectedCounterexample")
 
   override def withForLineNr(line: Int = forLineNr): ExpectedCounterexampleAnnotation = ExpectedCounterexampleAnnotation(id, file, line, expectedCounterexample)
-}
-
-/**
-  * Simple input language to describe an expected counterexample with corresponding parser.
-  * Currently, a counterexample is expressed by a comma separated list of access predicates and equalities (using the
-  * same syntax as in Viper)
-  */
-class CounterexampleParser(fp: FastParser) {
-  import fp.{accessPred, eqExp}
-
-  def expectedCounterexample[_: P]: P[ExpectedCounterexample] =
-    (Start ~ "(" ~ (accessPred | eqExp).rep(0, ",") ~ ")" ~ End)
-      .map(ExpectedCounterexample)
-}
-
-case class ExpectedCounterexample(exprs: Seq[PExp]) {
-  assert(exprs.forall {
-    case _: PAccPred => true
-    case PBinExp(_, r, _) if r.rs == PSymOp.EqEq => true
-    case _ => false
-  })
 }

@@ -181,6 +181,11 @@ object evaluator extends EvaluationRules {
           failIfDivByZero(s1, tFP, e1, e1New, t1, predef.Zero, pve, v1)((s2, t, v2)
             => Q(s2, t, e0New.map(ast.FractionalPerm(_, e1New.get)(e.pos, e.info, e.errT)), v2)))
 
+      case _: ast.WildcardPerm if s.assertReadAccessOnly =>
+        // We are in a context where permission amounts do not matter, so we can safely translate a wildcard to
+        // a full permission.
+        Q(s, FullPerm, eOpt, v)
+
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints, eVar) = v.decider.freshARP()
         val constraintExp = Option.when(withExp)(DebugExp.createInstance(s"${eVar.get.toString} > none", true))
@@ -256,22 +261,30 @@ object evaluator extends EvaluationRules {
                   val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
                   v1.decider.assume(trigger, triggerExp)
                 }
-                val (permCheck, permCheckExp) =
+                val (permCheck, permCheckExp, s1a) =
                   if (s1.triggerExp) {
-                    (True, Option.when(withExp)(TrueLit()()))
+                    (True, Option.when(withExp)(TrueLit()()), s1)
                   } else {
+                    val (s1a, lhs) = tRcvr match {
+                      case _: Literal | _: Var => (s1, True)
+                      case _ =>
+                        // Make sure the receiver exists on the SMT level and is thus able to trigger any relevant quantifiers.
+                        val rcvrVar = v1.decider.appliedFresh("rcvr", tRcvr.sort, s1.relevantQuantifiedVariables.map(_._1))
+                        val newFuncRec = s1.functionRecorder.recordFreshSnapshot(rcvrVar.applicable.asInstanceOf[Function])
+                        (s1.copy(functionRecorder = newFuncRec), BuiltinEquals(rcvrVar, tRcvr))
+                    }
                     val permVal = relevantChunks.head.perm
                     val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
-                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
+                    (Implies(lhs, IsPositive(totalPermissions)), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)), s1a)
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1a, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
                     val fr2 =
-                      s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                    val s2 = s1.copy(functionRecorder = fr2)
+                      s1a.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
+                    val s2 = s1a.copy(functionRecorder = fr2)
                     Q(s2, smLookup, newFa, v1)
                 }
               } else {
@@ -755,13 +768,13 @@ object evaluator extends EvaluationRules {
         if (usesQPChunks) {
             val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
             bindQuantRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-              val s3 = s2.copy(h = s.h, g = s.g)
+              val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
               Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
             })
         } else {
           val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
           bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-            val s3 = s2.copy(h = s.h, g = s.g)
+            val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
             Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
           })
         }
