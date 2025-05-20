@@ -2138,8 +2138,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          */
         val t3 = v.decider.appliedFresh("ms", t1.sort, fqvars)
         val lookupT3 = PredicateLookup(predicate, t3, qVars)
-        (fr.recordPathSymbol(t3.applicable.asInstanceOf[Function]).recordConstraint(And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))), t3,
-          And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2)), Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3)))
+        val constraint = And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))
+        val triggers = Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3))
+        (fr.recordPathSymbol(t3.applicable.asInstanceOf[Function]).recordConstraint(Forall(qVars, constraint, triggers)), t3, constraint, triggers)
     }
 
     (fr2, sm, Forall(qVars, smDef, triggers))
