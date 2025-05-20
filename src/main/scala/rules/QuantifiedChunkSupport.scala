@@ -2110,8 +2110,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          */
         val t3 = v.decider.fresh(t1.sort, Option.when(withExp)(PUnknown()))
         val lookupT3 = Lookup(field, t3, `?r`)
-        (fr.recordConstrainedVar(t3, And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))), t3,
-          And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2)), Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3)))
+        val constraint = And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))
+        val triggers = Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3))
+        (fr.recordConstrainedVar(t3, Forall(`?r`, constraint, triggers)), t3, constraint, triggers)
     }
 
     (fr2, sm, Forall(`?r`, smDef, triggers))
