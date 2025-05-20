@@ -181,6 +181,11 @@ object evaluator extends EvaluationRules {
           failIfDivByZero(s1, tFP, e1, e1New, t1, predef.Zero, pve, v1)((s2, t, v2)
             => Q(s2, t, e0New.map(ast.FractionalPerm(_, e1New.get)(e.pos, e.info, e.errT)), v2)))
 
+      case _: ast.WildcardPerm if s.assertReadAccessOnly =>
+        // We are in a context where permission amounts do not matter, so we can safely translate a wildcard to
+        // a full permission.
+        Q(s, FullPerm, eOpt, v)
+
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints, eVar) = v.decider.freshARP()
         val constraintExp = Option.when(withExp)(DebugExp.createInstance(s"${eVar.get.toString} > none", true))
