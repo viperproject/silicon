@@ -279,7 +279,9 @@ object executor extends ExecutionRules {
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
+                        v2.decider.assumptionAnalyzer.addAnalysisSourceInfo(ExpAnalysisSourceInfo(BigAnd(pcs.assumptionExps.filter(_.originalExp.isDefined).map(_.originalExp.get))))
                         v2.decider.assume(pcs.assumptions, Option.when(withExp)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), false, assumptionType=AssumptionType.LoopInvariant)
+                        v2.decider.assumptionAnalyzer.popAnalysisSourceInfo()
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()
@@ -326,9 +328,9 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    v.decider.assumptionAnalyzer.setCurrentSourceInfo(StmtAnalysisSourceInfo(stmt))
+    v.decider.assumptionAnalyzer.addAnalysisSourceInfo(StmtAnalysisSourceInfo(stmt))
     exec2(s, stmt, v)((s1, v1) => {
-      v.decider.assumptionAnalyzer.clearCurrentAnalysisInfo()
+      v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }

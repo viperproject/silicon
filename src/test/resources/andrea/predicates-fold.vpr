@@ -34,3 +34,10 @@ method unfoldFoldP(a: Int, b: Int)
     unfold greater5(b)
     fold greater5(a + b)
 }
+
+method callWithPredicate(a: Int, b: Int)
+    requires greater0(a) && greater5(b)
+    ensures greater5(a + b)
+{
+    unfoldFoldP(a, b)
+}

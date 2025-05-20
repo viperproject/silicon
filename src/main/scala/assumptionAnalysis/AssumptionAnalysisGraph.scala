@@ -120,7 +120,8 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
   override def addEdges(source: Int, targets: Iterable[Int]): Unit = {
     val oldTargets = edges.getOrElse(source, Set.empty)
     val newTargets = targets filter(t => t > source) // only forward edges
-    edges.update(source, oldTargets ++ newTargets)
+    if(newTargets.nonEmpty)
+      edges.update(source, oldTargets ++ newTargets)
   }
 
   override def addEdges(sources: Iterable[Int], target: Int): Unit = {

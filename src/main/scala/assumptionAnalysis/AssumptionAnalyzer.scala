@@ -29,7 +29,7 @@ trait AssumptionAnalyzer {
 
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
-  private var currentSourceInfo: AnalysisSourceInfo = NoAnalysisSourceInfo()
+  private var coarseGrainedSourceStack: List[AnalysisSourceInfo] = List.empty
   private var currentExpStack: List[ast.Exp] = List.empty
 
   def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
@@ -38,21 +38,21 @@ trait AssumptionAnalyzer {
 
   def getFullSourceInfo: AnalysisSourceInfo = {
     if(currentExpStack.isEmpty){
-      currentSourceInfo
-    }else if(currentSourceInfo.isInstanceOf[NoAnalysisSourceInfo]){
+      coarseGrainedSourceStack.headOption.getOrElse(NoAnalysisSourceInfo())
+    }else if(coarseGrainedSourceStack.isEmpty){
       ExpAnalysisSourceInfo(currentExpStack.head)
     }else{
-      CompositeAnalysisSourceInfo(currentSourceInfo, ExpAnalysisSourceInfo(currentExpStack.head))
+      CompositeAnalysisSourceInfo(coarseGrainedSourceStack.head, ExpAnalysisSourceInfo(currentExpStack.head))
     }
   }
 
-  def setCurrentSourceInfo(analysisSourceInfo: AnalysisSourceInfo): AnalysisSourceInfo = {
-    currentSourceInfo = analysisSourceInfo
-    currentSourceInfo
+  def addAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): AnalysisSourceInfo = {
+    coarseGrainedSourceStack = analysisSourceInfo +: coarseGrainedSourceStack
+    analysisSourceInfo
   }
 
-  def clearCurrentAnalysisInfo(): Unit = {
-    currentSourceInfo = NoAnalysisSourceInfo()
+  def popAnalysisSourceInfo(): Unit = {
+    coarseGrainedSourceStack = coarseGrainedSourceStack.tail
   }
 
   def addExpToStack(e: ast.Exp): Unit = {

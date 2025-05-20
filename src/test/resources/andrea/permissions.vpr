@@ -54,7 +54,16 @@ method permAmount(x: Ref, p: Perm)
   foo(x)
 }
 
-method quantifiedPerm(xs: Seq[Ref])
+method quantifiedPerm1(xs: Seq[Ref])
+{
+  assume |xs| > 5
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+
+  var a : Ref := xs[1]
+  a.f := 0
+}
+
+method quantifiedPerm2(xs: Seq[Ref])
 {
   assume |xs| > 5
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
