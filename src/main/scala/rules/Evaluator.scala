@@ -768,13 +768,13 @@ object evaluator extends EvaluationRules {
         if (usesQPChunks) {
             val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
             bindQuantRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-              val s3 = s2.copy(h = s.h, g = s.g)
+              val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
               Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
             })
         } else {
           val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
           bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-            val s3 = s2.copy(h = s.h, g = s.g)
+            val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
             Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
           })
         }
