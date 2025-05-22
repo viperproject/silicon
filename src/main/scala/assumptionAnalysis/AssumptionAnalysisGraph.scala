@@ -63,22 +63,25 @@ trait AssumptionAnalysisGraph {
     res
   }
 
-  def addTransitiveEdges(source: Int, targets: Iterable[Int]): Unit = {
-    val oldTargets = transitiveEdges.getOrElse(source, Set.empty)
-    val newTargets = targets filter(t => t > source) // we only want forward edges
-    if(newTargets.nonEmpty) transitiveEdges.update(source, oldTargets ++ newTargets)
+  def addTransitiveEdges(source: AssumptionAnalysisNode, targets: Iterable[AssumptionAnalysisNode]): Unit = {
+    val oldTargets = transitiveEdges.getOrElse(source.id, Set.empty)
+    val newTargets = targets filter(t => t.id > source.id) map(_.id) // we only want forward edges
+    if(newTargets.nonEmpty) transitiveEdges.update(source.id, oldTargets ++ newTargets)
   }
 
-  def addTransitiveEdges(source: Iterable[Int], targets: Iterable[Int]): Unit = {
+  def addTransitiveEdges(source: Iterable[AssumptionAnalysisNode], targets: Iterable[AssumptionAnalysisNode]): Unit = {
     source foreach (s => addTransitiveEdges(s, targets))
   }
 
   def addTransitiveEdges(): Unit = {
     val nodesPerSourceInfo = getNodesPerSourceInfo()
     nodesPerSourceInfo foreach {nodes =>
-      val asserts = nodes._2.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.id)
-      val assumes = nodes._2.filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.id)
+      val asserts = nodes._2.filter(_.isInstanceOf[GeneralAssertionNode])
+      val assumes = nodes._2.filter(_.isInstanceOf[GeneralAssumptionNode])
       addTransitiveEdges(asserts, assumes)
+      val checks = asserts.filter(_.isInstanceOf[SimpleCheckNode])
+      val notChecks = asserts.filter(!_.isInstanceOf[SimpleCheckNode])
+      addTransitiveEdges(checks, notChecks)
     }
   }
   // def findDependentAssumptions(assertion, enableTransitivity=false)
