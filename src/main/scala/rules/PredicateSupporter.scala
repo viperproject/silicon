@@ -6,9 +6,9 @@
 
 package viper.silicon.rules
 
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode}
-import viper.silicon.debugger.DebugExp
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
@@ -16,7 +16,6 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.{NoInfo, NoPosition, NoTrafos, PredicateAccess}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -29,8 +28,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
            ePerm: Option[ast.Exp],
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
-           v: Verifier,
-           analysisInfo: AnalysisInfo)
+           v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult
 
@@ -60,8 +58,7 @@ object predicateSupporter extends PredicateSupportRules {
            ePerm: Option[ast.Exp],
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
-           v: Verifier,
-           analysisInfo: AnalysisInfo)
+           v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
@@ -74,7 +71,7 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v, analysisInfo)((s1a, snap, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
+    consume(s1, body, true, pve, v)((s1a, snap, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
@@ -162,8 +159,7 @@ object predicateSupporter extends PredicateSupportRules {
         true,
         None,
         pve,
-        v,
-        v.decider.assumptionAnalyzer.getAnalysisInfo
+        v
       )((s2, h2, snap, consumedChunks, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
@@ -184,7 +180,7 @@ object predicateSupporter extends PredicateSupportRules {
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description, v.decider.assumptionAnalyzer.getAnalysisInfo)((s2, h1, snap, consumedChunks, v1) => { // TODO ake: add edges
+      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description)((s2, h1, snap, consumedChunks, v1) => { // TODO ake: add edges
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap.get), body, pve, v1, AssumptionType.Rewrite)((s4, v2) => {

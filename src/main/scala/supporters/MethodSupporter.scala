@@ -117,7 +117,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) =>{
                     // TODO ake: set source
-                    consumes(s4, posts, false, postViolated, v4, v4.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Explicit))((_, _, _, _) => {
+                    consumes(s4, posts, false, postViolated, v4)((_, _, _, _) => {
                         Success()
                       })})}) }  )})})
 

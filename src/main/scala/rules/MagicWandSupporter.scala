@@ -6,11 +6,11 @@
 
 package viper.silicon.rules
 
-import viper.silicon.debugger.DebugExp
 import viper.silicon._
+import viper.silicon.assumptionAnalysis.AssumptionType
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
@@ -403,7 +403,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
-            wand.right, true, pve, proofScriptVerifier, proofScriptVerifier.decider.assumptionAnalyzer.getAnalysisInfo
+            wand.right, true, pve, proofScriptVerifier
           )((s3, snapRhs, consumedChunks, v3) => { // TODO ake: what to do with consumedChunks?
 
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, AssumptionType.Rewrite)
@@ -462,9 +462,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
-    consume(s, wand, true, pve, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s1, snapWand, consumedChunksWand, v1) => {
+    consume(s, wand, true, pve, v)((s1, snapWand, consumedChunksWand, v1) => {
       // Consume the wand's LHS "A".
-      consume(s1, wand.left, true, pve, v1, v1.decider.assumptionAnalyzer.getAnalysisInfo)((s2, snapLhs, consumedChunksLeft, v2) => {
+      consume(s1, wand.left, true, pve, v1)((s2, snapLhs, consumedChunksLeft, v2) => {
         /* It is assumed that snap and MagicWandSnapshot.abstractLhs are structurally the same.
          * Equating the two snapshots is sound iff a wand is applied only once.
          * The old solution in this case did use this assumption:

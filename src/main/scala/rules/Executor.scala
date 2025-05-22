@@ -271,7 +271,7 @@ object executor extends ExecutionRules {
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
               // TODO ake: set source
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, v0.decider.assumptionAnalyzer.getAnalysisInfo)((sLeftover, _, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
+                consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -308,7 +308,7 @@ object executor extends ExecutionRules {
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             // TODO ake: set source
-            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, v.decider.assumptionAnalyzer.getAnalysisInfo)((_, _, _, _) =>
+            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v)((_, _, _, _) =>
               Success())
         }
     }
@@ -414,8 +414,7 @@ object executor extends ExecutionRules {
               FullPerm,
               Option.when(withExp)(ast.FullPerm()()),
               chunkOrderHeuristics,
-              v2,
-              AnalysisInfo(v2.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fa), AssumptionType.Implicit)
+              v2
             )
             result match {
               case (Complete(), s3, remainingChunks, consumedChunks) => // TODO ake: what to do with consumedChunks?
@@ -446,7 +445,7 @@ object executor extends ExecutionRules {
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description, v2.decider.assumptionAnalyzer.getAnalysisInfo)((s3, h3, _, consumedChunks, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, consumedChunks, v3) => {
               val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk.createDerivedChunk(consumedChunks.toSet, FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
@@ -507,7 +506,7 @@ object executor extends ExecutionRules {
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s1, _, consumedChunks, v1) =>
+        consume(s, a, false, pve, v)((s1, _, consumedChunks, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
@@ -521,7 +520,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, false, AssertFailed(assert), v, v.decider.assumptionAnalyzer.getAnalysisInfo)((_, _, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v)((_, _, _, _) =>
             Success())
 
         r combine Q(s, v)
@@ -537,11 +536,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s2, _, _, v1) => {
+          consume(s, a, false, pve, v)((s2, _, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s1, _, _, v1) => {
+          consume(s, a, false, pve, v)((s1, _, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -600,7 +599,7 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1, v1.decider.assumptionAnalyzer.getAnalysisInfo)((s3, _, consumedChunks, v2) => { // TODO ake: add edges from consumedChunks
+          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, consumedChunks, v2) => { // TODO ake: add edges from consumedChunks
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
@@ -628,7 +627,7 @@ object executor extends ExecutionRules {
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, v3.decider.assumptionAnalyzer.getAnalysisInfo)((s4, v4) => {
+              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }

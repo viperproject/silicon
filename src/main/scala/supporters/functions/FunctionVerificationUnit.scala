@@ -7,28 +7,28 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.AssumptionType
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silver.ast
-import viper.silver.ast.utility.Functions
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
-import viper.silicon.{Map, Stack, toMap}
-import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
-import viper.silicon.state._
+import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.state.State.OldHeaps
+import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.Decider
-import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
-import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.{Map, Stack, toMap}
+import viper.silver.ast
 import viper.silver.ast.LocalVarWithVersion
+import viper.silver.ast.utility.Functions
+import viper.silver.components.StatefulComponent
 import viper.silver.parser.PType
+import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
 
 import scala.annotation.unused
 
@@ -46,9 +46,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       extends FunctionVerificationUnit[Sort, Decl, Term]
          with StatefulComponent {
 
-    import producer._
     import consumer._
     import evaluator._
+    import producer._
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
@@ -270,7 +270,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.Implicit)
-              consumes(s2, posts, false, postconditionViolated, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s3, _, _, _) => {
+              consumes(s2, posts, false, postconditionViolated, v)((s3, _, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

@@ -7,8 +7,8 @@
 package viper.silicon.rules
 
 import viper.silicon.Map
+import viper.silicon.assumptionAnalysis.AssumptionType
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
@@ -1179,8 +1179,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
-              v: Verifier,
-              analysisInfo: AnalysisInfo)
+              v: Verifier)
              (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -1329,8 +1328,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     rPerm,
                     rPermExp,
                     chunkOrderHeuristics,
-                    v2,
-                    analysisInfo)
+                    v2)
                 val optSmDomainDefinitionCondition2 =
                     if (s3.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(imagesOfFormalQVars)))
                     else None
@@ -1396,8 +1394,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   lossOfInvOfLoc,
                   lossExp,
                   chunkOrderHeuristics,
-                  v,
-                  analysisInfo
+                  v
                 )
               permissionRemovalResult match {
                 case (Complete(), s2, remainingChunks, consumedChunks) =>
@@ -1439,8 +1436,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             returnSnap: Boolean,
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
-                            v: Verifier,
-                            analysisInfo: AnalysisInfo)
+                            v: Verifier)
                            (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
                            : VerificationResult = {
 
@@ -1476,8 +1472,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           rPerm,
           rPermExp,
           chunkOrderHeuristics,
-          v,
-          analysisInfo
+          v
         )
         val h2 = Heap(remainingChunks ++ otherChunks)
         val (smDef1, smCache1) =
@@ -1526,8 +1521,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         permissions,
         permissionsExp,
         chunkOrderHeuristics,
-        v,
-        analysisInfo
+        v
       )
       result match {
         case (Complete(), s1, remainingChunks, consumedChunks) =>
@@ -1606,8 +1600,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         perms: Term, // p(rs)
                         permsExp: Option[ast.Exp], // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
-                        v: Verifier,
-                        analysisInfo: AnalysisInfo)
+                        v: Verifier)
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk], Seq[QuantifiedBasicChunk]) = {
 
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
