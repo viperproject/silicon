@@ -155,10 +155,10 @@ object producer extends ProductionRules {
       val pve = pves.head
 
 
-      v.decider.assumptionAnalyzer.addExpToStack(a)
+      v.decider.assumptionAnalyzer.addFineGrainedSource(a)
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v, assumptionType)((s1, v1) => {
-          v.decider.assumptionAnalyzer.popExpFromStack()
+          v.decider.assumptionAnalyzer.popFineGrainedSource()
           Q(s1, v1)
         })
       else {
@@ -172,7 +172,7 @@ object producer extends ProductionRules {
            */
 
           wrappedProduceTlc(s, sf0, a, pve, v, assumptionType)((s1, v1) => {
-              v1.decider.assumptionAnalyzer.popExpFromStack()
+              v1.decider.assumptionAnalyzer.popFineGrainedSource()
               produceTlcs(s1, sf1, as.tail, pves.tail, v1, assumptionType)(Q)
             })
         } catch {

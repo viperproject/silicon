@@ -30,19 +30,19 @@ trait AssumptionAnalyzer {
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
   private var coarseGrainedSourceStack: List[AnalysisSourceInfo] = List.empty
-  private var currentExpStack: List[ast.Exp] = List.empty
+  private var fineGrainedSourceStack: List[AnalysisSourceInfo] = List.empty
 
   def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
 
   def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, getFullSourceInfo, assumptionType)
 
   def getFullSourceInfo: AnalysisSourceInfo = {
-    if(currentExpStack.isEmpty){
+    if(fineGrainedSourceStack.isEmpty){
       coarseGrainedSourceStack.headOption.getOrElse(NoAnalysisSourceInfo())
     }else if(coarseGrainedSourceStack.isEmpty){
-      ExpAnalysisSourceInfo(currentExpStack.head)
+      fineGrainedSourceStack.head
     }else{
-      CompositeAnalysisSourceInfo(coarseGrainedSourceStack.head, ExpAnalysisSourceInfo(currentExpStack.head))
+      CompositeAnalysisSourceInfo(coarseGrainedSourceStack.head, fineGrainedSourceStack.head)
     }
   }
 
@@ -55,13 +55,17 @@ trait AssumptionAnalyzer {
     coarseGrainedSourceStack = coarseGrainedSourceStack.tail
   }
 
-  def addExpToStack(e: ast.Exp): Unit = {
-    currentExpStack = e +: currentExpStack
+  def addFineGrainedSource(e: ast.Exp): Unit = {
+    fineGrainedSourceStack = ExpAnalysisSourceInfo(e) +: fineGrainedSourceStack
   }
 
-  def popExpFromStack(): Unit = {
-    if(currentExpStack.nonEmpty)
-      currentExpStack = currentExpStack.tail
+  def addFineGrainedSource(analysisSourceInfo: AnalysisSourceInfo): Unit = {
+    fineGrainedSourceStack = analysisSourceInfo +: fineGrainedSourceStack
+  }
+
+  def popFineGrainedSource(): Unit = {
+    if(fineGrainedSourceStack.nonEmpty)
+      fineGrainedSourceStack = fineGrainedSourceStack.tail
   }
 
   def getMember: Option[Member]
@@ -108,8 +112,10 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
   }
 
   override def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = {
-    val newNodes = assumptions.filter(_.originalExp.isDefined)
-      .map(a => SimpleAssumptionNode(a.originalExp.get, analysisSourceInfo, assumptionType))
+    val newNodes = assumptions.toSeq.map(a =>
+      if (a.originalExp.isDefined) SimpleAssumptionNode(a.originalExp.get, analysisSourceInfo, assumptionType)
+      else StringAssumptionNode(a.description.getOrElse("unknown"), analysisSourceInfo, AssumptionType.Internal)
+    )
     newNodes foreach addNode
     newNodes.map(_.id).toSeq
   }

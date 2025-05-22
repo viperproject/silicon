@@ -80,7 +80,7 @@ trait AssumptionAnalysisGraph {
       val assumes = nodes._2.filter(_.isInstanceOf[GeneralAssumptionNode])
       addTransitiveEdges(asserts, assumes)
       val checks = asserts.filter(_.isInstanceOf[SimpleCheckNode])
-      val notChecks = asserts.filter(!_.isInstanceOf[SimpleCheckNode])
+      val notChecks = nodes._2.filter(!_.isInstanceOf[SimpleCheckNode])
       addTransitiveEdges(checks, notChecks)
     }
   }
@@ -177,7 +177,7 @@ case class StringAssertionNode(description: String, sourceInfo: AnalysisSourceIn
 }
 
 case class SimpleCheckNode(t: Term, sourceInfo: AnalysisSourceInfo) extends GeneralAssertionNode {
-  val assumptionType: AssumptionType = Explicit
+  val assumptionType: AssumptionType = Internal
   override def getNodeString: String = "check " + t
 }
 
@@ -196,7 +196,4 @@ case class PermissionAssertNode(chunk: Chunk, permAmount: Option[ast.Exp], sourc
   val assumptionType: AssumptionType = Explicit
   override def getNodeString: String = "assert " + permAmount.getOrElse("") + " for " + chunk.getAnalysisInfo
 }
-
-
-
 

@@ -62,6 +62,7 @@ trait Decider {
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit
   def assume(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit
+  def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, assumptionType: AssumptionType): Unit
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], assumptionType: AssumptionType): Unit
   def assumeDefinition(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, assumptionType: AssumptionType): Unit
@@ -339,6 +340,28 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
       if (debugMode) {
         debugExps.get foreach (e => addDebugExp(e))
+      }
+    }
+
+    // TODO ake: review this
+    def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, assumptionType: AssumptionType): Unit = {
+      val debugExp = Option.when(debugExps.isDefined)(DebugExp.createInstance(description, InsertionOrderedSet(debugExps.get)))
+      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, assumptionAnalyzer.getFullSourceInfo, assumptionType) else Seq.empty
+
+      val assumptionsWithLabels =
+        if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, AssumptionAnalyzer.createAssumptionLabel(Some(id)))}
+        else assumptions map (t => (t, ""))
+
+      val filteredTerms =
+        if (enforceAssumption) assumptionsWithLabels
+        else assumptionsWithLabels filterNot(t => isKnownToBeTrue(t._1))
+
+      if(filteredTerms.isEmpty) return
+
+      assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
+
+      if (debugMode && debugExp.isDefined) {
+        addDebugExp(debugExp.get)
       }
     }
 

@@ -262,7 +262,7 @@ object executor extends ExecutionRules {
             (executionFlowController.locally(sBody, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
                 val mark = v0.decider.setPathConditionMark()
-                produces(s0, freshSnap, invs, ContractNotWellformed, v0, AssumptionType.LoopInvariant)((s1, v1) => { // TODO ake: set source
+                produces(s0, freshSnap, invs, ContractNotWellformed, v0, AssumptionType.LoopInvariant)((s1, v1) => {
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
                                               v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */)
@@ -270,7 +270,6 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-              // TODO ake: set source
                 consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
@@ -280,7 +279,7 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assumptionAnalyzer.addAnalysisSourceInfo(ExpAnalysisSourceInfo(BigAnd(pcs.assumptionExps.filter(_.originalExp.isDefined).map(_.originalExp.get))))
-                        v2.decider.assume(pcs.assumptions, Option.when(withExp)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), false, assumptionType=AssumptionType.LoopInvariant)
+                        v2.decider.assume(pcs.assumptions, Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
                         v2.decider.assumptionAnalyzer.popAnalysisSourceInfo()
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
@@ -441,7 +440,7 @@ object executor extends ExecutionRules {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
-            v2.decider.assumptionAnalyzer.addExpToStack(fa)
+            v2.decider.assumptionAnalyzer.addFineGrainedSource(fa)
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
@@ -454,7 +453,7 @@ object executor extends ExecutionRules {
                 val s5 = s4.copy(h = h4)
                 val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
                 val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
-                v4.decider.assumptionAnalyzer.popExpFromStack()
+                v4.decider.assumptionAnalyzer.popFineGrainedSource()
                 Q(s6, v4)
               })
             })

@@ -145,9 +145,9 @@ object brancher extends BranchingRules {
 
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.assumptionAnalyzer.addExpToStack(conditionExp._1)
+            v1.decider.assumptionAnalyzer.addFineGrainedSource(conditionExp._1)
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
-            v1.decider.assumptionAnalyzer.popExpFromStack()
+            v1.decider.assumptionAnalyzer.popFineGrainedSource()
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
             var nMacrosOfElseBranchDeciderBefore: Int = 0
@@ -197,9 +197,9 @@ object brancher extends BranchingRules {
           v.symbExLog.markReachable(uidBranchPoint)
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-            v1.decider.assumptionAnalyzer.addExpToStack(conditionExp._1)
+            v1.decider.assumptionAnalyzer.addFineGrainedSource(conditionExp._1)
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
-            v1.decider.assumptionAnalyzer.popExpFromStack()
+            v1.decider.assumptionAnalyzer.popFineGrainedSource()
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })
