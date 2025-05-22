@@ -5,7 +5,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
-import java.io.PrintWriter
+import java.io.{File, PrintWriter}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
@@ -85,20 +85,29 @@ trait AssumptionAnalysisGraph {
     }
   }
 
-  def getNodeExportString(node: AssumptionAnalysisNode): String = {
-    node.id + " | " + node.getClass.getSimpleName + " | " + node.assumptionType + " | " + node.getNodeString + " | " + node.sourceInfo.toString
+  def exportGraph(fileName: String): Unit = {
+    val directory = new File(fileName)
+    directory.mkdir()
+    exportNodes(fileName)
+    exportEdges(fileName + "/edges.csv")
   }
 
-  def exportGraph(fileName: String): Unit = {
+  def exportEdges(fileName: String): Unit = {
     val writer = new PrintWriter(fileName)
-    writer.println("======         Nodes         ======")
-    writer.println("id | node type | assumption type | node info | source info")
+    writer.println("source,target,label")
+    edges foreach (e => e._2 foreach (t => writer.println(e._1 + "," + t + ",direct")))
+    transitiveEdges foreach (e => e._2 foreach (t => writer.println(e._1 + "," + t + ",transitive")))
+    writer.close()
+  }
+
+  private def exportNodes(fileName: String): Unit = {
+    def getNodeExportString(node: AssumptionAnalysisNode): String = {
+      node.id + " | " + node.getNodeType + " | " + node.assumptionType + " | " + node.getNodeString +
+        " | " + node.sourceInfo.toString + " | " + node.sourceInfo.getStringForExport
+    }
+    val writer = new PrintWriter(fileName + "/nodes.csv")
+    writer.println("id | node type | assumption type | node info | source info | position")
     nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
-    writer.println("======         Edges         ======")
-    edges foreach (e => writer.println(e._1 + " -> " + e._2.mkString(",")))
-    writer.println("======    Transitive Edges   ======")
-    transitiveEdges foreach (e => writer.println(e._1 + " -> " + e._2.mkString(",")))
-    writer.println("======          End          ======")
     writer.close()
   }
 }
@@ -140,6 +149,7 @@ trait AssumptionAnalysisNode {
   override def toString: String = id.toString + " | " + getNodeString + " | " + sourceInfo.toString
 
   def getNodeString: String
+  def getNodeType: String
 
   def isIncludedInAnalysis: Boolean = assumptionType match {// TODO ake
     case Internal => false
@@ -147,8 +157,11 @@ trait AssumptionAnalysisNode {
   }
 }
 
-trait GeneralAssumptionNode extends AssumptionAnalysisNode {}
+trait GeneralAssumptionNode extends AssumptionAnalysisNode {
+  override def getNodeType: String = "Assumption"
+}
 trait GeneralAssertionNode extends AssumptionAnalysisNode {
+  override def getNodeType: String = "Assertion"
    var isAsserted = false
 }
 
@@ -179,15 +192,18 @@ case class StringAssertionNode(description: String, sourceInfo: AnalysisSourceIn
 case class SimpleCheckNode(t: Term, sourceInfo: AnalysisSourceInfo) extends GeneralAssertionNode {
   val assumptionType: AssumptionType = Internal
   override def getNodeString: String = "check " + t
+  override def getNodeType: String = "Check"
 }
 
 case class PermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown) extends GeneralAssumptionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "inhale " + chunk.getAnalysisInfo
+  override def getNodeType: String = "Inhale"
 }
 
 case class PermissionExhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo) extends GeneralAssertionNode with ChunkAnalysisInfo {
   isAsserted = true
   val assumptionType: AssumptionType = Explicit
+  override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.getAnalysisInfo
 }
 

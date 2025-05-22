@@ -181,7 +181,7 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
   override def getMember: Option[Member] = Some(member)
 
   override def exportGraph(): Unit = {
-    val filename: Option[String] = getMember map {
+    val foldername: Option[String] = getMember map {
       case Method(name, _, _, _, _, _) => name
       case ast.Function(name, _, _, _, _, _) => name
       case Domain(name, _, _, _, _) => name
@@ -189,7 +189,7 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
       case location: Location => location.pos.toString
       case member: ExtensionMember => member.pos.toString
     }
-    assumptionGraph.exportGraph("graphExports/" + filename.getOrElse("latestExport") + ".txt")
+    assumptionGraph.exportGraph("graphExports/" + foldername.getOrElse("latestExport"))
   }
 
 }
