@@ -92,7 +92,7 @@ object predicateSupporter extends PredicateSupportRules {
         v1.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program, v1, AssumptionType.Unknown)
+            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program, v1, AssumptionType.Rewrite)
         val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
         val smCache = if (s2.heapDependentTriggers.contains(predicate)) {
@@ -117,7 +117,7 @@ object predicateSupporter extends PredicateSupportRules {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm, v1.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Explicit))
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm, v1.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Rewrite))
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor,
@@ -167,7 +167,7 @@ object predicateSupporter extends PredicateSupportRules {
       )((s2, h2, snap, consumedChunks, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap.get), body, pve, v1, AssumptionType.Explicit)((s4, v2) => { // TODO ake: add edge from consumedChunks to new assumptions, explicit assumption?
+        produce(s3, toSf(snap.get), body, pve, v1, AssumptionType.Rewrite)((s4, v2) => { // TODO ake: add edge from consumedChunks to new assumptions
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
@@ -187,7 +187,7 @@ object predicateSupporter extends PredicateSupportRules {
       chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description, v.decider.assumptionAnalyzer.getAnalysisInfo)((s2, h1, snap, consumedChunks, v1) => { // TODO ake: add edges
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap.get), body, pve, v1, AssumptionType.Explicit)((s4, v2) => { // TODO ake: explicit assumption
+        produce(s3, toSf(snap.get), body, pve, v1, AssumptionType.Rewrite)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =

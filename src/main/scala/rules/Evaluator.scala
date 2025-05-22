@@ -933,7 +933,7 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            consumes(s3, pres, true, _ => pvePre, v2, AnalysisInfo(v2.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(fapp), AssumptionType.Assertion))((s4, snap, consumedChunks, v3) => { // TODO ake: add edges from consumedChunks
+            consumes(s3, pres, true, _ => pvePre, v2, v2.decider.assumptionAnalyzer.getAnalysisInfo)((s4, snap, consumedChunks, v3) => { // TODO ake: add edges from consumedChunks
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
@@ -1051,7 +1051,7 @@ object evaluator extends EvaluationRules {
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
-        consume(s, eAss, false, pve, v, AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(eAss), AssumptionType.Assertion))((s2, _, consumedChunks, v2) => { // TODO ake: what to do with chunks here?
+        consume(s, eAss, false, pve, v, v.decider.assumptionAnalyzer.getAnalysisInfo)((s2, _, consumedChunks, v2) => { // TODO ake: what to do with chunks here?
           val s3 = s2.copy(g = s.g, h = s.h)
           eval(s3, eIn, pve, v2)(Q)
         })

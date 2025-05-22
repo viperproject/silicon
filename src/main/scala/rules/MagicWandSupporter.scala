@@ -368,7 +368,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
       // Produce the wand's LHS.
-      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, AssumptionType.Explicit)((sLhs, v2) => {
+      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, AssumptionType.Internal)((sLhs, v2) => { // TODO ake: assumption type?
         val proofScriptCfg = proofScript.toCfg()
 
         /* Expected shape of reserveHeaps is either
@@ -398,7 +398,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // Execute proof script, i.e. the part written after the magic wand wrapped by curly braces.
         // The proof script should transform the current state such that we can consume the wand's RHS.
-        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
+        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => { // TODO ake: assumption types?
           // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(
@@ -406,7 +406,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             wand.right, true, pve, proofScriptVerifier, proofScriptVerifier.decider.assumptionAnalyzer.getAnalysisInfo
           )((s3, snapRhs, consumedChunks, v3) => { // TODO ake: what to do with consumedChunks?
 
-            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, AssumptionType.Explicit)
+            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, AssumptionType.Rewrite)
           })
         })
       })
@@ -417,7 +417,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
       val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
-      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v, AssumptionType.Explicit)
+      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v, AssumptionType.Rewrite)
     }
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
@@ -487,7 +487,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         }
 
         // Produce the wand's RHS.
-        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2, AssumptionType.Explicit)((s4, v3) => { // TODO ake: add edges from consumedChunks, explicit assumption?
+        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2, AssumptionType.Rewrite)((s4, v3) => {
           // Recreate old state without the magic wand, and the state with the oldHeap called lhs.
           val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
 

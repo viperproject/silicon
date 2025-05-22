@@ -1,25 +1,13 @@
 field f: Int
-field next : Ref
-field val : Int
 
-predicate list(start : Ref)
-{
-  acc(start.val) && acc(start.next) &&
-    (start.next != null && list(start.next))
-}
+method foo(){
+    var x: Ref
+    inhale acc(x.f)
 
+    package true --* acc(x.f, 1/2){
 
-method basicPackage(l: Ref)
-  requires list(l)
-  ensures list(l)
-  {
-    unfold list(l)
-    var tmp : Ref := l.next
-
-    package list(tmp) --* list(l)
-    {
-      fold list(l)
     }
 
-    apply list(tmp) --* list(l)
+    apply true --* acc(x.f, 1/2)
+    assert acc(x.f)
 }

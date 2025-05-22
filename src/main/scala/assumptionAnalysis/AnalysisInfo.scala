@@ -2,7 +2,7 @@ package viper.silicon.assumptionAnalysis
 
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
-  val Assertion, Explicit, LoopInvariant, PathCondition, Implicit, Internal, Unknown = Value
+  val Explicit, LoopInvariant, PathCondition, Rewrite, Implicit, Internal, Unknown = Value
 }
 import viper.silicon.assumptionAnalysis.AssumptionType._
 
