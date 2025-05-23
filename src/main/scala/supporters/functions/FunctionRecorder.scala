@@ -202,7 +202,7 @@ case class ActualFunctionRecorder(private val _data: Either[FunctionData, (ast.P
     else this
 
   def recordFreshSnapshot(snap: Function): ActualFunctionRecorder =
-    if (depth <= 2) copy(freshSnapshots = freshSnapshots + snap)
+    if (depth <= 3) copy(freshSnapshots = freshSnapshots + snap)
     else this
 
   def recordPathSymbol(symbol: Function): ActualFunctionRecorder =
