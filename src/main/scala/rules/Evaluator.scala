@@ -1030,7 +1030,7 @@ object evaluator extends EvaluationRules {
 
                       if (s7a.predicateData(predicate).unfoldTree.isDefined) {
                         val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s7a.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
-                        predicateSupporter.doTree(s7a, s7a.predicateData(predicate).unfoldTree.get, toReplace, v4)((s8, v5) => {
+                        predicateSupporter.doTree(s7a, s7a.predicateData(predicate).unfoldTree.get, toReplace, v4, true)((s8, v5) => {
                           val s9 = s8.copy(g = s7.g,
                             functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                             recordVisited = s3.recordVisited,

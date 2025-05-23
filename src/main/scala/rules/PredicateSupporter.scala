@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon
+import viper.silicon.Config.JoinMode
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
@@ -128,7 +129,7 @@ object predicateSupporter extends PredicateSupportRules {
     })
   }
 
-  def doTree(s: State, tree: PredTree, toReplace: silicon.Map[Term, Term], v: Verifier)
+  def doTree(s: State, tree: PredTree, toReplace: silicon.Map[Term, Term], v: Verifier, isUnfolding: Boolean = false)
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
     tree match {
@@ -179,14 +180,38 @@ object predicateSupporter extends PredicateSupportRules {
         Q(s1, v)
       case PredBranchNode(cond, left, right) =>
         val substCond = cond.replace(toReplace)
-        brancher.branch(s, substCond, (ast.TrueLit()(), None), v)(
-          (s1, v1) => {
-            doTree(s1, left, toReplace, v1)(Q)
-          },
-          (s2, v2) => {
-            doTree(s2, right, toReplace, v2)(Q)
-          }
-        )
+
+        if (!isUnfolding && s.moreJoins.id >= JoinMode.Impure.id) {
+          joiner.join[scala.Null, scala.Null](s, v, resetState = false)((s1, v1, QB) => {
+            brancher.branch(s1, substCond, (ast.TrueLit()(), None), v1)(
+              (s2, v2) => {
+                doTree(s2, left, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
+              },
+              (s2, v2) => {
+                doTree(s2, right, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
+              }
+            )
+          }) (entries => {
+            val s2 = entries match {
+              case Seq(entry) => // One branch is dead
+                entry.s
+              case Seq(entry1, entry2) => // Both branches are alive
+                entry1.pathConditionAwareMergeWithoutConsolidation(entry2, v)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")
+            }
+            (s2, null)
+          }) ((sp, _, vp) => Q(sp, vp))
+        } else {
+          brancher.branch(s, substCond, (ast.TrueLit()(), None), v)(
+            (s1, v1) => {
+              doTree(s1, left, toReplace, v1, isUnfolding)(Q)
+            },
+            (s2, v2) => {
+              doTree(s2, right, toReplace, v2, isUnfolding)(Q)
+            }
+          )
+        }
     }
   }
 
@@ -234,7 +259,7 @@ object predicateSupporter extends PredicateSupportRules {
           // walk though branches, always substituting
           // assume and add to heap, substituting args, perms, snaps, making basic chunks singleton chunks if needed.
           val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
-          doTree(s3, s3.predicateData(predicate).unfoldTree.get, toReplace, v1)((s4, v4) => {
+          doTree(s3, s3.predicateData(predicate).unfoldTree.get, toReplace, v1, false)((s4, v4) => {
             v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
             if (!Verifier.config.disableFunctionUnfoldTrigger()) {
               val predicateTrigger =
@@ -277,7 +302,7 @@ object predicateSupporter extends PredicateSupportRules {
           // walk though branches, always substituting
           // assume and add to heap, substituting args, perms, snaps, making basic chunks singleton chunks if needed.
           val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
-          doTree(s3, s3.predicateData(predicate).unfoldTree.get, toReplace, v1)((s4, v4) => {
+          doTree(s3, s3.predicateData(predicate).unfoldTree.get, toReplace, v1, false)((s4, v4) => {
             v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
             if (!Verifier.config.disableFunctionUnfoldTrigger()) {
               val predicateTrigger =
