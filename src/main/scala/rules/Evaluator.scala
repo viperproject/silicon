@@ -182,6 +182,11 @@ object evaluator extends EvaluationRules {
           failIfDivByZero(s1, tFP, e1, e1New, t1, predef.Zero, pve, v1)((s2, t, v2)
             => Q(s2, t, e0New.map(ast.FractionalPerm(_, e1New.get)(e.pos, e.info, e.errT)), v2)))
 
+      case _: ast.WildcardPerm if s.assertReadAccessOnly =>
+        // We are in a context where permission amounts do not matter, so we can safely translate a wildcard to
+        // a full permission.
+        Q(s, FullPerm, eOpt, v)
+
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints, eVar) = v.decider.freshARP()
         val constraintExp = Option.when(withExp)(DebugExp.createInstance(s"${eVar.get.toString} > none", true))
@@ -764,13 +769,13 @@ object evaluator extends EvaluationRules {
         if (usesQPChunks) {
             val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
             bindQuantRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-              val s3 = s2.copy(h = s.h, g = s.g)
+              val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
               Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
             })
         } else {
           val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
           bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-            val s3 = s2.copy(h = s.h, g = s.g)
+            val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
             Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
           })
         }
