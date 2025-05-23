@@ -431,6 +431,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  lazy val simplifyOnConsume: ScallopOption[Boolean] = opt[Boolean]("simplifyOnConsume",
+    descr = "Simplify mask on consume in maskHeapMode",
+    default = Some(false),
+    noshort = true
+  )
+
   def heapFunctionEncoding() = {
     maskHeapMode() && !maskHeapSnapFunctions()
   }
@@ -849,6 +855,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
         + s"${exhaleModeOption.name} to 1 (more complete exhale)")
     case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
       Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
+    case _ => Right(())
+  }
+
+  validateOpt(maskHeapMode, simplifyOnConsume) {
+    case (Some(true), Some(true)) =>
+      Right()
+    case (_, Some(true)) =>
+      Left("Option --simplifyOnConsume is only valid in combination with --maskHeapMode")
     case _ => Right(())
   }
 
