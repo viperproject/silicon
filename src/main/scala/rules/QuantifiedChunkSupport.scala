@@ -2030,11 +2030,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
-        Left(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
+        val qvarsAndInverses = qfc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qfc.invs.get.additionalArguments.toSeq ++ qfc.quantifiedVars)))
+        val invertiblesReplaced = qfc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+        Left(invertiblesReplaced, qfc.quantifiedVars, qfc.condition)
       case qfc: QuantifiedFieldChunk if qfc.singletonArguments.isDefined =>
         Right(qfc.singletonArguments.get, qfc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
-        Left(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
+        val qvarsAndInverses = qpc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qpc.invs.get.additionalArguments.toSeq ++ qpc.quantifiedVars)))
+        val invertiblesReplaced = qpc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+        Left(invertiblesReplaced, qpc.quantifiedVars, qpc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.singletonArguments.isDefined =>
         Right(qpc.singletonArguments.get, qpc.condition)
       case _ => return None
@@ -2078,9 +2082,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     relevantChunks.find { ch =>
       val chunkInfo = ch match {
         case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
-          Some(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
+          val qvarsAndInverses = qfc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qfc.invs.get.additionalArguments.toSeq ++ qfc.quantifiedVars)))
+          val invertiblesReplaced = qfc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+          Some(invertiblesReplaced, qfc.quantifiedVars, qfc.condition)
         case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
-          Some(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
+          val qvarsAndInverses = qpc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qpc.invs.get.additionalArguments.toSeq ++ qpc.quantifiedVars)))
+          val invertiblesReplaced = qpc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+          Some(invertiblesReplaced, qpc.quantifiedVars, qpc.condition)
         case _ => None
       }
       chunkInfo match {
