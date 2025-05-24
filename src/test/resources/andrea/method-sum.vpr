@@ -3,12 +3,12 @@ field f: Int
 method sum(x: Int, y: Int) returns(res: Int)
   requires x >= 0 && y >= 0
   ensures res == x + y
-//{
-//  res := x + y
-//}
+{
+ res := x + y
+}
 
 
-method methodSum(x: Int, y: Int)
+method sumClient(x: Int, y: Int)
 {
   assume x >= 0
   assume y >= 0
@@ -18,6 +18,5 @@ method methodSum(x: Int, y: Int)
   n := n + n2
 
   assert n >= x + 2*y
-  assert n < 0
-
+  assert n >= 0
 }

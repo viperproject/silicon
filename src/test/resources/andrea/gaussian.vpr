@@ -1,5 +1,6 @@
+field f: Int
 
-method sum(n: Int) returns (res: Int)
+method gaussianSimple(n: Int) returns (res: Int)
   requires 0 <= n
   requires n <= 5
   ensures  res == n * (n + 1) / 2
@@ -14,4 +15,52 @@ method sum(n: Int) returns (res: Int)
     res := res + i
     i := i + 1
   }
+}
+
+method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
+  requires none < p && p < write
+  requires acc(a.f, p)
+  requires 0 <= a.f
+  requires a.f <= 5
+  ensures acc(a.f, p)
+  ensures  res == a.f * (a.f + 1) / 2
+{
+  res := 0
+  var i: Int := 0
+  while(i <= a.f)
+    invariant acc(a.f, p)
+    invariant 0 <= a.f && a.f <= 5
+    invariant i <= (a.f + 1)
+    invariant i <= 6
+    invariant res == (i - 1) * i / 2
+  {
+    res := res + i
+    i := i + 1
+  }
+}
+
+predicate gaussianEq(res: Int, n: Int){
+  res == (n - 1) * n / 2 && n >= 0
+}
+
+method gaussianPred(n: Int) returns (res: Int)
+  requires 0 <= n
+  requires n <= 5
+  ensures gaussianEq(res, n+1)
+{
+  res := 0
+  var i: Int := 0
+  fold gaussianEq(res, i)
+  while(i <= n)
+    invariant i <= (n + 1)
+    invariant i <= 6
+    invariant gaussianEq(res, i)
+  {
+    unfold gaussianEq(res, i)
+    res := res + i
+    i := i + 1
+    fold gaussianEq(res, i)
+  }
+  unfold gaussianEq(res, i)
+  fold gaussianEq(res, n+1)
 }

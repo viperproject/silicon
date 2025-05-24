@@ -5,16 +5,9 @@ function id(n: Int): Int
 
 method foo(a: Ref)
     requires acc(a.f, 1/2) && a.f >= 0
-    ensures acc(a.f, 1/2)
+    ensures  acc(a.f, 1/2)
 
-method simple(x: Ref, y: Ref, p: Perm)
-  requires acc(x.f) && acc(y.f)
-  ensures  acc(x.f) && acc(y.f)
-{
-  x.f := y.f + 1
-}
-
-method call1(x: Ref)
+method call(x: Ref)
   requires acc(x.f)
   ensures  acc(x.f)
 {
@@ -23,58 +16,7 @@ method call1(x: Ref)
   assert x.f >= 0
 }
 
-method call2(x: Ref)
-  requires acc(x.f)
-  ensures  acc(x.f)
-{
-  assume x.f > 0
-  x.f := id(x.f)
-  assert x.f >= 0
-}
-
-method inhaleExhalePartial(x: Ref)
-{
-  inhale acc(x.f) && x.f > 0
-  foo(x)
-  exhale acc(x.f, 1/2)
-}
-
-method inhaleExhaleFull(x: Ref)
-{
-  inhale acc(x.f) && x.f > 0
-  foo(x)
-  exhale acc(x.f)
-}
-
-method permAmount(x: Ref, p: Perm)
-{
-  assume p > none
-  inhale acc(x.f, p) && x.f > 0
-  assume p > 1/2
-  foo(x)
-}
-
-method quantifiedPerm1(xs: Seq[Ref])
-{
-  assume |xs| > 5
-  inhale forall x: Ref :: x in xs ==> acc(x.f)
-
-  var a : Ref := xs[1]
-  a.f := 0
-}
-
-method quantifiedPerm2(xs: Seq[Ref])
-{
-  assume |xs| > 5
-  inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
-
-  assert xs[2].f > 0
-
-  var a : Ref := xs[0]
-  a.f := 0
-}
-
-method bar(x: Ref, y: Ref, p: Perm)
+method permAmount(x: Ref, y: Ref, p: Perm)
   requires p > none
   requires acc(x.f) && acc(y.f, p)
   ensures  acc(x.f) && acc(y.f, p)
@@ -99,10 +41,13 @@ method transitivity(a: Ref, n: Int)
 method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
     requires acc(a.f, 1/2) && acc(b.f, 1/2)
     requires c ==> a == b
-    requires a.f > 0 && n > 0
+    requires a.f > 0 && n > 0 && b.f >= 0
+    requires a.f < 100
+    requires !c ==> a.f < b.f
 {
     if(c){
         a.f := n + 1
     }
     assert a.f >= 0
+    assert !c ==> a.f <= 100
 }

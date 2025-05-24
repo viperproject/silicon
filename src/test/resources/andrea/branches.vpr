@@ -2,12 +2,14 @@
 field f: Int
 
 
-method foo(a: Int, b: Int)
+method branches2(a: Int, b: Int)
 {
   var n:Int, c: Bool
 
-  assume a > 0
-  assume b > 0
+  assume 0 < a && a < 100
+  assume 0 < b
+  assume b < 50
+  assume c ==> a > 5
 
   if(c){
     n := a + 1
@@ -20,32 +22,156 @@ method foo(a: Int, b: Int)
     x := a + b
   }else{
     x := n + 1
-    assert x >= 1
+    assert x > 1
   }
+  assert n > 1
   assert x > n
 }
 
 
-method fooPerm(a: Ref, b: Ref)
+method branchesPerm(a: Ref, b: Ref)
   requires acc(a.f) && acc(b.f)
 {
   var n:Int, c: Bool
 
-  assume a.f > 0
-  assume b.f > 0
+  assume 0 < a.f && a.f < 100
+  assume 0 < b.f
+  assume b.f < 50
+  assume c ==> a.f > 5
 
   if(c){
-    n := a.f
+    n := a.f + 1
   }else{
-    n := b.f
+    n := b.f + 1
   }
 
   var x: Int := 0
   if(a.f > n){
     x := a.f + b.f
   }else{
-    x := n
-    assert x >= 1
+    x := n + 1
+    assert x > 1
   }
-  assert x >= n
+  assert n > 1
+  assert x > n
+}
+
+method nestedBranches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume 0 < a && a < 100
+  assume 0 < b
+  assume b < 50
+  assume c ==> a > 5
+
+  if(c){
+    if(a > b){
+      n := a - b
+    }else{
+      n := a + b
+      assert n > 0
+    }
+    n := n - 1
+  }else{
+    n := a + b
+  }
+
+  assert n >= 0
+  assert n <= a + b
+  assert c ==> n < a + b
+}
+
+function sum(a: Int, b: Int): Int
+  requires a >= 0 && b >= 0
+  ensures result == a + b
+  ensures result >= 0
+  ensures result >= a && result >= b
+{
+  a + b
+}
+
+function diff(a: Int, b: Int): Int
+  requires a >= 0 && b >= 0
+  requires a >= b
+  ensures result == a - b
+  ensures result >= 0
+  ensures result <= a
+{
+  a - b
+}
+
+method branchesFunctions(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume 0 < a && a < 100
+  assume 0 < b
+  assume b < 50
+  assume c ==> a > 5
+
+  if(c){
+    if(a > b){
+      n := diff(a, b)
+    }else{
+      n := sum(a, b)
+      assert n > 0
+    }
+    n := n - 1
+  }else{
+    n := sum(a, b)
+  }
+
+  assert n >= 0
+  assert n <= a + b
+  assert c ==> n < a + b
+}
+
+
+function sumPerm(a: Ref, b: Ref): Int
+  requires acc(a.f, wildcard) && acc(b.f, wildcard)
+  requires a.f >= 0 && b.f >= 0
+  ensures result == a.f + b.f
+  ensures result >= 0
+  ensures result >= a.f && result >= b.f
+{
+  a.f + b.f
+}
+
+function diffPerm(a: Ref, b: Ref): Int
+  requires acc(a.f, wildcard) && acc(b.f, wildcard)
+  requires a.f >= 0 && b.f >= 0
+  requires a.f >= b.f
+  ensures result == a.f - b.f
+  ensures result >= 0
+  ensures result <= a.f
+{
+  a.f - b.f
+}
+
+method branchesFunctionsPerm(a: Ref, b: Ref)
+  requires acc(a.f) && acc(b.f)
+{
+  var n:Int, c: Bool
+
+  assume 0 < a.f && a.f < 100
+  assume 0 < b.f
+  assume b.f < 50
+  assume c ==> a.f > 5
+
+  if(c){
+    if(a.f > b.f){
+      n := diffPerm(a, b)
+    }else{
+      n := sumPerm(a, b)
+      assert n > 0
+    }
+    n := n - 1
+  }else{
+    n := sumPerm(a, b)
+  }
+
+  assert n >= 0
+  assert n <= a.f + b.f
+  assert c ==> n < a.f + b.f
 }

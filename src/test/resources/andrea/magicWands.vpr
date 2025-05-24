@@ -39,6 +39,7 @@ method appendit_wand(l1 : Ref, l2: Ref)
   ensures list(l1) // && elems(l1) == old(elems(l1) ++ elems(l2))
   {
     unfold list(l1)
+    assume l1.val >= 0
     if(l1.next == null) { // easy case
       l1.next := l2; fold list(l1)
     } else {

@@ -1,0 +1,30 @@
+field elem: Int
+field next: Ref
+
+predicate lseg(this: Ref, last: Ref) {
+  this != last ==>
+    acc(this.elem) && acc(this.next) &&
+    this.next != null &&
+    lseg(this.next, last)
+}
+
+function values(this: Ref, last: Ref): Seq[Int]
+  requires lseg(this, last)
+{
+  unfolding lseg(this, last) in 
+    this == last
+      ? Seq[Int]()
+      : Seq(this.elem) ++ values(this.next, last)
+}
+
+method removeFirst(this: Ref, last: Ref) returns (first: Int, rest: Ref)
+  requires lseg(this, last)
+  requires this != last
+  ensures  lseg(rest, last)
+  ensures  values(rest, last) == old(values(this, last)[1..])
+{
+  unfold lseg(this, last)
+
+  first := this.elem
+  rest := this.next
+}

@@ -1,11 +1,43 @@
 field f: Int
+field first : Ref
+field second : Ref
 
-method foo(xs: Seq[Ref]) {
+method quantifiedPerm(xs: Seq[Ref]) {
   assume |xs| > 5
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
+  assert xs[2].f > 0
   var a : Ref := xs[0]
   a.f := 0
+}
 
-  assert xs[2].f > 0
+method quantifiedWritePerm(nodes: Set[Ref], x: Ref)
+  requires forall n:Ref :: { n.first } n in nodes ==> 
+    acc(n.first) && 
+    (n.first != null ==> n.first in nodes)
+  requires forall n:Ref :: { n.second } n in nodes ==> 
+    acc(n.second) && 
+    (n.second != null ==> n.second in nodes)
+  requires x in nodes
+{
+  var y : Ref
+  if(x.second != null) {
+    y := x.second // permissions covered by preconditions
+    y.second := y
+  }
+}
+
+method quantifiedSum(nodes: Set[Ref], x: Ref)
+  requires forall n:Ref :: { n.first } n in nodes ==> 
+    acc(n.first) && 
+    (n.first != null ==> n.first in nodes)
+  requires forall n:Ref :: { n.f } n in nodes ==> 
+    acc(n.f) && 0 <= n.f && n.f <= 100
+  requires x in nodes
+{
+  var a: Int := x.f
+  if(x.first != null) {
+    a := a + x.first.f
+  }
+  assert a >= 0
 }
