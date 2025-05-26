@@ -61,7 +61,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   def consolidate(s: State, v: Verifier): State = {
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
-    v.decider.assumptionAnalyzer.addFineGrainedSource(StringAnalysisSourceInfo("state consolidation", NoPosition))
+    v.decider.assumptionAnalyzer.addAnalysisSourceInfo(StringAnalysisSourceInfo("state consolidation", NoPosition))
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration)
 
@@ -109,7 +109,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.PathCondition))
         }
 
-        v.decider.assumptionAnalyzer.popFineGrainedSource()
+        v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
         v.symbExLog.closeScope(sepIdentifier)
         (functionRecorder, hs :+ Heap(mergedChunks))
       }

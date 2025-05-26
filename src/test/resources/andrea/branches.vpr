@@ -85,8 +85,6 @@ method nestedBranches1(a: Int, b: Int)
 function sum(a: Int, b: Int): Int
   requires a >= 0 && b >= 0
   ensures result == a + b
-  ensures result >= 0
-  ensures result >= a && result >= b
 {
   a + b
 }
@@ -95,8 +93,6 @@ function diff(a: Int, b: Int): Int
   requires a >= 0 && b >= 0
   requires a >= b
   ensures result == a - b
-  ensures result >= 0
-  ensures result <= a
 {
   a - b
 }
@@ -132,8 +128,6 @@ function sumPerm(a: Ref, b: Ref): Int
   requires acc(a.f, wildcard) && acc(b.f, wildcard)
   requires a.f >= 0 && b.f >= 0
   ensures result == a.f + b.f
-  ensures result >= 0
-  ensures result >= a.f && result >= b.f
 {
   a.f + b.f
 }
@@ -143,8 +137,6 @@ function diffPerm(a: Ref, b: Ref): Int
   requires a.f >= 0 && b.f >= 0
   requires a.f >= b.f
   ensures result == a.f - b.f
-  ensures result >= 0
-  ensures result <= a.f
 {
   a.f - b.f
 }

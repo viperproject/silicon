@@ -101,12 +101,14 @@ trait AssumptionAnalysisGraph {
   }
 
   private def exportNodes(fileName: String): Unit = {
+    val sep = "#"
     def getNodeExportString(node: AssumptionAnalysisNode): String = {
-      node.id + " | " + node.getNodeType + " | " + node.assumptionType + " | " + node.getNodeString +
-        " | " + node.sourceInfo.toString + " | " + node.sourceInfo.getStringForExport
+      val parts = Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getStringForExport)
+      parts.map(_.replace("#", "@")).mkString(sep)
     }
     val writer = new PrintWriter(fileName + "/nodes.csv")
-    writer.println("id | node type | assumption type | node info | source info | position")
+    val headerParts = Seq("id", "node type", "assumption type", "node info", "source info", "position")
+    writer.println(headerParts.mkString(sep))
     nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
     writer.close()
   }

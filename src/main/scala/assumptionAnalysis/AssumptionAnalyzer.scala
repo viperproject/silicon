@@ -29,43 +29,33 @@ trait AssumptionAnalyzer {
 
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
-  private var coarseGrainedSourceStack: List[AnalysisSourceInfo] = List.empty
-  private var fineGrainedSourceStack: List[AnalysisSourceInfo] = List.empty
+  var sourceInfoes: List[AnalysisSourceInfo] = List.empty // TODO ake: make private
 
   def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
 
   def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, getFullSourceInfo, assumptionType)
 
   def getFullSourceInfo: AnalysisSourceInfo = {
-    if(fineGrainedSourceStack.isEmpty){
-      coarseGrainedSourceStack.headOption.getOrElse(NoAnalysisSourceInfo())
-    }else if(coarseGrainedSourceStack.isEmpty){
-      fineGrainedSourceStack.head
-    }else{
-      CompositeAnalysisSourceInfo(coarseGrainedSourceStack.head, fineGrainedSourceStack.head)
+    if(sourceInfoes.size <= 1){
+      sourceInfoes.headOption.getOrElse(NoAnalysisSourceInfo())
+    } else{
+      CompositeAnalysisSourceInfo(sourceInfoes.last, sourceInfoes.head)
     }
   }
 
   def addAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): AnalysisSourceInfo = {
-    coarseGrainedSourceStack = analysisSourceInfo +: coarseGrainedSourceStack
+    sourceInfoes = analysisSourceInfo +: sourceInfoes
     analysisSourceInfo
   }
 
   def popAnalysisSourceInfo(): Unit = {
-    coarseGrainedSourceStack = coarseGrainedSourceStack.tail
+    sourceInfoes = sourceInfoes.tail
   }
 
-  def addFineGrainedSource(e: ast.Exp): Unit = {
-    fineGrainedSourceStack = ExpAnalysisSourceInfo(e) +: fineGrainedSourceStack
-  }
+  def getAnalysisSourceInfoes: List[AnalysisSourceInfo] = sourceInfoes
 
-  def addFineGrainedSource(analysisSourceInfo: AnalysisSourceInfo): Unit = {
-    fineGrainedSourceStack = analysisSourceInfo +: fineGrainedSourceStack
-  }
-
-  def popFineGrainedSource(): Unit = {
-    if(fineGrainedSourceStack.nonEmpty)
-      fineGrainedSourceStack = fineGrainedSourceStack.tail
+  def addAnalysisSourceInfo(e: ast.Exp): Unit = {
+    sourceInfoes = ExpAnalysisSourceInfo(e) +: sourceInfoes
   }
 
   def getMember: Option[Member]

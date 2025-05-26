@@ -440,7 +440,7 @@ object executor extends ExecutionRules {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
-            v2.decider.assumptionAnalyzer.addFineGrainedSource(fa)
+            v2.decider.assumptionAnalyzer.addAnalysisSourceInfo(fa)
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
@@ -453,7 +453,7 @@ object executor extends ExecutionRules {
                 val s5 = s4.copy(h = h4)
                 val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
                 val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
-                v4.decider.assumptionAnalyzer.popFineGrainedSource()
+                v4.decider.assumptionAnalyzer.popAnalysisSourceInfo()
                 Q(s6, v4)
               })
             })
@@ -480,7 +480,7 @@ object executor extends ExecutionRules {
               field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v, AssumptionType.Implicit)
           } else {
             val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp,
-              AnalysisInfo(v.decider.assumptionAnalyzer, ExpAnalysisSourceInfo(ast.FieldAccess(x, field)(field.pos, field.info, field.errT)), AssumptionType.Explicit))
+              v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Implicit))
             newChunk
           }
         })
