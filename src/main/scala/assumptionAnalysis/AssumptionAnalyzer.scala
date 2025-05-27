@@ -103,7 +103,7 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
 
   override def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = {
     val newNodes = assumptions.toSeq.map(a =>
-      if (a.originalExp.isDefined) SimpleAssumptionNode(a.originalExp.get, analysisSourceInfo, assumptionType)
+      if (a.originalExp.isDefined) SimpleAssumptionNode(a.originalExp.get, if(analysisSourceInfo.isInstanceOf[NoAnalysisSourceInfo]) ExpAnalysisSourceInfo(a.originalExp.get) else analysisSourceInfo, assumptionType)
       else StringAssumptionNode(a.description.getOrElse("unknown"), analysisSourceInfo, AssumptionType.Internal)
     )
     newNodes foreach addNode
@@ -156,7 +156,7 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     if(newChunkNodeId.isEmpty) return
 
     val oldChunkNodeIds = assumptionGraph.nodes
-      .filter(c => c.id != newChunkNodeId.get && !c.isInstanceOf[PermissionAssertNode] && c.isInstanceOf[ChunkAnalysisInfo] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
+      .filter(c => c.id != newChunkNodeId.get && c.isInstanceOf[PermissionInhaleNode] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.id).toSet
     assumptionGraph.addEdges(oldChunkNodeIds, newChunkNodeId.get)
   }

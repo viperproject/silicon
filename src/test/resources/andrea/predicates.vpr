@@ -30,8 +30,10 @@ method unfoldFoldP(a: Int, b: Int)
     requires greater0(a) && greater5(b)
     ensures greater5(a + b)
 {
+    assume b < 100
     unfold greater0(a)
     unfold greater5(b)
+    assume a > 60
     fold greater5(a + b)
 }
 

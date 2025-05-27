@@ -7,7 +7,7 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.AssumptionType
+import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
@@ -261,8 +261,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
-            decider.assume(pcsPre, Option.when(wExp)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Explicit)
+            decider.assume(pcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=AssumptionType.Explicit)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            v.decider.assumptionAnalyzer.addAnalysisSourceInfo(ExpAnalysisSourceInfo(body))
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
               val debugExp = if (wExp) {
                 val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
@@ -270,6 +271,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.Implicit)
+              v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
               consumes(s2, posts, false, postconditionViolated, v)((s3, _, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}

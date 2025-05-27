@@ -186,7 +186,8 @@ object evaluator extends EvaluationRules {
 
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints, eVar) = v.decider.freshARP()
-        val constraintExp = Option.when(withExp)(DebugExp.createInstance(s"${eVar.get.toString} > none", true))
+        val eConstraints = Some(ast.LocalVar("wildcardConstraints", ast.Bool)(e.pos, e.info, e.errT))
+        val constraintExp = Option.when(withExp)(DebugExp.createInstance(None, eConstraints, eConstraints, Some(tConstraints), isInternal_ = true, children = InsertionOrderedSet()))
         v.decider.assumeDefinition(tConstraints, constraintExp, AssumptionType.Implicit)
         /* TODO: Only record wildcards in State.constrainableARPs that are used in exhale
          *       position. Currently, wildcards used in inhale position (only) may not be removed
@@ -202,7 +203,7 @@ object evaluator extends EvaluationRules {
         val s1 =
           s.copy(functionRecorder = s.functionRecorder.recordConstrainedVar(tVar, tConstraints))
            .setConstrainable(Seq(tVar), true)
-        Q(s1, tVar, eVar, v)
+        Q(s1, tVar, eVar.map(eV => ast.LocalVarWithVersion(eV.name, eV.typ)(e.pos, e.info, e.errT)), v)
 
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, eRcvr, v1) => {
@@ -590,7 +591,7 @@ object evaluator extends EvaluationRules {
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
                   val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, resacc.pos, Some(h))
-                  val exp = Option.when(withExp)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resacc)(), debugLabel)(), ast.FullPerm()())())
+                  val exp = Option.when(withExp)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resacc)(), debugLabel)(), ast.FullPerm()())(resacc.pos, resacc.info, resacc.errT))
                   v1.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)), AssumptionType.Internal)
                   val s3 = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> h)) else s2
                   (s3, currentPermAmount)

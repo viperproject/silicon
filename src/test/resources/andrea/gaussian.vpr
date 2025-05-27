@@ -61,6 +61,5 @@ method gaussianPred(n: Int) returns (res: Int)
     i := i + 1
     fold gaussianEq(res, i)
   }
-  unfold gaussianEq(res, i)
-  fold gaussianEq(res, n+1)
+  assert i == n+1
 }
