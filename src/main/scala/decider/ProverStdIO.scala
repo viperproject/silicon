@@ -227,7 +227,6 @@ abstract class ProverStdIO(uniqueId: String,
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
-  // TODO ake: we should always have a label?
   def assume(term: Term): Unit = {
     assume(term, "prover_" + proverLabelId)
     proverLabelId += 1

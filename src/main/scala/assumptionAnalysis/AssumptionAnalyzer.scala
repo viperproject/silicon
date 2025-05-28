@@ -29,7 +29,7 @@ trait AssumptionAnalyzer {
 
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
-  var sourceInfoes: List[AnalysisSourceInfo] = List.empty // TODO ake: make private
+  protected var sourceInfoes: List[AnalysisSourceInfo] = List.empty
 
   def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
 
@@ -53,6 +53,9 @@ trait AssumptionAnalyzer {
   }
 
   def getAnalysisSourceInfoes: List[AnalysisSourceInfo] = sourceInfoes
+  def setAnalysisSourceInfoes(infoes: List[AnalysisSourceInfo]): Unit = {
+    sourceInfoes = infoes
+  }
 
   def addAnalysisSourceInfo(e: ast.Exp): Unit = {
     sourceInfoes = ExpAnalysisSourceInfo(e) +: sourceInfoes

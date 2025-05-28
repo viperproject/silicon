@@ -230,7 +230,6 @@ object producer extends ProductionRules {
                         : VerificationResult = {
 
     v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
-//    v.decider.assumptionAnalyzer.updateCurrentAnalysisInfo(ExpAnalysisSourceInfo(a)) TODO ake
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
 
     val Q: (State, Verifier) => VerificationResult = (state, verifier) =>

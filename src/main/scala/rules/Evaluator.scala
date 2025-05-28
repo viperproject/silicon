@@ -1083,21 +1083,21 @@ object evaluator extends EvaluationRules {
                   case false =>
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExp)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Unknown)
+                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Internal)
                       failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     } else failure}
               case false =>
 
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, idxGe0, idxGe0ExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Unknown)
+                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Internal)
                   v1.decider.assert(idxLtLength, idxLtLengthExp) {
                     case true =>
                       failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     case false =>
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExpNew)
                       if (v1.reportFurtherErrors()) {
-                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Unknown)
+                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Internal)
                         failure2 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                       } else failure2}
                 } else failure1}}})
@@ -1134,20 +1134,20 @@ object evaluator extends EvaluationRules {
                   case false =>
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExpNew)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Unknown)
+                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Internal)
                       failure combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)}
                     else failure}
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, idxGe0, idxGe0ExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Unknown)
+                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Internal)
                   v1.decider.assert(idxLtLength, idxLtLengthExp) {
                     case true =>
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                     case false =>
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExpNew)
                       if (v1.reportFurtherErrors()) {
-                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Unknown)
+                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Internal)
                         failure2 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                       } else failure2}
             } else failure1}}})
@@ -1266,7 +1266,7 @@ object evaluator extends EvaluationRules {
               case false =>
                 val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1, SetIn(keyT, MapDomain(baseT)), assertExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(SetIn(keyT, MapDomain(baseT)), assertExp, assertExpNew, AssumptionType.Unknown)
+                  v1.decider.assume(SetIn(keyT, MapDomain(baseT)), assertExp, assertExpNew, AssumptionType.Internal)
                   failure1 combine Q(s1, MapLookup(baseT, keyT), eNew, v1)
                 } else {
                   failure1
@@ -1520,7 +1520,7 @@ object evaluator extends EvaluationRules {
       case false =>
         val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s, tDivisor !== tZero, notZeroExpNew)
         if (s.retryLevel == 0  && v.reportFurtherErrors()) {
-          v.decider.assume(tDivisor !== tZero, notZeroExp, notZeroExpNew, AssumptionType.Unknown)
+          v.decider.assume(tDivisor !== tZero, notZeroExp, notZeroExpNew, AssumptionType.Internal)
           failure combine Q(s, t, v)
         } else failure
     }
@@ -1706,7 +1706,7 @@ object evaluator extends EvaluationRules {
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
         sJoined = sJoined.copy(functionRecorder = sJoined.functionRecorder.recordPathSymbol(joinSymbol))
 
-        joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew, AssumptionType.Unknown)}
+        joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew, AssumptionType.Internal)}
 
         (sJoined, (joinTerm, joinExp))
     }

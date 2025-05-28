@@ -18,6 +18,8 @@ abstract class AnalysisSourceInfo {
   def getPosition: Position
 
   def getTopLevelSource: AnalysisSourceInfo = this
+
+  def getFineGrainedSource: AnalysisSourceInfo = this
 }
 
 case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
@@ -57,10 +59,11 @@ case class StringAnalysisSourceInfo(description: String, position: Position) ext
 }
 
 case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, fineGrainedSource: AnalysisSourceInfo) extends AnalysisSourceInfo {
-  override def toString: String = coarseGrainedSource.toString // TODO ake: + " -> " + fineGrainedSource.toString
+  override def toString: String = coarseGrainedSource.toString
   override def getPosition: Position = coarseGrainedSource.getPosition
 
-  override def equals(obj: Any): Boolean = coarseGrainedSource.equals(obj) // TODO ake
+  override def equals(obj: Any): Boolean = coarseGrainedSource.equals(obj)
 
   override def getTopLevelSource: AnalysisSourceInfo = coarseGrainedSource
+  override def getFineGrainedSource: AnalysisSourceInfo = fineGrainedSource
 }

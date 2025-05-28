@@ -387,7 +387,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Unknown))
+          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
         }
         val newHeap = Heap(allChunks)
 
@@ -477,7 +477,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             ast.Implies(ast.Not(eqExp.get)(), ast.EqCmp(permTakenExp.get, ast.NoPerm()())())(pe.pos, pe.info, pe.errT))))
 
 
-        v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Unknown)
+        v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Internal)
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
@@ -493,7 +493,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val constraintExp = permsExp.map(pe => ast.Implies(ast.NeCmp(totalPermSumExp.get, ast.NoPerm()())(),
       ast.And(ast.PermLeCmp(ast.NoPerm()(), totalPermTakenExp.get)(), ast.PermLeCmp(totalPermTakenExp.get, totalPermSumExp.get)())(pe.pos, pe.info, pe.errT))())
 
-    v.decider.assume(totalTakenBounds, constraintExp, constraintExp, AssumptionType.Unknown)
+    v.decider.assume(totalTakenBounds, constraintExp, constraintExp, AssumptionType.Internal)
 
     newFr = newFr.recordConstraint(totalTakenBounds)
 
@@ -503,7 +503,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm), totalPermTakenImplExp) {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
-        v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Unknown)
+        v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Internal)
         if (returnSnap) {
           summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, v1) =>
             Q(s2, updatedChunks, Some(snap), v1)) // TODO ake: updatedChunks are the new chunks, not the old consumed ones!

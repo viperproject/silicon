@@ -423,7 +423,7 @@ object executor extends ExecutionRules {
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
                 v1.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, AssumptionType.Implicit) // TODO ake: or internal?
+                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, AssumptionType.Implicit)
                 if (s3.heapDependentTriggers.contains(field)) {
                   val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Internal)

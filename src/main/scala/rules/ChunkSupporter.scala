@@ -169,7 +169,6 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) =>
         if (s.assertReadAccessOnly) {
           if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0))) {
-            // TODO ake: add edge from check to permission assert node
             v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, ch.permExp.map(pe => IsPositive(pe)(pe.pos, pe.info, pe.errT)), v.decider.assumptionAnalyzer.getFullSourceInfo)
             (Complete(), s, h, Some(ch))
           } else {

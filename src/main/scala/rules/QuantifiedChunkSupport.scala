@@ -1053,7 +1053,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 triggers = effectiveTriggers,
                 qidPrefix = qid
               )
-              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, AssumptionType.Unknown)
+              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, AssumptionType.Internal)
             })
             val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
@@ -1491,7 +1491,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         }
         val consumedChunk =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program, v1, AssumptionType.Unknown)
+            codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program, v1, AssumptionType.Unknown) // TODO ake: exhale
         val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
                          smCache = smCache1)
         (result, s3, h2, Some(consumedChunk)) // TODO ake: or consumedChunks?
@@ -1581,7 +1581,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       else
         Incomplete(PermMinus(permsAvailable, perms), permsAvailableExp.map(pa => ast.PermSub(pa, permsExp.get)()))
 
-    // TODO ake: add permission assert node?
     result
   }
 
@@ -1681,9 +1680,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         if (constrainPermissions) {
           v.decider.prover.comment(s"Constrain original permissions $perms")
 
-          v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, AssumptionType.Unknown)
+          v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, AssumptionType.Internal)
           remainingChunks =
-            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo) // TODO ake: assumptionType?
+            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Implicit))
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
           val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
@@ -1694,7 +1693,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks = remainingChunks :+ ithChunk
             } else {
               remainingChunks =
-                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo)// TODO ake: assumptionType?
+                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Implicit))
             }
           }
         }
@@ -2077,7 +2076,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Chunks alias", isInternal_ = true))
-                v.decider.assume(equalityTerm, debugExp, AssumptionType.Unknown)
+                v.decider.assume(equalityTerm, debugExp, AssumptionType.Internal)
               }
               result
             case _ => false
@@ -2103,7 +2102,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Chunks alias", isInternal_ = true))
-                v.decider.assume(equalityTerm, debugExp, AssumptionType.Unknown)
+                v.decider.assume(equalityTerm, debugExp, AssumptionType.Internal)
               }
               result
             } else {

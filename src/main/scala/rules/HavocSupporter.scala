@@ -41,7 +41,7 @@ object havocSupporter extends SymbolicExecutionRules {
   def execHavoc(havoc: ast.Quasihavoc,
                 v: Verifier,
                 s: State)
-                (Q: (State, Verifier) => VerificationResult)
+                (Q: (State, Verifier) => VerificationResult) // TODO ake: add argument AssumptionType?
                : VerificationResult = {
     val pve = QuasihavocFailed(havoc)
 

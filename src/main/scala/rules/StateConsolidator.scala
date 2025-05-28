@@ -109,7 +109,6 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.PathCondition))
         }
 
-        v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
         v.symbExLog.closeScope(sepIdentifier)
         (functionRecorder, hs :+ Heap(mergedChunks))
       }
@@ -119,6 +118,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                     reserveHeaps = mergedHeaps.tail)
 
     val s2 = assumeUpperPermissionBoundForQPFields(s1, v)
+    v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
 
     s2
   }
@@ -300,7 +300,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
             Some(DebugExp.createInstance(exp, exp))
           } else { None }
           v.decider.assume(
-            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"), debugExp, AssumptionType.Unknown)
+            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"), debugExp, AssumptionType.Internal)
         } else {
           /*
           If we don't use heap-dependent triggers, the trigger x.f does not work. Instead, we assume the permission
@@ -317,7 +317,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                 val exp = ast.PermLeCmp(permExp, ast.FullPerm()())()
                 Some(DebugExp.createInstance(exp, exp))
               } else { None }
-              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), debugExp, AssumptionType.Unknown)
+              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm), debugExp, AssumptionType.Internal)
             } else {
               val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
               val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
@@ -333,7 +333,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                 Some(DebugExp.createInstance(exp, exp))
               } else { None }
               v.decider.assume(
-                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"), debugExp, AssumptionType.Unknown)
+                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"), debugExp, AssumptionType.Internal)
             }
 
           }
