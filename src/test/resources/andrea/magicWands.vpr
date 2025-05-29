@@ -24,13 +24,17 @@ method basicPackage(l: Ref)
   ensures list(l)
   {
     unfold list(l)
-    var tmp : Ref := l.next
+    var tmp : Ref
+    //@assumptionType("Explicit")
+    tmp := l.next
 
+    //@assumptionType("Implicit")
     package list(tmp) --* list(l)
     {
       fold list(l)
     }
 
+    //@assumptionType("Implicit")
     apply list(tmp) --* list(l)
 }
 

@@ -399,7 +399,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // Execute proof script, i.e. the part written after the magic wand wrapped by curly braces.
         // The proof script should transform the current state such that we can consume the wand's RHS.
-        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
+        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => { // TODO ake: propagate assumption type!
           // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(

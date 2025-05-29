@@ -85,10 +85,6 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
-      val isAnalysisEnabled = AssumptionAnalyzer.extractEnableAnalysisFromInfo(predicate.info).getOrElse(Verifier.config.enableAssumptionAnalysis())
-      if(isAnalysisEnabled) v.decider.initAssumptionAnalyzer(predicate)
-      else v.decider.removeAssumptionAnalyzer()
-
       openSymbExLogger(predicate)
 
       val ins = predicate.formalArgs.map(_.localVar)
@@ -111,8 +107,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       }
 
       symbExLog.closeMemberScope()
-      if(isAnalysisEnabled) result.assumptionAnalyzer = v.decider.assumptionAnalyzer
-      v.decider.removeAssumptionAnalyzer()
+      result.assumptionAnalyzer = v.decider.assumptionAnalyzer
       Seq(result)
     }
 

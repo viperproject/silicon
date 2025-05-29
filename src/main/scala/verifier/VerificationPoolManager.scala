@@ -15,6 +15,7 @@ import viper.silicon.interfaces.VerificationResult
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Decl, Term}
+import viper.silver.ast
 
 class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulComponent {
   private val numberOfWorkers: Int = Verifier.config.numberOfParallelVerifiers()
@@ -29,6 +30,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))
     def assume(term: Term, label: String): Unit = workerVerifiers foreach (_.decider.prover.assume(term, label))
     override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxioms(terms, description))
+    override def assumeAxiomsWithAnalysis(axioms: InsertionOrderedSet[(Term, ast.Exp)], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxiomsWithAnalysis(axioms, description))
     def declare(decl: Decl): Unit =  workerVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = workerVerifiers foreach (_.decider.prover.comment(content))
 

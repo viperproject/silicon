@@ -146,11 +146,13 @@ method branchesFunctionsPerm(a: Ref, b: Ref)
 {
   var n:Int, c: Bool
 
+  //@assumptionType("Implicit")
   assume 0 < a.f && a.f < 100
   assume 0 < b.f
   assume b.f < 50
   assume c ==> a.f > 5
 
+  //@assumptionType("Implicit")
   if(c){
     if(a.f > b.f){
       n := diffPerm(a, b)
@@ -160,6 +162,7 @@ method branchesFunctionsPerm(a: Ref, b: Ref)
     }
     n := n - 1
   }else{
+    @assumptionType("Implicit")
     n := sumPerm(a, b)
   }
 

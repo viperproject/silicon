@@ -24,7 +24,7 @@ trait AssumptionAnalysisGraph {
   var transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
 
   def addNode(node: AssumptionAnalysisNode): Unit
-  def addNodes(nodes: Set[AssumptionAnalysisNode]): Unit
+  def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit
   def addEdges(source: Int, targets: Iterable[Int]): Unit
   def addEdges(sources: Iterable[Int], target: Int): Unit
   def addEdges(sources: Iterable[Int],  targets: Iterable[Int]): Unit
@@ -123,7 +123,7 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
     nodes = nodes :+ node
   }
 
-  override def addNodes(nodes: Set[AssumptionAnalysisNode]): Unit = {
+  override def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {
     nodes foreach addNode
   }
 

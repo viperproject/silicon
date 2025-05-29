@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces.decider
 
-import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisNode, AssumptionAnalyzer, AssumptionType, DefaultAssumptionAnalyzer, ExpAnalysisSourceInfo, NoAssumptionAnalyzer}
 import viper.silicon.debugger.DebugAxiom
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
@@ -15,6 +15,7 @@ import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.Model
+import viper.silver.ast
 
 sealed abstract class Result
 object Sat extends Result
@@ -25,6 +26,9 @@ object Unknown extends Result
 trait ProverLike {
   protected val debugMode = Verifier.config.enableDebugging()
   var preambleAssumptions: Seq[DebugAxiom] = Seq()
+  protected var preambleAssumptionAnalyzer: AssumptionAnalyzer =
+    if(Verifier.config.enableAssumptionAnalysis()) new DefaultAssumptionAnalyzer(ast.Method("none", Seq(), Seq(), Seq(), Seq(), None)())
+    else new NoAssumptionAnalyzer()
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
@@ -33,6 +37,18 @@ trait ProverLike {
       preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }
+  def assumeAxiomsWithAnalysis(axioms: InsertionOrderedSet[(Term, ast.Exp)], description: String): Unit = {
+    if (debugMode) {
+      preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
+      axioms.foreach(axiom => {
+        val id = preambleAssumptionAnalyzer.addExpAssumption(axiom._2, ExpAnalysisSourceInfo(axiom._2), AssumptionType.Axiom)
+        assume(axiom._1, AssumptionAnalyzer.createAxiomLabel(id))
+      })
+    }else{
+      axioms.foreach(t => assume(t._1))
+    }
+  }
+  def getPreambleAnalysisNodes: Iterable[AssumptionAnalysisNode] = preambleAssumptionAnalyzer.getNodes
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
   def assume(term: Term, label: String): Unit

@@ -27,7 +27,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
-  private var collectedAxioms = InsertionOrderedSet[Term]()
+  private var collectedAxioms = InsertionOrderedSet[(Term, ast.Exp)]()
   private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
@@ -101,7 +101,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
       domain.axioms foreach (axiom => {
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
-        collectedAxioms += terms.And(tAxPres, tAx)
+        collectedAxioms = collectedAxioms.incl(terms.And(tAxPres, tAx), axiom.exp)
       })
     })
   }
@@ -118,10 +118,10 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
     collectedFunctions foreach (f => sink.declare(terms.FunctionDecl(f)))
   }
 
-  def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms
+  def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms.map(_._1)
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
-    sink.assumeAxioms(collectedAxioms, "Domain axioms")
+    sink.assumeAxiomsWithAnalysis(collectedAxioms, "Domain axioms")
   }
 
   def uniquenessAssumptionsAfterAnalysis: Iterable[Term] =

@@ -6,23 +6,21 @@
 
 package viper.silicon.decider
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, NoAssumptionAnalyzer}
-
-import java.io._
-import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 import com.typesafe.scalalogging.LazyLogging
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, NoAssumptionAnalyzer}
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
+import viper.silicon.interfaces.decider._
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, QuantifierInstantiationsMessage, Reporter}
-import viper.silver.verifier.Model
+import viper.silver.verifier.{Model, DefaultDependency => SilDefaultDependency}
 
+import java.io._
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 
 abstract class ProverStdIO(uniqueId: String,

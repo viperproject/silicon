@@ -47,10 +47,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      val isAnalysisEnabled = AssumptionAnalyzer.extractEnableAnalysisFromInfo(method.info).getOrElse(Verifier.config.enableAssumptionAnalysis())
-      if(isAnalysisEnabled) v.decider.initAssumptionAnalyzer(method)
-      else v.decider.removeAssumptionAnalyzer()
-
       val proverOptions: Map[String, String] = method.info.getUniqueInfo[ast.AnnotationInfo] match {
         case Some(ai) if ai.values.contains("proverArgs") =>
           toMap(ai.values("proverArgs").flatMap(o => {
@@ -122,8 +118,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                         Success()
                       })})}) }  )})})
 
-      if(isAnalysisEnabled) result.assumptionAnalyzer = v.decider.assumptionAnalyzer
-      v.decider.removeAssumptionAnalyzer()
+      result.assumptionAnalyzer = v.decider.assumptionAnalyzer
       v.decider.resetProverOptions()
 
       symbExLog.closeMemberScope()

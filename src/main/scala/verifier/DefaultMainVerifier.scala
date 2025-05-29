@@ -6,19 +6,11 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.Config.{ExhaleMode, JoinMode}
-
-import java.text.SimpleDateFormat
-import java.util.concurrent._
-import scala.annotation.unused
-import scala.collection.mutable
-import scala.util.Random
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
 import viper.silicon._
 import viper.silicon.assumptionAnalysis.DefaultAssumptionAnalyzer
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
@@ -27,16 +19,24 @@ import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
-import viper.silicon.supporters.{DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
-import viper.silicon.supporters.qps._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
+import viper.silicon.supporters.qps._
+import viper.silicon.supporters._
 import viper.silicon.utils.Counter
+import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.cfg.silver.SilverCfg
+import viper.silver.components.StatefulComponent
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
+
+import java.text.SimpleDateFormat
+import java.util.concurrent._
+import scala.annotation.unused
+import scala.collection.mutable
+import scala.util.Random
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -229,8 +229,10 @@ class DefaultMainVerifier(config: Config,
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
+      decider.initAssumptionAnalyzer(function, allProvers.getPreambleAnalysisNodes)
       val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
         .flatMap(extractAllVerificationResults)
+      decider.removeAssumptionAnalyzer()
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -239,8 +241,10 @@ class DefaultMainVerifier(config: Config,
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
+      decider.initAssumptionAnalyzer(predicate, allProvers.getPreambleAnalysisNodes)
       val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
         .flatMap(extractAllVerificationResults)
+      decider.removeAssumptionAnalyzer()
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -268,8 +272,10 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
+          v.decider.initAssumptionAnalyzer(method, allProvers.getPreambleAnalysisNodes)
           val results = v.methodSupporter.verify(s, method)
             .flatMap(extractAllVerificationResults)
+          v.decider.removeAssumptionAnalyzer()
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -282,7 +288,7 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val results = v.cfgSupporter.verify(s, cfg)
+          val results = v.cfgSupporter.verify(s, cfg) // TODO ake: assumption analysis
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 

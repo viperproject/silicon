@@ -1,7 +1,6 @@
 package viper.silicon.assumptionAnalysis
 
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.Term
@@ -10,15 +9,20 @@ import viper.silver.ast._
 
 
 trait AssumptionAnalyzer {
+  val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
+
   def addPermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
   def addPermissionAssertNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo): Option[Int]
   def addPermissionExhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo): Option[Int]
   def addPermissionNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Explicit, isExhale: Boolean=false): Option[Int]
-
+  def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit
+  def addNode(node: AssumptionAnalysisNode): Unit
+  def getNodes: Iterable[AssumptionAnalysisNode]
 
   def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int]
+  def addExpAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
 
@@ -26,8 +30,6 @@ trait AssumptionAnalyzer {
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
 
   def processUnsatCoreAndAddDependencies(dep: String): Unit
-
-  val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
 
   protected var sourceInfoes: List[AnalysisSourceInfo] = List.empty
 
@@ -97,6 +99,10 @@ object AssumptionAnalyzer {
     createLabel("assertion", id, offset)
   }
 
+  def createAxiomLabel(id: Option[Int]): String = {
+    createLabel("axiom", id)
+  }
+
   private def createLabel(description: String, id: Option[Int], offset: Int = 0): String = {
     if (id.isDefined) description + "_" + id.get + "_" + offset
     else ""
@@ -109,16 +115,32 @@ object AssumptionAnalyzer {
   def isAssertionLabel(label: String): Boolean = label.startsWith("assertion_")
 
   def isAssumptionLabel(label: String): Boolean = label.startsWith("assumption_")
+
+  def isAxiomLabel(label: String): Boolean = label.startsWith("axiom_")
 }
 
 class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
-  def addNode(node: AssumptionAnalysisNode): Unit = {
+
+  override def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {
+    assumptionGraph.addNodes(nodes)
+  }
+
+  override def getNodes: Iterable[AssumptionAnalysisNode] = assumptionGraph.nodes
+
+  override def addNode(node: AssumptionAnalysisNode): Unit = {
     assumptionGraph.addNode(node)
   }
 
   override def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
     val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, analysisSourceInfo, assumptionType)
     else StringAssumptionNode(assumption.description.getOrElse("unknown"), analysisSourceInfo, assumptionType)
+    addNode(node)
+    Some(node.id)
+  }
+
+
+  override def addExpAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = SimpleAssumptionNode(assumption, analysisSourceInfo, assumptionType)
     addNode(node)
     Some(node.id)
   }
@@ -147,6 +169,8 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     val assumptionIds = assumptionLabels.filter(AssumptionAnalyzer.isAssumptionLabel).map(AssumptionAnalyzer.getIdFromLabel)
     val assertionIds = assumptionLabels.filter(AssumptionAnalyzer.isAssertionLabel).map(AssumptionAnalyzer.getIdFromLabel)
     assumptionGraph.addEdges(assumptionIds, assertionIds)
+    val axiomIds = assumptionLabels.filter(AssumptionAnalyzer.isAxiomLabel).map(AssumptionAnalyzer.getIdFromLabel)
+    assumptionGraph.addEdges(axiomIds, assertionIds)
   }
 
   override def addPermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
@@ -208,6 +232,10 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
+  override def getNodes: Iterable[AssumptionAnalysisNode] = Seq()
+  override def addNode(node: AssumptionAnalysisNode): Unit = {}
+  override def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {}
+
   override def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = Seq.empty
 
   override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
@@ -228,6 +256,8 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def getMember: Option[Member] = None
 
   override def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+
+  override def addExpAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
   override def exportGraph(): Unit = {}
 }

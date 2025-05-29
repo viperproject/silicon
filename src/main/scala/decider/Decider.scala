@@ -104,7 +104,7 @@ trait Decider {
   def statistics(): Map[String, String]
 
   var assumptionAnalyzer: AssumptionAnalyzer
-  def initAssumptionAnalyzer(member: Member): Unit
+  def initAssumptionAnalyzer(member: Member, preambleNodes: Iterable[AssumptionAnalysisNode]): Unit
   def removeAssumptionAnalyzer(): Unit
 }
 
@@ -137,10 +137,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
 
-    override def initAssumptionAnalyzer(member: Member): Unit = {
-      if(Verifier.config.enableAssumptionAnalysis()){
+    override def initAssumptionAnalyzer(member: Member, preambleNodes: Iterable[AssumptionAnalysisNode]): Unit = {
+      val isAnalysisEnabled = AssumptionAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(Verifier.config.enableAssumptionAnalysis())
+      if(isAnalysisEnabled) {
         assumptionAnalyzer = new DefaultAssumptionAnalyzer(member)
+        assumptionAnalyzer.addNodes(preambleNodes)
         prover.setAssumptionAnalyzer(assumptionAnalyzer)
+      }else{
+        removeAssumptionAnalyzer()
       }
     }
 
@@ -458,7 +462,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
       assertNode foreach (_.isAsserted = result)
-      if(result || !isCheck) assertNode foreach assumptionAnalyzer.assumptionGraph.addNode
+      if(result || !isCheck) assertNode foreach assumptionAnalyzer.addNode
 
 
 
