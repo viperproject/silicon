@@ -238,7 +238,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   wand: ast.MagicWand,
                   proofScript: ast.Seqn,
                   pve: PartialVerificationError,
-                  v: Verifier)
+                  v: Verifier,
+                  assumptionType: AssumptionType = AssumptionType.Rewrite)
                  (Q: (State, Chunk, Verifier) => VerificationResult)
                  : VerificationResult = {
 
@@ -406,7 +407,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             wand.right, true, pve, proofScriptVerifier
           )((s3, snapRhs, consumedChunks, v3) => { // TODO ake: what to do with consumedChunks?
 
-            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, AssumptionType.Rewrite)
+            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, assumptionType)
           })
         })
       })
@@ -417,7 +418,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
       val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
-      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v, AssumptionType.Rewrite)
+      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v, assumptionType)
     }
 
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
@@ -458,7 +459,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
   def applyWand(s: State,
                 wand: ast.MagicWand,
                 pve: PartialVerificationError,
-                v: Verifier)
+                v: Verifier,
+                assumptionType: AssumptionType = AssumptionType.Rewrite)
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
@@ -487,7 +489,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         }
 
         // Produce the wand's RHS.
-        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2, AssumptionType.Rewrite)((s4, v3) => {
+        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2, assumptionType)((s4, v3) => {
           // Recreate old state without the magic wand, and the state with the oldHeap called lhs.
           val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
 

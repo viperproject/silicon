@@ -1,13 +1,5 @@
-field f: Int
-
-method foo(){
-    var x: Ref
-    inhale acc(x.f)
-
-    package true --* acc(x.f, 1/2){
-
-    }
-
-    apply true --* acc(x.f, 1/2)
-    assert acc(x.f)
+method quickTest(a: Int)
+{
+    @assumptionType("Implicit")
+    assume a > 0
 }

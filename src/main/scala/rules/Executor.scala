@@ -9,7 +9,8 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode, StmtAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode, StmtAnalysisSourceInfo, StringAnalysisSourceInfo}
 
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
@@ -353,6 +354,7 @@ object executor extends ExecutionRules {
         v.decider.prover.comment("[exec]")
         v.decider.prover.comment(stmt.toString())
     }
+    val annotatedAssumptionTypeOpt = AssumptionAnalyzer.extractAssumptionTypeFromInfo(stmt.info)
 
     val executed = stmt match {
       case ast.Seqn(stmts, _) =>
@@ -369,7 +371,7 @@ object executor extends ExecutionRules {
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
         eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, rhsNew, v1) => {
-          val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v, s1)
+          val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v, s1, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
           Q(s1.copy(g = s1.g + (x, (t, e))), v1)})
 
       /* TODO: Encode assignments e1.f := e2 as
@@ -423,7 +425,7 @@ object executor extends ExecutionRules {
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
                 v1.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, AssumptionType.Implicit)
+                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
                 if (s3.heapDependentTriggers.contains(field)) {
                   val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString()}.${field.name})"))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Internal)
@@ -445,10 +447,10 @@ object executor extends ExecutionRules {
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
             chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, consumedChunks, v3) => {
-              val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)
+              val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk.createDerivedChunk(consumedChunks.toSet, FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                v3.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Implicit))
+                v3.decider.assumptionAnalyzer.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                 val s5 = s4.copy(h = h4)
                 val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
@@ -477,10 +479,10 @@ object executor extends ExecutionRules {
             val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
             v.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT))),
-              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v, AssumptionType.Implicit)
+              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
           } else {
             val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp,
-              v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Implicit))
+              v.decider.assumptionAnalyzer.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
             newChunk
           }
         })
@@ -497,7 +499,7 @@ object executor extends ExecutionRules {
             /* We're done */
             Success()
           case _ =>
-            produce(s, freshSnap, a, InhaleFailed(inhale), v, AssumptionType.Explicit)((s1, v1) => {
+            produce(s, freshSnap, a, InhaleFailed(inhale), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, v1) => {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
               Q(s1, v1)})
         }
@@ -548,7 +550,7 @@ object executor extends ExecutionRules {
       case ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
-        val analysisInfo = v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Explicit)
+        val analysisInfo = v.decider.assumptionAnalyzer.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
         val member = s.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
@@ -568,7 +570,7 @@ object executor extends ExecutionRules {
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
-        val s1 = v.stateConsolidator(s).consolidate(s, v) // TODO ake: AssumptionType.Explicit
+        val s1 = v.stateConsolidator(s).consolidate(s, v) // TODO ake: assumption Type
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
@@ -578,6 +580,9 @@ object executor extends ExecutionRules {
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
         val pveCall = CallFailed(call)
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
+
+        val methodAnnotatedAssumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(meth.info)
+        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(methodAnnotatedAssumptionType.getOrElse(AssumptionType.Explicit))
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)
@@ -605,7 +610,7 @@ object executor extends ExecutionRules {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, AssumptionType.Explicit)((s5, v3) => {
+            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, finalAssumptionType)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
@@ -621,12 +626,14 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
+        val predicateAnnotatedAssumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(predicate.info)
+        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(predicateAnnotatedAssumptionType.getOrElse(AssumptionType.Rewrite))
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
+              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, finalAssumptionType)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }
@@ -637,6 +644,8 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
+        val predicateAnnotatedAssumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(predicate.info)
+        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(predicateAnnotatedAssumptionType.getOrElse(AssumptionType.Rewrite))
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
@@ -658,7 +667,7 @@ object executor extends ExecutionRules {
 
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
+              predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, finalAssumptionType)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   Q(s4, v4)
@@ -668,7 +677,7 @@ object executor extends ExecutionRules {
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
+          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Rewrite))((s1, chWand, v1) => {
 
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
@@ -712,13 +721,13 @@ object executor extends ExecutionRules {
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        magicWandSupporter.applyWand(s, e, pve, v)(Q)
+        magicWandSupporter.applyWand(s, e, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Rewrite))(Q)
 
       case havoc: ast.Quasihavoc =>
-        havocSupporter.execHavoc(havoc, v, s)(Q)
+        havocSupporter.execHavoc(havoc, v, s, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))(Q)
 
       case havocall: ast.Quasihavocall =>
-        havocSupporter.execHavocall(havocall, v, s)(Q)
+        havocSupporter.execHavocall(havocall, v, s, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))(Q)
 
       case viper.silicon.extensions.TryBlock(body) =>
         var bodySucceeded = false
@@ -742,7 +751,7 @@ object executor extends ExecutionRules {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State): (Term, Option[ast.Exp]) = {
+   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, assumptionType: AssumptionType): (Term, Option[ast.Exp]) = {
      rhs match {
        case _: Var | _: Literal =>
          (rhs, rhsExpNew)
@@ -769,7 +778,7 @@ object executor extends ExecutionRules {
          } else {
             (None, None)
          }
-         v.decider.assumeDefinition(BuiltinEquals(t, rhs), debugExp, AssumptionType.Implicit)
+         v.decider.assumeDefinition(BuiltinEquals(t, rhs), debugExp, assumptionType)
          (t, eNew)
      }
    }

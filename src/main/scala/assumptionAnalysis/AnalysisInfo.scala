@@ -3,6 +3,8 @@ package viper.silicon.assumptionAnalysis
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
   val Explicit, LoopInvariant, PathCondition, Rewrite, Implicit, Internal, Unknown = Value
+
+  def fromString(s: String): Option[Value] = values.find(_.toString == s)
 }
 import viper.silicon.assumptionAnalysis.AssumptionType._
 

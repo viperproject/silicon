@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.AssumptionType
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType}
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
@@ -83,8 +83,11 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
     def verify(sInit: State, predicate: ast.Predicate): Seq[VerificationResult] = {
       logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
-      v.decider.initAssumptionAnalyzer(predicate)
       decider.prover.comment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
+
+      val isAnalysisEnabled = AssumptionAnalyzer.extractEnableAnalysisFromInfo(predicate.info).getOrElse(Verifier.config.enableAssumptionAnalysis())
+      if(isAnalysisEnabled) v.decider.initAssumptionAnalyzer(predicate)
+      else v.decider.removeAssumptionAnalyzer()
 
       openSymbExLogger(predicate)
 
@@ -94,6 +97,8 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                          oldHeaps = OldHeaps())
       val err = PredicateNotWellformed(predicate)
 
+      val assumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(predicate.info).getOrElse(AssumptionType.Internal) // TODO ake: internal?
+
       val result = predicate.body match {
         case None =>
           Success()
@@ -101,12 +106,12 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
           /*    locallyXXX {
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
-                  produce(s1, freshSnap, body, err, v, AssumptionType.Internal)((_, _) =>
+                  produce(s1, freshSnap, body, err, v, assumptionType)((_, _) =>
                     Success())})
       }
 
       symbExLog.closeMemberScope()
-      result.assumptionAnalyzer = v.decider.assumptionAnalyzer
+      if(isAnalysisEnabled) result.assumptionAnalyzer = v.decider.assumptionAnalyzer
       v.decider.removeAssumptionAnalyzer()
       Seq(result)
     }

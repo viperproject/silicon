@@ -2,8 +2,9 @@ field f: Int
 
 method sum(x: Int, y: Int) returns(res: Int)
   requires x >= 0 && y >= 0
-  ensures res == x + y
+  ensures res == x + y && res > 100
 {
+ assume x > 100
  res := x + y
 }
 
@@ -19,4 +20,16 @@ method sumClient(x: Int, y: Int)
 
   assert n >= x + 2*y
   assert n >= 0
+}
+
+method sumClient2(x: Int, y: Int)
+{
+  assume x >= 0
+  assume y >= 0
+  assume x < y
+  var n: Int := sum(x, x)
+  assert n >= 100
+
+  var n2: Int := sum(y, y)
+  assert n2 == 2*y
 }

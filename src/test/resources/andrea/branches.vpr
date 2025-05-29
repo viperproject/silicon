@@ -173,6 +173,8 @@ method infeasibleBranch(a: Int, b: Int)
     requires a > 0 && b > 0
 {
     var res: Int := a + 1
+
+
     if(a < 0){
         res := b + 1
         assert res >= 0

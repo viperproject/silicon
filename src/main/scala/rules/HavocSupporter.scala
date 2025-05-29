@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, StmtAnalysisSourceInfo}
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk, QuantifiedChunk}
@@ -40,8 +41,9 @@ object havocSupporter extends SymbolicExecutionRules {
     */
   def execHavoc(havoc: ast.Quasihavoc,
                 v: Verifier,
-                s: State)
-                (Q: (State, Verifier) => VerificationResult) // TODO ake: add argument AssumptionType?
+                s: State,
+                assumptionType: AssumptionType)
+                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     val pve = QuasihavocFailed(havoc)
 
@@ -57,9 +59,9 @@ object havocSupporter extends SymbolicExecutionRules {
         // the HavocHelperData inside of a HavocOneData case (as opposed to HavocAllData).
         val newChunks =
           if (usesQPChunks(s1, resource))
-            havocQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
+            havocQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1, assumptionType)
           else
-            havocNonQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
+            havocNonQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1, assumptionType)
 
         Q(s1.copy(h = Heap(newChunks)), v1)
       })
@@ -79,7 +81,8 @@ object havocSupporter extends SymbolicExecutionRules {
     */
   def execHavocall(havocall: ast.Quasihavocall,
                    v: Verifier,
-                   s: State)
+                   s: State,
+                   assumptionType: AssumptionType)
                    (Q: (State, Verifier) => VerificationResult)
                   : VerificationResult = {
     val pve = HavocallFailed(havocall)
@@ -155,9 +158,9 @@ object havocSupporter extends SymbolicExecutionRules {
             // the HavocHelperData inside of a HavocAllData case.
             val newChunks =
               if (usesQPChunks(s1, resource))
-                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
+                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1, assumptionType)
               else
-                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
+                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1, assumptionType)
 
             Q(s1.copy(h = Heap(newChunks)), v1)
         }
@@ -182,7 +185,8 @@ object havocSupporter extends SymbolicExecutionRules {
                                          lhs: Term,
                                          resource: ast.Resource,
                                          condInfo: HavocHelperData,
-                                         v: Verifier)
+                                         v: Verifier,
+                                         assumptionType: AssumptionType)
                                         : Seq[Chunk] = {
 
     val id = ChunkIdentifier(resource, s.program)
@@ -193,12 +197,12 @@ object havocSupporter extends SymbolicExecutionRules {
         val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
         val cond = replacementCond(lhs, ch.args, condInfo)
         val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
-        NonQuantifiedChunk.withSnap(ch, magicWandSnapshot, None, v.decider.assumptionAnalyzer.getAnalysisInfo) // TODO ake: assumptionType?
+        NonQuantifiedChunk.withSnap(ch, magicWandSnapshot, None, v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
 
       case ch =>
         val havockedSnap = freshSnap(ch.snap.sort, v)
         val cond = replacementCond(lhs, ch.args, condInfo)
-        NonQuantifiedChunk.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, v.decider.assumptionAnalyzer.getAnalysisInfo)
+        NonQuantifiedChunk.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
     }
     otherChunks ++ newChunks
   }
@@ -224,7 +228,8 @@ object havocSupporter extends SymbolicExecutionRules {
                                       lhs: Term,
                                       resource: ast.Resource,
                                       condInfo: HavocHelperData,
-                                      v: Verifier)
+                                      v: Verifier,
+                                      assumptionType: AssumptionType)
                                      : Seq[Chunk] = {
 
     // Quantified field chunks are of the form R(r; sm, pm).
@@ -281,7 +286,7 @@ object havocSupporter extends SymbolicExecutionRules {
       val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
       v.decider.assume(newAxiom, debugExp, AssumptionType.Internal)
 
-      QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.assumptionAnalyzer.getAnalysisInfo) // TODO ake: assumption type?
+      QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
     }
     newChunks ++ otherChunks
   }

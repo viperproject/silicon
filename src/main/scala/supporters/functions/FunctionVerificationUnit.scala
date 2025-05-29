@@ -7,7 +7,7 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
@@ -30,6 +30,7 @@ import viper.silver.components.StatefulComponent
 import viper.silver.parser.PType
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
 
+import java.io.ObjectInputFilter.Config
 import scala.annotation.unused
 
 trait FunctionVerificationUnit[SO, SY, AX]
@@ -148,7 +149,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     def verify(sInit: State, function: ast.Function): Seq[VerificationResult] = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + ("-" * 10)
-      v.decider.initAssumptionAnalyzer(function)
+      val isAnalysisEnabled = AssumptionAnalyzer.extractEnableAnalysisFromInfo(function.info).getOrElse(Verifier.config.enableAssumptionAnalysis())
+      if(isAnalysisEnabled) v.decider.initAssumptionAnalyzer(function)
+      else v.decider.removeAssumptionAnalyzer()
+
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
@@ -160,7 +164,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val res = handleFunction(sInit, function)
       symbExLog.closeMemberScope()
-      res.assumptionAnalyzer = v.decider.assumptionAnalyzer
+      if(isAnalysisEnabled) res.assumptionAnalyzer = v.decider.assumptionAnalyzer
       v.decider.removeAssumptionAnalyzer()
       Seq(res)
     }
@@ -255,13 +259,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
+      val annotatedAssumptionTypeOpt = AssumptionAnalyzer.extractAssumptionTypeFromInfo(function.info)
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
-            decider.assume(pcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=AssumptionType.Explicit)
+            decider.assume(pcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             v.decider.assumptionAnalyzer.addAnalysisSourceInfo(ExpAnalysisSourceInfo(body))
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {

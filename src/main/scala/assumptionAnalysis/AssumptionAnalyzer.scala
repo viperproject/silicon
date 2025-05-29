@@ -68,7 +68,26 @@ trait AssumptionAnalyzer {
 }
 
 object AssumptionAnalyzer {
+  val assumptionTypeAnnotationKey = "assumptionType"
+  val enableAssumptionAnalysisAnnotationKey = "enableAssumptionAnalysis"
   val noAssumptionAnalyzerSingelton = new NoAssumptionAnalyzer()
+
+  private def extractAnnotationFromInfo(info: Info, annotationKey: String): Option[Seq[String]] = {
+    info.getAllInfos[AnnotationInfo]
+      .filter(_.values.contains(annotationKey))
+      .map(_.values(annotationKey)).headOption
+  }
+
+  def extractAssumptionTypeFromInfo(info: Info): Option[AssumptionType] = {
+    val annotation = extractAnnotationFromInfo(info, assumptionTypeAnnotationKey)
+    if(annotation.isDefined && annotation.get.nonEmpty) AssumptionType.fromString(annotation.get.head) else None
+  }
+
+
+  def extractEnableAnalysisFromInfo(info: Info): Option[Boolean] = {
+    val annotation = extractAnnotationFromInfo(info, enableAssumptionAnalysisAnnotationKey)
+    if(annotation.isDefined && annotation.get.nonEmpty) annotation.get.head.toBooleanOption else None
+  }
 
   def createAssumptionLabel(id: Option[Int], offset: Int = 0): String = {
     createLabel("assumption", id, offset)

@@ -5,11 +5,14 @@ predicate greater0(n: Int)
   n > 0
 }
 
+@assumptionType("Internal")
 predicate greater5(n: Int)
 {
   n > 5
 }
 
+@enableAssumptionAnalysis("True")
+@assumptionType("Internal")
 method unfoldP(n: Int)
   requires greater0(n)
 {
@@ -19,6 +22,7 @@ method unfoldP(n: Int)
     assert x > 1
 }
 
+@enableAssumptionAnalysis("false")
 method foldP(n: Int)
     requires n > 10
 {
@@ -31,9 +35,12 @@ method unfoldFoldP(a: Int, b: Int)
     ensures greater5(a + b)
 {
     assume b < 100
+    @assumptionType("Implicit")
     unfold greater0(a)
     unfold greater5(b)
+    @assumptionType("Implicit")
     assume a > 60
+    @assumptionType("Implicit")
     fold greater5(a + b)
 }
 

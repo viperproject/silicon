@@ -1,0 +1,26 @@
+
+@assumptionType("Implicit")
+method annotationFunc(n: Int) returns (res: Int)
+    requires 0 <= n && n <= 100
+    ensures res > 1000
+{
+    res := 1001
+}
+
+
+method annotationBasic(x: Int)
+    requires x > 0
+{
+    var res2: Int
+    @assumptionType("Implicit")
+    inhale x < 100
+
+    var res: Int := annotationFunc(x)
+    assert res >= 50
+
+    @assumptionType("Explicit")
+    res2 := annotationFunc(x)
+
+    assert 2*x <= 200
+    assert res2 >= 100
+}

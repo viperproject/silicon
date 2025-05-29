@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, DefaultAssumptionAnalyzer, ExpAnalysisSourceInfo, NoAssumptionAnalyzer, StringAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionAnalyzer, AssumptionType, DefaultAssumptionAnalyzer, ExpAnalysisSourceInfo, NoAssumptionAnalyzer, StringAnalysisSourceInfo}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
@@ -47,7 +47,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      v.decider.initAssumptionAnalyzer(method)
+      val isAnalysisEnabled = AssumptionAnalyzer.extractEnableAnalysisFromInfo(method.info).getOrElse(Verifier.config.enableAssumptionAnalysis())
+      if(isAnalysisEnabled) v.decider.initAssumptionAnalyzer(method)
+      else v.decider.removeAssumptionAnalyzer()
 
       val proverOptions: Map[String, String] = method.info.getUniqueInfo[ast.AnnotationInfo] match {
         case Some(ai) if ai.values.contains("proverArgs") =>
@@ -95,13 +97,15 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
+      val annotatedAssumptionTypeOpt = AssumptionAnalyzer.extractAssumptionTypeFromInfo(method.info)
+
       errorsReportedSoFar.set(0)
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
         executionFlowController.locally(s, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1, AssumptionType.Explicit)((s2, v2) => {
+          produces(s1, freshSnap, pres, ContractNotWellformed, v1, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
@@ -113,12 +117,12 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>{
+                  exec(s3, body, v3)((s4, v4) =>{ // TODO ake: assumption type?
                     consumes(s4, posts, false, postViolated, v4)((_, _, _, _) => {
                         Success()
                       })})}) }  )})})
 
-      result.assumptionAnalyzer = v.decider.assumptionAnalyzer
+      if(isAnalysisEnabled) result.assumptionAnalyzer = v.decider.assumptionAnalyzer
       v.decider.removeAssumptionAnalyzer()
       v.decider.resetProverOptions()
 
