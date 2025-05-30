@@ -3,7 +3,7 @@
 
 domain $Set[E] {
     function Set_card(s: $Set[E]): Int
-    axiom {
+    axiom Set_card_nonneg {
         forall s: $Set[E] :: { Set_card(s) } 0 <= Set_card(s)
     }
 
@@ -12,98 +12,98 @@ domain $Set[E] {
     // Carbon encoded sets as maps from E to bool. We use Set_in to encode the same, so we replace every
     // usage of the map in Carbon's encoding by a Set_in application and hope that that amounts to the same.
 
-    axiom {
+    axiom Set_empty_contains_nothing {
         forall o: E :: { Set_in(o, Set_empty()) } !Set_in(o, Set_empty())
     }
-    axiom {
+    axiom Set_card_zero {
         forall s: $Set[E] :: { Set_card(s) }
         (Set_card(s) == 0 ==> s == Set_empty()) &&
         (Set_card(s) != 0 ==> (exists x: E :: Set_in(x, s)))
     }
     function Set_singleton(e: E): $Set[E]
-    axiom {
+    axiom Set_singleton_contains1 {
         forall r: E :: { Set_singleton(r) } Set_in(r, Set_singleton(r))
     }
-    axiom {
+    axiom Set_singleton_contains2 {
         forall r: E, o: E :: { Set_in(o, Set_singleton(r)) } Set_in(o, Set_singleton(r)) <==> r ==o
     }
-    axiom {
+    axiom Set_singleton_card {
         forall r: E :: { Set_card(Set_singleton(r)) } Set_card(Set_singleton(r)) == 1
     }
 
     function Set_unionone(s: $Set[E], e: E): $Set[E]
-    axiom {
+    axiom Set_unionone_contains1 {
         forall a: $Set[E], x: E, o: E :: { Set_in(o, Set_unionone(a, x)) }
             Set_in(o, Set_unionone(a, x)) <==> o == x || Set_in(o, a)
     }
-    axiom {
+    axiom Set_unionone_contains2  {
         forall a: $Set[E], x: E :: { Set_unionone(a, x) }
             Set_in(x, Set_unionone(a, x))
     }
-    axiom {
+    axiom Set_unionone_contains3 {
         forall a: $Set[E], x: E, y: E :: { Set_unionone(a, x), Set_in(y, a) }
             Set_in(y, a) ==> Set_in(y, Set_unionone(a, x))
     }
-    axiom {
+    axiom Set_unionone_card1 {
         forall a: $Set[E], x: E :: { Set_card(Set_unionone(a, x)) }
             Set_in(x, a) ==> Set_card(Set_unionone(a, x)) == Set_card(a)
     }
-    axiom {
+    axiom Set_unionone_card2 {
         forall a: $Set[E], x: E :: { Set_card(Set_unionone(a, x)) }
             !Set_in(x, a) ==> Set_card(Set_unionone(a, x)) == Set_card(a) + 1
     }
 
     function Set_union(s0: $Set[E], s1: $Set[E]): $Set[E]
-    axiom {
+    axiom Set_union_contains1 {
         forall a: $Set[E], b: $Set[E], o: E :: { Set_in(o, Set_union(a, b)) }
             Set_in(o, Set_union(a, b)) <==> Set_in(o, a) || Set_in(o, b)
     }
-    axiom {
+    axiom Set_union_contains2 {
         forall a: $Set[E], b: $Set[E], y: E :: { Set_union(a, b), Set_in(y, a) }
             Set_in(y, a) ==> Set_in(y, Set_union(a, b))
     }
-    axiom {
+    axiom Set_union_contains3 {
         forall a: $Set[E], b: $Set[E], y: E :: { Set_union(a, b), Set_in(y, b) }
             Set_in(y, b) ==> Set_in(y, Set_union(a, b))
     }
 
     function Set_intersection(s0: $Set[E], s1: $Set[E]): $Set[E]
-    axiom {
+    axiom Set_intersection_contains {
         forall a: $Set[E], b: $Set[E], o: E :: { Set_in(o, Set_intersection(a, b)) } { Set_intersection(a, b), Set_in(o, a) } { Set_intersection(a, b), Set_in(o, b) }
             Set_in(o, Set_intersection(a, b)) <==> Set_in(o, a) && Set_in(o, b)
     }
 
-    axiom {
+    axiom Set_union_absorb1 {
         forall a: $Set[E], b: $Set[E] :: { Set_union(Set_union(a, b), b) }
             Set_union(Set_union(a, b), b) == Set_union(a, b)
     }
-    axiom {
+    axiom Set_union_absorb2 {
         forall a: $Set[E], b: $Set[E] :: { Set_union(a, Set_union(a, b)) }
             Set_union(a, Set_union(a, b)) == Set_union(a, b)
     }
-    axiom {
+    axiom Set_intersection_absorb1 {
         forall a: $Set[E], b: $Set[E] :: { Set_intersection(Set_intersection(a, b), b) }
             Set_intersection(Set_intersection(a, b), b) == Set_intersection(a, b)
     }
-    axiom {
+    axiom Set_intersection_absorb2 {
         forall a: $Set[E], b: $Set[E] :: { Set_intersection(a, Set_intersection(a, b)) }
             Set_intersection(a, Set_intersection(a, b)) == Set_intersection(a, b)
     }
-    axiom {
+    axiom Set_card_union_intersection {
         forall a: $Set[E], b: $Set[E] :: { Set_card(Set_union(a, b)) } { Set_card(Set_intersection(a, b)) }
             Set_card(Set_union(a, b)) + Set_card(Set_intersection(a, b)) == Set_card(a) + Set_card(b)
     }
 
     function Set_difference(s0: $Set[E], s1: $Set[E]): $Set[E]
-    axiom {
+    axiom Set_diff_contains1 {
         forall a: $Set[E], b: $Set[E], o: E :: { Set_in(o, Set_difference(a, b)) } { Set_difference(a, b), Set_in(o, a) }
             Set_in(o, Set_difference(a, b)) <==> Set_in(o, a) && !Set_in(o, b)
     }
-    axiom {
+    axiom Set_diff_contains2 {
         forall a: $Set[E], b: $Set[E], y: E :: { Set_difference(a, b), Set_in(y, b) }
             Set_in(y, b) ==> !Set_in(y, Set_difference(a, b))
     }
-    axiom {
+    axiom Set_diff_card  {
         forall a: $Set[E], b: $Set[E] ::
         { Set_card(Set_difference(a, b)) }
         Set_card(Set_difference(a, b)) + Set_card(Set_difference(b, a)) + Set_card(Set_intersection(a, b)) == Set_card(Set_union(a, b)) &&
@@ -111,7 +111,7 @@ domain $Set[E] {
     }
 
     function Set_subset(s0: $Set[E], s1: $Set[E]): Bool
-    axiom {
+    axiom Set_subset_def {
         forall a: $Set[E], b: $Set[E] :: { Set_subset(a, b) }
             Set_subset(a, b) <==> (forall o: E :: { Set_in(o, a) } { Set_in(o, b) } Set_in(o, a) ==> Set_in(o, b))
     }
@@ -124,12 +124,12 @@ domain $Set[E] {
     }
     */
     function Set_skolem_diff(s0: $Set[E], s1: $Set[E]): E
-    axiom {
+    axiom Set_equal_def {
         forall a: $Set[E], b: $Set[E] :: { Set_equal(a, b) }
             (Set_equal(a, b) && a==b) ||
             (!Set_equal(a, b) && a != b && Set_skolem_diff(a, b) == Set_skolem_diff(b, a) && Set_in(Set_skolem_diff(a, b), a) != Set_in(Set_skolem_diff(a, b), b))
     }
-    axiom {
+    axiom Set_equal_ext {
         forall a: $Set[E], b: $Set[E] :: { Set_equal(a, b) }
             Set_equal(a, b) ==> a == b
     }

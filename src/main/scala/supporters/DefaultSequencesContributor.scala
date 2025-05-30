@@ -40,7 +40,7 @@ class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term],
     } else {
       // TODO: Generalise code once more functions (and/or axioms) are affected
       val functions = sequenceDomainInstance.functions.filterNot(_.name == "Seq_range")
-      val axioms = sequenceDomainInstance.axioms.filterNot(a => a.isInstanceOf[ast.NamedDomainAxiom] && a.asInstanceOf[ast.NamedDomainAxiom].name.startsWith("ranged_seq_"))
+      val axioms = sequenceDomainInstance.axioms.filterNot(a => a.isInstanceOf[ast.NamedDomainAxiom] && a.asInstanceOf[ast.NamedDomainAxiom].name.startsWith("Seq_range_"))
 
       sequenceDomainInstance.copy(functions = functions, axioms = axioms)(sequenceDomainInstance.pos, sequenceDomainInstance.info, sequenceDomainInstance.errT)
     }
