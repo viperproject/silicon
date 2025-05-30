@@ -279,9 +279,8 @@ object executor extends ExecutionRules {
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
-                        v2.decider.assumptionAnalyzer.addAnalysisSourceInfo(ExpAnalysisSourceInfo(BigAnd(pcs.assumptionExps.filter(_.originalExp.isDefined).map(_.originalExp.get))))
+                        // TODO ake: pcs.assumptionExps without exps do not have a source, but setting the source here will result in all invariants having the same source
                         v2.decider.assume(pcs.assumptions, Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
-                        v2.decider.assumptionAnalyzer.popAnalysisSourceInfo()
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()
@@ -307,7 +306,6 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            // TODO ake: set source
             consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v)((_, _, _, _) =>
               Success())
         }

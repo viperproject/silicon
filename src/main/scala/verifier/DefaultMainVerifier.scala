@@ -229,7 +229,7 @@ class DefaultMainVerifier(config: Config,
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      decider.initAssumptionAnalyzer(function, allProvers.getPreambleAnalysisNodes)
+      decider.initAssumptionAnalyzer(function, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
       val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
         .flatMap(extractAllVerificationResults)
       decider.removeAssumptionAnalyzer()
@@ -241,7 +241,7 @@ class DefaultMainVerifier(config: Config,
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      decider.initAssumptionAnalyzer(predicate, allProvers.getPreambleAnalysisNodes)
+      decider.initAssumptionAnalyzer(predicate, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
       val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
         .flatMap(extractAllVerificationResults)
       decider.removeAssumptionAnalyzer()

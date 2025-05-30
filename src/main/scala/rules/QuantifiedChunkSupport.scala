@@ -998,7 +998,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     val nonNegExp = qvarExps.map(qv => ast.Forall(qv, Nil, nonNegImplicationExp.get)())
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm, nonNegExp) { // FIXME ake: verify this
+    v.decider.assert(nonNegTerm, nonNegExp) { // TODO ake: verify this
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */

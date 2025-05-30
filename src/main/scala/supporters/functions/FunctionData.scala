@@ -209,7 +209,7 @@ class FunctionData(val programFunction: ast.Function,
 
     if (programFunction.posts.nonEmpty) {
       val pre = preconditionFunctionApplication
-      val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
+      val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts)))) // TODO ake: why not introduce one axiom per postcondition?
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
 
