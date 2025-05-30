@@ -7,7 +7,7 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
@@ -30,7 +30,6 @@ import viper.silver.components.StatefulComponent
 import viper.silver.parser.PType
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
 
-import java.io.ObjectInputFilter.Config
 import scala.annotation.unused
 
 trait FunctionVerificationUnit[SO, SY, AX]
@@ -53,9 +52,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
-    private var emittedFunctionAxioms: Vector[Term] = Vector.empty
+    private var emittedFunctionAxioms: Vector[(Term, AnalysisSourceInfo)] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
-    private var postConditionAxioms: Vector[Term] = Vector.empty
+    private var postConditionAxioms: Vector[(Term, AnalysisSourceInfo)] = Vector.empty
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
@@ -143,7 +142,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
     def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
 
-    def getPostConditionAxioms() = this.postConditionAxioms
+    def getPostConditionAxioms() = this.postConditionAxioms.map(_._1)
 
     /* Verification and subsequent preamble contribution */
 
@@ -262,7 +261,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
-            decider.assume(pcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))
+            // TODO ake: pcsPreExp are missing position infos sometimes (e.g. Snapshots)
+            decider.assume(pcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit)) // TODO ake: assumption type?
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             v.decider.assumptionAnalyzer.addAnalysisSourceInfo(ExpAnalysisSourceInfo(body))
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
@@ -282,8 +282,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
-      decider.prover.assumeAxioms(InsertionOrderedSet(axiom), "Function axioms")
+    private def emitAndRecordFunctionAxioms(axiom: (Term, AnalysisSourceInfo)*): Unit = {
+      decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(axiom), "Function axioms")
       emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }
 
@@ -316,10 +316,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       freshVars foreach (x => sink.declare(ConstDecl(x)))
     }
 
-    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms
+    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms.map(_._1)
 
     def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
-      sink.assumeAxioms(InsertionOrderedSet(emittedFunctionAxioms), "Function axioms")
+      sink.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(emittedFunctionAxioms), "Function axioms")
     }
 
     /* Lifetime */

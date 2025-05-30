@@ -272,7 +272,7 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          v.decider.initAssumptionAnalyzer(method, allProvers.getPreambleAnalysisNodes)
+          v.decider.initAssumptionAnalyzer(method, allProvers.getPreambleAnalysisNodes ++ v.decider.prover.getPreambleAnalysisNodes)
           val results = v.methodSupporter.verify(s, method)
             .flatMap(extractAllVerificationResults)
           v.decider.removeAssumptionAnalyzer()

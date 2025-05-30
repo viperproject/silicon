@@ -6,14 +6,15 @@
 
 package viper.silicon.supporters
 
-import viper.silver.ast
+import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.toMap
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
+import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
+import viper.silicon.toMap
+import viper.silver.ast
 import viper.silver.ast.NamedDomainAxiom
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
@@ -27,7 +28,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
-  private var collectedAxioms = InsertionOrderedSet[(Term, ast.Exp)]()
+  private var collectedAxioms = InsertionOrderedSet[(Term, AnalysisSourceInfo)]()
   private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
@@ -101,7 +102,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
       domain.axioms foreach (axiom => {
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
-        collectedAxioms = collectedAxioms.incl(terms.And(tAxPres, tAx), axiom.exp)
+        collectedAxioms = collectedAxioms.incl(terms.And(tAxPres, tAx), ExpAnalysisSourceInfo(axiom.exp))
       })
     })
   }
@@ -121,7 +122,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
   def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms.map(_._1)
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
-    sink.assumeAxiomsWithAnalysis(collectedAxioms, "Domain axioms")
+    sink.assumeAxiomsWithAnalysisInfo(collectedAxioms, "Domain axioms")
   }
 
   def uniquenessAssumptionsAfterAnalysis: Iterable[Term] =

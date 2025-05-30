@@ -186,3 +186,36 @@ method infeasibleBranch(a: Int, b: Int)
     assert res >= 0
     assert res >= a
 }
+
+method infeasibleBranchPerm(a: Ref, b: Ref)
+    requires acc(a.f)
+    requires a.f > 0
+{
+    var res: Int := a.f + 1
+
+
+    if(a.f < 0){
+        res := b.f + 1
+        assert res >= 0
+        assert a.f == 0
+    }
+
+    assert res >= 0
+    assert res >= a.f
+}
+
+
+method infeasibleBranchNoPerm(a: Int, b: Ref)
+    requires a > 0
+{
+    var res: Int := a + 1
+
+
+    if(a < 0){
+        res := b.f + 1
+        assert res >= 0
+    }
+
+    assert res >= 0
+    assert res >= a
+}

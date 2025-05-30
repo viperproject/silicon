@@ -6,24 +6,25 @@
 
 package viper.silicon.supporters.functions
 
-import scala.annotation.unused
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.state.FunctionPreconditionTransformer
-import viper.silver.ast
-import viper.silver.ast.utility.Functions
+import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
-import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
+import viper.silicon.state.{FunctionPreconditionTransformer, Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
-import viper.silicon.utils.ast.simplifyVariableName
+import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
+import viper.silver.ast
 import viper.silver.ast.LocalVarWithVersion
+import viper.silver.ast.utility.Functions
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
+
+import scala.annotation.unused
 
 /* TODO: Refactor FunctionData!
  *       Separate computations from "storing" the final results and sharing
@@ -83,12 +84,14 @@ class FunctionData(val programFunction: ast.Function,
   val preconditionFunctionApplication = App(preconditionFunction, `?s` +: formalArgs.values.toSeq)
 
   val limitedAxiom =
-    Forall(arguments,
+    (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
-           Trigger(functionApplication))
+           Trigger(functionApplication)),
+      StringAnalysisSourceInfo("Limited Axiom", programFunction.pos))
 
   val triggerAxiom =
-    Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication))
+    (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
+  StringAnalysisSourceInfo("Trigger Axiom", programFunction.pos))
 
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
@@ -201,7 +204,7 @@ class FunctionData(val programFunction: ast.Function,
     }
   }
 
-  lazy val postAxiom: Option[Term] = {
+  lazy val postAxiom: Option[(Term, AnalysisSourceInfo)] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
 
     if (programFunction.posts.nonEmpty) {
@@ -210,7 +213,10 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
 
-      Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
+      Some((Forall(arguments, body, Trigger(limitedFunctionApplication)),
+        ExpAnalysisSourceInfo(ast.Forall(argumentExps.filter(_.isDefined).map(v => ast.LocalVarDecl(v.get.name, v.get.typ)(v.get.pos)), Seq(),
+          ast.Implies(BigAnd(programFunction.pres), BigAnd(programFunction.posts))())(programFunction.pos, programFunction.info, programFunction.errT))
+      ))
     } else
       None
   }
@@ -266,7 +272,7 @@ class FunctionData(val programFunction: ast.Function,
     expressionTranslator.translate(program, programFunction, this)
   }
 
-  lazy val definitionalAxiom: Option[Term] = {
+  lazy val definitionalAxiom: Option[(Term, AnalysisSourceInfo)] = {
     assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
 
     optBody.map(translatedBody => {
@@ -281,24 +287,27 @@ class FunctionData(val programFunction: ast.Function,
       val allTriggers = (
            Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
-      Forall(arguments, body, allTriggers)})
+      (Forall(arguments, body, allTriggers), StringAnalysisSourceInfo("definitionalAxiom", programFunction.pos))
+    })
   }
 
-  lazy val bodyPreconditionPropagationAxiom: Seq[Term] = {
+  lazy val bodyPreconditionPropagationAxiom: Seq[(Term, AnalysisSourceInfo)] = {
     val pre = preconditionFunctionApplication
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
-      Forall(arguments, body, Seq(Trigger(functionApplication)))
+      (Forall(arguments, body, Seq(Trigger(functionApplication))),
+        StringAnalysisSourceInfo("bodyPreconditionPropagationAxiom", programFunction.pos))
     }) else None
     bodyPreconditions.toSeq
   }
 
-  lazy val postPreconditionPropagationAxiom: Seq[Term] = {
+  lazy val postPreconditionPropagationAxiom: Seq[(Term, AnalysisSourceInfo)] = {
     val pre = preconditionFunctionApplication
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
-      bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
+      bodies.map(b => (Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))),
+        StringAnalysisSourceInfo("postPreconditionPropagationAxiom", programFunction.pos)))
     } else Seq()
     postPreconditions
   }

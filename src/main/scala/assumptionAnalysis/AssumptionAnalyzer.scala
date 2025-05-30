@@ -22,14 +22,15 @@ trait AssumptionAnalyzer {
   def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int]
-  def addExpAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addAssumption(assumption: String, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
 
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
 
-  def processUnsatCoreAndAddDependencies(dep: String): Unit
+  def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
 
   protected var sourceInfoes: List[AnalysisSourceInfo] = List.empty
 
@@ -139,8 +140,15 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
   }
 
 
-  override def addExpAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+  override def addAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
     val node = SimpleAssumptionNode(assumption, analysisSourceInfo, assumptionType)
+    addNode(node)
+    Some(node.id)
+  }
+
+
+  override def addAssumption(assumption: String, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = StringAssumptionNode(assumption, analysisSourceInfo, assumptionType)
     addNode(node)
     Some(node.id)
   }
@@ -163,11 +171,13 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     })
   }
 
-  override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
+  override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
     val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
     if(assumptionLabels.size < 2) return
     val assumptionIds = assumptionLabels.filter(AssumptionAnalyzer.isAssumptionLabel).map(AssumptionAnalyzer.getIdFromLabel)
-    val assertionIds = assumptionLabels.filter(AssumptionAnalyzer.isAssertionLabel).map(AssumptionAnalyzer.getIdFromLabel)
+    val assertionIdsFromUnsatCore = assumptionLabels.filter(AssumptionAnalyzer.isAssertionLabel).map(AssumptionAnalyzer.getIdFromLabel)
+    val assertionIdFromLabel = AssumptionAnalyzer.getIdFromLabel(assertionLabel)
+    val assertionIds = assertionIdFromLabel +: assertionIdsFromUnsatCore // TODO ake: add check (not already contained)
     assumptionGraph.addEdges(assumptionIds, assertionIds)
     val axiomIds = assumptionLabels.filter(AssumptionAnalyzer.isAxiomLabel).map(AssumptionAnalyzer.getIdFromLabel)
     assumptionGraph.addEdges(axiomIds, assertionIds)
@@ -240,7 +250,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
 
-  override def processUnsatCoreAndAddDependencies(dep: String): Unit = {
+  override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
   }
 
   override def addPermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
@@ -257,7 +267,8 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
-  override def addExpAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
+  override def addAssumption(assumption: String, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
   override def exportGraph(): Unit = {}
 }

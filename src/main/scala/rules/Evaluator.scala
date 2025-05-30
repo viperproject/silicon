@@ -940,7 +940,7 @@ object evaluator extends EvaluationRules {
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
-              v3.decider.assume(preFApp, preExp, AssumptionType.Implicit)
+              v3.decider.assume(preFApp, preExp, AssumptionType.Internal)
               val funcAnn = func.info.getUniqueInfo[AnnotationInfo]
               val tFApp = funcAnn match {
                 case Some(a) if a.values.contains("opaque") =>

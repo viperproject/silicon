@@ -6,16 +6,16 @@
 
 package viper.silicon.interfaces.decider
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisNode, AssumptionAnalyzer, AssumptionType, DefaultAssumptionAnalyzer, ExpAnalysisSourceInfo, NoAssumptionAnalyzer}
-import viper.silicon.debugger.DebugAxiom
+import viper.silicon.assumptionAnalysis._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
-import viper.silver.components.StatefulComponent
-import viper.silicon.{Config, Map}
+import viper.silicon.debugger.DebugAxiom
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.Model
+import viper.silicon.{Config, Map}
 import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silver.verifier.Model
 
 sealed abstract class Result
 object Sat extends Result
@@ -37,11 +37,11 @@ trait ProverLike {
       preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }
-  def assumeAxiomsWithAnalysis(axioms: InsertionOrderedSet[(Term, ast.Exp)], description: String): Unit = {
+  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, AnalysisSourceInfo)], description: String): Unit = {
     if (debugMode) {
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
       axioms.foreach(axiom => {
-        val id = preambleAssumptionAnalyzer.addExpAssumption(axiom._2, ExpAnalysisSourceInfo(axiom._2), AssumptionType.Axiom)
+        val id = preambleAssumptionAnalyzer.addAssumption(axiom._2.toString, axiom._2, AssumptionType.Axiom)
         assume(axiom._1, AssumptionAnalyzer.createAxiomLabel(id))
       })
     }else{

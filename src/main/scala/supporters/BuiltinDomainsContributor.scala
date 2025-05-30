@@ -16,6 +16,7 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
+import viper.silver.ast.NoPosition
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType

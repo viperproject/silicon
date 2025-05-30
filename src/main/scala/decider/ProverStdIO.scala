@@ -303,7 +303,7 @@ abstract class ProverStdIO(uniqueId: String,
       retrieveReasonUnknown()
     }else if(Verifier.config.enableAssumptionAnalysis()){
       val unsatCore = extractUnsatCore()
-      assumptionAnalyzer.processUnsatCoreAndAddDependencies(unsatCore)
+      assumptionAnalyzer.processUnsatCoreAndAddDependencies(unsatCore, label)
     }
 
     pop()

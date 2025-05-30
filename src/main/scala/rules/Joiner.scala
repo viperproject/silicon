@@ -105,7 +105,7 @@ object joiner extends JoiningRules {
           val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          v.decider.assume(pcs, Option.when(withExp)(DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp.get))), enforceAssumption = false, assumptionType=AssumptionType.Implicit)
+          v.decider.assume(pcs, pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
           feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
           feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
           feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)
