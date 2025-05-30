@@ -19,10 +19,10 @@ import viper.silicon.state.terms._
 //       etc. as well.
 trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def data: Option[FunctionData]
-  private[functions] def locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]]
-  def locToSnap: Map[ast.LocationAccess, Term]
-  private[functions] def fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]]
-  def fappToSnap: Map[ast.FuncApp, Term]
+  private[functions] def locToSnaps: Map[(ast.LocationAccess, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]]
+  def locToSnap: Map[(ast.LocationAccess, Seq[ExpContext]), Term]
+  private[functions] def fappToSnaps: Map[(ast.FuncApp, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]]
+  def fappToSnap: Map[(ast.FuncApp, Seq[ExpContext]), Term]
   def freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition]
   def freshFieldInvs: InsertionOrderedSet[InverseFunctions]
   def freshConstrainedVars: InsertionOrderedSet[(Var, Term)]
@@ -43,9 +43,13 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def changeDepthBy(delta: Int): FunctionRecorder
 }
 
+trait ExpContext
+case class LetContext(l: ast.Let) extends ExpContext
+case class QuantifierContext(q: ast.QuantifiedExp) extends ExpContext
+
 case class ActualFunctionRecorder(private val _data: FunctionData,
-                                  private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
-                                  private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
+                                  private[functions] val locToSnaps: Map[(ast.LocationAccess, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
+                                  private[functions] val fappToSnaps: Map[(ast.FuncApp, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet(),
                                   freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet(),
                                   freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
@@ -53,7 +57,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                                   freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet(),
                                   freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet(),
                                   freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet(),
-                                  depth: Int = 0)
+                                  depth: Int = 0,
+                                  private val _context: Seq[ExpContext] = Seq())
     extends FunctionRecorder {
 
   /* Depth is intended to reflect how often a nested function application or unfolding expression
@@ -93,8 +98,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
   val data = Some(_data)
 
   private def exprToSnap[E <: ast.Exp]
-                        (recordings: Map[E, InsertionOrderedSet[(Stack[Term], Term)]])
-                        : Map[E, Term] = {
+                        (recordings: Map[(E, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]])
+                        : Map[(E, Seq[ExpContext]), Term] = {
 
     recordings.map { case (expr, guardsToSnap) =>
       expr -> toTerm(guardsToSnap, None)
@@ -148,20 +153,20 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     }
   }
 
-  def locToSnap: Map[ast.LocationAccess, Term] = exprToSnap(locToSnaps)
-  def fappToSnap: Map[ast.FuncApp, Term] = exprToSnap(fappToSnaps)
+  def locToSnap: Map[(ast.LocationAccess, Seq[ExpContext]), Term] = exprToSnap(locToSnaps)
+  def fappToSnap: Map[(ast.FuncApp, Seq[ExpContext]), Term] = exprToSnap(fappToSnaps)
 
   private def recordExpressionSnapshot[E <: ast.Exp]
                                       (loc: E,
                                        guards: Stack[Term],
                                        snap: Term,
-                                       recordings: Map[E, InsertionOrderedSet[(Stack[Term], Term)]])
-                                      : Option[Map[E, InsertionOrderedSet[(Stack[Term], Term)]]] = {
+                                       recordings: Map[(E, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]])
+                                      : Option[Map[(E, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]]] = {
 
     if (depth == 0) {
-      val guardsToSnaps = recordings.getOrElse(loc, InsertionOrderedSet()) + (guards -> snap)
+      val guardsToSnaps = recordings.getOrElse((loc, _context), InsertionOrderedSet()) + (guards -> snap)
 
-      Some(recordings + (loc -> guardsToSnaps))
+      Some(recordings + ((loc, _context) -> guardsToSnaps))
     } else {
       None
     }
@@ -271,10 +276,10 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 
 case object NoopFunctionRecorder extends FunctionRecorder {
   val data: Option[FunctionData] = None
-  private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
-  val fappToSnap: Map[ast.FuncApp, Term] = Map.empty
-  private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
-  val locToSnap: Map[ast.LocationAccess, Term] = Map.empty
+  private[functions] val fappToSnaps: Map[(ast.FuncApp, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
+  val fappToSnap: Map[(ast.FuncApp, Seq[ExpContext]), Term] = Map.empty
+  private[functions] val locToSnaps: Map[(ast.LocationAccess, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
+  val locToSnap: Map[(ast.LocationAccess, Seq[ExpContext]), Term] = Map.empty
   val freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   val freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   val freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
