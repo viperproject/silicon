@@ -438,26 +438,31 @@ object executor extends ExecutionRules {
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
-          eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
-            v2.decider.assumptionAnalyzer.addAnalysisSourceInfo(fa)
-            val resource = fa.res(s.program)
-            val ve = pve dueTo InsufficientPermission(fa)
-            val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, consumedChunks, v3) => {
-              val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
-              val id = BasicChunkIdentifier(field.name)
-              val newChunk = BasicChunk.createDerivedChunk(consumedChunks.toSet, FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                v3.decider.assumptionAnalyzer.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
-              chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
-                val s5 = s4.copy(h = h4)
-                val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
-                val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
-                v4.decider.assumptionAnalyzer.popAnalysisSourceInfo()
-                Q(s6, v4)
+        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>{
+            eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
+              val resource = fa.res(s.program)
+              val ve = pve dueTo InsufficientPermission(fa)
+              val description = s"consume ${ass.pos}: $ass"
+              v2.decider.assumptionAnalyzer.popAnalysisSourceInfo() // lhs and rhs should have different analysis sources
+              v2.decider.assumptionAnalyzer.addAnalysisSourceInfo(fa)
+              chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, consumedChunks, v3) => {
+                v3.decider.assumptionAnalyzer.popAnalysisSourceInfo()
+                v3.decider.assumptionAnalyzer.addAnalysisSourceInfo(StmtAnalysisSourceInfo(ass))
+                val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
+                val id = BasicChunkIdentifier(field.name)
+                v3.decider.assumptionAnalyzer.popAnalysisSourceInfo() // lhs and rhs should have different analysis sources
+                v3.decider.assumptionAnalyzer.addAnalysisSourceInfo(fa)
+                val newChunk = BasicChunk.createDerivedChunk(Set.empty, FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
+                  v3.decider.assumptionAnalyzer.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
+                chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
+                  val s5 = s4.copy(h = h4)
+                  val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
+                  val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
+                  Q(s6, v4)
+                })
               })
             })
-          })
+          }
         )
 
       case stmt@ast.NewStmt(x, fields) =>
