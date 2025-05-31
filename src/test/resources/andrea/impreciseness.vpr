@@ -1,0 +1,15 @@
+field f: Int
+
+method getValue(x: Ref) returns (res: Int)
+    requires acc(x.f)
+    ensures acc(x.f)
+
+method permTest(a: Ref, b: Ref, n: Int)
+    requires acc(a.f) && acc(b.f) && b.f > 0
+    requires n > 0
+{
+    a.f := b.f + 2
+    assert a.f > 2
+    a.f := n
+    assert a.f >= 0 // incorrectly depends on acc(b.f)
+}
