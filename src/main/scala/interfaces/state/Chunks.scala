@@ -6,9 +6,9 @@
 
 package viper.silicon.interfaces.state
 
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, PermissionInhaleNode}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, PermissionInhaleNode}
 import viper.silicon.resources.ResourceID
-import viper.silicon.state.terms.{Term, Var}
+import viper.silicon.state.terms.{PermMinus, Term, Var}
 import viper.silver.ast
 
 trait Chunk {
@@ -39,9 +39,15 @@ object GeneralChunk {
   }
 
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo, isExhale: Boolean=false): GeneralChunk = {
+    // TODO ake: review and test
     val newChunk = chunk.permMinus(newPerm, newPermExp)
-    val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, newPermExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+    val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk,
+      Option.when(chunk.permExp.isDefined && newPermExp.isDefined)(ast.PermSub(chunk.permExp.get, newPermExp.get)(newPermExp.get.pos, newPermExp.get.info)),
+      analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
     analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), newNodeId)
+    val exhaledChunk = chunk.withPerm(newPerm, newPermExp)
+    val exhaledNodeId = analysisInfo.assumptionAnalyzer.addPermissionNode(exhaledChunk, newPermExp, analysisInfo.sourceInfo, AssumptionType.Implicit, isExhale=true)
+    analysisInfo.assumptionAnalyzer.addPermissionDependencies(Set(chunk), exhaledNodeId)
     newChunk
   }
 
