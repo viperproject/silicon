@@ -180,7 +180,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                      sm: Term,
                                      program: ast.Program,
                                      v: Verifier,
-                                     assumptionType: AssumptionType)
+                                     assumptionType: AssumptionType,
+                                     isExhale: Boolean)
                                     : QuantifiedBasicChunk
 
   /** Creates a quantified chunk corresponding to the assertion
@@ -219,7 +220,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             qidPrefix: String,
                             v: Verifier,
                             program: ast.Program,
-                            assumptionType: AssumptionType)
+                            assumptionType: AssumptionType,
+                            isExhale: Boolean)
                            : (QuantifiedBasicChunk, InverseFunctions)
 
   def splitHeap[CH <: QuantifiedBasicChunk : NotNothing : ClassTag]
@@ -275,7 +277,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      sm: Term,
                                      program: ast.Program,
                                      v: Verifier,
-                                     assumptionType: AssumptionType)
+                                     assumptionType: AssumptionType,
+                                     isExhale: Boolean)
                                     : QuantifiedBasicChunk = {
 
     val condition =
@@ -305,7 +308,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       hints,
       program,
       v,
-      assumptionType)
+      assumptionType,
+      isExhale)
   }
 
   /** @inheritdoc [[QuantifiedChunkSupport.createQuantifiedChunk]] */
@@ -327,7 +331,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             qidPrefix: String,
                             v: Verifier,
                             program: ast.Program,
-                            assumptionType: AssumptionType)
+                            assumptionType: AssumptionType,
+                            isExhale: Boolean)
                            : (QuantifiedBasicChunk, InverseFunctions) = {
 
     val (inverseFunctions, imagesOfCodomain) =
@@ -369,7 +374,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         hints,
         program,
         v,
-        assumptionType)
+        assumptionType,
+        isExhale)
 
     (ch, inverseFunctions)
   }
@@ -413,7 +419,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                      hints: Seq[Term],
                                      program: ast.Program,
                                      v: Verifier,
-                                     assumptionType: AssumptionType)
+                                     assumptionType: AssumptionType,
+                                     isExhale: Boolean)
                                     : QuantifiedBasicChunk = {
 
     resource match {
@@ -433,7 +440,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments.map(_.head),
           optSingletonArgumentsExp.map(_.head),
           hints,
-          v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
+          v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType),
+          isExhale)
 
       case predicate: ast.Predicate =>
         QuantifiedPredicateChunk(
@@ -449,7 +457,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments,
           optSingletonArgumentsExp,
           hints,
-          v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
+          v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType),
+          isExhale)
 
       case wand: ast.MagicWand =>
         val conditionalizedPermissions = Ite(condition, permissions, NoPerm)
@@ -465,7 +474,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments,
           optSingletonArgumentsExp,
           hints,
-          v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
+          v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType),
+          isExhale)
 
       case other =>
         sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
@@ -937,7 +947,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         qidPrefix            = qid,
         v                    = v,
         program              = s.program,
-        assumptionType       = assumptionType)
+        assumptionType       = assumptionType,
+        isExhale             = false)
     val (effectiveTriggers, effectiveTriggersQVars, effectiveTriggersQVarExps) =
       optTrigger match {
         case Some(_) =>
@@ -1121,7 +1132,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
-    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program, v, assumptionType)
+    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program, v, assumptionType, isExhale=false)
     val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
@@ -1359,7 +1370,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   qid,
                   v2,
                   s.program,
-                  AssumptionType.Unknown // TODO ake: should be exhale
+                  AssumptionType.Explicit,
+                  isExhale = true
                 )
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Inverse functions for quantified permission", isInternal_ = true))
                 v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program), debugExp, AssumptionType.Internal)
@@ -1491,7 +1503,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         }
         val consumedChunk =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program, v1, AssumptionType.Unknown) // TODO ake: exhale
+            codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program, v1, AssumptionType.Explicit, isExhale=true)
         val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
                          smCache = smCache1)
         (result, s3, h2, Some(consumedChunk)) // TODO ake: or consumedChunks?
