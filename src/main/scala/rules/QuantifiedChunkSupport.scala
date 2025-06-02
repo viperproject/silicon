@@ -732,8 +732,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              smDef: SnapshotMapDefinition,
                              v: Verifier)
                             : (PermMapDefinition, PmCache) = {
-
-    Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
+    v.decider.assumptionAnalyzer.setForcedSource("summarizing heap")
+    val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
         (pmDef, s.pmCache)
@@ -744,6 +744,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(valueDef, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
         (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
     }
+    v.decider.assumptionAnalyzer.unsetForcedSource()
+    res
   }
 
   /* Snapshots */
@@ -770,6 +772,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              optSmDomainDefinitionCondition: Option[Term] = None,
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
+    v.decider.assumptionAnalyzer.setForcedSource("summarizing heap")
 
     def emitSnapshotMapDefinition(s: State,
                                   smDef: SnapshotMapDefinition,
@@ -840,7 +843,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       }
 
     emitSnapshotMapDefinition(s, smDef, v, optQVarsInstantiations)
-
+    v.decider.assumptionAnalyzer.unsetForcedSource()
     (smDef, smCache)
   }
 
@@ -852,7 +855,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           optSmDomainDefinitionCondition: Option[Term] = None,
                           optQVarsInstantiations: Option[Seq[Term]] = None)
                          : (State, SnapshotMapDefinition, PermMapDefinition) = {
-
+    v.decider.assumptionAnalyzer.setForcedSource("summarizing heap")
     val (smDef, smCache) =
       summarisingSnapshotMap(
         s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition, optQVarsInstantiations)
@@ -864,7 +867,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s1, resource, codomainQVars, relevantChunks, smDef, v)
 
     val s2 = s1.copy(pmCache = pmCache)
-
+    v.decider.assumptionAnalyzer.unsetForcedSource()
     (s2, smDef, pmDef)
   }
 
@@ -877,14 +880,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           relevantChunks: Seq[QuantifiedBasicChunk],
                           v: Verifier)
   : (State, PermMapDefinition) = {
-
+    v.decider.assumptionAnalyzer.setForcedSource("summarizing heap")
     val s1 = s
     val (pmDef, pmCache) =
       quantifiedChunkSupporter.summarisingPermissionMap(
         s1, resource, codomainQVars, relevantChunks, null, v)
 
     val s2 = s1.copy(pmCache = pmCache)
-
+    v.decider.assumptionAnalyzer.unsetForcedSource()
     (s2, pmDef)
   }
 

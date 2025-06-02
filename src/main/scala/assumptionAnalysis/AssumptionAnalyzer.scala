@@ -33,12 +33,15 @@ trait AssumptionAnalyzer {
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
 
   protected var sourceInfoes: List[AnalysisSourceInfo] = List.empty
+  protected var forcedMainSource: Option[AnalysisSourceInfo] = None
 
   def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
 
   def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, getFullSourceInfo, assumptionType)
 
   def getFullSourceInfo: AnalysisSourceInfo = {
+    if(forcedMainSource.isDefined)
+      return forcedMainSource.get
     if(sourceInfoes.size <= 1){
       sourceInfoes.headOption.getOrElse(NoAnalysisSourceInfo())
     } else{
@@ -53,6 +56,16 @@ trait AssumptionAnalyzer {
 
   def popAnalysisSourceInfo(): Unit = {
     sourceInfoes = sourceInfoes.tail
+    forcedMainSource = None
+  }
+
+  def setForcedSource(description: String): Unit = {
+    if(forcedMainSource.isEmpty)
+      forcedMainSource = Some(StringAnalysisSourceInfo(description, getFullSourceInfo.getPosition))
+  }
+
+  def unsetForcedSource(): Unit = {
+    forcedMainSource = None
   }
 
   def getAnalysisSourceInfoes: List[AnalysisSourceInfo] = sourceInfoes

@@ -9,6 +9,11 @@ method quantifiedPerm(xs: Seq[Ref]) {
   assert xs[2].f > 0
   var a : Ref := xs[0]
   a.f := 0
+  assert xs[0].f >= 0
+  assert xs[0].f == 0
+  assert xs[2].f >= 0
+  a.f := -1
+  assert xs[2] != a ==> xs[2].f > 0
 }
 
 method quantifiedWritePerm(nodes: Set[Ref], x: Ref)
