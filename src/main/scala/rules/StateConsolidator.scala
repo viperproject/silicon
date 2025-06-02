@@ -61,7 +61,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   def consolidate(s: State, v: Verifier): State = {
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
-    v.decider.assumptionAnalyzer.addAnalysisSourceInfo(StringAnalysisSourceInfo("state consolidation", NoPosition))
+    v.decider.assumptionAnalyzer.setForcedSource("state consolidation")
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration)
 
@@ -118,7 +118,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                     reserveHeaps = mergedHeaps.tail)
 
     val s2 = assumeUpperPermissionBoundForQPFields(s1, v)
-    v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
+    v.decider.assumptionAnalyzer.unsetForcedSource()
 
     s2
   }
