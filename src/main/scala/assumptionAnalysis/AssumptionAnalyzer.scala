@@ -64,6 +64,11 @@ trait AssumptionAnalyzer {
       forcedMainSource = Some(StringAnalysisSourceInfo(description, getFullSourceInfo.getPosition))
   }
 
+  def setForcedSource(source: AnalysisSourceInfo): Unit = {
+    if(forcedMainSource.isEmpty)
+      forcedMainSource = Some(source)
+  }
+
   def unsetForcedSource(): Unit = {
     forcedMainSource = None
   }
