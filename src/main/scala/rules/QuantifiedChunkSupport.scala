@@ -1710,6 +1710,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks =
                 remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Implicit))
             }
+          }else{
+            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ithChunk, ithPTakenExp, v.decider.assumptionAnalyzer.getFullSourceInfo)
           }
         }
 
