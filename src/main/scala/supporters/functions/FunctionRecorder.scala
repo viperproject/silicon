@@ -41,6 +41,10 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def recordFreshMacro(decl: MacroDecl): FunctionRecorder
   def depth: Int
   def changeDepthBy(delta: Int): FunctionRecorder
+  def enterLet(l: ast.Let): FunctionRecorder
+  def leaveLet(l: ast.Let): FunctionRecorder
+  def enterQuantifiedExp(q: ast.QuantifiedExp): FunctionRecorder
+  def leaveQuantifiedExp(q: ast.QuantifiedExp): FunctionRecorder
 }
 
 trait ExpContext
@@ -217,6 +221,30 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
   def changeDepthBy(delta: Int): ActualFunctionRecorder =
     copy(depth = depth + delta)
 
+  def enterLet(l: ast.Let): FunctionRecorder = {
+    copy(_context = _context :+ LetContext(l))
+  }
+
+  def leaveLet(l: ast.Let): FunctionRecorder = {
+    assert(_context.nonEmpty && (_context.last match {
+      case LetContext(`l`) => true
+      case _ => false
+    }))
+    copy(_context = _context.init)
+  }
+
+  def enterQuantifiedExp(q: ast.QuantifiedExp): FunctionRecorder = {
+    copy(_context = _context :+ QuantifierContext(q))
+  }
+
+  def leaveQuantifiedExp(q: ast.QuantifiedExp): FunctionRecorder = {
+    assert(_context.nonEmpty && (_context.last match {
+      case QuantifierContext(`q`) => true
+      case _ => false
+    }))
+    copy(_context = _context.init)
+  }
+
   def merge(other: FunctionRecorder): ActualFunctionRecorder = {
     if (depth > 1) return this
 
@@ -305,4 +333,8 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   def recordPathSymbol(symbol: Function): NoopFunctionRecorder.type = this
   def recordFreshMacro(decl: MacroDecl): NoopFunctionRecorder.type = this
   def changeDepthBy(delta: Int): NoopFunctionRecorder.type = this
+  def enterLet(l: ast.Let): FunctionRecorder = this
+  def leaveLet(l: ast.Let): FunctionRecorder = this
+  def enterQuantifiedExp(q: ast.QuantifiedExp): FunctionRecorder = this
+  def leaveQuantifiedExp(q: ast.QuantifiedExp): FunctionRecorder = this
 }
