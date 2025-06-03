@@ -1,7 +1,7 @@
 predicate P4
-  Branch b@0@00:
+  Branch b@1@00:
     comment: Reachable
-  Branch !(b@0@00):
+  Branch !(b@1@00):
     comment: Reachable
 
 method topOfStackInIgnoredSepSetCheck

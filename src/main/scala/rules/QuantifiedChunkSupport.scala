@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -35,7 +36,7 @@ import scala.reflect.ClassTag
 case class InverseFunctions(condition: Term,
                             invertibles: Seq[Term],
                             invertibleExps: Option[Seq[ast.Exp]],
-                            additionalArguments: Vector[Var],
+                            additionalArguments: Vector[Term],
                             axiomInversesOfInvertibles: Quantification,
                             axiomInvertiblesOfInverses: Quantification,
                             qvarExps: Option[Seq[ast.LocalVarDecl]],
@@ -79,6 +80,14 @@ case class InverseFunctions(condition: Term,
          |$linePrefix  axiomInvertiblesOfInverses
          |$linePrefix    ${axiomInvertiblesOfInverses.stringRepresentationWithTriggers}
        """.stripMargin
+
+  def substitute(terms: silicon.Map[Term, Term]) = copy(
+    condition = condition.replace(terms),
+    invertibles = invertibles.map(_.replace(terms)),
+    additionalArguments = additionalArguments.map(_.replace(terms)),
+    axiomInversesOfInvertibles = axiomInversesOfInvertibles.replace(terms).asInstanceOf[Quantification],
+    axiomInvertiblesOfInverses = axiomInvertiblesOfInverses.replace(terms).asInstanceOf[Quantification]
+  )
 }
 
 case class SnapshotMapDefinition(resource: ast.Resource,
@@ -1044,7 +1053,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
               case r => r
             }
-            val smCache1 = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+            val (smCache1, fr2) = if (s.heapDependentTriggers.contains(resourceIdentifier)){
               // TODO: Why not formalQVars? Used as codomainVars, see above.
               val codomainVars =
                 resource match {
@@ -1065,13 +1074,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val condOfInv = tCond.replace(qvarsToInv)
               v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars))),
                 Option.when(withExp)(DebugExp.createInstance("Inverse Trigger", true)))
-              smCache1
+              val newFuncRec = fr1.recordFvfAndDomain(smDef1)
+              (smCache1, newFuncRec)
             } else {
-              s.smCache
+              (s.smCache, fr1)
             }
             val s1 =
               s.copy(h = h1,
-                     functionRecorder = fr1.recordFieldInv(inv),
+                     functionRecorder = fr2.recordFieldInv(inv),
                      conservedPcs = conservedPcs,
                      smCache = smCache1)
             Q(s1, v)
@@ -2020,11 +2030,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
-        Left(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
+        val qvarsAndInverses = qfc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qfc.invs.get.additionalArguments.toSeq ++ qfc.quantifiedVars)))
+        val invertiblesReplaced = qfc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+        Left(invertiblesReplaced, qfc.quantifiedVars, qfc.condition)
       case qfc: QuantifiedFieldChunk if qfc.singletonArguments.isDefined =>
         Right(qfc.singletonArguments.get, qfc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
-        Left(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
+        val qvarsAndInverses = qpc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qpc.invs.get.additionalArguments.toSeq ++ qpc.quantifiedVars)))
+        val invertiblesReplaced = qpc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+        Left(invertiblesReplaced, qpc.quantifiedVars, qpc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.singletonArguments.isDefined =>
         Right(qpc.singletonArguments.get, qpc.condition)
       case _ => return None
@@ -2068,9 +2082,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     relevantChunks.find { ch =>
       val chunkInfo = ch match {
         case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
-          Some(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
+          val qvarsAndInverses = qfc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qfc.invs.get.additionalArguments.toSeq ++ qfc.quantifiedVars)))
+          val invertiblesReplaced = qfc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+          Some(invertiblesReplaced, qfc.quantifiedVars, qfc.condition)
         case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
-          Some(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
+          val qvarsAndInverses = qpc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qpc.invs.get.additionalArguments.toSeq ++ qpc.quantifiedVars)))
+          val invertiblesReplaced = qpc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+          Some(invertiblesReplaced, qpc.quantifiedVars, qpc.condition)
         case _ => None
       }
       chunkInfo match {
