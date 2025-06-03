@@ -39,7 +39,6 @@ object GeneralChunk {
   }
 
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo, isExhale: Boolean=false): GeneralChunk = {
-    // TODO ake: review and test
     val newChunk = chunk.permMinus(newPerm, newPermExp)
     val newNodeId = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk,
       Option.when(chunk.permExp.isDefined && newPermExp.isDefined)(ast.PermSub(chunk.permExp.get, newPermExp.get)(newPermExp.get.pos, newPermExp.get.info)),

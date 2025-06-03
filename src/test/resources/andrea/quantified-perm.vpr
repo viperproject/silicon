@@ -72,3 +72,27 @@ method quantifiedExhaleFully(xs: Seq[Ref], ys: Seq[Ref]) {
   xs[0].f := 10
   exhale forall x: Ref :: x in xs ==> acc(x.f)
 }
+
+method quantifiedPermBig(xs: Seq[Ref], ys: Seq[Ref], r: Ref) {
+   assume |xs| > 5 && |ys| > 5
+   inhale acc(r.f, 1/2)
+   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
+   inhale forall y: Ref :: y in ys ==> (acc(y.f, 1/2) && y.f > 0)
+
+   assert xs[0] != ys[0]
+   assert r != xs[0]
+   assert xs[2].f >= 0
+   xs[0].f := xs[1].f + xs[2].f
+   xs[1].f := ys[0].f
+
+   inhale ys[0] == r
+
+   ys[0].f := xs[0].f
+   r.f := r.f + xs[0].f
+   assert r.f == 2*xs[0].f
+
+   xs[3].f := r.f
+
+   assert forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
+   assert forall y: Ref :: y in ys ==> (acc(y.f, 1/2) && y.f > 0)
+ }

@@ -366,13 +366,14 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pSumExp = eqExp.map(eq => ast.PermAdd(pSumExp.get, ast.CondExp(eq, ch.permExp.get, ast.NoPerm()())(eq.pos, eq.info, eq.errT))())
 
             val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.assumptionAnalyzer.getAnalysisInfo).asInstanceOf[NonQuantifiedChunk]
+            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ch, pTakenExp, v.decider.assumptionAnalyzer.getFullSourceInfo)
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
             if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
               newChunks.append(newChunk)
-              consumedChunks.append(ch)
             }
+            consumedChunks.append(ch)
 
             moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout())
           } else {
@@ -481,6 +482,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
+        v.decider.assumptionAnalyzer.addPermissionExhaleNode(ch, permTakenExp, v.decider.assumptionAnalyzer.getFullSourceInfo)
         GeneralChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.assumptionAnalyzer.getAnalysisInfo).asInstanceOf[NonQuantifiedChunk]
       })
 

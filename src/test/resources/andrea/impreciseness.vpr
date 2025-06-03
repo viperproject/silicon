@@ -13,3 +13,4 @@ method permTest(a: Ref, b: Ref, n: Int)
     a.f := n
     assert a.f >= 0 // incorrectly depends on acc(b.f)
 }
+
