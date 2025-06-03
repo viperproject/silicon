@@ -100,8 +100,8 @@ class FunctionData(val programFunction: ast.Function,
    */
 
   private[functions] var verificationFailures: Seq[FatalResult] = Vector.empty
-  private[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
-  private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
+  private[functions] var locToSnap: Map[(ast.LocationAccess, Seq[ExpContext]), Term] = Map.empty
+  private[functions] var fappToSnap: Map[(ast.FuncApp, Seq[ExpContext]), Term] = Map.empty
   private[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   private[this] var freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
@@ -251,7 +251,7 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
+           expressionTranslator.getOrFail(locToSnap, predAcc, Seq(), sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
         +: expressionTranslator.translatePrecondition(program, predAcc.args, this))
 
       val fapp = App(triggerFunction, args)
