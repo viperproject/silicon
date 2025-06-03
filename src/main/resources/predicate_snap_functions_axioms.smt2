@@ -32,8 +32,10 @@
 
 (assert (forall ((s $Snap) (pm $PPM)) (!
     ($Perm.isValidVar ($PSF.perm_$PRD$ pm s))
-    :pattern (($PSF.perm_$PRD$ pm s)))))
+    :pattern (($PSF.perm_$PRD$ pm s))
+    :qid |qp.$PSF<$PRD$>-validvar|)))
 
 (assert (forall ((s $Snap) (f $S$)) (!
     (= ($PSF.loc_$PRD$ f s) true)
-    :pattern (($PSF.loc_$PRD$ f s)))))
+    :pattern (($PSF.loc_$PRD$ f s))
+    :qid |qp.$PSF<$PRD$>-loc|)))
