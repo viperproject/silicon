@@ -9,11 +9,12 @@ package viper.silicon.rules
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.resources.FieldID
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, Identifier, MagicWandChunk, MagicWandIdentifier, QuantifiedFieldChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -359,6 +360,71 @@ class DefaultHeapSupporter extends HeapSupportRules {
     } else {
       s
     }
+  }
+
+  def produce(s: State,
+              sf: (Sort, Verifier) => Term,
+              accPred: ast.AccessPredicate,
+              pve: PartialVerificationError,
+              v: Verifier)
+             (Q: (State, Verifier) => VerificationResult) : VerificationResult = {
+    val (eArgs, tFormalArgs, eFormalArgs, resource, ePerm, useQPs) = accPred match {
+      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, fld), ePerm) =>
+        val eArgs = Seq(eRcvr)
+        val tFormalArgs = Seq(`?r`)
+        val eFormalArgs = Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)))
+        (eArgs, tFormalArgs, eFormalArgs, fld, ePerm.getOrElse(ast.FullPerm()()), s.qpFields.contains(fld))
+      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predName), ePerm) =>
+        val predicate = s.program.findPredicate(predName)
+        val tFormalArgs = s.predicateFormalVarMap(predicate)
+        val eFormalArgs = Option.when(withExp)(predicate.formalArgs)
+        (eArgs, tFormalArgs, eFormalArgs, predicate, ePerm.getOrElse(ast.FullPerm()()), s.qpPredicates.contains(predicate))
+      case w: ast.MagicWand =>
+        val eArgs = w.subexpressionsToEvaluate(s.program)
+        val ePerm = ast.FullPerm()()
+        val tFormalVars = eArgs.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(eArgs(i).typ), false))
+        val eFormalVars = Option.when(withExp)(eArgs.indices.toList.map(i => ast.LocalVarDecl(s"x$i", eArgs(i).typ)()))
+        (eArgs, tFormalVars, eFormalVars, w, ePerm, s.qpMagicWands.contains(MagicWandIdentifier(w, s.program)))
+    }
+
+    evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+      eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
+        permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a)((s1b, v2) => {
+          val s2 = s1b.copy(constrainableARPs = s.constrainableARPs)
+          val snap = sf(v2.snapshotSupporter.optimalSnapshotSort(resource, s2, v2), v2)
+          val gain = if (!Verifier.config.unsafeWildcardOptimization() ||
+              (resource.isInstanceOf[ast.Location] && s2.permLocations.contains(resource.asInstanceOf[ast.Location])))
+            PermTimes(tPerm, s2.permissionScalingFactor)
+          else
+            WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
+          val gainExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
+          if (useQPs) {
+            val trigger = (sm: Term) => ResourceTriggerFunction(resource, sm, tArgs, s2.program)
+            quantifiedChunkSupporter.produceSingleLocation(
+              s2, resource, tFormalArgs, eFormalArgs, tArgs, eArgsNew, snap, gain, gainExp, trigger, v2)(Q)
+          } else {
+            resource match {
+              case w: ast.MagicWand =>
+                magicWandSupporter.createChunk(s2, w, MagicWandSnapshot(snap), pve, v2)((s3, chWand, v3) =>
+                  chunkSupporter.produce(s3, s3.h, chWand, v3)((s4, h4, v4) =>
+                    Q(s4.copy(h = h4), v4)))
+              case _ =>
+                val chunkId = ChunkIdentifier(resource, s2.program)
+                val (resId, snap1) = if (resource.isInstanceOf[ast.Field]) (FieldID, snap) else (PredicateID, snap.convert(sorts.Snap))
+                val ch = BasicChunk(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgsNew, snap1, None, gain, gainExp)
+                chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
+                  if (resource.isInstanceOf[ast.Predicate] && Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
+                    && !Verifier.config.disableFunctionUnfoldTrigger()) {
+                    val predicate = resource.asInstanceOf[ast.Predicate]
+                    val argsString = eArgsNew.mkString(", ")
+                    val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
+                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp)
+                  }
+                  Q(s3.copy(h = h3), v3)
+                })
+            }
+          }
+        })))
   }
 }
 

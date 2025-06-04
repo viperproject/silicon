@@ -317,6 +317,9 @@ object producer extends ProductionRules {
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>
           produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
 
+      case accPred: ast.AccessPredicate =>
+        defaultHeapSupporter.produce(s, sf, accPred, pve, v)(Q)
+
       case accPred@ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), _) =>
         val perm = accPred.perm
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
