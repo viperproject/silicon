@@ -20,6 +20,8 @@ abstract class AnalysisSourceInfo {
   def getTopLevelSource: AnalysisSourceInfo = this
 
   def getFineGrainedSource: AnalysisSourceInfo = this
+
+  def isAnalysisEnabled: Boolean = true
 }
 
 case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
@@ -38,6 +40,8 @@ case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
       case _ => false
     }
   }
+
+  override def isAnalysisEnabled: Boolean = AssumptionAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
 }
 
 case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
@@ -51,6 +55,8 @@ case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
       case _ => false
     }
   }
+
+  override def isAnalysisEnabled: Boolean = AssumptionAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
 }
 
 case class StringAnalysisSourceInfo(description: String, position: Position) extends AnalysisSourceInfo {
@@ -66,4 +72,6 @@ case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, 
 
   override def getTopLevelSource: AnalysisSourceInfo = coarseGrainedSource
   override def getFineGrainedSource: AnalysisSourceInfo = fineGrainedSource
+
+  override def isAnalysisEnabled: Boolean = coarseGrainedSource.isAnalysisEnabled && fineGrainedSource.isAnalysisEnabled
 }

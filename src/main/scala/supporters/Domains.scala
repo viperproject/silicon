@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, ExpAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
 import viper.silicon.interfaces.PreambleContributor
@@ -15,7 +15,7 @@ import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
 import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
 import viper.silicon.toMap
 import viper.silver.ast
-import viper.silver.ast.NamedDomainAxiom
+import viper.silver.ast.{MakeInfoPair, NamedDomainAxiom}
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]
@@ -99,10 +99,14 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         }
       })
 
+      val isAnalysisForDomainEnabled = AssumptionAnalyzer.extractEnableAnalysisFromInfo(domain.info).getOrElse(true)
+
       domain.axioms foreach (axiom => {
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
-        collectedAxioms = collectedAxioms.incl(terms.And(tAxPres, tAx), ExpAnalysisSourceInfo(axiom.exp))
+        val enableAnalysis = AssumptionAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
+        val exp = axiom.exp.withMeta((axiom.exp.pos, MakeInfoPair(axiom.exp.info, AssumptionAnalyzer.createEnableAnalysisInfo(enableAnalysis)), axiom.exp.errT))
+        collectedAxioms = collectedAxioms.incl(terms.And(tAxPres, tAx), ExpAnalysisSourceInfo(exp))
       })
     })
   }

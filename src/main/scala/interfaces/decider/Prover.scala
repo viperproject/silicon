@@ -41,7 +41,7 @@ trait ProverLike {
     if (debugMode) {
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
       axioms.foreach(axiom => {
-        val id = preambleAssumptionAnalyzer.addAssumption(axiom._2.toString, axiom._2, AssumptionType.Axiom)
+        val id = if(axiom._2.isAnalysisEnabled) preambleAssumptionAnalyzer.addAssumption(axiom._2.toString, axiom._2, AssumptionType.Axiom) else None
         assume(axiom._1, AssumptionAnalyzer.createAxiomLabel(id))
       })
     }else{

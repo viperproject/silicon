@@ -108,6 +108,16 @@ object AssumptionAnalyzer {
     if(annotation.isDefined && annotation.get.nonEmpty) annotation.get.head.toBooleanOption else None
   }
 
+  def createEnableAnalysisInfo(enableAnalysis: Boolean): AnnotationInfo =
+    AnnotationInfo(Map((enableAssumptionAnalysisAnnotationKey, Seq(enableAnalysis.toString))))
+
+  def createAnalysisAnnotationInfo(enableAnalysis: Boolean, assumptionType: AssumptionType): AnnotationInfo =
+    AnnotationInfo(Map(
+      (enableAssumptionAnalysisAnnotationKey, Seq(enableAnalysis.toString)),
+      (assumptionTypeAnnotationKey, Seq(assumptionType.toString))
+    ))
+
+
   def createAssumptionLabel(id: Option[Int], offset: Int = 0): String = {
     createLabel("assumption", id, offset)
   }
