@@ -531,13 +531,12 @@ object executor extends ExecutionRules {
         assert(s.constrainableARPs.isEmpty)
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
-        val predicate = s.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
+              predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }

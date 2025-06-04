@@ -20,7 +20,7 @@ import viper.silver.verifier.reasons.InsufficientPermission
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,
-           predicate: ast.Predicate,
+           pa: ast.PredicateAccess,
            tArgs: List[Term],
            eArgs: Option[Seq[ast.Exp]],
            tPerm: Term,
@@ -50,7 +50,7 @@ object predicateSupporter extends PredicateSupportRules {
   import producer._
 
   def fold(s: State,
-           predicate: ast.Predicate,
+           pa: ast.PredicateAccess,
            tArgs: List[Term],
            eArgs: Option[Seq[ast.Exp]],
            tPerm: Term,
@@ -61,6 +61,7 @@ object predicateSupporter extends PredicateSupportRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
+    val predicate = pa.loc(s.program)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val tArgsWithE = if (withExp)
       tArgs zip eArgs.get.map(Some(_))
@@ -77,50 +78,19 @@ object predicateSupporter extends PredicateSupportRules {
         val eArgsString = eArgs.mkString(", ")
         v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
       }
-      val s2 = s1a.setConstrainable(constrainableWildcards, false)
-      if (s2.qpPredicates.contains(predicate)) {
-        val predSnap = snap.get.convert(s2.predicateSnapMap(predicate))
-        val formalArgs = s2.predicateFormalVarMap(predicate)
-        val (sm, smValueDef) =
-          quantifiedChunkSupporter.singletonSnapshotMap(s2, predicate, tArgs, predSnap, v1)
-        v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
-        val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-        v1.decider.assumeDefinition(smValueDef, debugExp)
-        val ch =
-          quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program)
-        val h3 = s2.h + ch
-        val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
-        val smCache = if (s2.heapDependentTriggers.contains(predicate)) {
-          val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h3, BasicChunkIdentifier(predicate.name))
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
-          val eArgsString = eArgs.mkString(", ")
-          v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs),
-            Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
-          smCache1
-        } else {
-          s2.smCache
-        }
+      val s2 = s1a.copy(g = s.g,
+                        smDomainNeeded = s.smDomainNeeded,
+                        permissionScalingFactor = s.permissionScalingFactor,
+                        permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-        val s3 = s2.copy(g = s.g,
-                         h = h3,
-                         smCache = smCache,
-                         permissionScalingFactor = s.permissionScalingFactor,
-                         permissionScalingFactorExp = s.permissionScalingFactorExp,
-                         functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
-        Q(s3, v1)
-      } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm)
-        val s3 = s2.copy(g = s.g,
-                         smDomainNeeded = s.smDomainNeeded,
-                         permissionScalingFactor = s.permissionScalingFactor,
-                         permissionScalingFactorExp = s.permissionScalingFactorExp)
-        chunkSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) =>
-          Q(s4.copy(h = h1), v2))
-      }
+      defaultHeapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate)), None, tPerm, ePerm, pve, v1)((s3, v3) => {
+        val s4 = if (s3.heapDependentTriggers.contains(predicate)) {
+          defaultHeapSupporter.triggerPredicate(s3, pa, tArgs, eArgs, v3)
+        } else {
+          s3
+        }
+        Q(s4, v3)
+      })
     })
   }
 
