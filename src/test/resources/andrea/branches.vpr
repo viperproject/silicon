@@ -11,7 +11,7 @@ method branches2(a: Int, b: Int)
   assume b < 50
   assume c ==> a > 5
 
-  if(c){
+  if(@assumptionType("Implicit")(c)){
     n := a + 1
   }else{
     n := b + 1

@@ -4,7 +4,7 @@ function id(n: Int): Int
     ensures result == n
 
 method foo(a: Ref)
-    requires acc(a.f, 1/2) && a.f >= 0
+    requires @assumptionType("Internal")(acc(a.f, 1/2)) && a.f >= 0
     ensures  acc(a.f, 1/2)
 
 method call(x: Ref)

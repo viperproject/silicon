@@ -21,18 +21,18 @@ method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
   requires none < p && p < write
   requires acc(a.f, p)
   requires 0 <= a.f
-  requires a.f <= 5
+  requires @assumptionType("Implicit")(a.f <= 5)
   ensures acc(a.f, p)
   ensures  res == a.f * (a.f + 1) / 2
 {
   res := 0
   var i: Int := 0
-  while(i <= a.f)
+  while(@assumptionType("Implicit")(i <= a.f))
     invariant acc(a.f, p)
     invariant 0 <= a.f && a.f <= 5
     invariant i <= (a.f + 1)
-    invariant i <= 6
-    invariant res == (i - 1) * i / 2
+    invariant @assumptionType("Implicit")(i <= 6)
+    invariant @assumptionType("Explicit")(res == (i - 1) * i / 2)
   {
     res := res + i
     i := i + 1

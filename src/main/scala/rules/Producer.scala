@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.AssumptionType
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType}
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
@@ -225,10 +225,10 @@ object producer extends ProductionRules {
                          a: ast.Exp,
                          pve: PartialVerificationError,
                          v: Verifier,
-                         assumptionType: AssumptionType)
+                         _assumptionType: AssumptionType)
                         (continuation: (State, Verifier) => VerificationResult)
                         : VerificationResult = {
-
+    val assumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(a.info).getOrElse(_assumptionType)
     v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
 

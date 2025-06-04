@@ -159,7 +159,7 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
   }
 
   override def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, analysisSourceInfo, assumptionType)
+    val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, analysisSourceInfo, AssumptionAnalyzer.extractAssumptionTypeFromInfo(assumption.originalExp.get.info).getOrElse(assumptionType))
     else StringAssumptionNode(assumption.description.getOrElse("unknown"), analysisSourceInfo, assumptionType)
     addNode(node)
     Some(node.id)
@@ -167,7 +167,7 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
 
 
   override def addAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, analysisSourceInfo, assumptionType)
+    val node = SimpleAssumptionNode(assumption, analysisSourceInfo, AssumptionAnalyzer.extractAssumptionTypeFromInfo(assumption.info).getOrElse(assumptionType))
     addNode(node)
     Some(node.id)
   }
@@ -181,11 +181,12 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
 
   override def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = {
     val newNodes = assumptions.toSeq.map(a =>
-      if (a.originalExp.isDefined) SimpleAssumptionNode(a.originalExp.get, if(analysisSourceInfo.isInstanceOf[NoAnalysisSourceInfo]) ExpAnalysisSourceInfo(a.originalExp.get) else analysisSourceInfo, assumptionType)
+      if (a.originalExp.isDefined) SimpleAssumptionNode(a.originalExp.get, if(analysisSourceInfo.isInstanceOf[NoAnalysisSourceInfo]) ExpAnalysisSourceInfo(a.originalExp.get) else analysisSourceInfo,
+        AssumptionAnalyzer.extractAssumptionTypeFromInfo(a.originalExp.get.info).getOrElse(assumptionType))
       else StringAssumptionNode(a.description.getOrElse("unknown"), analysisSourceInfo, AssumptionType.Internal)
     )
     newNodes foreach addNode
-    newNodes.map(_.id).toSeq
+    newNodes.map(_.id)
   }
 
   override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
