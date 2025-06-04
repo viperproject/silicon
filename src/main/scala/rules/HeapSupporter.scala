@@ -72,7 +72,12 @@ trait HeapSupportRules extends SymbolicExecutionRules {
 
   //def consumeQuantified()
 
-  //def produceSingle()
+  def produceSingle(s: State,
+                    sf: (Sort, Verifier) => Term,
+                    accPred: ast.AccessPredicate,
+                    pve: PartialVerificationError,
+                    v: Verifier)
+                   (Q: (State, Verifier) => VerificationResult): VerificationResult
 
   //def produceQuantified()
 
@@ -362,12 +367,12 @@ class DefaultHeapSupporter extends HeapSupportRules {
     }
   }
 
-  def produce(s: State,
-              sf: (Sort, Verifier) => Term,
-              accPred: ast.AccessPredicate,
-              pve: PartialVerificationError,
-              v: Verifier)
-             (Q: (State, Verifier) => VerificationResult) : VerificationResult = {
+  def produceSingle(s: State,
+                    sf: (Sort, Verifier) => Term,
+                    accPred: ast.AccessPredicate,
+                    pve: PartialVerificationError,
+                    v: Verifier)
+                   (Q: (State, Verifier) => VerificationResult) : VerificationResult = {
     val (eArgs, tFormalArgs, eFormalArgs, resource, ePerm, useQPs) = accPred match {
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, fld), ePerm) =>
         val eArgs = Seq(eRcvr)
