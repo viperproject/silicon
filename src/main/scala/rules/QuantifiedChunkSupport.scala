@@ -232,6 +232,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
    *
    * @param fr The functionRecorder to use when new snapshot maps are generated.
    * @param field The name of the field.
+   * @param fqvars Arguments of the current function if we are currently verifying one, i.e., functionRecorderQVars.
    * @param t1 The first chunk's snapshot map.
    * @param t2 The second chunk's snapshot map.
    * @param p1 The first chunk's permission amount, should be constrained by the domain.
@@ -239,13 +240,14 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
    * @param v The verifier to use.
    * @return A tuple (fr, sm, def) of functionRecorder, a snapshot map sm and a term def constraining sm.
    */
-  def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
+  def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, fqvars: Seq[Var],t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
 
   /** Merge the snapshots of two quantified heap chunks that denote the same predicate
    *
    * @param fr The functionRecorder to use when new snapshot maps are generated.
    * @param predicate The name of the predicate.
    * @param qVars The variables over which p1 and p2 are defined
+   * @param fqvars Arguments of the current function if we are currently verifying one, i.e., functionRecorderQVars.
    * @param t1 The first chunk's snapshot map.
    * @param t2 The second chunk's snapshot map.
    * @param p1 The first chunk's permission amount, should be constrained by the domain.
@@ -253,7 +255,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
    * @param v The verifier to use.
    * @return A tuple (fr, sm, def) of functionRecorder, a snapshot map sm and a term def constraining sm.
    */
-  def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
+  def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], fqvars: Seq[Var],
+                                   t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
 }
 
 object quantifiedChunkSupporter extends QuantifiedChunkSupport {
@@ -2094,7 +2097,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   }
 
   // Based on StateConsolidator#combineSnapshots
-  override def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
+  override def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, fqvars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
     val lookupT1 = Lookup(field, t1, `?r`)
     val lookupT2 = Lookup(field, t2, `?r`)
     val (fr2, sm, smDef, triggers) = (IsPositive(p1), IsPositive(p2)) match {
@@ -2108,17 +2111,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          * we have to introduce a fresh snapshot. Note that it is not sound
          * to use t1 or t2 and constrain it.
          */
-        val t3 = v.decider.fresh(t1.sort, Option.when(withExp)(PUnknown()))
+        val t3 = v.decider.appliedFresh("ms", t1.sort, fqvars)
         val lookupT3 = Lookup(field, t3, `?r`)
-        (fr.recordConstrainedVar(t3, And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))), t3,
-          And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2)), Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3)))
+        val constraint = And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))
+        val triggers = Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3))
+        (fr.recordPathSymbol(t3.applicable.asInstanceOf[Function]).recordConstraint(Forall(`?r`, constraint, triggers)), t3, constraint, triggers)
     }
 
     (fr2, sm, Forall(`?r`, smDef, triggers))
   }
 
   // Based on StateConsolidator#combineSnapshots
-  override def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
+  override def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], fqvars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
     val lookupT1 = PredicateLookup(predicate, t1, qVars)
     val lookupT2 = PredicateLookup(predicate, t2, qVars)
     val (fr2, sm, smDef, triggers) = (IsPositive(p1), IsPositive(p2)) match {
@@ -2132,10 +2136,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          * we have to introduce a fresh snapshot. Note that it is not sound
          * to use t1 or t2 and constrain it.
          */
-        val t3 = v.decider.fresh(t1.sort, Option.when(withExp)(PUnknown()))
+        val t3 = v.decider.appliedFresh("ms", t1.sort, fqvars)
         val lookupT3 = PredicateLookup(predicate, t3, qVars)
-        (fr.recordConstrainedVar(t3, And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))), t3,
-          And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2)), Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3)))
+        val constraint = And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))
+        val triggers = Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3))
+        (fr.recordPathSymbol(t3.applicable.asInstanceOf[Function]).recordConstraint(Forall(qVars, constraint, triggers)), t3, constraint, triggers)
     }
 
     (fr2, sm, Forall(qVars, smDef, triggers))
