@@ -83,12 +83,8 @@ object predicateSupporter extends PredicateSupportRules {
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      defaultHeapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate)), None, tPerm, ePerm, pve, v1)((s3, v3) => {
-        val s4 = if (s3.heapDependentTriggers.contains(predicate)) {
-          defaultHeapSupporter.triggerPredicate(s3, pa, tArgs, eArgs, v3)
-        } else {
-          s3
-        }
+      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate)), None, tPerm, ePerm, pve, v1)((s3, v3) => {
+        val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
         Q(s4, v3)
       })
     })
@@ -114,58 +110,25 @@ object predicateSupporter extends PredicateSupportRules {
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgsWithE)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm, ePerm)
-    if (s1.qpPredicates.contains(predicate)) {
-      val formalVars = s1.predicateFormalVarMap(predicate)
-      quantifiedChunkSupporter.consumeSingleLocation(
-        s1,
-        s1.h,
-        formalVars,
-        Option.when(withExp)(predicate.formalArgs),
-        tArgs,
-        eArgs,
-        pa,
-        tPerm,
-        ePerm,
-        true,
-        None,
-        pve,
-        v
-      )((s2, h2, snap, v1) => {
-        val s3 = s2.copy(g = gIns, h = h2)
-                   .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
-          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
-          if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-            val predicateTrigger =
-              App(s4.predicateData(predicate).triggerFunction,
-                snap.get.convert(terms.sorts.Snap) +: tArgs)
-            val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
-          }
-          Q(s4.copy(g = s.g,
-                    permissionScalingFactor = s.permissionScalingFactor,
-                    permissionScalingFactorExp = s.permissionScalingFactorExp),
-            v2)})
+
+    v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
+      val s3 = s2.copy(g = gIns, h = h2)
+        .setConstrainable(constrainableWildcards, false)
+      produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
+        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
+        if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+          val predicateTrigger =
+            App(s4.predicateData(predicate).triggerFunction,
+              snap.get.convert(terms.sorts.Snap) +: tArgs)
+          val eargs = eArgs.mkString(", ")
+          v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
+        }
+        Q(s4.copy(g = s.g,
+          permissionScalingFactor = s.permissionScalingFactor,
+          permissionScalingFactorExp = s.permissionScalingFactorExp),
+          v2)
       })
-    } else {
-      val ve = pve dueTo InsufficientPermission(pa)
-      val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description)((s2, h1, snap, v1) => {
-        val s3 = s2.copy(g = gIns, h = h1)
-                   .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
-          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
-          if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-            val predicateTrigger =
-              App(s4.predicateData(predicate).triggerFunction, snap.get +: tArgs)
-            val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${pa.predicateName}($eargs))")))
-          }
-          val s5 = s4.copy(g = s.g,
-                           permissionScalingFactor = s.permissionScalingFactor,
-                           permissionScalingFactorExp = s.permissionScalingFactorExp)
-          Q(s5, v2)})})
-    }
+    })
   }
 
 /* NOTE: Possible alternative to storing the permission scaling factor in the context

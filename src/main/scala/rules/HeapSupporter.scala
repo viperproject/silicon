@@ -10,14 +10,14 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, Identifier, MagicWandChunk, MagicWandIdentifier, QuantifiedFieldChunk, QuantifiedPredicateChunk, State}
+import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, Identifier, MagicWandChunk, MagicWandIdentifier, QuantifiedBasicChunk, QuantifiedFieldChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.verifier.reasons.InsufficientPermission
+import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
 
 
@@ -57,20 +57,53 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                 v: Verifier)
                 : Heap
 
-  def triggerPredicate(s: State,
-                       pa: ast.PredicateAccess,
-                       tArgs: Seq[Term],
-                       eArgs: Option[Seq[ast.Exp]],
-                       v: Verifier)
-                       : State
-
-  //def triggerPredicate()
+  def triggerResourceIfNeeded(s: State,
+                              resAcc: ast.ResourceAccess,
+                              tArgs: Seq[Term],
+                              eArgs: Option[Seq[ast.Exp]],
+                              v: Verifier): State
 
   //def getCurrentPermAmount()
 
-  //def consumeSingle()
+  def consumeSingle(s: State,
+                    h: Heap,
+                    resAcc: ast.ResourceAccess,
+                    tArgs: Seq[Term],
+                    eArgs: Option[Seq[ast.Exp]],
+                    tPerm: Term,
+                    ePerm: Option[ast.Exp],
+                    returnSnap: Boolean,
+                    pve: PartialVerificationError,
+                    v: Verifier)
+                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult
 
-  //def consumeQuantified()
+  def consumeQuantified(s: State,
+                        h: Heap,
+                        resource: ast.Resource,
+                        qvars: Seq[Var],
+                        qvarExps: Option[Seq[ast.LocalVarDecl]],
+                        tFormalArgs: Seq[Var],
+                        eFormalArgs: Option[Seq[ast.LocalVarDecl]],
+                        qid: String,
+                        optTrigger: Option[Seq[ast.Trigger]],
+                        tTriggers: Seq[Trigger],
+                        auxGlobals: Seq[Term],
+                        auxNonGlobals: Seq[Quantification],
+                        auxGlobalsExp: Option[InsertionOrderedSet[DebugExp]],
+                        auxNonGlobalsExp: Option[InsertionOrderedSet[DebugExp]],
+                        tCond: Term,
+                        eCond: Option[ast.Exp],
+                        tArgs: Seq[Term],
+                        eArgs: Option[Seq[ast.Exp]],
+                        tPerm: Term,
+                        ePerm: Option[ast.Exp],
+                        returnSnap: Boolean,
+                        pve: PartialVerificationError,
+                        negativePermissionReason: => ErrorReason,
+                        notInjectiveReason: => ErrorReason,
+                        insufficientPermissionReason: => ErrorReason,
+                        v: Verifier)
+                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult
 
   def produceSingle(s: State,
                     resource: ast.Resource,
@@ -143,16 +176,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(field.name))
       val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
       val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v)
-      val s2 = if (s.heapDependentTriggers.contains(field)) {
-        val (smDef1, smCache1) =
-          quantifiedChunkSupporter.summarisingSnapshotMap(
-            s, field, Seq(`?r`), relevantChunks, v)
-        val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: (${eRcvrNew.toString()}).${field.name}"))
-        v.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
-        s.copy(smCache = smCache1)
-      } else {
-        s
-      }
+      val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v)
       v.decider.clearModel()
       val result = quantifiedChunkSupporter.removePermissions(
         s2,
@@ -374,23 +398,36 @@ class DefaultHeapSupporter extends HeapSupportRules {
     h + Heap(Seq(newChunk))
   }
 
-  def triggerPredicate(s: State,
-                       pa: ast.PredicateAccess,
-                       tArgs: Seq[Term],
-                       eArgs: Option[Seq[ast.Exp]],
-                       v: Verifier)
-                       : State = {
-    val predicate = pa.loc(s.program)
-    if (s.qpPredicates.contains(predicate)) {
+  def triggerResourceIfNeeded(s: State,
+                              resAcc: ast.ResourceAccess,
+                              tArgs: Seq[Term],
+                              eArgs: Option[Seq[ast.Exp]],
+                              v: Verifier): State = {
+    val (resId, resource, chunkId, tFormalArgs, name) = resAcc match {
+      case l: ast.LocationAccess =>
+        val res = l.loc(s.program)
+        val tFormalArgs = res match {
+          case _: ast.Field => Seq(`?r`)
+          case p: ast.Predicate => s.predicateFormalVarMap(p)
+        }
+        (res, res, BasicChunkIdentifier(l.loc(s.program).name), tFormalArgs, res.name)
+      case w: ast.MagicWand =>
+        val mwi = MagicWandIdentifier(w, s.program)
+        val args = w.subexpressionsToEvaluate(s.program)
+        val tFormalArgs = args.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(args(i).typ), false))
+        (mwi, w, mwi, tFormalArgs, mwi.toString)
+    }
+    val trigger = (sm: Term) => ResourceTriggerFunction(resource, sm, tArgs, s.program)
+    if (s.heapDependentTriggers.contains(resId)) {
       val (relevantChunks, _) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predicate.name))
+        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, chunkId)
       val (smDef1, smCache1) =
         quantifiedChunkSupporter.summarisingSnapshotMap(
-          s, predicate, s.predicateFormalVarMap(predicate), relevantChunks, v)
+          s, resource, tFormalArgs, relevantChunks, v)
       val eArgsStr = eArgs.mkString(", ")
-      val debugExp = Option.when(withExp)(DebugExp.createInstance(Some(s"PredicateTrigger(${predicate.name}($eArgsStr))"), Some(pa),
-        Some(ast.PredicateAccess(eArgs.get, pa.predicateName)(pa.pos, pa.info, pa.errT)), None, isInternal_ = true, InsertionOrderedSet.empty))
-      v.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
+      val debugExp = Option.when(withExp)(DebugExp.createInstance(Some(s"Resource trigger(${name}($eArgsStr))"), Some(resAcc),
+        Some(resAcc), None, isInternal_ = true, InsertionOrderedSet.empty))
+      v.decider.assume(trigger(smDef1.sm), debugExp)
       s.copy(smCache = smCache1)
     } else {
       s
@@ -452,6 +489,53 @@ class DefaultHeapSupporter extends HeapSupportRules {
     }
   }
 
+  def consumeSingle(s: State,
+                    h: Heap,
+                    resAcc: ast.ResourceAccess,
+                    tArgs: Seq[Term],
+                    eArgs: Option[Seq[ast.Exp]],
+                    tPerm: Term,
+                    ePerm: Option[ast.Exp],
+                    returnSnap: Boolean,
+                    pve: PartialVerificationError,
+                    v: Verifier)
+                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
+    val resource = resAcc.res(s.program)
+    val useQPs = resource match {
+      case f: ast.Field => s.qpFields.contains(f)
+      case p: ast.Predicate => s.qpPredicates.contains(p)
+      case w: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(w, s.program))
+    }
+    if (useQPs) {
+      val (tFormalArgs, eFormalArgs) = resource match {
+        case _: ast.Field =>
+          (Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)())))
+        case p: ast.Predicate =>
+          (s.predicateFormalVarMap(p), Option.when(withExp)(p.formalArgs))
+        case w: ast.MagicWand =>
+          val bodyVars = w.subexpressionsToEvaluate(s.program)
+          val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
+          val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
+          (formalVars, formalVarExps)
+      }
+      quantifiedChunkSupporter.consumeSingleLocation(
+        s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v)((s2, h2, snap, v2) => {
+        val s3 = s2.copy(partiallyConsumedHeap = Some(h2))
+        Q(s3, h2, snap, v2)
+      })
+    } else {
+      val ve = resAcc match {
+        case l: ast.LocationAccess => pve dueTo InsufficientPermission(l)
+        case w: ast.MagicWand => pve dueTo MagicWandChunkNotFound(w)
+      }
+      val description = s"consume ${resAcc.pos}: $resAcc"
+      chunkSupporter.consume(s, h, resource, tArgs, eArgs, tPerm, ePerm, returnSnap, ve, v, description)((s2, h2, snap, v2) => {
+        val s3 = s2.copy(partiallyConsumedHeap = Some(h2))
+        Q(s3, h2, snap, v2)
+      })
+    }
+  }
+
   def produceQuantified(s: State,
                         sf: (Sort, Verifier) => Term,
                         forall: ast.Forall,
@@ -486,9 +570,9 @@ class DefaultHeapSupporter extends HeapSupportRules {
       case _: ast.MagicWand =>
         sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v)
     }
-    val s1 = s.copy(constrainableARPs = s.constrainableARPs)
+
     quantifiedChunkSupporter.produce(
-      s1,
+      s,
       forall,
       resource,
       qvars,
@@ -512,6 +596,63 @@ class DefaultHeapSupporter extends HeapSupportRules {
       pve,
       negativePermissionReason,
       notInjectiveReason,
+      v
+    )(Q)
+  }
+
+  def consumeQuantified(s: State,
+                        h: Heap,
+                        resource: ast.Resource,
+                        qvars: Seq[Var],
+                        qvarExps: Option[Seq[ast.LocalVarDecl]],
+                        tFormalArgs: Seq[Var],
+                        eFormalArgs: Option[Seq[ast.LocalVarDecl]],
+                        qid: String,
+                        optTrigger: Option[Seq[ast.Trigger]],
+                        tTriggers: Seq[Trigger],
+                        auxGlobals: Seq[Term],
+                        auxNonGlobals: Seq[Quantification],
+                        auxGlobalsExp: Option[InsertionOrderedSet[DebugExp]],
+                        auxNonGlobalsExp: Option[InsertionOrderedSet[DebugExp]],
+                        tCond: Term,
+                        eCond: Option[ast.Exp],
+                        tArgs: Seq[Term],
+                        eArgs: Option[Seq[ast.Exp]],
+                        tPerm: Term,
+                        ePerm: Option[ast.Exp],
+                        returnSnap: Boolean,
+                        pve: PartialVerificationError,
+                        negativePermissionReason: => ErrorReason,
+                        notInjectiveReason: => ErrorReason,
+                        insufficientPermissionReason: => ErrorReason,
+                        v: Verifier)
+                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
+    quantifiedChunkSupporter.consume(
+      s,
+      h,
+      resource,
+      qvars,
+      qvarExps,
+      tFormalArgs,
+      eFormalArgs,
+      qid,
+      optTrigger,
+      tTriggers,
+      auxGlobals,
+      auxNonGlobals,
+      auxGlobalsExp,
+      auxNonGlobalsExp,
+      tCond,
+      eCond,
+      tArgs,
+      eArgs,
+      tPerm,
+      ePerm,
+      returnSnap,
+      pve,
+      negativePermissionReason,
+      notInjectiveReason,
+      insufficientPermissionReason,
       v
     )(Q)
   }

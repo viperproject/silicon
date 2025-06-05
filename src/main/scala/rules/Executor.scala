@@ -550,11 +550,7 @@ object executor extends ExecutionRules {
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
-            val s2a = if (s2.heapDependentTriggers.contains(predicate)) {
-              v2.heapSupporter.triggerPredicate(s2, pa, tArgs, eArgsNew, v2)
-            } else {
-              s2
-            }
+            val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2)
 
             permissionSupporter.assertPositive(s2a, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs

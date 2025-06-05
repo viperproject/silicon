@@ -340,39 +340,37 @@ object producer extends ProductionRules {
               else
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val gainExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
-              defaultHeapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, v2)(Q)
+              v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, v2)(Q)
             })))
 
 
-      case QuantifiedPermissionAssertion(forall, _, _) =>
-        val (eArgs, tFormalArgs, eFormalArgs, resource, ePerm, qid, cond, resAcc) = forall match {
-          case QuantifiedPermissionAssertion(_, cond, accPred) =>
-            accPred match {
-              case ast.FieldAccessPredicate(fa@ast.FieldAccess(eRcvr, fld), ePerm) =>
-                val eArgs = Seq(eRcvr)
-                val tFormalArgs = Seq(`?r`)
-                val eFormalArgs = Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)))
-                (eArgs, tFormalArgs, eFormalArgs, fld, ePerm.getOrElse(ast.FullPerm()()), fld.name, cond, fa)
-              case ast.PredicateAccessPredicate(pa@ast.PredicateAccess(eArgs, predName), ePerm) =>
-                val predicate = s.program.findPredicate(predName)
-                val tFormalArgs = s.predicateFormalVarMap(predicate)
-                val eFormalArgs = Option.when(withExp)(predicate.formalArgs)
-                (eArgs, tFormalArgs, eFormalArgs, predicate, ePerm.getOrElse(ast.FullPerm()()), predName, cond, pa)
-              case w: ast.MagicWand =>
-                val eArgs = w.subexpressionsToEvaluate(s.program)
-                val ePerm = ast.FullPerm()()
-                val tFormalVars = eArgs.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(eArgs(i).typ), false))
-                val eFormalVars = Option.when(withExp)(eArgs.indices.toList.map(i => ast.LocalVarDecl(s"x$i", eArgs(i).typ)()))
-                (eArgs, tFormalVars, eFormalVars, w, ePerm, MagicWandIdentifier(w, s.program).toString, cond, w)
-            }
-        }
+      case QuantifiedPermissionAssertion(forall, cond, accPred) =>
+        val (eArgs, tFormalArgs, eFormalArgs, resource, ePerm, qid, resAcc) =
+          accPred match {
+            case ast.FieldAccessPredicate(fa@ast.FieldAccess(eRcvr, fld), ePerm) =>
+              val eArgs = Seq(eRcvr)
+              val tFormalArgs = Seq(`?r`)
+              val eFormalArgs = Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)))
+              (eArgs, tFormalArgs, eFormalArgs, fld, ePerm.getOrElse(ast.FullPerm()()), fld.name, fa)
+            case ast.PredicateAccessPredicate(pa@ast.PredicateAccess(eArgs, predName), ePerm) =>
+              val predicate = s.program.findPredicate(predName)
+              val tFormalArgs = s.predicateFormalVarMap(predicate)
+              val eFormalArgs = Option.when(withExp)(predicate.formalArgs)
+              (eArgs, tFormalArgs, eFormalArgs, predicate, ePerm.getOrElse(ast.FullPerm()()), predName, pa)
+            case w: ast.MagicWand =>
+              val eArgs = w.subexpressionsToEvaluate(s.program)
+              val ePerm = ast.FullPerm()()
+              val tFormalVars = eArgs.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(eArgs(i).typ), false))
+              val eFormalVars = Option.when(withExp)(eArgs.indices.toList.map(i => ast.LocalVarDecl(s"x$i", eArgs(i).typ)()))
+              (eArgs, tFormalVars, eFormalVars, w, ePerm, MagicWandIdentifier(w, s.program).toString, w)
+          }
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), eCondNew, Some((Seq(tPerm, tArgs@_*), permArgs, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
             val s1a = s1.copy(constrainableARPs = s.constrainableARPs)
-            defaultHeapSupporter.produceQuantified(s1a, sf, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals,
+            v1.heapSupporter.produceQuantified(s1a, sf, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals,
               auxExps.map(_._1), auxExps.map(_._2), tCond, eCondNew.map(_.head), tArgs, permArgs.map(_.tail), tPerm, permArgs.map(_.head), pve, NegativePermission(ePerm),
               QPAssertionNotInjective(resAcc), v1)(Q)
           case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
