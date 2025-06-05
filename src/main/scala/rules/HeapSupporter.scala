@@ -519,20 +519,14 @@ class DefaultHeapSupporter extends HeapSupportRules {
           (formalVars, formalVarExps)
       }
       quantifiedChunkSupporter.consumeSingleLocation(
-        s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v)((s2, h2, snap, v2) => {
-        val s3 = s2.copy(partiallyConsumedHeap = Some(h2))
-        Q(s3, h2, snap, v2)
-      })
+        s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v)(Q)
     } else {
       val ve = resAcc match {
         case l: ast.LocationAccess => pve dueTo InsufficientPermission(l)
         case w: ast.MagicWand => pve dueTo MagicWandChunkNotFound(w)
       }
       val description = s"consume ${resAcc.pos}: $resAcc"
-      chunkSupporter.consume(s, h, resource, tArgs, eArgs, tPerm, ePerm, returnSnap, ve, v, description)((s2, h2, snap, v2) => {
-        val s3 = s2.copy(partiallyConsumedHeap = Some(h2))
-        Q(s3, h2, snap, v2)
-      })
+      chunkSupporter.consume(s, h, resource, tArgs, eArgs, tPerm, ePerm, returnSnap, ve, v, description)(Q)
     }
   }
 

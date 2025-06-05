@@ -1395,8 +1395,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                       smCache = smCache2)
                     Q(s3, h3, Some(smDef2.sm.convert(sorts.Snap)), v)
                   } else {
-                    val s3 = s2.copy(partiallyConsumedHeap = Some(h3))
-                    Q(s3, h3, None, v)
+                    Q(s2, h3, None, v)
                   }
                 case (Incomplete(_, _), s2, _) =>
                   createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
