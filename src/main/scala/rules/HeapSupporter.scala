@@ -403,22 +403,22 @@ class DefaultHeapSupporter extends HeapSupportRules {
                               tArgs: Seq[Term],
                               eArgs: Option[Seq[ast.Exp]],
                               v: Verifier): State = {
-    val (resId, resource, chunkId, tFormalArgs, name) = resAcc match {
-      case l: ast.LocationAccess =>
-        val res = l.loc(s.program)
-        val tFormalArgs = res match {
-          case _: ast.Field => Seq(`?r`)
-          case p: ast.Predicate => s.predicateFormalVarMap(p)
-        }
-        (res, res, BasicChunkIdentifier(l.loc(s.program).name), tFormalArgs, res.name)
-      case w: ast.MagicWand =>
-        val mwi = MagicWandIdentifier(w, s.program)
-        val args = w.subexpressionsToEvaluate(s.program)
-        val tFormalArgs = args.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(args(i).typ), false))
-        (mwi, w, mwi, tFormalArgs, mwi.toString)
-    }
-    val trigger = (sm: Term) => ResourceTriggerFunction(resource, sm, tArgs, s.program)
-    if (s.heapDependentTriggers.contains(resId)) {
+    if (s.isUsedAsTrigger(resAcc.res(s.program))) {
+      val (resource, chunkId, tFormalArgs, name) = resAcc match {
+        case l: ast.LocationAccess =>
+          val res = l.loc(s.program)
+          val tFormalArgs = res match {
+            case _: ast.Field => Seq(`?r`)
+            case p: ast.Predicate => s.predicateFormalVarMap(p)
+          }
+          (res, BasicChunkIdentifier(l.loc(s.program).name), tFormalArgs, res.name)
+        case w: ast.MagicWand =>
+          val mwi = MagicWandIdentifier(w, s.program)
+          val args = w.subexpressionsToEvaluate(s.program)
+          val tFormalArgs = args.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(args(i).typ), false))
+          (w, mwi, tFormalArgs, mwi.toString)
+      }
+      val trigger = (sm: Term) => ResourceTriggerFunction(resource, sm, tArgs, s.program)
       val (relevantChunks, _) =
         quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, chunkId)
       val (smDef1, smCache1) =

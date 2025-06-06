@@ -588,22 +588,13 @@ object executor extends ExecutionRules {
               }
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
-            val smCache3 = chWand match {
-              case ch: QuantifiedMagicWandChunk if s2.heapDependentTriggers.contains(MagicWandIdentifier(wand, s2.program)) =>
-                val (relevantChunks, _) =
-                  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
-                val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
-                val (smDef, smCache) =
-                  quantifiedChunkSupporter.summarisingSnapshotMap(
-                    s2, wand, formalVars, relevantChunks, v1)
-                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get),
-                  Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}(${ch.singletonArgExps.get}))", isInternal_ = true)))
-                smCache
-              case _ => s2.smCache
+            val s3 = chWand match {
+              case ch: QuantifiedMagicWandChunk =>
+                v1.heapSupporter.triggerResourceIfNeeded(s2, wand, ch.singletonArgs.get, ch.singletonArgExps, v1)
+              case _ => s2
             }
 
-            continuation(s2.copy(smCache = smCache3, isInPackage = s.isInPackage), v1)
+            continuation(s3.copy(isInPackage = s.isInPackage), v1)
           })
 
       case apply @ ast.Apply(e) =>

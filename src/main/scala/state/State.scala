@@ -89,6 +89,14 @@ final case class State(g: Store = Store(),
     currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
   }
 
+  def isUsedAsTrigger(res: ast.Resource): Boolean = {
+    val identifier = res match {
+      case mw: ast.MagicWand => MagicWandIdentifier(mw, program)
+      case _ => res
+    }
+    heapDependentTriggers.contains(identifier)
+  }
+
   val mayAssumeUpperBounds: Boolean = {
     currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrePermAmounts()
   }

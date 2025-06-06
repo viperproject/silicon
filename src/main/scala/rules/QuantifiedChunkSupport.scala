@@ -533,7 +533,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = relevantQvars.isEmpty)
       })
 
-    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
+    val resourceAndValueDefinitions = if (s.isUsedAsTrigger(field)){
       val resourceTriggerDefinition =
         Forall(
           codomainQVar,
@@ -622,11 +622,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = relevantQvars.isEmpty)
       })
 
-    val resourceIdentifier = resource match {
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-      case r => r
-    }
-    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+    val resourceAndValueDefinitions = if (s.isUsedAsTrigger(resource)){
       val resourceTriggerDefinition =
         Forall(
           qvar,
@@ -674,11 +670,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s"qp.resPrmSumDef${v.counter(this).next()}",
         isGlobal = true)
 
-    val resourceIdentifier = resource match {
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-      case r => r
-    }
-    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+    val resourceAndValueDefinitions = if (s.isUsedAsTrigger(resource)){
       val resourceTriggerFunction = ResourceTriggerFunction(resource, smDef.sm, codomainQVars, s.program)
 
       // TODO: Quantify over snapshot if resource is predicate.
@@ -1040,11 +1032,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             })
             val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
-            val resourceIdentifier = resource match {
-              case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-              case r => r
-            }
-            val smCache1 = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+            val smCache1 = if (s.isUsedAsTrigger(resource)){
               // TODO: Why not formalQVars? Used as codomainVars, see above.
               val codomainVars =
                 resource match {
@@ -1113,11 +1101,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
     pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
 
-    val resourceIdentifier = resource match {
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-      case r => r
-    }
-    val smCache1 = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+    val smCache1 = if (s.isUsedAsTrigger(resource)){
       val (relevantChunks, _) =
         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
       val (smDef1, smCache1) =
@@ -1233,11 +1217,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
             h, ChunkIdentifier(resource, s.program))
-        val resourceIdentifier = resource match {
-          case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-          case r => r
-        }
-        val (newCond, smCache1, smDef1) = if (s.heapDependentTriggers.contains(resourceIdentifier)) {
+
+        val (newCond, smCache1, smDef1) = if (s.isUsedAsTrigger(resource)) {
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
               s, resource, formalQVars, relevantChunks, v)
@@ -1275,7 +1256,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               Option.when(withExp)(DebugExp.createInstance("Inverse Function Axioms", isInternal_ = true)), enforceAssumption = false)
             v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance("Inverse function axiom", isInternal_ = true)), enforceAssumption = false)
 
-            if (s.heapDependentTriggers.contains(resourceIdentifier)){
+            if (s.isUsedAsTrigger(resource)){
               v.decider.assume(
                 Seq(Forall(
                   formalQVars,
