@@ -1497,7 +1497,7 @@ object evaluator extends EvaluationRules {
      */
 
     val r =
-      evals(s, remainingTriggerExpressions, _ => pve, v)((_, remainingTriggerTerms, _, v1) => {
+      evals(s.copy(triggerExp = true), remainingTriggerExpressions, _ => pve, v)((_, remainingTriggerTerms, _, v1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         pcDeltaExp = v1.decider.pcs.after(preMark).assumptionExps
@@ -1572,7 +1572,7 @@ object evaluator extends EvaluationRules {
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
-      case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
+      case e => evalTrigger(s.copy(triggerExp = true), Seq(e), pve, v)((_, t, _) => {
         triggers = triggers ++ t
         Success()
       })
