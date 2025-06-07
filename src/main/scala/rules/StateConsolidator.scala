@@ -81,9 +81,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
           val roundSepIdentifier = v.symbExLog.openScope(roundLog)
 
-          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v)
+          val (_functionRecorder, _mergedChunks, _newChunks, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v)
 
-          snapEqs foreach (t => v.decider.assume(t, Option.when(withExp)(DebugExp.createInstance("Snapshot Equations", isInternal_ = true)), AssumptionType.PathCondition))
+          v.decider.assumptionAnalyzer.addForcedDependencies(_newChunks.toSet)
+          snapEqs foreach (t => v.decider.assume(t, Option.when(withExp)(DebugExp.createInstance("Snapshot Equations", isInternal_ = true)), AssumptionType.Internal))
+          v.decider.assumptionAnalyzer.unsetForcedDependencies()
 
           functionRecorder = _functionRecorder
           mergedChunks = _mergedChunks
@@ -101,12 +103,14 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
+          v.decider.assumptionAnalyzer.addForcedDependencies(Set(ch))
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
+          v.decider.assumptionAnalyzer.unsetForcedDependencies()
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
           val pathCond = interpreter.buildPathConditionsForResource(id, desc.delayedProperties(s.mayAssumeUpperBounds))
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.PathCondition))
+          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
         }
 
         v.symbExLog.closeScope(sepIdentifier)
