@@ -383,16 +383,23 @@ abstract class ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def check(timeout: Option[Int] = None): Result = {
+  def check(timeout: Option[Int] = None, label: String = ""): Result = {
     setTimeout(timeout)
 
     writeLine("(check-sat)")
 
-    readLine() match {
+    val result = readLine() match {
       case "sat" => Sat
       case "unsat" => Unsat
       case "unknown" => Unknown
     }
+
+    if(result == Unsat && Verifier.config.enableAssumptionAnalysis()){
+      val unsatCore = extractUnsatCore()
+      assumptionAnalyzer.processUnsatCoreAndAddDependencies(unsatCore, label)
+    }
+
+    result
   }
 
   def statistics(): Map[String, String] = {

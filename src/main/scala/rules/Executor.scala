@@ -518,7 +518,7 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          if (v1.decider.checkSmoke(true)) // TODO ake: add node to assumption graph
+          if (v1.decider.checkSmoke(true))
             QS(s1.copy(h = s.h), v1)
           else
             createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))

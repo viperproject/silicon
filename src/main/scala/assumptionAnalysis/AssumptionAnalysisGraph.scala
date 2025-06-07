@@ -159,7 +159,6 @@ trait GeneralAssumptionNode extends AssumptionAnalysisNode {
 }
 trait GeneralAssertionNode extends AssumptionAnalysisNode {
   override def getNodeType: String = "Assertion"
-   var isAsserted = false
 }
 
 trait ChunkAnalysisInfo {
@@ -198,14 +197,12 @@ case class PermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourc
 }
 
 case class PermissionExhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo) extends GeneralAssertionNode with ChunkAnalysisInfo {
-  isAsserted = true
   val assumptionType: AssumptionType = Explicit
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.getAnalysisInfo
 }
 
 case class PermissionAssertNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo) extends GeneralAssertionNode with ChunkAnalysisInfo {
-  isAsserted = true
   val assumptionType: AssumptionType = Explicit
   override def getNodeString: String = "assert " + permAmount.getOrElse("") + " for " + chunk.getAnalysisInfo
 }

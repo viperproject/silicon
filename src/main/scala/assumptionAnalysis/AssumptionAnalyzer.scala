@@ -3,7 +3,7 @@ package viper.silicon.assumptionAnalysis
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{False, Term}
 import viper.silver.ast
 import viper.silver.ast._
 
@@ -32,6 +32,8 @@ trait AssumptionAnalyzer {
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
 
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
+
+  def addAssertFalseNode(isCheck: Boolean): Option[Int]
 
   protected var sourceInfoes: List[AnalysisSourceInfo] = List.empty
   protected var forcedMainSource: Option[AnalysisSourceInfo] = None
@@ -210,6 +212,12 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     })
   }
 
+  override def addAssertFalseNode(isCheck: Boolean): Option[Int] = {
+    val node = createAssertOrCheckNode(False, Right(ast.FalseLit()()), getFullSourceInfo, isCheck) // TODO ake: set isAssert
+    addNode(node.get)
+    node.map(_.id)
+  }
+
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
     val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
     if(assumptionLabels.size < 2) return
@@ -293,6 +301,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
 
+  override def addAssertFalseNode(isCheck: Boolean): Option[Int] = None
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
   }
 

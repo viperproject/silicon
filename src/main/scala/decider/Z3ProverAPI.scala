@@ -393,7 +393,7 @@ class Z3ProverAPI(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def check(timeout: Option[Int] = None): Result = {
+  def check(timeout: Option[Int] = None, label: String = ""): Result = {
     endPreamblePhase()
     setTimeout(timeout)
 

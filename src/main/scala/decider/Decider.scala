@@ -420,8 +420,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(isAssert: Boolean = false): Boolean = {
+      val label = if(Verifier.config.enableAssumptionAnalysis()){
+        val nodeId = assumptionAnalyzer.addAssertFalseNode(!isAssert)
+        AssumptionAnalyzer.createAssertionLabel(nodeId)
+      }else{ "" }
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      prover.check(timeout) == Unsat
+      prover.check(timeout, label) == Unsat
     }
 
     def check(t: Term, timeout: Int): Boolean = {
@@ -461,7 +465,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
-      assertNode foreach (_.isAsserted = result)
       if(result || !isCheck) assertNode foreach assumptionAnalyzer.addNode
 
 
