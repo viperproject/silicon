@@ -51,3 +51,15 @@ method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
     assert a.f >= 0
     assert !c ==> a.f <= 100
 }
+
+method aliasing(x: Ref, n: Int)
+  requires acc(x.f) && x.f < n
+{
+  var y: Ref := x
+  y.f := n + 1
+  assert x.f >= n
+
+  assume y.f < n
+  assert false
+
+}

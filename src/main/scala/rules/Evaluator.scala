@@ -827,7 +827,9 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
+            v1.decider.assumptionAnalyzer.setForcedSource(commentGlobal)
             v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
+            v1.decider.assumptionAnalyzer.unsetForcedSource()
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
             v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)

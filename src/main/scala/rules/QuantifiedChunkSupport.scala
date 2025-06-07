@@ -996,8 +996,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
+    v.decider.assumptionAnalyzer.setForcedSource(commentGlobals)
     v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
       enforceAssumption = false, assumptionType=AssumptionType.Internal)
+    v.decider.assumptionAnalyzer.unsetForcedSource()
 
     val commentNonGlobals = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(commentNonGlobals)
@@ -1228,7 +1230,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
+    v.decider.assumptionAnalyzer.setForcedSource(comment)
     v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
+    v.decider.assumptionAnalyzer.unsetForcedSource()
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)
