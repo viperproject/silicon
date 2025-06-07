@@ -59,7 +59,7 @@ trait AssumptionAnalyzer {
   }
 
   def popAnalysisSourceInfo(): Unit = {
-    sourceInfoes = sourceInfoes.tail
+    if(sourceInfoes.nonEmpty) sourceInfoes = sourceInfoes.tail // TODO ake: should never be empty
     forcedMainSource = None
   }
 

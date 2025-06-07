@@ -95,7 +95,7 @@ object evaluator extends EvaluationRules {
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
     v.decider.assumptionAnalyzer.addAnalysisSourceInfo(e)
     eval3(s, e, pve, v)((s1, t, eNew, v1) => {
-      v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
+      v.decider.assumptionAnalyzer.popAnalysisSourceInfo() // TODO ake: can return multiple times
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, t, eNew, v1)})
   }
