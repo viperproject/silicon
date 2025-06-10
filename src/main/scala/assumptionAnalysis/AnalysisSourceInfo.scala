@@ -77,47 +77,50 @@ case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, 
 }
 
 
-case class AnalysisSourceInfoStack (sourceInfoes: List[AnalysisSourceInfo] = List.empty,
-                                    forcedMainSource: Option[AnalysisSourceInfo] = None){
+case class AnalysisSourceInfoStack() {
+  private var sourceInfos: List[AnalysisSourceInfo] = List.empty
+  private var forcedMainSource: Option[AnalysisSourceInfo] = None
 
+  def getAnalysisSourceInfos: List[AnalysisSourceInfo] = sourceInfos
 
   def getFullSourceInfo: AnalysisSourceInfo = {
     if(forcedMainSource.isDefined)
       return forcedMainSource.get
-    if(sourceInfoes.size <= 1){
-      sourceInfoes.headOption.getOrElse(NoAnalysisSourceInfo())
+    if(sourceInfos.size <= 1){
+      sourceInfos.headOption.getOrElse(NoAnalysisSourceInfo())
     } else{
-      CompositeAnalysisSourceInfo(sourceInfoes.last, sourceInfoes.head)
+      CompositeAnalysisSourceInfo(sourceInfos.last, sourceInfos.head)
     }
   }
 
-  def addAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): AnalysisSourceInfoStack = {
-    AnalysisSourceInfoStack(analysisSourceInfo +: sourceInfoes, forcedMainSource)
+  def addAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): Unit = {
+    sourceInfos = analysisSourceInfo +: sourceInfos
   }
 
-  def addAnalysisSourceInfo(e: ast.Exp): AnalysisSourceInfoStack = {
-    AnalysisSourceInfoStack(ExpAnalysisSourceInfo(e) +: sourceInfoes, forcedMainSource)
+  def setAnalysisSourceInfo(analysisSourceInfo: List[AnalysisSourceInfo]): Unit = {
+    sourceInfos = analysisSourceInfo
   }
 
-  def popAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): AnalysisSourceInfoStack = {
-    var currSourceInfo = sourceInfoes
+  def popAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): Unit = {
+    var currSourceInfo = sourceInfos
     // popping just one source info might not be enough since infeasible branches might return without popping the source info
     while(currSourceInfo.nonEmpty && !currSourceInfo.head.equals(analysisSourceInfo)) {
       currSourceInfo = currSourceInfo.tail
     }
-    if(currSourceInfo.isEmpty || !currSourceInfo.head.equals(analysisSourceInfo)) throw new RuntimeException("unexpected source info")
-    AnalysisSourceInfoStack(currSourceInfo.tail, forcedMainSource)
+    if(currSourceInfo.isEmpty || !currSourceInfo.head.equals(analysisSourceInfo))
+      throw new RuntimeException("unexpected source info")
+    sourceInfos = currSourceInfo.tail
   }
 
-  def withForcedSource(description: String): AnalysisSourceInfoStack = {
-    AnalysisSourceInfoStack(sourceInfoes, Some(StringAnalysisSourceInfo(description, getFullSourceInfo.getPosition)))
+  def setForcedSource(description: String): Unit = {
+    forcedMainSource = Some(StringAnalysisSourceInfo(description, getFullSourceInfo.getPosition))
   }
 
-  def withForcedSource(source: AnalysisSourceInfo): AnalysisSourceInfoStack = {
-    AnalysisSourceInfoStack(sourceInfoes, Some(source))
+  def setForcedSource(source: AnalysisSourceInfo): Unit = {
+    forcedMainSource = Some(source)
   }
 
-  def withoutForcedSource(): AnalysisSourceInfoStack = {
-    AnalysisSourceInfoStack(sourceInfoes, None)
+  def removeForcedSource(): Unit = {
+    forcedMainSource = None
   }
 }

@@ -94,9 +94,9 @@ object evaluator extends EvaluationRules {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
     val sourceInfo = ExpAnalysisSourceInfo(e)
-    v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(sourceInfo))
+    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
     eval3(s, e, pve, v)((s1, t, eNew, v1) => {
-      v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
+      v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, t, eNew, v1)})
   }
@@ -828,9 +828,9 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            v1.decider.updateAnalysisSourceInfo(_.withForcedSource(commentGlobal))
+            v1.decider.analysisSourceInfoStack.setForcedSource(commentGlobal)
             v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
-            v1.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
+            v1.decider.analysisSourceInfoStack.removeForcedSource()
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
             v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)

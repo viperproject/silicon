@@ -177,10 +177,10 @@ object consumer extends ConsumptionRules {
 
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
       val sourceInfo = ExpAnalysisSourceInfo(a)
-      v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(sourceInfo))
+      v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
 
       consumeTlc(s1, h0, a, returnSnap, pve, v1)((s2, h2, snap2, consumedChunks, v2) => {
-        v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
+        v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
         v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, consumedChunks, v2)})
     })(Q)

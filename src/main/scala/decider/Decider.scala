@@ -107,7 +107,6 @@ trait Decider {
   var analysisSourceInfoStack: AnalysisSourceInfoStack
   def initAssumptionAnalyzer(member: Member, preambleNodes: Iterable[AssumptionAnalysisNode]): Unit
   def removeAssumptionAnalyzer(): Unit
-  def updateAnalysisSourceInfo(f: AnalysisSourceInfoStack => AnalysisSourceInfoStack): Unit
   def getAnalysisInfo: AnalysisInfo
   def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo
 }
@@ -156,10 +155,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     override def removeAssumptionAnalyzer(): Unit = {
       assumptionAnalyzer = new NoAssumptionAnalyzer
       prover.setAssumptionAnalyzer(assumptionAnalyzer)
-    }
-
-    override def updateAnalysisSourceInfo(f: AnalysisSourceInfoStack => AnalysisSourceInfoStack): Unit = {
-      analysisSourceInfoStack = f(analysisSourceInfoStack)
     }
 
     def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)

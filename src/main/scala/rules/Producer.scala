@@ -155,10 +155,10 @@ object producer extends ProductionRules {
       val pve = pves.head
 
       val sourceInfo = ExpAnalysisSourceInfo(a)
-      v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(sourceInfo))
+      v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v, assumptionType)((s1, v1) => {
-          v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
+          v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
           Q(s1, v1)
         })
       else {
@@ -172,7 +172,7 @@ object producer extends ProductionRules {
            */
 
           wrappedProduceTlc(s, sf0, a, pve, v, assumptionType)((s1, v1) => {
-              v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
+              v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
               produceTlcs(s1, sf1, as.tail, pves.tail, v1, assumptionType)(Q)
             })
         } catch {

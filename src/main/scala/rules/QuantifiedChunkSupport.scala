@@ -732,7 +732,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              smDef: SnapshotMapDefinition,
                              v: Verifier)
                             : (PermMapDefinition, PmCache) = {
-    v.decider.updateAnalysisSourceInfo(_.withForcedSource("summarizing heap"))
+    v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
     v.decider.assumptionAnalyzer.addForcedDependencies(relevantChunks.toSet)
     val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
@@ -745,7 +745,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(valueDef, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
         (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
     }
-    v.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
+    v.decider.analysisSourceInfoStack.removeForcedSource()
     res
   }
 
@@ -773,7 +773,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              optSmDomainDefinitionCondition: Option[Term] = None,
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
-    v.decider.updateAnalysisSourceInfo(_.withForcedSource("summarizing heap"))
+    v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
     v.decider.assumptionAnalyzer.addForcedDependencies(relevantChunks.toSet)
 
     def emitSnapshotMapDefinition(s: State,
@@ -846,7 +846,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     emitSnapshotMapDefinition(s, smDef, v, optQVarsInstantiations)
     v.decider.assumptionAnalyzer.unsetForcedDependencies()
-    v.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
+    v.decider.analysisSourceInfoStack.removeForcedSource()
     (smDef, smCache)
   }
 
@@ -858,7 +858,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           optSmDomainDefinitionCondition: Option[Term] = None,
                           optQVarsInstantiations: Option[Seq[Term]] = None)
                          : (State, SnapshotMapDefinition, PermMapDefinition) = {
-    v.decider.updateAnalysisSourceInfo(_.withForcedSource("summarizing heap"))
+    v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
     v.decider.assumptionAnalyzer.addForcedDependencies(relevantChunks.toSet)
     val (smDef, smCache) =
       summarisingSnapshotMap(
@@ -872,7 +872,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val s2 = s1.copy(pmCache = pmCache)
     v.decider.assumptionAnalyzer.unsetForcedDependencies()
-    v.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
+    v.decider.analysisSourceInfoStack.removeForcedSource()
     (s2, smDef, pmDef)
   }
 
@@ -885,7 +885,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           relevantChunks: Seq[QuantifiedBasicChunk],
                           v: Verifier)
   : (State, PermMapDefinition) = {
-    v.decider.updateAnalysisSourceInfo(_.withForcedSource("summarizing heap"))
+    v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
     v.decider.assumptionAnalyzer.addForcedDependencies(relevantChunks.toSet)
     val s1 = s
     val (pmDef, pmCache) =
@@ -894,7 +894,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val s2 = s1.copy(pmCache = pmCache)
     v.decider.assumptionAnalyzer.unsetForcedDependencies()
-    v.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
+    v.decider.analysisSourceInfoStack.removeForcedSource()
     (s2, pmDef)
   }
 
@@ -1003,10 +1003,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
-    v.decider.updateAnalysisSourceInfo(_.withForcedSource(commentGlobals))
+    v.decider.analysisSourceInfoStack.setForcedSource(commentGlobals)
     v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
       enforceAssumption = false, assumptionType=AssumptionType.Internal)
-    v.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
+    v.decider.analysisSourceInfoStack.removeForcedSource()
 
     val commentNonGlobals = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(commentNonGlobals)
@@ -1237,9 +1237,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
-    v.decider.updateAnalysisSourceInfo(_.withForcedSource(comment))
+    v.decider.analysisSourceInfoStack.setForcedSource(comment)
     v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
-    v.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
+    v.decider.analysisSourceInfoStack.removeForcedSource()
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)
