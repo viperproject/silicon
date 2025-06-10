@@ -320,10 +320,10 @@ class DefaultMainVerifier(config: Config,
       logger debug s"assumption analyzers ${assumptionAnalyzers.mkString(", ")}"
     }
 
-//    if (Verifier.config.enableDebugging()){
-//      val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
-//      debugger.startDebugger()
-//    }
+    if (Verifier.config.startDebuggerAutomatically()){
+      val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
+      debugger.startDebugger()
+    }
 
     verificationResults
   }

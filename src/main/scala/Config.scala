@@ -824,6 +824,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val startDebuggerAutomatically: ScallopOption[Boolean] = opt[Boolean]("startDebuggerAutomatically",
+    descr = "Starts the debugging mode automatically after verification completes",
+    default = Some(false),
+    noshort = true
+  )
+
   val enableAssumptionAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableAssumptionAnalysis",
     descr = "Enable assumption analysis mode",
     default = Some(true),
@@ -876,6 +882,33 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   validateFileOpt(setAxiomatizationFile)
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)
+
+  validateOpt(enableAssumptionAnalysis, parallelizeBranches) {
+    case (Some(false), _) => Right(())
+    case (_, Some(false)) => Right(())
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${enableAssumptionAnalysis.name} is not supported in combination with ${parallelizeBranches.name}")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
+
+  validateOpt(enableAssumptionAnalysis, enableDebugging) {
+    case (Some(false), _) => Right(())
+    case (Some(true), Some(true)) => Right(())
+    case (Some(true), Some(false)) =>
+      Left(s"Option ${enableAssumptionAnalysis.name} requires option ${enableDebugging.name}")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
+
+  validateOpt(startDebuggerAutomatically, enableDebugging) {
+    case (Some(false), _) => Right(())
+    case (Some(true), Some(true)) => Right(())
+    case (Some(true), Some(false)) =>
+      Left(s"Option ${startDebuggerAutomatically.name} requires option ${enableDebugging.name}")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
 
   /* Finalise configuration */
 
