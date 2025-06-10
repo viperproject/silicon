@@ -59,7 +59,7 @@ class DefaultMainVerifier(config: Config,
 
   Verifier.config = config
 
-  override val debugMode = config.enableDebugging()
+  override val debugMode: Boolean = config.enableDebugging()
 
   private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
@@ -316,14 +316,14 @@ class DefaultMainVerifier(config: Config,
     if(Verifier.config.enableAssumptionAnalysis()){
       val assumptionAnalyzers = verificationResults.filter(_.assumptionAnalyzer.isInstanceOf[DefaultAssumptionAnalyzer]).map(_.assumptionAnalyzer)
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
-      assumptionAnalyzers foreach (_.exportGraph())
+//      assumptionAnalyzers foreach (_.exportGraph())
       logger debug s"assumption analyzers ${assumptionAnalyzers.mkString(", ")}"
     }
 
-    if (Verifier.config.enableDebugging()){
-      val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
-      debugger.startDebugger()
-    }
+//    if (Verifier.config.enableDebugging()){
+//      val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
+//      debugger.startDebugger()
+//    }
 
     verificationResults
   }

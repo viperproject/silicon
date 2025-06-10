@@ -820,13 +820,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDebugging",
     descr = "Enable debugging mode",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
   val enableAssumptionAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableAssumptionAnalysis",
     descr = "Enable assumption analysis mode",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
