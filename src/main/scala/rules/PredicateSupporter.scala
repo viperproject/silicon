@@ -118,7 +118,7 @@ object predicateSupporter extends PredicateSupportRules {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm, v1.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm, v1.decider.getAnalysisInfo(assumptionType))
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor,

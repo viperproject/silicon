@@ -97,7 +97,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, esNew, v1) => {
       val newChunk = MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, esNew, snap, FullPerm,
-        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), v.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
+        Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), v.decider.getAnalysisInfo(assumptionType))
       Q(s1, newChunk, v1)
     })
   }
@@ -421,6 +421,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v, assumptionType)
     }
 
+    val currentAnalysisSourceInfoStack = v.decider.analysisSourceInfoStack
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
       prevRes && {
         val (state, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedState
@@ -431,6 +432,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // We execute the continuation Q in a new scope with all branch conditions and all conserved path conditions.
         executionFlowController.locally(s1, v)((s2, v1) => {
+          v1.decider.analysisSourceInfoStack = currentAnalysisSourceInfoStack
           val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._1))
           val expNew = Option.when(withExp)(viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2.get)))
           // Set the branch conditions

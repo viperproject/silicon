@@ -75,3 +75,43 @@ case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, 
 
   override def isAnalysisEnabled: Boolean = coarseGrainedSource.isAnalysisEnabled && fineGrainedSource.isAnalysisEnabled
 }
+
+
+case class AnalysisSourceInfoStack (sourceInfoes: List[AnalysisSourceInfo] = List.empty,
+                                    forcedMainSource: Option[AnalysisSourceInfo] = None){
+
+
+  def getFullSourceInfo: AnalysisSourceInfo = {
+    if(forcedMainSource.isDefined)
+      return forcedMainSource.get
+    if(sourceInfoes.size <= 1){
+      sourceInfoes.headOption.getOrElse(NoAnalysisSourceInfo())
+    } else{
+      CompositeAnalysisSourceInfo(sourceInfoes.last, sourceInfoes.head)
+    }
+  }
+
+  def addAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): AnalysisSourceInfoStack = {
+    AnalysisSourceInfoStack(analysisSourceInfo +: sourceInfoes, forcedMainSource)
+  }
+
+  def addAnalysisSourceInfo(e: ast.Exp): AnalysisSourceInfoStack = {
+    AnalysisSourceInfoStack(ExpAnalysisSourceInfo(e) +: sourceInfoes, forcedMainSource)
+  }
+
+  def popAnalysisSourceInfo(): AnalysisSourceInfoStack = {
+    AnalysisSourceInfoStack(sourceInfoes.tail, forcedMainSource)
+  }
+
+  def withForcedSource(description: String): AnalysisSourceInfoStack = {
+    AnalysisSourceInfoStack(sourceInfoes, Some(StringAnalysisSourceInfo(description, getFullSourceInfo.getPosition)))
+  }
+
+  def withForcedSource(source: AnalysisSourceInfo): AnalysisSourceInfoStack = {
+    AnalysisSourceInfoStack(sourceInfoes, Some(source))
+  }
+
+  def withoutForcedSource(): AnalysisSourceInfoStack = {
+    AnalysisSourceInfoStack(sourceInfoes, None)
+  }
+}

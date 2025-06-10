@@ -104,8 +104,12 @@ trait Decider {
   def statistics(): Map[String, String]
 
   var assumptionAnalyzer: AssumptionAnalyzer
+  var analysisSourceInfoStack: AnalysisSourceInfoStack
   def initAssumptionAnalyzer(member: Member, preambleNodes: Iterable[AssumptionAnalysisNode]): Unit
   def removeAssumptionAnalyzer(): Unit
+  def updateAnalysisSourceInfo(f: AnalysisSourceInfoStack => AnalysisSourceInfoStack): Unit
+  def getAnalysisInfo: AnalysisInfo
+  def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo
 }
 
 /*
@@ -136,6 +140,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
 
     var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
+    var analysisSourceInfoStack: AnalysisSourceInfoStack = AnalysisSourceInfoStack()
 
     override def initAssumptionAnalyzer(member: Member, preambleNodes: Iterable[AssumptionAnalysisNode]): Unit = {
       val isAnalysisEnabled = AssumptionAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(Verifier.config.enableAssumptionAnalysis())
@@ -152,6 +157,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       assumptionAnalyzer = new NoAssumptionAnalyzer
       prover.setAssumptionAnalyzer(assumptionAnalyzer)
     }
+
+    override def updateAnalysisSourceInfo(f: AnalysisSourceInfoStack => AnalysisSourceInfoStack): Unit = {
+      analysisSourceInfoStack = f(analysisSourceInfoStack)
+    }
+
+    def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
+
+    def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(assumptionAnalyzer, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -301,18 +314,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit = {
       if (finalExp.isDefined) {
-        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), assumptionAnalyzer.getFullSourceInfo, enforceAssumption = false, isDefinition = false, assumptionType)
+        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), analysisSourceInfoStack.getFullSourceInfo, enforceAssumption = false, isDefinition = false, assumptionType)
       } else {
-        assume(assumptions=InsertionOrderedSet((t, None)), assumptionAnalyzer.getFullSourceInfo, enforceAssumption = false, isDefinition = false, assumptionType)
+        assume(assumptions=InsertionOrderedSet((t, None)), analysisSourceInfoStack.getFullSourceInfo, enforceAssumption = false, isDefinition = false, assumptionType)
       }
     }
 
     def assume(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), assumptionAnalyzer.getFullSourceInfo, enforceAssumption = false, isDefinition = false, assumptionType)
+      assume(InsertionOrderedSet(Seq((t, debugExp))), analysisSourceInfoStack.getFullSourceInfo, enforceAssumption = false, isDefinition = false, assumptionType)
     }
 
     def assumeDefinition(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), assumptionAnalyzer.getFullSourceInfo, enforceAssumption=false, isDefinition=true, assumptionType)
+      assume(InsertionOrderedSet(Seq((t, debugExp))), analysisSourceInfoStack.getFullSourceInfo, enforceAssumption=false, isDefinition=true, assumptionType)
     }
 
     def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], analysisSourceInfo: AnalysisSourceInfo, enforceAssumption: Boolean, isDefinition: Boolean, assumptionType: AssumptionType): Unit = {
@@ -336,7 +349,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], assumptionType: AssumptionType): Unit = {
-      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, assumptionAnalyzer.getFullSourceInfo, assumptionType) else Seq.empty
+      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, analysisSourceInfoStack.getFullSourceInfo, assumptionType) else Seq.empty
 
       val assumptionsWithLabels =
         if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, AssumptionAnalyzer.createAssumptionLabel(Some(id)))}
@@ -350,7 +363,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     // TODO ake: review this
     def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, assumptionType: AssumptionType): Unit = {
       val debugExp = Option.when(debugExps.isDefined)(DebugExp.createInstance(description, InsertionOrderedSet(debugExps.get)))
-      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, assumptionAnalyzer.getFullSourceInfo, assumptionType) else Seq.empty
+      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, analysisSourceInfoStack.getFullSourceInfo, assumptionType) else Seq.empty
 
       val assumptionsWithLabels =
         if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, AssumptionAnalyzer.createAssumptionLabel(Some(id)))}
@@ -380,7 +393,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (debugMode) {
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
 
-        val assumptionId: Option[Int] = if(debugExp.isDefined) assumptionAnalyzer.addSingleAssumption(debugExp.get.withTerm(And(filteredTerms)), assumptionAnalyzer.getFullSourceInfo, assumptionType) else None
+        val assumptionId: Option[Int] = if(debugExp.isDefined) assumptionAnalyzer.addSingleAssumption(debugExp.get.withTerm(And(filteredTerms)), analysisSourceInfoStack.getFullSourceInfo, assumptionType) else None
         val termsWithLabel = filteredTerms.zipWithIndex.iterator.map {case (t, idx) => (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId, idx))}.toSeq
         assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
       }else{
@@ -421,7 +434,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def checkSmoke(isAssert: Boolean = false): Boolean = {
       val label = if(Verifier.config.enableAssumptionAnalysis()){
-        val nodeId = assumptionAnalyzer.addAssertFalseNode(!isAssert)
+        val nodeId = assumptionAnalyzer.addAssertFalseNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo)
         AssumptionAnalyzer.createAssertionLabel(nodeId)
       }else{ "" }
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
@@ -461,7 +474,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
       val asserted = if(Verifier.config.enableAssumptionAnalysis()) t.equals(True) else isKnownToBeTrue(t)
-      val assertNode = if(!asserted) assumptionAnalyzer.createAssertOrCheckNode(t, e, decider.assumptionAnalyzer.getFullSourceInfo, isCheck) else None
+      val assertNode = if(!asserted) assumptionAnalyzer.createAssertOrCheckNode(t, e, decider.analysisSourceInfoStack.getFullSourceInfo, isCheck) else None
 
       val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertNode map (_.id)))
 

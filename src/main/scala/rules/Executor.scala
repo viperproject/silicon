@@ -326,9 +326,9 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    v.decider.assumptionAnalyzer.addAnalysisSourceInfo(StmtAnalysisSourceInfo(stmt))
+    v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(StmtAnalysisSourceInfo(stmt)))
     exec2(s, stmt, v)((s1, v1) => {
-      v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
+      v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
@@ -401,7 +401,7 @@ object executor extends ExecutionRules {
               s2
             }
             v2.decider.clearModel()
-            v2.decider.assumptionAnalyzer.setForcedSource(ExpAnalysisSourceInfo(fa))
+            v2.decider.updateAnalysisSourceInfo(_.withForcedSource(ExpAnalysisSourceInfo(fa)))
             val result = quantifiedChunkSupporter.removePermissions(
               s2p,
               relevantChunks,
@@ -416,7 +416,7 @@ object executor extends ExecutionRules {
               chunkOrderHeuristics,
               v2
             )
-            v2.decider.assumptionAnalyzer.unsetForcedSource()
+            v2.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
             result match {
               case (Complete(), s3, remainingChunks, consumedChunks) => // TODO ake: what to do with consumedChunks?
                 val h3 = Heap(remainingChunks ++ otherChunks)
@@ -424,10 +424,10 @@ object executor extends ExecutionRules {
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
                 v1.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
-                v1.decider.assumptionAnalyzer.setForcedSource(ExpAnalysisSourceInfo(fa))
+                v1.decider.updateAnalysisSourceInfo(_.withForcedSource(ExpAnalysisSourceInfo(fa)))
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
                   field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit), isExhale=false)
-                v1.decider.assumptionAnalyzer.unsetForcedSource()
+                v1.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
                 if (s3.heapDependentTriggers.contains(field)) {
                   val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Internal)
@@ -447,15 +447,15 @@ object executor extends ExecutionRules {
               val resource = fa.res(s.program)
               val ve = pve dueTo InsufficientPermission(fa)
               val description = s"consume ${ass.pos}: $ass"
-              v2.decider.assumptionAnalyzer.setForcedSource(ExpAnalysisSourceInfo(fa))
+              v2.decider.updateAnalysisSourceInfo(_.withForcedSource(ExpAnalysisSourceInfo(fa)))
               chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, consumedChunks, v3) => {
-                v3.decider.assumptionAnalyzer.setForcedSource(StmtAnalysisSourceInfo(ass))
+                v3.decider.updateAnalysisSourceInfo(_.withForcedSource(StmtAnalysisSourceInfo(ass)))
                 val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
                 val id = BasicChunkIdentifier(field.name)
-                v3.decider.assumptionAnalyzer.setForcedSource(ExpAnalysisSourceInfo(fa))
+                v3.decider.updateAnalysisSourceInfo(_.withForcedSource(ExpAnalysisSourceInfo(fa)))
                 val newChunk = BasicChunk.createDerivedChunk(Set.empty, FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                  v3.decider.assumptionAnalyzer.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
-                v3.decider.assumptionAnalyzer.unsetForcedSource()
+                  v3.decider.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
+                v3.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
                 chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                   val s5 = s4.copy(h = h4)
                   val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
@@ -487,7 +487,7 @@ object executor extends ExecutionRules {
               field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit), isExhale=false)
           } else {
             val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp,
-              v.decider.assumptionAnalyzer.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
+              v.decider.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
             newChunk
           }
         })
@@ -555,7 +555,7 @@ object executor extends ExecutionRules {
       case ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
-        val analysisInfo = v.decider.assumptionAnalyzer.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))
+        val analysisInfo = v.decider.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
         val member = s.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m

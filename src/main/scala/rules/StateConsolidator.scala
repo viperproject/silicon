@@ -61,7 +61,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   def consolidate(s: State, v: Verifier): State = {
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
-    v.decider.assumptionAnalyzer.setForcedSource("state consolidation")
+    v.decider.updateAnalysisSourceInfo(_.withForcedSource("state consolidation"))
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration)
 
@@ -122,7 +122,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                     reserveHeaps = mergedHeaps.tail)
 
     val s2 = assumeUpperPermissionBoundForQPFields(s1, v)
-    v.decider.assumptionAnalyzer.unsetForcedSource()
+    v.decider.updateAnalysisSourceInfo(_.withoutForcedSource())
 
     s2
   }
@@ -218,7 +218,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       case (BasicChunk(rid1, id1, args1, args1Exp, snap1, snap1Exp, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, _, perm2, perm2Exp)) =>
         val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, qvars, v)
         val newExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
-        Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2), newExp, v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Internal)), snapEq)
+        Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2), newExp, v.decider.getAnalysisInfo(AssumptionType.Internal)), snapEq)
       case (l@QuantifiedFieldChunk(id1, fvf1, condition1, condition1Exp,  perm1, perm1Exp, invs1, singletonRcvr1, singletonRcvr1Exp, hints1),
       r@QuantifiedFieldChunk(_, fvf2, _, _, perm2, perm2Exp, _, _, _, hints2)) =>
         assert(l.quantifiedVars == Seq(`?r`))
@@ -228,14 +228,14 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         val permSum = PermPlus(perm1, perm2)
         val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
         val bestHints = if (hints1.nonEmpty) hints1 else hints2
-        Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, condition1Exp, permSum, permSumExp, invs1, singletonRcvr1, singletonRcvr1Exp, bestHints, v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Internal)), snapEq)
+        Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, condition1Exp, permSum, permSumExp, invs1, singletonRcvr1, singletonRcvr1Exp, bestHints, v.decider.getAnalysisInfo(AssumptionType.Internal)), snapEq)
       case (l@QuantifiedPredicateChunk(id1, qVars1, qVars1Exp, psf1, _, _, perm1, perm1Exp, _, _, _, _),
       r@QuantifiedPredicateChunk(_, qVars2, qVars2Exp, psf2, condition2, condition2Exp, perm2, perm2Exp, invs2, singletonArgs2, singletonArgs2Exp, hints2)) =>
         val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
 
         val permSum = PermPlus(perm1.replace(qVars1, qVars2), perm2)
         val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1.replace(qVars1Exp.get.zip(qVars2Exp.get).toMap), perm2Exp.get)())
-        Some(fr2, QuantifiedPredicateChunk(id1, qVars2, qVars2Exp, combinedSnap, condition2, condition2Exp, permSum, permSumExp, invs2, singletonArgs2, singletonArgs2Exp, hints2, v.decider.assumptionAnalyzer.getAnalysisInfo(AssumptionType.Internal)), snapEq)
+        Some(fr2, QuantifiedPredicateChunk(id1, qVars2, qVars2Exp, combinedSnap, condition2, condition2Exp, permSum, permSumExp, invs2, singletonArgs2, singletonArgs2Exp, hints2, v.decider.getAnalysisInfo(AssumptionType.Internal)), snapEq)
       case _ =>
         None
     }

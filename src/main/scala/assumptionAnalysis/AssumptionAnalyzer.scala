@@ -10,6 +10,7 @@ import viper.silver.ast._
 
 trait AssumptionAnalyzer {
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
+  var forcedDependencies: List[Int] = List.empty
 
   def addPermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
   def addPermissionAssertNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo): Option[Int]
@@ -33,47 +34,11 @@ trait AssumptionAnalyzer {
 
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
 
-  def addAssertFalseNode(isCheck: Boolean): Option[Int]
+  def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
 
-  protected var sourceInfoes: List[AnalysisSourceInfo] = List.empty
-  protected var forcedMainSource: Option[AnalysisSourceInfo] = None
-  protected var forcedDependencies: List[Int] = List.empty
+  def getMember: Option[Member]
 
-  def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
-
-  def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, getFullSourceInfo, assumptionType)
-
-  def getFullSourceInfo: AnalysisSourceInfo = {
-    if(forcedMainSource.isDefined)
-      return forcedMainSource.get
-    if(sourceInfoes.size <= 1){
-      sourceInfoes.headOption.getOrElse(NoAnalysisSourceInfo())
-    } else{
-      CompositeAnalysisSourceInfo(sourceInfoes.last, sourceInfoes.head)
-    }
-  }
-
-  def addAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): AnalysisSourceInfo = {
-    sourceInfoes = analysisSourceInfo +: sourceInfoes
-    analysisSourceInfo
-  }
-
-  def popAnalysisSourceInfo(): Unit = {
-    if(sourceInfoes.nonEmpty) sourceInfoes = sourceInfoes.tail // TODO ake: should never be empty
-    forcedMainSource = None
-  }
-
-  def setForcedSource(description: String): Unit = {
-    forcedMainSource = Some(StringAnalysisSourceInfo(description, getFullSourceInfo.getPosition))
-  }
-
-  def setForcedSource(source: AnalysisSourceInfo): Unit = {
-    forcedMainSource = Some(source)
-  }
-
-  def unsetForcedSource(): Unit = {
-    forcedMainSource = None
-  }
+  def exportGraph(): Unit
 
   def addForcedDependencies(chunks: Set[Chunk]): Unit = {
     forcedDependencies = forcedDependencies ++ getChunkNodeIds(chunks).toList
@@ -82,19 +47,6 @@ trait AssumptionAnalyzer {
   def unsetForcedDependencies(): Unit = {
     forcedDependencies = List.empty
   }
-
-  def getAnalysisSourceInfoes: List[AnalysisSourceInfo] = sourceInfoes
-  def setAnalysisSourceInfoes(infoes: List[AnalysisSourceInfo]): Unit = {
-    sourceInfoes = infoes
-  }
-
-  def addAnalysisSourceInfo(e: ast.Exp): Unit = {
-    sourceInfoes = ExpAnalysisSourceInfo(e) +: sourceInfoes
-  }
-
-  def getMember: Option[Member]
-
-  def exportGraph(): Unit
 
 }
 
@@ -212,8 +164,8 @@ class DefaultAssumptionAnalyzer(member: Member) extends AssumptionAnalyzer {
     })
   }
 
-  override def addAssertFalseNode(isCheck: Boolean): Option[Int] = {
-    val node = createAssertOrCheckNode(False, Right(ast.FalseLit()()), getFullSourceInfo, isCheck) // TODO ake: set isAssert
+  override def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = {
+    val node = createAssertOrCheckNode(False, Right(ast.FalseLit()()), sourceInfo, isCheck)
     addNode(node.get)
     node.map(_.id)
   }
@@ -301,7 +253,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
 
-  override def addAssertFalseNode(isCheck: Boolean): Option[Int] = None
+  override def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
   }
 

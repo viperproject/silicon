@@ -365,8 +365,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
             pSumExp = eqExp.map(eq => ast.PermAdd(pSumExp.get, ast.CondExp(eq, ch.permExp.get, ast.NoPerm()())(eq.pos, eq.info, eq.errT))())
 
-            val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.assumptionAnalyzer.getAnalysisInfo).asInstanceOf[NonQuantifiedChunk]
-            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ch, pTakenExp, v.decider.assumptionAnalyzer.getFullSourceInfo)
+            val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo).asInstanceOf[NonQuantifiedChunk]
+            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ch, pTakenExp, v.decider.analysisSourceInfoStack.getFullSourceInfo)
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
@@ -482,8 +482,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
-        v.decider.assumptionAnalyzer.addPermissionExhaleNode(ch, permTakenExp, v.decider.assumptionAnalyzer.getFullSourceInfo)
-        GeneralChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.assumptionAnalyzer.getAnalysisInfo).asInstanceOf[NonQuantifiedChunk]
+        v.decider.assumptionAnalyzer.addPermissionExhaleNode(ch, permTakenExp, v.decider.analysisSourceInfoStack.getFullSourceInfo)
+        GeneralChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo).asInstanceOf[NonQuantifiedChunk]
       })
 
     val totalTakenBounds =

@@ -155,10 +155,10 @@ object producer extends ProductionRules {
       val pve = pves.head
 
 
-      v.decider.assumptionAnalyzer.addAnalysisSourceInfo(a)
+      v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(a))
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v, assumptionType)((s1, v1) => {
-          v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
+          v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
           Q(s1, v1)
         })
       else {
@@ -172,7 +172,7 @@ object producer extends ProductionRules {
            */
 
           wrappedProduceTlc(s, sf0, a, pve, v, assumptionType)((s1, v1) => {
-              v1.decider.assumptionAnalyzer.popAnalysisSourceInfo()
+              v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
               produceTlcs(s1, sf1, as.tail, pves.tail, v1, assumptionType)(Q)
             })
         } catch {
@@ -356,7 +356,7 @@ object producer extends ProductionRules {
                 val (debugHeapName, debugLabel) = v3.getDebugOldLabel(s3, accPred.pos)
                 val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, field)(), debugLabel)(accPred.pos, accPred.info, accPred.errT))
                 val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), snap, snapExp, gain, gainExp,
-                  v1.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
+                  v1.decider.getAnalysisInfo(assumptionType))
                 chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) => {
                   val s5 = s4.copy(h = h4)
                   val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s5
@@ -384,7 +384,7 @@ object producer extends ProductionRules {
               } else {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgsNew, snap1, None, gain, gainExp,
-                  v1.decider.assumptionAnalyzer.getAnalysisInfo(assumptionType))
+                  v1.decider.getAnalysisInfo(assumptionType))
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                   if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {

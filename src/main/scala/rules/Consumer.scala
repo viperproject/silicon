@@ -176,10 +176,10 @@ object consumer extends ConsumptionRules {
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
-      v.decider.assumptionAnalyzer.addAnalysisSourceInfo(a)
+      v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(a))
 
       consumeTlc(s1, h0, a, returnSnap, pve, v1)((s2, h2, snap2, consumedChunks, v2) => {
-        v.decider.assumptionAnalyzer.popAnalysisSourceInfo()
+        v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
         v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, consumedChunks, v2)})
     })(Q)
