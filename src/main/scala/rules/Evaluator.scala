@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.AssumptionType
+import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
@@ -93,9 +93,10 @@ object evaluator extends EvaluationRules {
           : VerificationResult = {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
-    v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(e))
+    val sourceInfo = ExpAnalysisSourceInfo(e)
+    v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(sourceInfo))
     eval3(s, e, pve, v)((s1, t, eNew, v1) => {
-      v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo()) // TODO ake: can return multiple times
+      v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, t, eNew, v1)})
   }

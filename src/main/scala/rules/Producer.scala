@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
@@ -154,11 +154,11 @@ object producer extends ProductionRules {
       val a = as.head.whenInhaling
       val pve = pves.head
 
-
-      v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(a))
+      val sourceInfo = ExpAnalysisSourceInfo(a)
+      v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(sourceInfo))
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v, assumptionType)((s1, v1) => {
-          v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
+          v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
           Q(s1, v1)
         })
       else {
@@ -172,7 +172,7 @@ object producer extends ProductionRules {
            */
 
           wrappedProduceTlc(s, sf0, a, pve, v, assumptionType)((s1, v1) => {
-              v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
+              v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
               produceTlcs(s1, sf1, as.tail, pves.tail, v1, assumptionType)(Q)
             })
         } catch {

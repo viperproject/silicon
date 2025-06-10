@@ -99,8 +99,14 @@ case class AnalysisSourceInfoStack (sourceInfoes: List[AnalysisSourceInfo] = Lis
     AnalysisSourceInfoStack(ExpAnalysisSourceInfo(e) +: sourceInfoes, forcedMainSource)
   }
 
-  def popAnalysisSourceInfo(): AnalysisSourceInfoStack = {
-    AnalysisSourceInfoStack(sourceInfoes.tail, forcedMainSource)
+  def popAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): AnalysisSourceInfoStack = {
+    var currSourceInfo = sourceInfoes
+    // popping just one source info might not be enough since infeasible branches might return without popping the source info
+    while(currSourceInfo.nonEmpty && !currSourceInfo.head.equals(analysisSourceInfo)) {
+      currSourceInfo = currSourceInfo.tail
+    }
+    if(currSourceInfo.isEmpty || !currSourceInfo.head.equals(analysisSourceInfo)) throw new RuntimeException("unexpected source info")
+    AnalysisSourceInfoStack(currSourceInfo.tail, forcedMainSource)
   }
 
   def withForcedSource(description: String): AnalysisSourceInfoStack = {

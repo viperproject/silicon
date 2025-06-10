@@ -60,7 +60,8 @@ object brancher extends BranchingRules {
           && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
-    v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(ExpAnalysisSourceInfo(conditionExp._1)))
+    val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
+    v.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(sourceInfo))
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
@@ -71,7 +72,7 @@ object brancher extends BranchingRules {
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
-    v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
+    v.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
@@ -151,9 +152,10 @@ object brancher extends BranchingRules {
           v0.decider.analysisSourceInfoStack = currentAnalysisSourceInfoStack
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(conditionExp._1))
+            val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
+            v1.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(sourceInfo))
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
-            v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
+            v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
             var nMacrosOfElseBranchDeciderBefore: Int = 0
@@ -204,9 +206,10 @@ object brancher extends BranchingRules {
           v.decider.analysisSourceInfoStack = currentAnalysisSourceInfoStack
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-            v1.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(conditionExp._1))
+            val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
+            v1.decider.updateAnalysisSourceInfo(_.addAnalysisSourceInfo(sourceInfo))
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
-            v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo())
+            v1.decider.updateAnalysisSourceInfo(_.popAnalysisSourceInfo(sourceInfo))
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })
