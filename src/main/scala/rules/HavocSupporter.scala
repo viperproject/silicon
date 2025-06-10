@@ -49,14 +49,14 @@ object havocSupporter extends SymbolicExecutionRules {
     val lhsExpr = havoc.lhs.getOrElse(ast.TrueLit()(havoc.pos))
 
     eval(s, lhsExpr, pve, v)((s0, lhsTerm, _, v0) => {
-      evals(s0, resourceArgs(s0, havoc.exp), _ => pve, v0)((s1, tRcvrs, _, v1) => {
+      evals(s0, havoc.exp.args(s0.program), _ => pve, v0)((s1, tRcvrs, _, v1) => {
         val resource = havoc.exp.res(s1.program)
 
         // Call the havoc helper function, which returns a new set of chunks, some of
         // which may be havocked. Since we are executing a Havoc statement, we wrap
         // the HavocHelperData inside of a HavocOneData case (as opposed to HavocAllData).
         val newChunks =
-          if (usesQPChunks(s1, resource))
+          if (s1.isQuantifiedResource(resource))
             havocQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
           else
             havocNonQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
@@ -100,7 +100,7 @@ object havocSupporter extends SymbolicExecutionRules {
       quant = Forall,
       vars  = vars, // The quantified variables
       es1   = Seq(lhsExpr), // The havoc condition. Evaluated and added as a path conditions
-      es2   = resourceArgs(s, eRsc), // The arguments to our resource. Evaluated assuming the condition is true
+      es2   = eRsc.args(s.program), // The arguments to our resource. Evaluated assuming the condition is true
       optTriggers = None, // Triggers: none needed for Havocall
       name  = qid,
       pve   = pve,
@@ -155,7 +155,7 @@ object havocSupporter extends SymbolicExecutionRules {
             // which may be havocked. Since we are executing a Havocall statement, we wrap
             // the HavocHelperData inside of a HavocAllData case.
             val newChunks =
-              if (usesQPChunks(s1, resource))
+              if (s1.isQuantifiedResource(resource))
                 havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
               else
                 havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
@@ -321,36 +321,8 @@ object havocSupporter extends SymbolicExecutionRules {
     }
   }
 
-  private def resourceArgs(s: State, resacc: ast.ResourceAccess): Seq[ast.Exp] = {
-    resacc match {
-      case fa: ast.FieldAccess => fa.getArgs
-      case pa: ast.PredicateAccess => pa.args
-      case wand: ast.MagicWand => wand.subexpressionsToEvaluate(s.program)
-    }
-  }
-
   // Get the variables that we must quantify over for each resource type
   private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): (Seq[Var], Option[Seq[ast.LocalVarDecl]]) = {
-      eRsc match {
-        case _: ast.Field => (Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())))
-        case p: ast.Predicate =>
-          val predicate = s.program.findPredicate(p.name)
-          (s.predicateFormalVarMap(s.program.findPredicate(p.name)), Option.when(withExp)(predicate.formalArgs))
-        case w: ast.MagicWand =>
-          val bodyVars = w.subexpressionsToEvaluate(s.program)
-          (bodyVars.indices.toList.map(i =>
-              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false)),
-            Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
-            )
-    }
-  }
-
-  // Return true if the heap uses quantified versions of these resources
-  private def usesQPChunks(s: State, res: ast.Resource): Boolean = {
-    res match {
-      case f: ast.Field => s.qpFields.contains(f)
-      case p: ast.Predicate => s.qpPredicates.contains(p)
-      case w: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(w, s.program))
-    }
+    (s.getFormalArgVars(eRsc, v), Option.when(withExp)(s.getFormalArgDecls(eRsc)))
   }
 }

@@ -429,21 +429,10 @@ object evaluator extends EvaluationRules {
           /* It is assumed that, for a given field/predicate/wand identifier (res)
            * either only quantified or only non-quantified chunks are used.
            */
-          val usesQPChunks = res match {
-            case _: ast.MagicWand => s1.qpMagicWands.contains(identifier.asInstanceOf[MagicWandIdentifier])
-            case field: ast.Field => s1.qpFields.contains(field)
-            case pred: ast.Predicate => s1.qpPredicates.contains(pred)}
+          val usesQPChunks = s1.isQuantifiedResource(res)
           val (s2, currentPermAmount) =
             if (usesQPChunks) {
-              val formalVars = res match {
-                case wand: ast.MagicWand =>
-                  val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                  bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
-                case p: ast.Predicate =>
-                  s1.predicateFormalVarMap(p)
-                case _: ast.Field =>
-                  Seq(`?r`)
-              }
+              val formalVars = s1.getFormalArgVars(res, v1)
 
               val (relevantChunks, _) =
                 quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, identifier)
@@ -1309,17 +1298,8 @@ object evaluator extends EvaluationRules {
   def evalResourceAccess(s: State, resacc: ast.ResourceAccess, pve: PartialVerificationError, v: Verifier)
                         (Q: (State, ChunkIdentifer, Seq[Term], Option[Seq[ast.Exp]], Verifier) => VerificationResult)
                         : VerificationResult = {
-    resacc match {
-      case wand : ast.MagicWand =>
-        magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, eArgsNew, v1) =>
-        Q(s1, MagicWandIdentifier(wand, s.program), tArgs, eArgsNew, v1))
-      case ast.FieldAccess(eRcvr, field) =>
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
-          Q(s1, BasicChunkIdentifier(field.name), tRcvr :: Nil, eRcvrNew.map(_ :: Nil), v1))
-      case ast.PredicateAccess(eArgs, predicateName) =>
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
-          Q(s1, BasicChunkIdentifier(predicateName), tArgs, eArgsNew, v1))
-    }
+    evals(s, resacc.args(s.program), _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+      Q(s1, ChunkIdentifier(resacc.res(s1.program), s1.program), tArgs, eArgsNew, v1))
   }
 
   private def evalBinOp[T <: Term](s: State,
@@ -1596,18 +1576,9 @@ object evaluator extends EvaluationRules {
     var triggers = Seq.empty[Term]
     var mostRecentTrig: Term = null
     val resource = ra.res(s.program)
-    val (codomainQVars, eArgs, chunkId) = ra match {
-      case pa: ast.PredicateAccess =>
-        (s.predicateFormalVarMap(pa.loc(s.program)), pa.args, BasicChunkIdentifier(pa.predicateName))
-      case fa: ast.FieldAccess =>
-        (Seq(`?r`), Seq(fa.rcv), BasicChunkIdentifier(fa.field.name))
-      case w: ast.MagicWand =>
-        val wandHoles = w.subexpressionsToEvaluate(s.program)
-        val codomainQVars =
-          wandHoles.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(wandHoles(i).typ), false))
-        val mwi = MagicWandIdentifier(w, s.program)
-        (codomainQVars, wandHoles, mwi)
-    }
+    val codomainQVars = s.getFormalArgVars(resource, v)
+    val eArgs = ra.args(s.program)
+    val chunkId = ChunkIdentifier(resource, s.program)
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, chunkId)
     val optSmDomainDefinitionCondition =

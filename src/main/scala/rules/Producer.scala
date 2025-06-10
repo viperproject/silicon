@@ -316,18 +316,9 @@ object producer extends ProductionRules {
           produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
 
       case accPred: ast.AccessPredicate =>
-        val (eArgs, resource, ePerm) = accPred match {
-          case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, fld), ePerm) =>
-            val eArgs = Seq(eRcvr)
-            (eArgs, fld, ePerm.getOrElse(ast.FullPerm()()))
-          case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predName), ePerm) =>
-            val predicate = s.program.findPredicate(predName)
-            (eArgs, predicate, ePerm.getOrElse(ast.FullPerm()()))
-          case w: ast.MagicWand =>
-            val eArgs = w.subexpressionsToEvaluate(s.program)
-            val ePerm = ast.FullPerm()()
-            (eArgs, w, ePerm)
-        }
+        val eArgs = accPred.loc.args(s.program)
+        val ePerm = accPred.perm
+        val resource = accPred.res(s.program)
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
@@ -345,24 +336,20 @@ object producer extends ProductionRules {
 
 
       case QuantifiedPermissionAssertion(forall, cond, accPred) =>
-        val (eArgs, tFormalArgs, eFormalArgs, resource, ePerm, qid, resAcc) =
+        val resource = accPred.res(s.program)
+        val resAcc = accPred.loc
+        val eArgs = resAcc.args(s.program)
+        val tFormalArgs = s.getFormalArgVars(resource, v)
+        val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
+        val ePerm = accPred.perm
+        val qid =
           accPred match {
-            case ast.FieldAccessPredicate(fa@ast.FieldAccess(eRcvr, fld), ePerm) =>
-              val eArgs = Seq(eRcvr)
-              val tFormalArgs = Seq(`?r`)
-              val eFormalArgs = Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)))
-              (eArgs, tFormalArgs, eFormalArgs, fld, ePerm.getOrElse(ast.FullPerm()()), fld.name, fa)
-            case ast.PredicateAccessPredicate(pa@ast.PredicateAccess(eArgs, predName), ePerm) =>
-              val predicate = s.program.findPredicate(predName)
-              val tFormalArgs = s.predicateFormalVarMap(predicate)
-              val eFormalArgs = Option.when(withExp)(predicate.formalArgs)
-              (eArgs, tFormalArgs, eFormalArgs, predicate, ePerm.getOrElse(ast.FullPerm()()), predName, pa)
+            case ast.FieldAccessPredicate(ast.FieldAccess(_, fld), _) =>
+              fld.name
+            case ast.PredicateAccessPredicate(ast.PredicateAccess(_, predName), _) =>
+              predName
             case w: ast.MagicWand =>
-              val eArgs = w.subexpressionsToEvaluate(s.program)
-              val ePerm = ast.FullPerm()()
-              val tFormalVars = eArgs.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(eArgs(i).typ), false))
-              val eFormalVars = Option.when(withExp)(eArgs.indices.toList.map(i => ast.LocalVarDecl(s"x$i", eArgs(i).typ)()))
-              (eArgs, tFormalVars, eFormalVars, w, ePerm, MagicWandIdentifier(w, s.program).toString, w)
+              MagicWandIdentifier(w, s.program).toString
           }
         val optTrigger =
           if (forall.triggers.isEmpty) None

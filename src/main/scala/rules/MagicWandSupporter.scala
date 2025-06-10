@@ -301,37 +301,35 @@ object magicWandSupporter extends SymbolicExecutionRules {
       })
     }
 
-    def createWandChunkAndRecordResults(s4: State,
+    def createWandChunkAndRecordResults(s: State,
                                         freshSnapRoot: Var,
                                         snapRhs: Term,
-                                        v3: Verifier)
+                                        v: Verifier)
                                        : VerificationResult = {
-      val preMark = v3.decider.setPathConditionMark()
+      val preMark = v.decider.setPathConditionMark()
 
-      v3.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
-      val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v3)
+      v.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
+      val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v)
 
-      // If the wand is used as a quantified resource anywhere in the program
-      if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
-        val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-        val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
+      val bodyVars = wand.subexpressionsToEvaluate(s.program)
 
-        evals(s4, bodyVars, _ => pve, v3)((s5, args, _, v4) => {
+      evals(s, bodyVars, _ => pve, v)((s2, tArgs, eArgsNew, v2) => {
+        val (s3, ch, tPcs, ePcs, v3 ) = if (s2.qpMagicWands.contains(MagicWandIdentifier(wand, s2.program))) {
+          val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
+          val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
           val snapshotTerm = Combine(freshSnapRoot, snapRhs)
-          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, snapshotTerm, v4)
-          v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s2, wand, tArgs, snapshotTerm, v2)
+          v2.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-          v4.decider.assumeDefinition(smValueDef, debugExp)
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args,
-            Option.when(withExp)(bodyVars), FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
-          val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
-          appendToResults(s5, ch, v4.decider.pcs.after(preMark), (conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp))), v4)
-          Success()
-        })
-      } else {
-        this.createChunk(s4, wand, wandSnapshot, pve, v3)((s5, ch, v4) => {
-          val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
+          v2.decider.assumeDefinition(smValueDef, debugExp)
+          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
+            eArgsNew, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
+          val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
+          (s2, ch, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)
+        } else {
+          val ch = MagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
+            Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+          val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
           // Partition path conditions into a set which include the freshSnapRoot and those which do not
           val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
           val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
@@ -345,12 +343,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
             }),
             Trigger(MWSFLookup(wandSnapshot.mwsf, freshSnapRoot)),
           )
-
-          appendToResults(s5, ch, v4.decider.pcs.after(preMark), (pcsQuantified +: pcsWithoutFreshSnapRoot,
-            Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: pcsWithoutExp.get)) , v4)
-          Success()
-        })
-      }
+          (s2, ch, pcsQuantified +: pcsWithoutFreshSnapRoot, Option.when(withExp)(DebugExp.createInstance("MWSF definition path conditions", pcsQuantified, true) +: pcsWithoutExp.get), v2)
+        }
+        appendToResults(s3, ch, v3.decider.pcs.after(preMark), (tPcs, ePcs), v3)
+        Success()
+      })
     }
 
     val tempResult = executionFlowController.locally(sEmp, v)((s1, v1) => {

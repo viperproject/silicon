@@ -18,7 +18,6 @@ import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 
@@ -240,18 +239,9 @@ object consumer extends ConsumptionRules {
             })))
 
       case accPred: ast.AccessPredicate =>
-        val (eArgs, resource, ePerm) = accPred match {
-          case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, fld), ePerm) =>
-            val eArgs = Seq(eRcvr)
-            (eArgs, fld, ePerm.getOrElse(ast.FullPerm()()))
-          case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predName), ePerm) =>
-            val predicate = s.program.findPredicate(predName)
-            (eArgs, predicate, ePerm.getOrElse(ast.FullPerm()()))
-          case w: ast.MagicWand =>
-            val eArgs = w.subexpressionsToEvaluate(s.program)
-            val ePerm = ast.FullPerm()()
-            (eArgs, w, ePerm)
-        }
+        val eArgs = accPred.loc.args(s.program)
+        val resource = accPred.res(s.program)
+        val ePerm = accPred.perm
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
@@ -271,28 +261,24 @@ object consumer extends ConsumptionRules {
             })))
 
       case QuantifiedPermissionAssertion(forall, cond, accPred) =>
-        val (eArgs, tFormalArgs, eFormalArgs, resource, ePerm, qid, resAcc, insuffReason) =
+        val resAcc = accPred.loc
+        val eArgs = resAcc.args(s.program)
+        val ePerm = accPred.perm
+        val (qid, insuffReason) =
           accPred match {
-            case ast.FieldAccessPredicate(fa@ast.FieldAccess(eRcvr, fld), ePerm) =>
-              val eArgs = Seq(eRcvr)
-              val tFormalArgs = Seq(`?r`)
-              val eFormalArgs = Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT)))
+            case ast.FieldAccessPredicate(fa@ast.FieldAccess(_, fld), _) =>
               val insuffReason = InsufficientPermission(fa)
-              (eArgs, tFormalArgs, eFormalArgs, fld, ePerm.getOrElse(ast.FullPerm()()), fld.name, fa, insuffReason)
-            case ast.PredicateAccessPredicate(pa@ast.PredicateAccess(eArgs, predName), ePerm) =>
-              val predicate = s.program.findPredicate(predName)
-              val tFormalArgs = s.predicateFormalVarMap(predicate)
-              val eFormalArgs = Option.when(withExp)(predicate.formalArgs)
+              (fld.name, insuffReason)
+            case ast.PredicateAccessPredicate(pa@ast.PredicateAccess(_, predName), _) =>
               val insuffReason = InsufficientPermission(pa)
-              (eArgs, tFormalArgs, eFormalArgs, predicate, ePerm.getOrElse(ast.FullPerm()()), predName, pa, insuffReason)
+              (predName, insuffReason)
             case w: ast.MagicWand =>
-              val eArgs = w.subexpressionsToEvaluate(s.program)
-              val ePerm = ast.FullPerm()()
-              val tFormalVars = eArgs.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(eArgs(i).typ), false))
-              val eFormalVars = Option.when(withExp)(eArgs.indices.toList.map(i => ast.LocalVarDecl(s"x$i", eArgs(i).typ)()))
               val insuffReason = MagicWandChunkNotFound(w)
-              (eArgs, tFormalVars, eFormalVars, w, ePerm, MagicWandIdentifier(w, s.program).toString, w, insuffReason)
+              (MagicWandIdentifier(w, s.program).toString, insuffReason)
           }
+        val resource = resAcc.res(s.program)
+        val tFormalArgs = s.getFormalArgVars(resource, v)
+        val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)

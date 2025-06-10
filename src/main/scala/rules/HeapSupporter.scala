@@ -404,19 +404,16 @@ class DefaultHeapSupporter extends HeapSupportRules {
                               eArgs: Option[Seq[ast.Exp]],
                               v: Verifier): State = {
     if (s.isUsedAsTrigger(resAcc.res(s.program))) {
-      val (resource, chunkId, tFormalArgs, name) = resAcc match {
+      val resource = resAcc.res(s.program)
+      val chunkId = ChunkIdentifier(resource, s.program)
+      val tFormalArgs = s.getFormalArgVars(resource, v)
+      val name = resAcc match {
         case l: ast.LocationAccess =>
           val res = l.loc(s.program)
-          val tFormalArgs = res match {
-            case _: ast.Field => Seq(`?r`)
-            case p: ast.Predicate => s.predicateFormalVarMap(p)
-          }
-          (res, BasicChunkIdentifier(l.loc(s.program).name), tFormalArgs, res.name)
+          res.name
         case w: ast.MagicWand =>
           val mwi = MagicWandIdentifier(w, s.program)
-          val args = w.subexpressionsToEvaluate(s.program)
-          val tFormalArgs = args.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(args(i).typ), false))
-          (w, mwi, tFormalArgs, mwi.toString)
+          mwi.toString
       }
       val trigger = (sm: Term) => ResourceTriggerFunction(resource, sm, tArgs, s.program)
       val (relevantChunks, _) =
@@ -445,24 +442,11 @@ class DefaultHeapSupporter extends HeapSupportRules {
                     pve: PartialVerificationError,
                     v: Verifier)
                    (Q: (State, Verifier) => VerificationResult) : VerificationResult = {
-    val useQPs = resource match {
-      case f: ast.Field => s.qpFields.contains(f)
-      case p: ast.Predicate => s.qpPredicates.contains(p)
-      case w: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(w, s.program))
-    }
+    val useQPs = s.isQuantifiedResource(resource)
     if (useQPs) {
       val trigger = (sm: Term) => ResourceTriggerFunction(resource, sm, tArgs, s.program)
-      val (tFormalArgs, eFormalArgs) = resource match {
-        case _: ast.Field =>
-          (Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)())))
-        case p: ast.Predicate =>
-          (s.predicateFormalVarMap(p), Option.when(withExp)(p.formalArgs))
-        case w: ast.MagicWand =>
-          val bodyVars = w.subexpressionsToEvaluate(s.program)
-          val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-          val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
-          (formalVars, formalVarExps)
-      }
+      val tFormalArgs = s.getFormalArgVars(resource, v)
+      val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
       quantifiedChunkSupporter.produceSingleLocation(
         s, resource, tFormalArgs, eFormalArgs, tArgs, eArgs, tSnap, tPerm, ePerm, trigger, v)(Q)
     } else {
@@ -501,23 +485,10 @@ class DefaultHeapSupporter extends HeapSupportRules {
                     v: Verifier)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     val resource = resAcc.res(s.program)
-    val useQPs = resource match {
-      case f: ast.Field => s.qpFields.contains(f)
-      case p: ast.Predicate => s.qpPredicates.contains(p)
-      case w: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(w, s.program))
-    }
+    val useQPs = s.isQuantifiedResource(resource)
     if (useQPs) {
-      val (tFormalArgs, eFormalArgs) = resource match {
-        case _: ast.Field =>
-          (Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)())))
-        case p: ast.Predicate =>
-          (s.predicateFormalVarMap(p), Option.when(withExp)(p.formalArgs))
-        case w: ast.MagicWand =>
-          val bodyVars = w.subexpressionsToEvaluate(s.program)
-          val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-          val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
-          (formalVars, formalVarExps)
-      }
+      val tFormalArgs = s.getFormalArgVars(resource, v)
+      val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
       quantifiedChunkSupporter.consumeSingleLocation(
         s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v)(Q)
     } else {
