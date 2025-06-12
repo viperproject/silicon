@@ -605,11 +605,7 @@ object evaluator extends EvaluationRules {
           case pa: ast.PredicateAccess => pa.args
           case w: ast.MagicWand => w.subexpressionsToEvaluate(s.program)
         }
-        val usesQPChunks = resourceAccess.res(s.program) match {
-          case _: ast.MagicWand => s1.qpMagicWands.contains(resIdent.asInstanceOf[MagicWandIdentifier])
-          case field: ast.Field => s1.qpFields.contains(field)
-          case pred: ast.Predicate => s1.qpPredicates.contains(pred)
-        }
+        val usesQPChunks = s1.isQuantifiedResource(resourceAccess.res(s.program))
 
         if (usesQPChunks) {
             val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }

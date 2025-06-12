@@ -276,39 +276,10 @@ class DefaultHeapSupporter extends HeapSupportRules {
             }
           }
         case _ =>
-          if (relevantChunks.size == 1) {
-            // No need to create a summary since there is only one chunk to look at.
-            if (s.heapDependentTriggers.contains(fa.field)) {
-              val trigger = FieldTrigger(fa.field.name, relevantChunks.head.fvf, tRcvr)
-              val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-              v.decider.assume(trigger, triggerExp)
-            }
-            val (permCheck, permCheckExp, s1a) =
-              if (s.triggerExp) {
-                (True, Option.when(withExp)(ast.TrueLit()()), s)
-              } else {
-                val (s1a, lhs) = tRcvr match {
-                  case _: Literal | _: Var => (s, True)
-                  case _ =>
-                    // Make sure the receiver exists on the SMT level and is thus able to trigger any relevant quantifiers.
-                    val rcvrVar = v.decider.appliedFresh("rcvr", tRcvr.sort, s.relevantQuantifiedVariables.map(_._1))
-                    val newFuncRec = s.functionRecorder.recordFreshSnapshot(rcvrVar.applicable.asInstanceOf[Function])
-                    (s.copy(functionRecorder = newFuncRec), BuiltinEquals(rcvrVar, tRcvr))
-                }
-                val permVal = relevantChunks.head.perm
-                val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
-                (Implies(lhs, IsPositive(totalPermissions)), Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT))(fa.pos, fa.info, fa.errT)), s1a)
-              }
-            v.decider.assert(permCheck) {
-              case false =>
-                createFailure(ve, v, s1a, permCheck, permCheckExp)
-              case true =>
-                val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
-                val fr2 =
-                  s1a.functionRecorder.recordSnapshot(fa, v.decider.pcs.branchConditions, smLookup)
-                val s2 = s1a.copy(functionRecorder = fr2)
-                Q(s2, smLookup, v)
-            }
+          val (s2, totalPerms, sm) = if (relevantChunks.size == 1) {
+            val permVal = relevantChunks.head.perm
+            val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
+            (s, totalPermissions, relevantChunks.head.fvf)
           } else {
             val (s2, smDef1, pmDef1) =
               quantifiedChunkSupporter.heapSummarisingMaps(
@@ -319,29 +290,37 @@ class DefaultHeapSupporter extends HeapSupportRules {
                 optSmDomainDefinitionCondition = None,
                 optQVarsInstantiations = None,
                 v = v)
-            if (s2.heapDependentTriggers.contains(fa.field)) {
-              val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
-              val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-              v.decider.assume(trigger, triggerExp)
-            }
-            val (permCheck, permCheckExp) =
-              if (s2.triggerExp) {
-                (True, Option.when(withExp)(ast.TrueLit()()))
-              } else {
-                val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
-                (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
+            val perms = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
+            (s2.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1)), perms, smDef1.sm)
+          }
+          if (s2.heapDependentTriggers.contains(fa.field)) {
+            val trigger = FieldTrigger(fa.field.name, sm, tRcvr)
+            val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
+            v.decider.assume(trigger, triggerExp)
+          }
+          val (permCheck, permCheckExp, s3) =
+            if (s2.triggerExp) {
+              (True, Option.when(withExp)(ast.TrueLit()()), s2)
+            } else {
+              val (s3, lhs) = tRcvr match {
+                case _: Literal | _: Var => (s2, True)
+                case _ =>
+                  // Make sure the receiver exists on the SMT level and is thus able to trigger any relevant quantifiers.
+                  val rcvrVar = v.decider.appliedFresh("rcvr", tRcvr.sort, s2.relevantQuantifiedVariables.map(_._1))
+                  val newFuncRec = s2.functionRecorder.recordFreshSnapshot(rcvrVar.applicable.asInstanceOf[Function])
+                  (s2.copy(functionRecorder = newFuncRec), BuiltinEquals(rcvrVar, tRcvr))
               }
-            v.decider.assert(permCheck) {
-              case false =>
-                createFailure(ve, v, s2, permCheck, permCheckExp)
-              case true =>
-                val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
-                val fr2 =
-                  s2.functionRecorder.recordSnapshot(fa, v.decider.pcs.branchConditions, smLookup)
-                    .recordFvfAndDomain(smDef1)
-                val s3 = s2.copy(functionRecorder = fr2)
-                Q(s3, smLookup, v)
+              (Implies(lhs, IsPositive(totalPerms)), Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT))(fa.pos, fa.info, fa.errT)), s3)
             }
+          v.decider.assert(permCheck) {
+            case false =>
+              createFailure(ve, v, s3, permCheck, permCheckExp)
+            case true =>
+              val smLookup = Lookup(fa.field.name, sm, tRcvr)
+              val fr2 =
+                s3.functionRecorder.recordSnapshot(fa, v.decider.pcs.branchConditions, smLookup)
+              val s4 = s3.copy(functionRecorder = fr2)
+              Q(s4, smLookup, v)
           }
       }
     } else {
@@ -365,11 +344,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
                 ePerm: Option[ast.Exp],
                 v: Verifier)
                 : Heap = {
-    val useQPs = resource match {
-      case f: ast.Field => s.qpFields.contains(f)
-      case p: ast.Predicate => s.qpPredicates.contains(p)
-      case w: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(w, s.program))
-    }
+    val useQPs = s.isQuantifiedResource(resource)
     val newChunk = if (useQPs) {
       val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
       v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
