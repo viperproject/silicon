@@ -14,11 +14,12 @@ import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, Identifier, MagicWandChunk, MagicWandIdentifier, QuantifiedBasicChunk, QuantifiedFieldChunk, State}
+import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, Identifier, MagicWandChunk, MagicWandIdentifier, QuantifiedBasicChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State, Store}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.{`?r`, `?s`}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -157,13 +158,17 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                         v: Verifier)
                        (Q: (State, Verifier) => VerificationResult): VerificationResult
 
-  //def havocSingle()
-
   def havocResource(s: State,
                     lhs: Term,
                     resource: ast.Resource,
                     condInfo: HavocHelperData,
                     v: Verifier): Heap
+
+  def collectForPermConditions(s: State,
+                               resource: ast.Resource,
+                               qVars: Seq[(Var, ast.LocalVar)],
+                               tArgs: Seq[Term],
+                               eArgs: Option[Seq[ast.Exp]]): Seq[(Term, (ast.Exp, Option[ast.Exp]), Seq[Var], Store, Seq[Trigger])]
 
   def getEmptyHeap(program: ast.Program): Heap
 
@@ -832,6 +837,56 @@ class DefaultHeapSupporter extends HeapSupportRules {
       case HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain) =>
         val replaceMap = inverseFunctions.qvarsToInversesOf(chunkArgs)
         And(lhs.replace(replaceMap), And(imagesOfCodomain.map(_.replace(codomainQVars, chunkArgs))))
+    }
+  }
+
+  def collectForPermConditions(s: State,
+                               resource: ast.Resource,
+                               qVars: Seq[(Var, ast.LocalVar)],
+                               tArgs: Seq[Term],
+                               eArgs: Option[Seq[ast.Exp]]): Seq[(Term, (ast.Exp, Option[ast.Exp]), Seq[Var], Store, Seq[Trigger])] = {
+    val usesQPChunks = s.isQuantifiedResource(resource)
+    val resIdent = ChunkIdentifier(resource, s.program)
+    val tVars = qVars map (_._1)
+    if (usesQPChunks) {
+      val chs = s.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
+      chs.map { ch =>
+        val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, tArgs))
+        val bcExp: ast.Exp = ast.LocalVar("chunk has non-zero permission", ast.Bool)() // TODO
+        val bcExpNew = Option.when(withExp)(ast.GeCmp(replaceVarsInExp(ch.permExp.get, ch.quantifiedVarExps.get.map(_.name), eArgs.get), ast.NoPerm()())(ch.permExp.get.pos, ch.permExp.get.info, ch.permExp.get.errT))
+        val tTriggers = Seq(Trigger(ch.valueAt(tArgs)))
+
+        val trig = ch match {
+          case fc: QuantifiedFieldChunk => FieldTrigger(fc.id.name, fc.fvf, tArgs.head)
+          case pc: QuantifiedPredicateChunk => PredicateTrigger(pc.id.name, pc.psf, tArgs)
+          case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, tArgs)
+        }
+        (And(trig, bc), (bcExp, bcExpNew), tVars, Store(), tTriggers)
+      }.toSeq
+    } else {
+      val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s.h.values, resIdent)
+      chs.map { ch =>
+        val argsEqual = tArgs.zip(ch.args)
+        val qvarDefs = qVars.map(v => argsEqual.find(_._1 == v._1).get)
+        val qvarDefMap = silicon.Map.from(qvarDefs)
+        val addedStore = Store(qVars.map(v => (v._2, (argsEqual.find(_._1 == v._1).get._2, None))))
+        val argsEqualFiltered = argsEqual.filter(ae => !qvarDefs.contains(ae))
+        val argsEqualSubst = argsEqualFiltered.map(ae => ae._1.replace(qvarDefMap) === ae._2)
+        val cond = And(argsEqualSubst :+ IsPositive(ch.perm))
+
+        val lhsExp: ast.Exp = ast.LocalVar("chunk matches forperm pattern and has positive permission", ast.Bool)() // TODO
+
+        val lhsExpNew = if (withExp) {
+          val argsEqualExps = (eArgs.get zip ch.argsExp.get) map (ae => ast.EqCmp(ae._1, ae._2)())
+          val permExp = ch.permExp.get
+          val isPositiveExpNew = ast.GeCmp(permExp, ast.NoPerm()())(permExp.pos, permExp.info, permExp.errT)
+          val lhsExpNew = BigAnd(argsEqualExps :+ isPositiveExpNew)
+          Some(lhsExpNew)
+        } else {
+          None
+        }
+        (cond, (lhsExp, lhsExpNew), Seq(), addedStore, Seq())
+      }.toSeq
     }
   }
 
