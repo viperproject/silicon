@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 
 import scala.collection.mutable

@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 import viper.silver.ast
@@ -20,12 +21,11 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsPositive
-import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
-import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, TrueLit, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, WeightedQuantifier}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
 
@@ -425,201 +425,96 @@ object evaluator extends EvaluationRules {
       case ast.CurrentPerm(resacc) =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
         evalResourceAccess(s, resacc, pve, v)((s1, identifier, args, eArgsNew, v1) => {
-          val res = resacc.res(s.program)
-          /* It is assumed that, for a given field/predicate/wand identifier (res)
-           * either only quantified or only non-quantified chunks are used.
-           */
-          val usesQPChunks = s1.isQuantifiedResource(res)
-          val (s2, currentPermAmount) =
-            if (usesQPChunks) {
-              val formalVars = s1.getFormalArgVars(res, v1)
-
-              val (relevantChunks, _) =
-                quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, identifier)
-
-              val (s2, smDef, pmDef) =
-                quantifiedChunkSupporter.heapSummarisingMaps(
-                  s1, res, formalVars, relevantChunks, v1)
-              if (s2.isUsedAsTrigger(res)) {
-                val trigger = ResourceTriggerFunction(res, smDef.sm, args, s.program)
-                val argsString = eArgsNew.mkString(", ")
-                v1.decider.assume(trigger, Option.when(withExp)({
-                  val name = res match {
-                    case f: ast.Field => f.name
-                    case p: ast.Predicate => p.name
-                    case w: ast.MagicWand => MagicWandIdentifier(w, s2.program).toString
-                  }
-                  DebugExp.createInstance(s"Resource trigger(${name}($argsString))", isInternal_ = true)
-                }))
-              }
-
-              val currentPermAmount = ResourcePermissionLookup(res, pmDef.pm, args, s2.program)
-
-              val s3 = res match {
-                case _: ast.Field =>
-                  v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
-                  val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, resacc.pos, Some(h))
-                  val exp = Option.when(withExp)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resacc)(), debugLabel)(), ast.FullPerm()())())
-                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)))
-                  val s3 = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> h)) else s2
-                  s3
-                case _ => s2
-              }
-
-              (s3, currentPermAmount)
-            } else {
-              val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
-              val currentPermAmount =
-                chs.foldLeft(NoPerm: Term)((q, ch) => {
-                  val argsPairWiseEqual = And(args.zip(ch.args).map { case (a1, a2) => a1 === a2 })
-                  PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm))
-                })
-              (s, currentPermAmount)
-            }
-
-          Q(s2, currentPermAmount, Option.when(withExp)(e), v1)})
+          v1.heapSupporter.evalCurrentPerm(s1, h, resacc, identifier, args, eArgsNew, v1)((s2, t, v2) =>
+          Q(s2, t, Option.when(withExp)(e), v2))
+        })
 
       case ast.ForPerm(vars, resourceAccess, body) =>
 
-        /* Iterate over the list of relevant chunks in continuation passing style (very similar
-         * to evals), and evaluate the forperm-body with a different qvar assignment each time.
-        */
-
-        def bindRcvrsAndEvalBody(s: State, chs: Iterable[NonQuantifiedChunk], args: Seq[ast.Exp], ts: Seq[Term], es: Option[Seq[ast.Exp]], v: Verifier)
-                                (Q: (State, Seq[Term], Option[Seq[ast.Exp]], Verifier) => VerificationResult)
-                                : VerificationResult = {
-          if (chs.isEmpty)
-            Q(s, ts.reverse, es.map(_.reverse), v)
-          else {
-            val ch = chs.head
-
-            val rcvrs = ch.args
-            val rcvrsExp = ch.argsExp
-            val s1 = s.copy()
-            var g1 = s1.g
-            var addCons : Seq[Term] = Seq()
-            var addConsExp : Option[Seq[ast.Exp]] = Option.when(withExp)(Seq())
-            for (vr <- vars) {
-              if (args.contains(vr.localVar)) {
-                val indices = args.zipWithIndex.filter(ai => ai._1 == vr.localVar).map(_._2)
-                val index = indices.head
-                g1 = g1 + (vr.localVar, (rcvrs(index), rcvrsExp.map(_(index))))
-                if (indices.length > 1) {
-                  val equalArgs = And(indices.tail map { i => rcvrs(i) === rcvrs(index) })
-                  val equalArgsExp = Option.when(withExp)(BigAnd(indices.tail map { i => ast.EqCmp(rcvrsExp.get(i), rcvrsExp.get(index))() }))
-                  addCons = addCons :+ equalArgs
-                  addConsExp = addConsExp.map(_ :+ equalArgsExp.get)
-                }
-              }
-            }
-            val s2 = s1.copy(g1)
-
-            val nonQuantArgs = args filter (a => !vars.map(_.localVar).contains(a))
-            val indices = nonQuantArgs map (a => args.indexOf(a))
-
-            // TODO LA: nonQuantArgs are not recorded yet
-            val impliesRecord = new ImpliesRecord(null, s2, v.decider.pcs, "bindRcvrsAndEvalBody")
-            val uidImplies = v.symbExLog.openScope(impliesRecord)
-
-            evals(s2, nonQuantArgs, _ => pve, v)((s3, tArgs, eArgsNew, v1) => {
-              val argsWithIndex = tArgs zip indices
-              val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
-              val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
-
-              val lhsExp: ast.Exp = ast.LocalVar("chunk matches forperm pattern and has positive permission", ast.Bool)() // TODO
-
-              val lhsExpNew = if (withExp) {
-                val argsWithIndexExpNew = eArgsNew.get zip indices
-                val zippedArgsExpNew = argsWithIndexExpNew map (ai => (ai._1, ch.argsExp.get(ai._2)))
-                val permExp = ch.permExp.get
-                val isPositiveExpNew = ast.GeCmp(permExp, ast.NoPerm()())(permExp.pos, permExp.info, permExp.errT)
-                val argsPairWiseEqualExpNew = BigAnd(zippedArgsExpNew map { case (a1, a2) => ast.EqCmp(a1, a2)() })
-                val lhsExpNew = ast.CondExp(argsPairWiseEqualExpNew, BigAnd(addConsExp.get :+ isPositiveExpNew), ast.FalseLit()())()
-                Some(lhsExpNew)
-              } else {
-                None
-              }
-
-              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False), (lhsExp, lhsExpNew), body, false, pve, v1) ((s4, tImplies, bodyNew, v2) =>{
-                val eImpliesNew = lhsExpNew.map(ast.Implies(_, bodyNew.get)())
-                bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, eImpliesNew.map(_ +: es.get), v2)((s5, ts1, es1, v3) => {
-                  v3.symbExLog.closeScope(uidImplies)
-                  Q(s5, ts1, es1, v3)
-                })
-              })
-            })
-          }
-        }
-
-        def bindQuantRcvrsAndEvalBody(s: State, chs: Iterable[QuantifiedBasicChunk], args: Seq[ast.Exp], ts: Seq[Term], es: Option[Seq[ast.Exp]], v: Verifier)
-                                     (Q: (State, Seq[Term], Option[Seq[ast.Exp]], Verifier) => VerificationResult)
-                                     : VerificationResult = {
-          if (chs.isEmpty)
-            Q(s, ts.reverse, es.map(_.reverse), v)
-          else {
-            val ch = chs.head
-
-            val localVars = vars map (_.localVar)
-            val varPair: Seq[(Var, ast.LocalVar)] = localVars map (x =>
-              (v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ), Option.when(withExp)(extractPTypeFromExp(x))), x))
-            val tVars = varPair map (_._1)
-            val varsNew = Option.when(withExp)(varPair.map (tv => ast.LocalVarDecl(tv._1.id.name, tv._2.typ)(tv._2.pos, tv._2.info, tv._2.errT)))
-            val termExpPair: Seq[(Term, Option[ast.Exp])] = varPair map (x =>
-              (x._1.asInstanceOf[Term], Option.when(withExp)(LocalVarWithVersion(simplifyVariableName(x._1.id.name), x._2.typ)(x._2.pos, x._2.info, x._2.errT).asInstanceOf[ast.Exp])))
-            val gVars = Store(localVars zip termExpPair)
-
-            val s1 = s.copy(s.g + gVars, quantifiedVariables = varPair.map(v => v._1 -> Option.when(withExp)(v._2)) ++ s.quantifiedVariables)
-
-            // TODO LA: args are not recorded yet
-            val impliesRecord = new ImpliesRecord(null, s1, v.decider.pcs, "bindQuantRcvrsAndEvalBody")
-            val uidImplies = v.symbExLog.openScope(impliesRecord)
-
-            evals(s1, args, _ => pve, v)((s2, ts1, es1, v1) => {
-              val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts1))
-              val bcExp: ast.Exp = ast.LocalVar("chunk has non-zero permission", ast.Bool)() // TODO
-              val bcExpNew = Option.when(withExp)(ast.GeCmp(replaceVarsInExp(ch.permExp.get, ch.quantifiedVarExps.get.map(_.name), es1.get), ast.NoPerm()())(ch.permExp.get.pos, ch.permExp.get.info, ch.permExp.get.errT))
-              val tTriggers = Seq(Trigger(ch.valueAt(ts1)))
-
-              val trig = ch match {
-                case fc: QuantifiedFieldChunk => FieldTrigger(fc.id.name, fc.fvf, ts1.head)
-                case pc: QuantifiedPredicateChunk => PredicateTrigger(pc.id.name, pc.psf, ts1)
-                case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts1)
-              }
-
-              evalImplies(s2, And(trig, bc), (bcExp, bcExpNew), body, false, pve, v1)((s3, tImplies, bodyNew, v2) => {
-                val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
-                val eQuantNew = Option.when(withExp)(ast.Forall(varsNew.get, Seq(), ast.Implies(bcExp, bodyNew.get)())())
-                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, eQuantNew.map(_ +: es.get), v2)((s4, ts2, es2, v3) => {
-                  v3.symbExLog.closeScope(uidImplies)
-                  Q(s4, ts2, es2, v3)
-                })})
-            })
-          }
-        }
-
         val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
 
-        val resIdent = ChunkIdentifier(resourceAccess.res(s.program), s.program)
-        val args = resourceAccess match {
-          case fa: ast.FieldAccess => Seq(fa.rcv)
-          case pa: ast.PredicateAccess => pa.args
-          case w: ast.MagicWand => w.subexpressionsToEvaluate(s.program)
-        }
-        val usesQPChunks = s1.isQuantifiedResource(resourceAccess.res(s.program))
+        val resource = resourceAccess.res(s.program)
+        val resIdent = ChunkIdentifier(resource, s.program)
+        val args = resourceAccess.args(s.program)
+        val usesQPChunks = s1.isQuantifiedResource(resource)
 
-        if (usesQPChunks) {
-            val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
-            bindQuantRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-              val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
-              Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
-            })
-        } else {
-          val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
-          bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-            val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
-            Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
+        val localVars = vars map (_.localVar)
+        val varPair: Seq[(Var, ast.LocalVar)] = localVars map (x =>
+          (v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ), Option.when(withExp)(extractPTypeFromExp(x))), x))
+        val tVars = varPair map (_._1)
+        val varsNew = Option.when(withExp)(varPair.map(tv => ast.LocalVarDecl(tv._1.id.name, tv._2.typ)(tv._2.pos, tv._2.info, tv._2.errT)))
+        val termExpPair: Seq[(Term, Option[ast.Exp])] = varPair map (x =>
+          (x._1.asInstanceOf[Term], Option.when(withExp)(LocalVarWithVersion(simplifyVariableName(x._1.id.name), x._2.typ)(x._2.pos, x._2.info, x._2.errT).asInstanceOf[ast.Exp])))
+        val gVars = Store(localVars zip termExpPair)
+
+        val s2 = s1.copy(s1.g + gVars, quantifiedVariables = varPair.map(v => v._1 -> Option.when(withExp)(v._2)) ++ s1.quantifiedVariables)
+
+        evals(s2, args, _ => pve, v)((s3, ts, es, v3) => {
+          val possibleConds: Seq[(Term, (ast.Exp, Option[ast.Exp]), Seq[Var], Store, Seq[Trigger])] = {
+            if (usesQPChunks) {
+              val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
+              chs.map { ch =>
+                val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts))
+                val bcExp: ast.Exp = ast.LocalVar("chunk has non-zero permission", ast.Bool)() // TODO
+                val bcExpNew = Option.when(withExp)(ast.GeCmp(replaceVarsInExp(ch.permExp.get, ch.quantifiedVarExps.get.map(_.name), es.get), ast.NoPerm()())(ch.permExp.get.pos, ch.permExp.get.info, ch.permExp.get.errT))
+                val tTriggers = Seq(Trigger(ch.valueAt(ts)))
+
+                val trig = ch match {
+                  case fc: QuantifiedFieldChunk => FieldTrigger(fc.id.name, fc.fvf, ts.head)
+                  case pc: QuantifiedPredicateChunk => PredicateTrigger(pc.id.name, pc.psf, ts)
+                  case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts)
+                }
+                (And(trig, bc), (bcExp, bcExpNew), tVars, Store(), tTriggers)
+              }.toSeq
+            } else {
+              val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s3.h.values, resIdent)
+              chs.map { ch =>
+                val argsEqual = ts.zip(ch.args)
+                val qvarDefs = varPair.map(v => argsEqual.find(_._1 == v._1).get)
+                val qvarDefMap = silicon.Map.from(qvarDefs)
+                val addedStore = Store(varPair.map(v => (v._2, (argsEqual.find(_._1 == v._1).get._2, None))))
+                val argsEqualFiltered = argsEqual.filter(ae => !qvarDefs.contains(ae))
+                val argsEqualSubst = argsEqualFiltered.map(ae => ae._1.replace(qvarDefMap) === ae._2)
+                val cond = And(argsEqualSubst :+ IsPositive(ch.perm))
+
+                val lhsExp: ast.Exp = ast.LocalVar("chunk matches forperm pattern and has positive permission", ast.Bool)() // TODO
+
+                val lhsExpNew = if (withExp) {
+                  val argsEqualExps = (es.get zip ch.argsExp.get) map (ae => ast.EqCmp(ae._1, ae._2)())
+                  val permExp = ch.permExp.get
+                  val isPositiveExpNew = ast.GeCmp(permExp, ast.NoPerm()())(permExp.pos, permExp.info, permExp.errT)
+                  val lhsExpNew =  BigAnd(argsEqualExps :+ isPositiveExpNew)
+                  Some(lhsExpNew)
+                } else {
+                  None
+                }
+                (cond, (lhsExp, lhsExpNew), Seq(), addedStore, Seq())
+              }.toSeq
+            }
+          }
+
+          def urgh(s: State, conds: Seq[(Term, (ast.Exp, Option[ast.Exp]), Seq[Var], Store, Seq[Trigger])], ts: Seq[Term], es: Option[Seq[ast.Exp]], v: Verifier)
+                  (QB: (State, Seq[Term], Option[Seq[ast.Exp]], Verifier) => VerificationResult): VerificationResult = {
+            if (conds.nonEmpty) {
+              val impliesRecord = new ImpliesRecord(null, s, v.decider.pcs, "ForPerm")
+              val uidImplies = v.symbExLog.openScope(impliesRecord)
+              val (t, (e0, e1), qVars, defs, triggers) = conds.head
+              evalImplies(s.copy(g = s.g + defs), t, (e0, e1), body, false, pve, v)((sNext, tImplies, bodyNew, vNext) => {
+                val tQuant = SimplifyingForall(qVars, tImplies, triggers)
+                val eQuantNew = Option.when(withExp)(ast.Forall(varsNew.get, Seq(), ast.Implies(e0, bodyNew.get)())())
+                v.symbExLog.closeScope(uidImplies)
+                urgh(sNext.copy(g = s3.g), conds.tail, tQuant +: ts, Option.when(withExp)(eQuantNew.get +: es.get), vNext)(QB)
+              })
+            } else {
+              QB(s, ts, es, v)
+            }
+          }
+
+          urgh(s3, possibleConds, Seq.empty, Option.when(withExp)(Seq.empty), v3)((s4, tConjuncts, eConjuncts, v4) => {
+            val s5 = s4.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
+            Q(s5, And(tConjuncts), Option.when(withExp)(BigAnd(eConjuncts.get)), v4)
           })
-        }
+        })
 
       case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (eQuant, qantOp, eTriggers) = sourceQuant match {

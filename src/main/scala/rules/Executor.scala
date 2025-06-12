@@ -20,10 +20,8 @@ import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
-import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
@@ -246,7 +244,7 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
-            val sBody = s.copy(g = gBody, h = Heap())
+            val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -570,7 +568,7 @@ object executor extends ExecutionRules {
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 =
               if (s.exhaleExt) {
-                s1.copy(h = Heap(),
+                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
                         exhaleExt = true,
                         /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
                          * by the packageWand method. hUsed is normally used during transferring

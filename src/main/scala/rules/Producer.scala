@@ -17,7 +17,6 @@ import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
 

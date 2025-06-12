@@ -239,7 +239,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  : VerificationResult = {
 
     val s = if (state.exhaleExt) state else
-      state.copy(reserveHeaps = Heap() :: state.h :: Nil)
+      state.copy(reserveHeaps = v.heapSupporter.getEmptyHeap(state.program) :: state.h :: Nil)
 
     // v.logger.debug(s"wand = $wand")
     // v.logger.debug("c.reserveHeaps:")
@@ -253,7 +253,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
      *       during some executions - since such crashes are hard to debug, branch parallelisation
      *       has been disabled for now.
      */
-    val sEmp = s.copy(h = Heap(),
+    val sEmp = s.copy(h = v.heapSupporter.getEmptyHeap(state.program),
                       reserveHeaps = Nil,
                       exhaleExt = false,
                       conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
@@ -314,6 +314,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val bodyVars = wand.subexpressionsToEvaluate(s.program)
 
       evals(s, bodyVars, _ => pve, v)((s2, tArgs, eArgsNew, v2) => {
+        // Currently, the snapshot of a wand differs depending on whether it is a quantified magic wand or not.
+        // Therefore, we have to keep the case distinction here and cannot leave everything but the chunk creation
+        // to the HeapSupporter.
         val (s3, ch, tPcs, ePcs, v3 ) = if (s2.qpMagicWands.contains(MagicWandIdentifier(wand, s2.program))) {
           val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
           val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
@@ -362,6 +365,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // Produce the wand's LHS.
       produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
+        val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program)
 
         /* Expected shape of reserveHeaps is either
          *   [hEmp, hOuter]
@@ -370,8 +374,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
          * if we are executing a package ghost operation (i.e. if we are coming from the consumer).
          */
         val s2 = sLhs.copy(g = s.g, // TODO: s1.g? And analogously, s1 instead of s further down?
-                           h = Heap(),
-                           reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
+                           h = emptyHeap,
+                           reserveHeaps = emptyHeap +: emptyHeap +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
                            exhaleExt = true,
                            oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
@@ -408,7 +412,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // No results mean that packaging the wand resulted in inconsistent states on all paths,
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
-      val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
+      val emptyHeap = v.heapSupporter.getEmptyHeap(sEmp.program)
+      val s1 = sEmp.copy(reserveHeaps = emptyHeap +: emptyHeap +: emptyHeap +: s.reserveHeaps.tail)
       createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v)
     }
 
@@ -566,9 +571,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * is consumed from hOps and permissions for the predicate are added to the state's
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
+      val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program)
       val (fr, hOpsJoinUsed) = v.stateConsolidator(newState).merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v)
-      newState.copy(functionRecorder = fr, h = Heap(),
-          reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
+      newState.copy(functionRecorder = fr, h = emptyHeap,
+          reserveHeaps = emptyHeap +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
     } else newState
 
   def getOutEdges(s: State, b: SilverBlock): Seq[Edge[Stmt, Exp]] =

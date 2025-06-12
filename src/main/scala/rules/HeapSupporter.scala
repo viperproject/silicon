@@ -6,17 +6,23 @@
 
 package viper.silicon.rules
 
+import viper.silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, Identifier, MagicWandChunk, MagicWandIdentifier, QuantifiedBasicChunk, QuantifiedFieldChunk, QuantifiedPredicateChunk, State}
+import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
+import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
+import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, Identifier, MagicWandChunk, MagicWandIdentifier, QuantifiedBasicChunk, QuantifiedFieldChunk, State}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
-import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms.predef.{`?r`, `?s`}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.parser.PUnknown
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
 
@@ -31,6 +37,15 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                       v: Verifier)
                      (Q: (State, Term, Verifier) => VerificationResult)
                      : VerificationResult
+
+  def evalCurrentPerm(s: State,
+                      h: Heap,
+                      resAcc: ast.ResourceAccess,
+                      identifier: ChunkIdentifer,
+                      tArgs: Seq[Term],
+                      eArgs: Option[Seq[ast.Exp]],
+                      v: Verifier)
+                     (Q: (State, Term, Verifier) => VerificationResult): VerificationResult
 
   def isPossibleTrigger(s: State, fa: ast.FieldAccess): Boolean
 
@@ -62,8 +77,6 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                               tArgs: Seq[Term],
                               eArgs: Option[Seq[ast.Exp]],
                               v: Verifier): State
-
-  //def getCurrentPermAmount()
 
   def consumeSingle(s: State,
                     h: Heap,
@@ -146,9 +159,13 @@ trait HeapSupportRules extends SymbolicExecutionRules {
 
   //def havocSingle()
 
-  //def havocQuantified()
+  def havocResource(s: State,
+                    lhs: Term,
+                    resource: ast.Resource,
+                    condInfo: HavocHelperData,
+                    v: Verifier): Heap
 
-  // def getEmptyHeap()
+  def getEmptyHeap(program: ast.Program): Heap
 
 }
 
@@ -226,6 +243,69 @@ class DefaultHeapSupporter extends HeapSupportRules {
       })
     }
   }
+
+  def evalCurrentPerm(s: State,
+                      h: Heap,
+                      resAcc: ast.ResourceAccess,
+                      identifier: ChunkIdentifer,
+                      tArgs: Seq[Term],
+                      eArgs: Option[Seq[ast.Exp]],
+                      v: Verifier)
+                     (Q: (State, Term, Verifier) => VerificationResult): VerificationResult =
+    {
+      val res = resAcc.res(s.program)
+      /* It is assumed that, for a given field/predicate/wand identifier (res)
+       * either only quantified or only non-quantified chunks are used.
+       */
+      val usesQPChunks = s.isQuantifiedResource(res)
+      val (s2, currentPermAmount) =
+        if (usesQPChunks) {
+          val formalVars = s.getFormalArgVars(res, v)
+
+          val (relevantChunks, _) =
+            quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, identifier)
+
+          val (s2, smDef, pmDef) =
+            quantifiedChunkSupporter.heapSummarisingMaps(
+              s, res, formalVars, relevantChunks, v)
+          if (s2.isUsedAsTrigger(res)) {
+            val trigger = ResourceTriggerFunction(res, smDef.sm, tArgs, s.program)
+            val argsString = eArgs.mkString(", ")
+            v.decider.assume(trigger, Option.when(withExp)({
+              val name = res match {
+                case f: ast.Field => f.name
+                case p: ast.Predicate => p.name
+                case w: ast.MagicWand => MagicWandIdentifier(w, s2.program).toString
+              }
+              DebugExp.createInstance(s"Resource trigger(${name}($argsString))", isInternal_ = true)
+            }))
+          }
+
+          val currentPermAmount = ResourcePermissionLookup(res, pmDef.pm, tArgs, s2.program)
+
+          val s3 = res match {
+            case _: ast.Field =>
+              v.decider.prover.comment(s"perm($resAcc)  ~~>  assume upper permission bound")
+              val (debugHeapName, debugLabel) = v.getDebugOldLabel(s2, resAcc.pos, Some(h))
+              val exp = Option.when(withExp)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resAcc)(), debugLabel)(), ast.FullPerm()())())
+              v.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)))
+              val s3 = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> h)) else s2
+              s3
+            case _ => s2
+          }
+
+          (s3, currentPermAmount)
+        } else {
+          val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
+          val currentPermAmount =
+            chs.foldLeft(NoPerm: Term)((q, ch) => {
+              val argsPairWiseEqual = And(tArgs.zip(ch.args).map { case (a1, a2) => a1 === a2 })
+              PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm))
+            })
+          (s, currentPermAmount)
+        }
+      Q(s2, currentPermAmount, v)
+    }
 
   def evalFieldAccess(s: State,
                       fa: ast.FieldAccess,
@@ -595,6 +675,168 @@ class DefaultHeapSupporter extends HeapSupportRules {
       insufficientPermissionReason,
       v
     )(Q)
+  }
+
+  def havocResource(s: State,
+                    lhs: Term,
+                    resource: ast.Resource,
+                    condInfo: HavocHelperData,
+                    v: Verifier): Heap = {
+    if (s.isQuantifiedResource(resource)) {
+      havocQuantifiedResource(s, lhs, resource, condInfo, v)
+    } else {
+      havocNonQuantifiedResource(s, lhs, resource, condInfo, v)
+    }
+  }
+
+  /** Havoc a non-quantified resource. This helper function is used by havoc and havocall.
+    * Suppose we want to havoc a resource R(e1, ..., en).
+    * We filter the heap to only consider chunks with R. For each chunk R(vars; s, p), we
+    * replace it with R(vars; s', p) where s' := ite(cond, fresh, s).
+    * `cond` is calculated using `condInfo` by a helper function
+    *
+    * @param s        the state
+    * @param lhs      the havoc condition
+    * @param resource the type of resource we are havocking
+    * @param condInfo the info needed to calculate the snapshot replace condition
+    * @param v        the verifier
+    * @return the resulting heap
+    */
+  private def havocNonQuantifiedResource(s: State,
+                                         lhs: Term,
+                                         resource: ast.Resource,
+                                         condInfo: HavocHelperData,
+                                         v: Verifier)
+  : Heap = {
+
+    val id = ChunkIdentifier(resource, s.program)
+    val (relevantChunks, otherChunks) = chunkSupporter.splitHeap[NonQuantifiedChunk](s.h, id)
+
+    val newChunks = relevantChunks.map {
+      case ch: MagicWandChunk =>
+        val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
+        val cond = replacementCond(lhs, ch.args, condInfo)
+        val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
+        ch.withSnap(magicWandSnapshot, None)
+
+      case ch =>
+        val havockedSnap = freshSnap(ch.snap.sort, v)
+        val cond = replacementCond(lhs, ch.args, condInfo)
+        ch.withSnap(Ite(cond, havockedSnap, ch.snap), None)
+    }
+    Heap(otherChunks ++ newChunks)
+  }
+
+  /** Havoc a quantified resource. This helper function is used by havoc and havocall.
+    * Suppose we want to havoc a resource R(r1, ..., rn).
+    * We filter the heap to only consider chunks with R. For each chunk R(rs; sm, pm), we
+    * replace it with R(rs; sm', pm)
+    * We axiomatize the new snapshot map sm' as follows:
+    * forall rs :: !cond(rs) ==> sm(rs) == sm'(rs)
+    * the snapshot replacement condition `cond` is calculated by a helper function
+    * This axiomatization provides no information about values which satisfy the snapshot
+    * replacement condition, thus these snapshots are in essence, havocked.
+    *
+    * @param s        the state
+    * @param lhs      the havoc condition
+    * @param resource the resource type that we will havoc
+    * @param condInfo the info needed to calculate the snapshot replace function
+    * @param v        the verifier
+    * @return the resulting heap
+    */
+  private def havocQuantifiedResource(s: State,
+                                      lhs: Term,
+                                      resource: ast.Resource,
+                                      condInfo: HavocHelperData,
+                                      v: Verifier) : Heap = {
+
+    // Quantified field chunks are of the form R(r; sm, pm).
+    // Conceptually, quantified predicate/wand chunks look like R(r1, ..., rn; sm, pm).
+    // However, they are implemented as R(s; sm, pm). Thus, the snapshot map and permission
+    // map take this aggregated quantifier s as input.
+    // The arguments can be accessed via the snapshot destructors First and Second, e.g.
+    //  r1 = First(s),
+    //  r2 = First(Second(s)),
+    //  ...
+    val aggregateQvar = resource match {
+      case _: ast.Field => `?r`
+      case _ => `?s`
+    }
+
+    // Get the sequence of quantified variables (r1, ..., rn). For fields, this is the same
+    // as aggregateQVar.
+    val codomainQVars = s.getFormalArgVars(resource, v)
+
+    val cond = replacementCond(lhs, codomainQVars, condInfo)
+
+    // The condition is in terms of (r1, ..., rn). We must write it in terms of s.
+    // Create the map from codomainQVars to expressions on the aggregateQVar, e.g.
+    // r1 -> First(s), r2 -> First(Second(s)), etc.
+    // Use this to rewrite cond in terms of s
+    val codomainToAggregate = codomainQVars.zip(fromSnapTree(aggregateQvar, codomainQVars)).to(silicon.Map)
+    val transformedCond = cond.replace(codomainToAggregate)
+
+    val id = ChunkIdentifier(resource, s.program)
+    val (relevantChunks, otherChunks) = quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, id)
+
+    val newChunks = relevantChunks.map { ch =>
+
+      // Create a fresh snapshot map that we will axiomatize.
+      // The argument additionalFvfArgs is an empty list because havocall statements cannot
+      // be nested inside of quantifiers, thus it is impossible for us to be in a setting
+      // with additional quantified variables.
+      val newSm = freshSnapshotMap(s, resource, List(), v)
+
+      // axiomatize the snapshot map:
+      //  forall s: Snap :: !cond(s) ==> sm(s) == sm'(s)
+      val lookupNew = ResourceLookup(resource, newSm, Seq(aggregateQvar), s.program)
+      val lookupOld = ResourceLookup(resource, ch.snapshotMap, Seq(aggregateQvar), s.program)
+      val newAxiom = Forall(
+        aggregateQvar,
+        Implies(Not(transformedCond), lookupOld === lookupNew),
+        Seq(Trigger(lookupNew), Trigger(lookupOld)),
+        s"qp.smValDef${v.counter(this).next()}",
+        isGlobal = true, // TODO: should the quantifier be global? Matches example in summarize_field
+      )
+
+      v.decider.prover.comment("axiomatized snapshot map after havoc")
+      val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
+      v.decider.assume(newAxiom, debugExp)
+
+      ch.withSnapshotMap(newSm)
+    }
+    Heap(newChunks ++ otherChunks)
+  }
+
+  /** Construct the condition that determines if we should replace a snapshot.
+    * If we have havoc lhs ==> R(e1, ..., en) and we encounter the chunk R(r1, ..., rn; _, _),
+    * then we should replace the snapshot if
+    * cond := lhs && e1 == r1 && ... && en == rn
+    * If we have havocall vs :: lhs(vs) ==> R(e1(vs), ..., en(vs)), then we assume that
+    * e' is the inverse of the function (vs --> (e1(vs), ..., en(vs))).
+    * If we encounter the chunk R(r1, ..., rn; _, _), then we should replace the snapshot if
+    * cond := lhs(e'(e1(vs), ..., en(vs)))
+    *
+    * @param lhs       the havoc condition
+    * @param chunkArgs the arguments to the chunk (r1, ..., rn)
+    * @param condInfo  contains enough information to construct the snapshot replacement condition.
+    *                  For havoc statements, it contains the variables (e1, ..., en)
+    *                  For havocall statements, it contains the inverse function e'
+    * @return the snapshot replacement condition
+    */
+  private def replacementCond(lhs: Term, chunkArgs: Seq[Term], condInfo: HavocHelperData): Term = {
+    condInfo match {
+      case HavocOneData(args) =>
+        val eqs = And(chunkArgs.zip(args).map { case (t1, t2) => t1 === t2 })
+        And(lhs, eqs)
+      case HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain) =>
+        val replaceMap = inverseFunctions.qvarsToInversesOf(chunkArgs)
+        And(lhs.replace(replaceMap), And(imagesOfCodomain.map(_.replace(codomainQVars, chunkArgs))))
+    }
+  }
+
+  def getEmptyHeap(program: ast.Program): Heap = {
+    Heap()
   }
 }
 
