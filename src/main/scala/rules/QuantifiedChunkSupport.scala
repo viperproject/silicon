@@ -1081,11 +1081,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             tPerm: Term,
                             ePerm: Option[ast.Exp],
                             resourceTriggerFactory: Term => Term, /* Trigger with some snapshot */
+                            mergeAndTrigger: Boolean,
                             v: Verifier)
                            (Q: (State, Verifier) => VerificationResult)
                            : VerificationResult = {
 
     val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
+    val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val comment = "Definitional axioms for singleton-SM's value"
     v.decider.prover.comment(comment)
     val definitionalAxiomMark = v.decider.setPathConditionMark()
@@ -1094,31 +1096,36 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program)
-    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
-    val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
-    val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
-    val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
-    pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+    val s1 = if (mergeAndTrigger) {
+      val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
-    val smCache1 = if (s.isUsedAsTrigger(resource)){
-      val (relevantChunks, _) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
-      val (smDef1, smCache1) =
-        quantifiedChunkSupporter.summarisingSnapshotMap(
-          s, resource, formalQVars, relevantChunks, v)
-      v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(withExp)(DebugExp.createInstance("Resource Trigger", true)))
-      smCache1
+      val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
+      val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
+      val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
+      pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+
+      val smCache1 = if (s.isUsedAsTrigger(resource)) {
+        val (relevantChunks, _) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id)
+        val (smDef1, smCache1) =
+          quantifiedChunkSupporter.summarisingSnapshotMap(
+            s, resource, formalQVars, relevantChunks, v)
+        v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(withExp)(DebugExp.createInstance("Resource Trigger", true)))
+        smCache1
+      } else {
+        s.smCache
+      }
+
+      s.copy(h = h1,
+        conservedPcs = conservedPcs,
+        functionRecorder = fr1.recordFvfAndDomain(smDef2),
+        smCache = smCache1)
     } else {
-      s.smCache
+      s.copy(h = s.h + ch,
+             functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2),
+             conservedPcs = conservedPcs)
     }
-
-
-    val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
-    val s1 = s.copy(h = h1,
-                    conservedPcs = conservedPcs,
-                    functionRecorder = fr1.recordFvfAndDomain(smDef2),
-                    smCache = smCache1)
     Q(s1, v)
   }
 

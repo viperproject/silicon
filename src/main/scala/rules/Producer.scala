@@ -330,7 +330,7 @@ object producer extends ProductionRules {
               else
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val gainExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
-              v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, v2)(Q)
+              v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2)(Q)
             })))
 
 

@@ -13,7 +13,7 @@ import viper.silicon.Config.JoinMode
 import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
+import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
@@ -390,18 +390,27 @@ object executor extends ExecutionRules {
         val p = FullPerm
         val pExp = Option.when(withExp)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))
 
-        var newHeap = s.h
-        fields foreach (field => {
-          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ), Option.when(withExp)(extractPTypeFromExp(x)))
-          val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, field)(), debugLabel)(stmt.pos, stmt.info, stmt.errT))
-          newHeap = v.heapSupporter.addToHeap(s, newHeap, field, Seq(tRcvr), eRcvr, snap, snapExp, p, pExp, v)
-        })
+        def addFieldPerms(s: State, flds: Seq[ast.Field], v: Verifier)
+                         (QB: (State, Verifier) => VerificationResult): VerificationResult = {
+          if (flds.isEmpty) {
+            QB(s, v)
+          } else {
+            val fld = flds.head
+            val snap = v.decider.fresh(fld.name, v.symbolConverter.toSort(fld.typ), Option.when(withExp)(extractPTypeFromExp(x)))
+            val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, fld)(), debugLabel)(stmt.pos, stmt.info, stmt.errT))
+            v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, snapExp, p, pExp, NullPartialVerificationError, false, v)((s1, v1) => {
+              addFieldPerms(s1, flds.tail, v1)(QB)
+            })
+          }
+        }
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
-        val s1 = s.copy(g = s.g + (x, (tRcvr, eRcvrNew)), h = newHeap)
-        val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
-        v.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
-        Q(s2, v)
+        addFieldPerms(s, fields, v)((s0, v0) => {
+          val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
+          val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
+          v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
+          Q(s2, v0)
+        })
 
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit =>

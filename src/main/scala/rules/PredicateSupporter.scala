@@ -83,7 +83,7 @@ object predicateSupporter extends PredicateSupportRules {
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate)), None, tPerm, ePerm, pve, v1)((s3, v3) => {
+      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
         Q(s4, v3)
       })

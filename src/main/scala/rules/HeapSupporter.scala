@@ -14,7 +14,7 @@ import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, Identifier, MagicWandChunk, MagicWandIdentifier, QuantifiedBasicChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State, Store}
+import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, MagicWandChunk, MagicWandIdentifier, QuantifiedBasicChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State, Store}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.{`?r`, `?s`}
@@ -60,18 +60,6 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                       v: Verifier)
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult
-
-  def addToHeap(s: State,
-                h: Heap,
-                resource: ast.Resource,
-                tArgs: Seq[Term],
-                eArgs: Option[Seq[ast.Exp]],
-                tSnap: Term,
-                eSnap: Option[ast.Exp],
-                tPerm: Term,
-                ePerm: Option[ast.Exp],
-                v: Verifier)
-                : Heap
 
   def triggerResourceIfNeeded(s: State,
                               resAcc: ast.ResourceAccess,
@@ -128,6 +116,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                     tPerm: Term,
                     ePerm: Option[ast.Exp],
                     pve: PartialVerificationError,
+                    mergeAndTrigger: Boolean,
                     v: Verifier)
                    (Q: (State, Verifier) => VerificationResult): VerificationResult
 
@@ -175,8 +164,6 @@ trait HeapSupportRules extends SymbolicExecutionRules {
 }
 
 class DefaultHeapSupporter extends HeapSupportRules {
-  import evaluator._
-
   def isPossibleTrigger(s: State, fa: ast.FieldAccess): Boolean = {
     s.qpFields.contains(fa.field)
   }
@@ -418,46 +405,6 @@ class DefaultHeapSupporter extends HeapSupportRules {
     }
   }
 
-  def addToHeap(s: State,
-                h: Heap,
-                resource: ast.Resource,
-                tArgs: Seq[Term],
-                eArgs: Option[Seq[ast.Exp]],
-                tSnap: Term,
-                eSnap: Option[ast.Exp],
-                tPerm: Term,
-                ePerm: Option[ast.Exp],
-                v: Verifier)
-                : Heap = {
-    val useQPs = s.isQuantifiedResource(resource)
-    val newChunk = if (useQPs) {
-      val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
-      v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-      val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-      v.decider.assumeDefinition(smValueDef, debugExp)
-      val (formalVars, formalVarsExp) = resource match {
-        case _: ast.Field =>
-          (Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)())))
-        case p: ast.Predicate =>
-          (s.predicateFormalVarMap(p), Option.when(withExp)(p.formalArgs))
-        case w: ast.MagicWand =>
-          val bodyVars = w.subexpressionsToEvaluate(s.program)
-          val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-          val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
-          (formalVars, formalVarExps)
-      }
-      quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program)
-    } else {
-      resource match {
-        case w: ast.MagicWand =>
-          MagicWandChunk(MagicWandIdentifier(w, s.program), ???, tArgs, eArgs, ???, tPerm, ePerm)
-        case l: ast.Location =>
-          BasicChunk(FieldID, BasicChunkIdentifier(l.name), tArgs, eArgs, tSnap, eSnap, tPerm, ePerm)
-      }
-    }
-    h + Heap(Seq(newChunk))
-  }
-
   def triggerResourceIfNeeded(s: State,
                               resAcc: ast.ResourceAccess,
                               tArgs: Seq[Term],
@@ -500,6 +447,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
                     tPerm: Term,
                     ePerm: Option[ast.Exp],
                     pve: PartialVerificationError,
+                    mergeAndTrigger: Boolean,
                     v: Verifier)
                    (Q: (State, Verifier) => VerificationResult) : VerificationResult = {
     val useQPs = s.isQuantifiedResource(resource)
@@ -508,7 +456,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
       val tFormalArgs = s.getFormalArgVars(resource, v)
       val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
       quantifiedChunkSupporter.produceSingleLocation(
-        s, resource, tFormalArgs, eFormalArgs, tArgs, eArgs, tSnap, tPerm, ePerm, trigger, v)(Q)
+        s, resource, tFormalArgs, eFormalArgs, tArgs, eArgs, tSnap, tPerm, ePerm, trigger, mergeAndTrigger, v)(Q)
     } else {
       resource match {
         case w: ast.MagicWand =>
@@ -519,16 +467,20 @@ class DefaultHeapSupporter extends HeapSupportRules {
           val chunkId = ChunkIdentifier(resource, s.program)
           val (resId, snap1) = if (resource.isInstanceOf[ast.Field]) (FieldID, tSnap) else (PredicateID, tSnap.convert(sorts.Snap))
           val ch = BasicChunk(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm, ePerm)
-          chunkSupporter.produce(s, s.h, ch, v)((s2, h2, v2) => {
-            if (resource.isInstanceOf[ast.Predicate] && Verifier.config.enablePredicateTriggersOnInhale() && s2.functionRecorder == NoopFunctionRecorder
-              && !Verifier.config.disableFunctionUnfoldTrigger()) {
-              val predicate = resource.asInstanceOf[ast.Predicate]
-              val argsString = eArgs.mkString(", ")
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-              v2.decider.assume(App(s2.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp)
-            }
-            Q(s2.copy(h = h2), v2)
-          })
+          if (mergeAndTrigger) {
+            chunkSupporter.produce(s, s.h, ch, v)((s2, h2, v2) => {
+              if (resource.isInstanceOf[ast.Predicate] && Verifier.config.enablePredicateTriggersOnInhale() && s2.functionRecorder == NoopFunctionRecorder
+                && !Verifier.config.disableFunctionUnfoldTrigger()) {
+                val predicate = resource.asInstanceOf[ast.Predicate]
+                val argsString = eArgs.mkString(", ")
+                val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
+                v2.decider.assume(App(s2.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp)
+              }
+              Q(s2.copy(h = h2), v2)
+            })
+          } else {
+            Q(s.copy(h = s.h + ch), v)
+          }
       }
     }
   }
