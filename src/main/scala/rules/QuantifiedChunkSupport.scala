@@ -551,17 +551,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           codomainQVar,
-          Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
+          v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)), True),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
       })
 
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
+      val chunkTriggers = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), FieldTrigger(field.name, chunk.snapshotMap, codomainQVar), True))
       val resourceTriggerDefinition =
         Forall(
           codomainQVar,
-          And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
+          And(chunkTriggers),
           Trigger(Lookup(field.name, sm, codomainQVar)),
           s"qp.fvfResTrgDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
@@ -638,9 +639,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             transformedOptSmDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
             IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
 
+        val term = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))), True)
         Forall(
-          qvar,
-          Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))),
+          qvar, term,
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.psmValDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
@@ -651,10 +652,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case r => r
     }
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+
+      val chunkTriggers = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program), True))
       val resourceTriggerDefinition =
         Forall(
           qvar,
-          And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program))),
+          And(chunkTriggers),
           Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)),
           s"qp.psmResTrgDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
@@ -690,10 +693,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val permSummary = ResourcePermissionLookup(resource, pm, codomainQVars, s.program)
 
+    val chunkPerms = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), chunk.perm, NoPerm))
     val valueDefinitions =
       Forall(
         codomainQVars,
-        permSummary === BigPermSum(relevantChunks map (_.perm)),
+        permSummary === BigPermSum(chunkPerms),
         Trigger(permSummary),
         s"qp.resPrmSumDef${v.counter(this).next()}",
         isGlobal = true)
@@ -707,12 +711,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
       // TODO: Quantify over snapshot if resource is predicate.
       //       Also check other places where a similar quantifier is constructed.
+      val chunkTriggerDefs = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program), True))
       val resourceTriggerDefinition =
       Forall(
         codomainQVars,
-        And(resourceTriggerFunction +:
-          relevantChunks.map(chunk =>
-            ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program))),
+        And(resourceTriggerFunction +: chunkTriggerDefs),
         Trigger(ResourcePermissionLookup(resource, pm, codomainQVars, s.program)),
         s"qp.resTrgDef${v.counter(this).next()}",
         isGlobal = true)
@@ -733,8 +736,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              v: Verifier)
                             : (PermMapDefinition, PmCache) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.assumptionAnalyzer.addForcedDependencies(relevantChunks.toSet)
-    val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
+    v.decider.assumptionAnalyzer.enableCustomEdges()
+    val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match { // TODO ake: do not get from cache when analysis is enabled
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
         (pmDef, s.pmCache)
@@ -746,6 +749,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
     }
     v.decider.analysisSourceInfoStack.removeForcedSource()
+    v.decider.assumptionAnalyzer.disableCustomEdges()
     res
   }
 
@@ -774,7 +778,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.assumptionAnalyzer.addForcedDependencies(relevantChunks.toSet)
+    v.decider.assumptionAnalyzer.enableCustomEdges()
 
     def emitSnapshotMapDefinition(s: State,
                                   smDef: SnapshotMapDefinition,
@@ -832,7 +836,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             quantifiedChunkSupporter.summarise(
               s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
           val smDef = SnapshotMapDefinition(resource, sm, valueDefs, optDomainDefinition.toSeq)
-          val totalPermissions = BigPermSum(relevantChunks.map(_.perm))
+
+          val chunkPerms = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), chunk.perm, NoPerm))
+          val totalPermissions = BigPermSum(chunkPerms)
 
           if (Verifier.config.disableValueMapCaching()) {
             (smDef, s.smCache)
@@ -845,8 +851,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       }
 
     emitSnapshotMapDefinition(s, smDef, v, optQVarsInstantiations)
-    v.decider.assumptionAnalyzer.unsetForcedDependencies()
     v.decider.analysisSourceInfoStack.removeForcedSource()
+    v.decider.assumptionAnalyzer.disableCustomEdges()
     (smDef, smCache)
   }
 
@@ -859,7 +865,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           optQVarsInstantiations: Option[Seq[Term]] = None)
                          : (State, SnapshotMapDefinition, PermMapDefinition) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.assumptionAnalyzer.addForcedDependencies(relevantChunks.toSet)
+    v.decider.assumptionAnalyzer.enableCustomEdges()
     val (smDef, smCache) =
       summarisingSnapshotMap(
         s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition, optQVarsInstantiations)
@@ -871,8 +877,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s1, resource, codomainQVars, relevantChunks, smDef, v)
 
     val s2 = s1.copy(pmCache = pmCache)
-    v.decider.assumptionAnalyzer.unsetForcedDependencies()
     v.decider.analysisSourceInfoStack.removeForcedSource()
+    v.decider.assumptionAnalyzer.disableCustomEdges()
     (s2, smDef, pmDef)
   }
 
@@ -886,15 +892,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           v: Verifier)
   : (State, PermMapDefinition) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.assumptionAnalyzer.addForcedDependencies(relevantChunks.toSet)
+    v.decider.assumptionAnalyzer.enableCustomEdges()
     val s1 = s
     val (pmDef, pmCache) =
       quantifiedChunkSupporter.summarisingPermissionMap(
         s1, resource, codomainQVars, relevantChunks, null, v)
 
     val s2 = s1.copy(pmCache = pmCache)
-    v.decider.assumptionAnalyzer.unsetForcedDependencies()
     v.decider.analysisSourceInfoStack.removeForcedSource()
+    v.decider.assumptionAnalyzer.disableCustomEdges()
     (s2, pmDef)
   }
 
