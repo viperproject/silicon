@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.Logger
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
-import viper.silicon.rules.StateConsolidationRules
+import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter}
 import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
@@ -39,6 +39,8 @@ trait Verifier {
   def quantifierSupporter: QuantifierSupporter
   def snapshotSupporter: SnapshotSupporter
   def stateConsolidator(s: State): StateConsolidationRules
+
+  val heapSupporter: HeapSupportRules = defaultHeapSupporter
 
   def verificationPoolManager: VerificationPoolManager
 
