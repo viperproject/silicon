@@ -1714,7 +1714,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
           v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, AssumptionType.Internal)
           remainingChunks =
-            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(AssumptionType.Implicit))
+            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(AssumptionType.Internal)) // TODO ake: assumption Type?
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
           val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
@@ -1725,7 +1725,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               remainingChunks = remainingChunks :+ ithChunk
             } else {
               remainingChunks =
-                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(AssumptionType.Implicit))
+                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(AssumptionType.Internal))
             }
           }else{
             v.decider.assumptionAnalyzer.addPermissionExhaleNode(ithChunk, ithPTakenExp, v.decider.analysisSourceInfoStack.getFullSourceInfo)

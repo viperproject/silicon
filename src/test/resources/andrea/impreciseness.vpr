@@ -14,3 +14,18 @@ method permTest(a: Ref, b: Ref, n: Int)
     assert a.f >= 0 // incorrectly depends on acc(b.f)
 }
 
+method quantifiedPerm2Seqs2(xs: Seq[Ref], ys: Seq[Ref]) {
+  assume |xs| > 5 && |ys| > 3
+  inhale forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0)
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0) // incorrectly depends on inhale forall x in xs due to heap summary
+
+  assert xs[0].f > 0
+}
+
+method quantifiedPerm2Seqs3(xs: Seq[Ref], ys: Seq[Ref]) {
+  assume |xs| > 5 && |ys| > 3
+  inhale forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0)
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
+
+  assert xs[0].f > 0 // incorrectly depends on inhale forall x in xs due to heap summary
+}

@@ -38,6 +38,7 @@ trait AssumptionAnalyzer {
   def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
 
   def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int]
+  def addDependencyFromExhaleToInhale(newChunkNodeId: Option[Int]): Unit
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
 
@@ -224,6 +225,15 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
       .map(_.id).toSet
   }
 
+  override def addDependencyFromExhaleToInhale(newChunkNodeId: Option[Int]): Unit = {
+    if(newChunkNodeId.isEmpty) return
+    val newChunkNode = assumptionGraph.nodes.filter(_.id == newChunkNodeId.get).head
+    val exhaleNodes = assumptionGraph.nodes
+      .filter(c => c.isInstanceOf[PermissionExhaleNode] && c.isClosed && c.sourceInfo.equals(newChunkNode.sourceInfo))
+      .map(_.id).toSet
+    assumptionGraph.addEdges(exhaleNodes, newChunkNodeId)
+  }
+
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit = {
     if(newChunkNodeId.isEmpty) return
 
@@ -285,6 +295,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int] = Set.empty
 
+  override def addDependencyFromExhaleToInhale(newChunkNodeId: Option[Int]): Unit = {}
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: Option[Int]): Unit = {
   }
 
