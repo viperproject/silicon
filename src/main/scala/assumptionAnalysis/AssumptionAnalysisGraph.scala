@@ -65,7 +65,7 @@ trait AssumptionAnalysisGraph {
 
   def addTransitiveEdges(source: AssumptionAnalysisNode, targets: Iterable[AssumptionAnalysisNode]): Unit = {
     val oldTargets = transitiveEdges.getOrElse(source.id, Set.empty)
-    val newTargets = targets filter(t => t.id > source.id) map(_.id) // we only want forward edges
+    val newTargets = targets map(_.id)
     if(newTargets.nonEmpty) transitiveEdges.update(source.id, oldTargets ++ newTargets)
   }
 
