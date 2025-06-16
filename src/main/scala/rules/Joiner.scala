@@ -13,7 +13,7 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
-import viper.silicon.state.terms.{And, Or, Term}
+import viper.silicon.state.terms.{And, Or, Term, True}
 import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -105,8 +105,10 @@ object joiner extends JoiningRules {
           val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          v.decider.assume(pcs, pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
-          feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
+          // TODO ake: move conditionals directly to pcs, imprecise!
+          v.decider.assume(v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, entry.pathConditions.branchConditions /* TODO ake: and globals*/, pcs, True),
+            pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
+          feasibleBranches = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, entry.pathConditions.branchConditions, And(entry.pathConditions.branchConditions), True) :: feasibleBranches
           feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
           feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)
         })

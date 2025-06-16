@@ -32,12 +32,13 @@ trait AssumptionAnalyzer {
   def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int]
-  def addAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
-  def addAssumption(assumption: String, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addAssumption(assumption: ast.Exp, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addAssumption(assumption: String, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
 
   def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int]
+  def getNodeIds(terms: Set[Term]): Set[Int]
   def addDependencyFromExhaleToInhale(newChunkNodeId: Option[Int]): Unit
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
@@ -50,15 +51,21 @@ trait AssumptionAnalyzer {
 
   def exportGraph(): Unit
 
-  def addForcedDependencies(chunks: Set[Chunk]): Unit = {
-    forcedDependencies = forcedDependencies ++ getChunkNodeIds(chunks).toList
+  def addForcedDependencies(ids: Set[Int]): Unit = {
+    forcedDependencies = forcedDependencies ++ ids
+  }
+
+  def addForcedChunkDependencies(chunks: Set[Chunk]): Unit = {
+    addForcedDependencies(getChunkNodeIds(chunks))
   }
 
   def unsetForcedDependencies(): Unit = {
     forcedDependencies = List.empty
   }
 
-  def createLabelledConditional(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term
+  def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term
+  def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], thenTerm: Term, elseTerm: Term): Term
+  def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], thenTerm: Seq[Term], elseTerm: Term): Seq[Term]
 
 }
 
@@ -137,31 +144,32 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   }
 
   override def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, analysisSourceInfo, AssumptionAnalyzer.extractAssumptionTypeFromInfo(assumption.originalExp.get.info).getOrElse(assumptionType), enableCustomEdges_)
-    else StringAssumptionNode(assumption.description.getOrElse("unknown"), analysisSourceInfo, assumptionType, enableCustomEdges_)
+    val node =
+      if(assumption.originalExp.isDefined) SimpleAssumptionNode(assumption.originalExp.get, assumption.term.getOrElse(True) /* TODO ake */, analysisSourceInfo, AssumptionAnalyzer.extractAssumptionTypeFromInfo(assumption.originalExp.get.info).getOrElse(assumptionType), enableCustomEdges_)
+    else StringAssumptionNode(assumption.description.getOrElse("unknown"), assumption.term.getOrElse(True) /* TODO ake */, analysisSourceInfo, assumptionType, enableCustomEdges_)
     addNode(node)
     Some(node.id)
   }
 
 
-  override def addAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, analysisSourceInfo, AssumptionAnalyzer.extractAssumptionTypeFromInfo(assumption.info).getOrElse(assumptionType), enableCustomEdges_)
+  override def addAssumption(assumption: ast.Exp, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = SimpleAssumptionNode(assumption, term, analysisSourceInfo, AssumptionAnalyzer.extractAssumptionTypeFromInfo(assumption.info).getOrElse(assumptionType), enableCustomEdges_)
     addNode(node)
     Some(node.id)
   }
 
 
-  override def addAssumption(assumption: String, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = StringAssumptionNode(assumption, analysisSourceInfo, assumptionType, enableCustomEdges_)
+  override def addAssumption(assumption: String, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = StringAssumptionNode(assumption, term, analysisSourceInfo, assumptionType, enableCustomEdges_)
     addNode(node)
     Some(node.id)
   }
 
   override def addAssumptions(assumptions: Iterable[DebugExp], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Seq[Int] = {
     val newNodes = assumptions.toSeq.map(a =>
-      if (a.originalExp.isDefined) SimpleAssumptionNode(a.originalExp.get, if(analysisSourceInfo.isInstanceOf[NoAnalysisSourceInfo]) ExpAnalysisSourceInfo(a.originalExp.get) else analysisSourceInfo,
+      if (a.originalExp.isDefined) SimpleAssumptionNode(a.originalExp.get, a.term.getOrElse(True)  /* TODO ake */, if(analysisSourceInfo.isInstanceOf[NoAnalysisSourceInfo]) ExpAnalysisSourceInfo(a.originalExp.get) else analysisSourceInfo,
         AssumptionAnalyzer.extractAssumptionTypeFromInfo(a.originalExp.get.info).getOrElse(assumptionType), enableCustomEdges_)
-      else StringAssumptionNode(a.description.getOrElse("unknown"), analysisSourceInfo, AssumptionType.Internal, enableCustomEdges_)
+      else StringAssumptionNode(a.description.getOrElse("unknown"), a.term.getOrElse(True) /* TODO ake */, analysisSourceInfo, AssumptionType.Internal, enableCustomEdges_)
     )
     newNodes foreach addNode
     newNodes.map(_.id)
@@ -195,7 +203,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   }
 
   override def addPermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, enableCustomEdges_)
+    val node = PermissionInhaleNode(chunk, permAmount, True /* TODO ake */, sourceInfo, assumptionType, enableCustomEdges_)
     addNode(node)
     Some(node.id)
   }
@@ -222,6 +230,12 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   override def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int] = {
     assumptionGraph.nodes
       .filter(c => c.isInstanceOf[PermissionInhaleNode] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
+      .map(_.id).toSet
+  }
+
+  override def getNodeIds(terms: Set[Term]): Set[Int] = {
+    assumptionGraph.nodes
+      .filter(t => t.isInstanceOf[GeneralAssumptionNode] && terms.contains(t.asInstanceOf[GeneralAssumptionNode].getTerm))
       .map(_.id).toSet
   }
 
@@ -262,15 +276,35 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     assumptionGraph.exportGraph("graphExports/" + foldername.getOrElse("latestExport"))
   }
 
-  override def createLabelledConditional(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term = {
+  override def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term = {
     val savedForcedDep = forcedDependencies
-    addForcedDependencies(sourceChunks.toSet)
+    addForcedDependencies(getChunkNodeIds(sourceChunks.toSet))
     val (label, labelExp) = decider.fresh(ast.LocalVar("analysisLabel", ast.Bool)())
     decider.assume(label === True, Some(DebugExp.createInstance(labelExp, labelExp)), AssumptionType.Internal)
     forcedDependencies = savedForcedDep
     Ite(label === True, thenTerm, elseTerm)
   }
 
+  def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], thenTerm: Term, elseTerm: Term): Term = {
+    val savedForcedDep = forcedDependencies
+    val sourceNodeIds = getNodeIds(sourceTerms.toSet)
+    addForcedDependencies(sourceNodeIds)
+    val (label, labelExp) = decider.fresh(ast.LocalVar("analysisLabel", ast.Bool)())
+    decider.assume(label === True, Some(DebugExp.createInstance(labelExp, labelExp)), AssumptionType.Internal)
+    forcedDependencies = savedForcedDep
+    Ite(label === True, thenTerm, elseTerm)
+  }
+
+
+  override def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], thenTerm: Seq[Term], elseTerm: Term): Seq[Term] = {
+    val savedForcedDep = forcedDependencies
+    val sourceNodeIds = getNodeIds(sourceTerms.toSet)
+    addForcedDependencies(sourceNodeIds)
+    val (label, labelExp) = decider.fresh(ast.LocalVar("analysisLabel", ast.Bool)())
+    decider.assume(label === True, Some(DebugExp.createInstance(labelExp, labelExp)), AssumptionType.Internal)
+    forcedDependencies = savedForcedDep
+    thenTerm map (t => Ite(label === True, t, elseTerm))
+  }
 }
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
@@ -294,6 +328,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
 
   override def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int] = Set.empty
+  override def getNodeIds(terms: Set[Term]): Set[Int] = Set.empty
 
   override def addDependencyFromExhaleToInhale(newChunkNodeId: Option[Int]): Unit = {}
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: Option[Int]): Unit = {
@@ -305,10 +340,12 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
 
   override def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
-  override def addAssumption(assumption: ast.Exp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addAssumption(assumption: ast.Exp, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
-  override def addAssumption(assumption: String, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addAssumption(assumption: String, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
   override def exportGraph(): Unit = {}
 
-  override def createLabelledConditional(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term = thenTerm
+  override def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term = thenTerm
+  override def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], thenTerm: Term, elseTerm: Term): Term = thenTerm
+  override def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], thenTerm: Seq[Term], elseTerm: Term): Seq[Term] = thenTerm
 }

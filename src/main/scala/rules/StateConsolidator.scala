@@ -83,7 +83,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
           val (_functionRecorder, _mergedChunks, _newChunks, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v)
 
-          v.decider.assumptionAnalyzer.addForcedDependencies(_newChunks.toSet)
+          v.decider.assumptionAnalyzer.addForcedChunkDependencies(_newChunks.toSet)
           snapEqs foreach (t => v.decider.assume(t, Option.when(withExp)(DebugExp.createInstance("Snapshot Equations", isInternal_ = true)), AssumptionType.Internal))
           v.decider.assumptionAnalyzer.unsetForcedDependencies()
 
@@ -103,7 +103,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          v.decider.assumptionAnalyzer.addForcedDependencies(Set(ch))
+          v.decider.assumptionAnalyzer.addForcedChunkDependencies(Set(ch))
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
           v.decider.assumptionAnalyzer.unsetForcedDependencies()
         }

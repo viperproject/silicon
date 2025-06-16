@@ -156,7 +156,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
         // TODO: Is it possible to get this behavior without having to check every tuple?
         if (!info.pm.values.exists(chunk eq _)) {
           val (resTerm, resExp) = builder(chunk)
-          Some((verifier.decider.assumptionAnalyzer.createLabelledConditional(verifier.decider, Set(chunk), resTerm, terms.True), resExp))
+          Some((verifier.decider.assumptionAnalyzer.createLabelledConditionalChunks(verifier.decider, Set(chunk), resTerm, terms.True), resExp))
         } else {
           None
         }

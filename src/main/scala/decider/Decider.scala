@@ -333,8 +333,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         filteredAssumptions foreach (a => addDebugExp(a._2.get.withTerm(a._1)))
       }
 
-      val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, de) =>
-        val assumptionId: Option[Int] = if(de.isDefined) assumptionAnalyzer.addSingleAssumption(de.get, analysisSourceInfo, assumptionType) else None
+      val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, _) =>
+        val assumptionId: Option[Int] = assumptionAnalyzer.addAssumption(t.toString /* TODO ake */, t, analysisSourceInfo, assumptionType)
         (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
       }
 
@@ -344,11 +344,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], assumptionType: AssumptionType): Unit = {
-      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, analysisSourceInfoStack.getFullSourceInfo, assumptionType) else Seq.empty
 
-      val assumptionsWithLabels =
-        if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, AssumptionAnalyzer.createAssumptionLabel(Some(id)))}
-        else assumptions map (t => (t, ""))
+      val assumptionsWithLabels = assumptions map (t => {
+        val assumptionId = assumptionAnalyzer.addAssumption(t.toString /* TODO ake */, t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
+      })
+
       assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
       if (debugMode) {
         debugExps.get foreach (e => addDebugExp(e))
@@ -358,11 +359,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     // TODO ake: review this
     def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, assumptionType: AssumptionType): Unit = {
       val debugExp = Option.when(debugExps.isDefined)(DebugExp.createInstance(description, InsertionOrderedSet(debugExps.get)))
-      val assumptionIds = if(debugExps.isDefined) assumptionAnalyzer.addAssumptions(debugExps.get, analysisSourceInfoStack.getFullSourceInfo, assumptionType) else Seq.empty
 
-      val assumptionsWithLabels =
-        if(assumptions.size == assumptionIds.size) assumptions.zip(assumptionIds).map{case (t, id) => (t, AssumptionAnalyzer.createAssumptionLabel(Some(id)))}
-        else assumptions map (t => (t, ""))
+      // TODO ake: put after filtering
+      val assumptionsWithLabels = assumptions map (t => {
+        val assumptionIds = assumptionAnalyzer.addAssumption(t.toString, t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        (t, AssumptionAnalyzer.createAssumptionLabel(assumptionIds))
+      })
+
 
       val filteredTerms =
         if (enforceAssumption) assumptionsWithLabels
