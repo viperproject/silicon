@@ -19,6 +19,11 @@
 (declare-sort $Ref 0)
 (declare-const $Ref.null $Ref)
 
+(declare-fun internalCondFrame (Bool $Snap $Snap) $Snap)
+(assert (forall ((cnd Bool) (frst $Snap) (scnd $Snap)) (!
+    (= (internalCondFrame cnd frst scnd) (ite cnd frst scnd))
+    :pattern ((internalCondFrame cnd frst scnd)))))
+
 ; --- Permissions ---
 
 (declare-sort $FPM 0)
@@ -36,8 +41,11 @@
          (not (= p $Perm.No))))
 
 ; min function for permissions
-(define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
-    (ite (<= p1 p2) p1 p2))
+; not using define-fun so we can use it in triggers without issues
+(declare-fun $Perm.min ($Perm $Perm) $Perm)
+(assert (forall ((p1 $Perm) (p2 $Perm)) (!
+    (= ($Perm.min p1 p2) (ite (<= p1 p2) p1 p2))
+    :pattern (($Perm.min p1 p2)))))
 
 ; --- Sort wrappers ---
 

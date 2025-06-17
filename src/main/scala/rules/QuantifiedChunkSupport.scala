@@ -1280,7 +1280,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                           s.copy(smCache = smCache1),
                                           lossOfInvOfLoc,
                                           lossExp,
-                                          createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s, "consuming QP"),
+                                          createFailure(pve dueTo insufficientPermissionReason, v, s, "consuming QP"),
                                           formalQVars,
                                           v)((s2, heap, rPerm, rPermExp, v2) => {
                 val (relevantChunks, otherChunks) =
@@ -1389,7 +1389,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
             }
           case false =>
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")}
+            createFailure(pve dueTo notInjectiveReason, v, s, completeReceiverInjectivityCheck, "QP receiver injective")}
       case false =>
         createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)}
   }

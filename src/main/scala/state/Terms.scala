@@ -17,6 +17,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.utility.Common.Rational
 
 import scala.collection.concurrent.TrieMap
+import scala.collection.immutable
 
 sealed trait Node {
   def toString: String
@@ -39,6 +40,7 @@ object sorts {
   object Ref  extends Sort { val id = Identifier("Ref");  override lazy val toString = id.toString }
   object Perm extends Sort { val id = Identifier("Perm"); override lazy val toString = id.toString }
   object Unit extends Sort { val id = Identifier("()");   override lazy val toString = id.toString }
+  object MaskSort extends HeapSort(Perm)
 
   case class Seq(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Seq[$elementsSort]")
@@ -90,6 +92,21 @@ object sorts {
 
   case class PredicatePermFunction() extends Sort {
     val id = Identifier("PPM")
+    override lazy val toString = id.toString
+  }
+
+  case class HeapSort(valueSort: Sort) extends Sort {
+    val id = Identifier(s"Hp[$valueSort]")
+    override lazy val toString = id.toString
+  }
+
+  case object PredHeapSort extends Sort {
+    override def id: Identifier = Identifier("Hp[Pred]")
+    override lazy val toString = id.toString
+  }
+
+  case object PredMaskSort extends Sort {
+    override def id: Identifier = Identifier("Hp[PredMask]")
     override lazy val toString = id.toString
   }
 }
@@ -611,6 +628,16 @@ object IntLiteral extends CondFlyweightFactory[BigInt, IntLiteral, IntLiteral] {
 case object Null extends Term with Literal {
   val sort = sorts.Ref
   override lazy val toString = "Null"
+}
+
+case object ZeroMask extends Term with Literal {
+  val sort = sorts.MaskSort
+  override lazy val toString = "ZeroMask"
+}
+
+case object PredZeroMask extends Term with Literal {
+  val sort = sorts.PredMaskSort
+  override lazy val toString = "PredZeroMask"
 }
 
 sealed trait BooleanLiteral extends BooleanTerm with Literal {
@@ -1435,6 +1462,22 @@ object PermMinus extends CondFlyweightTermFactory[(Term, Term), PermMinus] {
   }
 
   override def actualCreate(args: (Term, Term)): PermMinus = new PermMinus(args._1, args._2)
+}
+
+class PermNegation(val p: Term) extends Permissions
+  with ConditionalFlyweightUnaryOp[PermNegation] {
+
+  override val op = "-"
+}
+
+object PermNegation extends CondFlyweightTermFactory[Term, PermNegation] {
+  override def apply(p: Term) = p match {
+    case PermNegation(pp) => pp
+    case NoPerm => p
+    case _ => createIfNonExistent(p)
+  }
+
+  override def actualCreate(arg: Term): PermNegation = new PermNegation(arg)
 }
 
 class PermLess private[terms] (val p0: Term, val p1: Term)
@@ -2325,6 +2368,361 @@ class MagicWandChunkTerm(val chunk: MagicWandChunk) extends Term with Conditiona
 
 object MagicWandChunkTerm extends CondFlyweightTermFactory[MagicWandChunk, MagicWandChunkTerm] {
   override def actualCreate(args: MagicWandChunk): MagicWandChunkTerm = new MagicWandChunkTerm(args)
+}
+
+class HeapLookup(val heap: Term, val at: Term) extends Term with ConditionalFlyweight[(Term, Term), HeapLookup] {
+
+  val equalityDefiningMembers = (heap, at)
+
+  val sort = heap.sort match {
+    case sorts.PredHeapSort => sorts.Snap
+    case sorts.PredMaskSort => sorts.Perm
+    case sorts.HeapSort(valueSort) => valueSort
+  }
+}
+
+object HeapLookup extends CondFlyweightTermFactory[(Term, Term), HeapLookup] {
+  override def apply(v0: (Term, Term)) = v0 match {
+    case (ZeroMask, _) => NoPerm
+    case (PredZeroMask, _) => NoPerm
+    case (HeapSingleton(r1, v, _), r2) if r1 == r2 => v
+    case (HeapUpdate(_, r1, v), r2) if r1 == r2 => v
+    case (MergeSingle(_, msk, r1, v), r2) if r1 == r2 && (msk == ZeroMask || msk == PredZeroMask) => v // incomplete for anything but zeromasks, ignores info from merged heap
+    case (MaskAdd(ZeroMask, r1, v), r2) if r1 == r2 => v
+    case (MaskAdd(PredZeroMask, r1, v), r2) if r1 == r2 => v
+    // TODO: this seems to be (usually) bad because a) it won't trigger some things, and b) Z3 won't be able to
+    //  remember a simple equality between the lookup term and its result outside of lots of case splits.
+    //case (MaskAdd(m2, r1, v), r2) => PermPlus(HeapLookup(m2, r2), Ite(r1 === r2, v, NoPerm))
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term)): HeapLookup = new HeapLookup(args._1, args._2)
+}
+
+
+class HeapToSnap(val heap: Term, val mask: Term, val r: Any) extends Term with HasVarRepr with ConditionalFlyweight[(Term, Term, Any), HeapToSnap] {
+  val equalityDefiningMembers = (heap, mask, r)
+
+  val sort = sorts.Snap
+}
+
+object HeapToSnap extends CondFlyweightTermFactory[(Term, Term, Any), HeapToSnap] {
+
+  def apply(heap: Term, mask: Term, r: Any): Term = {
+    val result = HeapToSnap(heap, mask, r)
+    /*
+    if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[HeapToSnap]) {
+      val md = d.freshMacro("tmpTerm", Seq(), result)
+      val mcr = Macro(md.id, Seq(), md.body.sort)
+      result.asInstanceOf[HeapToSnap].varRepr = Some(App(mcr, Seq()))
+    }
+    */
+    result
+  }
+  override def actualCreate(args: (Term, Term, Any)): HeapToSnap = new HeapToSnap(args._1, args._2, args._3)
+}
+
+class SnapToHeap(val snap: Term, val r: Any, val sort: Sort) extends Term with HasVarRepr with ConditionalFlyweight[(Term, Any, Sort), SnapToHeap] {
+  val equalityDefiningMembers = (snap, r, sort)
+}
+
+object SnapToHeap extends CondFlyweightTermFactory[(Term, Any, Sort), SnapToHeap] {
+
+  def apply(snap: Term, r: Any, sort: Sort): Term = {
+    val result = SnapToHeap(snap, r, sort)
+    /*
+    if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[SnapToHeap]) {
+      val md = d.freshMacro("tmpTerm", Seq(), result)
+      val mcr = Macro(md.id, Seq(), md.body.sort)
+      result.asInstanceOf[SnapToHeap].varRepr = Some(App(mcr, Seq()))
+    }
+     */
+    result
+  }
+  override def apply(v0: (Term, Any, Sort)) = v0._1 match {
+    case HeapToSnap(hp, _, r2) => {
+      assert(v0._2 == r2)
+      hp
+    }
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Any, Sort)): SnapToHeap = new SnapToHeap(args._1, args._2, args._3)
+}
+
+class HeapUpdate(val heap: Term, val at: Term, val value: Term) extends Term with HasVarRepr with ConditionalFlyweight[(Term, Term, Term), HeapUpdate] {
+
+  val sort = heap.sort
+  val equalityDefiningMembers = (heap, at, value)
+}
+
+object HeapUpdate extends CondFlyweightTermFactory[(Term, Term, Term), HeapUpdate] {
+
+  def apply(heap: Term, at: Term, value: Term): Term = {
+    val result = HeapUpdate(heap, at, value)
+    /*
+    if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[HeapUpdate]) {
+      val md = d.freshMacro("tmpTerm", Seq(), result)
+      val mcr = Macro(md.id, Seq(), md.body.sort)
+      result.asInstanceOf[HeapUpdate].varRepr = Some(App(mcr, Seq()))
+    }
+     */
+    result
+  }
+
+  override def actualCreate(args: (Term, Term, Term)): HeapUpdate = new HeapUpdate(args._1, args._2, args._3)
+}
+
+class MaskAdd(val mask: Term, val at: Term, val addition: Term) extends Term with HasVarRepr with ConditionalFlyweight[(Term, Term, Term), MaskAdd] {
+  if (mask.sort == sorts.PredMaskSort) utils.assertSort(at, "at", sorts.Snap) else utils.assertSort(at, "at", sorts.Ref)
+  utils.assertSort(addition, "addition", sorts.Perm)
+
+  val equalityDefiningMembers = (mask, at, addition)
+
+  val sort = mask.sort
+}
+
+object MaskAdd extends CondFlyweightTermFactory[(Term, Term, Term), MaskAdd] {
+
+  def apply(mask: Term, at: Term, addition: Term): Term = {
+    val result = MaskAdd(mask, at, addition)
+    /*
+    if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[MaskAdd]) {
+      val md = d.freshMacro("tmpTerm", Seq(), result)
+      val mcr = Macro(md.id, Seq(), md.body.sort)
+      result.asInstanceOf[MaskAdd].varRepr = Some(App(mcr, Seq()))
+    }
+     */
+    result
+  }
+  override def apply(v0: (Term, Term, Term)) = v0 match {
+    case (mask, _, NoPerm) => mask
+    case (MaskAdd(m2, at2, add2), at, addition) if at2 == at => MaskAdd(m2, at, PermPlus(addition, add2))
+    case (MaskAdd(MaskAdd(m1, at1, add1), at2, add2), at, PermNegation(sub)) if at == at1 => MaskAdd(MaskAdd(m1, at1, PermMinus(add1, sub)), at2, add2)
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term, Term)): MaskAdd = new MaskAdd(args._1, args._2, args._3)
+}
+
+class HeapSingleton(val at: Term, val value: Term, val sort: Sort) extends Term with ConditionalFlyweight[(Term, Term, Sort), HeapSingleton] {
+  val equalityDefiningMembers = (at, value, sort)
+}
+
+object HeapSingleton extends CondFlyweightTermFactory[(Term, Term, Sort), HeapSingleton] {
+  override def apply(v0: (Term, Term, Sort)) = v0._3 match {
+    case HeapLookup(otherHeap, at2) if v0._1 == at2 => otherHeap
+    case _ => createIfNonExistent(v0)
+  }
+  override def actualCreate(args: (Term, Term, Sort)): HeapSingleton = new HeapSingleton(args._1, args._2, args._3)
+}
+
+class IdenticalOnKnownLocations(val oldHeap: Term, val newHeap: Term, val mask: Term) extends Term with ConditionalFlyweight[(Term, Term, Term), IdenticalOnKnownLocations] {
+
+  val equalityDefiningMembers = (oldHeap, newHeap, mask)
+
+  val sort = sorts.Bool
+}
+
+object IdenticalOnKnownLocations extends CondFlyweightTermFactory[(Term, Term, Term), IdenticalOnKnownLocations] {
+  override def apply (v0: (Term, Term, Term)) = v0._3 match {
+    case ZeroMask => True
+    case PredZeroMask => True
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Term, Term)): IdenticalOnKnownLocations = new IdenticalOnKnownLocations(args._1, args._2, args._3)
+}
+
+
+class GoodMask(val mask: Term) extends Term with ConditionalFlyweight[Term, GoodMask] {
+
+  val equalityDefiningMembers = mask
+
+  val sort = sorts.Bool
+}
+
+object GoodMask extends CondFlyweightTermFactory[Term, GoodMask] {
+  override def apply (v0: Term) = v0 match {
+    case ZeroMask => True
+    case PredZeroMask => True
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: Term): GoodMask = new GoodMask(args)
+}
+
+class GoodFieldMask(val mask: Term) extends Term with ConditionalFlyweight[Term, GoodFieldMask] {
+
+  val equalityDefiningMembers = mask
+
+  val sort = sorts.Bool
+}
+
+object GoodFieldMask extends CondFlyweightTermFactory[Term, GoodFieldMask] {
+  override def apply (v0: Term) = v0 match {
+    case ZeroMask => True
+    case PredZeroMask => True
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: Term): GoodFieldMask = new GoodFieldMask(args)
+}
+
+class FakeMaskMapTerm(val masks: immutable.ListMap[Any, Term]) extends Term with ConditionalFlyweight[immutable.ListMap[Any, Term], FakeMaskMapTerm] {
+  val equalityDefiningMembers = masks
+  val sort = sorts.Snap // sure, why not
+}
+
+object FakeMaskMapTerm extends PreciseCondFlyweightFactory[immutable.ListMap[Any, Term], FakeMaskMapTerm] {
+  override def actualCreate(args: immutable.ListMap[Any, Term]): FakeMaskMapTerm = new FakeMaskMapTerm(args)
+}
+
+class MergeSingle(val heap: Term, val mask: Term, val location: Term, val value: Term) extends Term with HasVarRepr with ConditionalFlyweight[(Term, Term, Term, Term), MergeSingle] {
+  val equalityDefiningMembers = (heap, mask, location, value)
+  val sort = heap.sort
+}
+
+trait HasVarRepr {
+  var varRepr: Option[App] = None
+}
+
+object MergeSingle extends CondFlyweightTermFactory[(Term, Term, Term, Term), MergeSingle] {
+
+  def apply(heap: Term, mask: Term, location: Term, value: Term): Term = {
+    val result = MergeSingle(heap, mask, location, value)
+    /*
+    if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[MergeSingle]) {
+      val md = d.freshMacro("tmpTerm", Seq(), result)
+      val mcr = Macro(md.id, Seq(), md.body.sort)
+      result.asInstanceOf[MergeSingle].varRepr = Some(App(mcr, Seq()))
+    }
+     */
+    result
+  }
+
+  override def apply(v0: (Term, Term, Term, Term)) = {
+    val (heap, mask, location, value) = v0
+    (mask, value) match {
+      case (ZeroMask, _) => HeapSingleton(location, value, heap.sort)
+      case (PredZeroMask, _) => HeapSingleton(location, value, heap.sort)
+      case (_, HeapLookup(h, l)) if heap == h && l == location => heap
+      case _ => createIfNonExistent(v0)
+    }
+  }
+
+  override def actualCreate(args: (Term, Term, Term, Term)): MergeSingle = new MergeSingle(args._1, args._2, args._3, args._4)
+}
+
+class MergeHeaps(val h1: Term, val m1: Term, val h2: Term, val m2: Term) extends Term with HasVarRepr with ConditionalFlyweight[(Term, Term, Term, Term), MergeHeaps] {
+  val equalityDefiningMembers = (h1, m1, h2, m2)
+  val sort = h1.sort
+}
+
+object MergeHeaps extends CondFlyweightTermFactory[(Term, Term, Term, Term), MergeHeaps] {
+  def apply(h1: Term, m1: Term, h2: Term, m2: Term): Term = {
+    val result = MergeHeaps(h1, m1, h2, m2)
+    /*
+    if (s.quantifiedVariables.isEmpty && s.isMethodVerification && result.isInstanceOf[MergeHeaps]) {
+      val md = d.freshMacro("tmpTerm", Seq(), result)
+      val mcr = Macro(md.id, Seq(), md.body.sort)
+      result.asInstanceOf[MergeHeaps].varRepr = Some(App(mcr, Seq()))
+    }
+     */
+    result
+  }
+  override def apply(v0: (Term, Term, Term, Term)) = {
+    val (h1, m1, h2, m2) = v0
+    (m1, m2) match {
+      case (ZeroMask, _) => h2
+      case (PredZeroMask, _) => h2
+      case (_, ZeroMask) => h1
+      case (_, PredZeroMask) => h1
+      case _ if h1 == h2 => h1
+      case _ => createIfNonExistent(v0)
+    }
+  }
+
+  override def actualCreate(args: (Term, Term, Term, Term)): MergeHeaps = new MergeHeaps(args._1, args._2, args._3, args._4)
+}
+
+class HeapsOverlap(val h1: Term, val m1: Term, val h2: Term, val m2: Term) extends Term with ConditionalFlyweight[(Term, Term, Term, Term), HeapsOverlap] {
+  val equalityDefiningMembers = (h1, m1, h2, m2)
+  val sort = h1.sort
+}
+
+object HeapsOverlap extends CondFlyweightTermFactory[(Term, Term, Term, Term), HeapsOverlap] {
+  override def apply(v0: (Term, Term, Term, Term)) = {
+    val (h1, m1, h2, m2) = v0
+    (m1, m2) match {
+      case (ZeroMask, _) => h2
+      case (PredZeroMask, _) => h2
+      case (_, ZeroMask) => h1
+      case (_, PredZeroMask) => h1
+      case _ if h1 == h2 => True
+      case _ => createIfNonExistent(v0)
+    }
+  }
+
+  override def actualCreate(args: (Term, Term, Term, Term)): HeapsOverlap = new HeapsOverlap(args._1, args._2, args._3, args._4)
+}
+
+class MaskEq(val m1: Term, val m2: Term) extends Term with ConditionalFlyweight[(Term, Term), MaskEq] {
+  val equalityDefiningMembers = (m1, m2)
+  val sort = sorts.Bool
+}
+
+object MaskEq extends CondFlyweightTermFactory[(Term, Term), MaskEq] {
+  override def actualCreate(args: (Term, Term)): MaskEq = new MaskEq(args._1, args._2)
+}
+
+class MaskSum(val m1: Term, val m2: Term) extends Term with ConditionalFlyweight[(Term, Term), MaskSum] {
+  val equalityDefiningMembers = (m1, m2)
+  val sort = m1.sort
+}
+
+object MaskSum extends CondFlyweightTermFactory[(Term, Term), MaskSum] {
+  override def apply(v0: (Term, Term)) = {
+    val (m1, m2) = v0
+    (m1, m2) match {
+      case (ZeroMask, _) => m2
+      case (PredZeroMask, _) => m2
+      case (_, ZeroMask) => m1
+      case (_, PredZeroMask) => m1
+      case (MaskDiff(ZeroMask, m3), _) => MaskDiff(m2, m3)
+      case (MaskDiff(PredZeroMask, m3), _) => MaskDiff(m2, m3)
+      case _ => createIfNonExistent(v0)
+    }
+  }
+
+  override def actualCreate(args: (Term, Term)): MaskSum = new MaskSum(args._1, args._2)
+}
+
+class MaskDiff(val m1: Term, val m2: Term) extends Term with ConditionalFlyweight[(Term, Term), MaskDiff] {
+  val equalityDefiningMembers = (m1, m2)
+  val sort = m1.sort
+}
+
+object MaskDiff extends CondFlyweightTermFactory[(Term, Term), MaskDiff] {
+  override def apply(v0: (Term, Term)) = {
+    val (m1, m2) = v0
+    (m1, m2) match {
+      case (_, ZeroMask) => m1
+      case (_, PredZeroMask) => m1
+      case (MaskSum(m, m2p), _) if m2p == m2 => m
+      case _ => createIfNonExistent(v0)
+    }
+  }
+
+  override def actualCreate(args: (Term, Term)): MaskDiff = new MaskDiff(args._1, args._2)
+}
+
+class DummyHeap(val sort: Sort) extends Term with ConditionalFlyweight[Sort, DummyHeap] {
+  val equalityDefiningMembers = sort
+}
+
+object DummyHeap extends CondFlyweightTermFactory[Sort, DummyHeap] {
+  override def actualCreate(args: Sort): DummyHeap = new DummyHeap(args)
 }
 
 /* Factory methods for all resources */

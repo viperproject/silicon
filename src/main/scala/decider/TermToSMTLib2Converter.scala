@@ -8,9 +8,10 @@ package viper.silicon.decider
 
 import scala.collection.mutable
 import viper.silver.ast.pretty.FastPrettyPrinterBase
+import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
-import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
+import viper.silicon.state.{Identifier, MagicWandIdentifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
 
 class TermToSMTLib2Converter 
@@ -47,6 +48,9 @@ class TermToSMTLib2Converter
     case sorts.Seq(elementSort) => text("Seq<") <> doRender(elementSort, true) <> ">"
     case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
     case sorts.Multiset(elementSort) => text("Multiset<") <> doRender(elementSort, true) <> ">"
+    case sorts.HeapSort(valueSort) => text("$Hp<") <> doRender(valueSort, true) <> ">"
+    case sorts.PredHeapSort => text("$Hp<$Pred>")
+    case sorts.PredMaskSort => text("$Hp<$PredMask>")
     case sorts.UserSort(id) => render(id)
     case sorts.SMTSort(id) => if (alwaysSanitize) render(id) else id.name
 
@@ -101,6 +105,12 @@ class TermToSMTLib2Converter
 
   def convert(t: Term): String = {
     super.pretty(defaultWidth, render(t))
+  }
+
+  private def renderHeapType(s: Sort) = s match {
+    case sorts.HeapSort(valueSort) => doRender(valueSort, true)
+    case sorts.PredHeapSort => text("$Pred")
+    case sorts.PredMaskSort => text("$PredMask")
   }
 
   protected def render(term: Term): Cont = term match {
@@ -163,6 +173,7 @@ class TermToSMTLib2Converter
     /* Booleans */
 
     case uop: Not => renderUnaryOp("not", uop)
+    case pn: PermNegation => renderUnaryOp("-", pn)
     case And(ts) => renderNAryOp("and", ts: _*)
     case Or(ts) => renderNAryOp("or", ts: _*)
     case bop: Implies => renderBinaryOp("=>", bop)
@@ -280,6 +291,63 @@ class TermToSMTLib2Converter
 
     case PermLookup(field, pm, at) => parens(text("$FVF.perm_") <> field <+> render(pm) <+> render(at))
 
+    case HeapLookup(heap, at) =>
+      parens(text("$Hp.get_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(at))
+
+    case HeapUpdate(heap, at, value) =>
+      parens(text("$Hp.update_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(at) <+> render(value))
+
+    case HeapSingleton(at, value, r) =>
+      parens(text("$Hp.singleton_") <> renderHeapType(term.sort) <+> render(at) <+> render(value))
+
+    case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
+      parens(text("$Hp.identicalOnKnown_") <> renderHeapType(newHeap.sort) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
+
+    case GoodMask(mask) =>
+      parens(text("$Hp.maskGood") <+> render(mask))
+
+    case GoodFieldMask(mask) =>
+      parens(text("$Hp.maskGoodField") <+> render(mask))
+
+    case DummyHeap(sort) =>
+      text("$Hp.default_") <> renderHeapType(sort)
+
+    case MergeSingle(heap, mask, location, value) =>
+      parens(text("$Hp.merge_single_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(mask) <+> render(location) <+> render(value))
+
+    case MaskEq(m1, m2) =>
+      parens(text("$Hp.maskEq") <+> render(m1) <+> render(m2))
+
+    case MaskSum(m1, m2) =>
+      parens(text("$Hp.maskSum") <+> render(m1) <+> render(m2))
+
+    case MaskDiff(m1, m2) =>
+      parens(text("$Hp.maskDiff") <+> render(m1) <+> render(m2))
+
+    case MaskAdd(m, at, value) =>
+      parens(text("$Hp.maskAdd") <+> render(m) <+> render(at) <+> render(value))
+
+    case MergeHeaps(h1, m1, h2, m2) =>
+      parens(text("$Hp.merge_") <> renderHeapType(h1.sort) <+> render(h1) <+> render(m1) <+> render(h2) <+> render(m2))
+
+    case HeapsOverlap(h1, m1, h2, m2) =>
+      parens(text("$Hp.overlap_") <> renderHeapType(h1.sort) <+> render(h1) <+> render(m1) <+> render(h2) <+> render(m2))
+
+
+    case SnapToHeap(snap, resource, _) =>
+      parens(text("$SortWrappers.$SnapTo$Heap<") <> (resource match {
+        case f: ast.Field => f.name
+        case p: ast.Predicate => p.name
+        case _: MagicWandIdentifier => "WAND"
+      }) <> ">" <+> render(snap))
+
+    case HeapToSnap(heap, mask, resource) =>
+      parens(text("$SortWrappers.$Heap<") <> (resource match {
+        case f: ast.Field => f.name
+        case p: ast.Predicate => p.name
+        case _: MagicWandIdentifier => "WAND"
+      }) <> ">To$Snap" <+> render(heap) <+> render(mask))
+
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
     case PredicateLookup(id, psf, args) =>
@@ -376,6 +444,8 @@ class TermToSMTLib2Converter
       else parens(text("- 0") <+> value(-n))
 
     case Unit => "$Snap.unit"
+    case ZeroMask => "$Hp.zeroMask"
+    case PredZeroMask => "$Hp.zeroPredMask"
     case True => "true"
     case False => "false"
     case Null => "$Ref.null"

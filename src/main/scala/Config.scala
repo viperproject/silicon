@@ -669,6 +669,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  lazy val maskHeapMode: ScallopOption[Boolean] = opt[Boolean]("maskHeapMode",
+    descr = "Use total heap encoding with mask and heap maps",
+    default = Some(false),
+    noshort = true
+  )
+
+  lazy val simplifyOnConsume: ScallopOption[Boolean] = opt[Boolean]("simplifyOnConsume",
+    descr = "Simplify mask on consume in maskHeapMode",
+    default = Some(false),
+    noshort = true
+  )
+
   val moreJoins: ScallopOption[JoinMode] = opt[JoinMode]("moreJoins",
     descr = s"Decides when to join branches. Options are:\n${JoinMode.helpText}",
     default = Some(JoinMode.Off),
@@ -859,6 +871,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
       Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
     case _ => Right(())
+  }
+
+  validateOpt(simplifyOnConsume, maskHeapMode) {
+    case (Some(true), Some(true)) => Right()
+    case (Some(true), _) => Left(s"Option ${simplifyOnConsume.name} is only supported in combination with ${maskHeapMode.name}")
+    case _ => Right()
   }
 
   validateOpt(numberOfParallelVerifiers) {

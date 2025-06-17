@@ -24,6 +24,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
+import viper.silicon.rules.maskHeapSupporter
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters.{DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
@@ -76,6 +77,7 @@ class DefaultMainVerifier(config: Config,
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
+  protected val heapFunctionsContributor = new MaskHeapFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
 
@@ -87,6 +89,8 @@ class DefaultMainVerifier(config: Config,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
+    heapFunctionsContributor,
+    maskHeapSupporter,
     magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager,
@@ -471,6 +475,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -484,6 +489,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -497,6 +503,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -515,6 +522,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
@@ -528,6 +536,7 @@ class DefaultMainVerifier(config: Config,
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
