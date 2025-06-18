@@ -66,6 +66,7 @@ trait Decider {
   def assume(terms: Seq[Term], debugExps: Option[Seq[DebugExp]], assumptionType: AssumptionType): Unit
   def assumeDefinition(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, assumptionType: AssumptionType): Unit
+  def assumeLabel(term: Term, assumptionLabel: String): Unit
 
   def check(t: Term, timeout: Int): Boolean
 
@@ -137,6 +138,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
+    private var _isReassumeAnalysisLabelsRequired: Boolean = false
 
     var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
     var analysisSourceInfoStack: AnalysisSourceInfoStack = AnalysisSourceInfoStack()
@@ -159,7 +161,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
 
-    def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(assumptionAnalyzer, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+    def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, assumptionAnalyzer, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -175,6 +177,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       pathConditions = other
       while (prover.pushPopScopeDepth > 1){
         prover.pop()
+        _isReassumeAnalysisLabelsRequired = true
       }
       // TODO: Change interface to make the cast unnecessary?
       val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
@@ -277,12 +280,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //val sepIdentifier = symbExLog.openScope(commentRecord)
       _prover.pop()
       pathConditions.popScope()
+      _isReassumeAnalysisLabelsRequired = true
       //symbExLog.closeScope(sepIdentifier)
     }
 
     def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit = {
-      pathConditions.setCurrentBranchCondition(t, te)
-      assume(t, Option.when(te._2.isDefined)(te._1), te._2, AssumptionType.PathCondition)
+      val tWithLabel = assumptionAnalyzer.createLabelledConditional(this, Set(t), t)
+      pathConditions.setCurrentBranchCondition(tWithLabel, te)
+      assume(tWithLabel, Option.when(te._2.isDefined)(te._1), te._2, AssumptionType.PathCondition)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()
@@ -390,13 +395,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if (debugMode) {
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
-
-        val assumptionId: Option[Int] = if(debugExp.isDefined) assumptionAnalyzer.addSingleAssumption(debugExp.get.withTerm(And(filteredTerms)), analysisSourceInfoStack.getFullSourceInfo, assumptionType) else None
-        val termsWithLabel = filteredTerms.zipWithIndex.iterator.map {case (t, idx) => (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId, idx))}.toSeq
-        assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
-      }else{
-        assumeWithoutSmokeChecks(InsertionOrderedSet(filteredTerms.map ((_, ""))))
       }
+
+      val termsWithLabel = filteredTerms map (t => {
+        val assumptionId = assumptionAnalyzer.addAssumption(t.toString, t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
+      })
+      assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
+
     }
 
     def debuggerAssume(terms: Iterable[Term], de: DebugExp) = {
@@ -409,8 +415,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
+    def assumeLabel(term: Term, assumptionLabel: String): Unit = {
+      // do not add to pathConditions!
+      prover.assume(term, assumptionLabel)
+    }
+
     private def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], isDefinition: Boolean = false) = {
-      val terms = termsWithLabel map (_._1)
+      val termsWithLabel2 = termsWithLabel map (t => (assumptionAnalyzer.createLabelledConditional(this, Set(t._1), t._1), t._2)) // TODO ake: pass node id directly
+      val terms = termsWithLabel2 map (_._1)
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
 
@@ -422,7 +434,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       /* Add terms to the prover's assumptions */
-      termsWithLabel foreach{case (t, label) => prover.assume(t, label)}
+      termsWithLabel2 foreach{case (t, label) => prover.assume(t, label)}
 
       symbExLog.closeScope(sepIdentifier)
       None
@@ -432,6 +444,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def checkSmoke(isAssert: Boolean = false): Boolean = {
       val label = if(Verifier.config.enableAssumptionAnalysis()){
+        if(_isReassumeAnalysisLabelsRequired) {
+          assumptionAnalyzer.reassumeLabels(this)
+          _isReassumeAnalysisLabelsRequired = false
+        }
         val nodeId = assumptionAnalyzer.addAssertFalseNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo)
         AssumptionAnalyzer.createAssertionLabel(nodeId)
       }else{ "" }
@@ -501,6 +517,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private def proverAssert(t: Term, timeout: Option[Int], label: String) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
+
+      if(_isReassumeAnalysisLabelsRequired) {
+        assumptionAnalyzer.reassumeLabels(this)
+        _isReassumeAnalysisLabelsRequired = false
+      }
 
       val result = prover.assert(t, timeout, label)
 

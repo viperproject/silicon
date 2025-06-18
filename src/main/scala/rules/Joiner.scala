@@ -26,12 +26,12 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
   // we can directly merge JoinDataEntries to obtain new States,
   // and the join data entries themselves provide information about the path conditions to State.merge.
   def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
-    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
+    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider, v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
     v.stateConsolidator(s).consolidate(res, v)
   }
 
   def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
-    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider, v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
   }
 }
 
@@ -105,10 +105,8 @@ object joiner extends JoiningRules {
           val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          // TODO ake: move conditionals directly to pcs, imprecise!
-          v.decider.assume(v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, entry.pathConditions.branchConditions /* TODO ake: and globals*/, pcs, True),
-            pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
-          feasibleBranches = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, entry.pathConditions.branchConditions, And(entry.pathConditions.branchConditions), True) :: feasibleBranches
+          v.decider.assume(pcs, pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
+          feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
           feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
           feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)
         })

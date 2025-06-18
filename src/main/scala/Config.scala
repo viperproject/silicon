@@ -528,7 +528,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   private val rawProverArgs: ScallopOption[String] = opt[String]("proverArgs",
     descr = (  "Command-line arguments which should be forwarded to the prover. "
              + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
-    default = None,
+    default = Some("proof=true unsat-core=true"),
     noshort = true
   )
 
@@ -820,7 +820,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDebugging",
     descr = "Enable debugging mode",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
@@ -832,7 +832,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableAssumptionAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableAssumptionAnalysis",
     descr = "Enable assumption analysis mode",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 

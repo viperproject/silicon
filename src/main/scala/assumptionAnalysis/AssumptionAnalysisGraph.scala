@@ -178,6 +178,15 @@ case class StringAssumptionNode(description: String, term: Term, sourceInfo: Ana
   override def getNodeString: String = "assume " + description
 }
 
+case class LabelNode(term: Term) extends GeneralAssumptionNode {
+  val sourceInfo: AnalysisSourceInfo = NoAnalysisSourceInfo()
+  val assumptionType: AssumptionType = AssumptionType.Internal
+  val isClosed: Boolean = true
+  val description: String = term.toString
+  override def getNodeType: String = "Assumption" // TODO ake: change to Label once supported
+  override def getNodeString: String = "assume " + description
+}
+
 case class SimpleAssertionNode(assertion: ast.Exp, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
   val assumptionType: AssumptionType = Explicit
   override def getNodeString: String = "assert " + assertion.toString
