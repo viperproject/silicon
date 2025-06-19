@@ -1,0 +1,14 @@
+{
+  "addition": {
+    "initString": "var x: Int",
+    "assumptionString": "@dependency()\nassume x > 0",
+    "bodyString": "@dependency()\nx := x + x + 5",
+    "assertionString": "assert x > 0"
+  },
+  "ref": {
+    "initString": "var x: Ref := new(f)",
+    "assumptionString": "assume x.f > 0",
+    "bodyString": "x.f := x.f + x.f + 5",
+    "assertionString": "assert x.f > 0"
+  }
+}

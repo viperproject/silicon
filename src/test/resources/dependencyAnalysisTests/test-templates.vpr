@@ -1,0 +1,61 @@
+field f: Int
+field f2: Int
+field bf: Bool
+field r: Ref
+
+
+method dummyTest()
+{
+    ##INIT##
+
+    ##ASSUMPTIONS##
+
+    ##BODY##
+
+    @testAssertion()
+    ##ASSERTION##
+}
+
+
+method basic(a: Int)
+{
+    var b: Int
+    @obsolete()
+    assume a > 0
+
+    ##INIT##
+
+    ##ASSUMPTIONS##
+
+    @obsolete()
+    b := a * 2
+
+    ##BODY##
+
+    @testAssertion()
+    ##ASSERTION##
+}
+
+method basicBranch(a: Int)
+{
+    var b: Int
+    @obsolete()
+    assume a > 0
+
+    ##INIT##
+
+    if(a >= 0){
+        ##ASSUMPTIONS##
+        @obsolete()
+        b := a * 2
+    }else{
+        // infeasible
+        @obsolete()
+        b := a + 1
+    }
+
+    ##BODY##
+
+    @testAssertion()
+    ##ASSERTION##
+}

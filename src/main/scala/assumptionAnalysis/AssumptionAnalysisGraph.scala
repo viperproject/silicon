@@ -4,10 +4,12 @@ import viper.silicon.assumptionAnalysis.AssumptionType._
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast
+import viper.silver.ast.Position
 
 import java.io.{File, PrintWriter}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
+import scala.collection.mutable.Seq
 
 
 object AssumptionAnalysisGraphHelper {
@@ -28,6 +30,28 @@ trait AssumptionAnalysisGraph {
   def addEdges(source: Int, targets: Iterable[Int]): Unit
   def addEdges(sources: Iterable[Int], target: Int): Unit
   def addEdges(sources: Iterable[Int],  targets: Iterable[Int]): Unit
+
+  def existsAnyDependency(sources: Set[Int], targets: Set[Int]): Boolean = {
+    var visited: Set[Int] = sources
+    var queue: List[Int] = sources.toList
+    while(queue.nonEmpty){
+      val newVisits = edges.getOrElse(queue.head, Set())
+      if(newVisits.intersect(targets).nonEmpty)
+        return true
+      visited = visited ++ Set(queue.head)
+      queue = queue.tail ++ (newVisits filter (!visited.contains(_)))
+    }
+    false
+  }
+
+  def getNodesByProperties(nodeType: Option[String], assumptionType: Option[AssumptionType], sourceInfo: Option[String], position: Option[Position]): Seq[AssumptionAnalysisNode] = {
+    nodes filter (node =>
+      nodeType.forall(node.getNodeType.equals) &&
+      assumptionType.forall(node.assumptionType.equals) &&
+      sourceInfo.forall(node.sourceInfo.toString.equals) &&
+      position.forall(node.sourceInfo.getPosition.equals)
+      )
+  }
 
   def getExplicitAndAssertNodesOnly(): Seq[AssumptionAnalysisNode] = {
     nodes.filter(n => n.assumptionType.equals(AssumptionType.Explicit) || n.isInstanceOf[GeneralAssertionNode])
@@ -85,11 +109,11 @@ trait AssumptionAnalysisGraph {
     }
   }
 
-  def exportGraph(fileName: String): Unit = {
-    val directory = new File(fileName)
+  def exportGraph(dirName: String): Unit = {
+    val directory = new File(dirName)
     directory.mkdir()
-    exportNodes(fileName)
-    exportEdges(fileName + "/edges.csv")
+    exportNodes(dirName + "/nodes.csv")
+    exportEdges(dirName + "/edges.csv")
   }
 
   def exportEdges(fileName: String): Unit = {
@@ -106,7 +130,7 @@ trait AssumptionAnalysisGraph {
       val parts = Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getStringForExport, node.sourceInfo.getFineGrainedSource.toString)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
-    val writer = new PrintWriter(fileName + "/nodes.csv")
+    val writer = new PrintWriter(fileName)
     val headerParts = Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source")
     writer.println(headerParts.mkString(sep))
     nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))

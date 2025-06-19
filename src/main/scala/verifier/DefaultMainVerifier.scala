@@ -8,7 +8,7 @@ package viper.silicon.verifier
 
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 import viper.silicon._
-import viper.silicon.assumptionAnalysis.DefaultAssumptionAnalyzer
+import viper.silicon.assumptionAnalysis.{DefaultAssumptionAnalyzer, DependencyAnalysisReporter}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
@@ -19,9 +19,9 @@ import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
+import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
-import viper.silicon.supporters._
 import viper.silicon.utils.Counter
 import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
@@ -317,6 +317,8 @@ class DefaultMainVerifier(config: Config,
       val assumptionAnalyzers = verificationResults.filter(_.assumptionAnalyzer.isInstanceOf[DefaultAssumptionAnalyzer]).map(_.assumptionAnalyzer)
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
       assumptionAnalyzers foreach (_.exportGraph())
+      if(reporter.isInstanceOf[DependencyAnalysisReporter])
+        reporter.asInstanceOf[DependencyAnalysisReporter].assumptionGraphs = assumptionAnalyzers.map(_.assumptionGraph)
       logger debug s"assumption analyzers ${assumptionAnalyzers.mkString(", ")}"
     }
 
