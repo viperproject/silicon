@@ -1,0 +1,53 @@
+
+
+predicate greater0(n: Int)
+{
+  n > 0
+}
+
+predicate greater5(n: Int)
+{
+  n > 5
+}
+
+method foldP(n: Int)
+    requires @dependency()(n > 10)
+{
+    var x: Int := 1
+    @testAssertion()
+    fold greater0(x + n)
+}
+
+method unfoldP(n: Int)
+  requires @dependency()(greater0(n))
+{
+    var x: Int := 1
+    @dependency()
+    unfold greater0(n)
+    x := n + x
+    @testAssertion()
+    assert x > 1
+}
+
+method unfoldFoldP(a: Int, b: Int)
+    requires @dependency()(greater0(a) && greater5(b))
+    ensures greater5(a + b)
+{
+    @dependency()
+    unfold greater0(a)
+    @dependency()
+    unfold greater5(b)
+    @testAssertion()
+    fold greater5(a + b)
+}
+
+method callWithPredicate(a: Int, b: Int)
+    requires @dependency()(greater0(a) && greater5(b))
+    ensures greater5(a + b)
+{
+    @dependency()
+    unfoldFoldP(a, b)
+
+    @testAssertion()
+    assert greater5(a + b)
+}

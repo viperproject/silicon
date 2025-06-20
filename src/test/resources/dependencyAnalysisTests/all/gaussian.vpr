@@ -1,0 +1,79 @@
+field f: Int
+
+method gaussianSimple(n: Int) returns (res: Int)
+  requires 0 <= n
+  requires @obsolete()(n <= 5)
+{
+  res := 0
+  var i: Int := 0
+  while(@dependency()(i <= n))
+    invariant @dependency()(i <= (n + 1))
+    invariant @obsolete()(i <= 6)
+    invariant @dependency()(res == (i - 1) * i / 2)
+  {
+    @dependency()
+    res := res + i
+    @dependency()
+    i := i + 1
+  }
+
+  @testAssertion()
+  assert res == n * (n + 1) / 2
+}
+
+method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
+  requires @dependency()(none < p) && p < write
+  requires @dependency()(acc(a.f, p))
+  requires 0 <= a.f
+  requires a.f <= 5
+  ensures acc(a.f, p)
+{
+  res := 0
+  var i: Int := 0
+  while(@dependency()(i <= a.f))
+    invariant @dependency()(acc(a.f, p))
+    invariant 0 <= a.f && a.f <= 5
+    invariant @dependency()(i <= (a.f + 1))
+    invariant i <= 6
+    invariant @dependency()(res == (i - 1) * i / 2)
+  {
+    @dependency()
+    res := res + i
+    @dependency()
+    i := i + 1
+  }
+
+  @testAssertion()
+  assert res == a.f * (a.f + 1) / 2
+}
+
+predicate gaussianEq(res: Int, n: Int){
+  res == (n - 1) * n / 2 && n >= 0
+}
+
+method gaussianPred(n: Int) returns (res: Int)
+  requires 0 <= n
+  requires n <= 5
+{
+  res := 0
+  var i: Int := 0
+  @dependency()
+  fold gaussianEq(res, i)
+  while(i <= n)
+    invariant i <= (n + 1)
+    invariant i <= 6
+    invariant @dependency()(gaussianEq(res, i))
+  {
+    @dependency()
+    unfold gaussianEq(res, i)
+    @dependency()
+    res := res + i
+    @dependency()
+    i := i + 1
+    @dependency()
+    fold gaussianEq(res, i)
+  }
+  assert i == n+1
+  @testAssertion()
+  assert gaussianEq(res, n+1)
+}

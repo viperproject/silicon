@@ -1,14 +1,14 @@
 
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.SiliconFrontend
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, DependencyAnalysisReporter}
-import viper.silver.ast
-import viper.silver.ast.utility.rewriter.StrategyInterface
-import viper.silver.ast.utility.{DiskLoader, ViperStrategy}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, AssumptionType, DependencyAnalysisReporter}
+import viper.silver.ast.utility.DiskLoader
 import viper.silver.frontend.SilFrontend
+import viper.silver.verifier
 
 import java.io.File
-import java.nio.file.Paths
+import java.nio.file.{Files, Path, Paths}
+import scala.jdk.CollectionConverters.IterableHasAsScala
 import scala.util.{Failure, Success}
 
 
@@ -26,22 +26,37 @@ import scala.util.{Failure, Success}
  */
 class AssumptionAnalysisTests extends AnyFunSuite {
 
-  def testDirectories: Seq[String] = Seq("dependencyAnalysis")
+  val GENERATE_TESTS = false
+  if(GENERATE_TESTS)
+    generateTests("dependencyAnalysisTests/", "test-templates")
 
-  val GENERATE_TESTS = true
 
   val commandLineArguments: Seq[String] =
     Seq("--timeout", "100" /* seconds */, "--enableDebugging", "--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
 
-  test("first test"){
-    val result = executeTest("dependencyAnalysisTests/", "test-templates_addition_generated", ViperStrategy.Slim({
-      case a: ast.Inhale => a
-    }), frontend)
-    assert(result)
-  }
 
-  if(GENERATE_TESTS)
-    generateTests("dependencyAnalysisTests/", "test-templates")
+  val testDirectories: Seq[String] = Seq("dependencyAnalysisTests/all")
+  testDirectories foreach createTests
+
+//  test("dependencyAnalysisTests/all" + "/" + "imprecision"){
+//    executeTest("dependencyAnalysisTests/all" + "/", "imprecision", frontend)
+//  }
+
+
+  def createTests(dirName: String): Unit = {
+    val path = getClass.getClassLoader.getResource(dirName)
+    val directoryStream = Files.newDirectoryStream(Paths.get(path.toURI)).asScala
+    val dirContent = directoryStream.toList
+
+    for (filePath: Path <- dirContent.sorted
+         if Files.isReadable(filePath)
+         if !Files.isDirectory(filePath)){
+      val fileName = filePath.getFileName.toString.replace(".vpr", "")
+      test(dirName + "/" + fileName){
+        executeTest(dirName + "/", fileName, frontend)
+      }
+    }
+  }
 
   def generateTests(filePrefix: String,
                     fileName: String): Unit = {
@@ -94,35 +109,43 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   def executeTest(filePrefix: String,
                   fileName: String,
-                  strategy: StrategyInterface[ast.Node],
                   frontend: SilFrontend)
-  : Boolean = {
+  : Unit = {
 
     val program = tests.loadProgram(filePrefix, fileName, frontend)
-    val _ = frontend.verifier.verify(program)
+    val result = frontend.verifier.verify(program)
+
+    assert(result match {
+      case verifier.Success => true
+      case verifier.Failure(_) => false
+    }, s"Verification failed for ${filePrefix + fileName + ".vpr"}")
 
     val assumptionGraphsReal = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionGraphs
 
-    (assumptionGraphsReal forall checkDependencies) && (assumptionGraphsReal forall checkNonDependencies)
+    // TODO ake: collect all errors and report them as one assertion
+    assumptionGraphsReal foreach checkDependencies
+    assumptionGraphsReal foreach checkNonDependencies
   }
 
-  def checkDependencies(assumptionGraph: AssumptionAnalysisGraph): Boolean = {
+  def checkDependencies(assumptionGraph: AssumptionAnalysisGraph): Unit = {
     val assumptionNodes = extractTestAssumptionNodesFromGraph(assumptionGraph)
     val assumptionsPerSource = assumptionNodes groupBy(_.sourceInfo.toString)
     val assertionNodes = extractTestAssertionNodesFromGraph(assumptionGraph)
-    assumptionNodes.isEmpty || assertionNodes.isEmpty ||
-      assumptionsPerSource.forall{case (_, assumptions) =>
-        checkDependenciesForSingleSource(assumptionGraph, assumptions, assertionNodes)
-      }
+
+    assumptionsPerSource.foreach { case (sourceInfo, assumptions) =>
+      val hasDeps = checkDependenciesForSingleSource(assumptionGraph, assumptions, assertionNodes)
+      assert(hasDeps, s"Missing dependency: $sourceInfo")
+    }
   }
 
-  def checkNonDependencies(assumptionGraph: AssumptionAnalysisGraph): Boolean = {
+  def checkNonDependencies(assumptionGraph: AssumptionAnalysisGraph): Unit = {
     val assumptionNodes = extractTestObsoleteAssumptionNodesFromGraph(assumptionGraph)
     val assumptionsPerSource = assumptionNodes groupBy(_.sourceInfo.toString)
     val assertionNodes = extractTestAssertionNodesFromGraph(assumptionGraph)
-    assumptionNodes.isEmpty || assertionNodes.isEmpty ||
-    !assumptionsPerSource.exists{case (_, assumptions) =>
-      checkDependenciesForSingleSource(assumptionGraph, assumptions, assertionNodes)
+
+    assumptionsPerSource.foreach {case (sourceInfo, assumptions) =>
+      val hasDependency = checkDependenciesForSingleSource(assumptionGraph, assumptions, assertionNodes)
+      assert(!hasDependency, s"Unexpected dependency: $sourceInfo")
     }
   }
 
@@ -134,21 +157,23 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   def extractTestAssertionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
     graph.nodes.filter(node =>
-      node.getNodeType.equals("Assertion") &&
+      (node.getNodeType.equals("Assertion") || node.getNodeType.equals("Exhale")) &&
         node.sourceInfo.toString.contains("@testAssertion()")
     ).toSeq
   }
 
   def extractTestAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
     graph.nodes.filter(node =>
-      node.getNodeType.equals("Assumption") &&
+      (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale")) &&
+        !node.assumptionType.equals(AssumptionType.Internal) &&
         node.sourceInfo.toString.contains("@dependency()")
     ).toSeq
   }
 
   def extractTestObsoleteAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
     graph.nodes.filter(node =>
-      node.getNodeType.equals("Assumption") &&
+      (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale")) &&
+        !node.assumptionType.equals(AssumptionType.Internal) &&
         node.sourceInfo.toString.contains("@obsolete()")
     ).toSeq
   }

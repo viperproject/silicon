@@ -1,0 +1,61 @@
+field f: Int
+
+method sum(x: Int, y: Int) returns(res: Int)
+  requires x >= 0 && y >= 0
+  ensures res == x + y
+  ensures res > 100
+{
+ assume x > 100
+ res := x + y
+}
+
+method divBy0()
+{
+    var x: Int
+    var y: Int
+    @dependency()
+    assume y > 0
+    @testAssertion()
+    x := x/y
+}
+
+method basic()
+{
+    var x: Int
+    var y: Int
+    @obsolete()
+    assume x > 0
+    @dependency()
+    assume y > 0
+    @dependency()
+    assume y < x
+    @dependency()
+    x := x/y
+    @testAssertion()
+    assert x >= 1
+}
+
+
+method sumClient(x: Int, y: Int)
+{
+  @dependency()
+  assume x >= 0
+  @dependency()
+  assume y >= 0
+  @dependency()
+  assume x < y
+  var n: Int
+  @dependency()
+  n := sum(x, y)
+
+  // the following stmt reports dependency on n := sum(x, y) because (x < y && n == x + y && n > 100 ==> y != 0)
+  // although you could also prove it via (0 <= x && x < y ==> y != 0)
+  var n2: Int
+  @dependency()
+  n2 := sum(x/y, y)
+  @dependency()
+  n := n + n2
+
+  @testAssertion()
+  assert n >= x + 2*y
+}

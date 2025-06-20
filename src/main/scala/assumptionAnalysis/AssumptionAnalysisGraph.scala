@@ -35,10 +35,11 @@ trait AssumptionAnalysisGraph {
     var visited: Set[Int] = sources
     var queue: List[Int] = sources.toList
     while(queue.nonEmpty){
-      val newVisits = edges.getOrElse(queue.head, Set())
+      val curr = queue.head
+      val newVisits = edges.getOrElse(curr, Set()) ++ transitiveEdges.getOrElse(curr, Set())
       if(newVisits.intersect(targets).nonEmpty)
         return true
-      visited = visited ++ Set(queue.head)
+      visited = visited ++ Set(curr)
       queue = queue.tail ++ (newVisits filter (!visited.contains(_)))
     }
     false
