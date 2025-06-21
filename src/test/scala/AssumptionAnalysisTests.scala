@@ -1,8 +1,9 @@
 
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.SiliconFrontend
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, AssumptionType, DependencyAnalysisReporter}
-import viper.silver.ast.utility.DiskLoader
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, AssumptionType, DependencyAnalysisReporter, GeneralAssumptionNode}
+import viper.silver.ast.{AnnotationInfo, Infoed, Node, Positioned, Program, Seqn}
+import viper.silver.ast.utility.{DiskLoader, ViperStrategy}
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
 
@@ -25,6 +26,9 @@ import scala.util.{Failure, Success}
  *
  */
 class AssumptionAnalysisTests extends AnyFunSuite {
+
+  val obsoleteKeyword = "obsolete"
+  val dependencyKeyword = "dependency"
 
   val GENERATE_TESTS = false
   if(GENERATE_TESTS)
@@ -105,14 +109,12 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     fe
   }
 
-
-
   def executeTest(filePrefix: String,
                   fileName: String,
                   frontend: SilFrontend)
   : Unit = {
 
-    val program = tests.loadProgram(filePrefix, fileName, frontend)
+    val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
 
     assert(result match {
@@ -121,10 +123,39 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }, s"Verification failed for ${filePrefix + fileName + ".vpr"}")
 
     val assumptionGraphsReal = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionGraphs
+    val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedAssumptionStmts(program)
+    val allAssumptionNodes = assumptionGraphsReal.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
 
     // TODO ake: collect all errors and report them as one assertion
+    stmtsWithAssumptionAnnotation foreach {n => checkNodeExists(allAssumptionNodes, n)}
     assumptionGraphsReal foreach checkDependencies
     assumptionGraphsReal foreach checkNonDependencies
+  }
+
+  private def extractAnnotatedAssumptionStmts(program: Program): Set[Infoed] = {
+    var nodesWithAnnotation: Set[Infoed] = Set.empty
+    val newP: Program = ViperStrategy.Slim({
+      case s: Seqn => s
+      case n: Infoed =>
+        val annotationInfo = n.info.getUniqueInfo[AnnotationInfo]
+          .filter(ai => ai.values.contains(obsoleteKeyword) || ai.values.contains(dependencyKeyword))
+        if (annotationInfo.isDefined)
+          nodesWithAnnotation += n
+        n
+    }).execute(program)
+    nodesWithAnnotation
+  }
+
+  private def checkNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: Infoed): Unit = {
+    val pos = node.asInstanceOf[Positioned].pos
+    val annotationInfo = node.info.getUniqueInfo[AnnotationInfo]
+      .map(ai => ai.values.getOrElse(obsoleteKeyword, ai.values.getOrElse(dependencyKeyword, List.empty))).getOrElse(List.empty)
+    val assumptionType = annotationInfo.map(AssumptionType.fromString).filter(_.isDefined).map(_.get)
+    val nodeExists = analysisNodes exists (analysisNode => {
+      analysisNode.sourceInfo.getPosition.equals(pos) &&
+        assumptionType.forall(_.equals(analysisNode.assumptionType))
+    })
+    assert(nodeExists, s"Missing analysis node:\n${node.toString}\n$pos")
   }
 
   def checkDependencies(assumptionGraph: AssumptionAnalysisGraph): Unit = {
@@ -163,18 +194,20 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   }
 
   def extractTestAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
-    graph.nodes.filter(node =>
+    graph.nodes.filter(node => {
       (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale")) &&
         !node.assumptionType.equals(AssumptionType.Internal) &&
-        node.sourceInfo.toString.contains("@dependency()")
+        node.sourceInfo.toString.contains("@" + dependencyKeyword + "()")
+    }
     ).toSeq
   }
 
   def extractTestObsoleteAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
-    graph.nodes.filter(node =>
+    graph.nodes.filter(node => {
       (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale")) &&
         !node.assumptionType.equals(AssumptionType.Internal) &&
-        node.sourceInfo.toString.contains("@obsolete()")
+        node.sourceInfo.toString.contains("@" + obsoleteKeyword + "()")
+    }
     ).toSeq
   }
 }

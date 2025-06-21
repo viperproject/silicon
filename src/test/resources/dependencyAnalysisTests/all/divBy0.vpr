@@ -13,7 +13,7 @@ method divBy0()
 {
     var x: Int
     var y: Int
-    @dependency()
+    @dependency("Explicit")
     assume y > 0
     @testAssertion()
     x := x/y
@@ -29,7 +29,7 @@ method basic()
     assume y > 0
     @dependency()
     assume y < x
-    @dependency()
+    @dependency("Implicit")
     x := x/y
     @testAssertion()
     assert x >= 1

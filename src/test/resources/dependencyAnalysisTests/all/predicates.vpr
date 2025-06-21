@@ -30,7 +30,7 @@ method unfoldP(n: Int)
 }
 
 method unfoldFoldP(a: Int, b: Int)
-    requires @dependency()(greater0(a) && greater5(b))
+    requires @dependency()(greater0(a)) && @dependency()(greater5(b))
     ensures greater5(a + b)
 {
     @dependency()
@@ -42,7 +42,7 @@ method unfoldFoldP(a: Int, b: Int)
 }
 
 method callWithPredicate(a: Int, b: Int)
-    requires @dependency()(greater0(a) && greater5(b))
+    requires @dependency()(greater0(a)) && @dependency()(greater5(b))
     ensures greater5(a + b)
 {
     @dependency()
