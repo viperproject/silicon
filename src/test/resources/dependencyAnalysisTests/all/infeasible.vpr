@@ -1,0 +1,49 @@
+field f: Int
+
+method infeasibleBranch1(a: Int, b: Int)
+    requires @dependency()(a > 0)
+{
+    if(a < 0){
+        @testAssertion()
+        assert false
+    }
+}
+
+method infeasibleBranch2(a: Int, b: Int)
+    requires @dependency()(a > 0)
+{
+    var res: Int
+    if(@dependency()(a < 0)){
+        @obsolete()
+        assume res < 0
+    }else{
+        @dependency()
+        assume res > 0
+    }
+    @testAssertion()
+    assert res > 0
+}
+
+
+method infeasibleBranchPerm(a: Ref, b: Ref)
+    requires @dependency()(acc(a.f, 1/2))
+    requires @dependency()(a.f > 0)
+{
+     if(a.f < 0){
+        @testAssertion()
+        a.f := a.f + 1
+     }
+}
+
+
+method infeasibleBranchNoPerm(a: Int, b: Ref)
+    requires a > 0 //@dependency()(a > 0)
+{
+    var res: Int
+    if(a < 0){
+        //@obsolete() TODO ake: nodes missing
+        res := b.f + 1
+        //@testAssertion()
+        assert false
+    }
+}

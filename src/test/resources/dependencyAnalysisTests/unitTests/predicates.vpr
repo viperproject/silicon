@@ -1,12 +1,10 @@
 
 
-predicate greater0(n: Int)
-{
+predicate greater0(n: Int){
   n > 0
 }
 
-predicate greater5(n: Int)
-{
+predicate greater5(n: Int){
   n > 5
 }
 
@@ -24,6 +22,7 @@ method unfoldP(n: Int)
     var x: Int := 1
     @dependency()
     unfold greater0(n)
+    @dependency()
     x := n + x
     @testAssertion()
     assert x > 1

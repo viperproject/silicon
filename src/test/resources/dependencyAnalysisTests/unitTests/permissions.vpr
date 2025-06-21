@@ -1,0 +1,84 @@
+field f: Int
+
+
+method perm1(){
+    var x: Ref
+    @dependency()
+    x := new(f)
+    @testAssertion()
+    inhale x.f > 0
+}
+
+method perm2(){
+    var x: Ref
+    @dependency()
+    inhale acc(x.f, 1/2)
+    @testAssertion()
+    inhale x.f > 0
+}
+
+method perm3(){
+    var x: Ref
+    @dependency()
+    inhale acc(x.f)
+    @testAssertion()
+    x.f := x.f + 1
+}
+
+method perm4(){
+    var x: Ref
+    @dependency()
+    inhale acc(x.f)
+    @dependency()
+    inhale x.f > 0
+    @dependency()
+    x.f := x.f + 1
+    @testAssertion()
+    assert x.f > 1
+}
+
+method perm5(){
+    var x: Ref
+    @dependency()
+    inhale acc(x.f)
+    x.f := x.f + 1
+    @testAssertion()
+    exhale acc(x.f)
+}
+
+method perm6(){
+    var x: Ref
+    @dependency()
+    inhale acc(x.f)
+    @dependency()
+    inhale x.f > 0
+    @dependency()
+    x.f := x.f + 1
+    // @obsolete() // TODO ake
+    exhale acc(x.f, 1/2)
+    @testAssertion()
+    assert x.f > 1
+}
+
+method permAmount1(x: Ref, p: Perm)
+  requires p > none
+  requires @dependency()(acc(x.f, p))
+{
+  @dependency()
+  assume p > 1/2
+  @testAssertion()
+  exhale acc(x.f, 1/2)
+}
+
+method permAmount2(x: Ref, p: Perm)
+  requires p > none
+  requires @dependency()(acc(x.f, p))
+{
+  @dependency()
+  inhale x.f > 0
+  @dependency()
+  assume p > 1/2
+  exhale acc(x.f, 1/2)
+  @testAssertion()
+  assert x.f > 0
+}

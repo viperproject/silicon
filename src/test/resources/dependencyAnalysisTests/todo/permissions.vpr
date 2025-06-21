@@ -1,0 +1,65 @@
+field f: Int
+
+function id(n: Int): Int
+    ensures result == n
+
+method foo(a: Ref)
+    requires @assumptionType("Internal")(acc(a.f, 1/2)) && a.f >= 0
+    ensures  acc(a.f, 1/2)
+
+method call(x: Ref)
+  requires acc(x.f)
+  ensures  acc(x.f)
+{
+  assume x.f > 0
+  foo(x)
+  assert x.f >= 0
+}
+
+method permAmount(x: Ref, y: Ref, p: Perm)
+  requires p > none
+  requires acc(x.f) && acc(y.f, p)
+  ensures  acc(x.f) && acc(y.f, p)
+{
+  x.f := 5
+  assume p > 1/2
+  assume y.f == 1
+  x.f := y.f + 1
+  foo(x)
+  assert x.f == y.f + 1
+}
+
+method transitivity(a: Ref, n: Int)
+    requires n > 0
+    requires acc(a.f) && a.f > 0
+{
+    var res: Int
+    res := a.f / n
+    assert res >= 0
+}
+
+method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
+    requires acc(a.f, 1/2) && acc(b.f, 1/2)
+    requires c ==> a == b
+    requires a.f > 0 && n > 0 && b.f >= 0
+    requires a.f < 100
+    requires !c ==> a.f < b.f
+{
+    if(c){
+        a.f := n + 1
+    }
+    assert a.f >= 0
+    assert !c ==> a.f <= 100
+}
+
+method aliasing(x: Ref, n: Int)
+  requires acc(x.f) && x.f < n
+{
+  var y: Ref := x
+  y.f := n + 1
+  assert x.f >= n
+
+  assume y.f < n
+  assert false
+
+}

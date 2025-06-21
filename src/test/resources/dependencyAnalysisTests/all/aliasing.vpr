@@ -1,0 +1,33 @@
+field f: Int
+
+
+method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
+    requires @dependency()(acc(a.f, 1/2))
+    requires @dependency()(acc(b.f, 1/2))
+    requires c ==> a == b // TODO ake: @dependency()
+    requires a.f > 0 && n > 0 && b.f >= 0
+    requires a.f < 100
+    requires !c ==> a.f < b.f
+{
+    if(c){
+        @testAssertion()
+        a.f := n + 1
+    }
+}
+
+method aliasing(x: Ref, n: Int)
+  requires @dependency()(acc(x.f))
+  requires @obsolete()(n > 0)
+  requires @obsolete()(x.f > n)
+{
+  @dependency()
+  x.f := n + 1
+
+  var y: Ref
+  // @dependency() // TODO ake: missing node
+  y := x
+
+  @testAssertion()
+  assert y.f > n
+}
+

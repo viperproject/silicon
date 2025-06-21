@@ -1,0 +1,47 @@
+field next : Ref
+field val : Int
+
+predicate list(start : Ref)
+{
+  acc(start.val) && acc(start.next) &&
+    (start.next != null && list(start.next))
+}
+
+
+method basicApply()
+{
+    var x: Int
+    var y: Int
+    @dependency()
+    inhale x > 0
+    @dependency()
+    inhale x > 0 --* y > 0
+    @dependency()
+    apply x > 0 --* y > 0
+    @testAssertion()
+    assert y > 0
+}
+
+
+method basicPackage(l: Ref) 
+  requires @dependency()(list(l))
+  ensures list(l)
+  {
+    @dependency()
+    unfold list(l)
+    var tmp : Ref
+    @dependency()
+    tmp := l.next
+
+    @dependency()
+    package list(tmp) --* list(l)
+    {
+      fold list(l)
+    }
+
+    @dependency()
+    apply list(tmp) --* list(l)
+
+    @testAssertion()
+    assert list(l)
+}

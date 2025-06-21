@@ -2,7 +2,7 @@
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.SiliconFrontend
 import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, AssumptionType, DependencyAnalysisReporter, GeneralAssumptionNode}
-import viper.silver.ast.{AnnotationInfo, Infoed, Node, Positioned, Program, Seqn}
+import viper.silver.ast.{AnnotationInfo, HasLineColumn, Infoed, NoPosition, Node, Position, Positioned, Program, Seqn, VirtualPosition}
 import viper.silver.ast.utility.{DiskLoader, ViperStrategy}
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
@@ -39,7 +39,10 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     Seq("--timeout", "100" /* seconds */, "--enableDebugging", "--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
 
 
-  val testDirectories: Seq[String] = Seq("dependencyAnalysisTests/all")
+  val testDirectories: Seq[String] = Seq(
+    "dependencyAnalysisTests/unitTests",
+    "dependencyAnalysisTests/all",
+  )
   testDirectories foreach createTests
 
 //  test("dependencyAnalysisTests/all" + "/" + "imprecision"){
@@ -127,6 +130,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     val allAssumptionNodes = assumptionGraphsReal.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
 
     // TODO ake: collect all errors and report them as one assertion
+    // TODO ake: warning if testAssertion is missing
+    // TODO ake: obsolete should result in warnings only
     stmtsWithAssumptionAnnotation foreach {n => checkNodeExists(allAssumptionNodes, n)}
     assumptionGraphsReal foreach checkDependencies
     assumptionGraphsReal foreach checkNonDependencies
@@ -147,20 +152,27 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   }
 
   private def checkNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: Infoed): Unit = {
-    val pos = node.asInstanceOf[Positioned].pos
+    val pos = extractSourceLine(node.asInstanceOf[Positioned].pos)
     val annotationInfo = node.info.getUniqueInfo[AnnotationInfo]
       .map(ai => ai.values.getOrElse(obsoleteKeyword, ai.values.getOrElse(dependencyKeyword, List.empty))).getOrElse(List.empty)
     val assumptionType = annotationInfo.map(AssumptionType.fromString).filter(_.isDefined).map(_.get)
     val nodeExists = analysisNodes exists (analysisNode => {
-      analysisNode.sourceInfo.getPosition.equals(pos) &&
+      extractSourceLine(analysisNode.sourceInfo.getPosition) == pos &&
         assumptionType.forall(_.equals(analysisNode.assumptionType))
     })
     assert(nodeExists, s"Missing analysis node:\n${node.toString}\n$pos")
   }
 
+  def extractSourceLine(pos: Position): Int = {
+    pos match {
+      case column: HasLineColumn => column.line
+      case _ => -1
+    }
+  }
+
   def checkDependencies(assumptionGraph: AssumptionAnalysisGraph): Unit = {
     val assumptionNodes = extractTestAssumptionNodesFromGraph(assumptionGraph)
-    val assumptionsPerSource = assumptionNodes groupBy(_.sourceInfo.toString)
+    val assumptionsPerSource = assumptionNodes groupBy(n => extractSourceLine(n.sourceInfo.getPosition))
     val assertionNodes = extractTestAssertionNodesFromGraph(assumptionGraph)
 
     assumptionsPerSource.foreach { case (sourceInfo, assumptions) =>
@@ -171,7 +183,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   def checkNonDependencies(assumptionGraph: AssumptionAnalysisGraph): Unit = {
     val assumptionNodes = extractTestObsoleteAssumptionNodesFromGraph(assumptionGraph)
-    val assumptionsPerSource = assumptionNodes groupBy(_.sourceInfo.toString)
+    val assumptionsPerSource = assumptionNodes groupBy(n => extractSourceLine(n.sourceInfo.getPosition))
     val assertionNodes = extractTestAssertionNodesFromGraph(assumptionGraph)
 
     assumptionsPerSource.foreach {case (sourceInfo, assumptions) =>

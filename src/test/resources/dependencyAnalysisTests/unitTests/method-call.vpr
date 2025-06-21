@@ -1,0 +1,73 @@
+field f: Int
+
+method sum(x: Int, y: Int) returns(res: Int)
+  requires x >= 0 && y >= 0
+  ensures res == x + y
+{
+ res := x + y
+}
+
+method call1(){
+    var x: Int, y: Int
+    @dependency()
+    assume x > 10
+    @dependency()
+    assume y > 0
+
+    @testAssertion()
+    x := sum(x, y)
+}
+
+method call2(){
+    var x: Int, y: Int, z: Int
+    @dependency()
+    assume x > 10
+    @dependency()
+    assume y > 0
+
+    @dependency()
+    z := sum(x, y)
+
+    @testAssertion()
+    assert z == x + y
+}
+
+method call3(x: Int, y: Int)
+{
+  @dependency()
+  assume x > 0
+  @dependency()
+  assume y > 0
+
+  var n: Int, n2: Int
+  @dependency()
+  n := sum(x, y)
+  @dependency()
+  n2 := sum(x, y)
+  @dependency()
+  n := n + n2
+
+  @testAssertion()
+  assert n == 2*x + 2*y
+}
+
+
+method call4(x: Int, y: Int, z: Int)
+{
+  @dependency()
+  assume x > 0
+  @dependency()
+  assume y > 0
+
+  @obsolete()
+  assume z > 0
+
+  var n: Int, n2: Int
+  @dependency()
+  n := sum(x, y)
+  @obsolete()
+  n2 := sum(x, z)
+
+  @testAssertion()
+  assert n == x + y
+}

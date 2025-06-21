@@ -1,0 +1,120 @@
+method branches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  @dependency()
+  assume 0 < a
+  @dependency()
+  assume b > 4
+
+  @obsolete()
+  assume a < 100
+  @obsolete()
+  assume b < 50
+  @obsolete()
+  assume c ==> a > 5
+
+  if(c){
+    @dependency()
+    n := a + 1
+  }else{
+    @dependency()
+    n := b + 1
+  }
+
+  @testAssertion()
+  assert n > 1
+}
+
+method branches2(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  @dependency()
+  assume 0 < a
+  @obsolete()
+  assume a < 100
+  @obsolete()
+  assume a < b
+  @obsolete()
+  assume b < 50
+
+  var x: Int
+  if(a >= n){
+    @obsolete()
+    x := a + b
+  }else{
+    @dependency()
+    x := n + 1
+    @testAssertion()
+    assert x > 1
+  }
+}
+
+method branches3(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  @obsolete()
+  assume 0 < a
+  @obsolete()
+  assume a < 100
+  @dependency()
+  assume 0 < b
+  @obsolete()
+  assume b < 50
+
+  if(c){
+    n := a + 1
+  }else{
+    n := b + 1
+  }
+
+  var x: Int
+  if(a >= n){
+    @dependency()
+    x := a + b
+  }else{
+    @dependency()
+    x := n + 1
+  }
+
+  @testAssertion()
+  assert x > n
+}
+
+
+method nestedBranches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  @obsolete()
+  assume 0 < a
+  @obsolete()
+  assume a < 100
+  @dependency()
+  assume 0 < b
+  @obsolete()
+  assume b < 50
+  @obsolete()
+  assume c ==> a > 5
+
+  if(c){
+    if(a > b){
+      @dependency()
+      n := a - b
+    }else{
+      @dependency()
+      n := a + b
+    }
+    @dependency()
+    n := n - 1
+  }else{
+    @dependency()
+    n := a + b
+  }
+
+  @testAssertion()
+  assert n <= a + b
+  assert c ==> n < a + b
+}

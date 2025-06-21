@@ -1,0 +1,78 @@
+
+method loop1(){
+    var i: Int
+    var res: Int
+    res := 0
+    i := 10
+    while(i > 0)
+        invariant @obsolete()(i <= 10)
+        invariant @obsolete()(i >= 0)
+        invariant @dependency()(res >= 0)
+    {
+        @dependency()
+        res := res + i
+        i := i - 1
+    }
+
+    @testAssertion()
+    assert res >= 0
+}
+
+method loop2(){
+    var i: Int
+    var res: Int
+    res := 0
+    i := 10
+    while(@dependency()(i > 0))
+        invariant @obsolete()(i <= 10)
+        invariant @obsolete()(i >= 0)
+        invariant @obsolete()(res >= 0)
+    {
+        @obsolete()
+        res := res + i
+        @dependency()
+        i := i - 1
+        @testAssertion()
+        assert i >= 0
+    }
+}
+
+method loop3(){
+    var i: Int
+    var res: Int
+    res := 0
+    i := 10
+    while(@dependency()(i > 0))
+        invariant @obsolete()(i <= 10)
+        invariant @obsolete()(i >= 0)
+        invariant @dependency()(res >= 0)
+    {
+        @dependency()
+        res := res + i
+        @obsolete()
+        i := i - 1
+        @testAssertion()
+        assert res > 0
+    }
+}
+
+method loop4(){
+    var i: Int
+    var res: Int
+    res := 0
+    i := 10
+    while(@obsolete()(i > 0))
+        invariant @obsolete()(i <= 10)
+        invariant @obsolete()(i >= 0)
+        invariant @dependency()(res >= 0)
+    {
+        res := res - 1
+        @obsolete()
+        i := i - 1
+        @dependency()
+        assume res > 0
+    }
+
+    @testAssertion()
+    assert res >= 0
+}

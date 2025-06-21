@@ -1,0 +1,45 @@
+field f: Int
+
+method quantifiedPerm1(xs: Seq[Ref]) {
+  assume @dependency()(|xs| > 5)
+  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+
+  @testAssertion()
+  xs[0].f := 10
+}
+
+method quantifiedPerm2(xs: Seq[Ref]) {
+  assume @dependency()(|xs| > 5)
+  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+
+  @testAssertion()
+  xs[0].f := xs[1].f + xs[4].f
+}
+
+method quantifiedPerm3(xs: Seq[Ref], y: Ref) {
+  assume @dependency()(|xs| > 5)
+  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+  inhale @dependency()(acc(y.f, wildcard))
+
+  @testAssertion()
+  assert xs[0] != y
+}
+
+method quantifiedExhalePartially(xs: Seq[Ref]) {
+  var res: Int
+  assume @dependency()(|xs| > 5)
+  // inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+  inhale (forall x: Ref :: x in xs ==> acc(x.f)) // TODO ake: missing dependency
+
+  exhale forall x: Ref :: x in xs ==> acc(x.f, 1/2)
+  @testAssertion()
+  res := xs[1].f + 1
+}
+
+method quantifiedExhaleFully(xs: Seq[Ref]) {
+  assume @obsolete()(|xs| > 5)
+  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+
+  @testAssertion()
+  exhale forall x: Ref :: x in xs ==> acc(x.f)
+}

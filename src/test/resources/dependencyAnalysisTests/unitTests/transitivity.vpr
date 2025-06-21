@@ -1,0 +1,13 @@
+field f: Int
+
+method transitivity(a: Ref, n: Int)
+    requires @dependency()(n > 0)
+    requires @dependency()(acc(a.f))
+    requires @dependency()(a.f > 0)
+{
+    var res: Int
+    @dependency()
+    res := a.f / n
+    @testAssertion()
+    assert res >= 0
+}
