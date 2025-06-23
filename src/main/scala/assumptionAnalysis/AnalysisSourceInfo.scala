@@ -1,5 +1,6 @@
 package viper.silicon.assumptionAnalysis
 
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.{HasLineColumn, NoPosition, Position, VirtualPosition}
 
@@ -84,6 +85,7 @@ case class AnalysisSourceInfoStack() {
   def getAnalysisSourceInfos: List[AnalysisSourceInfo] = sourceInfos
 
   def getFullSourceInfo: AnalysisSourceInfo = {
+    if(!Verifier.config.enableAssumptionAnalysis()) return NoAnalysisSourceInfo()
     if(forcedMainSource.isDefined)
       return forcedMainSource.get
     if(sourceInfos.size <= 1){
@@ -94,14 +96,18 @@ case class AnalysisSourceInfoStack() {
   }
 
   def addAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): Unit = {
+    if(!Verifier.config.enableAssumptionAnalysis()) return
     sourceInfos = analysisSourceInfo +: sourceInfos
   }
 
   def setAnalysisSourceInfo(analysisSourceInfo: List[AnalysisSourceInfo]): Unit = {
+    if(!Verifier.config.enableAssumptionAnalysis()) return
     sourceInfos = analysisSourceInfo
   }
 
   def popAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): Unit = {
+    if(!Verifier.config.enableAssumptionAnalysis()) return
+
     var currSourceInfo = sourceInfos
     // popping just one source info might not be enough since infeasible branches might return without popping the source info
     while(currSourceInfo.nonEmpty && !currSourceInfo.head.equals(analysisSourceInfo)) {
