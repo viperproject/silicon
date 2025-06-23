@@ -27,6 +27,8 @@ import scala.util.{Failure, Success}
  */
 class AssumptionAnalysisTests extends AnyFunSuite {
 
+  val CHECK_PRECISION = false
+
   val obsoleteKeyword = "obsolete"
   val dependencyKeyword = "dependency"
 
@@ -129,12 +131,16 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedAssumptionStmts(program)
     val allAssumptionNodes = assumptionGraphsReal.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
 
-    // TODO ake: collect all errors and report them as one assertion
     // TODO ake: warning if testAssertion is missing
-    // TODO ake: obsolete should result in warnings only
-    stmtsWithAssumptionAnnotation foreach {n => checkNodeExists(allAssumptionNodes, n)}
-    assumptionGraphsReal foreach checkDependencies
-    assumptionGraphsReal foreach checkNonDependencies
+    var errorMsgs = stmtsWithAssumptionAnnotation.map(checkNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
+    errorMsgs ++= assumptionGraphsReal flatMap checkDependencies
+    val warnMsgs = assumptionGraphsReal flatMap checkNonDependencies
+    if(CHECK_PRECISION)
+      errorMsgs ++= warnMsgs
+    else if(warnMsgs.nonEmpty) println(warnMsgs.mkString("\n")) // TODO ake: warning
+
+    val check = errorMsgs.isEmpty
+    assert(check, "\n" + errorMsgs.mkString("\n"))
   }
 
   private def extractAnnotatedAssumptionStmts(program: Program): Set[Infoed] = {
@@ -151,7 +157,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     nodesWithAnnotation
   }
 
-  private def checkNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: Infoed): Unit = {
+  private def checkNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: Infoed): Option[String] = {
     val pos = extractSourceLine(node.asInstanceOf[Positioned].pos)
     val annotationInfo = node.info.getUniqueInfo[AnnotationInfo]
       .map(ai => ai.values.getOrElse(obsoleteKeyword, ai.values.getOrElse(dependencyKeyword, List.empty))).getOrElse(List.empty)
@@ -160,7 +166,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       extractSourceLine(analysisNode.sourceInfo.getPosition) == pos &&
         assumptionType.forall(_.equals(analysisNode.assumptionType))
     })
-    assert(nodeExists, s"Missing analysis node:\n${node.toString}\n$pos")
+    Option.when(!nodeExists)(s"Missing analysis node:\n${node.toString}\n$pos")
   }
 
   def extractSourceLine(pos: Position): Int = {
@@ -170,26 +176,26 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
   }
 
-  def checkDependencies(assumptionGraph: AssumptionAnalysisGraph): Unit = {
+  def checkDependencies(assumptionGraph: AssumptionAnalysisGraph): Seq[String] = {
     val assumptionNodes = extractTestAssumptionNodesFromGraph(assumptionGraph)
     val assumptionsPerSource = assumptionNodes groupBy(n => extractSourceLine(n.sourceInfo.getPosition))
     val assertionNodes = extractTestAssertionNodesFromGraph(assumptionGraph)
 
-    assumptionsPerSource.foreach { case (sourceInfo, assumptions) =>
+    assumptionsPerSource.map({ case (_, assumptions) =>
       val hasDeps = checkDependenciesForSingleSource(assumptionGraph, assumptions, assertionNodes)
-      assert(hasDeps, s"Missing dependency: $sourceInfo")
-    }
+      Option.when(!hasDeps)(s"Missing dependency: ${assumptions.head.sourceInfo.toString}")
+    }).filter(_.isDefined).map(_.get).toSeq
   }
 
-  def checkNonDependencies(assumptionGraph: AssumptionAnalysisGraph): Unit = {
+  def checkNonDependencies(assumptionGraph: AssumptionAnalysisGraph): Seq[String] = {
     val assumptionNodes = extractTestObsoleteAssumptionNodesFromGraph(assumptionGraph)
     val assumptionsPerSource = assumptionNodes groupBy(n => extractSourceLine(n.sourceInfo.getPosition))
     val assertionNodes = extractTestAssertionNodesFromGraph(assumptionGraph)
 
-    assumptionsPerSource.foreach {case (sourceInfo, assumptions) =>
+    assumptionsPerSource.map({case (_, assumptions) =>
       val hasDependency = checkDependenciesForSingleSource(assumptionGraph, assumptions, assertionNodes)
-      assert(!hasDependency, s"Unexpected dependency: $sourceInfo")
-    }
+      Option.when(hasDependency)(s"Unexpected dependency: ${assumptions.head.sourceInfo.toString}")
+    }).filter(_.isDefined).map(_.get).toSeq
   }
 
   def checkDependenciesForSingleSource(assumptionGraph: AssumptionAnalysisGraph, assumptions:  Seq[AssumptionAnalysisNode], assertions:  Seq[AssumptionAnalysisNode]): Boolean = {
@@ -200,7 +206,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   def extractTestAssertionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
     graph.nodes.filter(node =>
-      (node.getNodeType.equals("Assertion") || node.getNodeType.equals("Exhale")) &&
+      (node.getNodeType.equals("Assertion") || node.getNodeType.equals("Exhale") || node.getNodeType.equals("Check")) &&
         node.sourceInfo.toString.contains("@testAssertion()")
     ).toSeq
   }
@@ -208,7 +214,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   def extractTestAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
     graph.nodes.filter(node => {
       (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale")) &&
-        !node.assumptionType.equals(AssumptionType.Internal) &&
+        !node.assumptionType.equals(AssumptionType.Internal) && // TODO ake: really?
         node.sourceInfo.toString.contains("@" + dependencyKeyword + "()")
     }
     ).toSeq

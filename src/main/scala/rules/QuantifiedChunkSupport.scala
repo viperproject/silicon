@@ -1058,8 +1058,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment(comment)
             val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
-            v.decider.assume(inv.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
+              Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType) // TODO ake: assumptionType?
+            v.decider.assume(inv.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs

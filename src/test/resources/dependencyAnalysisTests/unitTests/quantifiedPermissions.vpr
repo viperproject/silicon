@@ -25,11 +25,19 @@ method quantifiedPerm3(xs: Seq[Ref], y: Ref) {
   assert xs[0] != y
 }
 
+method quantifiedExhalePartiallyTest(xs: Seq[Ref]) {
+  var res: Int
+  assume |xs| > 5
+  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+
+  @testAssertion()
+  exhale forall x: Ref :: x in xs ==> acc(x.f, 1/2)
+}
+
 method quantifiedExhalePartially(xs: Seq[Ref]) {
   var res: Int
   assume @dependency()(|xs| > 5)
   inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
-  //inhale (forall x: Ref :: x in xs ==> acc(x.f)) // TODO ake: missing dependency
 
   exhale forall x: Ref :: x in xs ==> acc(x.f, 1/2)
   @testAssertion()
