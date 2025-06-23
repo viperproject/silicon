@@ -551,14 +551,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           codomainQVar,
-          v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)), True),
+          v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)), True),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
       })
 
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
-      val chunkTriggers = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), FieldTrigger(field.name, chunk.snapshotMap, codomainQVar), True))
+      val chunkTriggers = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), FieldTrigger(field.name, chunk.snapshotMap, codomainQVar), True))
       val resourceTriggerDefinition =
         Forall(
           codomainQVar,
@@ -639,7 +639,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             transformedOptSmDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
             IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
 
-        val term = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))), True)
+        val term = v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))), True)
         Forall(
           qvar, term,
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
@@ -653,7 +653,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
 
-      val chunkTriggers = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program), True))
+      val chunkTriggers = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program), True))
       val resourceTriggerDefinition =
         Forall(
           qvar,
@@ -693,7 +693,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val permSummary = ResourcePermissionLookup(resource, pm, codomainQVars, s.program)
 
-    val chunkPerms = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), chunk.perm, NoPerm))
+    val chunkPerms = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), chunk.perm, NoPerm))
     val valueDefinitions =
       Forall(
         codomainQVars,
@@ -711,7 +711,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
       // TODO: Quantify over snapshot if resource is predicate.
       //       Also check other places where a similar quantifier is constructed.
-      val chunkTriggerDefs = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program), True))
+      val chunkTriggerDefs = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program), True))
       val resourceTriggerDefinition =
       Forall(
         codomainQVars,
@@ -837,7 +837,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
           val smDef = SnapshotMapDefinition(resource, sm, valueDefs, optDomainDefinition.toSeq)
 
-          val chunkPerms = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(chunk), chunk.perm, NoPerm))
+          val chunkPerms = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), chunk.perm, NoPerm))
           val totalPermissions = BigPermSum(chunkPerms)
 
           if (Verifier.config.disableValueMapCaching()) {

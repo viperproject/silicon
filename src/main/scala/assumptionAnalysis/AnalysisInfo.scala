@@ -7,14 +7,9 @@ object AssumptionType extends Enumeration {
   def fromString(s: String): Option[Value] = values.find(_.toString == s)
 }
 import viper.silicon.assumptionAnalysis.AssumptionType._
+import viper.silicon.decider.Decider
 
 
-case class AnalysisInfo(assumptionAnalyzer: AssumptionAnalyzer, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType) {
-
-  def withAssumptionType(at: AssumptionType): AnalysisInfo = AnalysisInfo(assumptionAnalyzer, sourceInfo, at)
-  def withSourceInfo(si: AnalysisSourceInfo): AnalysisInfo = AnalysisInfo(assumptionAnalyzer, si, assumptionType)
+case class AnalysisInfo(decider: Decider, assumptionAnalyzer: AssumptionAnalyzer, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType) {
 }
 
-class NoAnalysisInfo extends AnalysisInfo(AssumptionAnalyzer.noAssumptionAnalyzerSingelton, NoAnalysisSourceInfo(), AssumptionType.Unknown) {
-
-}

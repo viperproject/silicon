@@ -570,15 +570,20 @@ object consumer extends ConsumptionRules {
           case Seq(entry) => // One branch is dead
             (entry.s, entry.data)
           case Seq(entry1, entry2) => // Both branches are alive
+            // TODO ake: precision?
+            val branchConditions1 = entry1.pathConditions.branchConditions
+            val labelledBranchConditions1 = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, branchConditions1, And(branchConditions1))
+            val branchConditions2 = entry2.pathConditions.branchConditions
+            val labelledBranchConditions2 = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, branchConditions2, And(branchConditions2))
             val mergedData = (
               State.mergeHeap(
-                entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
-                entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
-                AnalysisInfo(v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("conditional join", e0.pos), AssumptionType.Implicit) // TODO ake
+                entry1.data._1, labelledBranchConditions1, Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
+                entry2.data._1, labelledBranchConditions2, Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
+                AnalysisInfo(v.decider, v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("conditional join", e0.pos), AssumptionType.Implicit) // TODO ake
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {
-                case (Some(t1), Some(t2)) if returnSnap => Some(Ite(And(entry1.pathConditions.branchConditions), t1, t2))
+                case (Some(t1), Some(t2)) if returnSnap => Some(Ite(labelledBranchConditions1, t1, t2))
                 case (None, None) if !returnSnap => None
                 case (_, _) => sys.error(s"Unexpected join data entries: $entries")
               },

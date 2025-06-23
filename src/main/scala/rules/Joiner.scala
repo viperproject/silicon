@@ -13,7 +13,7 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
-import viper.silicon.state.terms.{And, Or, Term}
+import viper.silicon.state.terms.{And, Or, Term, True}
 import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -26,12 +26,12 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
   // we can directly merge JoinDataEntries to obtain new States,
   // and the join data entries themselves provide information about the path conditions to State.merge.
   def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
-    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
+    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider, v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
     v.stateConsolidator(s).consolidate(res, v)
   }
 
   def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
-    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider, v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
   }
 }
 
@@ -101,12 +101,15 @@ object joiner extends JoiningRules {
         var feasibleBranchesExpNew: Option[List[ast.Exp]] = Option.when(withExp)(Nil)
 
         entries foreach (entry => {
-          val pcs = entry.pathConditions.conditionalized
+          val (pcs, pcsDependencies) = entry.pathConditions.conditionalizedWithAnalysis
           val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          v.decider.assume(pcs, pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
-          feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
+          val pcsLabelled = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, pcsDependencies, pcs)
+          v.decider.assume(pcsLabelled, pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
+          val branchConditions = entry.pathConditions.branchConditions
+          val branchConditionsLabelled = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, branchConditions, And(branchConditions))
+          feasibleBranches = branchConditionsLabelled :: feasibleBranches
           feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
           feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)
         })

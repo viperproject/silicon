@@ -1354,10 +1354,16 @@ object evaluator extends EvaluationRules {
         var finalState = s3
         val es2AndTriggerResult = evals(s3, es2, _ => pve, v2)((s4, ts2, es2New, v3) => {
           evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, _) => { // TODO: v4 isn't forward - problem?
+            val pcs = v3.decider.pcs.after(preMark)
             val (auxGlobals, auxNonGlobalQuants) =
-              v3.decider.pcs.after(preMark).quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc)
+              pcs.quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc, v3)
+//            val auxGlobals = v3.decider.assumptionAnalyzer.createLabelledConditional(v3.decider, pcs.branchConditions ++ pcs.assumptions, auxGlobalsTmp)
+//            val auxNonGlobalQuants: Seq[Quantification] = auxNonGlobalQuantsTmp.map(q => {
+//                val newBody = v3.decider.assumptionAnalyzer.createLabelledConditional(v3.decider, pcs.branchConditions ++ pcs.assumptions, q.body)
+//                q.copy(body=newBody)
+//              })
             val auxExps =
-              Option.when(withExp)(v3.decider.pcs.after(preMark).quantifiedExp(quant, varPairs map (_._2.get), tVars, optTriggers.getOrElse(Nil), tTriggers, s"$name-aux", isGlobal = false, bc))
+              Option.when(withExp)(pcs.quantifiedExp(quant, varPairs map (_._2.get), tVars, optTriggers.getOrElse(Nil), tTriggers, s"$name-aux", isGlobal = false, bc))
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()
             es2AndTriggerTerms = Some((ts2, es2New, tTriggers, (auxGlobals, auxNonGlobalQuants), auxExps, additionalPossibleTriggers))
@@ -1654,7 +1660,7 @@ object evaluator extends EvaluationRules {
     val r =
       evals(s, remainingTriggerExpressions, _ => pve, v)((_, remainingTriggerTerms, _, v1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
-        pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
+        pcDelta = v1.decider.pcs.after(preMark).assumptions map (t => v1.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(t), t)) //decider.π -- πPre
         pcDeltaExp = v1.decider.pcs.after(preMark).assumptionExps
         Success()})
 
@@ -1700,10 +1706,14 @@ object evaluator extends EvaluationRules {
         val joinTerm = App(joinSymbol, joinFunctionArgs)
         val joinExp = joinFunctionArgsExp.map(jfa => ast.FuncApp(joinFunctionName, jfa)(ast.NoPosition, ast.NoInfo, joinType, ast.NoTrafos))
 
-        val joinDefEqs: Seq[(Term, Option[ast.Exp], Option[ast.Exp])] = entries map (entry =>
-          (Implies(And(entry.pathConditions.branchConditions), BuiltinEquals(joinTerm, entry.data._1)),
+        val joinDefEqs: Seq[(Term, Option[ast.Exp], Option[ast.Exp])] = entries map (entry =>{
+          // TODO ake: precision?
+          val branchConditions = entry.pathConditions.branchConditions
+          val labelledBranchCondition = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, branchConditions, And(branchConditions))
+          (Implies(labelledBranchCondition, BuiltinEquals(joinTerm, entry.data._1)),
           Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._1)), ast.EqCmp(joinExp.get, entry.data._2.get)())()),
-          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._2.get)), ast.EqCmp(joinExp.get, entry.data._2.get)())())))
+          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._2.get)), ast.EqCmp(joinExp.get, entry.data._2.get)())()))
+        })
 
 
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))

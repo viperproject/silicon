@@ -4,7 +4,7 @@ field f: Int
 method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
     requires @dependency()(acc(a.f, 1/2))
     requires @dependency()(acc(b.f, 1/2))
-    requires @dependency()(c ==> a == b) // TODO ake
+    requires c ==> a == b // @dependency()(c ==> a == b) // TODO ake
     requires a.f > 0 && n > 0 && b.f >= 0
     requires a.f < 100
     requires !c ==> a.f < b.f

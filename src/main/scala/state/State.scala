@@ -16,9 +16,8 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{Term, Var}
+import viper.silicon.state.terms.{And, Ite, Term, True, Var}
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.{And, Ite}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.utils.ast.BigAnd
@@ -370,11 +369,11 @@ object State {
 
             val smDomainNeeded3 = smDomainNeeded1 || smDomainNeeded2
 
-            val conditions1 = And(pc1.branchConditions)
+            val conditions1 =  analysisInfo.assumptionAnalyzer.createLabelledConditional(analysisInfo.decider, pc1.branchConditions, And(pc1.branchConditions))
             val withExp = Verifier.config.enableDebugging()
             val conditions1Exp = if (withExp) Some(BigAnd(pc1.branchConditionExps.map(_._2.get))) else None
-            val conditions2 = And(pc2.branchConditions)
-            val conditions2Exp = if (withExp) Some(BigAnd(pc2.branchConditionExps.map(_._2.get))) else None
+            val conditions2 =  analysisInfo.assumptionAnalyzer.createLabelledConditional(analysisInfo.decider, pc2.branchConditions, And(pc2.branchConditions))
+           val conditions2Exp = if (withExp) Some(BigAnd(pc2.branchConditionExps.map(_._2.get))) else None
 
             val mergeStore = (g1: Store, g2: Store) => {
               Store(mergeMaps(g1.values, (conditions1, conditions1Exp), g2.values, (conditions2, conditions2Exp))

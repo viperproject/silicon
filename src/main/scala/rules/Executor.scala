@@ -280,7 +280,7 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         // TODO ake: pcs.assumptionExps without exps do not have a source, but setting the source here will result in all invariants having the same source
-                        v2.decider.assume(pcs.assumptions, Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
+                        v2.decider.assume(pcs.assumptions map (t => v.decider.assumptionAnalyzer.createLabelledConditional(v2.decider, Set(t), t)), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()

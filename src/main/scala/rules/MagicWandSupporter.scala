@@ -332,6 +332,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args,
             Option.when(withExp)(bodyVars), FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program, v4, assumptionType, isExhale=false)
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
+          // TODO ake: conditionalizedWithAnalysis?
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), (conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp))), v4)
           Success()
         })
@@ -339,6 +340,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         this.createChunk(s4, wand, wandSnapshot, pve, v3, assumptionType)((s5, ch, v4) => {
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
           // Partition path conditions into a set which include the freshSnapRoot and those which do not
+          // TODO conditionalizedWithAnalysis?
           val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
           val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
           // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier

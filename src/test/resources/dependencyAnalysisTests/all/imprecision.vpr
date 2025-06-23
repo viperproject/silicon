@@ -35,7 +35,7 @@ method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
 {
   @dependency()
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  @obsolete()
+  // @obsolete()
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
 
   @testAssertion()

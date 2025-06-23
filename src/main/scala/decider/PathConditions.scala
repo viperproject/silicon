@@ -37,6 +37,7 @@ trait RecordedPathConditions {
   def contains(assumption: Term): Boolean
 
   def conditionalized: Seq[Term]
+  def conditionalizedWithAnalysis: (Seq[Term], Seq[Term])
 
   def conditionalizedExp: Seq[DebugExp]
 
@@ -45,7 +46,8 @@ trait RecordedPathConditions {
                  triggers: Seq[Trigger],
                  name: String,
                  isGlobal: Boolean,
-                 ignore: Term /* TODO: Hack, implement properly */)
+                 ignore: Term /* TODO: Hack, implement properly */,
+                 v: Verifier)
                 : (Seq[Term], Seq[Quantification])
 
   def quantifiedExp(quantifier: Quantifier,
@@ -261,9 +263,15 @@ private trait LayeredPathConditionStackLike {
     layers exists (_.contains(assumption))
 
   protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
+    conditionalizedWithAnalysis(layers)._1
+  }
+
+  // TODO ake: precision
+  protected def conditionalizedWithAnalysis(layers: Stack[PathConditionStackLayer]): (Seq[Term], Seq[Term]) = {
     var unconditionalTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
     var implicationLHS: Term = True
+    var originalTerms = Vector.empty[Term]
 
     for (layer <- layers.reverseIterator) {
       unconditionalTerms ++= layer.globalAssumptions
@@ -271,14 +279,15 @@ private trait LayeredPathConditionStackLike {
       layer.branchCondition match {
         case Some(condition) =>
           implicationLHS = And(implicationLHS, condition)
+          originalTerms = originalTerms :+ condition
         case None =>
       }
 
-      conditionalTerms :+=
-        Implies(implicationLHS, And(layer.nonGlobalAssumptions))
+      conditionalTerms :+= Implies(implicationLHS, And(layer.nonGlobalAssumptions))
+      originalTerms = originalTerms ++ layer.nonGlobalAssumptions ++ layer.globalAssumptions
     }
 
-    unconditionalTerms ++ conditionalTerms
+    (unconditionalTerms ++ conditionalTerms, originalTerms)
   }
 
   protected def conditionalizedExp(layers: Stack[PathConditionStackLayer]): Seq[DebugExp] = {
@@ -312,13 +321,15 @@ private trait LayeredPathConditionStackLike {
     unconditionalTerms ++ conditionalTerms
   }
 
+  // TODO ake: add edges
   protected def quantified(layers: Stack[PathConditionStackLayer],
                            quantifier: Quantifier,
                            qvars: Seq[Var],
                            triggers: Seq[Trigger],
                            name: String,
                            isGlobal: Boolean,
-                           ignore: Term)
+                           ignore: Term,
+                           v: Verifier)
                           : (Seq[Term], Seq[Quantification]) = {
 
     var globals = Vector.empty[Term]
@@ -327,8 +338,8 @@ private trait LayeredPathConditionStackLike {
     val ignores = ignore.topLevelConjuncts
 
     for (layer <- layers) {
-      val actualBranchCondition = layer.branchCondition.getOrElse(True)
-      val relevantNonGlobals = layer.nonGlobalAssumptions -- ignores
+      val actualBranchCondition = layer.branchCondition.map(a => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(a), a)).getOrElse(True)
+      val relevantNonGlobals = (layer.nonGlobalAssumptions -- ignores).map(a => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(a), a))
       val (trueNonGlobals, additionalGlobals) = if (!actualBranchCondition.existsDefined{ case t if qvars.contains(t) => }) {
         // The branch condition is independent of all quantified variables
         // Any assumptions that are also independent of all quantified variables can be treated as global assumptions.
@@ -338,7 +349,7 @@ private trait LayeredPathConditionStackLike {
         (relevantNonGlobals, Seq())
       }
 
-      globals ++= layer.globalAssumptions ++ additionalGlobals
+      globals ++= layer.globalAssumptions.map(a => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(a), a)) ++ additionalGlobals
 
       nonGlobals :+=
         Quantification(
@@ -406,6 +417,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
   val conditionalized: Seq[Term] = conditionalized(from)
+  val conditionalizedWithAnalysis: (Seq[Term], Seq[Term]) = conditionalizedWithAnalysis(from)
   lazy val conditionalizedExp: Seq[DebugExp] = conditionalizedExp(from)
 
   def definitionsOnly(): RecordedPathConditions = {
@@ -417,10 +429,11 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
                  triggers: Seq[Trigger],
                  name: String,
                  isGlobal: Boolean,
-                 ignore: Term)
+                 ignore: Term,
+                 v: Verifier)
                 : (Seq[Term], Seq[Quantification]) = {
 
-    quantified(from, quantifier, qvars, triggers, name, isGlobal, ignore)
+    quantified(from, quantifier, qvars, triggers, name, isGlobal, ignore, v)
   }
 
   def quantifiedExp(quantifier: Quantifier,
@@ -574,6 +587,7 @@ private[decider] class LayeredPathConditionStack
   def contains(assumption: Term): Boolean = allAssumptions.contains(assumption)
 
   def conditionalized: Seq[Term] = conditionalized(layers)
+  override def conditionalizedWithAnalysis: (Seq[Term], Seq[Term]) = conditionalizedWithAnalysis(layers)
 
   def conditionalizedExp: Seq[DebugExp] = conditionalizedExp(layers)
 
@@ -582,10 +596,11 @@ private[decider] class LayeredPathConditionStack
                  triggers: Seq[Trigger],
                  name: String,
                  isGlobal: Boolean,
-                 ignore: Term)
+                 ignore: Term,
+                 v: Verifier)
                 : (Seq[Term], Seq[Quantification]) = {
 
-    quantified(layers, quantifier, qvars, triggers, name, isGlobal, ignore)
+    quantified(layers, quantifier, qvars, triggers, name, isGlobal, ignore, v)
   }
 
   def quantifiedExp(quantifier: Quantifier,

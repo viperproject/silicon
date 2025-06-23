@@ -66,3 +66,19 @@ if (c == a || c == b) {
 assume c == a
 assert x == 0
 }
+
+
+method stupidSMT(){
+    var a: Int
+
+
+    if (exists x: Int, y: Int, z: Int :: x > 0 && y > 0 && z > 0 && x*x*x + y*y*y == z*z*z) {
+        // complicated condition that is equivalent to false, but can’t be proven by solver
+        // effectively unreachable code
+        assume a == 0 // assumption 1
+    } else {
+        assume a == 0 // assumption 2
+    }
+
+    assert a == 0
+}
