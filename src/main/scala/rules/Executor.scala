@@ -759,7 +759,7 @@ object executor extends ExecutionRules {
 
    private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, assumptionType: AssumptionType): (Term, Option[ast.Exp]) = {
      rhs match {
-       case _: Var | _: Literal =>
+       case _: Var | _: Literal if !Verifier.config.enableAssumptionAnalysis() =>
          (rhs, rhsExpNew)
 
        case _  =>
