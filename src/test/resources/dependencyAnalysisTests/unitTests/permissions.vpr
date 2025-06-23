@@ -41,6 +41,7 @@ method perm5(){
     var x: Ref
     @dependency()
     inhale acc(x.f)
+    @obsolete()
     x.f := x.f + 1
     @testAssertion()
     exhale acc(x.f)

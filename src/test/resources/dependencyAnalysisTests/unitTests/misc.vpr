@@ -1,0 +1,11 @@
+field f: Int
+
+method divBy0(a: Ref, n: Int)
+    requires @dependency()(n > 0)
+    requires @dependency()(acc(a.f))
+    requires @obsolete()(a.f > 0)
+{
+    var res: Int
+    @testAssertion()
+    res := a.f / n
+}

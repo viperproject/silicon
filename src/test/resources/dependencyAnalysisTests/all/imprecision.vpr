@@ -5,37 +5,52 @@ method permTest(a: Ref, b: Ref, n: Int)
     requires @dependency()(acc(a.f))
     requires @obsolete()(acc(b.f)) && @obsolete()(b.f > 0)
 {
-    //@dependency() TODO ake: soundness bug
+    @dependency()
     assume n > 0
     @obsolete()
     a.f := b.f + 2
-    //@dependency() TODO ake: soundness bug
+    @dependency()
     a.f := n
     @testAssertion()
     assert a.f >= 0 // incorrectly depends on acc(b.f)
 }
 
 
-method quantifiedPerm2Seqs2(xs: Seq[Ref], ys: Seq[Ref])
+method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency()(|xs| > 5)
   requires @obsolete()(|ys| > 3)
 {
   @dependency()
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0) // incorrectly depends on inhale forall x in xs due to heap summary
+  //@obsolete() TODO ake
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
 
   @testAssertion()
   assert xs[0].f > 0
 }
 
-method quantifiedPerm2Seqs3(xs: Seq[Ref], ys: Seq[Ref])
+method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency()(|xs| > 5)
   requires @obsolete()(|ys| > 3)
 {
   @dependency()
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
+  @obsolete()
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
 
   @testAssertion()
-  assert xs[0].f > 0 // incorrectly depends on inhale forall x in xs due to heap summary
+  assert xs[0].f > 0
+}
+
+method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency()(|xs| > 5)
+  requires @obsolete()(|ys| > 3)
+{
+  @dependency()
+  inhale (forall x: Ref :: x in xs ==> acc(x.f) && x.f > 0)
+  @obsolete()
+  inhale forall y: Ref :: y in ys ==> acc(y.f)
+
+  @testAssertion()
+  assert xs[0].f > 0
 }

@@ -57,7 +57,7 @@ method gaussianPred(n: Int) returns (res: Int)
 {
   res := 0
   var i: Int
-  // @dependency() TODO ake
+  @dependency()
   i := 0
   @dependency()
   fold gaussianEq(res, i)
