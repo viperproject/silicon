@@ -1,0 +1,32 @@
+field left: Int
+field right: Int
+
+predicate tuple(this: Ref) {
+  acc(this.left) && acc(this.right)
+}
+
+method setTuple(this: Ref, l: Int, r: Int)
+  requires @dependency()(tuple(this))
+  ensures tuple(this)
+{
+  @dependency()
+  unfold tuple(this)
+  @obsolete()
+  this.left := l
+  @obsolete()
+  this.right := r
+  @testAssertion()
+  fold tuple(this)
+}
+
+method addTuple(this: Ref) returns (sum: Int)
+  requires @dependency()(acc(tuple(this), 1/2))
+  ensures acc(tuple(this), 1/2)
+{
+  @dependency()
+  unfold acc(tuple(this), 1/2)
+  @obsolete()
+  sum := this.left + this.right
+  @testAssertion()
+  fold acc(tuple(this), 1/2)
+}

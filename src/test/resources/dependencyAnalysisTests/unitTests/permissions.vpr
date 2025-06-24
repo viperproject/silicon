@@ -83,3 +83,13 @@ method permAmount2(x: Ref, p: Perm)
   @testAssertion()
   assert x.f > 0
 }
+
+
+method noAlias(a: Ref, b: Ref, c: Ref)
+    requires @dependency()(acc(a.f))
+    requires @dependency()(acc(b.f, 1/2))
+    requires @obsolete()(acc(c.f, 1/2))
+{
+    @testAssertion()
+    assert a != b
+}

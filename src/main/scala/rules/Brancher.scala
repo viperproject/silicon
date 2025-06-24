@@ -54,8 +54,8 @@ object brancher extends BranchingRules {
      *   (2) the branch condition contains a quantified variable
      */
     val skipPathFeasibilityCheck = (
-      Verifier.config.enableAssumptionAnalysis()
-        || fromShortCircuitingAnd
+      // Verifier.config.enableAssumptionAnalysis() || TODO ake: review infeasibility check
+        fromShortCircuitingAnd
         || (   s.quantifiedVariables.nonEmpty
           && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )

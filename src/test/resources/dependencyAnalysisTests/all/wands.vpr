@@ -1,0 +1,82 @@
+field next : Ref
+field val : Int
+
+predicate list(start : Ref)
+{
+  acc(start.val) && acc(start.next) &&
+    (start.next != null ==> list(start.next))
+}
+
+function elems(start: Ref) : Seq[Int]
+  requires list(start)
+{
+  unfolding list(start) in (
+    (start.next == null ? Seq(start.val) :
+     Seq(start.val) ++ elems(start.next) ))
+}
+
+method appendit_wand1(l1 : Ref, l2: Ref)
+  requires @dependency()(list(l1))
+  requires @dependency()(list(l2))
+  requires l2 != null
+  ensures list(l1)
+  {
+    @dependency()
+    unfold list(l1)
+    if(l1.next == null) { // easy case
+      @dependency()
+      l1.next := l2
+      @testAssertion()
+      fold list(l1)
+    } else {
+      @obsolete()
+      assume false
+    }
+  }
+
+// TODO ake
+// method appendit_wand2(l1 : Ref, l2: Ref)
+//   requires @dependency()(list(l1))
+//   requires @dependency()(list(l2))
+//   requires l2 != null
+//   ensures list(l1)
+//   {
+//     @dependency()
+//     unfold list(l1)
+//     if(l1.next == null) { // easy case
+//       @obsolete()
+//       l1.next := l2
+//       @obsolete()
+//       fold list(l1)
+//     } else {
+//         var tmp : Ref := l1.next
+//         var index : Int := 1
+
+//         package list(tmp) --* list(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
+//         {
+//           fold list(l1)
+//         }
+
+//         while(unfolding list(tmp) in tmp.next != null)
+//           invariant index >= 0
+//           invariant list(tmp) && elems(tmp) == old(elems(l1))[index..]
+//           invariant list(tmp) --* list(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
+//         {
+//           unfold list(tmp)
+//           var prev : Ref := tmp
+//           tmp := tmp.next
+//           index := index + 1
+
+//           package list(tmp) --* list(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
+//           {
+//             fold list(prev)
+//             apply list(prev) --* list(l1) && elems(l1) == old(elems(l1)[..index-1]) ++ old[lhs](elems(prev))
+//           }
+//         }
+//         unfold list(tmp)
+//         tmp.next := l2
+//         fold list(tmp)
+//         apply list(tmp) --* list(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
+
+//     }
+//   }
