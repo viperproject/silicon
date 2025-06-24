@@ -1,0 +1,107 @@
+field elem: Int
+field next: Ref
+
+predicate list(this: Ref) {
+  acc(this.elem) && acc(this.next) &&
+  (this.next != null ==> list(this.next))
+}
+
+function listLength(l:Ref) : Int
+  requires list(l)
+  ensures  result > 0
+{ 
+  unfolding list(l) in l.next == null ? 1 : 1 + listLength(l.next) 
+}
+
+method appendList1(this: Ref, e: Int)
+  requires @obsolete()(list(this))
+  requires @obsolete()(0 <= e && e < 100)
+  ensures  list(this)
+{
+  @obsolete()
+  unfold list(this)
+  @obsolete()
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@obsolete()(this.next == null)) {
+    var n: Ref
+
+    @dependency()
+    n := new(elem, next)
+    @obsolete()
+    n.elem := e
+    @dependency()
+    n.next := null
+    @obsolete()
+    this.next := n
+    @testAssertion()
+    fold list(n)
+  } else {
+    appendList1(this.next, e)
+  }
+
+  fold list(this)
+}
+
+method appendList2(this: Ref, e: Int)
+  requires @dependency()(list(this))
+  requires @dependency()(0 <= e && e < 100)
+  ensures  list(this)
+{
+  @dependency()
+  unfold list(this)
+  @obsolete()
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@dependency()(this.next == null)) {
+    var n: Ref
+
+    @obsolete()
+    n := new(elem, next)
+    @obsolete()
+    n.elem := e
+    @obsolete()
+    n.next := null
+    @obsolete()
+    this.next := n
+    @obsolete()
+    fold list(n)
+  } else {
+    @testAssertion()
+    appendList2(this.next, e)
+  }
+
+  fold list(this)
+}
+
+method appendListFull(this: Ref, e: Int)
+  requires @dependency()(list(this))
+  requires @dependency()(0 <= e && e < 100)
+  ensures  list(this)
+{
+  @dependency()
+  unfold list(this)
+  @obsolete()
+  assume 0 <= this.elem && this.elem < 100
+
+  if (@dependency()(this.next == null)) {
+    var n: Ref
+
+    @dependency()
+    n := new(elem, next)
+    @obsolete()
+    n.elem := e
+    @dependency()
+    n.next := null
+    @dependency()
+    this.next := n
+    @dependency()
+    fold list(n)
+  } else {
+    @dependency()
+    appendListFull(this.next, e)
+  }
+
+  @testAssertion()
+  fold list(this)
+}

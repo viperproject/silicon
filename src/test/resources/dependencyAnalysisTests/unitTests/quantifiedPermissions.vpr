@@ -51,3 +51,39 @@ method quantifiedExhaleFully(xs: Seq[Ref]) {
   @testAssertion()
   exhale forall x: Ref :: x in xs ==> acc(x.f)
 }
+
+method quantifiedPermWrite1(xs: Seq[Ref]) {
+  @dependency()
+  assume |xs| > 5
+  @dependency()
+  inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
+
+  @testAssertion()
+  xs[0].f := 0
+}
+
+method quantifiedPermWrite2(xs: Seq[Ref]) {
+  @dependency()
+  assume |xs| > 5
+  @dependency()
+  inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
+
+  @dependency()
+  xs[0].f := 0
+
+  @testAssertion()
+  assert xs[0].f == 0
+}
+
+method quantifiedPermWrite3(xs: Seq[Ref]) {
+  @dependency()
+  assume |xs| > 5
+  @dependency()
+  inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
+
+  @obsolete()
+  xs[0].f := 0
+
+  @testAssertion()
+  assert xs[0] != xs[1] ==> xs[1].f > 0
+}
