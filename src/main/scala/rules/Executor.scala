@@ -588,7 +588,8 @@ object executor extends ExecutionRules {
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
         val methodAnnotatedAssumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(meth.info)
-        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(methodAnnotatedAssumptionType.getOrElse(AssumptionType.Explicit))
+        val defaultAssumptionType = if(meth.body.isDefined) AssumptionType.Implicit else AssumptionType.Explicit
+        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(methodAnnotatedAssumptionType.getOrElse(defaultAssumptionType))
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)

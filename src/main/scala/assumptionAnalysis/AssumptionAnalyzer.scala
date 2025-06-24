@@ -67,6 +67,7 @@ trait AssumptionAnalyzer {
   def wrapPermissionWithLabel(labelNode: LabelNode, term: Term): Term = term
   def createAndAssumeLabelNode(decider: Decider, sourceNodeIds: Iterable[Int]): LabelNode = LabelNode(True)
   def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term = thenTerm
+  def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term): Term = thenTerm
   def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], term: Term): Term = term
   def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], terms: Seq[Term]): Seq[Term] = terms
   def reassumeLabels(decider: Decider): Unit = {}
@@ -287,6 +288,12 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     val sourceNodeIds = getChunkNodeIds(sourceChunks.toSet)
     val labelNode = createAndAssumeLabelNode(decider, sourceNodeIds)
     Ite(labelNode.term, thenTerm, elseTerm)
+  }
+
+  override def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term): Term = {
+    val sourceNodeIds = getChunkNodeIds(sourceChunks.toSet)
+    val labelNode = createAndAssumeLabelNode(decider, sourceNodeIds)
+    Implies(labelNode.term, thenTerm)
   }
 
   private def createLabelNode(decider: Decider, sourceNodeIds: Iterable[Int]): LabelNode = {

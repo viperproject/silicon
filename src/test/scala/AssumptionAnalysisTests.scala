@@ -38,7 +38,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
 
   val commandLineArguments: Seq[String] =
-    Seq("--timeout", "100" /* seconds */, "--enableDebugging", "--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
+    Seq("--timeout", "100" /* seconds */, "--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
 
 
   val testDirectories: Seq[String] = Seq(
