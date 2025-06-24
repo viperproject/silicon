@@ -27,7 +27,7 @@ import scala.util.{Failure, Success}
  */
 class AssumptionAnalysisTests extends AnyFunSuite {
 
-  val CHECK_PRECISION = false
+  val CHECK_PRECISION = true
 
   val obsoleteKeyword = "obsolete"
   val dependencyKeyword = "dependency"

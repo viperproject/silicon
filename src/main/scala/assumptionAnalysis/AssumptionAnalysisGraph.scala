@@ -195,11 +195,11 @@ trait ChunkAnalysisInfo {
   def getChunk: Chunk = chunk
 }
 
-case class SimpleAssumptionNode(assumption: ast.Exp, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown, isClosed: Boolean) extends GeneralAssumptionNode {
+case class SimpleAssumptionNode(assumption: ast.Exp, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssumptionNode {
   override def getNodeString: String ="assume " + assumption.toString
 }
 
-case class StringAssumptionNode(description: String, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown, isClosed: Boolean) extends GeneralAssumptionNode {
+case class StringAssumptionNode(description: String, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + description
 }
 
@@ -219,7 +219,7 @@ case class SimpleCheckNode(t: Term, sourceInfo: AnalysisSourceInfo, isClosed: Bo
   override def getNodeType: String = "Check"
 }
 
-case class PermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = Unknown, isClosed: Boolean) extends GeneralAssumptionNode with ChunkAnalysisInfo {
+case class PermissionInhaleNode(chunk: Chunk, permAmount: Option[ast.Exp], term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssumptionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "inhale " + chunk.getAnalysisInfo
   override def getNodeType: String = "Inhale"
 }
