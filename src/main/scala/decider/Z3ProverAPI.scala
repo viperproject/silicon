@@ -9,7 +9,6 @@ package viper.silicon.decider
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.assumptionAnalysis.AssumptionAnalyzer
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider._
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
@@ -406,6 +405,8 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
+  def getLastUnsatCore: String = "" // TODO ake
+
   def endPreamblePhase(): Unit =  {
     if (!preamblePhaseOver) {
       preamblePhaseOver = true
@@ -561,9 +562,5 @@ class Z3ProverAPI(uniqueId: String,
 
   lazy val randomizeSeedsOptions: Seq[String] = {
     Seq(Z3ProverAPI.randomizeSeedsSetting)
-  }
-
-  override def setAssumptionAnalyzer(assumptionAnalyzer: AssumptionAnalyzer): Unit = {
-    // TODO ake
   }
 }

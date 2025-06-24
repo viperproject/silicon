@@ -37,17 +37,22 @@ trait ProverLike {
       preambleAssumptions :+= new DebugAxiom(description, terms)
     terms foreach assume
   }
+
+  // TODO ake: review
   def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, AnalysisSourceInfo)], description: String): Unit = {
-    if (debugMode) {
+    if (debugMode)
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
+
+    if(Verifier.config.enableAssumptionAnalysis()){
       axioms.foreach(axiom => {
         val id = if(axiom._2.isAnalysisEnabled) preambleAssumptionAnalyzer.addAssumption(axiom._2.toString, axiom._1, axiom._2, AssumptionType.Axiom) else None
         assume(axiom._1, AssumptionAnalyzer.createAxiomLabel(id))
       })
-    }else{
+    } else{
       axioms.foreach(t => assume(t._1))
     }
   }
+
   def getPreambleAnalysisNodes: Iterable[AssumptionAnalysisNode] = preambleAssumptionAnalyzer.getNodes
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
@@ -62,6 +67,7 @@ trait Prover extends ProverLike with StatefulComponent {
   def start(userArgsString: Option[String]): Unit
   def assert(goal: Term, timeout: Option[Int] = None, label: String = ""): Boolean
   def check(timeout: Option[Int] = None, label: String = ""): Result
+  def getLastUnsatCore: String
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def statistics(): Map[String, String]
   def hasModel(): Boolean
@@ -85,6 +91,4 @@ trait Prover extends ProverLike with StatefulComponent {
   def getAllDecls(): Seq[Decl]
 
   def getAllEmits(): Seq[String]
-
-  def setAssumptionAnalyzer(assumptionAnalyzer: AssumptionAnalyzer): Unit
 }

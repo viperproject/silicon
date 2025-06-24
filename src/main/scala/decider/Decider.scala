@@ -148,7 +148,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if(isAnalysisEnabled) {
         assumptionAnalyzer = new DefaultAssumptionAnalyzer(member)
         assumptionAnalyzer.addNodes(preambleNodes)
-        prover.setAssumptionAnalyzer(assumptionAnalyzer)
       }else{
         removeAssumptionAnalyzer()
       }
@@ -156,7 +155,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     override def removeAssumptionAnalyzer(): Unit = {
       assumptionAnalyzer = new NoAssumptionAnalyzer
-      prover.setAssumptionAnalyzer(assumptionAnalyzer)
     }
 
     def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
@@ -182,7 +180,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       // TODO: Change interface to make the cast unnecessary?
       val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
       layeredStack.layers.reverse.foreach(l => {
-        l.assumptions foreach prover.assume
+        l.assumptions foreach prover.assume // TODO ake: labels?
         prover.push(timeout = Verifier.config.pushTimeout.toOption)
       })
     }
@@ -450,7 +448,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      prover.check(timeout, label) == Unsat
+      val result = prover.check(timeout, label) == Unsat
+      if(result)
+        assumptionAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+      result
     }
 
     def check(t: Term, timeout: Int): Boolean = {
@@ -492,8 +493,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if(result || !isCheck) assertNode foreach assumptionAnalyzer.addNode
 
-
-
       symbExLog.closeScope(sepIdentifier)
       result
     }
@@ -522,6 +521,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       val result = prover.assert(t, timeout, label)
+
+      if(result)
+        assumptionAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

@@ -37,7 +37,7 @@ trait RecordedPathConditions {
   def contains(assumption: Term): Boolean
 
   def conditionalized: Seq[Term]
-  def conditionalizedWithAnalysis: (Seq[Term], Seq[Term])
+  def conditionalizedWithAnalysis: (Seq[Term], Seq[Term]) // TODO ake: remove and integrated labels into conditionalized
 
   def conditionalizedExp: Seq[DebugExp]
 
@@ -320,8 +320,7 @@ private trait LayeredPathConditionStackLike {
 
     unconditionalTerms ++ conditionalTerms
   }
-
-  // TODO ake: add edges
+  
   protected def quantified(layers: Stack[PathConditionStackLayer],
                            quantifier: Quantifier,
                            qvars: Seq[Var],

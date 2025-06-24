@@ -7,7 +7,6 @@
 package viper.silicon.decider
 
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, NoAssumptionAnalyzer}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider._
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
@@ -40,11 +39,11 @@ abstract class ProverStdIO(uniqueId: String,
   protected var allDecls: Seq[Decl] = Seq()
   protected var allEmits: Seq[String] = Seq()
   protected var proverLabelId: Int = 0
-  var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
   var lastModel : String = _
+  protected var lastUnsatCore_ : String = _
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -52,10 +51,6 @@ abstract class ProverStdIO(uniqueId: String,
 
   protected def setTimeout(timeout: Option[Int]): Unit
   protected def getProverPath: Path
-
-  override def setAssumptionAnalyzer(assumptionAnalyzer: AssumptionAnalyzer): Unit = {
-    this.assumptionAnalyzer = assumptionAnalyzer
-  }
 
   @inline
   private def readLineFromInput(): String = {
@@ -244,13 +239,15 @@ abstract class ProverStdIO(uniqueId: String,
 //        problems.foreach(p => quantificationLogger.println(s"  $p"))
 //      }
 //    })
-    if(label.isEmpty){
-      assume(term, "prover_" + proverLabelId)
-      proverLabelId += 1
-    }else{
-      assume(termConverter.convert(term), label)
-    }
+    val finalLabel = if(label.isEmpty) nextProverLabel() else label
+    assume(termConverter.convert(term), finalLabel)
   }
+
+def nextProverLabel(): String = {
+  val label = "prover_" + proverLabelId
+  proverLabelId += 1
+  label
+}
 
   def assume(term: String, label: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
@@ -302,8 +299,7 @@ abstract class ProverStdIO(uniqueId: String,
       retrieveAndSaveModel()
       retrieveReasonUnknown()
     }else if(Verifier.config.enableAssumptionAnalysis()){
-      val unsatCore = extractUnsatCore()
-      assumptionAnalyzer.processUnsatCoreAndAddDependencies(unsatCore, label)
+      lastUnsatCore_ = extractUnsatCore()
     }
 
     pop()
@@ -317,6 +313,8 @@ abstract class ProverStdIO(uniqueId: String,
     comment("unsat core: " + unsatCore)
     unsatCore
   }
+
+  def getLastUnsatCore: String = lastUnsatCore_
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
     data match {
@@ -394,10 +392,9 @@ abstract class ProverStdIO(uniqueId: String,
       case "unknown" => Unknown
     }
 
-    if(result == Unsat && Verifier.config.enableAssumptionAnalysis()){
-      val unsatCore = extractUnsatCore()
-      assumptionAnalyzer.processUnsatCoreAndAddDependencies(unsatCore, label)
-    }
+    if(result == Unsat && Verifier.config.enableAssumptionAnalysis())
+      lastUnsatCore_ = extractUnsatCore()
+
 
     result
   }

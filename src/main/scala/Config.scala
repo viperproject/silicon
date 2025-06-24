@@ -892,14 +892,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
-  validateOpt(enableAssumptionAnalysis, enableDebugging) {
-    case (Some(false), _) => Right(())
-    case (Some(true), Some(true)) => Right(())
-    case (Some(true), Some(false)) =>
-      Left(s"Option ${enableAssumptionAnalysis.name} requires option ${enableDebugging.name}")
-    case other =>
-      sys.error(s"Unexpected combination: $other")
-  }
+//  validateOpt(enableAssumptionAnalysis, enableDebugging) {
+//    case (Some(false), _) => Right(())
+//    case (Some(true), Some(true)) => Right(())
+//    case (Some(true), Some(false)) =>
+//      Left(s"Option ${enableAssumptionAnalysis.name} requires option ${enableDebugging.name}")
+//    case other =>
+//      sys.error(s"Unexpected combination: $other")
+//  }
 
   validateOpt(startDebuggerAutomatically, enableDebugging) {
     case (Some(false), _) => Right(())
