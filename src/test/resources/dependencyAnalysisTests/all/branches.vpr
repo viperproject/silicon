@@ -7,11 +7,11 @@ method branches1(a: Int, b: Int)
   @dependency()
   assume b > 4
 
-  @obsolete()
+  @irrelevant()
   assume a < 100
-  @obsolete()
+  @irrelevant()
   assume b < 50
-  @obsolete()
+  @irrelevant()
   assume c ==> a > 5
 
   if(c){
@@ -32,16 +32,16 @@ method branches2(a: Int, b: Int)
 
   @dependency()
   assume 0 < a
-  @obsolete()
+  @irrelevant()
   assume a < 100
-  @obsolete()
+  @irrelevant()
   assume a < b
-  @obsolete()
+  @irrelevant()
   assume b < 50
 
   var x: Int
   if(a >= n){
-    @obsolete()
+    @irrelevant()
     x := a + b
   }else{
     @dependency()
@@ -55,13 +55,13 @@ method branches3(a: Int, b: Int)
 {
   var n:Int, c: Bool
 
-  @obsolete()
+  @irrelevant()
   assume 0 < a
-  @obsolete()
+  @irrelevant()
   assume a < 100
   @dependency()
   assume 0 < b
-  @obsolete()
+  @irrelevant()
   assume b < 50
 
   if(c){
@@ -88,15 +88,15 @@ method nestedBranches1(a: Int, b: Int)
 {
   var n:Int, c: Bool
 
-  @obsolete()
+  @irrelevant()
   assume 0 < a
-  @obsolete()
+  @irrelevant()
   assume a < 100
   @dependency()
   assume 0 < b
-  @obsolete()
+  @irrelevant()
   assume b < 50
-  @obsolete()
+  @irrelevant()
   assume c ==> a > 5
 
   if(c){

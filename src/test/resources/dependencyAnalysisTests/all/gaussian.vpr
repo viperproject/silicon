@@ -2,13 +2,13 @@ field f: Int
 
 method gaussianSimple(n: Int) returns (res: Int)
   requires 0 <= n
-  requires @obsolete()(n <= 5)
+  requires @irrelevant()(n <= 5)
 {
   res := 0
   var i: Int := 0
   while(@dependency()(i <= n))
     invariant @dependency()(i <= (n + 1))
-    invariant @obsolete()(i <= 6)
+    invariant @irrelevant()(i <= 6)
     invariant @dependency()(res == (i - 1) * i / 2)
   {
     @dependency()

@@ -5,7 +5,7 @@ field second : Ref
 
 
 method quantifiedWritePerm(nodes: Set[Ref], x: Ref)
-  requires @obsolete()(forall n:Ref :: { n.first } n in nodes ==>
+  requires @irrelevant()(forall n:Ref :: { n.first } n in nodes ==>
     acc(n.first) && 
     (n.first != null ==> n.first in nodes))
   requires @dependency()(forall n:Ref :: { n.second } n in nodes ==>

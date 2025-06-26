@@ -34,15 +34,15 @@ method sumClient(x: Int, y: Int)
 
 method sumClient2(x: Int, y: Int)
 {
-  @obsolete()
+  @irrelevant()
   assume x >= 0
   @dependency()
   assume y >= 0
-  @obsolete()
+  @irrelevant()
   assume x < y
-  @obsolete()
+  @irrelevant()
   var n: Int := sum(x, x)
-  @obsolete()
+  @irrelevant()
   assert n >= 100
 
   @dependency()

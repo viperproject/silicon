@@ -14,13 +14,13 @@ function listLength(l:Ref) : Int
 }
 
 method appendList1(this: Ref, e: Int)
-  requires @obsolete()(list(this))
-  requires @obsolete()(0 <= e && e < 100)
+  requires @irrelevant()(list(this))
+  requires @irrelevant()(0 <= e && e < 100)
   ensures  list(this)
 {
-  @obsolete()
+  @irrelevant()
   unfold list(this)
-  @obsolete()
+  @irrelevant()
   assume 0 <= this.elem && this.elem < 100
 
   if (this.next == null) { // TODO ake: node does not exist?
@@ -28,11 +28,11 @@ method appendList1(this: Ref, e: Int)
 
     @dependency()
     n := new(elem, next)
-    @obsolete()
+    @irrelevant()
     n.elem := e
     @dependency()
     n.next := null
-    @obsolete()
+    @irrelevant()
     this.next := n
     @testAssertion()
     fold list(n)
@@ -50,21 +50,21 @@ method appendList2(this: Ref, e: Int)
 {
   @dependency()
   unfold list(this)
-  @obsolete()
+  @irrelevant()
   assume 0 <= this.elem && this.elem < 100
 
   if (this.next == null) { // TODO ake: node does not exist
     var n: Ref
 
-    @obsolete()
+    @irrelevant()
     n := new(elem, next)
-    @obsolete()
+    @irrelevant()
     n.elem := e
-    @obsolete()
+    @irrelevant()
     n.next := null
-    @obsolete()
+    @irrelevant()
     this.next := n
-    @obsolete()
+    @irrelevant()
     fold list(n)
   } else {
     @testAssertion()
@@ -81,7 +81,7 @@ method appendListFull(this: Ref, e: Int)
 {
   @dependency()
   unfold list(this)
-  @obsolete()
+  @irrelevant()
   assume 0 <= this.elem && this.elem < 100
 
   if (this.next == null) {
@@ -89,7 +89,7 @@ method appendListFull(this: Ref, e: Int)
 
     @dependency()
     n := new(elem, next)
-    @obsolete()
+    @irrelevant()
     n.elem := e
     @dependency()
     n.next := null

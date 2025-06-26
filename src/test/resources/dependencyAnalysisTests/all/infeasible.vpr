@@ -14,7 +14,7 @@ method infeasibleBranch2(a: Int, b: Int)
 {
     var res: Int
     if(@dependency()(a < 0)){
-        @obsolete()
+        @irrelevant()
         assume res < 0
     }else{
         @dependency()
@@ -41,7 +41,7 @@ method infeasibleBranchNoPerm(a: Int, b: Ref)
 {
     var res: Int
     if(a < 0){
-        //@obsolete() TODO ake: nodes missing (infeasible path)
+        //@irrelevant() TODO ake: nodes missing (infeasible path)
         res := b.f + 1
         //@testAssertion()
         assert false

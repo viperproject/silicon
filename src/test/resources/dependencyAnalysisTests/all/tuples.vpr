@@ -11,9 +11,9 @@ method setTuple(this: Ref, l: Int, r: Int)
 {
   @dependency()
   unfold tuple(this)
-  @obsolete()
+  @irrelevant()
   this.left := l
-  @obsolete()
+  @irrelevant()
   this.right := r
   @testAssertion()
   fold tuple(this)
@@ -25,7 +25,7 @@ method addTuple(this: Ref) returns (sum: Int)
 {
   @dependency()
   unfold acc(tuple(this), 1/2)
-  @obsolete()
+  @irrelevant()
   sum := this.left + this.right
   @testAssertion()
   fold acc(tuple(this), 1/2)

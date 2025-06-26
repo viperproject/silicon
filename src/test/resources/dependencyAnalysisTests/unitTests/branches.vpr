@@ -17,7 +17,7 @@ method branch1(){
 method branch2(){
     var x: Int, y: Int
 
-    if(@obsolete()(x > 0)){
+    if(@irrelevant()(x > 0)){
         @dependency()
         assume y > 0
     }else{
@@ -36,7 +36,7 @@ method branch3(){
         @dependency()
         y := x + 1
     }else{
-        @obsolete()
+        @irrelevant()
         assume y >= 10
     }
 
@@ -48,7 +48,7 @@ method branch4(){
     var x: Int, y: Int
 
     if(@dependency()(x > 0)){
-        @obsolete()
+        @irrelevant()
         y := x + 1
     }else{
         @dependency()
@@ -63,8 +63,8 @@ method branch5(){
     @dependency()
     assume y > 0
 
-    if(@obsolete()(x > 0)){
-        @obsolete()
+    if(@irrelevant()(x > 0)){
+        @irrelevant()
         y := x + 1
     }else{
         @testAssertion()

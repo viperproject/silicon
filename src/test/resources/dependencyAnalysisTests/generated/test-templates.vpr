@@ -20,14 +20,14 @@ method dummyTest()
 method basic(a: Int)
 {
     var b: Int
-    @obsolete()
+    @irrelevant()
     assume a > 0
 
     ##INIT##
 
     ##ASSUMPTIONS##
 
-    @obsolete()
+    @irrelevant()
     b := a * 2
 
     ##BODY##
@@ -39,18 +39,18 @@ method basic(a: Int)
 method basicBranch(a: Int)
 {
     var b: Int
-    @obsolete()
+    @irrelevant()
     assume a > 0
 
     ##INIT##
 
     if(a >= 0){
         ##ASSUMPTIONS##
-        @obsolete()
+        @irrelevant()
         b := a * 2
     }else{
         // infeasible
-        @obsolete()
+        @irrelevant()
         b := a + 1
     }
 

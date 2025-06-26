@@ -13,9 +13,9 @@ method infeasible1(x: Ref)
 
 
 method infeasible2(x: Ref)
-    requires @obsolete()(x != null ==> acc(x.f)) // unexpected dependency iff infeasible branches are always executed
+    requires @irrelevant()(x != null ==> acc(x.f)) // unexpected dependency iff infeasible branches are always executed
 {
-    if(@obsolete()(x == null)){ // unexpected dependency iff infeasible branches are always executed
+    if(@irrelevant()(x == null)){ // unexpected dependency iff infeasible branches are always executed
         var a: Int
         @dependency()
         a := 0
@@ -26,12 +26,12 @@ method infeasible2(x: Ref)
 
 method infeasible3(x: Ref)
 {
-    if(@obsolete()(x != null)){ // unexpected dependency iff infeasible branches are always executed
-        @obsolete()
+    if(@irrelevant()(x != null)){ // unexpected dependency iff infeasible branches are always executed
+        @irrelevant()
         inhale acc(x.f)
     }
 
-    if(@obsolete()(x == null)){ // unexpected dependency iff infeasible branches are always executed
+    if(@irrelevant()(x == null)){ // unexpected dependency iff infeasible branches are always executed
         var a: Int
         @dependency()
         a := 0

@@ -59,13 +59,13 @@ method call4(x: Int, y: Int, z: Int)
   @dependency()
   assume y > 0
 
-  @obsolete()
+  @irrelevant()
   assume z > 0
 
   var n: Int, n2: Int
   @dependency()
   n := sum(x, y)
-  @obsolete()
+  @irrelevant()
   n2 := sum(x, z)
 
   @testAssertion()

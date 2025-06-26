@@ -3,11 +3,11 @@ field f: Int
 // test fails
 method permTest(a: Ref, b: Ref, n: Int)
     requires @dependency()(acc(a.f))
-    requires @obsolete()(acc(b.f)) && @obsolete()(b.f > 0)
+    requires @irrelevant()(acc(b.f)) && @irrelevant()(b.f > 0)
 {
     @dependency()
     assume n > 0
-    @obsolete()
+    @irrelevant()
     a.f := b.f + 2
     @dependency()
     a.f := n
@@ -18,11 +18,11 @@ method permTest(a: Ref, b: Ref, n: Int)
 
 method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency()(|xs| > 5)
-  requires @obsolete()(|ys| > 3)
+  requires @irrelevant()(|ys| > 3)
 {
   @dependency()
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  @obsolete()
+  @irrelevant()
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
 
   @testAssertion()
@@ -31,11 +31,11 @@ method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
 
 method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency()(|xs| > 5)
-  requires @obsolete()(|ys| > 3)
+  requires @irrelevant()(|ys| > 3)
 {
   @dependency()
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  @obsolete()
+  @irrelevant()
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
 
   @testAssertion()
@@ -44,11 +44,11 @@ method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
 
 method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency()(|xs| > 5)
-  requires @obsolete()(|ys| > 3)
+  requires @irrelevant()(|ys| > 3)
 {
   @dependency()
   inhale (forall x: Ref :: x in xs ==> acc(x.f) && x.f > 0)
-  @obsolete()
+  @irrelevant()
   inhale forall y: Ref :: y in ys ==> acc(y.f)
 
   @testAssertion()

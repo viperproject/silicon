@@ -52,22 +52,22 @@ method sumPerm1(n: Int, res: Ref)
 
 method sumPerm2(n: Int, res: Ref)
   requires @dependency()(acc(res.f))
-  requires @obsolete()(0 <= n)
+  requires @irrelevant()(0 <= n)
   ensures acc(res.f)
 {
-  @obsolete()
+  @irrelevant()
   res.f := 0
   var i: Int
-  @obsolete()
+  @irrelevant()
   i := 0;
-  while(@obsolete()(i <= n))
+  while(@irrelevant()(i <= n))
     invariant @dependency()(acc(res.f))
-    invariant @obsolete()(i <= (n + 1))
-    invariant @obsolete()(res.f == (i - 1) * i / 2)
+    invariant @irrelevant()(i <= (n + 1))
+    invariant @irrelevant()(res.f == (i - 1) * i / 2)
   {
-    @obsolete()
+    @irrelevant()
     res.f := res.f + i
-    @obsolete()
+    @irrelevant()
     i := i + 1
   }
 

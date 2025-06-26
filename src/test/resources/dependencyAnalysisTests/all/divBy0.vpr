@@ -23,7 +23,7 @@ method basic()
 {
     var x: Int
     var y: Int
-    @obsolete()
+    @irrelevant()
     assume x > 0
     @dependency()
     assume y > 0

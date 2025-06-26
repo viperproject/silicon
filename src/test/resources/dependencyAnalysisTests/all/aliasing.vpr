@@ -17,8 +17,8 @@ method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
 
 method aliasing(x: Ref, n: Int)
   requires @dependency()(acc(x.f))
-  requires @obsolete()(n > 0)
-  requires @obsolete()(x.f > n)
+  requires @irrelevant()(n > 0)
+  requires @irrelevant()(x.f > n)
 {
   @dependency()
   x.f := n + 1

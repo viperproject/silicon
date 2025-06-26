@@ -29,8 +29,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = true
 
-  val obsoleteKeyword = "obsolete"
+  val obsoleteKeyword = "irrelevant"
   val dependencyKeyword = "dependency"
+  val testAssertionKeyword = "testAssertion"
 
   val GENERATE_TESTS = false
   if(GENERATE_TESTS)
@@ -128,11 +129,13 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }, s"Verification failed for ${filePrefix + fileName + ".vpr"}")
 
     val assumptionGraphsReal = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionGraphs
-    val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedAssumptionStmts(program)
+    val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts(program, { annotationInfo => annotationInfo.values.contains(obsoleteKeyword) || annotationInfo.values.contains(dependencyKeyword)})
+    val stmtsWithAssertionAnnotation: Set[Infoed] = extractAnnotatedStmts(program, { annotationInfo => annotationInfo.values.contains(testAssertionKeyword)})
     val allAssumptionNodes = assumptionGraphsReal.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
 
-    // TODO ake: warning if testAssertion is missing
     var errorMsgs = stmtsWithAssumptionAnnotation.map(checkNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
+    if(stmtsWithAssertionAnnotation.isEmpty)
+      errorMsgs ++= "Missing test assertion."
     errorMsgs ++= assumptionGraphsReal flatMap checkDependencies
     val warnMsgs = assumptionGraphsReal flatMap checkNonDependencies
     if(CHECK_PRECISION)
@@ -143,13 +146,13 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     assert(check, "\n" + errorMsgs.mkString("\n"))
   }
 
-  private def extractAnnotatedAssumptionStmts(program: Program): Set[Infoed] = {
+  private def extractAnnotatedStmts(program: Program, annotationFiler: (AnnotationInfo => Boolean)): Set[Infoed] = {
     var nodesWithAnnotation: Set[Infoed] = Set.empty
     val newP: Program = ViperStrategy.Slim({
       case s: Seqn => s
       case n: Infoed =>
         val annotationInfo = n.info.getUniqueInfo[AnnotationInfo]
-          .filter(ai => ai.values.contains(obsoleteKeyword) || ai.values.contains(dependencyKeyword))
+          .filter(annotationFiler)
         if (annotationInfo.isDefined)
           nodesWithAnnotation += n
         n
@@ -207,7 +210,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   def extractTestAssertionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
     graph.nodes.filter(node =>
       (node.getNodeType.equals("Assertion") || node.getNodeType.equals("Exhale") || node.getNodeType.equals("Check")) &&
-        node.sourceInfo.toString.contains("@testAssertion()")
+        node.sourceInfo.toString.contains("@" + testAssertionKeyword + "()")
     ).toSeq
   }
 

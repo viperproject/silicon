@@ -45,7 +45,7 @@ method quantifiedExhalePartially(xs: Seq[Ref]) {
 }
 
 method quantifiedExhaleFully(xs: Seq[Ref]) {
-  assume @obsolete()(|xs| > 5)
+  assume @irrelevant()(|xs| > 5)
   inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
 
   @testAssertion()
@@ -81,7 +81,7 @@ method quantifiedPermWrite3(xs: Seq[Ref]) {
   @dependency()
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  @obsolete()
+  @irrelevant()
   xs[0].f := 0
 
   @testAssertion()

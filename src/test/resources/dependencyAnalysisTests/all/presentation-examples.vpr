@@ -8,16 +8,16 @@ method foo(x: Ref, y: Ref)
     inhale acc(x.f)
 	@dependency()
     inhale acc(y.f)
-    @obsolete()
+    @irrelevant()
     inhale acc(y.g)
 
 	@dependency()
 	assume 0 < x.f
-    @obsolete()
+    @irrelevant()
 	assume x.f < 100
-    @obsolete()
+    @irrelevant()
 	assume y.f < 100
-    @obsolete()
+    @irrelevant()
 	assume 0 <= y.f
 	@dependency()
 	assume x.f < y.f
