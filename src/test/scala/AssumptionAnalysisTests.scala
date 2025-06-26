@@ -1,9 +1,9 @@
 
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.SiliconFrontend
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, AssumptionType, DependencyAnalysisReporter, GeneralAssumptionNode}
-import viper.silver.ast.{AnnotationInfo, HasLineColumn, Infoed, NoPosition, Node, Position, Positioned, Program, Seqn, VirtualPosition}
+import viper.silicon.assumptionAnalysis._
 import viper.silver.ast.utility.{DiskLoader, ViperStrategy}
+import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
 
@@ -122,22 +122,20 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
+    result match {
+        case verifier.Failure(failure) => assert(false, s"Verification failed for ${filePrefix + fileName + ".vpr"}: ${failure.mkString(",")}")
+        case _ =>
+      }
 
-    assert(result match {
-      case verifier.Success => true
-      case verifier.Failure(_) => false
-    }, s"Verification failed for ${filePrefix + fileName + ".vpr"}")
-
-    val assumptionGraphsReal = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionGraphs
+    val assumptionAnalyzers = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers
+    val assumptionGraphs = assumptionAnalyzers map (_.assumptionGraph)
     val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts(program, { annotationInfo => annotationInfo.values.contains(obsoleteKeyword) || annotationInfo.values.contains(dependencyKeyword)})
-    val stmtsWithAssertionAnnotation: Set[Infoed] = extractAnnotatedStmts(program, { annotationInfo => annotationInfo.values.contains(testAssertionKeyword)})
-    val allAssumptionNodes = assumptionGraphsReal.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
+    val allAssumptionNodes = assumptionGraphs.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
 
     var errorMsgs = stmtsWithAssumptionAnnotation.map(checkNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
-    if(stmtsWithAssertionAnnotation.isEmpty)
-      errorMsgs ++= "Missing test assertion."
-    errorMsgs ++= assumptionGraphsReal flatMap checkDependencies
-    val warnMsgs = assumptionGraphsReal flatMap checkNonDependencies
+    errorMsgs ++= assumptionAnalyzers flatMap checkTestAssertionNodeExists
+    errorMsgs ++= assumptionGraphs flatMap checkDependencies
+    val warnMsgs = assumptionGraphs flatMap checkNonDependencies
     if(CHECK_PRECISION)
       errorMsgs ++= warnMsgs
     else if(warnMsgs.nonEmpty) println(warnMsgs.mkString("\n")) // TODO ake: warning
@@ -177,6 +175,15 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       case column: HasLineColumn => column.line
       case _ => -1
     }
+  }
+
+  private def checkTestAssertionNodeExists(assumptionAnalyzer: AssumptionAnalyzer): Seq[String] = {
+    val assumptionNodes = extractTestAssumptionNodesFromGraph(assumptionAnalyzer.assumptionGraph) ++ extractTestObsoleteAssumptionNodesFromGraph(assumptionAnalyzer.assumptionGraph)
+    val assertionNodes = extractTestAssertionNodesFromGraph(assumptionAnalyzer.assumptionGraph)
+    if(assumptionNodes.nonEmpty && assertionNodes.isEmpty)
+      Seq(s"Missing testAssertion for member: ${assumptionAnalyzer.getMember.map(_.name).getOrElse("unknown")}")
+    else
+      Seq.empty
   }
 
   def checkDependencies(assumptionGraph: AssumptionAnalysisGraph): Seq[String] = {

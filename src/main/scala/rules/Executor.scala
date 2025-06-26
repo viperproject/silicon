@@ -501,7 +501,7 @@ object executor extends ExecutionRules {
 
       case inhale @ ast.Inhale(a) =>
         a match {
-          case _: ast.FalseLit =>
+          case _: ast.FalseLit if !Verifier.config.enableAssumptionAnalysis() =>
             /* We're done */
             Success()
           case _ =>

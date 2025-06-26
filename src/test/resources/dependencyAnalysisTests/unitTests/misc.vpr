@@ -9,3 +9,12 @@ method divBy0(a: Ref, n: Int)
     @testAssertion()
     res := a.f / n
 }
+
+method assumeFalse()
+{
+    var a: Int
+    @dependency()
+    assume false
+    @testAssertion()
+    assert a == 2
+}

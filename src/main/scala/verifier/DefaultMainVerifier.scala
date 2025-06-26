@@ -318,7 +318,7 @@ class DefaultMainVerifier(config: Config,
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
       assumptionAnalyzers foreach (_.exportGraph())
       if(reporter.isInstanceOf[DependencyAnalysisReporter])
-        reporter.asInstanceOf[DependencyAnalysisReporter].assumptionGraphs = assumptionAnalyzers.map(_.assumptionGraph)
+        reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers = assumptionAnalyzers
       logger debug s"assumption analyzers ${assumptionAnalyzers.mkString(", ")}"
     }
 
