@@ -224,14 +224,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, AssumptionType.Internal)((s1, _) => {
+        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, AssumptionType.Explicit)((s1, _) => {
           val relevantPathConditionStack = decider.pcs.after(preMark)
           phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions map (t => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(t), t)), relevantPathConditionStack.branchConditionExps,
             relevantPathConditionStack.assumptions map (t => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(t), t)), Option.when(evaluator.withExp)(relevantPathConditionStack.assumptionExps))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
-          produces(s1, freshSnap, posts, ContractNotWellformed, v, AssumptionType.Internal)((s2, _) => {
+          produces(s1, freshSnap, posts, ContractNotWellformed, v, AssumptionType.Explicit)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 

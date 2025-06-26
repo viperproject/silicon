@@ -943,7 +943,7 @@ object evaluator extends EvaluationRules {
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
-              v3.decider.assume(preFApp, preExp, AssumptionType.Internal)
+              v3.decider.assume(preFApp, preExp, AssumptionType.Explicit) // TODO ake: assumption Type?
               val funcAnn = func.info.getUniqueInfo[AnnotationInfo]
               val tFApp = funcAnn match {
                 case Some(a) if a.values.contains("opaque") =>
@@ -1086,21 +1086,21 @@ object evaluator extends EvaluationRules {
                   case false =>
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExp)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Internal)
+                      v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Explicit) // TODO ake: assumption type
                       failure combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     } else failure}
               case false =>
 
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, idxGe0, idxGe0ExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Internal)
+                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Explicit)
                   v1.decider.assert(idxLtLength, idxLtLengthExp) {
                     case true =>
                       failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     case false =>
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExpNew)
                       if (v1.reportFurtherErrors()) {
-                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Internal)
+                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Explicit)
                         failure2 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                       } else failure2}
                 } else failure1}}})
@@ -1143,14 +1143,14 @@ object evaluator extends EvaluationRules {
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, idxGe0, idxGe0ExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Internal)
+                  v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Explicit)
                   v1.decider.assert(idxLtLength, idxLtLengthExp) {
                     case true =>
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                     case false =>
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, idxLtLength, idxLtLengthExpNew)
                       if (v1.reportFurtherErrors()) {
-                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Internal)
+                        v1.decider.assume(idxLtLength, idxLtLengthExp, idxLtLengthExpNew, AssumptionType.Explicit)
                         failure2 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                       } else failure2}
             } else failure1}}})
@@ -1269,7 +1269,7 @@ object evaluator extends EvaluationRules {
               case false =>
                 val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1, SetIn(keyT, MapDomain(baseT)), assertExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
-                  v1.decider.assume(SetIn(keyT, MapDomain(baseT)), assertExp, assertExpNew, AssumptionType.Internal)
+                  v1.decider.assume(SetIn(keyT, MapDomain(baseT)), assertExp, assertExpNew, AssumptionType.Explicit)
                   failure1 combine Q(s1, MapLookup(baseT, keyT), eNew, v1)
                 } else {
                   failure1
@@ -1529,7 +1529,7 @@ object evaluator extends EvaluationRules {
       case false =>
         val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s, tDivisor !== tZero, notZeroExpNew)
         if (s.retryLevel == 0  && v.reportFurtherErrors()) {
-          v.decider.assume(tDivisor !== tZero, notZeroExp, notZeroExpNew, AssumptionType.Internal)
+          v.decider.assume(tDivisor !== tZero, notZeroExp, notZeroExpNew, AssumptionType.Explicit)
           failure combine Q(s, t, v)
         } else failure
     }

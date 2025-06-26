@@ -424,10 +424,10 @@ object executor extends ExecutionRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-                v1.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
+                v1.decider.assumeDefinition(smValueDef, debugExp, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Internal))
                 v1.decider.analysisSourceInfoStack.setForcedSource(ExpAnalysisSourceInfo(fa))
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Internal), isExhale=false)
+                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, AssumptionType.Internal, isExhale=false)
                 v1.decider.analysisSourceInfoStack.removeForcedSource()
                 if (s3.heapDependentTriggers.contains(field)) {
                   val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
@@ -455,7 +455,7 @@ object executor extends ExecutionRules {
                 val id = BasicChunkIdentifier(field.name)
                 v2.decider.assumptionAnalyzer.enableCustomEdges() // inhaling the new chunk should not depend on any rhs assertions, dependency to exhaling old chunk is added nevertheless
                 val newChunk = BasicChunk.createDerivedChunk(Set.empty, FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                  v3.decider.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Internal)))
+                  v3.decider.getAnalysisInfo(AssumptionType.Internal))
                 v2.decider.assumptionAnalyzer.disableCustomEdges()
                 chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                   val s5 = s4.copy(h = h4)
@@ -483,7 +483,7 @@ object executor extends ExecutionRules {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
             val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-            v.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
+            v.decider.assumeDefinition(smValueDef, debugExp, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT))),
               field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit), isExhale=false)
           } else {

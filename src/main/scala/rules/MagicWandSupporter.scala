@@ -115,14 +115,14 @@ object magicWandSupporter extends SymbolicExecutionRules {
    * @param v           Verifier instance
    * @return Fresh instance of [[viper.silicon.state.terms.MagicWandSnapshot]]
    */
-  def createMagicWandSnapshot(abstractLhs: Var, rhsSnapshot: Term, v: Verifier): MagicWandSnapshot = {
+  def createMagicWandSnapshot(abstractLhs: Var, rhsSnapshot: Term, v: Verifier, assumptionType: AssumptionType): MagicWandSnapshot = {
     val mwsf = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
     val magicWandSnapshot = MagicWandSnapshot(mwsf)
     v.decider.assumeDefinition(Forall(
       abstractLhs,
       MWSFLookup(mwsf, abstractLhs) === rhsSnapshot,
       Trigger(MWSFLookup(mwsf, abstractLhs))
-    ), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot definition", isInternal_ = true)), AssumptionType.Internal)
+    ), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot definition", isInternal_ = true)), assumptionType)
     magicWandSnapshot
   }
 
@@ -185,7 +185,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
               case _ => True
             }
-            v.decider.assume(tEq, Option.when(withExp)(DebugExp.createInstance("Snapshots", isInternal_ = true)), AssumptionType.Internal)
+            v.decider.assume(tEq, Option.when(withExp)(DebugExp.createInstance("Snapshots", isInternal_ = true)), AssumptionType.Explicit)
 
             /* In the future it might be worth to recheck whether the permissions needed, in the case of
              * success being an instance of Incomplete, are zero.
@@ -315,7 +315,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val preMark = v3.decider.setPathConditionMark()
 
       v3.decider.prover.comment(s"Create MagicWandSnapFunction for wand $wand")
-      val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v3)
+      val wandSnapshot = this.createMagicWandSnapshot(freshSnapRoot, snapRhs, v3, assumptionType)
 
       // If the wand is used as a quantified resource anywhere in the program
       if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
@@ -487,7 +487,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs.get)
           // Fallback solution for quantified magic wands
           case predicateLookup: PredicateLookup =>
-            v2.decider.assume(snapLhs.get === First(snapWand.get), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", isInternal_ = true)), AssumptionType.Internal)
+            v2.decider.assume(snapLhs.get === First(snapWand.get), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", isInternal_ = true)), assumptionType)
             Second(predicateLookup)
           case _ => snapWand.get
         }

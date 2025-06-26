@@ -151,7 +151,7 @@ object havocSupporter extends SymbolicExecutionRules {
             )
             val comment = "Definitional axioms for havocall inverse functions"
             v.decider.prover.comment(comment)
-            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
             // which may be havocked. Since we are executing a Havocall statement, we wrap
@@ -284,7 +284,7 @@ object havocSupporter extends SymbolicExecutionRules {
 
       v.decider.prover.comment("axiomatized snapshot map after havoc")
       val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
-      v.decider.assume(newAxiom, debugExp, AssumptionType.Internal)
+      v.decider.assume(newAxiom, debugExp, assumptionType)
 
       QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.getAnalysisInfo(assumptionType))
     }

@@ -7,6 +7,7 @@
 package viper.silicon.supporters
 
 import viper.silicon.assumptionAnalysis.AssumptionType
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
 import viper.silicon.state.{MagicWandIdentifier, State, SymbolConverter}
@@ -27,7 +28,8 @@ trait SnapshotSupporter {
                          sf: (Sort, Verifier) => Term,
                          a0: ast.Exp,
                          a1: ast.Exp,
-                         v: Verifier)
+                         v: Verifier,
+                         assumptionType: AssumptionType)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term)
 }
 
@@ -118,10 +120,11 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
                          sf: (Sort, Verifier) => Term,
                          a0: ast.Exp,
                          a1: ast.Exp,
-                         v: Verifier)
+                         v: Verifier,
+                         assumptionType: AssumptionType)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term) = {
 
-    val (snap0, snap1) = createSnapshotPair(s, sf(sorts.Snap, v), a0, a1, v)
+    val (snap0, snap1) = createSnapshotPair(s, sf(sorts.Snap, v), a0, a1, v, assumptionType)
 
     val sf0 = toSf(snap0)
     val sf1 = toSf(snap1)
@@ -129,7 +132,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
     (sf0, sf1)
   }
 
-  private def createSnapshotPair(@unused s: State, snap: Term, @unused a0: ast.Exp, @unused a1: ast.Exp, v: Verifier): (Term, Term) = {
+  private def createSnapshotPair(@unused s: State, snap: Term, @unused a0: ast.Exp, @unused a1: ast.Exp, v: Verifier, assumptionType: AssumptionType): (Term, Term) = {
     /* [2015-11-17 Malte] If both fresh snapshot terms and first/second datatypes
      * are used, then the overall test suite verifies in 2min 10sec, whereas
      * it takes 2min 20sec when only first/second datatypes are used. Might be
@@ -161,7 +164,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
 
         (snap0, snap1, snap === Combine(snap0, snap1))
       }
-    v.decider.assume(snapshotEq, Option.when(Verifier.config.enableDebugging())(DebugExp.createInstance("Snapshot", isInternal_ = true)), AssumptionType.Internal)
+    v.decider.assume(snapshotEq, Option.when(Verifier.config.enableDebugging())(DebugExp.createInstance("Snapshot", isInternal_ = true)), assumptionType)
 
     (snap0, snap1)
   }

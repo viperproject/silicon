@@ -93,7 +93,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                          oldHeaps = OldHeaps())
       val err = PredicateNotWellformed(predicate)
 
-      val assumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(predicate.info).getOrElse(AssumptionType.Internal)
+      val assumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(predicate.info).getOrElse(AssumptionType.Explicit)
 
       val result = predicate.body match {
         case None =>
