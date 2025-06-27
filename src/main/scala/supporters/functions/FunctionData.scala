@@ -287,7 +287,7 @@ class FunctionData(val programFunction: ast.Function,
         case Some(a) if a.values.contains("opaque") => Seq()
         case _ => predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt)))
       }
-      val actualUserTriggers = userTriggers.map(ut => Trigger(triggerFunctionApplication +: ut))
+      val actualUserTriggers = userTriggers.map(ut => Trigger(limitedFunctionApplication +: ut))
       val allTriggers = (
            Seq(Trigger(functionApplication)) ++ actualPredicateTriggers ++ actualUserTriggers)
 

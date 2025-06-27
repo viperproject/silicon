@@ -257,7 +257,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
 
-      val result = phase1data.foldLeft(Success(): VerificationResult) {
+      var result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
@@ -274,6 +274,23 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               consumes(s2, posts, false, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
+
+      for (patExp <- function.pats.flatMap(_.exps)) {
+        // Evaluate all pattern expressions
+        result = phase1data.foldLeft(Success(): VerificationResult) {
+          case (fatalResult: FatalResult, _) => fatalResult
+          case (_, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
+            result && executionFlowController.locally(sPre, v)((s1, _) => {
+              decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
+              decider.assume(pcsPre, Option.when(wExp)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false)
+              v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+              eval(s1, patExp, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
+                recorders :+= s2.functionRecorder
+                Success()
+              })
+            })
+        }
+      }
 
       data.advancePhase(recorders)
 
