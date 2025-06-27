@@ -83,6 +83,18 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     pres.map(p => translate(symbolConverter.toSort _)(p.whenExhaling))
   }
 
+  def translatePattern(program: ast.Program,
+                            pats: Seq[ast.Trigger],
+                            data: FunctionData)
+                           : Seq[Seq[Term]] = {
+
+    this.program = program
+    this.data = data
+    this.failed = false
+
+    pats.map(p => p.exps.map(sp => translate(symbolConverter.toSort _)(sp)))
+  }
+
   /* Attention: Expects some fields, e.g., `program` and `locToSnap`, to be
    * set, depending on which kind of translation is performed.
    * See public `translate` methods.

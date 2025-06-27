@@ -260,6 +260,15 @@ class FunctionData(val programFunction: ast.Function,
     }))
   }
 
+  lazy val userTriggers = {
+    assert(phase == 2, s"User triggers must be generated in phase 2, current phase is $phase")
+    if (programFunction.pats.nonEmpty) {
+      expressionTranslator.translatePattern(program, programFunction.pats, this)
+    } else {
+      Seq()
+    }
+  }
+
   lazy val optBody: Option[Term] = {
     assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
 
@@ -278,8 +287,9 @@ class FunctionData(val programFunction: ast.Function,
         case Some(a) if a.values.contains("opaque") => Seq()
         case _ => predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt)))
       }
+      val actualUserTriggers = userTriggers.map(ut => Trigger(triggerFunctionApplication +: ut))
       val allTriggers = (
-           Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
+           Seq(Trigger(functionApplication)) ++ actualPredicateTriggers ++ actualUserTriggers)
 
       Forall(arguments, body, allTriggers)})
   }
