@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AssumptionType, ExpAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
@@ -864,6 +864,8 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
+        val funcAssumptionType = if(func.body.isDefined || !AssumptionAnalyzer.extractEnableAnalysisFromInfo(func.info).getOrElse(true)) AssumptionType.Implicit else AssumptionType.Explicit
+        val assumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(fapp.info).getOrElse(funcAssumptionType)
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
@@ -943,7 +945,7 @@ object evaluator extends EvaluationRules {
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
-              v3.decider.assume(preFApp, preExp, AssumptionType.Explicit) // TODO ake: assumption Type?
+              v3.decider.assume(preFApp, preExp, assumptionType)
               val funcAnn = func.info.getUniqueInfo[AnnotationInfo]
               val tFApp = funcAnn match {
                 case Some(a) if a.values.contains("opaque") =>
