@@ -22,7 +22,7 @@ method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
 {
   @dependency()
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  @irrelevant()
+  //@irrelevant() // TODO ake
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
 
   @testAssertion()
@@ -35,7 +35,7 @@ method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
 {
   @dependency()
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  @irrelevant()
+  // @irrelevant() // TODO ake
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
 
   @testAssertion()

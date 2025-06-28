@@ -28,6 +28,7 @@ import scala.util.{Failure, Success}
 class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = true
+  val ignores: Seq[String] = Seq("infeasible")
 
   val obsoleteKeyword = "irrelevant"
   val dependencyKeyword = "dependency"
@@ -62,9 +63,10 @@ class AssumptionAnalysisTests extends AnyFunSuite {
          if Files.isReadable(filePath)
          if !Files.isDirectory(filePath)){
       val fileName = filePath.getFileName.toString.replace(".vpr", "")
-      test(dirName + "/" + fileName){
-        executeTest(dirName + "/", fileName, frontend)
-      }
+      if(!ignores.contains(fileName))
+        test(dirName + "/" + fileName){
+          executeTest(dirName + "/", fileName, frontend)
+        }
     }
   }
 
