@@ -836,6 +836,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val assumptionAnalysisExportPath: ScallopOption[String] = opt[String]("assumptionAnalysisExportPath",
+    descr = "Path to the directory where the assumption analysis graphs should be exported to",
+    default = None,
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
@@ -892,14 +898,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
-//  validateOpt(enableAssumptionAnalysis, enableDebugging) {
-//    case (Some(false), _) => Right(())
-//    case (Some(true), Some(true)) => Right(())
-//    case (Some(true), Some(false)) =>
-//      Left(s"Option ${enableAssumptionAnalysis.name} requires option ${enableDebugging.name}")
-//    case other =>
-//      sys.error(s"Unexpected combination: $other")
-//  }
+  validateOpt(assumptionAnalysisExportPath, enableAssumptionAnalysis) {
+    case (None, _) => Right(())
+    case (Some(_), Some(true)) => Right(())
+    case (Some(_), Some(false)) =>
+      Left(s"Option ${assumptionAnalysisExportPath.name} requires option ${enableAssumptionAnalysis.name}")
+  }
 
   validateOpt(startDebuggerAutomatically, enableDebugging) {
     case (Some(false), _) => Right(())

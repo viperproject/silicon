@@ -5,6 +5,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Implies, Ite, NoPerm, Term, True}
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
 
@@ -272,6 +273,8 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   override def getMember: Option[ast.Member] = Some(member)
 
   override def exportGraph(): Unit = {
+    if(Verifier.config.assumptionAnalysisExportPath.isEmpty) return
+
     val foldername: Option[String] = getMember map {
       case ast.Method(name, _, _, _, _, _) => name
       case ast.Function(name, _, _, _, _, _) => name
@@ -280,7 +283,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
       case location: ast.Location => location.pos.toString
       case member: ast.ExtensionMember => member.pos.toString
     }
-    assumptionGraph.exportGraph("graphExports/" + foldername.getOrElse("latestExport"))
+    assumptionGraph.exportGraph(Verifier.config.assumptionAnalysisExportPath() + "/" + foldername.getOrElse("latestExport"))
   }
 
   override def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term = {
