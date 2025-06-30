@@ -82,9 +82,9 @@ case class BasicChunk private (resourceID: BaseID,
     case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
   }
 
-  override def getAnalysisInfo: String = perm + " for " + (resourceID match {
-      case PredicateID => id.name + "(" + (argsExp map (_.mkString(", "))).getOrElse("") + ")"
-      case FieldID => (argsExp map (_.head)).getOrElse("") + "." + id.name
+  override def getAnalysisInfo: String = perm.toString + " for " + (resourceID match {
+      case PredicateID => id.name + "(" + args.mkString(", ") + ")"
+      case FieldID => args.head.toString + "." + id.name
     })
 
 
