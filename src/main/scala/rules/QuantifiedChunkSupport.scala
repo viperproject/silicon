@@ -1728,7 +1728,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(AssumptionType.Internal))
             }
           }else{
-            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ithChunk, ithPTakenExp, v.decider.analysisSourceInfoStack.getFullSourceInfo)
+            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ithChunk, ithPTaken, v.decider.analysisSourceInfoStack.getFullSourceInfo)
           }
         }
 

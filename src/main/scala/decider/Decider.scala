@@ -317,7 +317,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         (buildChunk(finalPerm), Some(labelNode.id))
       }
 
-      val chunkNode = assumptionAnalyzer.addPermissionNode(chunk, chunk.permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+      val chunkNode = assumptionAnalyzer.addPermissionNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
       if(chunkNode.isDefined && labelNodeId.isDefined)
         assumptionAnalyzer.addDependency(chunkNode.get, labelNodeId.get)
       chunk
@@ -332,7 +332,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         (buildChunk(finalPerm), Some(labelNode.id))
       }
 
-      val newChunkNode = assumptionAnalyzer.addPermissionNode(newChunk, newChunk.permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+      val newChunkNode = assumptionAnalyzer.addPermissionNode(newChunk, newChunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
       assumptionAnalyzer.addPermissionDependencies(Set(sourceChunk), newChunkNode)
       if(newChunkNode.isDefined && labelNodeId.isDefined)
         assumptionAnalyzer.addDependency(newChunkNode.get, labelNodeId.get)

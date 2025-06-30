@@ -59,7 +59,7 @@ object BasicChunk {
                          analysisInfo: AnalysisInfo,
                          isExhale: Boolean=false): BasicChunk = {
     val newChunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    val newNode = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+    val newNode = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
     analysisInfo.assumptionAnalyzer.addPermissionDependencies(oldChunks, newNode)
     analysisInfo.assumptionAnalyzer.addDependencyFromExhaleToInhale(newNode)
     newChunk // TODO ake: registerChunk
