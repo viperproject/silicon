@@ -104,13 +104,17 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
           v.decider.assumptionAnalyzer.addForcedChunkDependencies(Set(ch))
+          v.decider.assumptionAnalyzer.enableCustomEdges()
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
           v.decider.assumptionAnalyzer.unsetForcedDependencies()
+          v.decider.assumptionAnalyzer.disableCustomEdges()
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
           val pathCond = interpreter.buildPathConditionsForResource(id, desc.delayedProperties(s.mayAssumeUpperBounds))
+          v.decider.assumptionAnalyzer.enableCustomEdges()
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
+          v.decider.assumptionAnalyzer.disableCustomEdges()
         }
 
         v.symbExLog.closeScope(sepIdentifier)

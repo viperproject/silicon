@@ -121,7 +121,8 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                                     info: Info): (Term, Option[ast.Exp]) = {
     val conditionTerm = buildPathCondition(condition, info)._1
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
-      buildPathCondition(thenDo, info)
+      val (term, exp) = buildPathCondition(thenDo, info)
+      (verifier.decider.assumptionAnalyzer.createLabelledConditional(verifier.decider, Set(conditionTerm), term), exp)
     } else {
       buildPathCondition(otherwise, info)
     }
