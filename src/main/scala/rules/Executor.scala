@@ -402,7 +402,7 @@ object executor extends ExecutionRules {
               s2
             }
             v2.decider.clearModel()
-            v2.decider.assumptionAnalyzer.enableCustomEdges() // inhaling new chunks should not depend on any of the rhs assertions
+            v2.decider.assumptionAnalyzer.disableTransitiveEdges() // inhaling new chunks should not depend on any of the rhs assertions
             val result = quantifiedChunkSupporter.removePermissions(
               s2p,
               relevantChunks,
@@ -417,7 +417,7 @@ object executor extends ExecutionRules {
               chunkOrderHeuristics,
               v2
             )
-            v2.decider.assumptionAnalyzer.disableCustomEdges()
+            v2.decider.assumptionAnalyzer.enableTransitiveEdges()
             result match {
               case (Complete(), s3, remainingChunks, consumedChunks) => // TODO ake: what to do with consumedChunks?
                 val h3 = Heap(remainingChunks ++ otherChunks)
@@ -425,10 +425,11 @@ object executor extends ExecutionRules {
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
                 v1.decider.assumeDefinition(smValueDef, debugExp, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Internal))
-                v1.decider.analysisSourceInfoStack.setForcedSource(ExpAnalysisSourceInfo(fa))
+                v1.decider.assumptionAnalyzer.disableTransitiveEdges()
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
                   field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, AssumptionType.Internal, isExhale=false)
-                v1.decider.analysisSourceInfoStack.removeForcedSource()
+                v1.decider.assumptionAnalyzer.addDependencyFromExhaleToInhale(ch, v1.decider.getAnalysisInfo.sourceInfo)
+                v1.decider.assumptionAnalyzer.enableTransitiveEdges()
                 if (s3.heapDependentTriggers.contains(field)) {
                   val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Internal)
@@ -448,15 +449,16 @@ object executor extends ExecutionRules {
               val resource = fa.res(s.program)
               val ve = pve dueTo InsufficientPermission(fa)
               val description = s"consume ${ass.pos}: $ass"
-              v2.decider.assumptionAnalyzer.enableCustomEdges() // TODO ake: review implementation
+              v2.decider.assumptionAnalyzer.disableTransitiveEdges() // TODO ake: review implementation
               chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, consumedChunks, v3) => {
-                v2.decider.assumptionAnalyzer.disableCustomEdges()
+                v2.decider.assumptionAnalyzer.enableTransitiveEdges()
                 val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
                 val id = BasicChunkIdentifier(field.name)
-                v2.decider.assumptionAnalyzer.enableCustomEdges() // inhaling the new chunk should not depend on any rhs assertions, dependency to exhaling old chunk is added nevertheless
-                val newChunk = BasicChunk.createDerivedChunk(Set.empty, FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
+                v2.decider.assumptionAnalyzer.disableTransitiveEdges() // inhaling the new chunk should not depend on any rhs assertions, dependency to exhaling old chunk is added nevertheless
+                val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
                   v3.decider.getAnalysisInfo(AssumptionType.Internal))
-                v2.decider.assumptionAnalyzer.disableCustomEdges()
+                v3.decider.assumptionAnalyzer.addDependencyFromExhaleToInhale(newChunk, v3.decider.getAnalysisInfo.sourceInfo)
+                v2.decider.assumptionAnalyzer.enableTransitiveEdges()
                 chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
                   val s5 = s4.copy(h = h4)
                   val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)

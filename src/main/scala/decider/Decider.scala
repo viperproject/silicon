@@ -324,7 +324,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def registerDerivedChunk[CH <: GeneralChunk](sourceChunk: CH, buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
-      val (newChunk, labelNodeId) = if(!createLabel) {
+      val (newChunk, labelNodeId) = if(!createLabel || isExhale) {
         (buildChunk(perm), None)
       }else {
         val labelNode = assumptionAnalyzer.createAndAssumeLabelNode(this, Set())

@@ -46,24 +46,6 @@ object BasicChunk {
       new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, finalPerm, permExp)},
       perm, analysisInfo, isExhale)
   }
-
-  def createDerivedChunk(oldChunks: Set[Chunk],
-                         resourceID: BaseID,
-                         id: BasicChunkIdentifier,
-                         args: Seq[Term],
-                         argsExp: Option[Seq[ast.Exp]],
-                         snap: Term,
-                         snapExp: Option[ast.Exp],
-                         perm: Term,
-                         permExp: Option[ast.Exp],
-                         analysisInfo: AnalysisInfo,
-                         isExhale: Boolean=false): BasicChunk = {
-    val newChunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    val newNode = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-    analysisInfo.assumptionAnalyzer.addPermissionDependencies(oldChunks, newNode)
-    analysisInfo.assumptionAnalyzer.addDependencyFromExhaleToInhale(newNode)
-    newChunk // TODO ake: registerChunk
-  }
 }
 
 case class BasicChunk private (resourceID: BaseID,
@@ -81,11 +63,6 @@ case class BasicChunk private (resourceID: BaseID,
     case FieldID => require(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
     case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
   }
-
-  override def getAnalysisInfo: String = perm.toString + " for " + (resourceID match {
-      case PredicateID => id.name + "(" + args.mkString(", ") + ")"
-      case FieldID => args.head.toString + "." + id.name
-    })
 
 
   override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): BasicChunk =

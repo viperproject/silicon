@@ -14,8 +14,6 @@ import viper.silver.ast
 trait Chunk {
   val perm: Term
   val permExp: Option[ast.Exp]
-
-  def getAnalysisInfo: String
 }
 
 trait ChunkIdentifer
@@ -64,7 +62,6 @@ trait NonQuantifiedChunk extends GeneralChunk {
   val args: Seq[Term]
   val argsExp: Option[Seq[ast.Exp]]
   val snap: Term
-  override def getAnalysisInfo: String = argsExp.getOrElse("") + " " + permExp.getOrElse("")
   override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): NonQuantifiedChunk
   override protected def permMinus(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
   override protected def permPlus(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
@@ -83,7 +80,6 @@ object NonQuantifiedChunk {
 trait QuantifiedChunk extends GeneralChunk {
   val quantifiedVars: Seq[Var]
   val quantifiedVarExps: Option[Seq[ast.LocalVarDecl]]
-  override def getAnalysisInfo: String = quantifiedVarExps.getOrElse("") + " " + permExp.getOrElse("")
   def snapshotMap: Term
   def valueAt(arguments: Seq[Term]): Term
   override protected def applyCondition(newCond: Term, newCondExp: Option[ast.Exp]): QuantifiedChunk
