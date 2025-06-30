@@ -45,7 +45,7 @@ trait ProverLike {
 
     if(Verifier.config.enableAssumptionAnalysis()){
       axioms.foreach(axiom => {
-        val id = if(axiom._2.isAnalysisEnabled) preambleAssumptionAnalyzer.addAssumption(axiom._2.toString, axiom._1, axiom._2, AssumptionType.Axiom) else None
+        val id = if(axiom._2.isAnalysisEnabled) preambleAssumptionAnalyzer.addAssumption(axiom._1, axiom._2, AssumptionType.Axiom) else None
         assume(axiom._1, AssumptionAnalyzer.createAxiomLabel(id))
       })
     } else{

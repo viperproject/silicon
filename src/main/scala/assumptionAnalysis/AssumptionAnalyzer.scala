@@ -27,8 +27,7 @@ trait AssumptionAnalyzer {
   def addNode(node: AssumptionAnalysisNode): Unit
   def getNodes: Iterable[AssumptionAnalysisNode]
 
-  def addAssumption(assumption: ast.Exp, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
-  def addAssumption(assumption: String, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int]
 
   def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
 
@@ -56,7 +55,6 @@ trait AssumptionAnalyzer {
 object AssumptionAnalyzer {
   val assumptionTypeAnnotationKey = "assumptionType"
   val enableAssumptionAnalysisAnnotationKey = "enableAssumptionAnalysis"
-  val noAssumptionAnalyzerSingelton = new NoAssumptionAnalyzer()
 
   private def extractAnnotationFromInfo(info: ast.Info, annotationKey: String): Option[Seq[String]] = {
     info.getAllInfos[ast.AnnotationInfo]
@@ -127,15 +125,9 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   }
 
 
-  override def addAssumption(assumption: ast.Exp, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, term, analysisSourceInfo, AssumptionAnalyzer.extractAssumptionTypeFromInfo(assumption.info).getOrElse(assumptionType), isClosed_)
-    addNode(node)
-    Some(node.id)
-  }
 
-
-  override def addAssumption(assumption: String, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = StringAssumptionNode(assumption, term, analysisSourceInfo, assumptionType, isClosed_)
+  override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = {
+    val node = SimpleAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_)
     addNode(node)
     Some(node.id)
   }
@@ -160,7 +152,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     val assumptionIds = assumptionLabels.filter(AssumptionAnalyzer.isAssumptionLabel).map(AssumptionAnalyzer.getIdFromLabel)
     val assertionIdsFromUnsatCore = assumptionLabels.filter(AssumptionAnalyzer.isAssertionLabel).map(AssumptionAnalyzer.getIdFromLabel)
     val assertionIdFromLabel = AssumptionAnalyzer.getIdFromLabel(assertionLabel)
-    val assertionIds = assertionIdFromLabel +: assertionIdsFromUnsatCore // TODO ake: add check (not already contained)
+    val assertionIds = assertionIdFromLabel +: assertionIdsFromUnsatCore
     assumptionGraph.addEdges(assumptionIds, assertionIds)
     val axiomIds = assumptionLabels.filter(AssumptionAnalyzer.isAxiomLabel).map(AssumptionAnalyzer.getIdFromLabel)
     assumptionGraph.addEdges(axiomIds, assertionIds)
@@ -320,8 +312,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit = {}
   def addDependency(source: Int, dest: Int): Unit = {}
   override def getMember: Option[ast.Member] = None
-  override def addAssumption(assumption: ast.Exp, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
-  override def addAssumption(assumption: String, term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addAssumption(term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = None
   override def exportGraph(): Unit = {}
 }

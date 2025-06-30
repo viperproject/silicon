@@ -193,12 +193,8 @@ trait ChunkAnalysisInfo {
   def getChunk: Chunk = chunk
 }
 
-case class SimpleAssumptionNode(assumption: ast.Exp, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssumptionNode {
-  override def getNodeString: String ="assume " + term.toString + ", " + assumption.toString
-}
-
-case class StringAssumptionNode(description: String, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssumptionNode {
-  override def getNodeString: String = "assume " + term.toString + ", " + description
+case class SimpleAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssumptionNode {
+  override def getNodeString: String = "assume " + term.toString + description.map(" (" + _ + ")").getOrElse("")
 }
 
 case class SimpleAssertionNode(assertion: ast.Exp, term: Term, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {

@@ -370,7 +370,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, _) =>
-        val assumptionId: Option[Int] = assumptionAnalyzer.addAssumption(t.toString /* TODO ake */, t, analysisSourceInfo, assumptionType)
+        val assumptionId: Option[Int] = assumptionAnalyzer.addAssumption(t, analysisSourceInfo, assumptionType)
         (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
       }
 
@@ -382,7 +382,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], assumptionType: AssumptionType): Unit = {
 
       val assumptionsWithLabels = assumptions map (t => {
-        val assumptionId = assumptionAnalyzer.addAssumption(t.toString /* TODO ake */, t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        val assumptionId = assumptionAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
       })
 
@@ -398,7 +398,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       // TODO ake: put after filtering
       val assumptionsWithLabels = assumptions map (t => {
-        val assumptionIds = assumptionAnalyzer.addAssumption(t.toString, t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        val assumptionIds = assumptionAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         (t, AssumptionAnalyzer.createAssumptionLabel(assumptionIds))
       })
 
@@ -428,7 +428,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
       }
       val termsWithLabel = filteredTerms map (t => {
-        val assumptionId = assumptionAnalyzer.addAssumption(t.toString, t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        val assumptionId = assumptionAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
       })
       assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
