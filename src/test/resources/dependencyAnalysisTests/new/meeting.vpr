@@ -39,3 +39,19 @@ method infeasible3(x: Ref)
         assert a >= 0
     }
 }
+
+
+method currentPerm(x: Ref)
+    requires acc(x.f, 1/2)
+{
+    assert perm(x.f) > 1/4
+}
+
+method noAlias(a: Ref, b: Ref, c: Ref)
+    requires @dependency()(acc(a.f))
+    requires @dependency()(acc(b.f, 1/2))
+    requires @irrelevant()(acc(c.f, 1/2))
+{
+    @testAssertion()
+    assert a != b
+}
