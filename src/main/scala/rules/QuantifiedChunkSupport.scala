@@ -693,7 +693,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val permSummary = ResourcePermissionLookup(resource, pm, codomainQVars, s.program)
 
-    val chunkPerms = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), chunk.perm, NoPerm))
+    val chunkPerms = relevantChunks map (chunk => chunk.perm)
     val valueDefinitions =
       Forall(
         codomainQVars,
@@ -837,7 +837,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
           val smDef = SnapshotMapDefinition(resource, sm, valueDefs, optDomainDefinition.toSeq)
 
-          val chunkPerms = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), chunk.perm, NoPerm))
+          val chunkPerms = relevantChunks map (chunk => chunk.perm)
           val totalPermissions = BigPermSum(chunkPerms)
 
           if (Verifier.config.disableValueMapCaching()) {

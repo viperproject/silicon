@@ -42,9 +42,9 @@ object BasicChunk {
             snap: Term, snapExp: Option[ast.Exp],
             perm: Term, permExp: Option[ast.Exp],
             analysisInfo: AnalysisInfo, isExhale: Boolean=false): BasicChunk = {
-    val chunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-    chunk
+    analysisInfo.decider.registerChunk[BasicChunk]({finalPerm =>
+      new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, finalPerm, permExp)},
+      perm, analysisInfo, isExhale)
   }
 
   def createDerivedChunk(oldChunks: Set[Chunk],
@@ -62,7 +62,7 @@ object BasicChunk {
     val newNode = analysisInfo.assumptionAnalyzer.addPermissionNode(newChunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
     analysisInfo.assumptionAnalyzer.addPermissionDependencies(oldChunks, newNode)
     analysisInfo.assumptionAnalyzer.addDependencyFromExhaleToInhale(newNode)
-    newChunk
+    newChunk // TODO ake: registerChunk
   }
 }
 
@@ -150,9 +150,9 @@ object QuantifiedFieldChunk {
             hints: Seq[Term] = Nil,
             analysisInfo: AnalysisInfo,
             isExhale: Boolean=false): QuantifiedFieldChunk = {
-    val chunk = new QuantifiedFieldChunk(id, fvf, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
-    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permValueExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-    chunk
+    analysisInfo.decider.registerChunk[QuantifiedFieldChunk]({perm =>
+      new QuantifiedFieldChunk(id, fvf, condition, conditionExp, perm, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)},
+      permValue, analysisInfo, isExhale)
   }
 }
 
@@ -241,9 +241,9 @@ object QuantifiedPredicateChunk {
              hints: Seq[Term] = Nil,
             analysisInfo: AnalysisInfo,
             isExhale: Boolean=false): QuantifiedPredicateChunk = {
-    val chunk = new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
-    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permValueExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-    chunk
+    analysisInfo.decider.registerChunk[QuantifiedPredicateChunk]({finalPerm =>
+      new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, condition, conditionExp, finalPerm, permValueExp, invs, singletonArgs, singletonArgExps, hints)},
+      permValue, analysisInfo, isExhale)
   }
 }
 
@@ -315,9 +315,9 @@ object QuantifiedMagicWandChunk {
             hints: Seq[Term] = Nil,
             analysisInfo: AnalysisInfo,
             isExhale: Boolean=false): QuantifiedMagicWandChunk = {
-    val chunk = new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, perm, permExp, invs, singletonArgs, singletonArgExps, hints)
-    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-    chunk
+    analysisInfo.decider.registerChunk[QuantifiedMagicWandChunk]({finalPerm =>
+      new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, finalPerm, permExp, invs, singletonArgs, singletonArgExps, hints)},
+      perm, analysisInfo, isExhale)
   }
 }
 
@@ -395,9 +395,9 @@ object MagicWandChunk {
             permExp: Option[ast.Exp],
             analysisInfo: AnalysisInfo,
             isExhale: Boolean=false): MagicWandChunk = {
-    val chunk = new MagicWandChunk(id, bindings, args, argsExp, snap, perm, permExp)
-    analysisInfo.assumptionAnalyzer.addPermissionNode(chunk, permExp, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-    chunk
+    analysisInfo.decider.registerChunk[MagicWandChunk]({finalPerm =>
+      new MagicWandChunk(id, bindings, args, argsExp, snap, finalPerm, permExp)},
+      perm, analysisInfo, isExhale)
   }
 }
 

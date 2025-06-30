@@ -43,6 +43,7 @@ trait AssumptionAnalyzer {
   def addDependencyFromExhaleToInhale(newChunkNodeId: Option[Int]): Unit
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit
   def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
+  def addDependency(source: Int, dest: Int): Unit
 
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
 
@@ -64,10 +65,7 @@ trait AssumptionAnalyzer {
     forcedDependencies = List.empty
   }
 
-  def wrapWithLabel(labelNode: LabelNode, term: Term): Term = term
-  def wrapPermissionWithLabel(labelNode: LabelNode, term: Term): Term = term
   def createAndAssumeLabelNode(decider: Decider, sourceNodeIds: Iterable[Int]): LabelNode = LabelNode(True)
-  def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term = thenTerm
   def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term): Term = thenTerm
   def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], term: Term): Term = term
   def createLabelledConditional(decider: Decider, sourceTerms: Iterable[Term], terms: Seq[Term]): Seq[Term] = terms
@@ -270,6 +268,10 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     addPermissionDependencies(oldChunks, newChunkId.headOption)
   }
 
+  override def addDependency(source: Int, dest: Int): Unit = {
+    assumptionGraph.addEdges(source, Set(dest))
+  }
+
   override def getMember: Option[ast.Member] = Some(member)
 
   override def exportGraph(): Unit = {
@@ -284,12 +286,6 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
       case member: ast.ExtensionMember => member.pos.toString
     }
     assumptionGraph.exportGraph(Verifier.config.assumptionAnalysisExportPath() + "/" + foldername.getOrElse("latestExport"))
-  }
-
-  override def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term, elseTerm: Term): Term = {
-    val sourceNodeIds = getChunkNodeIds(sourceChunks.toSet)
-    val labelNode = createAndAssumeLabelNode(decider, sourceNodeIds)
-    Ite(labelNode.term, thenTerm, elseTerm)
   }
 
   override def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term): Term = {
@@ -353,14 +349,6 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   override def reassumeLabels(decider: Decider): Unit = { // TODO ake: work with scopes!
     originalLabelNodes foreach (reassumeLabel(decider, _)) // assumes label
   }
-
-  override def wrapWithLabel(labelNode: LabelNode, term: Term): Term = {
-    Implies(labelNode.term, term)
-  }
-
-  override def wrapPermissionWithLabel(labelNode: LabelNode, term: Term): Term = {
-    Ite(labelNode.term, term, NoPerm)
-  }
 }
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
@@ -391,7 +379,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   }
 
   override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit = {}
-
+  def addDependency(source: Int, dest: Int): Unit = {}
   override def getMember: Option[ast.Member] = None
 
   override def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
