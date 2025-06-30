@@ -188,8 +188,8 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     if(isCheck) return Some(SimpleCheckNode(term, analysisSourceInfo, enableCustomEdges_))
 
     Some(assertion match {
-      case Left(description) => StringAssertionNode(description, analysisSourceInfo, enableCustomEdges_)
-      case Right(exp) => SimpleAssertionNode(exp, analysisSourceInfo, enableCustomEdges_)
+      case Left(description) => StringAssertionNode(description, term, analysisSourceInfo, enableCustomEdges_)
+      case Right(exp) => SimpleAssertionNode(exp, term, analysisSourceInfo, enableCustomEdges_)
     })
   }
 

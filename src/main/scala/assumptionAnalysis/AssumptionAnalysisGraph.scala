@@ -154,9 +154,8 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
 
   override def addEdges(source: Int, targets: Iterable[Int]): Unit = {
     val oldTargets = edges.getOrElse(source, Set.empty)
-    val newTargets = targets filter(t => t > source) // only forward edges
-    if(newTargets.nonEmpty)
-      edges.update(source, oldTargets ++ newTargets)
+    if(targets.nonEmpty)
+      edges.update(source, oldTargets ++ targets)
   }
 
   override def addEdges(sources: Iterable[Int], target: Int): Unit = {
@@ -203,12 +202,12 @@ case class StringAssumptionNode(description: String, term: Term, sourceInfo: Ana
   override def getNodeString: String = "assume " + description
 }
 
-case class SimpleAssertionNode(assertion: ast.Exp, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
+case class SimpleAssertionNode(assertion: ast.Exp, term: Term, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
   val assumptionType: AssumptionType = Explicit
   override def getNodeString: String = "assert " + assertion.toString
 }
 
-case class StringAssertionNode(description: String, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
+case class StringAssertionNode(description: String, term: Term, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
   val assumptionType: AssumptionType = Explicit
   override def getNodeString: String = "assert " + description
 }
