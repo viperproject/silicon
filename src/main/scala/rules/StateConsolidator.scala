@@ -83,9 +83,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
           val (_functionRecorder, _mergedChunks, _newChunks, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v)
 
-          v.decider.assumptionAnalyzer.addForcedChunkDependencies(_newChunks.toSet)
           snapEqs foreach (t => v.decider.assume(t, Option.when(withExp)(DebugExp.createInstance("Snapshot Equations", isInternal_ = true)), AssumptionType.Internal))
-          v.decider.assumptionAnalyzer.unsetForcedDependencies()
 
           functionRecorder = _functionRecorder
           mergedChunks = _mergedChunks
@@ -103,10 +101,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          v.decider.assumptionAnalyzer.addForcedChunkDependencies(Set(ch))
           v.decider.assumptionAnalyzer.disableTransitiveEdges()
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
-          v.decider.assumptionAnalyzer.unsetForcedDependencies()
+          pathCond.foreach(p => v.decider.assume(v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(ch), p._1), Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
           v.decider.assumptionAnalyzer.enableTransitiveEdges()
         }
 
@@ -210,11 +206,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   // and returns the merged chunk or None, if the chunks could not be merged
   private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {
     val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v)
-    if(result.isDefined){
-      val (_, newChunk, _) = result.get
-      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), newChunk)
-    }
-    result
+    result.map({case (fRec, ch, snapEq) =>
+      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), ch)
+      (fRec, ch, v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk1, chunk2), snapEq))})
   }
 
   private def mergeChunks1(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {

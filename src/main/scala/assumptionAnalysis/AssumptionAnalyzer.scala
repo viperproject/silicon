@@ -11,7 +11,6 @@ import viper.silver.ast
 
 trait AssumptionAnalyzer {
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
-  var forcedDependencies: List[Int] = List.empty
   protected var isClosed_ = false
 
   def disableTransitiveEdges(): Unit = {
@@ -52,18 +51,6 @@ trait AssumptionAnalyzer {
   def getMember: Option[ast.Member]
 
   def exportGraph(): Unit
-
-  def addForcedDependencies(ids: Set[Int]): Unit = {
-    forcedDependencies = forcedDependencies ++ ids
-  }
-
-  def addForcedChunkDependencies(chunks: Set[Chunk]): Unit = {
-    addForcedDependencies(getChunkNodeIds(chunks))
-  }
-
-  def unsetForcedDependencies(): Unit = {
-    forcedDependencies = List.empty
-  }
 
   def createAndAssumeLabelNode(decider: Decider, sourceNodeIds: Iterable[Int]): LabelNode = LabelNode(True)
   def createLabelledConditionalChunks(decider: Decider, sourceChunks: Iterable[Chunk], thenTerm: Term): Term = thenTerm
@@ -140,14 +127,12 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
   override def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {
     assumptionGraph.addNodes(nodes)
-    assumptionGraph.addEdges(forcedDependencies, nodes.map(_.id))
   }
 
   override def getNodes: Iterable[AssumptionAnalysisNode] = assumptionGraph.nodes
 
   override def addNode(node: AssumptionAnalysisNode): Unit = {
     assumptionGraph.addNode(node)
-    assumptionGraph.addEdges(forcedDependencies, node.id)
   }
 
   override def addSingleAssumption(assumption: DebugExp, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
