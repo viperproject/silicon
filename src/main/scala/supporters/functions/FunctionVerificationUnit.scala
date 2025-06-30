@@ -226,8 +226,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         val preMark = decider.setPathConditionMark()
         produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, AssumptionType.Explicit)((s1, _) => {
           val relevantPathConditionStack = decider.pcs.after(preMark)
-          phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions map (t => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(t), t)), relevantPathConditionStack.branchConditionExps,
-            relevantPathConditionStack.assumptions map (t => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(t), t)), Option.when(evaluator.withExp)(relevantPathConditionStack.assumptionExps))
+          phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions map (t => v.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t))), relevantPathConditionStack.branchConditionExps,
+            relevantPathConditionStack.assumptions map (t => v.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t))), Option.when(evaluator.withExp)(relevantPathConditionStack.assumptionExps))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
@@ -260,7 +260,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            val labelledBcsPre = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider,bcsPre, And(bcsPre))
+            val labelledBcsPre = v.decider.wrapWithAssumptionAnalysisLabel(And(bcsPre), Set.empty, bcsPre)
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
             // TODO ake: pcsPreExp are missing position infos sometimes (e.g. Snapshots)
             decider.assume(pcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))

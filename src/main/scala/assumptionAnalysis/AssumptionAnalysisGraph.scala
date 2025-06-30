@@ -21,7 +21,7 @@ object AssumptionAnalysisGraphHelper {
 }
 
 trait AssumptionAnalysisGraph {
-  var nodes: Seq[AssumptionAnalysisNode]
+  var nodes: mutable.Seq[AssumptionAnalysisNode]
   var edges: mutable.Map[Int, Set[Int]]
   var transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
 

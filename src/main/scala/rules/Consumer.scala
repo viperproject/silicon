@@ -572,9 +572,9 @@ object consumer extends ConsumptionRules {
           case Seq(entry1, entry2) => // Both branches are alive
             // TODO ake: precision?
             val branchConditions1 = entry1.pathConditions.branchConditions
-            val labelledBranchConditions1 = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, branchConditions1, And(branchConditions1))
+            val labelledBranchConditions1 = v.decider.wrapWithAssumptionAnalysisLabel(And(branchConditions1), Set.empty, branchConditions1)
             val branchConditions2 = entry2.pathConditions.branchConditions
-            val labelledBranchConditions2 = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, branchConditions2, And(branchConditions2))
+            val labelledBranchConditions2 = v.decider.wrapWithAssumptionAnalysisLabel(And(branchConditions2), Set.empty, branchConditions2)
             val mergedData = (
               State.mergeHeap(
                 entry1.data._1, labelledBranchConditions1, Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),

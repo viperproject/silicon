@@ -337,8 +337,8 @@ private trait LayeredPathConditionStackLike {
     val ignores = ignore.topLevelConjuncts
 
     for (layer <- layers) {
-      val actualBranchCondition = layer.branchCondition.map(a => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(a), a)).getOrElse(True)
-      val relevantNonGlobals = (layer.nonGlobalAssumptions -- ignores).map(a => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(a), a))
+      val actualBranchCondition = layer.branchCondition.map(a => v.decider.wrapWithAssumptionAnalysisLabel(a, Set.empty, Set(a))).getOrElse(True)
+      val relevantNonGlobals = (layer.nonGlobalAssumptions -- ignores).map(a => v.decider.wrapWithAssumptionAnalysisLabel(a, Set.empty, Set(a)))
       val (trueNonGlobals, additionalGlobals) = if (!actualBranchCondition.existsDefined{ case t if qvars.contains(t) => }) {
         // The branch condition is independent of all quantified variables
         // Any assumptions that are also independent of all quantified variables can be treated as global assumptions.
@@ -348,7 +348,7 @@ private trait LayeredPathConditionStackLike {
         (relevantNonGlobals, Seq())
       }
 
-      globals ++= layer.globalAssumptions.map(a => v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, Set(a), a)) ++ additionalGlobals
+      globals ++= layer.globalAssumptions.map(a => v.decider.wrapWithAssumptionAnalysisLabel(a, Set.empty, Set(a))) ++ additionalGlobals
 
       nonGlobals :+=
         Quantification(

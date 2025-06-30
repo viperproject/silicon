@@ -369,10 +369,10 @@ object State {
 
             val smDomainNeeded3 = smDomainNeeded1 || smDomainNeeded2
 
-            val conditions1 =  analysisInfo.assumptionAnalyzer.createLabelledConditional(analysisInfo.decider, pc1.branchConditions, And(pc1.branchConditions))
+            val conditions1 =  analysisInfo.decider.wrapWithAssumptionAnalysisLabel(And(pc1.branchConditions), Set.empty, pc1.branchConditions)
             val withExp = Verifier.config.enableDebugging()
             val conditions1Exp = if (withExp) Some(BigAnd(pc1.branchConditionExps.map(_._2.get))) else None
-            val conditions2 =  analysisInfo.assumptionAnalyzer.createLabelledConditional(analysisInfo.decider, pc2.branchConditions, And(pc2.branchConditions))
+            val conditions2 =  analysisInfo.decider.wrapWithAssumptionAnalysisLabel(And(pc2.branchConditions), Set.empty, pc2.branchConditions)
            val conditions2Exp = if (withExp) Some(BigAnd(pc2.branchConditionExps.map(_._2.get))) else None
 
             val mergeStore = (g1: Store, g2: Store) => {

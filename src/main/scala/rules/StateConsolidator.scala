@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, PermissionInhaleNode, StringAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
@@ -20,7 +20,6 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.NoPosition
 
 import scala.annotation.unused
 
@@ -102,7 +101,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
           v.decider.assumptionAnalyzer.disableTransitiveEdges()
-          pathCond.foreach(p => v.decider.assume(v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(ch), p._1), Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
+          pathCond.foreach(p => v.decider.assume(v.decider.wrapWithAssumptionAnalysisLabel(p._1, Set(ch)), Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
           v.decider.assumptionAnalyzer.enableTransitiveEdges()
         }
 
@@ -208,7 +207,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v)
     result.map({case (fRec, ch, snapEq) =>
       v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), ch)
-      (fRec, ch, v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk1, chunk2), snapEq))})
+      (fRec, ch, v.decider.wrapWithAssumptionAnalysisLabel(snapEq, Set(chunk1, chunk2)))})
   }
 
   private def mergeChunks1(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {

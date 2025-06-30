@@ -31,7 +31,7 @@ import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 
-import scala.collection.immutable.ArraySeq
+import scala.collection.immutable.{ArraySeq, Set}
 import scala.reflect.ClassTag
 
 case class InverseFunctions(condition: Term,
@@ -551,14 +551,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           codomainQVar,
-          v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk))),
+          v.decider.wrapWithAssumptionAnalysisLabel(Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)), Set(chunk)),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
       })
 
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
-      val chunkTriggers = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), FieldTrigger(field.name, chunk.snapshotMap, codomainQVar)))
+      val chunkTriggers = relevantChunks map (chunk => v.decider.wrapWithAssumptionAnalysisLabel(FieldTrigger(field.name, chunk.snapshotMap, codomainQVar), Set(chunk)))
       val resourceTriggerDefinition =
         Forall(
           codomainQVar,
@@ -639,7 +639,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             transformedOptSmDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
             IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
 
-        val term = v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))))
+        val term = v.decider.wrapWithAssumptionAnalysisLabel(Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))), Set(chunk))
         Forall(
           qvar, term,
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
@@ -653,7 +653,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
 
-      val chunkTriggers = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program)))
+      val chunkTriggers = relevantChunks map (chunk => v.decider.wrapWithAssumptionAnalysisLabel(ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program), Set(chunk)))
       val resourceTriggerDefinition =
         Forall(
           qvar,
@@ -711,7 +711,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
       // TODO: Quantify over snapshot if resource is predicate.
       //       Also check other places where a similar quantifier is constructed.
-      val chunkTriggerDefs = relevantChunks map (chunk => v.decider.assumptionAnalyzer.createLabelledConditionalChunks(v.decider, Set(chunk), ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program)))
+      val chunkTriggerDefs = relevantChunks map (chunk => v.decider.wrapWithAssumptionAnalysisLabel(ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program), Set(chunk)))
       val resourceTriggerDefinition =
       Forall(
         codomainQVars,

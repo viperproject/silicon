@@ -14,7 +14,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
-import viper.silicon.interfaces.state.GeneralChunk
+import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, _}
@@ -63,6 +63,8 @@ trait Decider {
 
   def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
   def registerDerivedChunk[CH <: GeneralChunk](sourceChunk: CH, buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
+  def wrapWithAssumptionAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
+  def wrapPermissionWithAssumptionAnalysisLabel(perm: Term, sourceChunks: Iterable[Chunk]): Term
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit
   def assume(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit
@@ -308,36 +310,31 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
-
-      val (chunk, labelNodeId) = if(isExhale) {
-        (buildChunk(perm), None)
-      }else {
-        val labelNode = assumptionAnalyzer.createAndAssumeLabelNode(this, Set())
-        val finalPerm = Ite(labelNode.term, perm, NoPerm)
-        (buildChunk(finalPerm), Some(labelNode.id))
-      }
-
-      val chunkNode = assumptionAnalyzer.addPermissionNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-      if(chunkNode.isDefined && labelNodeId.isDefined)
-        assumptionAnalyzer.addDependency(chunkNode.get, labelNodeId.get)
-      chunk
+      assumptionAnalyzer.registerChunk(buildChunk, perm, createAnalysisLabelNode(), analysisInfo, isExhale)
     }
 
     def registerDerivedChunk[CH <: GeneralChunk](sourceChunk: CH, buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
-      val (newChunk, labelNodeId) = if(!createLabel || isExhale) {
-        (buildChunk(perm), None)
-      }else {
-        val labelNode = assumptionAnalyzer.createAndAssumeLabelNode(this, Set())
-        val finalPerm = Ite(labelNode.term, perm, NoPerm)
-        (buildChunk(finalPerm), Some(labelNode.id))
-      }
+      assumptionAnalyzer.registerDerivedChunk(sourceChunk, buildChunk, perm, createAnalysisLabelNode(Set(sourceChunk), Set.empty), analysisInfo, isExhale)
+    }
 
-      val newChunkNode = assumptionAnalyzer.addPermissionNode(newChunk, newChunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-      assumptionAnalyzer.addPermissionDependencies(Set(sourceChunk), newChunkNode)
-      if(newChunkNode.isDefined && labelNodeId.isDefined)
-        assumptionAnalyzer.addDependency(newChunkNode.get, labelNodeId.get)
-      newChunk
+    private def createAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): LabelNode = {
+      val (label, _) = fresh(ast.LocalVar("analysisLabel", ast.Bool)())
+      val labelNode = assumptionAnalyzer.createLabelNode(label, sourceChunks, sourceTerms)
+      val smtLabel = AssumptionAnalyzer.createAssumptionLabel(Some(labelNode.id))
+      assumeLabel(label, smtLabel)
+      labelNode
+    }
 
+    def wrapWithAssumptionAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = {
+      if(!Verifier.config.enableAssumptionAnalysis()) return term
+      val labelNode = createAnalysisLabelNode(sourceChunks, sourceTerms)
+      Implies(labelNode.term, term)
+    }
+
+    def wrapPermissionWithAssumptionAnalysisLabel(perm: Term, sourceChunks: Iterable[Chunk]): Term = {
+      if(!Verifier.config.enableAssumptionAnalysis()) return perm
+      val labelNode = createAnalysisLabelNode(sourceChunks, Set.empty)
+      Ite(labelNode.term, perm, NoPerm)
     }
 
     def addDebugExp(e: DebugExp): Unit = {
@@ -471,6 +468,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       prover.assume(term, assumptionLabel)
     }
 
+    def reassumeAssumptionAnalysisLabels(): Unit = {
+      assumptionAnalyzer.getReassumeLabelNodes foreach (node => decider.assumeLabel(node.term, AssumptionAnalyzer.createAssumptionLabel(Some(node.id))))
+    }
+
     /* Asserting facts */
 
     def checkSmoke(isAssert: Boolean = false): Boolean = {
@@ -480,7 +481,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }else{ "" }
 
       if(_isReassumeAnalysisLabelsRequired) {
-        assumptionAnalyzer.reassumeLabels(this)
+        reassumeAssumptionAnalysisLabels()
         _isReassumeAnalysisLabelsRequired = false
       }
 
@@ -553,7 +554,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
       if(_isReassumeAnalysisLabelsRequired) {
-        assumptionAnalyzer.reassumeLabels(this)
+        reassumeAssumptionAnalysisLabels()
         _isReassumeAnalysisLabelsRequired = false
       }
 

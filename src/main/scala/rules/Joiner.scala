@@ -7,19 +7,17 @@
 package viper.silicon.rules
 
 import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, StringAnalysisSourceInfo}
-import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
-import viper.silicon.state.terms.{And, Or, Term, True}
+import viper.silicon.state.terms.{And, Or, Term}
 import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.NoPosition
-
-import scala.annotation.unused
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
   // Instead of merging states by calling State.merge,
@@ -105,10 +103,10 @@ object joiner extends JoiningRules {
           val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          val pcsLabelled = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, pcsDependencies, pcs)
+          val pcsLabelled = pcs map (pcsEntry => v.decider.wrapWithAssumptionAnalysisLabel(pcsEntry, Set.empty, pcsDependencies))
           v.decider.assume(pcsLabelled, pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
           val branchConditions = entry.pathConditions.branchConditions
-          val branchConditionsLabelled = v.decider.assumptionAnalyzer.createLabelledConditional(v.decider, branchConditions, And(branchConditions))
+          val branchConditionsLabelled = v.decider.wrapWithAssumptionAnalysisLabel(And(branchConditions), Set.empty, branchConditions)
           feasibleBranches = branchConditionsLabelled :: feasibleBranches
           feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
           feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)

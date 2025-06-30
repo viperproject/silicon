@@ -6,19 +6,11 @@
 
 package viper.silicon.rules
 
-import viper.silicon.debugger.DebugExp
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Config.JoinMode
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo, PermissionInhaleNode, StmtAnalysisSourceInfo, StringAnalysisSourceInfo}
-
-import scala.annotation.unused
-import viper.silver.cfg.silver.SilverCfg
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
-import viper.silver.verifier.errors._
-import viper.silver.verifier.reasons._
-import viper.silver.{ast, cfg}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType, StmtAnalysisSourceInfo}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
@@ -30,7 +22,15 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.cfg.silver.SilverCfg
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
+import viper.silver.verifier.errors._
+import viper.silver.verifier.reasons._
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
+import viper.silver.{ast, cfg}
+
+import scala.annotation.unused
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -280,7 +280,7 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         // TODO ake: pcs.assumptionExps without exps do not have a source, but setting the source here will result in all invariants having the same source
-                        v2.decider.assume(pcs.assumptions map (t => v.decider.assumptionAnalyzer.createLabelledConditional(v2.decider, Set(t), t)), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
+                        v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()

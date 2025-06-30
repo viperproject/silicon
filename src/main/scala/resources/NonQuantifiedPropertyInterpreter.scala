@@ -122,7 +122,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     val conditionTerm = buildPathCondition(condition, info)._1
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
       val (term, exp) = buildPathCondition(thenDo, info)
-      (verifier.decider.assumptionAnalyzer.createLabelledConditional(verifier.decider, Set(conditionTerm), term), exp)
+      (verifier.decider.wrapWithAssumptionAnalysisLabel(term, Set.empty, Set(conditionTerm)), exp)
     } else {
       buildPathCondition(otherwise, info)
     }
@@ -157,7 +157,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
         // TODO: Is it possible to get this behavior without having to check every tuple?
         if (!info.pm.values.exists(chunk eq _)) {
           val (resTerm, resExp) = builder(chunk)
-          Some((verifier.decider.assumptionAnalyzer.createLabelledConditionalChunks(verifier.decider, Set(chunk), resTerm), resExp))
+          Some((verifier.decider.wrapWithAssumptionAnalysisLabel(resTerm, Set(chunk)), resExp))
         } else {
           None
         }
