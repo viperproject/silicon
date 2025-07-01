@@ -17,7 +17,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
-import viper.silicon.rules.{DefaultStateConsolidator, LastRetryFailOnlyStateConsolidator, LastRetryStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingFailOnlyStateConsolidator, RetryingStateConsolidator, StateConsolidationRules}
+import viper.silicon.rules.{DefaultStateConsolidator, HeapSupportRules, LastRetryFailOnlyStateConsolidator, LastRetryStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingFailOnlyStateConsolidator, RetryingStateConsolidator, StateConsolidationRules, defaultHeapSupporter, maskHeapSupporter}
 import viper.silicon.utils.Counter
 import viper.silver.ast
 import viper.silver.reporter.AnnotationWarning
@@ -43,6 +43,8 @@ abstract class BaseVerifier(val config: Config,
   protected def symbExLog_=(logger: MemberSymbExLogger): Unit = { currentSymbExLog = Some(logger) }
 
   private val counters = mutable.Map[AnyRef, Counter]()
+
+  override val heapSupporter: HeapSupportRules = if (config.maskHeapMode()) maskHeapSupporter else defaultHeapSupporter
 
   def counter(id: AnyRef): Counter = {
     counters.getOrElseUpdate(id, new Counter())

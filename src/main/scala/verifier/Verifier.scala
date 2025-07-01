@@ -40,7 +40,7 @@ trait Verifier {
   def snapshotSupporter: SnapshotSupporter
   def stateConsolidator(s: State): StateConsolidationRules
 
-  val heapSupporter: HeapSupportRules = defaultHeapSupporter
+  val heapSupporter: HeapSupportRules
 
   def verificationPoolManager: VerificationPoolManager
 

@@ -18,6 +18,7 @@
 
 (declare-sort $Ref 0)
 (declare-const $Ref.null $Ref)
+(declare-const $Snap.null $Snap) ; hack
 
 (declare-fun internalCondFrame (Bool $Snap $Snap) $Snap)
 (assert (forall ((cnd Bool) (frst $Snap) (scnd $Snap)) (!

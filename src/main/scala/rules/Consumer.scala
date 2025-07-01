@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
@@ -119,31 +119,66 @@ object consumer extends ConsumptionRules {
                          (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    val toMergeWith = if (Verifier.config.maskHeapMode() && !isRecursive) {
-      val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
-      val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask)))
-      Some(resMap)
+    val resMap = if (Verifier.config.maskHeapMode()) {
+      if (isRecursive) {
+        Some(Seq())
+      } else {
+        val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
+        val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask)))
+        Some(resMap)
+      }
     } else {
       None
     }
 
-    if (tlcs.isEmpty)
-      Q(s, h, if (returnSnap) Some(Unit) else None, v)
-    else {
+    if (tlcs.isEmpty) {
+      val snap = Option.when(returnSnap)({
+        resMap match {
+          case Some(rm) => FakeMaskMapTerm(immutable.ListMap.from(rm))
+          case _ => Unit
+        }
+      })
+      Q(s, h, snap, v)
+    } else {
       val a = tlcs.head
       val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, returnSnap, pve, v)(Q)
+        wrappedConsumeTlc(s, h, a, returnSnap, pve, v)((s2, h2, snap2, v2) => {
+          if (!returnSnap) {
+            Q(s2, h2, None, v2)
+          } else {
+            if (Verifier.config.maskHeapMode()) {
+              val fst = immutable.ListMap.from(resMap.get)
+              val snd = snap2.get.asInstanceOf[FakeMaskMapTerm].masks
+              val newMap = maskHeapSupporter.mergePreservingFirstOrder(fst, snd)
+              Q(s2, h2, Some(FakeMaskMapTerm(newMap)), v2)
+            } else {
+              Q(s2, h2, snap2, v2)
+            }
+          }
+        })
       else
         wrappedConsumeTlc(s, h, a, returnSnap, pve, v)((s1, h1, snap1, v1) => {
           consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1, true)((s2, h2, snap2, v2) =>
-
-            (snap1, snap2) match {
-              case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(Combine(sn1, sn2)), v2)
-              case (None, None) if !returnSnap => Q(s2, h2, None, v2)
-              case (_, _) =>  sys.error(s"Consume returned unexpected snapshot: ${(returnSnap, (snap1, snap2))}")
-            })
+            if (Verifier.config.maskHeapMode()) {
+              if (returnSnap) {
+                val fst = immutable.ListMap.from(resMap.get)
+                val snd = snap1.get.asInstanceOf[FakeMaskMapTerm].masks
+                val third = snap2.get.asInstanceOf[FakeMaskMapTerm].masks
+                val newMap = maskHeapSupporter.mergePreservingFirstOrder(maskHeapSupporter.mergePreservingFirstOrder(fst, snd), third)
+                Q(s2, h2, Some(FakeMaskMapTerm(newMap)), v2)
+              } else {
+                Q(s2, h2, None, v2)
+              }
+            } else {
+              (snap1, snap2) match {
+                case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(Combine(sn1, sn2)), v2)
+                case (None, None) if !returnSnap => Q(s2, h2, None, v2)
+                case (_, _) => sys.error(s"Consume returned unexpected snapshot: ${(returnSnap, (snap1, snap2))}")
+              }
+            }
+            )
         })
     }
   }

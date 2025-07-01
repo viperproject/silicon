@@ -9,14 +9,14 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.resources.PredicateID
+import viper.silicon.interfaces.state.MaskHeapChunk
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts.PredHeapSort
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,
@@ -114,12 +114,29 @@ object predicateSupporter extends PredicateSupportRules {
     v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
         .setConstrainable(constrainableWildcards, false)
-      produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
+
+      val newSf = if (Verifier.config.maskHeapMode()) {
+        val predSnap = snap.get match {
+          case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
+          case _ => HeapLookup(SnapToHeap(snap.get, predicate, PredHeapSort), toSnapTree(tArgs))
+        }
+        (_: Sort, _: Verifier) => predSnap
+      } else {
+        toSf(snap.get)
+      }
+
+      produce(s3, newSf, body, pve, v1)((s4, v2) => {
         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
         if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+          val snapArg = if (Verifier.config.maskHeapMode()) {
+            val chunk = s4.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+            chunk.heap
+          } else {
+            snap.get.convert(sorts.Snap)
+          }
           val predicateTrigger =
             App(s4.predicateData(predicate).triggerFunction,
-              snap.get.convert(terms.sorts.Snap) +: tArgs)
+              snapArg +: tArgs)
           val eargs = eArgs.mkString(", ")
           v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
         }

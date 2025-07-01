@@ -67,6 +67,28 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     resources
   }
 
+  def mergePreservingFirstOrder(fst: immutable.ListMap[Any, Term], snd: immutable.ListMap[Any, Term]): immutable.ListMap[Any, Term] = {
+    if (fst.isEmpty) {
+      return snd
+    }
+    if (snd.isEmpty) {
+      return fst
+    }
+
+    val merged = mutable.LinkedHashMap[Any, Term]()
+    for ((k, v) <- fst) {
+      merged.update(k, v)
+    }
+    for ((k, v) <- snd) {
+      if (merged.contains(k)) {
+        merged.update(k, MaskSum(merged(k), v))
+      } else {
+        merged.update(k, v)
+      }
+    }
+    immutable.ListMap.from(merged)
+  }
+
   def findMaskHeapChunk(h: Heap, r: Any) = findMaskHeapChunkOptionally(h, r).get
 
   def findMaskHeapChunkOptionally(h: Heap, r: Any) = h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == r).asInstanceOf[Option[BasicMaskHeapChunk]]
