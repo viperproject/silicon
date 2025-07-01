@@ -18,6 +18,8 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 
+import scala.collection.immutable
+
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,
            pa: ast.PredicateAccess,
@@ -73,8 +75,14 @@ object predicateSupporter extends PredicateSupportRules {
               .scalePermissionFactor(tPerm, ePerm)
     consume(s1, body, true, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+        val snapArg = if (Verifier.config.maskHeapMode()) {
+          val chunk = s1a.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+          chunk.heap
+        } else {
+          snap.get.convert(sorts.Snap)
+        }
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
-          snap.get.convert(terms.sorts.Snap) +: tArgs)
+          snapArg +: tArgs)
         val eArgsString = eArgs.mkString(", ")
         v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
       }
@@ -83,7 +91,14 @@ object predicateSupporter extends PredicateSupportRules {
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
+      val snapToProduce = if (Verifier.config.maskHeapMode()) {
+        val tmp = HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap.get, PredHeapSort),
+          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate)
+        FakeMaskMapTerm(immutable.ListMap(predicate -> SnapToHeap(tmp, predicate, PredHeapSort)))
+      } else {
+        snap.get.convert(s2.predicateSnapMap(predicate))
+      }
+      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snapToProduce, None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
         Q(s4, v3)
       })
@@ -116,7 +131,10 @@ object predicateSupporter extends PredicateSupportRules {
         .setConstrainable(constrainableWildcards, false)
 
       val newSf = if (Verifier.config.maskHeapMode()) {
-        val predSnap = snap.get match {
+        val packedSnap = maskHeapSupporter.convertToSnapshot(snap.get.asInstanceOf[FakeMaskMapTerm].masks, Seq(predicate), s.h, s2, v1.decider)
+
+        val predSnap = packedSnap match {
+          case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
           case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
           case _ => HeapLookup(SnapToHeap(snap.get, predicate, PredHeapSort), toSnapTree(tArgs))
         }

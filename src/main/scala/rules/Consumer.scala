@@ -167,7 +167,10 @@ object consumer extends ConsumptionRules {
                 val snd = snap1.get.asInstanceOf[FakeMaskMapTerm].masks
                 val third = snap2.get.asInstanceOf[FakeMaskMapTerm].masks
                 val newMap = maskHeapSupporter.mergePreservingFirstOrder(maskHeapSupporter.mergePreservingFirstOrder(fst, snd), third)
-                Q(s2, h2, Some(FakeMaskMapTerm(newMap)), v2)
+                val term = if (isRecursive) FakeMaskMapTerm(newMap)
+                else
+                  maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), h, s2, v2.decider)
+                Q(s2, h2, Some(term), v2)
               } else {
                 Q(s2, h2, None, v2)
               }
