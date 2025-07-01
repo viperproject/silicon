@@ -55,3 +55,18 @@ method noAlias(a: Ref, b: Ref, c: Ref)
     @testAssertion()
     assert a != b
 }
+
+
+method permTest(a: Ref, b: Ref, n: Int)
+    requires @dependency()(acc(a.f))
+    requires @irrelevant()(acc(b.f)) && @irrelevant()(b.f > 0)
+{
+    @dependency()
+    assume n > 0
+    @irrelevant()
+    a.f := b.f + 2
+    @dependency()
+    a.f := n
+    @testAssertion()
+    assert a.f >= 0
+}

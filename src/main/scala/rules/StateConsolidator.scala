@@ -195,7 +195,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def findMatchingChunk(chunks: Iterable[Chunk], chunk: Chunk, v: Verifier): Option[Chunk] = {
     chunk match {
       case chunk: BasicChunk =>
-        chunkSupporter.findChunk[BasicChunk](chunks, chunk.id, chunk.args, v)
+        chunkSupporter.findChunk[BasicChunk](chunks, chunk.id, chunk.args, v) // TODO ake: add edge from check chunk equality
       case chunk: QuantifiedChunk => quantifiedChunkSupporter.findChunk(chunks, chunk, v)
       case _ => None
     }
@@ -206,7 +206,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {
     val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v)
     result.map({case (fRec, ch, snapEq) =>
-      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), ch)
+      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), Set(), ch)
       (fRec, ch, v.decider.wrapWithAssumptionAnalysisLabel(snapEq, Set(chunk1, chunk2)))})
   }
 

@@ -19,36 +19,30 @@ trait AssumptionAnalyzer {
     isClosed_ = false
   }
 
-  def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
-  def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int]
-  def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int]
-  def addPermissionNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Explicit, isExhale: Boolean=false): Option[Int]
+  def getNodes: Iterable[AssumptionAnalysisNode]
+  def getChunkInhaleNode(chunk: Chunk): Option[PermissionInhaleNode] = None
+
   def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit
   def addNode(node: AssumptionAnalysisNode): Unit
-  def getNodes: Iterable[AssumptionAnalysisNode]
-
   def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int]
+  def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int]
+  def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int]
 
   def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
-
-  def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int]
-  def getNodeIdsByTerm(terms: Set[Term]): Set[Int]
-  def addDependencyFromExhaleToInhale(inhaledChunk: Chunk, sourceInfo: AnalysisSourceInfo): Unit
-  def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit
-  def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit
-  def addDependency(source: Int, dest: Int): Unit
-
-  def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
-
   def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
+
+  def addDependency(source: Int, dest: Int): Unit
+  def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
+  def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit
+  def addDependencyFromExhaleToInhale(inhaledChunk: Chunk, sourceInfo: AnalysisSourceInfo): Unit
 
   def getMember: Option[ast.Member]
 
   def exportGraph(): Unit
 
-  def createLabelNode(labelTerm: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): LabelNode = LabelNode(True)
-  def registerDerivedChunk[CH <: GeneralChunk](sourceChunk: CH, buildChunk: (Term => CH), perm: Term, labelNode: LabelNode, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = buildChunk(perm)
-  def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, labelNode: LabelNode, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = buildChunk(perm)
+  def createLabelNode(labelTerm: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = None
+  def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, labelNode: Option[LabelNode], analysisInfo: AnalysisInfo, isExhale: Boolean): CH = buildChunk(perm)
+  def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo): CH = buildChunk(perm)
   def getReassumeLabelNodes: Iterable[LabelNode] = Set.empty
 }
 
@@ -67,7 +61,6 @@ object AssumptionAnalyzer {
     if(annotation.isDefined && annotation.get.nonEmpty) AssumptionType.fromString(annotation.get.head) else None
   }
 
-
   def extractEnableAnalysisFromInfo(info: ast.Info): Option[Boolean] = {
     val annotation = extractAnnotationFromInfo(info, enableAssumptionAnalysisAnnotationKey)
     if(annotation.isDefined && annotation.get.nonEmpty) annotation.get.head.toBooleanOption else None
@@ -82,7 +75,7 @@ object AssumptionAnalyzer {
       (assumptionTypeAnnotationKey, Seq(assumptionType.toString))
     ))
 
-
+  // TODO ake: remove offsets
   def createAssumptionLabel(id: Option[Int], offset: Int = 0): String = {
     createLabel("assumption", id, offset)
   }
@@ -158,8 +151,8 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(axiomIds, assertionIds)
   }
 
-  override def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_)
+  private def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, labelNode: LabelNode): Option[Int] = {
+    val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, labelNode)
     addNode(node)
     Some(node.id)
   }
@@ -167,23 +160,26 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int] = {
     val node = PermissionAssertNode(chunk, permAmount, sourceInfo, isClosed_)
     addNode(node)
-    addPermissionDependencies(Set(chunk), Some(node.id))
+    addPermissionDependencies(Set(chunk), Set(), Some(node.id))
     Some(node.id)
   }
 
   override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int] = {
     val node = PermissionExhaleNode(chunk, permAmount, sourceInfo, isClosed_)
     addNode(node)
-    addPermissionDependencies(Set(chunk), Some(node.id))
+    addPermissionDependencies(Set(chunk), Set(), Some(node.id))
     Some(node.id)
   }
 
-  override def addPermissionNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType = AssumptionType.Explicit, isExhale: Boolean=false): Option[Int] = {
-    if(isExhale) addPermissionExhaleNode(chunk, permAmount, sourceInfo)
-    else addPermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType)
+  override def getChunkInhaleNode(chunk: Chunk): Option[PermissionInhaleNode] = {
+    val inhaleNode = assumptionGraph.nodes
+      .filter(c => c.isInstanceOf[PermissionInhaleNode] && chunk.equals(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
+      .map(_.asInstanceOf[PermissionInhaleNode])
+    assert(inhaleNode.size == 1)
+    inhaleNode.headOption
   }
 
-  override def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int] = {
+  private def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int] = {
     assumptionGraph.nodes
       .filter(c => c.isInstanceOf[PermissionInhaleNode] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.id).toSet
@@ -195,7 +191,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
       .map(_.id).toSet
   }
 
-  override def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = {
+  private def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = {
     assumptionGraph.nodes
       .filter(t => terms.contains(t.getTerm))
       .map(_.id).toSet
@@ -205,23 +201,23 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     val inhaledChunkNodeIds = getChunkNodeIdsWithSource(Set(inhaledChunk), sourceInfo)
     assert(inhaledChunkNodeIds.size == 1)
     val exhaleNodes = assumptionGraph.nodes
-      .filter(c => c.isInstanceOf[PermissionExhaleNode] && c.isClosed && c.sourceInfo.equals(sourceInfo))
+      .filter(c => c.isInstanceOf[PermissionExhaleNode] && c.sourceInfo.equals(sourceInfo))
       .map(_.id).toSet
     assumptionGraph.addEdges(exhaleNodes, inhaledChunkNodeIds)
   }
 
-  override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Option[Int]): Unit = {
+  private def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], newChunkNodeId: Option[Int]): Unit = {
     if(newChunkNodeId.isEmpty) return
 
-    val oldChunkNodeIds = getChunkNodeIds(oldChunks).filter(id => id != newChunkNodeId.get)
-    assumptionGraph.addEdges(oldChunkNodeIds, newChunkNodeId.get)
+    val sourceNodeIds = getChunkNodeIds(sourceChunks).filter(id => id != newChunkNodeId.get) ++ getNodeIdsByTerm(sourceTerms)
+    assumptionGraph.addEdges(sourceNodeIds, newChunkNodeId.get)
   }
 
-  override def addPermissionDependencies(oldChunks: Set[Chunk], newChunk: Chunk): Unit = {
+  override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], newChunk: Chunk): Unit = {
     val newChunkId = assumptionGraph.nodes
       .filter(c => c.isInstanceOf[PermissionInhaleNode] && c.isInstanceOf[ChunkAnalysisInfo] && newChunk.equals(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.id).toSet
-    addPermissionDependencies(oldChunks, newChunkId.headOption)
+    addPermissionDependencies(sourceChunks, sourceTerms, newChunkId.headOption)
   }
 
   override def addDependency(source: Int, dest: Int): Unit = {
@@ -245,32 +241,30 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   }
 
 
-  override def createLabelNode(labelTerm: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): LabelNode = {
+  override def createLabelNode(labelTerm: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = {
     val labelNode = LabelNode(labelTerm)
     addNode(labelNode)
     originalLabelNodes = originalLabelNodes :+ labelNode
     assumptionGraph.addEdges(getChunkNodeIds(sourceChunks.toSet) ++ getNodeIdsByTerm(sourceTerms.toSet), labelNode.id)
-    labelNode
+    Some(labelNode)
   }
 
-  override def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, labelNode: LabelNode, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
-    val chunk = if(isExhale) buildChunk(perm) else buildChunk(Ite(labelNode.term, perm, NoPerm))
-    val chunkNode = addPermissionNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
-    if(chunkNode.isDefined)
-      addDependency(chunkNode.get, labelNode.id)
+  override def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo): CH = {
+    val chunk = buildChunk(perm)
+    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo)
+    addPermissionDependencies(sourceChunks, Set(), chunkNode)
     chunk
   }
 
-  override def registerDerivedChunk[CH <: GeneralChunk](sourceChunk: CH, buildChunk: (Term => CH), perm: Term, labelNode: LabelNode, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
-    val chunk = if(isExhale) buildChunk(perm) else buildChunk(Ite(labelNode.term, perm, NoPerm))
-    val chunkNode = addPermissionNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, isExhale)
+  override def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
+    val labelNode = labelNodeOpt.get
+    val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
+    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, labelNode)
     if(chunkNode.isDefined)
       addDependency(chunkNode.get, labelNode.id)
-    addPermissionDependencies(Set(sourceChunk), chunkNode)
+    addPermissionDependencies(sourceChunks, Set(), chunkNode)
     chunk
   }
-
-
 
   private def createReassumeLabelNode(oldLabelNode: LabelNode): LabelNode = {
     val newLabelNode = LabelNode(oldLabelNode.term)
@@ -296,20 +290,12 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
   }
 
-  override def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
   override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int] = None
   override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int] = None
-  override def addPermissionNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isExhale: Boolean=false): Option[Int] = None
-
-
-  override def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int] = Set.empty
-  override def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = Set.empty
 
   override def addDependencyFromExhaleToInhale(inhaledChunk: Chunk, sourceInfo: AnalysisSourceInfo): Unit = {}
-  override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNode: Option[Int]): Unit = {
-  }
 
-  override def addPermissionDependencies(oldChunks: Set[Chunk], newChunkNodeId: Chunk): Unit = {}
+  override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], newChunkNodeId: Chunk): Unit = {}
   def addDependency(source: Int, dest: Int): Unit = {}
   override def getMember: Option[ast.Member] = None
 

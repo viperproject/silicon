@@ -15,7 +15,7 @@ method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
     }
 }
 
-method aliasing(x: Ref, n: Int)
+method aliasing1(x: Ref, n: Int)
   requires @dependency()(acc(x.f))
   requires @irrelevant()(n > 0)
   requires @irrelevant()(x.f > n)
@@ -29,5 +29,18 @@ method aliasing(x: Ref, n: Int)
 
   @testAssertion()
   assert y.f > n
+}
+
+
+method aliasing2(x: Ref, y: Ref, n: Int)
+  requires @dependency()(acc(x.f, 1/2))
+  requires @dependency()(acc(y.f, 1/2))
+  requires @irrelevant()(n > 0)
+  requires @irrelevant()(x.f > n)
+{
+  if(@dependency()(x == y)){
+    @testAssertion()
+    x.f := n + 1
+  }
 }
 

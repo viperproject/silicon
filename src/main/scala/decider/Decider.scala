@@ -62,7 +62,7 @@ trait Decider {
   def startDebugSubExp(): Unit
 
   def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
-  def registerDerivedChunk[CH <: GeneralChunk](sourceChunk: CH, buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
+  def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
   def wrapWithAssumptionAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
   def wrapPermissionWithAssumptionAnalysisLabel(perm: Term, sourceChunks: Iterable[Chunk]): Term
 
@@ -310,31 +310,48 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
-      assumptionAnalyzer.registerChunk(buildChunk, perm, createAnalysisLabelNode(), analysisInfo, isExhale)
+      registerDerivedChunk[CH](Set.empty, buildChunk, perm, analysisInfo, isExhale)
     }
 
-    def registerDerivedChunk[CH <: GeneralChunk](sourceChunk: CH, buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
-      assumptionAnalyzer.registerDerivedChunk(sourceChunk, buildChunk, perm, createAnalysisLabelNode(Set(sourceChunk), Set.empty), analysisInfo, isExhale)
+    def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
+      if(!Verifier.config.enableAssumptionAnalysis())
+        return buildChunk(perm)
+
+      if(isExhale)
+        assumptionAnalyzer.registerExhaleChunk(sourceChunks, buildChunk, perm, analysisInfo)
+      else {
+        val labelNodeOpt = if(createLabel) getOrCreateAnalysisLabelNode() else getOrCreateAnalysisLabelNode(sourceChunks)
+        assumptionAnalyzer.registerInhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo, createLabel)
+      }
     }
 
-    private def createAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): LabelNode = {
+    private def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
+      if(!Verifier.config.enableAssumptionAnalysis())
+        return None
+
+      if(sourceChunks.size == 1 && sourceTerms.isEmpty){
+        val chunkInhaleNode = assumptionAnalyzer.getChunkInhaleNode(sourceChunks.head)
+        return chunkInhaleNode.map(_.labelNode)
+      }
       val (label, _) = fresh(ast.LocalVar("analysisLabel", ast.Bool)())
       val labelNode = assumptionAnalyzer.createLabelNode(label, sourceChunks, sourceTerms)
-      val smtLabel = AssumptionAnalyzer.createAssumptionLabel(Some(labelNode.id))
+      val smtLabel = AssumptionAnalyzer.createAssumptionLabel(labelNode.map(_.id))
       assumeLabel(label, smtLabel)
       labelNode
     }
 
     def wrapWithAssumptionAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = {
       if(!Verifier.config.enableAssumptionAnalysis()) return term
-      val labelNode = createAnalysisLabelNode(sourceChunks, sourceTerms)
-      Implies(labelNode.term, term)
+
+      val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
+      labelNode.map(n => Implies(n.term, term)).getOrElse(term)
     }
 
     def wrapPermissionWithAssumptionAnalysisLabel(perm: Term, sourceChunks: Iterable[Chunk]): Term = {
       if(!Verifier.config.enableAssumptionAnalysis()) return perm
-      val labelNode = createAnalysisLabelNode(sourceChunks, Set.empty)
-      Ite(labelNode.term, perm, NoPerm)
+
+      val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, Set.empty)
+      labelNode.map(n => Ite(n.term, perm, NoPerm)).getOrElse(perm)
     }
 
     def addDebugExp(e: DebugExp): Unit = {

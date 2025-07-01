@@ -1,6 +1,6 @@
 field f: Int
 
-// test fails
+
 method permTest(a: Ref, b: Ref, n: Int)
     requires @dependency()(acc(a.f))
     requires @irrelevant()(acc(b.f)) && @irrelevant()(b.f > 0)

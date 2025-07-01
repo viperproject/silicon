@@ -104,7 +104,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
       summarisingSnapshotDefinitions :+=
-        Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
+        v.decider.wrapWithAssumptionAnalysisLabel(Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap), Set(ch))
     })
 
     val taggedSummarisingSnapshot =
