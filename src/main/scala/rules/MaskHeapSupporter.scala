@@ -10,16 +10,16 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state.MaskHeapChunk
-import viper.silicon.resources.MagicWandID
+import viper.silicon.interfaces.state.{ChunkIdentifer, MaskHeapChunk}
+import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
-import viper.silicon.state.terms.sorts.{MaskSort, PredHeapSort, PredMaskSort}
+import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
-import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Sort, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
+import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, Store, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.{ErrorReason, PartialVerificationError}
+import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.parser.PUnknown
@@ -29,7 +29,7 @@ import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotF
 import scala.collection.mutable.ListBuffer
 import scala.collection.{immutable, mutable}
 
-object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
+object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent with HeapSupportRules {
 
   val assumeGoodMask = true
   lazy val simplifyOnConsume: Boolean = Verifier.config.simplifyOnConsume()
@@ -298,9 +298,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
                             permissions: Term, /* p */
                             permissionsExp: Option[ast.Exp],
                             pve: PartialVerificationError,
-                            v: Verifier,
-                            resMap: Map[Any, Term])
-                           (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                            returnSnap: Boolean,
+                            v: Verifier)
+                           (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
   : VerificationResult = {
     val resource = resourceAccess.res(s.program)
 
@@ -360,12 +360,14 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
         }
       })((s4, optCh, v2) =>
         optCh match {
-          case Some(ch) =>
-            val newSnapMask = MaskSum(resMap(resourceToFind), ch.mask)
-            val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
-            Q(s4, s4.h, snap, v2)
+          case Some(ch) if returnSnap =>
+            val snap = FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> ch.mask))
+            Q(s4, s4.h, Some(snap), v2)
+          case Some(_) =>
+            Q(s4, s4.h, None, v2)
           case _ =>
-            Q(s4, s4.h, FakeMaskMapTerm(resMap.asInstanceOf[immutable.ListMap[Any, Term]]), v2)
+            val emptyMask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
+            Q(s4, s4.h, Option.when(returnSnap)(FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> emptyMask))), v2)
         }
       )
     } else {
@@ -404,8 +406,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
           }
 
           val snapPermTerm = if (!consumeExact && s.assertReadAccessOnly) FullPerm else permissions
-          val newSnapMask = MaskAdd(resMap(resourceToFind), argTerm, snapPermTerm)
-          val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
+          val emptyMask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
+          val newSnapMask = MaskAdd(emptyMask, argTerm, snapPermTerm)
+          val snap = Option.when(returnSnap)(FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> newSnapMask)))
           // set up partially consumed heap
           Q(s, h - resChunk + newChunk, snap, v)
         case false =>
@@ -443,12 +446,12 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
-              v: Verifier,
-              resMap: Map[Any, Term])
-             (Q: (State, Heap, Term, Verifier) => VerificationResult)
+              returnSnap: Boolean,
+              v: Verifier)
+             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
   : VerificationResult = {
 
-    val (inverseFunctions, imagesOfFormalQVars) =
+    val (inverseFunctions, _) =
       quantifiedChunkSupporter.getFreshInverseFunctions(
         qvars,
         qvarExps,
@@ -507,7 +510,6 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
 
         val constrainPermissions = !consumeExactRead(loss, s.constrainableARPs)
 
-        /* TODO: Can we omit/simplify the injectivity check in certain situations? */
         val receiverInjectivityCheck =
           quantifiedChunkSupporter.injectivityAxiom(
             qvars     = qvars,
@@ -586,12 +588,14 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
                 }
               })((s4, optCh, v2) => {
                 optCh match {
-                  case Some(ch) =>
-                    val newSnapMask = MaskSum(resMap(resourceToFind), ch.mask)
-                    val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
-                    Q(s4, s4.h, snap, v2)
+                  case Some(ch) if returnSnap =>
+                    val snap = FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> ch.mask))
+                    Q(s4, s4.h, Some(snap), v2)
+                  case Some(_) =>
+                    Q(s4, s4.h, None, v2)
                   case _ =>
-                    Q(s4, s4.h, FakeMaskMapTerm(resMap.asInstanceOf[immutable.ListMap[Any, Term]]), v2)
+                    val emptyMask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
+                    Q(s4, s4.h, Option.when(returnSnap)(FakeMaskMapTerm(immutable.ListMap[Any, Term](resourceToFind -> emptyMask))), v2)
                 }
               })
             } else {
@@ -653,8 +657,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
                   // continue
                   val newHeap = hp - currentChunk + newChunk
                   val s2 = s.copy(functionRecorder = newFr, partiallyConsumedHeap = Some(newHeap))
-                  val newSnapMask = MaskSum(resMap(resourceToFind), qpMask)
-                  val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
+                  val snap = Option.when(returnSnap)(FakeMaskMapTerm(immutable.ListMap[Any, Term](resource -> qpMask)))
                   Q(s2, newHeap, snap, v)
                 case false =>
                   createFailure (pve dueTo insufficientPermissionReason, v, s, completeSufficientPerm, "QP consume")
@@ -891,4 +894,204 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent {
       case false =>
         createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)}
   }
+
+  override def evalFieldAccess(s: State,
+                               fa: ast.FieldAccess,
+                               tRcvr: Term,
+                               eRcvr: Option[ast.Exp],
+                               ve: VerificationError,
+                               v: Verifier)
+                              (Q: (State, Term, Verifier) => VerificationResult): VerificationResult = {
+    val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == fa.field).get.asInstanceOf[BasicMaskHeapChunk]
+    val maskValue = HeapLookup(resChunk.mask, tRcvr)
+    val permCheck = perms.IsPositive(maskValue)
+    v.decider.assert(permCheck) {
+      case true =>
+        val heapValue = HeapLookup(resChunk.heap, tRcvr)
+        val tSnap = heapValue.convert(sorts.Snap)
+        val fr = s.functionRecorder.recordSnapshot(fa, v.decider.pcs.branchConditions, tSnap)
+        val s2 = s.copy(functionRecorder = fr)
+        Q(s2, heapValue, v)
+      case false =>
+        val permCheckExp = Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT))(fa.pos, fa.info, fa.errT))
+        createFailure(ve, v, s, permCheck, permCheckExp)
+    }
+  }
+
+  override def collectForPermConditions(s: State,
+                                        resource: ast.Resource,
+                                        qVars: Seq[(Var, ast.LocalVar)],
+                                        tArgs: Seq[Term],
+                                        eArgs: Option[Seq[ast.Exp]]): Seq[(Term, (ast.Exp, Option[ast.Exp]), Seq[Var], Store, Seq[Trigger])] = {
+    ???
+  }
+
+  override def havocResource(s: State,
+                             lhs: Term,
+                             resource: ast.Resource,
+                             condInfo: havocSupporter.HavocHelperData,
+                             v: Verifier): Heap = {
+    ???
+  }
+
+  override def produceSingle(s: State,
+                             resource: ast.Resource,
+                             tArgs: Seq[Term],
+                             eArgs: Option[Seq[ast.Exp]],
+                             tSnap: Term,
+                             eSnap: Option[ast.Exp],
+                             tPerm: Term,
+                             ePerm: Option[ast.Exp],
+                             pve: PartialVerificationError,
+                             mergeAndTrigger: Boolean,
+                             v: Verifier)
+                            (Q: (State, Verifier) => VerificationResult): VerificationResult = {
+    produceSingleLocation(s, resource, tArgs, tPerm, v, tSnap)(Q)
+  }
+
+  override def consumeSingle(s: State,
+                             h: Heap,
+                             resAcc: ast.ResourceAccess,
+                             tArgs: Seq[Term],
+                             eArgs: Option[Seq[ast.Exp]],
+                             tPerm: Term,
+                             ePerm: Option[ast.Exp],
+                             returnSnap: Boolean,
+                             pve: PartialVerificationError,
+                             v: Verifier)
+                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
+    val codomainQVars = s.getFormalArgVars(resAcc.res(s.program), v)
+    consumeSingleLocation(s, h, codomainQVars, tArgs, eArgs, resAcc, tPerm, ePerm, pve, returnSnap, v)(Q)
+  }
+
+  override def produceQuantified(s: State,
+                                 sf: (Sort, Verifier) => Term,
+                                 forall: ast.Forall,
+                                 resource: ast.Resource,
+                                 qvars: Seq[Var],
+                                 qvarExps: Option[Seq[ast.LocalVarDecl]],
+                                 tFormalArgs: Seq[Var],
+                                 eFormalArgs: Option[Seq[ast.LocalVarDecl]],
+                                 qid: String,
+                                 optTrigger: Option[Seq[ast.Trigger]],
+                                 tTriggers: Seq[Trigger],
+                                 auxGlobals: Seq[Term],
+                                 auxNonGlobals: Seq[Quantification],
+                                 auxGlobalsExp: Option[InsertionOrderedSet[DebugExp]],
+                                 auxNonGlobalsExp: Option[InsertionOrderedSet[DebugExp]],
+                                 tCond: Term,
+                                 eCond: Option[ast.Exp],
+                                 tArgs: Seq[Term],
+                                 eArgs: Option[Seq[ast.Exp]],
+                                 tPerm: Term,
+                                 ePerm: Option[ast.Exp],
+                                 pve: PartialVerificationError,
+                                 negativePermissionReason: => ErrorReason,
+                                 notInjectiveReason: => ErrorReason,
+                                 v: Verifier)
+                                (Q: (State, Verifier) => VerificationResult): VerificationResult = {
+    val tSnap = sf(null, v)
+    produce(s, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals,
+      auxNonGlobals, auxGlobalsExp, auxNonGlobalsExp, tCond, eCond, tArgs, eArgs, tSnap, tPerm, ePerm, pve,
+      negativePermissionReason, notInjectiveReason, v)(Q)
+  }
+
+  override def consumeQuantified(s: State,
+                                 h: Heap,
+                                 resource: ast.Resource,
+                                 qvars: Seq[Var],
+                                 qvarExps: Option[Seq[ast.LocalVarDecl]],
+                                 tFormalArgs: Seq[Var],
+                                 eFormalArgs: Option[Seq[ast.LocalVarDecl]],
+                                 qid: String,
+                                 optTrigger: Option[Seq[ast.Trigger]],
+                                 tTriggers: Seq[Trigger],
+                                 auxGlobals: Seq[Term],
+                                 auxNonGlobals: Seq[Quantification],
+                                 auxGlobalsExp: Option[InsertionOrderedSet[DebugExp]],
+                                 auxNonGlobalsExp: Option[InsertionOrderedSet[DebugExp]],
+                                 tCond: Term,
+                                 eCond: Option[ast.Exp],
+                                 tArgs: Seq[Term],
+                                 eArgs: Option[Seq[ast.Exp]],
+                                 tPerm: Term,
+                                 ePerm: Option[ast.Exp],
+                                 returnSnap: Boolean,
+                                 pve: PartialVerificationError,
+                                 negativePermissionReason: => ErrorReason,
+                                 notInjectiveReason: => ErrorReason,
+                                 insufficientPermissionReason: => ErrorReason,
+                                 v: Verifier)
+                                (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
+    consume(s, h, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals,
+      auxNonGlobals, auxGlobalsExp, auxNonGlobalsExp, tCond, eCond, tArgs, eArgs, tPerm, ePerm, pve,
+      negativePermissionReason, notInjectiveReason, insufficientPermissionReason, returnSnap, v)(Q)
+  }
+
+  override def getEmptyHeap(program: ast.Program, v: Verifier): Heap = {
+    val fieldChunks = program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)), Option.when(withExp)(PUnknown()))))
+    val predChunks = program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort, Option.when(withExp)(PUnknown()))))
+    Heap(fieldChunks ++ predChunks)
+  }
+
+  override def evalCurrentPerm(s: State,
+                               h: Heap,
+                               resAcc: ast.ResourceAccess,
+                               identifier: ChunkIdentifer,
+                               tArgs: Seq[Term],
+                               eArgs: Option[Seq[ast.Exp]],
+                               v: Verifier)
+                              (Q: (State, Term, Verifier) => VerificationResult): VerificationResult = {
+    val res = resAcc match {
+      case w: ast.MagicWand => MagicWandIdentifier(w, s.program)
+      case _ => resAcc.res(s.program)
+    }
+    val argTerm = res match {
+      case _: ast.Field => tArgs(0)
+      case _: ast.Predicate => toSnapTree(tArgs)
+      case _: MagicWandIdentifier => toSnapTree(tArgs)
+    }
+    maskHeapSupporter.findMaskHeapChunkOptionally(h, res) match {
+      case Some(chunk) =>
+        val result = HeapLookup(chunk.mask, argTerm)
+        Q(s, result, v)
+      case None =>
+        Q(s, NoPerm, v)
+    }
+  }
+
+  override def execFieldAssign(s: State,
+                               ass: ast.FieldAssign,
+                               tRcvr: Term,
+                               eRcvrNew: Option[ast.Exp],
+                               tRhs: Term,
+                               eRhsNew: Option[ast.Exp],
+                               pve: PartialVerificationError,
+                               v: Verifier)
+                              (Q: (State, Verifier) => VerificationResult): VerificationResult = {
+    val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == ass.lhs.field).get.asInstanceOf[BasicMaskHeapChunk]
+    val ve = pve dueTo InsufficientPermission(ass.lhs)
+    val maskValue = HeapLookup(resChunk.mask, tRcvr)
+    val havePerm = AtLeast(maskValue, FullPerm)
+    v.decider.assert(havePerm) {
+      case true =>
+        val heapUpdated = HeapUpdate(resChunk.heap, tRcvr, tRhs)
+        val newChunk = resChunk.copy(heap = heapUpdated)
+        Q(s.copy(h = s.h - resChunk + newChunk), v)
+      case false => createFailure(ve, v, s, havePerm, "sufficient permission")
+    }
+  }
+
+  override def isPossibleTrigger(s: State, fa: ast.FieldAccess): Boolean = {
+    true
+  }
+
+  override def triggerResourceIfNeeded(s: State,
+                                       resAcc: ast.ResourceAccess,
+                                       tArgs: Seq[Term],
+                                       eArgs: Option[Seq[ast.Exp]],
+                                       v: Verifier): State = {
+    s
+  }
+
 }

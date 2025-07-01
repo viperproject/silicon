@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
@@ -17,6 +17,7 @@ import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
 
@@ -132,9 +133,43 @@ object producer extends ProductionRules {
                           sf: (Sort, Verifier) => Term,
                           as: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
-                          v: Verifier)
+                          v: Verifier,
+                          isRecursive: Boolean = false)
                          (Q: (State, Verifier) => VerificationResult)
                          : VerificationResult = {
+
+    val newSf = if (Verifier.config.maskHeapMode() && !isRecursive) {
+      val givenSnap = sf(sorts.Snap, v)
+      val fakeTerm = if (!givenSnap.isInstanceOf[FakeMaskMapTerm]) {
+        val resources = as.map(_.shallowCollect {
+          case ast.PredicateAccessPredicate(pa, _) => pa.loc(s.program)
+          case ast.FieldAccessPredicate(fa, _) => fa.loc(s.program)
+          case w: ast.MagicWand => MagicWandIdentifier(w, s.program)
+        }).flatten.distinct.sortWith((r1, r2) => {
+          val r1Name = r1 match {
+            case f: ast.Field => f.name
+            case p: ast.Predicate => p.name
+            case mwi: MagicWandIdentifier => mwi.toString
+          }
+          val r2Name = r2 match {
+            case f: ast.Field => f.name
+            case p: ast.Predicate => p.name
+            case mwi: MagicWandIdentifier => mwi.toString
+          }
+          r1Name < r2Name
+        })
+        val snapParts = fromSnapTree(givenSnap, resources.size)
+        val heapParts = snapParts.zip(resources).map(tpl => (tpl._2,
+          SnapToHeap(tpl._1, tpl._2, if (tpl._2.isInstanceOf[ast.Field]) HeapSort(v.symbolConverter.toSort(tpl._2.asInstanceOf[ast.Field].typ)) else PredHeapSort)))
+        FakeMaskMapTerm(immutable.ListMap.from(heapParts))
+      } else {
+        givenSnap
+      }
+
+      (_: Sort, _: Verifier) => fakeTerm
+    } else {
+      sf
+    }
 
     if (as.isEmpty)
       Q(s, v)
@@ -143,19 +178,25 @@ object producer extends ProductionRules {
       val pve = pves.head
 
       if (as.tail.isEmpty)
-        wrappedProduceTlc(s, sf, a, pve, v)(Q)
+        wrappedProduceTlc(s, newSf, a, pve, v)(Q)
       else {
         try {
-          val (sf0, sf1) =
-            v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
-          /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
-           *       then remove use of BigAnd; for one it is not efficient since
-           *       the tail of the (decreasing list parameter as) is BigAnd-ed
-           *       over and over again.
-           */
+          if (Verifier.config.maskHeapMode()) {
+            wrappedProduceTlc(s, newSf, a, pve, v)((s1, v1) =>
+              produceTlcs(s1, newSf, as.tail, pves.tail, v1, true)(Q))
+          } else {
+            val (sf0, sf1) =
+              v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
+            /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
+             *       then remove use of BigAnd; for one it is not efficient since
+             *       the tail of the (decreasing list parameter as) is BigAnd-ed
+             *       over and over again.
+             */
 
-          wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
-            produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+            wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
+              produceTlcs(s1, sf1, as.tail, pves.tail, v1, true)(Q))
+          }
+
         } catch {
           // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
           // This should never happen if we're in a reachable state, so here we check for that

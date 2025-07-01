@@ -244,7 +244,7 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
-            val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
+            val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program, v))
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -577,7 +577,7 @@ object executor extends ExecutionRules {
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 =
               if (s.exhaleExt) {
-                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
+                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program, v1),
                         exhaleExt = true,
                         /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
                          * by the packageWand method. hUsed is normally used during transferring

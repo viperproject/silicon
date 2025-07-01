@@ -239,7 +239,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  : VerificationResult = {
 
     val s = if (state.exhaleExt) state else
-      state.copy(reserveHeaps = v.heapSupporter.getEmptyHeap(state.program) :: state.h :: Nil)
+      state.copy(reserveHeaps = v.heapSupporter.getEmptyHeap(state.program, v) :: state.h :: Nil)
 
     // v.logger.debug(s"wand = $wand")
     // v.logger.debug("c.reserveHeaps:")
@@ -253,7 +253,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
      *       during some executions - since such crashes are hard to debug, branch parallelisation
      *       has been disabled for now.
      */
-    val sEmp = s.copy(h = v.heapSupporter.getEmptyHeap(state.program),
+    val sEmp = s.copy(h = v.heapSupporter.getEmptyHeap(state.program, v),
                       reserveHeaps = Nil,
                       exhaleExt = false,
                       conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
@@ -365,7 +365,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // Produce the wand's LHS.
       produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
-        val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program)
+        val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program, v2)
 
         /* Expected shape of reserveHeaps is either
          *   [hEmp, hOuter]
@@ -412,7 +412,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // No results mean that packaging the wand resulted in inconsistent states on all paths,
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
-      val emptyHeap = v.heapSupporter.getEmptyHeap(sEmp.program)
+      val emptyHeap = v.heapSupporter.getEmptyHeap(sEmp.program, v)
       val s1 = sEmp.copy(reserveHeaps = emptyHeap +: emptyHeap +: emptyHeap +: s.reserveHeaps.tail)
       createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v)
     }
@@ -571,7 +571,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * is consumed from hOps and permissions for the predicate are added to the state's
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
-      val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program)
+      val emptyHeap = v.heapSupporter.getEmptyHeap(newState.program, v)
       val (fr, hOpsJoinUsed) = v.stateConsolidator(newState).merge(newState.functionRecorder, newState, newState.reserveHeaps(1), newState.h, v)
       newState.copy(functionRecorder = fr, h = emptyHeap,
           reserveHeaps = emptyHeap +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))

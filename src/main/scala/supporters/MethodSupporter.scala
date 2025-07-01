@@ -14,7 +14,7 @@ import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.{State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
@@ -82,7 +82,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
       val s = sInit.copy(g = g,
-                         h = v.heapSupporter.getEmptyHeap(sInit.program),
+                         h = v.heapSupporter.getEmptyHeap(sInit.program, v),
                          oldHeaps = OldHeaps(),
                          methodCfg = body)
 
@@ -102,7 +102,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
-                  val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
+                  val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program, v))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {

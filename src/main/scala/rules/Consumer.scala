@@ -114,9 +114,18 @@ object consumer extends ConsumptionRules {
                           tlcs: Seq[ast.Exp],
                           returnSnap: Boolean,
                           pves: Seq[PartialVerificationError],
-                          v: Verifier)
+                          v: Verifier,
+                          isRecursive: Boolean = false)
                          (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
+
+    val toMergeWith = if (Verifier.config.maskHeapMode() && !isRecursive) {
+      val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
+      val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask)))
+      Some(resMap)
+    } else {
+      None
+    }
 
     if (tlcs.isEmpty)
       Q(s, h, if (returnSnap) Some(Unit) else None, v)
@@ -128,7 +137,7 @@ object consumer extends ConsumptionRules {
         wrappedConsumeTlc(s, h, a, returnSnap, pve, v)(Q)
       else
         wrappedConsumeTlc(s, h, a, returnSnap, pve, v)((s1, h1, snap1, v1) => {
-          consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1)((s2, h2, snap2, v2) =>
+          consumeTlcs(s1, h1, tlcs.tail, returnSnap, pves.tail, v1, true)((s2, h2, snap2, v2) =>
 
             (snap1, snap2) match {
               case (Some(sn1), Some(sn2)) if returnSnap => Q(s2, h2, Some(Combine(sn1, sn2)), v2)
