@@ -828,13 +828,12 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            v1.decider.analysisSourceInfoStack.setForcedSource(commentGlobal)
+            v1.decider.assumptionAnalyzer.disableTransitiveEdges()
             v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
-            v1.decider.analysisSourceInfoStack.removeForcedSource()
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
             v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
-
+            v1.decider.assumptionAnalyzer.enableTransitiveEdges()
             if (qantOp == Exists) {
               // For universal quantification, the non-global auxiliary assumptions will contain the information that
               // forall vars :: all function preconditions are fulfilled.

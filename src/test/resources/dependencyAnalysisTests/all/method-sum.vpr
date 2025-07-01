@@ -42,7 +42,6 @@ method sumClient2(x: Int, y: Int)
   assume x < y
   @irrelevant()
   var n: Int := sum(x, x)
-  @irrelevant()
   assert n >= 100
 
   @dependency()

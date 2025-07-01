@@ -6,9 +6,9 @@ import viper.silver.ast._
 
 
 abstract class AnalysisSourceInfo {
-  override def toString: String = getStringForExport
+  override def toString: String = getPositionString
 
-  def getStringForExport: String = {
+  def getPositionString: String = {
     getPosition match {
       case NoPosition => "???"
       case filePos: AbstractSourcePosition => filePos.file.getFileName.toString + " @ line " + filePos.line
@@ -19,8 +19,19 @@ abstract class AnalysisSourceInfo {
 
   def getPosition: Position
 
+  /**
+   * @return the analysis source info used for merging nodes
+   */
   def getTopLevelSource: AnalysisSourceInfo = this
 
+  /**
+   * @return the analysis source info used for adding transitive edges within a source exp/stmt
+   */
+  def getSourceForTransitiveEdges: AnalysisSourceInfo = getTopLevelSource
+
+  /**
+   * @return the analysis source info used for joining graphs
+   */
   def getFineGrainedSource: AnalysisSourceInfo = this
 
   def isAnalysisEnabled: Boolean = true
@@ -68,14 +79,27 @@ case class StringAnalysisSourceInfo(description: String, position: Position) ext
   override def getPosition: Position = position
 }
 
+case class TransitivityAnalysisSourceInfo(actualSource: AnalysisSourceInfo, transitivitySource: AnalysisSourceInfo) extends AnalysisSourceInfo {
+
+  override def getPosition: Position = actualSource.getPosition
+  override def toString: String = getTopLevelSource.toString
+
+  override def equals(obj: Any): Boolean = actualSource.equals(obj)
+
+  override def getSourceForTransitiveEdges: AnalysisSourceInfo = transitivitySource
+  override def getTopLevelSource: AnalysisSourceInfo = actualSource.getTopLevelSource
+  override def getFineGrainedSource: AnalysisSourceInfo = actualSource.getFineGrainedSource
+  override def isAnalysisEnabled: Boolean = actualSource.isAnalysisEnabled
+}
+
 case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, fineGrainedSource: AnalysisSourceInfo) extends AnalysisSourceInfo {
-  override def toString: String = coarseGrainedSource.toString
+  override def toString: String = getTopLevelSource.toString
   override def getPosition: Position = coarseGrainedSource.getPosition
 
   override def equals(obj: Any): Boolean = coarseGrainedSource.equals(obj)
 
-  override def getTopLevelSource: AnalysisSourceInfo = coarseGrainedSource
-  override def getFineGrainedSource: AnalysisSourceInfo = fineGrainedSource
+  override def getTopLevelSource: AnalysisSourceInfo = coarseGrainedSource.getTopLevelSource
+  override def getFineGrainedSource: AnalysisSourceInfo = fineGrainedSource.getFineGrainedSource
 
   override def isAnalysisEnabled: Boolean = coarseGrainedSource.isAnalysisEnabled && fineGrainedSource.isAnalysisEnabled
 }
@@ -121,12 +145,18 @@ case class AnalysisSourceInfoStack() {
     sourceInfos = currSourceInfo.tail
   }
 
+  def getForcedSource: Option[AnalysisSourceInfo] = forcedMainSource
+
   def setForcedSource(description: String): Unit = {
     forcedMainSource = Some(StringAnalysisSourceInfo(description, getFullSourceInfo.getPosition))
   }
 
   def setForcedSource(source: AnalysisSourceInfo): Unit = {
     forcedMainSource = Some(source)
+  }
+
+  def setForcedSource(sourceOpt: Option[AnalysisSourceInfo]): Unit = {
+    forcedMainSource = sourceOpt
   }
 
   def removeForcedSource(): Unit = {

@@ -35,6 +35,7 @@ trait AssumptionAnalyzer {
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
   def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit
   def addDependencyFromExhaleToInhale(inhaledChunk: Chunk, sourceInfo: AnalysisSourceInfo): Unit
+  def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {}
 
   def getMember: Option[ast.Member]
 
@@ -222,6 +223,12 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
   override def addDependency(source: Int, dest: Int): Unit = {
     assumptionGraph.addEdges(source, Set(dest))
+  }
+
+  override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {
+    val sourceNodes = assumptionGraph.nodes filter (n => n.isInstanceOf[GeneralAssertionNode] && n.sourceInfo.getSourceForTransitiveEdges.equals(sourceSourceInfo.getSourceForTransitiveEdges))
+    val targetNodes = assumptionGraph.nodes filter (n => n.isInstanceOf[GeneralAssumptionNode] && n.sourceInfo.getSourceForTransitiveEdges.equals(targetSourceInfo.getSourceForTransitiveEdges))
+    assumptionGraph.addEdges(sourceNodes map (_.id), targetNodes map (_.id))
   }
 
   override def getMember: Option[ast.Member] = Some(member)

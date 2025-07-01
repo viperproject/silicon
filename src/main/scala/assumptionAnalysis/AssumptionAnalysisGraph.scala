@@ -77,10 +77,10 @@ trait AssumptionAnalysisGraph {
     res
   }
 
-  def getNodesPerSourceInfo(): mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]] = {
+  def getNodesPerTransitivitySourceInfo(): mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]] = {
     val res = new mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]]()
     nodes foreach {n =>
-      res.updateWith(n.sourceInfo.getTopLevelSource)({
+      res.updateWith(n.sourceInfo.getSourceForTransitiveEdges)({
         case Some(ns) => Some(ns ++ Seq(n))
         case None => Some(Seq(n))
       })
@@ -99,7 +99,7 @@ trait AssumptionAnalysisGraph {
   }
 
   def addTransitiveEdges(): Unit = {
-    val nodesPerSourceInfo = getNodesPerSourceInfo()
+    val nodesPerSourceInfo = getNodesPerTransitivitySourceInfo()
     nodesPerSourceInfo foreach {nodes =>
       val asserts = nodes._2.filter(_.isInstanceOf[GeneralAssertionNode])
       val assumes = nodes._2.filter(n => !n.isClosed && n.isInstanceOf[GeneralAssumptionNode])
@@ -128,7 +128,7 @@ trait AssumptionAnalysisGraph {
   private def exportNodes(fileName: String): Unit = {
     val sep = "#"
     def getNodeExportString(node: AssumptionAnalysisNode): String = {
-      val parts = Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getStringForExport, node.sourceInfo.getFineGrainedSource.toString)
+      val parts = Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.getFineGrainedSource.toString)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
     val writer = new PrintWriter(fileName)

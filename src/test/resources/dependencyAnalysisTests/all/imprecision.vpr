@@ -54,3 +54,18 @@ method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
   @testAssertion()
   assert xs[0].f > 0
 }
+
+method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency()(|xs| > 5)
+  requires @irrelevant()(|ys| > 3)
+{
+  @dependency()
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+  @irrelevant()
+  inhale forall y: Ref :: y in ys ==> acc(y.f)
+
+  @irrelevant()
+  xs[0].f := ys[0].f + 2
+  @testAssertion()
+  xs[0].f := 2
+}
