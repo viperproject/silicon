@@ -7,10 +7,21 @@
 package viper.silicon.optimizations
 
 import viper.silicon.verifier.Verifier
+import scala.io.Source
 
 object ProofEssence {
   def branchGuards(name: String, branch: String): List[String] = {
     val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${name}_unsatCoreCache.cache")
+    val cacheMap: Map[String, String] = {
+      val source = Source.fromFile(coreCacheFile)
+      try {
+        source.getLines().collect {
+          case line if line.contains(":") =>
+            val Array(hash, core) = line.split(":", 2)
+            hash -> core
+        }.toMap
+      } finally source.close()
+    }
   }
 }
 
