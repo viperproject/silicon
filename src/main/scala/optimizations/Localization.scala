@@ -22,7 +22,13 @@ object ProofEssence {
         }.toMap
       } finally source.close()
     }
-    val cores = cacheMap.get(branch)
+    val cores = cacheMap.get(branch) match {
+      case Some(coresStr) =>
+        val pattern = """\(([^)]*)\)""".r
+        pattern.findAllMatchIn(coresStr).map(_.group(1)).toList
+      case None => Nil
+    }
+    cores
   }
 }
 
