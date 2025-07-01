@@ -22,6 +22,7 @@ object ProofEssence {
         }.toMap
       } finally source.close()
     }
+    val cores = cacheMap.get(branch)
   }
 }
 
