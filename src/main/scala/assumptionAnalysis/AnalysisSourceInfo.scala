@@ -42,8 +42,7 @@ case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
 }
 
 case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
-  override def toString: String = (if(source.info.getSourceString.isEmpty) source.toString else source.info.getSourceString) +
-    " (" + super.toString + ")"
+  override def toString: String = source.toString + " (" + super.toString + ")"
 
   override def getPosition: Position = source.pos
 
@@ -59,8 +58,7 @@ case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
 }
 
 case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
-  override def toString: String = (if(source.info.getSourceString.isEmpty) source.toString() else source.info.getSourceString) +
-    " (" + super.toString + ")"
+  override def toString: String = source.toString + " (" + super.toString + ")"
   override def getPosition: Position = source.pos
 
   override def equals(obj: Any): Boolean = {
