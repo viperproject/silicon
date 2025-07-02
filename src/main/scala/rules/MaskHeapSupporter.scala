@@ -399,7 +399,15 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
       val maskValue = HeapLookup(resChunk.mask, argTerm)
 
-      val sufficientPermCheck = if (consumeExact) AtLeast(maskValue, permissions) else Greater(maskValue, NoPerm)
+      val sufficientPermCheck = if (s.assertReadAccessOnly) {
+        Implies(Greater(permissions, NoPerm), Greater(maskValue, NoPerm))
+      } else {
+        if (consumeExact) {
+          AtLeast(maskValue, permissions)
+        } else {
+          Greater(maskValue, NoPerm)
+        }
+      }
       val completeSufficientPermCheck = Implies(FunctionPreconditionTransformer.transform(sufficientPermCheck, s.program), sufficientPermCheck)
       v.decider.assert(completeSufficientPermCheck) {
         case true =>
@@ -636,12 +644,14 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
               }
               val currentPermQvars = HeapLookup(currentChunk.mask, argTermQvars)
 
-              val sufficientPerm = if (constrainPermissions) {
-                //Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm(), currentPerm)), Seq(), "sufficientPerms")
-                Forall(qvars, Implies(tCond, PermLess(NoPerm, currentPermQvars)), tTriggers, "sufficientPerms")
+              val sufficientPerm = if (s.assertReadAccessOnly) {
+                Forall(qvars, Implies(tCond, Implies(PermLess(NoPerm, loss), PermLess(NoPerm, currentPermQvars))), tTriggers, "sufficientPerms")
               } else {
-                //Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
-                Forall(qvars, Implies(tCond, PermAtMost(loss, currentPermQvars)), tTriggers, "sufficientPerms")
+                if (constrainPermissions) {
+                  Forall(qvars, Implies(tCond, PermLess(NoPerm, currentPermQvars)), tTriggers, "sufficientPerms")
+                } else {
+                  Forall(qvars, Implies(tCond, PermAtMost(loss, currentPermQvars)), tTriggers, "sufficientPerms")
+                }
               }
               val completeSufficientPerm = Implies(FunctionPreconditionTransformer.transform(sufficientPerm, s.program), sufficientPerm)
               v.decider.assert(completeSufficientPerm)(r => r match {

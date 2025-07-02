@@ -112,11 +112,13 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def declareSortsAfterAnalysis(sink: ProverLike): Unit = ()
 
     private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Decl]] = (
-         Seq(Left("Declaring symbols related to program functions (from program analysis)"))
-      ++ functionData.values.flatMap(data =>
-            Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction).map(FunctionDecl)
-         ).map(Right(_))
-    )
+      Seq(Left("Declaring symbols related to program functions (from program analysis)"))
+        ++ functionData.values.flatMap(data => {
+          val alwaysUsed = Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction)
+          val frameFunc = if (Verifier.config.maskHeapMode()) Seq(data.frameFunction) else Seq()
+          (alwaysUsed ++ frameFunc).map(FunctionDecl)
+        }).map(Right(_))
+      )
 
     def symbolsAfterAnalysis: Iterable[Decl] =
       (generateFunctionSymbolsAfterAnalysis collect { case Right(decl) => decl }) ++ Seq(ConstDecl(`?s`))
@@ -177,6 +179,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
+          if (Verifier.config.maskHeapMode()) {
+            data.qpFrameFunctionDecls map decider.prover.declare
+            emitAndRecordFunctionAxioms(data.frameAxiom)
+            emitAndRecordFunctionAxioms(data.qpFrameAxioms: _*)
+          }
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq

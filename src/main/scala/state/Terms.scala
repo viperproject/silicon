@@ -2404,6 +2404,11 @@ class HeapToSnap(val heap: Term, val mask: Term, val r: Any) extends Term with H
   val equalityDefiningMembers = (heap, mask, r)
 
   val sort = sorts.Snap
+
+  if (heap.isInstanceOf[FakeMaskMapTerm])
+    println("++++")
+  if (mask.isInstanceOf[FakeMaskMapTerm])
+    println("++++")
 }
 
 object HeapToSnap extends CondFlyweightTermFactory[(Term, Term, Any), HeapToSnap] {
@@ -2413,6 +2418,8 @@ object HeapToSnap extends CondFlyweightTermFactory[(Term, Term, Any), HeapToSnap
 
 class SnapToHeap(val snap: Term, val r: Any, val sort: Sort) extends Term with HasVarRepr with ConditionalFlyweight[(Term, Any, Sort), SnapToHeap] {
   val equalityDefiningMembers = (snap, r, sort)
+  if (snap.isInstanceOf[FakeMaskMapTerm])
+    println("++++")
 }
 
 object SnapToHeap extends CondFlyweightTermFactory[(Term, Any, Sort), SnapToHeap] {

@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
 object functionSupporter {
   def limitedVersion(function: HeapDepFun): HeapDepFun = {
@@ -15,13 +16,22 @@ object functionSupporter {
     HeapDepFun(id, function.argSorts, function.resultSort)
   }
 
-  def statelessVersion(function: HeapDepFun): Fun = {
+  def statelessVersion(function: HeapDepFun, nHeaps: Int): Fun = {
     val id = function.id.withSuffix("%", "stateless")
-    Fun(id, function.argSorts.tail, terms.sorts.Bool)
+    if (Verifier.config.maskHeapMode())
+      Fun(id, function.argSorts.drop(nHeaps), terms.sorts.Bool)
+    else
+      Fun(id, function.argSorts.tail, terms.sorts.Bool)
   }
 
   def preconditionVersion(function: HeapDepFun): HeapDepFun = {
     val id = function.id.withSuffix("%", "precondition")
     HeapDepFun(id, function.argSorts, terms.sorts.Bool)
+  }
+
+  def frameVersion(function: HeapDepFun, nHeaps: Int): HeapDepFun = {
+    assert(Verifier.config.maskHeapMode())
+    val id = function.id.withSuffix("%", "frame")
+    HeapDepFun(id, sorts.Snap +: function.argSorts.drop(nHeaps), function.resultSort)
   }
 }

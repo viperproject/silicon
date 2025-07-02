@@ -11,7 +11,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.annotation.unused
 import viper.silver.ast
 import viper.silicon.Map
-import viper.silicon.rules.functionSupporter
+import viper.silicon.rules.{functionSupporter, maskHeapSupporter}
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
@@ -144,26 +144,46 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
         val funcAnn = silverFunc.info.getUniqueInfo[AnnotationInfo]
+        val callerHeight = data.height
+        val calleeHeight = functionData(eFApp.func(program)).height
+        val funDefined = symbolConverter.toFunction(silverFunc, program)
+        val funDefault = if (callerHeight < calleeHeight)
+          funDefined
+        else
+          functionSupporter.limitedVersion(funDefined)
         val fun = funcAnn match {
           case Some(a) if a.values.contains("opaque") =>
             val funcAppAnn = eFApp.info.getUniqueInfo[AnnotationInfo]
             funcAppAnn match {
-              case Some(a) if a.values.contains("reveal") => symbolConverter.toFunction(silverFunc)
-              case _ => functionSupporter.limitedVersion(symbolConverter.toFunction(silverFunc))
+              case Some(a) if a.values.contains("reveal") => funDefault
+              case _ => functionSupporter.limitedVersion(symbolConverter.toFunction(silverFunc, program))
             }
-          case _ => symbolConverter.toFunction(silverFunc)
+          case _ => funDefault
         }
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrFail(data.fappToSnap, eFApp, context, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
-        val fapp = App(fun, snap +: args)
+        val fapp = if (Verifier.config.maskHeapMode()) {
+          def createApp(trm: Term): Term = trm match {
+            case mt: FakeMaskMapTerm => App(fun, mt.masks.values.toSeq ++ args)
+            case Ite(cond, e1, e2) => Ite(cond, createApp(e1), createApp(e2))
+            case v: Var =>
+              val resources = maskHeapSupporter.getResourceSeq(silverFunc.pres, program)
+              val resHeaps = fromSnapTree(v, resources.size).zip(resources).map {
+                case (s, r) =>
+                  val srt = r match {
+                    case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
+                    case _ => sorts.PredHeapSort
+                  }
+                  SnapToHeap(s, r, srt)
+              }
+              App(fun, resHeaps ++ args)
+          }
 
-        val callerHeight = data.height
-        val calleeHeight = functionData(eFApp.func(program)).height
-
-        if (callerHeight < calleeHeight)
-          fapp
-        else
-          fapp.copy(applicable = functionSupporter.limitedVersion(fun))
+          createApp(snap)
+        } else {
+          App(fun, snap +: args)
+        }
+        fapp
 
       case _ => super.translate(symbolConverter.toSort)(e)
     }

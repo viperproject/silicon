@@ -8,22 +8,24 @@ package viper.silicon.supporters.functions
 
 import scala.annotation.unused
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.state.FunctionPreconditionTransformer
+import viper.silicon.state.{FunctionPreconditionTransformer, Identifier, IdentifierFactory, MagicWandIdentifier, SymbolConverter}
 import viper.silver.ast
-import viper.silver.ast.utility.Functions
+import viper.silver.ast.utility.{Expressions, Functions}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
-import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
+import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter, maskHeapSupporter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
-import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.ast.LocalVarWithVersion
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.Reporter
+
+import scala.collection.mutable
 
 /* TODO: Refactor FunctionData!
  *       Separate computations from "storing" the final results and sharing
@@ -53,10 +55,26 @@ class FunctionData(val programFunction: ast.Function,
    * Properties computed from the constructor arguments
    */
 
-  val function: HeapDepFun = symbolConverter.toFunction(programFunction)
+  val function: HeapDepFun = symbolConverter.toFunction(programFunction, program)
   val limitedFunction = functionSupporter.limitedVersion(function)
-  val statelessFunction = functionSupporter.statelessVersion(function)
+  val statelessFunction = {
+    val nHeaps = if (Verifier.config.maskHeapMode()) {
+      val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+      resources.size
+    } else {
+      0
+    }
+    functionSupporter.statelessVersion(function, nHeaps)
+  }
   val preconditionFunction = functionSupporter.preconditionVersion(function)
+  val frameFunction = {
+    if (Verifier.config.maskHeapMode()) {
+      val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+      functionSupporter.frameVersion(function, resources.size)
+    } else {
+      null
+    }
+  }
 
   val formalArgs: Map[ast.AbstractLocalVar, Var] = toMap(
     for (arg <- programFunction.formalArgs;
@@ -70,17 +88,33 @@ class FunctionData(val programFunction: ast.Function,
 
   val valFormalResultExp = Option.when(Verifier.config.enableDebugging())(LocalVarWithVersion(simplifyVariableName(formalResult.id.name), programFunction.result.typ)())
 
-  val arguments = Seq(`?s`) ++ formalArgs.values
+  val snapArgs = {
+    if (Verifier.config.maskHeapMode()) {
+      val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+      resources.map(r => {
+        val (name, sort) = r match {
+          case f: ast.Field => (f.name, sorts.HeapSort(symbolConverter.toSort(f.typ)))
+          case p: ast.Predicate => (p.name, sorts.PredHeapSort)
+          case mwi: MagicWandIdentifier => (mwi.toString, sorts.PredHeapSort)
+        }
+        Var(identifierFactory.fresh(s"heap_$name"), sort, false)
+      })
+    } else {
+      Seq(`?s`)
+    }
+  }
+
+  val arguments = snapArgs ++ formalArgs.values
   val argumentExps =
     if (Verifier.config.enableDebugging())
       Seq(Some(ast.LocalVar(`?s`.id.name, ast.InternalType)())) ++ formalArgs.keys.map(Some(_))
     else
       Seq.fill(1 + formalArgs.size)(None)
 
-  val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
-  val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
+  val functionApplication = App(function, snapArgs ++ formalArgs.values.toSeq)
+  val limitedFunctionApplication = App(limitedFunction, snapArgs ++ formalArgs.values.toSeq)
   val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
-  val preconditionFunctionApplication = App(preconditionFunction, `?s` +: formalArgs.values.toSeq)
+  val preconditionFunctionApplication = App(preconditionFunction, snapArgs ++ formalArgs.values.toSeq)
 
   val limitedAxiom =
     Forall(arguments,
@@ -89,6 +123,10 @@ class FunctionData(val programFunction: ast.Function,
 
   val triggerAxiom =
     Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication))
+
+  private var qpPrecondId = 0
+  private var qpCondFuncs: mutable.ListBuffer[(Function, ast.Forall)] = new mutable.ListBuffer[(Function, ast.Forall)]();
+
 
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
@@ -146,6 +184,8 @@ class FunctionData(val programFunction: ast.Function,
         case App(f: Function, _) => FunctionDecl(f)
         case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
       })
+    if (phase == 0 && Verifier.config.maskHeapMode())
+      freshSymbolsAcrossAllPhases ++= qpFrameFunctionDecls
 
     phase += 1
   }
@@ -210,7 +250,12 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
 
-      Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
+      val res = Forall(arguments, body, Trigger(limitedFunctionApplication))
+      val transformedRes = if (Verifier.config.maskHeapMode())
+        transformToHeapVersion(res)
+      else
+        res
+      Some(transformedRes)
     } else
       None
   }
@@ -249,10 +294,16 @@ class FunctionData(val programFunction: ast.Function,
       val predicate = program.findPredicate(predAcc.predicateName)
       val triggerFunction = predicateData(predicate).triggerFunction
 
+      val snapArg = if (Verifier.config.maskHeapMode()) {
+        val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+        val resIndex = resources.indexOf(predicate)
+        snapArgs(resIndex)
+      } else {
+        expressionTranslator.getOrFail(locToSnap, predAcc, Seq(), sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
+      }
+
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
-      val args = (
-           expressionTranslator.getOrFail(locToSnap, predAcc, Seq(), sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
-        +: expressionTranslator.translatePrecondition(program, predAcc.args, this))
+      val args = snapArg +: expressionTranslator.translatePrecondition(program, predAcc.args, this)
 
       val fapp = App(triggerFunction, args)
 
@@ -266,6 +317,19 @@ class FunctionData(val programFunction: ast.Function,
     expressionTranslator.translate(program, programFunction, this)
   }
 
+  def transformToHeapVersion(t: Term) = {
+    val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+    val resHeaps = fromSnapTree(`?s`, resources.size).zip(resources).map {
+      case (s, r) =>
+        val srt = r match {
+          case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
+          case _ => sorts.PredHeapSort
+        }
+        SnapToHeap(s, r, srt)
+    }
+    t.replace(resHeaps, snapArgs)
+  }
+
   lazy val definitionalAxiom: Option[Term] = {
     assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
 
@@ -274,14 +338,33 @@ class FunctionData(val programFunction: ast.Function,
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
       val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(BuiltinEquals(functionApplication, translatedBody)))))
       val funcAnn = programFunction.info.getUniqueInfo[ast.AnnotationInfo]
-      val actualPredicateTriggers = funcAnn match {
-        case Some(a) if a.values.contains("opaque") => Seq()
-        case _ => predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt)))
-      }
-      val allTriggers = (
-           Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
-      Forall(arguments, body, allTriggers)})
+      if (Verifier.config.maskHeapMode()) {
+        val predTriggers = funcAnn match {
+          case Some(a) if a.values.contains("opaque") => Seq()
+          case _ => predicateTriggers.values.map(pt => pt match {
+            case App(f, args) =>
+              Trigger(Seq(limitedFunctionApplication, App(f, args)))
+          }).toSeq
+        }
+        val predAxiom = Forall(arguments, body, predTriggers)
+        val directAxiom = Forall(arguments, body, Seq(Trigger(functionApplication)))
+        val res = if (predTriggers.nonEmpty)
+          And(predAxiom, directAxiom)
+        else
+          directAxiom
+        transformToHeapVersion(res)
+      } else {
+        val actualPredicateTriggers = funcAnn match {
+          case Some(a) if a.values.contains("opaque") => Seq()
+          case _ => predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt)))
+        }
+        val allTriggers = (
+          Seq(Trigger(functionApplication))
+            ++ actualPredicateTriggers)
+
+        Forall(arguments, body, allTriggers)
+      }})
   }
 
   lazy val bodyPreconditionPropagationAxiom: Seq[Term] = {
@@ -290,7 +373,11 @@ class FunctionData(val programFunction: ast.Function,
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
       Forall(arguments, body, Seq(Trigger(functionApplication)))
     }) else None
-    bodyPreconditions.toSeq
+    val res = bodyPreconditions.toSeq
+    if (Verifier.config.maskHeapMode())
+      res.map(t => transformToHeapVersion(t))
+    else
+      res
   }
 
   lazy val postPreconditionPropagationAxiom: Seq[Term] = {
@@ -300,6 +387,167 @@ class FunctionData(val programFunction: ast.Function,
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
       bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
     } else Seq()
-    postPreconditions
+    if (Verifier.config.maskHeapMode())
+      postPreconditions.map(t => transformToHeapVersion(t))
+    else
+      postPreconditions
+  }
+
+  private def computeFrame(conjuncts: Seq[ast.Exp], functionName: String): Term = {
+    val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+    conjuncts match {
+      case Nil => Unit
+      case pre +: Nil => computeFrameHelper(pre, functionName, resources)
+      case p +: ps => combineFrames(computeFrameHelper(p, functionName, resources), computeFrame(ps, functionName))
+    }
+  }
+
+  private def combineFrames(a: Term, b: Term) = (a, b) match {
+    case (Unit, _) => b
+    case (_, Unit) => a
+    case _ => Combine(a, b)
+  }
+
+  val condFrameFunc = Fun(Identifier("internalCondFrame"), Seq(sorts.Bool, sorts.Snap, sorts.Snap), sorts.Snap)
+
+  private def condFrame(cond: Term, thenTerm: Term, elsTerm: Term): Term = {
+    cond match {
+      case True => thenTerm
+      case False => elsTerm
+      case _ if thenTerm == elsTerm => thenTerm
+      case _ => App(condFrameFunc, Seq(cond, thenTerm, elsTerm))
+    }
+  }
+
+  private def computeFrameHelper(assertion: ast.Exp, name: String, resources: Seq[Any]): Term = {
+
+    def translateExp(e: ast.Exp): Term = {
+      transformToHeapVersion(expressionTranslator.translatePostcondition(program, Seq(e), this)(0))
+    }
+
+    def frameFragment(t: Term) = {
+      t.convert(sorts.Snap)
+    }
+
+    assertion match {
+      case ast.AccessPredicate(la, perm) =>
+        val resAcc = la match {
+          case ast.FieldAccess(rcv, f) =>
+            val recTerm = translateExp(rcv)
+            val heapIndex = resources.indexOf(f)
+            val heap = snapArgs(heapIndex)
+            HeapLookup(heap, recTerm).convert(sorts.Snap)
+          case ast.PredicateAccess(args, predName) =>
+            val pred = program.findPredicate(predName)
+            val heapIndex = resources.indexOf(pred)
+            val heap = snapArgs(heapIndex)
+            val argTerms = args.map(translateExp(_))
+            val argTerm = toSnapTree(argTerms)
+            HeapLookup(heap, argTerm)
+          case w: ast.MagicWand =>
+            val mwi = MagicWandIdentifier(w, program)
+            val heapIndex = resources.indexOf(mwi)
+            val heap = snapArgs(heapIndex)
+            val argExps = w.subexpressionsToEvaluate(program)
+            val argTerms = argExps.map(translateExp(_))
+            val argTerm = toSnapTree(argTerms)
+            HeapLookup(heap, argTerm)
+        }
+        val permTerm = translateExp(perm.replace(ast.WildcardPerm()(), ast.FullPerm()()))
+        condFrame(Greater(permTerm, NoPerm), resAcc, Unit)
+      case QuantifiedPermissionAssertion(forall, _, _: ast.AccessPredicate) => // works the same for fields and predicates
+        qpPrecondId = qpPrecondId + 1
+        val condName = Identifier(name + "#condqp" + qpPrecondId.toString)
+        val condFunc = Fun(condName, arguments.map(_.sort), sorts.Snap)
+        val res = (condFunc, forall)
+        qpCondFuncs += res
+        frameFragment(App(condFunc, arguments))
+      case ast.Implies(e0, e1) =>
+        frameFragment(condFrame(translateExp(e0), computeFrameHelper(e1, name, resources), Unit))
+      case ast.And(e0, e1) =>
+        combineFrames(computeFrameHelper(e0, name, resources), computeFrameHelper(e1, name, resources))
+      case ast.CondExp(con, thn, els) =>
+        frameFragment(condFrame(translateExp(con), computeFrameHelper(thn, name, resources), computeFrameHelper(els, name, resources)))
+      case ast.Let(varDeclared, boundTo, inBody) =>
+        computeFrameHelper(Expressions.instantiateVariables(inBody, Seq(varDeclared.localVar), Seq(boundTo)), name, resources)
+      case e if e.isPure =>
+        Unit
+    }
+  }
+
+  lazy val funcFrame = computeFrame(programFunction.pres, programFunction.name)
+
+  def getFrameVersion(args: Seq[Term], heaps: Seq[Term]) = {
+    funcFrame.replace(formalArgs.values.toSeq ++ snapArgs, args ++ heaps)
+  }
+
+  lazy val frameAxiom: Term = {
+    assert(Verifier.config.maskHeapMode())
+
+    val frameFuncApp = App(frameFunction, funcFrame +: formalArgs.values.toSeq)
+    val body = BuiltinEquals(limitedFunctionApplication, frameFuncApp)
+
+    val res = Forall(arguments, body, Trigger(limitedFunctionApplication))
+    res
+  }
+
+  lazy val qpFrameFunctionDecls: Seq[FunctionDecl] = {
+    val _ = frameAxiom // initialize
+    qpCondFuncs.map(cf => FunctionDecl(cf._1)).toSeq
+  }
+
+  lazy val qpFrameAxioms: Seq[Term] = {
+    val _ = frameAxiom // initialize
+
+    def translateExp(e: ast.Exp): Term = {
+      transformToHeapVersion(expressionTranslator.translatePostcondition(program, Seq(e), this)(0))
+    }
+
+    val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
+
+    val result = mutable.ListBuffer[Term]()
+    for (func <- qpCondFuncs) {
+      val heapVars = arguments.take(resources.size)
+      val heaps1: Seq[Var] = heapVars.map(v => Var(identifierFactory.fresh(v.id.name), v.sort, false))
+      val heaps2: Seq[Var] = heapVars.map(v => Var(identifierFactory.fresh(v.id.name), v.sort, false))
+      val restArgs: Seq[Var] = arguments.drop(resources.size)
+      val (condTerm, argTerm, heap) = func._2 match {
+        case QuantifiedPermissionAssertion(_, cond, ast.AccessPredicate(la, perm)) =>
+          val condTrans = translateExp(cond)
+          val permGreaterNone = Greater(translateExp(perm.replace(ast.WildcardPerm()(), ast.FullPerm()())), NoPerm)
+          val (argTerm, res) = la match {
+            case ast.FieldAccess(rcv, field) =>
+              (translateExp(rcv), field)
+            case ast.PredicateAccess(args, predName) =>
+              val pred = program.findPredicate(predName)
+              val argTerms = args map translateExp
+              (toSnapTree(argTerms), pred)
+            case w: ast.MagicWand =>
+              val mwi = MagicWandIdentifier(w, program)
+              val argExps = w.subexpressionsToEvaluate(program)
+              val argTerms = argExps.map(translateExp(_))
+              val argTerm = toSnapTree(argTerms)
+              (argTerm, mwi)
+          }
+          val heapIndex = resources.indexOf(res)
+          val heap = snapArgs(heapIndex)
+          (And(condTrans, permGreaterNone), argTerm, heap)
+      }
+      val cond1 = condTerm.replace(heapVars, heaps1)
+      val cond2 = condTerm.replace(heapVars, heaps2)
+      val argTerm1 = argTerm.replace(heapVars, heaps1)
+      val argTerm2 = argTerm.replace(heapVars, heaps2)
+      val heap1 = heap.replace(heapVars, heaps1)
+      val heap2 = heap.replace(heapVars, heaps2)
+      val lookup1 = HeapLookup(heap1, argTerm1)
+      val lookup2 = HeapLookup(heap2, argTerm2)
+      val qvars = func._2.variables.map(vd => translateExp(vd.localVar).asInstanceOf[Var])
+      val sameVals: Term = Forall(qvars, Implies(And(cond1, cond2), lookup1 === lookup2), Trigger(Seq(lookup1, lookup2)))
+      val app1: Term = App(func._1, heaps1 ++ restArgs)
+      val app2: Term = App(func._1, heaps2 ++ restArgs)
+      val res = Forall(heaps1 ++ heaps2 ++ restArgs, Implies(sameVals, BuiltinEquals(app1, app2)), Trigger(Seq(app1, app2)))
+      result.append(res)
+    }
+    result.toSeq
   }
 }

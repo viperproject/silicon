@@ -14,12 +14,13 @@ import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, Precond
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state.ChunkIdentifer
+import viper.silicon.interfaces.state.{ChunkIdentifer, MaskHeapChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsPositive
+import viper.silicon.state.terms.sorts.PredHeapSort
 import viper.silicon.utils.ast._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
@@ -27,6 +28,8 @@ import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, WeightedQuantifier}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
+
+import scala.collection.immutable
 
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
@@ -642,8 +645,19 @@ object evaluator extends EvaluationRules {
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
             consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
-              val snap1 = snap.get.convert(sorts.Snap)
-              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+
+              val (snapArgs, snapToRecord) = if (Verifier.config.maskHeapMode()) {
+                val resources = maskHeapSupporter.getResourceSeq(func.pres, s4.program)
+                val args = resources.map(r => {
+                  maskHeapSupporter.findMaskHeapChunk(s3.h, r).heap
+                })
+                (args, FakeMaskMapTerm(immutable.ListMap(resources.zip(args): _*)))
+              } else {
+                val snapToRecord = snap.get.convert(sorts.Snap)
+                (Seq(snapToRecord), snapToRecord)
+              }
+
+              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func, s4.program)), snapArgs ++ tArgs)
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
@@ -653,14 +667,14 @@ object evaluator extends EvaluationRules {
                 case Some(a) if a.values.contains("opaque") =>
                   val funcAppAnn = fapp.info.getUniqueInfo[AnnotationInfo]
                   funcAppAnn match {
-                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
-                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+                    case Some(a) if a.values.contains("reveal") => App(v3.symbolConverter.toFunction(func, s4.program), snapArgs ++ tArgs)
+                    case _ => App(functionSupporter.limitedVersion(v3.symbolConverter.toFunction(func, s4.program)), snapArgs ++ tArgs)
                   }
-                case _ => App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+                case _ => App(v3.symbolConverter.toFunction(func, s4.program), snapArgs ++ tArgs)
               }
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)
-                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
+                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snapToRecord)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
                                recordVisited = s2.recordVisited,
@@ -718,14 +732,31 @@ object evaluator extends EvaluationRules {
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
                         val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true))
-                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp)
+                        val snapArg = if (Verifier.config.maskHeapMode()) {
+                          val chunk = s4.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+                          chunk.heap
+                        } else {
+                          snap.get.convert(terms.sorts.Snap)
+                        }
+
+                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snapArg +: tArgs), debugExp)
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm, ePermNew)
                       val argsPairs: List[(Term, Option[ast.Exp])] = if (withExp) tArgs zip eArgsNew.get.map(Some(_)) else tArgs zip Seq.fill(tArgs.size)(None)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg).setConstrainable(s7.constrainableARPs, false)
-                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
+
+                      val predSnapFunc = if (Verifier.config.maskHeapMode()) {
+                        val predSnap = snap.get match {
+                          case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
+                          case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
+                          case _ => HeapLookup(SnapToHeap(snap.get, predicate, PredHeapSort), toSnapTree(tArgs))
+                        }
+                        (_: Sort, _: Verifier) => predSnap
+                      } else toSf(snap.get)
+
+                      produce(s7a, predSnapFunc, body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(g = s7.g,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,

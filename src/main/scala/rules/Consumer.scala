@@ -134,7 +134,12 @@ object consumer extends ConsumptionRules {
     if (tlcs.isEmpty) {
       val snap = Option.when(returnSnap)({
         resMap match {
-          case Some(rm) => FakeMaskMapTerm(immutable.ListMap.from(rm))
+          case Some(rm) =>
+            val newMap = immutable.ListMap.from(rm)
+            if (isRecursive)
+              FakeMaskMapTerm(newMap)
+            else
+              maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), h, s, v.decider)
           case _ => Unit
         }
       })
@@ -152,7 +157,10 @@ object consumer extends ConsumptionRules {
               val fst = immutable.ListMap.from(resMap.get)
               val snd = snap2.get.asInstanceOf[FakeMaskMapTerm].masks
               val newMap = maskHeapSupporter.mergePreservingFirstOrder(fst, snd)
-              Q(s2, h2, Some(FakeMaskMapTerm(newMap)), v2)
+              val term = if (isRecursive) FakeMaskMapTerm(newMap)
+              else
+                maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), h, s2, v2.decider)
+              Q(s2, h2, Some(term), v2)
             } else {
               Q(s2, h2, snap2, v2)
             }
