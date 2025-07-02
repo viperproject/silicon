@@ -77,10 +77,10 @@ trait AssumptionAnalysisGraph {
     res
   }
 
-  def getNodesPerTransitivitySourceInfo(): mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]] = {
-    val res = new mutable.HashMap[AnalysisSourceInfo, Seq[AssumptionAnalysisNode]]()
+  def getNodesPerTransitivitySourceInfo(): mutable.HashMap[String, Seq[AssumptionAnalysisNode]] = {
+    val res = new mutable.HashMap[String, Seq[AssumptionAnalysisNode]]()
     nodes foreach {n =>
-      res.updateWith(n.sourceInfo.getSourceForTransitiveEdges)({
+      res.updateWith(n.sourceInfo.getSourceForTransitiveEdges.toString)({
         case Some(ns) => Some(ns ++ Seq(n))
         case None => Some(Seq(n))
       })
@@ -90,7 +90,7 @@ trait AssumptionAnalysisGraph {
 
   def addTransitiveEdges(source: AssumptionAnalysisNode, targets: Iterable[AssumptionAnalysisNode]): Unit = {
     val oldTargets = transitiveEdges.getOrElse(source.id, Set.empty)
-    val newTargets = targets map(_.id)
+    val newTargets = targets map(_.id) filter(_ > source.id)
     if(newTargets.nonEmpty) transitiveEdges.update(source.id, oldTargets ++ newTargets)
   }
 
@@ -102,7 +102,7 @@ trait AssumptionAnalysisGraph {
     val nodesPerSourceInfo = getNodesPerTransitivitySourceInfo()
     nodesPerSourceInfo foreach {nodes =>
       val asserts = nodes._2.filter(_.isInstanceOf[GeneralAssertionNode])
-      val assumes = nodes._2.filter(n => !n.isClosed && n.isInstanceOf[GeneralAssumptionNode])
+      val assumes = nodes._2.filter(n => !n.isClosed && n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
       addTransitiveEdges(asserts, assumes)
       val checks = asserts.filter(_.isInstanceOf[SimpleCheckNode])
       val notChecks = nodes._2.filter(n => !n.isClosed && !n.isInstanceOf[SimpleCheckNode])

@@ -86,7 +86,7 @@ case class TransitivityAnalysisSourceInfo(actualSource: AnalysisSourceInfo, tran
 
   override def equals(obj: Any): Boolean = actualSource.equals(obj)
 
-  override def getSourceForTransitiveEdges: AnalysisSourceInfo = transitivitySource
+  override def getSourceForTransitiveEdges: AnalysisSourceInfo = transitivitySource.getTopLevelSource
   override def getTopLevelSource: AnalysisSourceInfo = actualSource.getTopLevelSource
   override def getFineGrainedSource: AnalysisSourceInfo = actualSource.getFineGrainedSource
   override def isAnalysisEnabled: Boolean = actualSource.isAnalysisEnabled
