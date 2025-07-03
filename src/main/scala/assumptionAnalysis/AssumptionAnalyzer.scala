@@ -10,6 +10,7 @@ import viper.silver.ast
 trait AssumptionAnalyzer {
   val assumptionGraph: AssumptionAnalysisGraph = new DefaultAssumptionAnalysisGraph()
   protected var isClosed_ = false
+  protected var infeasibilityNode: Option[Int] = None
 
   def disableTransitiveEdges(): Unit = {
     isClosed_ = true
@@ -17,6 +18,16 @@ trait AssumptionAnalyzer {
 
   def enableTransitiveEdges(): Unit = {
     isClosed_ = false
+  }
+
+  def getinfeasibilityNode: Option[Int] = infeasibilityNode
+
+  def setinfeasibilityNode(nodeId: Int): Unit = {
+    infeasibilityNode = Some(nodeId)
+  }
+
+  def unsetinfeasibilityNode(): Unit = {
+    infeasibilityNode = None
   }
 
   def getNodes: Iterable[AssumptionAnalysisNode]
@@ -30,8 +41,9 @@ trait AssumptionAnalyzer {
 
   def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
   def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
+  def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
 
-  def addDependency(source: Int, dest: Int): Unit
+  def addDependency(source: Option[Int], dest: Option[Int]): Unit
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
   def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit
   def addDependencyFromExhaleToInhale(inhaledChunk: Chunk, sourceInfo: AnalysisSourceInfo): Unit
@@ -141,6 +153,12 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     node.map(_.id)
   }
 
+  override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = {
+    val node = InfeasibilityNode(sourceInfo)
+    addNode(node)
+    Some(node.id)
+  }
+
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
     val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
     val assumptionIds = assumptionLabels.filter(AssumptionAnalyzer.isAssumptionLabel).map(AssumptionAnalyzer.getIdFromLabel)
@@ -221,8 +239,9 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     addPermissionDependencies(sourceChunks, sourceTerms, newChunkId.headOption)
   }
 
-  override def addDependency(source: Int, dest: Int): Unit = {
-    assumptionGraph.addEdges(source, Set(dest))
+  override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {
+    if(source.isDefined && dest.isDefined)
+      assumptionGraph.addEdges(source.get, Set(dest.get))
   }
 
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {
@@ -268,7 +287,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
     val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, labelNode)
     if(chunkNode.isDefined)
-      addDependency(chunkNode.get, labelNode.id)
+      addDependency(chunkNode, Some(labelNode.id))
     addPermissionDependencies(sourceChunks, Set(), chunkNode)
     chunk
   }
@@ -293,7 +312,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {}
   override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
 
-  override def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
+  override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
   }
 
@@ -303,9 +322,11 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addDependencyFromExhaleToInhale(inhaledChunk: Chunk, sourceInfo: AnalysisSourceInfo): Unit = {}
 
   override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], newChunkNodeId: Chunk): Unit = {}
-  def addDependency(source: Int, dest: Int): Unit = {}
+  def addDependency(source: Option[Int], dest: Option[Int]): Unit = {}
   override def getMember: Option[ast.Member] = None
 
   override def addAssumption(term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = None
   override def exportGraph(): Unit = {}
+
+  override def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
 }

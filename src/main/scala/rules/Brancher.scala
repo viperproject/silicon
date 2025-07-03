@@ -54,7 +54,6 @@ object brancher extends BranchingRules {
      *   (2) the branch condition contains a quantified variable
      */
     val skipPathFeasibilityCheck = (
-      // Verifier.config.enableAssumptionAnalysis() || TODO ake: review infeasibility check
         fromShortCircuitingAnd
         || (   s.quantifiedVariables.nonEmpty
           && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
@@ -63,15 +62,23 @@ object brancher extends BranchingRules {
     val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
     /* True if the then-branch is to be explored */
-    val executeThenBranch = (
-         skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+    val executeThenBranch = (skipPathFeasibilityCheck
+        || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+
+    val thenInfeasibilityNode = if(Verifier.config.enableAssumptionAnalysis() && !skipPathFeasibilityCheck){
+      val (_, node) = v.decider.checkAndGetInfeasibilityNode(negatedCondition, Verifier.config.checkTimeout())
+      node
+    }else None
 
     /* False if the then-branch is to be explored */
-    val executeElseBranch = (
-         !executeThenBranch /* Assumes that ast least one branch is feasible */
-      || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout()))
+    val executeElseBranch = (!executeThenBranch /* Assumes that ast least one branch is feasible */
+        || skipPathFeasibilityCheck
+        || !v.decider.check(condition, Verifier.config.checkTimeout()))
+
+    val elseInfeasibilityNode = if(Verifier.config.enableAssumptionAnalysis() && !skipPathFeasibilityCheck){
+      val (_, node) = v.decider.checkAndGetInfeasibilityNode(condition, Verifier.config.checkTimeout())
+      node
+    }else None
     v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
@@ -106,6 +113,9 @@ object brancher extends BranchingRules {
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
+          // TODO ake
+//        val needsInfeasibilityFlag = elseInfeasibilityNode.isDefined && v.decider.assumptionAnalyzer.getInfeasibleNode.isEmpty
+//        if(needsInfeasibilityFlag) v.decider.assumptionAnalyzer.setInfeasibleNode(elseInfeasibilityNode.get)
         /* [BRANCH-PARALLELISATION] */
         /* Compute the following sets
          *   1. only if the else-branch needs to be explored
@@ -177,6 +187,8 @@ object brancher extends BranchingRules {
                 macrosOfElseBranchDecider = v1.decider.freshMacros.drop(nMacrosOfElseBranchDeciderBefore)
               }
             }
+
+//            if(needsInfeasibilityFlag) v1.decider.assumptionAnalyzer.unsetInfeasibleNode() TODO ake
             result
           })
         }
@@ -202,9 +214,12 @@ object brancher extends BranchingRules {
 
     val res = {
       val thenRes = if (executeThenBranch) {
+        // TODO ake
+//          val needsInfeasibilityFlag = thenInfeasibilityNode.isDefined && v.decider.assumptionAnalyzer.getInfeasibleNode.isEmpty
+//          if(needsInfeasibilityFlag) v.decider.assumptionAnalyzer.setInfeasibleNode(thenInfeasibilityNode.get)
           v.symbExLog.markReachable(uidBranchPoint)
           v.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
-          executionFlowController.locally(s, v)((s1, v1) => {
+          val res = executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
@@ -213,6 +228,8 @@ object brancher extends BranchingRules {
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })
+//          if(needsInfeasibilityFlag) v.decider.assumptionAnalyzer.unsetInfeasibleNode() TODO ake
+          res
         } else {
           Unreachable()
         }
@@ -221,6 +238,7 @@ object brancher extends BranchingRules {
         v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
           condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
       }
+
       thenRes
     }.combine({
 

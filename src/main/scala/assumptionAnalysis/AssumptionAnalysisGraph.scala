@@ -2,7 +2,7 @@ package viper.silicon.assumptionAnalysis
 
 import viper.silicon.assumptionAnalysis.AssumptionType._
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{False, Term}
 import viper.silver.ast
 import viper.silver.ast.Position
 
@@ -236,5 +236,14 @@ case class LabelNode(term: Term) extends GeneralAssumptionNode {
   val description: String = term.toString
   override def getNodeType: String = "Assumption" // TODO ake: change to Label once supported
   override def getNodeString: String = "assume " + description
+}
+
+case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo) extends GeneralAssertionNode {
+  val term: Term = False
+  val assumptionType: AssumptionType = AssumptionType.Internal
+  val isClosed: Boolean = true
+  val description: String = "False"
+
+  override def getNodeString: String = "infeasible"
 }
 

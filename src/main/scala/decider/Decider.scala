@@ -75,6 +75,7 @@ trait Decider {
   def assumeLabel(term: Term, assumptionLabel: String): Unit
 
   def check(t: Term, timeout: Int): Boolean
+  def checkAndGetInfeasibilityNode(t: Term, timeout: Int): (Boolean, Option[Int])
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
@@ -492,10 +493,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(isAssert: Boolean = false): Boolean = {
-      val label = if(Verifier.config.enableAssumptionAnalysis()){
+      val (label, checkNodeId) = if(Verifier.config.enableAssumptionAnalysis()){
         val nodeId = assumptionAnalyzer.addAssertFalseNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo) // TODO ake: add node only if it can be verified
-        AssumptionAnalyzer.createAssertionLabel(nodeId)
-      }else{ "" }
+        (AssumptionAnalyzer.createAssertionLabel(nodeId), nodeId)
+      }else{ ("", None) }
 
       if(_isReassumeAnalysisLabelsRequired) {
         reassumeAssumptionAnalysisLabels()
@@ -504,13 +505,26 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
       val result = prover.check(timeout, label) == Unsat
-      if(result)
+      if(result) {
         assumptionAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+        val infeasibleNodeId = assumptionAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo)
+        assumptionAnalyzer.addDependency(checkNodeId, infeasibleNodeId)
+      }
       result
     }
 
     def check(t: Term, timeout: Int): Boolean = {
-      deciderAssert(t, Left(""), Some(timeout), isCheck=true)
+      deciderAssert(t, Left(""), Some(timeout), isCheck=true)._1
+    }
+
+    def checkAndGetInfeasibilityNode(t: Term, timeout: Int): (Boolean, Option[Int]) = {
+      val (success, checkNode) = deciderAssert(t, Left(""), Some(timeout), isCheck=true)
+      var infeasibilityNodeId: Option[Int] = None
+      if(success){
+        infeasibilityNodeId = assumptionAnalyzer.addInfeasibilityNode(true, analysisSourceInfoStack.getFullSourceInfo)
+        assumptionAnalyzer.addDependency(checkNode.map(_.id), infeasibilityNodeId)
+      }
+      (success, infeasibilityNodeId)
     }
 
 
@@ -523,7 +537,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def assert(t: Term, e: Either[String, ast.Exp], timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
-      val success = deciderAssert(t, e, timeout)
+      val (success, _) = deciderAssert(t, e, timeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -549,7 +563,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if(result || !isCheck) assertNode foreach assumptionAnalyzer.addNode
 
       symbExLog.closeScope(sepIdentifier)
-      result
+      (result, assertNode)
     }
 
     private def isKnownToBeTrue(t: Term) = {
