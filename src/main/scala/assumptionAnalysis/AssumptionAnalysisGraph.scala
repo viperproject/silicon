@@ -90,7 +90,7 @@ trait AssumptionAnalysisGraph {
 
   def addTransitiveEdges(source: AssumptionAnalysisNode, targets: Iterable[AssumptionAnalysisNode]): Unit = {
     val oldTargets = transitiveEdges.getOrElse(source.id, Set.empty)
-    val newTargets = targets map(_.id) filter(_ > source.id)
+    val newTargets = targets map(_.id) // filter(_ > source.id) does not work due to loop invariants
     if(newTargets.nonEmpty) transitiveEdges.update(source.id, oldTargets ++ newTargets)
   }
 
@@ -110,6 +110,19 @@ trait AssumptionAnalysisGraph {
     }
   }
 
+  private def removeNode(node: AssumptionAnalysisNode): Unit = {
+    val id = node.id
+    val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
+    val successors = edges.getOrElse(id, Set.empty)
+    edges.remove(id)
+    predecessors foreach (pid => edges.update(pid, edges.getOrElse(pid, Set.empty).filter(_ != id)))
+    addEdges(predecessors, successors)
+  }
+
+  def removeLabelNodes(): Unit = {
+    nodes filter (_.isInstanceOf[LabelNode]) foreach removeNode
+  }
+
   def exportGraph(dirName: String): Unit = {
     val directory = new File(dirName)
     directory.mkdir()
@@ -117,7 +130,7 @@ trait AssumptionAnalysisGraph {
     exportEdges(dirName + "/edges.csv")
   }
 
-  def exportEdges(fileName: String): Unit = {
+  private def exportEdges(fileName: String): Unit = {
     val writer = new PrintWriter(fileName)
     writer.println("source,target,label")
     edges foreach (e => e._2 foreach (t => writer.println(e._1 + "," + t + ",direct")))
