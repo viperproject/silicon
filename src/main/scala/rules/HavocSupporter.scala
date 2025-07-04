@@ -143,6 +143,7 @@ object havocSupporter extends SymbolicExecutionRules {
               codomainQVarExps = codomainQVarsExp,
               additionalInvArgs = Seq(), // There are no additional quantified vars
               additionalInvArgExps = Option.when(withExp)(Seq()),
+              stateQVars = Seq(),
               userProvidedTriggers = None,
               qidPrefix = qid,
               v = v1
