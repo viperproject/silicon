@@ -52,7 +52,7 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(isAssert: Boolean = false): Boolean
+  def checkSmoke(isAssert: Boolean = false, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean
 
   def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
   def setPathConditionMark(): Mark
@@ -74,15 +74,14 @@ trait Decider {
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, assumptionType: AssumptionType): Unit
   def assumeLabel(term: Term, assumptionLabel: String): Unit
 
-  def check(t: Term, timeout: Int): Boolean
-  def checkAndGetInfeasibilityNode(t: Term, timeout: Int): (Boolean, Option[Int])
+  def check(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean
+  def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): (Boolean, Option[Int])
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, description: String, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
-  def assert(t: Term, e: Option[ast.Exp], timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, assumptionType: AssumptionType=AssumptionType.Implicit, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -492,9 +491,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(isAssert: Boolean = false): Boolean = {
+    def checkSmoke(isAssert: Boolean = false, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean = {
       val (label, checkNodeId) = if(Verifier.config.enableAssumptionAnalysis()){
-        val nodeId = assumptionAnalyzer.addAssertFalseNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo) // TODO ake: add node only if it can be verified
+        val nodeId = assumptionAnalyzer.addAssertFalseNode(!isAssert, assumptionType, analysisSourceInfoStack.getFullSourceInfo) // TODO ake: add node only if it can be verified
         (AssumptionAnalyzer.createAssertionLabel(nodeId), nodeId)
       }else{ ("", None) }
 
@@ -513,31 +512,22 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       result
     }
 
-    def check(t: Term, timeout: Int): Boolean = {
-      deciderAssert(t, Left(""), Some(timeout), isCheck=true)._1
+    def check(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean = {
+      deciderAssert(t, assumptionType, Some(timeout), isCheck=true)._1
     }
 
-    def checkAndGetInfeasibilityNode(t: Term, timeout: Int): (Boolean, Option[Int]) = {
-      val (success, checkNode) = deciderAssert(t, Left(""), Some(timeout), isCheck=true)
+    def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): (Boolean, Option[Int]) = {
+      val (success, checkNode) = deciderAssert(t, assumptionType, Some(timeout), isCheck=true)
       var infeasibilityNodeId: Option[Int] = None
       if(success){
-        infeasibilityNodeId = assumptionAnalyzer.addInfeasibilityNode(true, analysisSourceInfoStack.getFullSourceInfo)
+        infeasibilityNodeId = assumptionAnalyzer.addInfeasibilityNode(isCheck = true, analysisSourceInfoStack.getFullSourceInfo)
         assumptionAnalyzer.addDependency(checkNode.map(_.id), infeasibilityNodeId)
       }
       (success, infeasibilityNodeId)
     }
 
-
-    def assert(t: Term, description: String, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult = {
-      assert(t, Left(description), timeout)(Q)
-    }
-
-    def assert(t: Term, e: Option[ast.Exp], timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q: Boolean => VerificationResult): VerificationResult = {
-      assert(t, e.map(Right(_)).getOrElse(Left("unknown assertion")), timeout)(Q)
-    }
-
-    private def assert(t: Term, e: Either[String, ast.Exp], timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
-      val (success, _) = deciderAssert(t, e, timeout)
+    def assert(t: Term, assumptionType: AssumptionType=AssumptionType.Implicit, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q:  Boolean => VerificationResult): VerificationResult = {
+      val (success, _) = deciderAssert(t, assumptionType, timeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -551,12 +541,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, e: Either[String, ast.Exp], timeout: Option[Int], isCheck: Boolean=false) = {
+    private def deciderAssert(t: Term, assumptionType: AssumptionType, timeout: Option[Int], isCheck: Boolean=false) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
       val asserted = if(Verifier.config.enableAssumptionAnalysis()) t.equals(True) else isKnownToBeTrue(t)
-      val assertNode = if(!asserted) assumptionAnalyzer.createAssertOrCheckNode(t, e, decider.analysisSourceInfoStack.getFullSourceInfo, isCheck) else None
+      val assertNode = if(!asserted) assumptionAnalyzer.createAssertOrCheckNode(t, assumptionType, decider.analysisSourceInfoStack.getFullSourceInfo, isCheck) else None
 
       val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertNode map (_.id)))
 

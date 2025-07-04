@@ -35,10 +35,10 @@ object GeneralChunk {
       chunk.perm, analysisInfo, isExhale=false, createLabel=false)
   }
 
-  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo, isExhale: Boolean=false): GeneralChunk = {
+  def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
     val newChunk = analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfo, isExhale=false, createLabel=false)
+      newPerm, analysisInfo.withAssumptionType(AssumptionType.Internal), isExhale=false, createLabel=false)
     val exhaledChunk = analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), {finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfo, isExhale=true, createLabel=false)

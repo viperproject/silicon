@@ -1025,9 +1025,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
     val nonNegImplicationExp = eCond.map(c => ast.Implies(c, ast.PermGeCmp(ePerm.get, ast.NoPerm()())())(c.pos, c.info, c.errT))
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
-    val nonNegExp = qvarExps.map(qv => ast.Forall(qv, Nil, nonNegImplicationExp.get)())
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm, nonNegExp) { // TODO ake: verify this
+    v.decider.assert(nonNegTerm, assumptionType) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -1049,7 +1048,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.prover.comment(comment)
         val debugExp = Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), debugExp, AssumptionType.Internal)
-        v.decider.assert(receiverInjectivityCheck, comment, Verifier.config.checkTimeout.toOption) {
+        v.decider.assert(receiverInjectivityCheck, assumptionType, timeout=Verifier.config.checkTimeout.toOption) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
@@ -1058,7 +1057,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment(comment)
             val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType) // TODO ake: assumptionType?
+              Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
             v.decider.assume(inv.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
@@ -1208,7 +1207,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
-              v: Verifier)
+              v: Verifier,
+              assumptionType: AssumptionType=AssumptionType.Implicit)
              (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -1266,7 +1266,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     val nonNegExp = qvarExps.map(qv => ast.Forall(qv, Nil, nonNegImplicationExp.get)())
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm, nonNegExp) {
+    v.decider.assert(nonNegTerm, assumptionType) {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
@@ -1306,7 +1306,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.prover.comment("Check receiver injectivity")
         val debugExp = Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), debugExp, AssumptionType.Internal)
-        v.decider.assert(receiverInjectivityCheck, comment, Verifier.config.checkTimeout.toOption) {
+        v.decider.assert(receiverInjectivityCheck, assumptionType, Verifier.config.checkTimeout.toOption) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
@@ -1359,7 +1359,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     rPerm,
                     rPermExp,
                     chunkOrderHeuristics,
-                    v2)
+                    v2,
+                    assumptionType)
                 val optSmDomainDefinitionCondition2 =
                     if (s3.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(imagesOfFormalQVars)))
                     else None
@@ -1390,7 +1391,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   qid,
                   v2,
                   s.program,
-                  AssumptionType.Explicit,
+                  assumptionType,
                   isExhale = true
                 )
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Inverse functions for quantified permission", isInternal_ = true))
@@ -1426,7 +1427,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   lossOfInvOfLoc,
                   lossExp,
                   chunkOrderHeuristics,
-                  v
+                  v,
+                  assumptionType
                 )
               permissionRemovalResult match {
                 case (Complete(), s2, remainingChunks, consumedChunks) =>
@@ -1468,7 +1470,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             returnSnap: Boolean,
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
-                            v: Verifier)
+                            v: Verifier,
+                            assumptionType: AssumptionType=AssumptionType.Implicit)
                            (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
                            : VerificationResult = {
 
@@ -1504,7 +1507,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           rPerm,
           rPermExp,
           chunkOrderHeuristics,
-          v
+          v,
+          assumptionType
         )
         val h2 = Heap(remainingChunks ++ otherChunks)
         val (smDef1, smCache1) =
@@ -1523,7 +1527,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         }
         val consumedChunk =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program, v1, AssumptionType.Explicit, isExhale=true)
+            codomainQVars, codomainQVarsExp, resource, arguments, argumentsExp, permsTaken, permsTakenExp, smDef1.sm, s.program, v1, assumptionType, isExhale=true)
         val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
                          smCache = smCache1)
         (result, s3, h2, Some(consumedChunk)) // TODO ake: or consumedChunks?
@@ -1553,7 +1557,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         permissions,
         permissionsExp,
         chunkOrderHeuristics,
-        v
+        v,
+        assumptionType
       )
       result match {
         case (Complete(), s1, remainingChunks, consumedChunks) =>
@@ -1591,7 +1596,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            condition: Term,
                            perms: Term,
                            permsExp: Option[ast.Exp],
-                           v: Verifier)
+                           v: Verifier,
+                          assumptionType: AssumptionType=AssumptionType.Implicit)
                           : ConsumptionResult = {
 
     var permsAvailable: Term = NoPerm
@@ -1608,7 +1614,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     // final check
     val result =
-      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */ )
+      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), assumptionType) /* This check is a must-check, i.e. an assert */ )
         Complete()
       else
         Incomplete(PermMinus(permsAvailable, perms), permsAvailableExp.map(pa => ast.PermSub(pa, permsExp.get)()))
@@ -1631,7 +1637,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         perms: Term, // p(rs)
                         permsExp: Option[ast.Exp], // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
-                        v: Verifier)
+                        v: Verifier,
+                        assumptionType: AssumptionType=AssumptionType.Implicit)
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk], Seq[QuantifiedBasicChunk]) = {
 
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
@@ -1648,7 +1655,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val constrainPermissions = !consumeExactRead(perms, s.constrainableARPs)
     if (s.assertReadAccessOnly) {
-      val result = assertReadPermission(s, candidates, codomainQVars, condition, perms, permsExp, v)
+      val result = assertReadPermission(s, candidates, codomainQVars, condition, perms, permsExp, v, assumptionType)
       return (result, s, relevantChunks, Seq.empty)
     }
 
@@ -1714,21 +1721,21 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
           v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, AssumptionType.Internal)
           remainingChunks =
-            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(AssumptionType.Internal)) // TODO ake: assumption Type?
+            remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(assumptionType))
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
-          val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
+          val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout(), AssumptionType.Internal)
           if (!chunkDepleted) {
             val unusedCheck = Forall(codomainQVars, ithPTaken === NoPerm, Nil)
-            val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout())
+            val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout(), AssumptionType.Internal)
             if (chunkUnused) {
               remainingChunks = remainingChunks :+ ithChunk
             } else {
               remainingChunks =
-                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(AssumptionType.Internal))
+                remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(assumptionType))
             }
           }else{
-            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ithChunk, ithPTaken, v.decider.analysisSourceInfoStack.getFullSourceInfo)
+            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ithChunk, ithPTaken, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
           }
         }
 
@@ -1741,7 +1748,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm), Nil)
 
         v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
-        success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
+        success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout(), assumptionType)) {
           Complete()
         } else {
           Incomplete(ithPNeeded, ithPNeededExp)
@@ -1751,7 +1758,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     v.decider.prover.comment("Final check if taken enough permissions")
     success =
-      if (success.isComplete || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */)
+      if (success.isComplete || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), assumptionType) /* This check is a must-check, i.e. an assert */)
         Complete()
       else
         success

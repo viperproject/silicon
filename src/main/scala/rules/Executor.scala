@@ -517,13 +517,13 @@ object executor extends ExecutionRules {
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v)((s1, _, consumedChunks, v1) =>
+        consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, consumedChunks, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          if (v1.decider.checkSmoke(true))
+          if (v1.decider.checkSmoke(isAssert=true, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit)))
             QS(s1.copy(h = s.h), v1)
           else
             createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
@@ -531,7 +531,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, false, AssertFailed(assert), v)((_, _, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((_, _, _, _) =>
             Success())
 
         r combine Q(s, v)
@@ -547,11 +547,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v)((s2, _, _, v1) => {
+          consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s2, _, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v)((s1, _, _, v1) => {
+          consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -614,7 +614,7 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, consumedChunks, v2) => { // TODO ake: add edges from consumedChunks
+          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, consumedChunks, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)

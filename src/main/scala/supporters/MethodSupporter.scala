@@ -108,13 +108,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val s4 = s3.copy(h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, AssumptionType.Explicit)((_, _) => {
+                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>{ // TODO ake: assumption type?
-                    consumes(s4, posts, false, postViolated, v4)((_, _, _, _) => {
+                  exec(s3, body, v3)((s4, v4) =>{
+                    consumes(s4, posts, false, postViolated, v4, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((_, _, _, _) => {
                         Success()
                       })})}) }  )})})
 

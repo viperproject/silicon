@@ -240,7 +240,7 @@ object evaluator extends EvaluationRules {
               } else {
                 val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
                 val toAssertExp = Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())(fa.pos, fa.info, fa.errT))
-                v1.decider.assert(toAssert, toAssertExp) {
+                v1.decider.assert(toAssert) {
                   case false =>
                     createFailure(pve dueTo InsufficientPermission(fa), v1, s1, toAssert, toAssertExp)
                   case true =>
@@ -270,7 +270,7 @@ object evaluator extends EvaluationRules {
                     val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
                     (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
                   }
-                v1.decider.assert(permCheck, permCheckExp) {
+                v1.decider.assert(permCheck) {
                   case false =>
                     createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
                   case true =>
@@ -302,7 +302,7 @@ object evaluator extends EvaluationRules {
                     val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
                     (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
                   }
-                v1.decider.assert(permCheck, permCheckExp) {
+                v1.decider.assert(permCheck) {
                   case false =>
                     createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
                   case true =>
@@ -987,7 +987,7 @@ object evaluator extends EvaluationRules {
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
             eval(s1, ePerm.getOrElse(ast.FullPerm()(u.pos, u.info, u.errT)), pve, v1)((s2, tPerm, ePermNew, v2) =>
               // TODO: Replace with permissionSupporter.assertNotNegative
-              v2.decider.assert(IsPositive(tPerm), Option.when(withExp)(ast.PermGtCmp(ePerm.getOrElse(ast.FullPerm()()), ast.NoPerm()())(u.pos, u.info, u.errT))) {
+              v2.decider.assert(IsPositive(tPerm)) {
                 case true =>
                   joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
@@ -1079,9 +1079,9 @@ object evaluator extends EvaluationRules {
             val idxLtLength = Less(t1, SeqLength(t0))
             val idxLtLengthExp = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(si.pos, si.info, si.errT))
             val idxLtLengthExpNew = esNew.map(es => ast.LtCmp(es(1), ast.SeqLength(es.head)())(si.pos, si.info, si.errT))
-            v1.decider.assert(idxGe0, idxGe0Exp) {
+            v1.decider.assert(idxGe0) {
               case true =>
-                v1.decider.assert(idxLtLength, idxLtLengthExp) {
+                v1.decider.assert(idxLtLength) {
                   case true =>
                     Q(s1, SeqAt(t0, t1), eNew, v1)
                   case false =>
@@ -1095,7 +1095,7 @@ object evaluator extends EvaluationRules {
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, idxGe0, idxGe0ExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Explicit)
-                  v1.decider.assert(idxLtLength, idxLtLengthExp) {
+                  v1.decider.assert(idxLtLength) {
                     case true =>
                       failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     case false =>
@@ -1130,9 +1130,9 @@ object evaluator extends EvaluationRules {
             val idxLtLength = Less(t1, SeqLength(t0))
             val idxLtLengthExp = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(seqUp.pos, seqUp.info, seqUp.errT))
             val idxLtLengthExpNew = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(seqUp.pos, seqUp.info, seqUp.errT))
-            v1.decider.assert(idxGe0, idxGe0Exp) {
+            v1.decider.assert(idxGe0) {
               case true =>
-                v1.decider.assert(idxLtLength, idxLtLengthExp) {
+                v1.decider.assert(idxLtLength) {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                   case false =>
@@ -1145,7 +1145,7 @@ object evaluator extends EvaluationRules {
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, idxGe0, idxGe0ExpNew)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(idxGe0, idxGe0Exp, idxGe0ExpNew, AssumptionType.Explicit)
-                  v1.decider.assert(idxLtLength, idxLtLengthExp) {
+                  v1.decider.assert(idxLtLength) {
                     case true =>
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                     case false =>
@@ -1265,7 +1265,7 @@ object evaluator extends EvaluationRules {
             val eNew = esNew.map(es => ast.MapLookup(es(0), es(1))(e.pos, e.info, e.errT))
             val assertExp = Option.when(withExp)(ast.MapContains(key, base)(ml.pos, ml.info, ml.errT))
             val assertExpNew = Option.when(withExp)(ast.MapContains(esNew.get(1), esNew.get(0))(ml.pos, ml.info, ml.errT))
-            v1.decider.assert(SetIn(keyT, MapDomain(baseT)), assertExp) {
+            v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
               case true => Q(s1, MapLookup(baseT, keyT), eNew, v1)
               case false =>
                 val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1, SetIn(keyT, MapDomain(baseT)), assertExpNew)
@@ -1525,7 +1525,7 @@ object evaluator extends EvaluationRules {
     val (notZeroExp, notZeroExpNew) = if (withExp) {
       (Some(ast.NeCmp(eDivisor, ast.IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT)), Some(ast.NeCmp(eDivisorNew.get, ast.IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT)))
     } else { (None, None) }
-    v.decider.assert(tDivisor !== tZero, notZeroExp){
+    v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
       case false =>
         val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s, tDivisor !== tZero, notZeroExpNew)

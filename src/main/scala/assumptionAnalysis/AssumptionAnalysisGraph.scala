@@ -1,6 +1,6 @@
 package viper.silicon.assumptionAnalysis
 
-import viper.silicon.assumptionAnalysis.AssumptionType._
+import viper.silicon.assumptionAnalysis.AssumptionType.{AssumptionType, _}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term}
 import viper.silver.ast
@@ -210,18 +210,11 @@ case class SimpleAssumptionNode(term: Term, description: Option[String], sourceI
   override def getNodeString: String = "assume " + term.toString + description.map(" (" + _ + ")").getOrElse("")
 }
 
-case class SimpleAssertionNode(assertion: ast.Exp, term: Term, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
-  val assumptionType: AssumptionType = Explicit
-  override def getNodeString: String = "assert " + term.toString // TODO ake + ", " + assertion.toString
+case class SimpleAssertionNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
+  override def getNodeString: String = "assert " + term.toString
 }
 
-case class StringAssertionNode(description: String, term: Term, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
-  val assumptionType: AssumptionType = Explicit
-  override def getNodeString: String = "assert " + term.toString // TODO ake + ", " + description
-}
-
-case class SimpleCheckNode(term: Term, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
-  val assumptionType: AssumptionType = Internal
+case class SimpleCheckNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
   override def getNodeString: String = "check " + term
   override def getNodeType: String = "Check"
 }
@@ -231,14 +224,12 @@ case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSo
   override def getNodeType: String = "Inhale"
 }
 
-case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode with ChunkAnalysisInfo {
-  val assumptionType: AssumptionType = Explicit
+case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.toString
 }
 
-case class PermissionAssertNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode with ChunkAnalysisInfo {
-  val assumptionType: AssumptionType = Explicit
+case class PermissionAssertNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "assert " + term + " for chunk " + chunk.toString
 }
 

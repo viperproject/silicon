@@ -272,7 +272,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.Implicit)
-              consumes(s2, posts, false, postconditionViolated, v)((s3, _, _, _) => {
+              consumes(s2, posts, false, postconditionViolated, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s3, _, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

@@ -36,11 +36,11 @@ trait AssumptionAnalyzer {
   def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit
   def addNode(node: AssumptionAnalysisNode): Unit
   def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int]
-  def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int]
-  def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int]
+  def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
+  def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
-  def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
-  def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
+  def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
+  def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int]
   def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
 
   def addDependency(source: Option[Int], dest: Option[Int]): Unit
@@ -138,17 +138,15 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     Some(node.id)
   }
 
-  override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
-    if(isCheck) return Some(SimpleCheckNode(term, analysisSourceInfo, isClosed_))
-
-    Some(assertion match {
-      case Left(description) => StringAssertionNode(description, term, analysisSourceInfo, isClosed_)
-      case Right(exp) => SimpleAssertionNode(exp, term, analysisSourceInfo, isClosed_)
-    })
+  override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
+    if(isCheck)
+      Some(SimpleCheckNode(term, assumptionType, analysisSourceInfo, isClosed_))
+    else
+      Some(SimpleAssertionNode(term, assumptionType, analysisSourceInfo, isClosed_))
   }
 
-  override def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val node = createAssertOrCheckNode(False, Right(ast.FalseLit()()), sourceInfo, isCheck)
+  override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = {
+    val node = createAssertOrCheckNode(False, assumptionType, sourceInfo, isCheck)
     addNode(node.get)
     node.map(_.id)
   }
@@ -176,15 +174,15 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     Some(node.id)
   }
 
-  override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val node = PermissionAssertNode(chunk, permAmount, sourceInfo, isClosed_)
+  override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = PermissionAssertNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_)
     addNode(node)
     addPermissionDependencies(Set(chunk), Set(), Some(node.id))
     Some(node.id)
   }
 
-  override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val node = PermissionExhaleNode(chunk, permAmount, sourceInfo, isClosed_)
+  override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = PermissionExhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_)
     addNode(node)
     addPermissionDependencies(Set(chunk), Set(), Some(node.id))
     Some(node.id)
@@ -277,7 +275,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
   override def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo): CH = {
     val chunk = buildChunk(perm)
-    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo)
+    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType)
     addPermissionDependencies(sourceChunks, Set(), chunkNode)
     chunk
   }
@@ -310,14 +308,14 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def getNodes: Iterable[AssumptionAnalysisNode] = Seq()
   override def addNode(node: AssumptionAnalysisNode): Unit = {}
   override def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {}
-  override def createAssertOrCheckNode(term: Term, assertion: Either[String, ast.Exp], analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
+  override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
 
   override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
   }
 
-  override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int] = None
-  override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo): Option[Int] = None
+  override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
   override def addDependencyFromExhaleToInhale(inhaledChunk: Chunk, sourceInfo: AnalysisSourceInfo): Unit = {}
 
@@ -328,5 +326,5 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addAssumption(term: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = None
   override def exportGraph(): Unit = {}
 
-  override def addAssertFalseNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
+  override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = None
 }
