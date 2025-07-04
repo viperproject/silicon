@@ -140,6 +140,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * @param additionalInvArgs Additional arguments on which `inv` depends (typically
     *                          quantified variables bound by some surrounding scope).
     *                          Currently omitted from the axioms shown above.
+    * @param stateQVars Quantified variables in the current state that the inverse functions may depend on.
     * @return The generated partial inverse functions and corresponding definitional axioms, and
     *         the images of the given codomain variables (returned separately, since nothing else
     *         in the returned InverseFunctions object references or contains the codomain
@@ -154,6 +155,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                codomainQVarExps: Option[Seq[ast.LocalVarDecl]],
                                additionalInvArgs: Seq[Var],
                                additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                               stateQVars: Seq[Var],
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
@@ -191,6 +193,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * @param permissions Permission amount per resource.
     * @param sm The snapshot map that is to be stored in the new chunk.
     * @param additionalInvArgs See the homonymous parameter of [[getFreshInverseFunctions()]].
+    * @param stateQVars See the homonymous parameter of [[getFreshInverseFunctions()]].
     * @param v A verifier.
     * @return A tuple of
     *           1. the newly created quantified chunk
@@ -211,6 +214,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             sm: Term,
                             additionalInvArgs: Seq[Var],
                             additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                            stateQVars: Seq[Var],
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
                             v: Verifier,
@@ -317,6 +321,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             sm: Term,
                             additionalInvArgs: Seq[Var],
                             additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                            stateQVars: Seq[Var],
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
                             v: Verifier,
@@ -334,6 +339,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         codomainQVarExps,
         additionalInvArgs,
         additionalInvArgExps,
+        stateQVars,
         userProvidedTriggers,
         qidPrefix,
         v)
@@ -507,7 +513,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                               optSmDomainDefinitionCondition: Option[Term], /* c(r) */
                               v: Verifier)
                              : (Term, Seq[Quantification], Option[Quantification]) = {
-    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
+    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)) || optSmDomainDefinitionCondition.exists(_.contains(qvar)))
 
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1)
     val sm = freshSnapshotMap(s, field, additionalFvfArgs, v)
@@ -556,7 +562,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             condition),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(codomainQVarsInDomainOfSummarisingSm)),
           s"qp.fvfDomDef${v.counter(this).next()}",
-          isGlobal = true))
+          isGlobal = relevantQvars.isEmpty))
 
     (sm, resourceAndValueDefinitions, optDomainDefinition)
   }
@@ -575,7 +581,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     // TODO: Consider if axioms can be simplified in case codomainQVars is empty
 
 
-    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
+    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)) || optSmDomainDefinitionCondition.exists(_.contains(qvar)))
 
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1)
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
@@ -648,7 +654,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             condition),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(qvarInDomainOfSummarisingSm)),
           s"qp.psmDomDef${v.counter(this).next()}",
-          isGlobal = true
+          isGlobal = relevantQvars.isEmpty
         ))
 
     (sm, resourceAndValueDefinitions, optDomainDefinition)
@@ -918,6 +924,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         sm                   = tSnap,
         additionalInvArgs    = s.relevantQuantifiedVariables(tArgs).map(_._1),
         additionalInvArgExps = Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        stateQVars           = s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
         userProvidedTriggers = optTrigger.map(_ => tTriggers),
         qidPrefix            = qid,
         v                    = v,
@@ -1176,8 +1183,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         eArgs,
         formalQVars,
         formalQVarsExp,
-        s.relevantQuantifiedVariables(tArgs).map(_._1),
+        s.relevantQuantifiedVariables(tArgs ++ Seq(tCond)).map(_._1),
         Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
         optTrigger.map(_ => tTriggers),
         qid,
         v)
@@ -1338,6 +1346,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   smDef2.sm,
                   s3.relevantQuantifiedVariables(tArgs).map(_._1),
                   Option.when(withExp)(s3.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+                  s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
                   optTrigger.map(_ => tTriggers),
                   qid,
                   v2,
@@ -1888,6 +1897,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                codomainQVarExps: Option[Seq[ast.LocalVarDecl]],
                                additionalInvArgs: Seq[Var],
                                additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                               stateQVars: Seq[Var],
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
@@ -1958,7 +1968,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             axInvsOfFctsBody,
             if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else And(invertibles) :: axInvsOfFctsBody :: Nil,
             s"$qidPrefix-invOfFct",
-            isGlobal = true,
+            isGlobal = stateQVars.isEmpty,
             v.axiomRewriter)
         case Some(triggers) =>
           /* User-provided triggers; create quantifier directly */
@@ -1991,7 +2001,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         axFctsOfInvsBody,
         axFctsOfInvsTriggers,
         s"$qidPrefix-fctOfInv",
-        isGlobal = true,
+        isGlobal = stateQVars.isEmpty,
         v.axiomRewriter)
 
     val res = InverseFunctions(
