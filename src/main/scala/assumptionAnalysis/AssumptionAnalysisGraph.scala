@@ -229,9 +229,9 @@ case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSo
   override def getNodeString: String = "exhale " + chunk.toString
 }
 
-case class PermissionAssertNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssertionNode with ChunkAnalysisInfo {
-  override def getNodeString: String = "assert " + term + " for chunk " + chunk.toString
-}
+//case class PermissionAssertNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssertionNode with ChunkAnalysisInfo {
+//  override def getNodeString: String = "assert " + term + " for chunk " + chunk.toString
+//}
 
 case class LabelNode(term: Term) extends GeneralAssumptionNode {
   val sourceInfo: AnalysisSourceInfo = NoAnalysisSourceInfo()

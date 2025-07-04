@@ -173,11 +173,13 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     Some(node.id)
   }
 
+  // TODO ake: remove
   override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = PermissionAssertNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_)
-    addNode(node)
-    addPermissionDependencies(Set(chunk), Set(), Some(node.id))
-    Some(node.id)
+//    val node = PermissionAssertNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_)
+//    addNode(node)
+//    addPermissionDependencies(Set(chunk), Set(), Some(node.id))
+//    Some(node.id)
+    None
   }
 
   override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {

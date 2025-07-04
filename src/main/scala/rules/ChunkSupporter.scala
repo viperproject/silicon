@@ -177,7 +177,7 @@ object chunkSupporter extends ChunkSupportRules {
           val termToCheck = Implies(IsPositive(perms), IsPositive(ch.perm))
           if (v.decider.check(termToCheck, Verifier.config.assertTimeout.getOrElse(0), assumptionType)) {
             // TODO ake: can be removed (probably?)
-            v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, termToCheck, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+//            v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, termToCheck, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
             (Complete(), s, h, Some(ch))
           } else {
             (Incomplete(perms, permsExp), s, h, None)
@@ -263,7 +263,8 @@ object chunkSupporter extends ChunkSupportRules {
     val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
     findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout(), assumptionType) =>
-        v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, IsPositive(ch.perm), v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        // TODO ake
+//        v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, IsPositive(ch.perm), v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(isAssert=true, assumptionType) =>
         if (s.isInPackage) {
