@@ -43,6 +43,7 @@ class TermToSMTLib2Converter
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
+    case sorts.QPRef => "$QPRef"
     case sorts.Map(keySort, valueSort) => text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
     case sorts.Seq(elementSort) => text("Seq<") <> doRender(elementSort, true) <> ">"
     case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"

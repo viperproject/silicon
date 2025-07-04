@@ -50,6 +50,8 @@ object sorts {
     override lazy val toString = id.toString
   }
 
+  object QPRef extends Sort { val id = Identifier("$QPRef");   override lazy val toString = id.toString }
+
   case class Multiset(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Multiset[$elementsSort]")
     override lazy val toString = id.toString

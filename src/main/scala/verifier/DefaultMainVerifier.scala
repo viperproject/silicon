@@ -71,6 +71,7 @@ class DefaultMainVerifier(config: Config,
 
   protected val sequencesContributor = new DefaultSequencesContributor(domainTranslator, config)
   protected val setsContributor = new DefaultSetsContributor(domainTranslator, config)
+  protected val setsContributor2 = new DefaultSetsContributor2(domainTranslator, config)
   protected val multisetsContributor = new DefaultMultisetsContributor(domainTranslator, config)
   protected val mapsContributor = new DefaultMapsContributor(domainTranslator, config)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
@@ -84,7 +85,7 @@ class DefaultMainVerifier(config: Config,
 
   private val statefulSubcomponents = List[StatefulComponent](
     uniqueIdCounter,
-    sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
+    sequencesContributor, setsContributor, setsContributor2, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
@@ -441,7 +442,7 @@ class DefaultMainVerifier(config: Config,
 
   private val analysisOrder: Seq[PreambleContributor[_, _, _]] = Seq(
     sequencesContributor,
-    setsContributor,
+    setsContributor, setsContributor2,
     multisetsContributor,
     mapsContributor,
     domainsContributor,
@@ -454,7 +455,7 @@ class DefaultMainVerifier(config: Config,
 
   private val sortDeclarationOrder: Seq[PreambleContributor[_, _, _]] = Seq(
     sequencesContributor,
-    setsContributor,
+    setsContributor, setsContributor2,
     multisetsContributor,
     mapsContributor,
     domainsContributor,
@@ -467,7 +468,7 @@ class DefaultMainVerifier(config: Config,
 
   private val sortWrapperDeclarationOrder: Seq[PreambleContributor[Sort, _, _]] = Seq(
     sequencesContributor,
-    setsContributor,
+    setsContributor, setsContributor2,
     multisetsContributor,
     mapsContributor,
     domainsContributor,
@@ -484,7 +485,7 @@ class DefaultMainVerifier(config: Config,
      * Multisets depend on sets ($Multiset.fromSet).
      * Maps depend on sets (Map_domain, Map_range, Map_cardinality).
      */
-    setsContributor,
+    setsContributor, setsContributor2,
     multisetsContributor,
     sequencesContributor,
     mapsContributor,
@@ -498,7 +499,7 @@ class DefaultMainVerifier(config: Config,
 
   private val axiomDeclarationOrder: Seq[PreambleContributor[Sort, _, _]] = Seq(
     sequencesContributor,
-    setsContributor,
+    setsContributor, setsContributor2,
     multisetsContributor,
     mapsContributor,
     domainsContributor,
