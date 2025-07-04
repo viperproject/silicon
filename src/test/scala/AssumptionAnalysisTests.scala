@@ -124,17 +124,14 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
-    result match {
-        case verifier.Failure(failure) => assert(false, s"Verification failed for ${filePrefix + fileName + ".vpr"}: ${failure.mkString(",")}")
-        case _ =>
-      }
+    assert(!result.isInstanceOf[verifier.Failure], s"Verification failed for ${filePrefix + fileName + ".vpr"}: $result")
 
     val assumptionAnalyzers = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers
     val assumptionGraphs = assumptionAnalyzers map (_.assumptionGraph)
     val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts(program, { annotationInfo => annotationInfo.values.contains(irrelevantKeyword) || annotationInfo.values.contains(dependencyKeyword)})
     val allAssumptionNodes = assumptionGraphs.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
 
-    var errorMsgs = stmtsWithAssumptionAnnotation.map(checkNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
+    var errorMsgs = stmtsWithAssumptionAnnotation.map(checkAssumptionNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
     errorMsgs ++= assumptionAnalyzers flatMap checkTestAssertionNodeExists
     errorMsgs ++= assumptionGraphs flatMap checkDependencies
     val warnMsgs = assumptionGraphs flatMap checkNonDependencies
@@ -160,7 +157,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     nodesWithAnnotation
   }
 
-  private def checkNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: Infoed): Option[String] = {
+  private def checkAssumptionNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: Infoed): Option[String] = {
     val pos = extractSourceLine(node.asInstanceOf[Positioned].pos)
     val annotationInfo = node.info.getUniqueInfo[AnnotationInfo]
       .map(ai => ai.values.getOrElse(irrelevantKeyword, ai.values.getOrElse(dependencyKeyword, List.empty))).getOrElse(List.empty)

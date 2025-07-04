@@ -238,7 +238,7 @@ case class LabelNode(term: Term) extends GeneralAssumptionNode {
   val assumptionType: AssumptionType = AssumptionType.Internal
   val isClosed: Boolean = true
   val description: String = term.toString
-  override def getNodeType: String = "Assumption" // TODO ake: change to Label once supported
+  override def getNodeType: String = "Label"
   override def getNodeString: String = "assume " + description
 }
 

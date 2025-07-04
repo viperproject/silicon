@@ -88,21 +88,20 @@ object AssumptionAnalyzer {
       (assumptionTypeAnnotationKey, Seq(assumptionType.toString))
     ))
 
-  // TODO ake: remove offsets
-  def createAssumptionLabel(id: Option[Int], offset: Int = 0): String = {
-    createLabel("assumption", id, offset)
+  def createAssumptionLabel(id: Option[Int]): String = {
+    createLabel("assumption", id)
   }
 
-  def createAssertionLabel(id: Option[Int], offset: Int = 0): String = {
-    createLabel("assertion", id, offset)
+  def createAssertionLabel(id: Option[Int]): String = {
+    createLabel("assertion", id)
   }
 
   def createAxiomLabel(id: Option[Int]): String = {
     createLabel("axiom", id)
   }
 
-  private def createLabel(description: String, id: Option[Int], offset: Int = 0): String = {
-    if (id.isDefined) description + "_" + id.get + "_" + offset
+  private def createLabel(description: String, id: Option[Int]): String = {
+    if (id.isDefined) description + "_" + id.get
     else ""
   }
 
