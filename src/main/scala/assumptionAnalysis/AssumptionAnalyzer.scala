@@ -57,6 +57,8 @@ trait AssumptionAnalyzer {
   def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, labelNode: Option[LabelNode], analysisInfo: AnalysisInfo, isExhale: Boolean): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo): CH = buildChunk(perm)
   def getReassumeLabelNodes: Iterable[LabelNode] = Set.empty
+
+  def computeProofCoverage(): Unit = {}
 }
 
 object AssumptionAnalyzer {
@@ -118,6 +120,7 @@ object AssumptionAnalyzer {
 
 class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   protected var originalLabelNodes: List[LabelNode] = List.empty
+  protected var proofCoverage: Double = 0.0
 
   override def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {
     assumptionGraph.addNodes(nodes)
@@ -128,8 +131,6 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   override def addNode(node: AssumptionAnalysisNode): Unit = {
     assumptionGraph.addNode(node)
   }
-
-
 
   override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = {
     val node = SimpleAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_)
@@ -301,6 +302,22 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
   override def getReassumeLabelNodes: Iterable[LabelNode] = { // TODO ake: work with scopes!
     originalLabelNodes map createReassumeLabelNode
+  }
+
+  override def computeProofCoverage(): Unit = {
+    val explicitAssertionNodes = assumptionGraph.getNodesByProperties(Some("Assertion"), Some(AssumptionType.Explicit), None, None)
+    val explicitAssertionNodeIds: Set[Int] = (explicitAssertionNodes map (_.id)).toSet
+    val nodesPerSourceInfo = assumptionGraph.getNodesPerSourceInfo filter {case (_, nodes) =>
+      nodes exists (node => !node.assumptionType.equals(AssumptionType.Internal))
+    }
+    val coveredNodes = nodesPerSourceInfo filter { case (_, nodes) =>
+      val nodeIds = (nodes map (_.id)).toSet
+      // it is either an explicit assertion itself or it has a dependency to an explicit assertion
+      nodeIds.intersect(explicitAssertionNodeIds).nonEmpty ||
+        assumptionGraph.existsAnyDependency(nodeIds, explicitAssertionNodeIds)
+    }
+    proofCoverage = coveredNodes.size.toDouble / nodesPerSourceInfo.size.toDouble
+    val a = 1
   }
 }
 

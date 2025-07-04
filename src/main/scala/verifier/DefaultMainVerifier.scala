@@ -318,8 +318,10 @@ class DefaultMainVerifier(config: Config,
       assumptionAnalyzers.foreach(_.assumptionGraph.removeLabelNodes())
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
       assumptionAnalyzers foreach (_.exportGraph())
-      if(reporter.isInstanceOf[DependencyAnalysisReporter])
+      assumptionAnalyzers foreach (_.computeProofCoverage())
+      if(reporter.isInstanceOf[DependencyAnalysisReporter]) {
         reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers = assumptionAnalyzers
+      }
     }
 
     if (Verifier.config.startDebuggerAutomatically()){

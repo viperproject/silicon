@@ -1,9 +1,8 @@
 package viper.silicon.assumptionAnalysis
 
-import viper.silicon.assumptionAnalysis.AssumptionType.{AssumptionType, _}
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term}
-import viper.silver.ast
 import viper.silver.ast.Position
 
 import java.io.{File, PrintWriter}
@@ -45,7 +44,7 @@ trait AssumptionAnalysisGraph {
     false
   }
 
-  def getNodesByProperties(nodeType: Option[String], assumptionType: Option[AssumptionType], sourceInfo: Option[String], position: Option[Position]): Seq[AssumptionAnalysisNode] = {
+  def getNodesByProperties(nodeType: Option[String], assumptionType: Option[AssumptionType], sourceInfo: Option[String], position: Option[Position]): mutable.Seq[AssumptionAnalysisNode] = {
     nodes filter (node =>
       nodeType.forall(node.getNodeType.equals) &&
       assumptionType.forall(node.assumptionType.equals) &&
@@ -77,15 +76,12 @@ trait AssumptionAnalysisGraph {
     res
   }
 
-  def getNodesPerTransitivitySourceInfo(): mutable.HashMap[String, Seq[AssumptionAnalysisNode]] = {
-    val res = new mutable.HashMap[String, Seq[AssumptionAnalysisNode]]()
-    nodes foreach {n =>
-      res.updateWith(n.sourceInfo.getSourceForTransitiveEdges.toString)({
-        case Some(ns) => Some(ns ++ Seq(n))
-        case None => Some(Seq(n))
-      })
-    }
-    res
+  private def getNodesPerTransitivitySourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
+    nodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges.toString)
+  }
+
+  def getNodesPerSourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
+    nodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
   }
 
   def addTransitiveEdges(source: AssumptionAnalysisNode, targets: Iterable[AssumptionAnalysisNode]): Unit = {
@@ -99,7 +95,7 @@ trait AssumptionAnalysisGraph {
   }
 
   def addTransitiveEdges(): Unit = {
-    val nodesPerSourceInfo = getNodesPerTransitivitySourceInfo()
+    val nodesPerSourceInfo = getNodesPerTransitivitySourceInfo
     nodesPerSourceInfo foreach {nodes =>
       val asserts = nodes._2.filter(_.isInstanceOf[GeneralAssertionNode])
       val assumes = nodes._2.filter(n => !n.isClosed && n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
@@ -110,7 +106,7 @@ trait AssumptionAnalysisGraph {
     }
   }
 
-  private def removeNode(node: AssumptionAnalysisNode): Unit = {
+  private def removeAllEdgesForNode(node: AssumptionAnalysisNode): Unit = {
     val id = node.id
     val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
     val successors = edges.getOrElse(id, Set.empty)
@@ -120,7 +116,8 @@ trait AssumptionAnalysisGraph {
   }
 
   def removeLabelNodes(): Unit = {
-    nodes filter (_.isInstanceOf[LabelNode]) foreach removeNode
+    nodes filter (_.isInstanceOf[LabelNode]) foreach removeAllEdgesForNode
+    nodes = nodes filter (!_.isInstanceOf[LabelNode])
   }
 
   def exportGraph(dirName: String): Unit = {
@@ -150,6 +147,8 @@ trait AssumptionAnalysisGraph {
     nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
     writer.close()
   }
+
+
 }
 
 

@@ -59,7 +59,9 @@ method loop3(){
 method loop4(){
     var i: Int
     var res: Int
+    @dependency()
     res := 0
+    @irrelevant()
     i := 10
     while(@irrelevant()(i > 0))
         invariant @irrelevant()(i <= 10)
