@@ -1026,7 +1026,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegImplicationExp = eCond.map(c => ast.Implies(c, ast.PermGeCmp(ePerm.get, ast.NoPerm()())())(c.pos, c.info, c.errT))
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm, assumptionType) {
+    v.decider.assert(nonNegTerm) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -1048,7 +1048,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.prover.comment(comment)
         val debugExp = Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), debugExp, AssumptionType.Internal)
-        v.decider.assert(receiverInjectivityCheck, assumptionType, timeout=Verifier.config.checkTimeout.toOption) {
+        v.decider.assert(receiverInjectivityCheck, timeout=Verifier.config.checkTimeout.toOption) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))

@@ -328,7 +328,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, snapshotTerm, v4)
           v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", isInternal_ = true))
-          v4.decider.assumeDefinition(smValueDef, debugExp, AssumptionType.Internal)
+          v4.decider.assumeDefinition(smValueDef, debugExp, assumptionType)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args,
             Option.when(withExp)(bodyVars), FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program, v4, assumptionType, isExhale=false)
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
@@ -401,9 +401,12 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // Execute proof script, i.e. the part written after the magic wand wrapped by curly braces.
         // The proof script should transform the current state such that we can consume the wand's RHS.
+        val prevSourceInfo = v2.decider.analysisSourceInfoStack.getAnalysisSourceInfos
+        v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(List.empty)
         executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => { // TODO ake: propagate assumption type!
           // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
+          v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(prevSourceInfo)
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
             wand.right, true, pve, proofScriptVerifier

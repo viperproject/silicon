@@ -4,17 +4,22 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
 
-
-abstract class AnalysisSourceInfo {
-  override def toString: String = getPositionString
-
-  def getPositionString: String = {
-    getPosition match {
+object AnalysisSourceInfo {
+  def extractPositionString(p: Position): String = {
+    p match {
       case NoPosition => "???"
       case filePos: AbstractSourcePosition => filePos.file.getFileName.toString + " @ line " + filePos.line
       case column: HasLineColumn => "line " + column.line.toString
       case VirtualPosition(identifier) => "label " + identifier
     }
+  }
+}
+
+abstract class AnalysisSourceInfo {
+  override def toString: String = getPositionString
+
+  def getPositionString: String = {
+    AnalysisSourceInfo.extractPositionString(getPosition)
   }
 
   def getPosition: Position

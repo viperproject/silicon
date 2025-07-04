@@ -305,11 +305,9 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   }
 
   override def computeProofCoverage(): Unit = {
-    val explicitAssertionNodes = assumptionGraph.getNodesByProperties(Some("Assertion"), Some(AssumptionType.Explicit), None, None)
-    val explicitAssertionNodeIds: Set[Int] = (explicitAssertionNodes map (_.id)).toSet
-    val nodesPerSourceInfo = assumptionGraph.getNodesPerSourceInfo filter {case (_, nodes) =>
-      nodes exists (node => !node.assumptionType.equals(AssumptionType.Internal))
-    }
+    val explicitAssertionNodes = assumptionGraph.getExplicitAssertionNodes
+    val explicitAssertionNodeIds = explicitAssertionNodes map (_.id)
+    val nodesPerSourceInfo = assumptionGraph.getNonInternalAssumptionNodesPerSource
     val coveredNodes = nodesPerSourceInfo filter { case (_, nodes) =>
       val nodeIds = (nodes map (_.id)).toSet
       // it is either an explicit assertion itself or it has a dependency to an explicit assertion
@@ -317,7 +315,6 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
         assumptionGraph.existsAnyDependency(nodeIds, explicitAssertionNodeIds)
     }
     proofCoverage = coveredNodes.size.toDouble / nodesPerSourceInfo.size.toDouble
-    val a = 1
   }
 }
 

@@ -3,7 +3,8 @@ import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.SiliconFrontend
 import viper.silicon.assumptionAnalysis._
 import viper.silver.ast.utility.{DiskLoader, ViperStrategy}
-import viper.silver.ast._
+import viper.silver.ast
+import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
 
@@ -49,8 +50,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   )
   testDirectories foreach createTests
 
-//  test("dependencyAnalysisTests/all" + "/" + "imprecision"){
-//    executeTest("dependencyAnalysisTests/all" + "/", "imprecision", frontend)
+//  test("dependencyAnalysisTests/all" + "/" + "misc"){
+//    executeTest("dependencyAnalysisTests/unitTests" + "/", "misc", frontend)
 //  }
 
 
@@ -122,13 +123,15 @@ class AssumptionAnalysisTests extends AnyFunSuite {
                   frontend: SilFrontend)
   : Unit = {
 
-    val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
+    val program: ast.Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
     assert(!result.isInstanceOf[verifier.Failure], s"Verification failed for ${filePrefix + fileName + ".vpr"}: $result")
 
     val assumptionAnalyzers = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers
+
+    assumptionAnalyzers foreach (aa => removeDependenciesAndVerify(program, aa))
     val assumptionGraphs = assumptionAnalyzers map (_.assumptionGraph)
-    val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts(program, { annotationInfo => annotationInfo.values.contains(irrelevantKeyword) || annotationInfo.values.contains(dependencyKeyword)})
+    val stmtsWithAssumptionAnnotation: Set[ast.Infoed] = extractAnnotatedStmts(program, { annotationInfo => annotationInfo.values.contains(irrelevantKeyword) || annotationInfo.values.contains(dependencyKeyword)})
     val allAssumptionNodes = assumptionGraphs.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
 
     var errorMsgs = stmtsWithAssumptionAnnotation.map(checkAssumptionNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
@@ -143,12 +146,12 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     assert(check, "\n" + errorMsgs.mkString("\n"))
   }
 
-  private def extractAnnotatedStmts(program: Program, annotationFiler: (AnnotationInfo => Boolean)): Set[Infoed] = {
-    var nodesWithAnnotation: Set[Infoed] = Set.empty
-    val newP: Program = ViperStrategy.Slim({
-      case s: Seqn => s
-      case n: Infoed =>
-        val annotationInfo = n.info.getUniqueInfo[AnnotationInfo]
+  private def extractAnnotatedStmts(program: ast.Program, annotationFiler: (ast.AnnotationInfo => Boolean)): Set[ast.Infoed] = {
+    var nodesWithAnnotation: Set[ast.Infoed] = Set.empty
+    val newP: ast.Program = ViperStrategy.Slim({
+      case s: ast.Seqn => s
+      case n: ast.Infoed =>
+        val annotationInfo = n.info.getUniqueInfo[ast.AnnotationInfo]
           .filter(annotationFiler)
         if (annotationInfo.isDefined)
           nodesWithAnnotation += n
@@ -157,9 +160,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     nodesWithAnnotation
   }
 
-  private def checkAssumptionNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: Infoed): Option[String] = {
-    val pos = extractSourceLine(node.asInstanceOf[Positioned].pos)
-    val annotationInfo = node.info.getUniqueInfo[AnnotationInfo]
+  private def checkAssumptionNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: ast.Infoed): Option[String] = {
+    val pos = extractSourceLine(node.asInstanceOf[ast.Positioned].pos)
+    val annotationInfo = node.info.getUniqueInfo[ast.AnnotationInfo]
       .map(ai => ai.values.getOrElse(irrelevantKeyword, ai.values.getOrElse(dependencyKeyword, List.empty))).getOrElse(List.empty)
     val assumptionType = annotationInfo.map(AssumptionType.fromString).filter(_.isDefined).map(_.get)
     val nodeExists = analysisNodes exists (analysisNode => {
@@ -171,9 +174,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     Option.when(!nodeExists)(s"Missing analysis node:\n${node.toString}\n$pos")
   }
 
-  def extractSourceLine(pos: Position): Int = {
+  def extractSourceLine(pos: ast.Position): Int = {
     pos match {
-      case column: HasLineColumn => column.line
+      case column: ast.HasLineColumn => column.line
       case _ => -1
     }
   }
@@ -238,5 +241,49 @@ class AssumptionAnalysisTests extends AnyFunSuite {
         node.sourceInfo.toString.contains("@" + irrelevantKeyword + "()")
     }
     ).toSeq
+  }
+
+  def removeDependenciesAndVerify(program: ast.Program, assumptionAnalyzer: AssumptionAnalyzer): Unit = {
+    val explicitAssertionNodes = assumptionAnalyzer.assumptionGraph.getExplicitAssertionNodes
+    val explicitAssertionNodeIds = explicitAssertionNodes map (_.id)
+    val dependencies = assumptionAnalyzer.assumptionGraph.nodes filter (node =>
+      node.isInstanceOf[GeneralAssumptionNode] &&
+      !node.assumptionType.equals(AssumptionType.Internal) &&
+      assumptionAnalyzer.assumptionGraph.existsAnyDependency(Set(node.id), explicitAssertionNodeIds))
+    val crucialNodes = explicitAssertionNodes ++ dependencies
+    val crucialNodesWithStmtInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[StmtAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[StmtAnalysisSourceInfo])
+    val crucialNodesWithExpInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[ExpAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[ExpAnalysisSourceInfo])
+    val newProgram: ast.Program = ViperStrategy.Slim({
+      case s: ast.Seqn => s
+      case meth@ast.Method(name, inVars, outVars, pres, posts, body) =>
+        ast.Method(name, inVars, outVars, pres filter (isCrucialExp(_, crucialNodesWithExpInfo)),
+          posts filter (isCrucialExp(_, crucialNodesWithExpInfo)), body)(meth.pos, meth.info, meth.errT)
+      case ifStmt@ast.If(cond, thenBody, elseBody) if !isCrucialExp(cond, crucialNodesWithExpInfo) =>
+        ast.Seqn(Seq(
+          ast.LocalVarDeclStmt(ast.LocalVarDecl("nonDetermBool", ast.Bool)())(),
+          ast.If(ast.LocalVar("nonDetermBool", ast.Bool)(), thenBody, elseBody)())
+          , Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
+      case ifStmt: ast.If  => ifStmt
+      case whileStmt@ast.While(cond, invs, body) if !isCrucialExp(cond, crucialNodesWithExpInfo) =>
+        ast.Seqn(Seq(
+          ast.LocalVarDeclStmt(ast.LocalVarDecl("nonDetermBool", ast.Bool)())(),
+          ast.While(ast.LocalVar("nonDetermBool", ast.Bool)(), invs filter (isCrucialExp(_, crucialNodesWithExpInfo)), body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
+          , Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
+      case whileStmt@ast.While(cond, invs, body) =>
+        ast.While(cond, invs filter (isCrucialExp(_, crucialNodesWithExpInfo)), body)(whileStmt.pos, whileStmt.info, whileStmt.errT)
+      // TODO ake: method calls -> join graphs first?
+      case s: ast.Stmt if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
+        ast.Inhale(ast.TrueLit()())()
+    }, Traverse.BottomUp).execute(program)
+    val result = frontend.verifier.verify(newProgram)
+    assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program ${newProgram.toString()}")
+  }
+
+  private def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[ExpAnalysisSourceInfo]): Boolean = {
+    crucialNodesWithExpInfo exists(n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(exp.pos))) // TODO ake: currently we compare only lines not columns!
+  }
+
+  private def isCrucialStmt(stmt: ast.Stmt, crucialNodesWithStmtInfo: Set[StmtAnalysisSourceInfo]): Boolean = {
+    crucialNodesWithStmtInfo exists(n => n.source.pos.equals(stmt.pos))
   }
 }

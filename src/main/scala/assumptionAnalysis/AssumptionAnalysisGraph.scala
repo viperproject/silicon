@@ -44,7 +44,7 @@ trait AssumptionAnalysisGraph {
     false
   }
 
-  def getNodesByProperties(nodeType: Option[String], assumptionType: Option[AssumptionType], sourceInfo: Option[String], position: Option[Position]): mutable.Seq[AssumptionAnalysisNode] = {
+  private def getNodesByProperties(nodeType: Option[String], assumptionType: Option[AssumptionType], sourceInfo: Option[String], position: Option[Position]): mutable.Seq[AssumptionAnalysisNode] = {
     nodes filter (node =>
       nodeType.forall(node.getNodeType.equals) &&
       assumptionType.forall(node.assumptionType.equals) &&
@@ -53,44 +53,41 @@ trait AssumptionAnalysisGraph {
       )
   }
 
-  def getExplicitAndAssertNodesOnly(): Seq[AssumptionAnalysisNode] = {
-    nodes.filter(n => n.assumptionType.equals(AssumptionType.Explicit) || n.isInstanceOf[GeneralAssertionNode])
+  def getExplicitAssertionNodes: Set[AssumptionAnalysisNode] = {
+    (getNodesByProperties(Some("Assertion"), Some(AssumptionType.Explicit), None, None) ++
+      getNodesByProperties(Some("Exhale"), Some(AssumptionType.Explicit), None, None)).toSet
   }
 
-  def getImplicitNodesOnly(): Seq[AssumptionAnalysisNode] = {
-    getNodesByAssumptionType(AssumptionType.Implicit)
-  }
-
-  def getNodesByAssumptionType(assumptionType: AssumptionType): Seq[AssumptionAnalysisNode] = {
-    nodes.filter(n => n.assumptionType.equals(assumptionType))
-  }
-
-  def getNodesPerChunk(): mutable.HashMap[Chunk, Seq[AssumptionAnalysisNode]] = {
-    val res = new mutable.HashMap[Chunk, Seq[AssumptionAnalysisNode]]()
-    nodes filter (_.isInstanceOf[ChunkAnalysisInfo]) foreach {n =>
-      res.updateWith(n.asInstanceOf[ChunkAnalysisInfo].getChunk)({
-        case Some(ns) => Some(ns ++ Seq(n))
-        case None => Some(Seq(n))
-      })
+  def getNonInternalAssumptionNodesPerSource: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
+    getNodesPerSourceInfo filter {case (_, nodes) =>
+      nodes exists (node =>
+        node.isInstanceOf[GeneralAssumptionNode] &&
+        !node.assumptionType.equals(AssumptionType.Internal) &&
+        !node.assumptionType.equals(AssumptionType.Axiom))
     }
-    res
+  }
+
+
+  def getNodesPerChunk: Map[Chunk, mutable.Seq[AssumptionAnalysisNode]] = {
+    nodes.filter (_.isInstanceOf[ChunkAnalysisInfo])
+      .groupBy(_.asInstanceOf[ChunkAnalysisInfo].getChunk)
   }
 
   private def getNodesPerTransitivitySourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
     nodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges.toString)
   }
 
-  def getNodesPerSourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
+  private def getNodesPerSourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
     nodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
   }
 
-  def addTransitiveEdges(source: AssumptionAnalysisNode, targets: Iterable[AssumptionAnalysisNode]): Unit = {
+  private def addTransitiveEdges(source: AssumptionAnalysisNode, targets: Iterable[AssumptionAnalysisNode]): Unit = {
     val oldTargets = transitiveEdges.getOrElse(source.id, Set.empty)
     val newTargets = targets map(_.id) // filter(_ > source.id) does not work due to loop invariants
     if(newTargets.nonEmpty) transitiveEdges.update(source.id, oldTargets ++ newTargets)
   }
 
-  def addTransitiveEdges(source: Iterable[AssumptionAnalysisNode], targets: Iterable[AssumptionAnalysisNode]): Unit = {
+  private def addTransitiveEdges(source: Iterable[AssumptionAnalysisNode], targets: Iterable[AssumptionAnalysisNode]): Unit = {
     source foreach (s => addTransitiveEdges(s, targets))
   }
 
@@ -147,8 +144,6 @@ trait AssumptionAnalysisGraph {
     nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
     writer.close()
   }
-
-
 }
 
 
