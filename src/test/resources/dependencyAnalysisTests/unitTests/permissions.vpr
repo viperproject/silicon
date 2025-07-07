@@ -93,3 +93,14 @@ method noAlias(a: Ref, b: Ref, c: Ref)
     @testAssertion()
     assert a != b
 }
+
+method exhaleInhale(a: Ref)
+    requires @dependency()(acc(a.f))
+{
+    @dependency()
+    exhale acc(a.f, 1/2)
+    @dependency()
+    inhale acc(a.f, 1/2)
+    @testAssertion()
+    assert perm(a.f) == 1/1
+}

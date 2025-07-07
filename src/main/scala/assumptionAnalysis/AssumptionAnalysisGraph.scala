@@ -55,7 +55,9 @@ trait AssumptionAnalysisGraph {
 
   def getExplicitAssertionNodes: Set[AssumptionAnalysisNode] = {
     (getNodesByProperties(Some("Assertion"), Some(AssumptionType.Explicit), None, None) ++
-      getNodesByProperties(Some("Exhale"), Some(AssumptionType.Explicit), None, None)).toSet
+    getNodesByProperties(Some("Assertion"), Some(AssumptionType.Postcondition), None, None) ++
+      getNodesByProperties(Some("Exhale"), Some(AssumptionType.Explicit), None, None) ++
+      getNodesByProperties(Some("Exhale"), Some(AssumptionType.Postcondition), None, None)).toSet
   }
 
   def getNonInternalAssumptionNodesPerSource: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {

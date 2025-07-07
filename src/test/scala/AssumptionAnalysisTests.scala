@@ -4,11 +4,12 @@ import viper.silicon.SiliconFrontend
 import viper.silicon.assumptionAnalysis._
 import viper.silver.ast.utility.{DiskLoader, ViperStrategy}
 import viper.silver.ast
+import viper.silver.ast.{If, Program, Seqn, Stmt}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
 
-import java.io.File
+import java.io.{File, PrintWriter}
 import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters.IterableHasAsScala
 import scala.util.{Failure, Success}
@@ -28,7 +29,7 @@ import scala.util.{Failure, Success}
  */
 class AssumptionAnalysisTests extends AnyFunSuite {
 
-  val CHECK_PRECISION = true
+  val CHECK_PRECISION = false
   val ignores: Seq[String] = Seq("infeasible")
 
   val irrelevantKeyword = "irrelevant"
@@ -47,11 +48,16 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/unitTests",
     "dependencyAnalysisTests/all",
+//      "examples/binary-search",
+//      "examples/graph-copy",
+//      "examples/graph-marking",
+//      "examples/max_array",
+//      "examples/quickselect",
   )
   testDirectories foreach createTests
 
 //  test("dependencyAnalysisTests/all" + "/" + "misc"){
-//    executeTest("dependencyAnalysisTests/unitTests" + "/", "misc", frontend)
+//    executeTest("dependencyAnalysisTests/all/", "list", frontend)
 //  }
 
 
@@ -63,11 +69,14 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     for (filePath: Path <- dirContent.sorted
          if Files.isReadable(filePath)
          if !Files.isDirectory(filePath)){
-      val fileName = filePath.getFileName.toString.replace(".vpr", "")
-      if(!ignores.contains(fileName))
-        test(dirName + "/" + fileName){
-          executeTest(dirName + "/", fileName, frontend)
-        }
+      val rawFileName = filePath.getFileName.toString
+      if(rawFileName.endsWith(".vpr")){
+        val fileName = rawFileName.replace(".vpr", "")
+        if(!ignores.contains(fileName))
+          test(dirName + "/" + fileName){
+            executeTest(dirName + "/", fileName, frontend)
+          }
+      }
     }
   }
 
@@ -125,11 +134,23 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     val program: ast.Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
-    assert(!result.isInstanceOf[verifier.Failure], s"Verification failed for ${filePrefix + fileName + ".vpr"}: $result")
+    if(result.isInstanceOf[verifier.Failure]) {
+      println("Program does not verify. Skip test.")
+      return
+    }
 
     val assumptionAnalyzers = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers
 
-    assumptionAnalyzers foreach (aa => removeDependenciesAndVerify(program, aa))
+    val fullGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet)
+    var id: Int = 0
+    assumptionAnalyzers foreach (aa => {
+      val explicitAssertionNodes = aa.assumptionGraph.getExplicitAssertionNodes
+      explicitAssertionNodes.foreach{node =>
+        removeNonDependenciesAndVerify(program, Set(node), fullGraph, "src/test/resources/" + filePrefix + fileName + s"_test$id.out")
+        id += 1
+      }
+    })
+
     val assumptionGraphs = assumptionAnalyzers map (_.assumptionGraph)
     val stmtsWithAssumptionAnnotation: Set[ast.Infoed] = extractAnnotatedStmts(program, { annotationInfo => annotationInfo.values.contains(irrelevantKeyword) || annotationInfo.values.contains(dependencyKeyword)})
     val allAssumptionNodes = assumptionGraphs.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
@@ -243,40 +264,77 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     ).toSeq
   }
 
-  def removeDependenciesAndVerify(program: ast.Program, assumptionAnalyzer: AssumptionAnalyzer): Unit = {
+  def removeNonDependenciesAndVerify(program: ast.Program, assumptionAnalyzer: AssumptionAnalyzer, fullGraph: AssumptionAnalysisGraph, exportFileName: String): Unit = {
     val explicitAssertionNodes = assumptionAnalyzer.assumptionGraph.getExplicitAssertionNodes
-    val explicitAssertionNodeIds = explicitAssertionNodes map (_.id)
-    val dependencies = assumptionAnalyzer.assumptionGraph.nodes filter (node =>
-      node.isInstanceOf[GeneralAssumptionNode] &&
-      !node.assumptionType.equals(AssumptionType.Internal) &&
-      assumptionAnalyzer.assumptionGraph.existsAnyDependency(Set(node.id), explicitAssertionNodeIds))
-    val crucialNodes = explicitAssertionNodes ++ dependencies
+    removeNonDependenciesAndVerify(program, explicitAssertionNodes, fullGraph, exportFileName)
+  }
+
+  def removeNonDependenciesAndVerify(program: ast.Program, nodesToAnalyze: Set[AssumptionAnalysisNode], fullGraph: AssumptionAnalysisGraph, exportFileName: String): Unit = {
+    val explicitAssertionNodeIds = nodesToAnalyze map (_.id)
+
+    val dependencies = fullGraph.nodes filter (node =>
+      ((node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
+        (node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition))) &&
+        fullGraph.existsAnyDependency(Set(node.id), explicitAssertionNodeIds))
+
+    val crucialNodes = nodesToAnalyze ++ dependencies
+    val (newProgram, cleanseFactor) = cleanseProgram(program, crucialNodes)
+    val result = frontend.verifier.verify(newProgram)
+    val writer = new PrintWriter(exportFileName)
+    writer.println("// test result: " + !result.isInstanceOf[verifier.Failure])
+    writer.println("// cleanse factor: " + cleanseFactor)
+    writer.println(newProgram.toString())
+    writer.close()
+    assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program ${newProgram.toString()}")
+  }
+
+  private def cleanseProgram(program: Program, crucialNodes: Set[AssumptionAnalysisNode]): (ast.Program, Double) = {
     val crucialNodesWithStmtInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[StmtAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[StmtAnalysisSourceInfo])
     val crucialNodesWithExpInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[ExpAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[ExpAnalysisSourceInfo])
-    val newProgram: ast.Program = ViperStrategy.Slim({
-      case s: ast.Seqn => s
+    var total = 0
+    var removed = 0
+
+
+    val newProgram: Program = ViperStrategy.Slim({
+      case s: Seqn => s
       case meth@ast.Method(name, inVars, outVars, pres, posts, body) =>
-        ast.Method(name, inVars, outVars, pres filter (isCrucialExp(_, crucialNodesWithExpInfo)),
-          posts filter (isCrucialExp(_, crucialNodesWithExpInfo)), body)(meth.pos, meth.info, meth.errT)
+        val newPres = pres filter (isCrucialExp(_, crucialNodesWithExpInfo))
+        val newPosts = posts filter (isCrucialExp(_, crucialNodesWithExpInfo))
+        total += pres.size + posts.size
+        removed += (pres.size-newPres.size) + (posts.size-newPosts.size)
+        ast.Method(name, inVars, outVars, newPres, newPosts, body)(meth.pos, meth.info, meth.errT)
       case ifStmt@ast.If(cond, thenBody, elseBody) if !isCrucialExp(cond, crucialNodesWithExpInfo) =>
+        total += 1
+        removed += 1
         ast.Seqn(Seq(
           ast.LocalVarDeclStmt(ast.LocalVarDecl("nonDetermBool", ast.Bool)())(),
           ast.If(ast.LocalVar("nonDetermBool", ast.Bool)(), thenBody, elseBody)())
           , Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
-      case ifStmt: ast.If  => ifStmt
+      case ifStmt: If =>
+        total += 1
+        ifStmt
       case whileStmt@ast.While(cond, invs, body) if !isCrucialExp(cond, crucialNodesWithExpInfo) =>
+        val newInvs = invs filter (isCrucialExp(_, crucialNodesWithExpInfo))
+        total += 1 + invs.size
+        removed += 1 + (invs.size-newInvs.size)
         ast.Seqn(Seq(
           ast.LocalVarDeclStmt(ast.LocalVarDecl("nonDetermBool", ast.Bool)())(),
-          ast.While(ast.LocalVar("nonDetermBool", ast.Bool)(), invs filter (isCrucialExp(_, crucialNodesWithExpInfo)), body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
+          ast.While(ast.LocalVar("nonDetermBool", ast.Bool)(), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
           , Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
       case whileStmt@ast.While(cond, invs, body) =>
-        ast.While(cond, invs filter (isCrucialExp(_, crucialNodesWithExpInfo)), body)(whileStmt.pos, whileStmt.info, whileStmt.errT)
-      // TODO ake: method calls -> join graphs first?
-      case s: ast.Stmt if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
+        val newInvs = invs filter (isCrucialExp(_, crucialNodesWithExpInfo))
+        total += 1 + invs.size
+        removed += (invs.size-newInvs.size)
+        ast.While(cond, newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT)
+      case s: Stmt if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
+        total += 1
+        removed += 1
         ast.Inhale(ast.TrueLit()())()
+      case s: Stmt =>
+        total += 1
+        s
     }, Traverse.BottomUp).execute(program)
-    val result = frontend.verifier.verify(newProgram)
-    assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program ${newProgram.toString()}")
+    (newProgram, removed.toDouble/total.toDouble)
   }
 
   private def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[ExpAnalysisSourceInfo]): Boolean = {

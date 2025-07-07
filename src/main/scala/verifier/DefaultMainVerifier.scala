@@ -8,7 +8,7 @@ package viper.silicon.verifier
 
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 import viper.silicon._
-import viper.silicon.assumptionAnalysis.{DefaultAssumptionAnalyzer, DependencyAnalysisReporter}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, DefaultAssumptionAnalyzer, DependencyAnalysisReporter}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
@@ -319,6 +319,8 @@ class DefaultMainVerifier(config: Config,
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
       assumptionAnalyzers foreach (_.exportGraph())
       assumptionAnalyzers foreach (_.computeProofCoverage())
+      val joinedGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet)
+      joinedGraph.exportGraph("graphExports/joinedGraphs")
       if(reporter.isInstanceOf[DependencyAnalysisReporter]) {
         reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers = assumptionAnalyzers
       }

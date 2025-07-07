@@ -116,6 +116,22 @@ object AssumptionAnalyzer {
   def isAssumptionLabel(label: String): Boolean = label.startsWith("assumption_")
 
   def isAxiomLabel(label: String): Boolean = label.startsWith("axiom_")
+
+  def joinGraphs(assumptionAnalysisGraphs: Set[AssumptionAnalysisGraph]): AssumptionAnalysisGraph = {
+    val newGraph = new DefaultAssumptionAnalysisGraph
+    assumptionAnalysisGraphs foreach (graph => newGraph.addNodes(graph.nodes))
+    assumptionAnalysisGraphs foreach (graph => graph.edges foreach {case (s, t) => newGraph.addEdges(s, t)})
+    assumptionAnalysisGraphs foreach (graph => graph.transitiveEdges foreach {case (s, t) => newGraph.addEdges(s, t)}) // TODO ake: add transitive edges
+    val types = Set(AssumptionType.Implicit, AssumptionType.Explicit)
+    val relevantAssumptionNodes = newGraph.nodes filter (node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
+    newGraph.nodes filter (node => node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition)) foreach {node =>
+      val nodeSourceInfoString = node.sourceInfo.getTopLevelSource.toString
+      val assumptionNodesForJoin = relevantAssumptionNodes filter (aNode => aNode.sourceInfo.getFineGrainedSource.toString.equals(nodeSourceInfoString))
+      newGraph.addEdges(node.id, assumptionNodesForJoin map (_.id))
+    }
+    newGraph
+  }
+
 }
 
 class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
