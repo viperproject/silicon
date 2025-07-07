@@ -390,7 +390,7 @@ object producer extends ProductionRules {
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {
                     val argsString = eArgsNew.mkString(", ")
                     val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp, AssumptionType.Internal)
+                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp, AssumptionType.Trigger)
                   }
                   Q(s3.copy(h = h3), v3)})
               }})))
@@ -421,7 +421,7 @@ object producer extends ProductionRules {
                 s1, wand, formalVars, relevantChunks, v1)
             val argsStr = bodyVarsNew.mkString(", ")
             val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}($argsStr))", isInternal_ = true))
-            v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args), debugExp, AssumptionType.Internal)
+            v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args), debugExp, AssumptionType.Trigger)
             smCache1
           } else {
             s1.smCache

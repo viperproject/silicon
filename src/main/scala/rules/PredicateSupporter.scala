@@ -80,7 +80,7 @@ object predicateSupporter extends PredicateSupportRules {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
         val eArgsString = eArgs.mkString(", ")
-        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")), AssumptionType.Internal)
+        v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")), AssumptionType.Trigger)
       }
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
@@ -104,7 +104,7 @@ object predicateSupporter extends PredicateSupportRules {
               s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
           val eArgsString = eArgs.mkString(", ")
           v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs),
-            Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")), AssumptionType.Internal)
+            Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")), AssumptionType.Trigger)
           smCache1
         } else {
           s2.smCache
@@ -175,7 +175,7 @@ object predicateSupporter extends PredicateSupportRules {
               App(s4.predicateData(predicate).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), AssumptionType.Internal)
+            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")), AssumptionType.Trigger)
           }
           Q(s4.copy(g = s.g,
                     permissionScalingFactor = s.permissionScalingFactor,
@@ -194,7 +194,7 @@ object predicateSupporter extends PredicateSupportRules {
             val predicateTrigger =
               App(s4.predicateData(predicate).triggerFunction, snap.get +: tArgs)
             val eargs = eArgs.mkString(", ")
-            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${pa.predicateName}($eargs))")), AssumptionType.Internal)
+            v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${pa.predicateName}($eargs))")), AssumptionType.Trigger)
           }
           val s5 = s4.copy(g = s.g,
                            permissionScalingFactor = s.permissionScalingFactor,

@@ -1109,7 +1109,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
               val condOfInv = tCond.replace(qvarsToInv)
               v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars))),
-                Option.when(withExp)(DebugExp.createInstance("Inverse Trigger", isInternal_ = true)), AssumptionType.Internal)
+                Option.when(withExp)(DebugExp.createInstance("Inverse Trigger", isInternal_ = true)), AssumptionType.Trigger)
               smCache1
             } else {
               s.smCache
@@ -1167,7 +1167,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       val (smDef1, smCache1) =
         quantifiedChunkSupporter.summarisingSnapshotMap(
           s, resource, formalQVars, relevantChunks, v)
-      v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(withExp)(DebugExp.createInstance("Resource Trigger", isInternal_ = true)), AssumptionType.Internal)
+      v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(withExp)(DebugExp.createInstance("Resource Trigger", isInternal_ = true)), AssumptionType.Trigger)
       smCache1
     } else {
       s.smCache

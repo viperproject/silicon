@@ -396,7 +396,7 @@ object executor extends ExecutionRules {
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, field, Seq(`?r`), relevantChunks, v1)
               val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: (${eRcvrNew.toString()}).${field.name}"))
-              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp, AssumptionType.Internal)
+              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp, AssumptionType.Trigger)
               s2.copy(smCache = smCache1)
             } else {
               s2
@@ -431,7 +431,7 @@ object executor extends ExecutionRules {
                   field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, AssumptionType.Internal, isExhale=false)
                 if (s3.heapDependentTriggers.contains(field)) {
                   val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
-                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Internal)
+                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Trigger)
                 }
                 v1.decider.analysisSourceInfoStack.removeForcedSource()
                 v1.decider.assumptionAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v1.decider.analysisSourceInfoStack.getFullSourceInfo)
@@ -670,7 +670,7 @@ object executor extends ExecutionRules {
               val eArgsStr = eArgsNew.mkString(", ")
               val debugExp = Option.when(withExp)(DebugExp.createInstance(Some(s"PredicateTrigger(${predicate.name}($eArgsStr))"), Some(pa),
                 Some(ast.PredicateAccess(eArgsNew.get, predicateName)(pa.pos, pa.info, pa.errT)), None, isInternal_ = true, InsertionOrderedSet.empty))
-              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp, AssumptionType.Internal)
+              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp, AssumptionType.Trigger)
               smCache1
             } else {
               s2.smCache
@@ -722,7 +722,7 @@ object executor extends ExecutionRules {
                   quantifiedChunkSupporter.summarisingSnapshotMap(
                     s2, wand, formalVars, relevantChunks, v1)
                 v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get),
-                  Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}(${ch.singletonArgExps.get}))", isInternal_ = true)), AssumptionType.Internal)
+                  Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}(${ch.singletonArgExps.get}))", isInternal_ = true)), AssumptionType.Trigger)
                 smCache
               case _ => s2.smCache
             }

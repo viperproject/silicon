@@ -2,12 +2,11 @@
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.SiliconFrontend
 import viper.silicon.assumptionAnalysis._
-import viper.silver.ast.utility.{DiskLoader, ViperStrategy}
-import viper.silver.ast
-import viper.silver.ast.{If, Program, Seqn, Stmt}
 import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.utility.{DiskLoader, ViperStrategy}
+import viper.silver.ast.{If, Program, Seqn, Stmt}
 import viper.silver.frontend.SilFrontend
-import viper.silver.verifier
+import viper.silver.{ast, verifier}
 
 import java.io.{File, PrintWriter}
 import java.nio.file.{Files, Path, Paths}
@@ -48,16 +47,19 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/unitTests",
     "dependencyAnalysisTests/all",
-//      "examples/binary-search",
+    "dependencyAnalysisTests/quick",
+      "examples/binary-search",
 //      "examples/graph-copy",
 //      "examples/graph-marking",
-//      "examples/max_array",
-//      "examples/quickselect",
+      "examples/max_array",
+      "examples/quickselect",
+      "examples/longest-common-prefix",
+      "examples/tree-delete-min",
   )
   testDirectories foreach createTests
 
 //  test("dependencyAnalysisTests/all" + "/" + "misc"){
-//    executeTest("dependencyAnalysisTests/all/", "list", frontend)
+//    executeTest("examples/max_array/", "max-array-standard", frontend)
 //  }
 
 
@@ -142,11 +144,13 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     val assumptionAnalyzers = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers
 
     val fullGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet)
+    val triggerNodes = fullGraph.nodes.filter(node => node.sourceInfo.getTopLevelSource.toString.contains("@trigger()"))
     var id: Int = 0
     assumptionAnalyzers foreach (aa => {
-      val explicitAssertionNodes = aa.assumptionGraph.getExplicitAssertionNodes
-      explicitAssertionNodes.foreach{node =>
-        removeNonDependenciesAndVerify(program, Set(node), fullGraph, "src/test/resources/" + filePrefix + fileName + s"_test$id.out")
+      val explicitAssertionNodes = aa.assumptionGraph.getExplicitAssertionNodes.groupBy(_.sourceInfo.getPositionString)
+
+      explicitAssertionNodes.foreach{case (_, nodes) =>
+        removeNonDependenciesAndVerify(program, nodes ++ triggerNodes, fullGraph, "src/test/resources/" + filePrefix + fileName + s"_test$id.out")
         id += 1
       }
     })
@@ -264,13 +268,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     ).toSeq
   }
 
-  def removeNonDependenciesAndVerify(program: ast.Program, assumptionAnalyzer: AssumptionAnalyzer, fullGraph: AssumptionAnalysisGraph, exportFileName: String): Unit = {
-    val explicitAssertionNodes = assumptionAnalyzer.assumptionGraph.getExplicitAssertionNodes
-    removeNonDependenciesAndVerify(program, explicitAssertionNodes, fullGraph, exportFileName)
-  }
-
   def removeNonDependenciesAndVerify(program: ast.Program, nodesToAnalyze: Set[AssumptionAnalysisNode], fullGraph: AssumptionAnalysisGraph, exportFileName: String): Unit = {
-    val explicitAssertionNodeIds = nodesToAnalyze map (_.id)
+    val sourcePositionsToAnalyze = nodesToAnalyze map (_.sourceInfo.getPositionString)
+    val explicitAssertionNodeIds = fullGraph.nodes.filter(n => sourcePositionsToAnalyze.contains(n.sourceInfo.getPositionString)).map(_.id).toSet
 
     val dependencies = fullGraph.nodes filter (node =>
       ((node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
@@ -342,6 +342,6 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   }
 
   private def isCrucialStmt(stmt: ast.Stmt, crucialNodesWithStmtInfo: Set[StmtAnalysisSourceInfo]): Boolean = {
-    crucialNodesWithStmtInfo exists(n => n.source.pos.equals(stmt.pos))
+    crucialNodesWithStmtInfo exists(n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(stmt.pos)))
   }
 }

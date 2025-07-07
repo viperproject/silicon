@@ -229,7 +229,7 @@ object evaluator extends EvaluationRules {
               if (s1.heapDependentTriggers.contains(fa.field)){
                 val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
                 val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                v1.decider.assume(trigger, triggerExp, AssumptionType.Internal)
+                v1.decider.assume(trigger, triggerExp, AssumptionType.Trigger)
               }
               if (s1.triggerExp) {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
@@ -260,7 +260,7 @@ object evaluator extends EvaluationRules {
                 if (s1.heapDependentTriggers.contains(fa.field)) {
                   val trigger = FieldTrigger(fa.field.name, relevantChunks.head.fvf, tRcvr)
                   val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                  v1.decider.assume(trigger, triggerExp, AssumptionType.Internal)
+                  v1.decider.assume(trigger, triggerExp, AssumptionType.Trigger)
                 }
                 val (permCheck, permCheckExp) =
                   if (s1.triggerExp) {
@@ -293,7 +293,7 @@ object evaluator extends EvaluationRules {
                 if (s2.heapDependentTriggers.contains(fa.field)) {
                   val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
                   val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                  v1.decider.assume(trigger, triggerExp, AssumptionType.Internal)
+                  v1.decider.assume(trigger, triggerExp, AssumptionType.Trigger)
                 }
                 val (permCheck, permCheckExp) =
                   if (s2.triggerExp) {
@@ -563,7 +563,7 @@ object evaluator extends EvaluationRules {
                   val (s2, pmDef) = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))) {
                     val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
                     val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${identifier.toString}($eArgsString))", isInternal_ = true))
-                    v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args), debugExp, AssumptionType.Internal)
+                    v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args), debugExp, AssumptionType.Trigger)
                     (s2, pmDef)
                   } else {
                     val (pmDef, pmCache) =
@@ -580,7 +580,7 @@ object evaluator extends EvaluationRules {
                   val (s2, pmDef) = if (s1.heapDependentTriggers.contains(field)) {
                     val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
                     val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: ${eArgsNew.head}.${field.name}"))
-                    v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head), debugExp, AssumptionType.Internal)
+                    v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head), debugExp, AssumptionType.Trigger)
                     (s2, pmDef)
                   } else {
                     val (pmDef, pmCache) =
@@ -606,7 +606,7 @@ object evaluator extends EvaluationRules {
                   if (s2.heapDependentTriggers.contains(predicate)){
                     val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
                     val argsString = eArgsNew.mkString(", ")
-                    v1.decider.assume(trigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true)), AssumptionType.Internal)
+                    v1.decider.assume(trigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true)), AssumptionType.Trigger)
                   }
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
               }
@@ -1755,7 +1755,7 @@ object evaluator extends EvaluationRules {
     }
 
     val triggerString = exps.mkString(", ")
-    v.decider.assume(triggerAxioms, Option.when(withExp)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false, assumptionType=AssumptionType.Internal)
+    v.decider.assume(triggerAxioms, Option.when(withExp)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false, assumptionType=AssumptionType.Trigger)
     var fr = s.functionRecorder
     for (smDef <- smDefs){
       fr = fr.recordFvfAndDomain(smDef)
