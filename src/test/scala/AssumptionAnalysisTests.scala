@@ -62,7 +62,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
           val fileName = rawFileName.replace(".vpr", "")
           if (!ignores.contains(fileName))
             test(dirName + "/" + fileName) {
-              executeTest(dirName + "/", fileName, frontend)
+              try{
+                executeTest(dirName + "/", fileName, frontend)
+              }catch{
+                case t: Throwable => fail(t.getMessage)
+              }
             }
         }
       }
@@ -86,8 +90,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
-    if (result.isInstanceOf[verifier.Failure]) {
-      println("Program does not verify. Skip test.")
+    if(result.isInstanceOf[verifier.Failure]) {
+      cancel("Program does not verify. Skip test.")
       return
     }
 
