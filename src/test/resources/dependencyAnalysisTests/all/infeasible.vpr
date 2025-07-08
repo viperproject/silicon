@@ -37,13 +37,13 @@ method infeasibleBranchPerm(a: Ref, b: Ref)
 
 
 method infeasibleBranchNoPerm(a: Int, b: Ref)
-    requires a > 0 //@dependency()(a > 0)
+    requires @dependency()(a > 0)
 {
     var res: Int
-    if(a < 0){
-        //@irrelevant() TODO ake: nodes missing (infeasible path)
+    if(@dependency()(a < 0)){
+        @irrelevant()
         res := b.f + 1
-        //@testAssertion()
+        @testAssertion()
         assert false
     }
 }

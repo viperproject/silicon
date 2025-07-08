@@ -26,8 +26,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     //      "examples/graph-marking",
     "examples/max_array",
     "examples/quickselect",
-//    "examples/longest-common-prefix",
-//    "examples/tree-delete-min",
+    "examples/longest-common-prefix",
+    "examples/tree-delete-min",
   )
 
   val irrelevantKeyword = "irrelevant"
@@ -175,6 +175,14 @@ class AssumptionAnalysisTests extends AnyFunSuite {
           total += 1 + invs.size
           removed += (invs.size - newInvs.size)
           ast.While(cond, newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT)
+//        case fieldAssign @ FieldAssign(lhs, _) if !isCrucialStmt(fieldAssign, crucialNodesWithStmtInfo) => // TODO ake: index into sequences need to be checked!
+//          total += 1
+//          removed += 1
+//          ast.Quasihavoc(Some(ast.PermGeCmp(ast.CurrentPerm(lhs)(), ast.FullPerm()())()), lhs)(fieldAssign.pos, fieldAssign.info, fieldAssign.errT)
+        case ass @ ast.LocalVarAssign(lhs, _) if !isCrucialStmt(ass, crucialNodesWithStmtInfo) => // TODO ake: is this valid`?
+          total += 1
+          removed += 1
+          ast.LocalVarDeclStmt(ast.LocalVarDecl(lhs.name, lhs.typ)())(ass.pos, ass.info, ass.errT)
         case s: Stmt if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
           total += 1
           removed += 1
