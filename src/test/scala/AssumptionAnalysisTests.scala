@@ -17,17 +17,15 @@ import scala.jdk.CollectionConverters.IterableHasAsScala
 class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = false
-  val ignores: Seq[String] = Seq("infeasible")
+  val ignores: Seq[String] = Seq()
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests",
-//    "dependencyAnalysisTests/unitTests",
-//    "dependencyAnalysisTests/all",
 //    "dependencyAnalysisTests/quick",
     "examples/binary-search",
     //      "examples/graph-copy",
     //      "examples/graph-marking",
-//    "examples/max_array",
-//    "examples/quickselect",
+    "examples/max_array",
+    "examples/quickselect",
 //    "examples/longest-common-prefix",
 //    "examples/tree-delete-min",
   )
@@ -44,11 +42,6 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   //  test("dependencyAnalysisTests/all" + "/" + "misc"){
   //    executeTest("examples/max_array/", "max-array-standard", frontend)
   //  }
-
-//  def createTests(dirName: String): Unit = {
-//    val path = getClass.getClassLoader.getResource(dirName)
-//    createTests(path)
-//  }
 
   def createTests(dirName: String): Unit = {
     val path = Paths.get(getClass.getClassLoader.getResource(dirName).toURI)
@@ -128,10 +121,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val sourcePositionsToAnalyze = nodesToAnalyze map (_.sourceInfo.getPositionString)
       val explicitAssertionNodeIds = fullGraph.nodes.filter(n => sourcePositionsToAnalyze.contains(n.sourceInfo.getPositionString)).map(_.id).toSet
 
-      val dependencies = fullGraph.nodes filter (node =>
-        ((node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
-          (node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition))) &&
-          fullGraph.existsAnyDependency(Set(node.id), explicitAssertionNodeIds))
+      val dependencies = fullGraph.getAllNonInternalDependencies(explicitAssertionNodeIds)
 
       val crucialNodes = nodesToAnalyze ++ dependencies
       val (newProgram, pruningFactor) = getPrunedProgram(crucialNodes)
@@ -317,7 +307,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     private def extractTestAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
       graph.nodes.filter(node => {
-        (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale")) &&
+        (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale") || node.getNodeType.equals("Infeasible")) &&
           !node.assumptionType.equals(AssumptionType.Internal) &&
           node.sourceInfo.toString.contains("@" + dependencyKeyword + "()")
       }
@@ -326,7 +316,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     private def extractTestIrrelevantAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
       graph.nodes.filter(node => {
-        (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale")) &&
+        (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale") || node.getNodeType.equals("Infeasible")) &&
           !node.assumptionType.equals(AssumptionType.Internal) &&
           node.sourceInfo.toString.contains("@" + irrelevantKeyword + "()")
       }

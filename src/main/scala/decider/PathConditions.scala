@@ -70,6 +70,8 @@ trait PathConditionStack extends RecordedPathConditions {
   def popScope(): Unit
   def mark(): Mark
   def popUntilMark(mark: Mark): Unit
+  def setCurrentInfeasibilityNode(node: Option[Int]): Unit
+  def getCurrentInfeasibilityNode: Option[Int]
 
   def startDebugSubExp(): Unit
   def finishDebugSubExp(description : String): Unit
@@ -93,6 +95,7 @@ private class PathConditionStackLayer
 
   private var _branchCondition: Option[Term] = None
   private var _branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = None
+  private var _infeasibilityNodeId: Option[Int] = None
   private var _globalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _nonGlobalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _globalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
@@ -105,6 +108,10 @@ private class PathConditionStackLayer
 
   def branchCondition: Option[Term] = _branchCondition
   def branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = _branchConditionExp
+  def infeasibilityNodeId: Option[Int] = _infeasibilityNodeId
+  def setInfeasibilityNodeId(id: Option[Int]): Unit = {
+    _infeasibilityNodeId = id
+  }
   def globalAssumptions: InsertionOrderedSet[Term] = _globalAssumptions
   def globalDefiningAssumptions: InsertionOrderedSet[Term] = _globalDefiningAssumptions
   def nonGlobalDefiningAssumptions: InsertionOrderedSet[Term] = _nonGlobalDefiningAssumptions
@@ -470,6 +477,11 @@ private[decider] class LayeredPathConditionStack
     layers.head.branchCondition = condition
     layers.head.branchConditionExp = conditionExp
   }
+
+  def setCurrentInfeasibilityNode(node: Option[Int]): Unit = {
+    layers.head.setInfeasibilityNodeId(node)
+  }
+  def getCurrentInfeasibilityNode: Option[Int] = layers.map(_.infeasibilityNodeId).find(_.isDefined).flatten
 
   def startDebugSubExp(): Unit = {
     layers.head.startDebugSubExp()

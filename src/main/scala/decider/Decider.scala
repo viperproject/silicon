@@ -505,9 +505,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
       val result = prover.check(timeout, label) == Unsat
       if(result) {
-        assumptionAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
-        val infeasibleNodeId = assumptionAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo)
-        assumptionAnalyzer.addDependency(checkNodeId, infeasibleNodeId)
+        if(pcs.getCurrentInfeasibilityNode.isDefined){
+          assumptionAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNodeId)
+        }else {
+          assumptionAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+          val infeasibleNodeId = assumptionAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo)
+          assumptionAnalyzer.addDependency(checkNodeId, infeasibleNodeId)
+          pcs.setCurrentInfeasibilityNode(checkNodeId)
+        }
       }
       result
     }
@@ -582,7 +587,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = prover.assert(t, timeout, label)
 
       if(result)
-        assumptionAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+        if(pcs.getCurrentInfeasibilityNode.isDefined) {
+          assumptionAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(AssumptionAnalyzer.getIdFromLabel(label)))
+        }else{
+          assumptionAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+        }
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

@@ -44,6 +44,14 @@ trait AssumptionAnalysisGraph {
     false
   }
 
+  def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] = {
+    nodes.filter(node =>
+      ((node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
+        (node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition))
+        || node.isInstanceOf[InfeasibilityNode]) &&
+        existsAnyDependency(Set(node.id), nodeIdsToAnalyze)).toSet
+  }
+
   private def getNodesByProperties(nodeType: Option[String], assumptionType: Option[AssumptionType], sourceInfo: Option[String], position: Option[Position]): mutable.Seq[AssumptionAnalysisNode] = {
     nodes filter (node =>
       nodeType.forall(node.getNodeType.equals) &&
@@ -238,12 +246,13 @@ case class LabelNode(term: Term) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + description
 }
 
-case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo) extends GeneralAssertionNode {
+case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo) extends AssumptionAnalysisNode {
   val term: Term = False
-  val assumptionType: AssumptionType = AssumptionType.Internal
+  val assumptionType: AssumptionType = AssumptionType.Implicit
   val isClosed: Boolean = true
   val description: String = "False"
 
+  override def getNodeType: String = "Infeasible"
   override def getNodeString: String = "infeasible"
 }
 

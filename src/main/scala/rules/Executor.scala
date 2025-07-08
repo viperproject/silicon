@@ -282,7 +282,7 @@ object executor extends ExecutionRules {
                         // TODO ake: pcs.assumptionExps without exps do not have a source, but setting the source here will result in all invariants having the same source
                         v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                        if (v2.decider.checkSmoke())
+                        if (v2.decider.checkSmoke() && !Verifier.config.enableAssumptionAnalysis())
                           Success()
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {

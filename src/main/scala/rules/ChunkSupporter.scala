@@ -143,8 +143,11 @@ object chunkSupporter extends ChunkSupportRules {
                 case _ => None
               }
               QS(s2.copy(h = s.h), h2, snap, optCh2.toList, v1)
-            case _ if v1.decider.checkSmoke(isAssert=true, assumptionType) =>
-              Success() // TODO: Mark branch as dead?
+            case (_, s2, h2, _) if v1.decider.checkSmoke(isAssert=true, assumptionType) =>
+              if(Verifier.config.enableAssumptionAnalysis())
+                QS(s2.copy(h = s.h), h2, None, List.empty, v1)
+              else
+                Success() // TODO: Mark branch as dead?
             case _ =>
               createFailure(ve, v1, s1, "consuming chunk", true)
           }
@@ -176,8 +179,6 @@ object chunkSupporter extends ChunkSupportRules {
         if (s.assertReadAccessOnly) {
           val termToCheck = Implies(IsPositive(perms), IsPositive(ch.perm))
           if (v.decider.check(termToCheck, Verifier.config.assertTimeout.getOrElse(0), assumptionType)) {
-            // TODO ake: can be removed (probably?)
-//            v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, termToCheck, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
             (Complete(), s, h, Some(ch))
           } else {
             (Incomplete(perms, permsExp), s, h, None)
@@ -263,11 +264,9 @@ object chunkSupporter extends ChunkSupportRules {
     val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
     findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout(), assumptionType) =>
-        // TODO ake
-//        v.decider.assumptionAnalyzer.addPermissionAssertNode(ch, IsPositive(ch.perm), v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(isAssert=true, assumptionType) =>
-        if (s.isInPackage) {
+        if (s.isInPackage || Verifier.config.enableAssumptionAnalysis()) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           Q(s, snap, v)
         } else {

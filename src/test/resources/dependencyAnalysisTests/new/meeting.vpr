@@ -40,6 +40,19 @@ method infeasible3(x: Ref)
     }
 }
 
+method foo(a: Int, b:Int, x: Ref)
+    requires b >= 0
+    ensures a >= 0
+{
+    if(b < 0){
+        x.f := a
+    }else{
+        inhale a > 10
+    }
+
+    assert a > 0
+}
+
 
 method currentPerm(x: Ref)
     requires acc(x.f, 1/2)
