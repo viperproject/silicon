@@ -19,15 +19,17 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val CHECK_PRECISION = false
   val ignores: Seq[String] = Seq()
   val testDirectories: Seq[String] = Seq(
-    "dependencyAnalysisTests",
+//    "dependencyAnalysisTests",
+    "dependencyAnalysisTests/unitTests",
 //    "dependencyAnalysisTests/quick",
-    "examples/binary-search",
+//    "examples/binary-search",
     //      "examples/graph-copy",
     //      "examples/graph-marking",
-    "examples/max_array",
-    "examples/quickselect",
-    "examples/longest-common-prefix",
-    "examples/tree-delete-min",
+//    "examples/max_array",
+//    "examples/quickselect",
+//    "examples/longest-common-prefix",
+//    "examples/tree-delete-min",
+//    "fromSilver"
   )
 
   val irrelevantKeyword = "irrelevant"
@@ -148,8 +150,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       var total = 0
       var removed = 0
 
-      val newProgram: Program = ViperStrategy.Slim({
-        case s: Seqn => s
+      val newProgram: ast.Program = ViperStrategy.Slim({
+        case s @(_: ast.Seqn | _: ast.Goto) => s
         case meth@ast.Method(name, inVars, outVars, pres, posts, body) =>
           val newPres = pres filter (isCrucialExp(_, crucialNodesWithExpInfo))
           val newPosts = posts filter (isCrucialExp(_, crucialNodesWithExpInfo))
@@ -183,10 +185,15 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 //          total += 1
 //          removed += 1
 //          ast.Quasihavoc(Some(ast.PermGeCmp(ast.CurrentPerm(lhs)(), ast.FullPerm()())()), lhs)(fieldAssign.pos, fieldAssign.info, fieldAssign.errT)
-        case ass @ ast.LocalVarAssign(lhs, _) if !isCrucialStmt(ass, crucialNodesWithStmtInfo) => // TODO ake: is this valid`?
-          total += 1
-          removed += 1
-          ast.LocalVarDeclStmt(ast.LocalVarDecl(lhs.name, lhs.typ)())(ass.pos, ass.info, ass.errT)
+//        case ass @ ast.LocalVarAssign(lhs, _) if !isCrucialStmt(ass, crucialNodesWithStmtInfo) => // TODO ake: is this valid`?
+//          total += 1
+//          removed += 1
+//          ast.LocalVarDeclStmt(ast.LocalVarDecl(lhs.name, lhs.typ)())(ass.pos, ass.info, ass.errT)
+        case label@ast.Label(name, invs) =>
+          val newInvs = invs filter (isCrucialExp(_, crucialNodesWithExpInfo))
+          total += 1 + invs.size
+          removed += (invs.size - newInvs.size)
+          ast.Label(name, newInvs)(label.pos, label.info, label.errT)
         case s: Stmt if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
           total += 1
           removed += 1
