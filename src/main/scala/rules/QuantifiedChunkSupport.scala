@@ -490,9 +490,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                        : (Term, Seq[Quantification], Option[Quantification]) = {
     // TODO: Consider if axioms can be simplified in case codomainQVars is empty
 
+    val snapshotMaps = relevantChunks.map(_.snapshotMap)
     val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar =>
-      relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)) || optSmDomainDefinitionCondition.exists(_.contains(qvar)))
-
+      snapshotMaps.exists(sm => sm.contains(qvar)) || optSmDomainDefinitionCondition.exists(_.contains(qvar)))
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1) ++ relevantQvars
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
 
