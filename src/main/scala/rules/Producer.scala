@@ -275,7 +275,8 @@ object producer extends ProductionRules {
                 QB(s3, null, v3)
               }),
               (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit)
+                if (!Verifier.config.maskHeapMode())
+                  v2.decider.assume(sf(sorts.Snap, v2) === Unit)
                 /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
