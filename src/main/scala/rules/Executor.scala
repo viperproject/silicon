@@ -511,6 +511,10 @@ object executor extends ExecutionRules {
           case _ =>
             produce(s, freshSnap, a, InhaleFailed(inhale), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, v1) => {
               v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+              if(Verifier.config.enableAssumptionAnalysis() && a.isInstanceOf[ast.FalseLit]) {
+                val (_, node) = v1.decider.checkAndGetInfeasibilityNode(False, Verifier.config.checkTimeout(), AssumptionType.Explicit)
+                v1.decider.pcs.setCurrentInfeasibilityNode(node)
+              }
               Q(s1, v1)})
         }
 
