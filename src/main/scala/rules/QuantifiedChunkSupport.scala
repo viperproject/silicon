@@ -140,6 +140,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * @param additionalInvArgs Additional arguments on which `inv` depends (typically
     *                          quantified variables bound by some surrounding scope).
     *                          Currently omitted from the axioms shown above.
+    * @param stateQVars Quantified variables in the current state that the inverse functions may depend on.
     * @return The generated partial inverse functions and corresponding definitional axioms, and
     *         the images of the given codomain variables (returned separately, since nothing else
     *         in the returned InverseFunctions object references or contains the codomain
@@ -154,6 +155,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                codomainQVarExps: Option[Seq[ast.LocalVarDecl]],
                                additionalInvArgs: Seq[Var],
                                additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                               stateQVars: Seq[Var],
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
@@ -191,6 +193,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * @param permissions Permission amount per resource.
     * @param sm The snapshot map that is to be stored in the new chunk.
     * @param additionalInvArgs See the homonymous parameter of [[getFreshInverseFunctions()]].
+    * @param stateQVars See the homonymous parameter of [[getFreshInverseFunctions()]].
     * @param v A verifier.
     * @return A tuple of
     *           1. the newly created quantified chunk
@@ -211,6 +214,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             sm: Term,
                             additionalInvArgs: Seq[Var],
                             additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                            stateQVars: Seq[Var],
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
                             v: Verifier,
@@ -317,6 +321,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             sm: Term,
                             additionalInvArgs: Seq[Var],
                             additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                            stateQVars: Seq[Var],
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
                             v: Verifier,
@@ -334,6 +339,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         codomainQVarExps,
         additionalInvArgs,
         additionalInvArgExps,
+        stateQVars,
         userProvidedTriggers,
         qidPrefix,
         v)
@@ -482,116 +488,35 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
                         v: Verifier)
                        : (Term, Seq[Quantification], Option[Quantification]) = {
-
-    // TODO: Reconsider all pattern matches (in this file) on the resource
-    resource match {
-      case field: ast.Field =>
-        assert(codomainQVars.length == 1)
-        summarise_field(s, relevantChunks, codomainQVars.head, field, optSmDomainDefinitionCondition, v)
-      case _: ast.Predicate | _: ast.MagicWand =>
-        summarise_predicate_or_wand(s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
-    }
-  }
-
-  // TODO: Methods summarise_fields and summarise_predicate_or_wand are very similar, and the resulting
-  //       code duplication should be avoided. Currently, however, the crucial difference is that the
-  //       summarisation axioms for fields quantify over the receiver, whereas the axioms for predicates
-  //       and fields quantify over the n-tuple of arguments (currently encoded as a snapshot tree) as
-  //       a single value, which is then decomposed in the axiom body (via a snapshot's first/second
-  //       deconstructors). This currently impedes proper code unification.
-
-  private def summarise_field(s: State,
-                              relevantChunks: Seq[QuantifiedBasicChunk],
-                              codomainQVar: Var, /* r */
-                              field: ast.Field,
-                              optSmDomainDefinitionCondition: Option[Term], /* c(r) */
-                              v: Verifier)
-                             : (Term, Seq[Quantification], Option[Quantification]) = {
-    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
-
-    val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1)
-    val sm = freshSnapshotMap(s, field, additionalFvfArgs, v)
-
-    val smDomainDefinitionCondition = optSmDomainDefinitionCondition.getOrElse(True)
-    val codomainQVarsInDomainOfSummarisingSm = SetIn(codomainQVar, Domain(field.name, sm))
-
-    val valueDefinitions =
-      relevantChunks map (chunk => {
-        val lookupSummary = Lookup(field.name, sm, codomainQVar)
-        val lookupChunk = Lookup(field.name, chunk.snapshotMap, codomainQVar)
-
-        val effectiveCondition =
-          And(
-            smDomainDefinitionCondition, /* Alternatively: codomainQVarsInDomainOfSummarisingSm */
-            IsPositive(chunk.perm))
-
-        Forall(
-          codomainQVar,
-          Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
-          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
-          s"qp.fvfValDef${v.counter(this).next()}",
-          isGlobal = relevantQvars.isEmpty)
-      })
-
-    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
-      val resourceTriggerDefinition =
-        Forall(
-          codomainQVar,
-          And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
-          Trigger(Lookup(field.name, sm, codomainQVar)),
-          s"qp.fvfResTrgDef${v.counter(this).next()}",
-          isGlobal = relevantQvars.isEmpty)
-      valueDefinitions :+ resourceTriggerDefinition
-    } else {
-      valueDefinitions
-    }
-
-
-    val optDomainDefinition =
-      optSmDomainDefinitionCondition.map(condition =>
-        Forall(
-          codomainQVar,
-          Iff(
-            codomainQVarsInDomainOfSummarisingSm,
-            condition),
-          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(codomainQVarsInDomainOfSummarisingSm)),
-          s"qp.fvfDomDef${v.counter(this).next()}",
-          isGlobal = true))
-
-    (sm, resourceAndValueDefinitions, optDomainDefinition)
-  }
-
-  private def summarise_predicate_or_wand(s: State,
-                                          relevantChunks: Seq[QuantifiedBasicChunk],
-                                          codomainQVars: Seq[Var], /* rs := r_1, ..., r_m. May be empty. */
-                                          resource: ast.Resource, /* Predicate or wand */
-                                          optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
-                                          v: Verifier)
-                                         : (Term, Seq[Quantification], Option[Quantification]) = {
-
-    assert(resource.isInstanceOf[ast.Predicate] || resource.isInstanceOf[ast.MagicWand],
-           s"Expected resource to be a predicate or a wand, but got $resource (${resource.getClass.getSimpleName})")
-
     // TODO: Consider if axioms can be simplified in case codomainQVars is empty
 
-
-    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
-
-    val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1)
+    val snapshotMaps = relevantChunks.map(_.snapshotMap)
+    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar =>
+      snapshotMaps.exists(sm => sm.contains(qvar)) || optSmDomainDefinitionCondition.exists(_.contains(qvar)))
+    val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1) ++ relevantQvars
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
 
-    val qvar = v.decider.fresh("s", sorts.Snap, Option.when(withExp)(PUnknown())) /* Quantified snapshot s */
+    val (qvar, smDomainDefinitionCondition, permIsPositive) = resource match {
+      case _: ast.Field =>
+        (codomainQVars.head, optSmDomainDefinitionCondition, (ch: QuantifiedBasicChunk) => IsPositive(ch.perm))
+      case _ =>
+        val qvar = v.decider.fresh("s", sorts.Snap, Option.when(withExp)(PUnknown())) /* Quantified snapshot s */
 
-    // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
-    // including necessary sort wrapper applications
-    val snapToCodomainTermsSubstitution: Map[Term, Term] =
-      codomainQVars.zip(fromSnapTree(qvar, codomainQVars)).to(Map)
+        // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
+        // including necessary sort wrapper applications
+        val snapToCodomainTermsSubstitution: Map[Term, Term] =
+        codomainQVars.zip(fromSnapTree(qvar, codomainQVars)).to(Map)
 
-    // Rewrite c(r_1, r_2, ...) to c(first(s), second(s), ...)
-    val transformedOptSmDomainDefinitionCondition =
-      optSmDomainDefinitionCondition.map(_.replace(snapToCodomainTermsSubstitution))
+        // Rewrite c(r_1, r_2, ...) to c(first(s), second(s), ...)
+        val transformedOptSmDomainDefinitionCondition =
+          optSmDomainDefinitionCondition.map(_.replace(snapToCodomainTermsSubstitution))
+
+        (qvar, transformedOptSmDomainDefinitionCondition, (ch: QuantifiedBasicChunk) => IsPositive(ch.perm).replace(snapToCodomainTermsSubstitution))
+    }
 
     val qvarInDomainOfSummarisingSm = resource match {
+      case field: ast.Field =>
+        SetIn(qvar, Domain(field.name, sm))
       case predicate: ast.Predicate =>
         SetIn(qvar, PredicateDomain(predicate.name, sm))
       case wand: ast.MagicWand =>
@@ -603,16 +528,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val lookupSummary = ResourceLookup(resource, sm, Seq(qvar), s.program)
         val lookupChunk = ResourceLookup(resource, chunk.snapshotMap, Seq(qvar), s.program)
 
-        // This is justified even for vacuous predicates (e.g. with body "true") and wands because
-        // qvar is the tuple of predicate arguments, and thus unrelated to the actual body
-        val snapshotNotUnit =
-          if (codomainQVars.nonEmpty) qvar !== Unit
-          else qvar === Unit // TODO: Consider if axioms can be simplified in case codomainQVars is empty
+        val snapshotNotUnit = resource match {
+          case _: ast.Field => True
+          case _ =>
+            // This is justified even for vacuous predicates (e.g. with body "true") and wands because
+            // qvar is the tuple of predicate arguments, and thus unrelated to the actual body
+            if (codomainQVars.nonEmpty) qvar !== Unit
+            else qvar === Unit
+        }
+
 
         val effectiveCondition =
           And(
-            transformedOptSmDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
-            IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
+            smDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
+            permIsPositive(chunk))
 
         Forall(
           qvar,
@@ -626,7 +555,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
       case r => r
     }
-    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)) {
       val resourceTriggerDefinition =
         Forall(
           qvar,
@@ -640,7 +569,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     val optDomainDefinition =
-      transformedOptSmDomainDefinitionCondition.map(condition =>
+      smDomainDefinitionCondition.map(condition =>
         Forall(
           qvar,
           Iff(
@@ -648,7 +577,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             condition),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(qvarInDomainOfSummarisingSm)),
           s"qp.psmDomDef${v.counter(this).next()}",
-          isGlobal = true
+          isGlobal = relevantQvars.isEmpty
         ))
 
     (sm, resourceAndValueDefinitions, optDomainDefinition)
@@ -918,6 +847,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         sm                   = tSnap,
         additionalInvArgs    = s.relevantQuantifiedVariables(tArgs).map(_._1),
         additionalInvArgExps = Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        stateQVars           = s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
         userProvidedTriggers = optTrigger.map(_ => tTriggers),
         qidPrefix            = qid,
         v                    = v,
@@ -1176,8 +1106,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         eArgs,
         formalQVars,
         formalQVarsExp,
-        s.relevantQuantifiedVariables(tArgs).map(_._1),
+        s.relevantQuantifiedVariables(tArgs ++ Seq(tCond)).map(_._1),
         Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
         optTrigger.map(_ => tTriggers),
         qid,
         v)
@@ -1338,6 +1269,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   smDef2.sm,
                   s3.relevantQuantifiedVariables(tArgs).map(_._1),
                   Option.when(withExp)(s3.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+                  s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
                   optTrigger.map(_ => tTriggers),
                   qid,
                   v2,
@@ -1888,6 +1820,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                codomainQVarExps: Option[Seq[ast.LocalVarDecl]],
                                additionalInvArgs: Seq[Var],
                                additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                               stateQVars: Seq[Var],
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
@@ -1958,7 +1891,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             axInvsOfFctsBody,
             if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else And(invertibles) :: axInvsOfFctsBody :: Nil,
             s"$qidPrefix-invOfFct",
-            isGlobal = true,
+            isGlobal = stateQVars.isEmpty,
             v.axiomRewriter)
         case Some(triggers) =>
           /* User-provided triggers; create quantifier directly */
@@ -1991,7 +1924,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         axFctsOfInvsBody,
         axFctsOfInvsTriggers,
         s"$qidPrefix-fctOfInv",
-        isGlobal = true,
+        isGlobal = stateQVars.isEmpty,
         v.axiomRewriter)
 
     val res = InverseFunctions(
