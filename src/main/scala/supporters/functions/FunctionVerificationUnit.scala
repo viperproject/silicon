@@ -22,7 +22,7 @@ import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
-import viper.silicon.supporters.PredicateData
+import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
@@ -152,6 +152,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
+      val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(function, reporter)
+      v.decider.setProverOptions(proverOptions)
+
       openSymbExLogger(function)
 
       val data = functionData(function)
@@ -159,6 +162,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       decider.prover.declare(ConstDecl(data.formalResult))
 
       val res = Seq(handleFunction(sInit, function))
+
+      v.decider.resetProverOptions()
       symbExLog.closeMemberScope()
       res
     }

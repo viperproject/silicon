@@ -46,22 +46,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      val proverOptions: Map[String, String] = method.info.getUniqueInfo[ast.AnnotationInfo] match {
-        case Some(ai) if ai.values.contains("proverArgs") =>
-          toMap(ai.values("proverArgs").flatMap(o => {
-            val index = o.indexOf("=")
-            if (index == -1) {
-              reporter report AnnotationWarning(s"Invalid proverArgs annotation ${o} on method ${method.name}. " +
-                s"Required format for each option is optionName=value.")
-              None
-            } else {
-              val (name, value) = (o.take(index), o.drop(index + 1))
-              Some((name, value))
-            }
-          }))
-        case _ =>
-          Map.empty
-      }
+      val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(method, reporter)
       v.decider.setProverOptions(proverOptions)
 
       openSymbExLogger(method)
