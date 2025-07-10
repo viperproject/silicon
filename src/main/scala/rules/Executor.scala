@@ -69,7 +69,7 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
-          eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, condNew, v1) => {
+          eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, condNew, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
@@ -82,7 +82,7 @@ object executor extends ExecutionRules {
               (_, v3) => {
                 v3.symbExLog.closeScope(sepIdentifier)
                 Success()
-              })})
+              }))
 
         case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
           val s1 = handleOutEdge(s, edge, v)
@@ -271,7 +271,7 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
+                consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -306,7 +306,7 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v)((_, _, _, _) =>
+            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
               Success())
         }
     }
@@ -420,7 +420,7 @@ object executor extends ExecutionRules {
             )
             v2.decider.analysisSourceInfoStack.removeForcedSource()
             result match {
-              case (Complete(), s3, remainingChunks, consumedChunks) => // TODO ake: what to do with consumedChunks?
+              case (Complete(), s3, remainingChunks) =>
                 val h3 = Heap(remainingChunks ++ otherChunks)
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
@@ -439,7 +439,7 @@ object executor extends ExecutionRules {
                 val (debugHeapName, _) = v.getDebugOldLabel(s4, fa.pos)
                 val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
                 Q(s5, v2)
-              case (Incomplete(_, _), s3, _, _) =>
+              case (Incomplete(_, _), s3, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
@@ -452,7 +452,7 @@ object executor extends ExecutionRules {
               val description = s"consume ${ass.pos}: $ass"
               val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, ExpAnalysisSourceInfo(fa))
               v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-              chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, consumedChunks, v3) => {
+              chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, v3) => {
                 v2.decider.analysisSourceInfoStack.removeForcedSource()
                 val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
                 val id = BasicChunkIdentifier(field.name)
@@ -521,7 +521,7 @@ object executor extends ExecutionRules {
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, consumedChunks, v1) =>
+        consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
@@ -535,7 +535,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, false, AssertFailed(assert), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((_, _, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((_, _, _) =>
             Success())
 
         r combine Q(s, v)
@@ -551,11 +551,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s2, _, _, v1) => {
+          consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, _, v1) => {
+          consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -618,7 +618,7 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, consumedChunks, v2) => {
+          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)

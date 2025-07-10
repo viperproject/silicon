@@ -36,7 +36,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               v: Verifier,
               description: String,
               assumptionType: AssumptionType=AssumptionType.Implicit)
-             (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
+             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult
 
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
@@ -81,12 +81,12 @@ object chunkSupporter extends ChunkSupportRules {
               v: Verifier,
               description: String,
               assumptionType: AssumptionType=AssumptionType.Implicit)
-             (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
+             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
-    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, assumptionType)((s2, h2, optSnap, consumedChunks, v2) =>
+    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, assumptionType)((s2, h2, optSnap, v2) =>
       optSnap match {
         case Some(snap) =>
-          Q(s2, h2, Some(snap.convert(sorts.Snap)), consumedChunks, v2)
+          Q(s2, h2, Some(snap.convert(sorts.Snap)), v2)
         case None if returnSnap =>
           /* Not having consumed anything could mean that we are in an infeasible
            * branch, or that the permission amount to consume was zero.
@@ -97,8 +97,8 @@ object chunkSupporter extends ChunkSupportRules {
            */
           val fresh = v2.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
-          Q(s3, h2, Some(fresh), consumedChunks, v2)
-        case None => Q(s2, h2, None, consumedChunks, v2)
+          Q(s3, h2, Some(fresh), v2)
+        case None => Q(s2, h2, None, v2)
       })
   }
 
@@ -113,22 +113,23 @@ object chunkSupporter extends ChunkSupportRules {
                        ve: VerificationError,
                        v: Verifier,
                        assumptionType: AssumptionType)
-                      (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
+                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                       : VerificationResult = {
+
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, "chunk consume in package")
       magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _, assumptionType))((s1, optCh, v1) =>
-        if (returnSnap){ // TODO ake: check that optCh is indeed the consumed chunks
-          Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), optCh, v1)
+        if (returnSnap){
+          Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1)
         } else {
-          Q(s1, h, None, optCh, v1)
+          Q(s1, h, None, v1)
         })
     } else {
-      executionFlowController.tryOrFail3[Heap, Option[Term], Iterable[Chunk]](s.copy(h = h), v)((s1, v1, QS) =>
+      executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
         if (s1.moreCompleteExhale) {
-          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1, assumptionType)((s2, h2, snap2, consumedChunks, v2) => {
-            QS(s2.copy(h = s.h), h2, snap2, consumedChunks, v2)
+          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1, assumptionType)((s2, h2, snap2, v2) => {
+            QS(s2.copy(h = s.h), h2, snap2, v2)
           })
         } else {
           consumeGreedy(s1, s1.h, id, args, perms, permsExp, v1, assumptionType) match {
@@ -142,10 +143,10 @@ object chunkSupporter extends ChunkSupportRules {
                   }
                 case _ => None
               }
-              QS(s2.copy(h = s.h), h2, snap, optCh2.toList, v1)
+              QS(s2.copy(h = s.h), h2, snap, v1)
             case (_, s2, h2, _) if v1.decider.checkSmoke(isAssert=true, assumptionType) =>
               if(Verifier.config.enableAssumptionAnalysis())
-                QS(s2.copy(h = s.h), h2, None, List.empty, v1)
+                QS(s2.copy(h = s.h), h2, None, v1)
               else
                 Success() // TODO: Mark branch as dead?
             case _ =>
@@ -165,6 +166,7 @@ object chunkSupporter extends ChunkSupportRules {
                             v: Verifier,
                             assumptionType: AssumptionType)
                            : (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk]) = {
+
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
 
     def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap): Unit = {

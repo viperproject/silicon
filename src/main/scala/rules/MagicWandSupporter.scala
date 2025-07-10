@@ -332,7 +332,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args,
             Option.when(withExp)(bodyVars), FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program, v4, assumptionType, isExhale=false)
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
-          // TODO ake: conditionalizedWithAnalysis?
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), (conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp))), v4)
           Success()
         })
@@ -340,7 +339,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
         this.createChunk(s4, wand, wandSnapshot, pve, v3, assumptionType)((s5, ch, v4) => {
           val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark).definitionsOnly
           // Partition path conditions into a set which include the freshSnapRoot and those which do not
-          // TODO conditionalizedWithAnalysis?
           val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
           val pcsWithoutExp = Option.when(withExp)(filterDebugExpsWithoutSnapshot(conservedPcs.flatMap(pcs => pcs.conditionalizedExp), freshSnapRoot))
           // For all path conditions which include the freshSnapRoot, add those as part of the definition of the MWSF in the same forall quantifier
@@ -410,7 +408,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
             wand.right, true, pve, proofScriptVerifier
-          )((s3, snapRhs, consumedChunks, v3) => { // TODO ake: what to do with consumedChunks?
+          )((s3, snapRhs, v3) => {
 
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, assumptionType)
           })
@@ -471,9 +469,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
-    consume(s, wand, true, pve, v)((s1, snapWand, consumedChunksWand, v1) => {
+    consume(s, wand, true, pve, v)((s1, snapWand, v1) => {
       // Consume the wand's LHS "A".
-      consume(s1, wand.left, true, pve, v1)((s2, snapLhs, consumedChunksLeft, v2) => {
+      consume(s1, wand.left, true, pve, v1)((s2, snapLhs, v2) => {
         /* It is assumed that snap and MagicWandSnapshot.abstractLhs are structurally the same.
          * Equating the two snapshots is sound iff a wand is applied only once.
          * The old solution in this case did use this assumption:

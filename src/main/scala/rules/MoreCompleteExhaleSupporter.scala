@@ -238,7 +238,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       ve: VerificationError,
                       v: Verifier,
                       assumptionType: AssumptionType=AssumptionType.Implicit)
-                     (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
+                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
     if (!s.assertReadAccessOnly)
@@ -258,7 +258,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                ve: VerificationError,
                                                v: Verifier,
                                                assumptionType: AssumptionType)
-                                              (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
+                                              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                               : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
@@ -268,7 +268,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
         v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum)), assumptionType) {
           case true =>
-            Q(s1, h, Some(snap), relevantChunks, v1)
+            Q(s1, h, Some(snap), v1)
           case false =>
             createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
         })
@@ -276,7 +276,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
       v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum)), assumptionType) {
         case true =>
-          Q(s1, h, None, relevantChunks, v)
+          Q(s1, h, None, v)
         case false =>
           createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
       }
@@ -294,7 +294,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     ve: VerificationError,
                                     v: Verifier,
                                     assumptionType: AssumptionType)
-                                   (Q: (State, Heap, Option[Term], Iterable[Chunk], Verifier) => VerificationResult)
+                                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                    : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
@@ -308,13 +308,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
       v.decider.assert(perms === NoPerm, assumptionType) {
-        case true => Q(s, h, None, Seq.empty, v)
+        case true => Q(s, h, None, v)
         case false => createFailure(ve, v, s, perms === NoPerm, permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT)))
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
         actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, assumptionType)((s1, updatedChunks, optSnap, v2) => {
-          Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, updatedChunks, v2) // TODO ake: updatedChunks != consumedChunks
+          Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)
         })
       } else {
         var pNeeded = perms
@@ -322,7 +322,6 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         var pSum: Term = NoPerm
         var pSumExp: Option[ast.Exp] = permsExp.map(pe => ast.NoPerm()(pe.pos, pe.info, pe.errT))
         val newChunks = ListBuffer[NonQuantifiedChunk]()
-        val consumedChunks = ListBuffer[NonQuantifiedChunk]()
         var moreNeeded = true
 
         val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v).filter(c =>
@@ -375,7 +374,6 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), AssumptionType.Internal)) {
               newChunks.append(newChunk)
             }
-            consumedChunks.append(ch)
 
             moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout(), AssumptionType.Internal)
           } else {
@@ -406,24 +404,23 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
               Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
             })
           if (!moreNeeded) {
-            Q(s1, newHeap, condSnap, consumedChunks, v1)
+            Q(s1, newHeap, condSnap, v1)
           } else {
-            val assertExp = pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT))
             v1.decider.assert(pNeeded === NoPerm, assumptionType) {
               case true =>
-                Q(s1, newHeap, condSnap, consumedChunks, v1)
+                Q(s1, newHeap, condSnap, v1)
               case false =>
-                createFailure(ve, v1, s1, pNeeded === NoPerm, assertExp)
+                createFailure(ve, v1, s1, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
             }
           }
         })
         } else {
           if (!moreNeeded) {
-            Q(s0, newHeap, None, consumedChunks, v)
+            Q(s0, newHeap, None, v)
           } else {
             v.decider.assert(pNeeded === NoPerm, assumptionType) {
               case true =>
-                Q(s0, newHeap, None, consumedChunks, v)
+                Q(s0, newHeap, None, v)
               case false =>
                 createFailure(ve, v, s0, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
             }
@@ -509,7 +506,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Internal)
         if (returnSnap) {
           summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, v1) =>
-            Q(s2, updatedChunks, Some(snap), v1)) // TODO ake: updatedChunks are the new chunks, not the old consumed ones!
+            Q(s2, updatedChunks, Some(snap), v1))
         } else {
           Q(s1, updatedChunks, None, v)
         }

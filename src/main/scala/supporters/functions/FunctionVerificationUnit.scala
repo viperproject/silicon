@@ -148,7 +148,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     def verify(sInit: State, function: ast.Function): Seq[VerificationResult] = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + ("-" * 10)
-
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
@@ -272,7 +271,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.Implicit)
-              consumes(s2, posts, false, postconditionViolated, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Postcondition))((s3, _, _, _) => {
+              consumes(s2, posts, false, postconditionViolated, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Postcondition))((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

@@ -75,7 +75,7 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v)((s1a, snap, consumedChunks, v1) => { // TODO ake: add edges from consumedChunks
+    consume(s1, body, true, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
@@ -142,6 +142,7 @@ object predicateSupporter extends PredicateSupportRules {
              assumptionType: AssumptionType = AssumptionType.Rewrite)
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
+
     val tArgsWithE = if (withExp)
       tArgs zip eArgs.get.map(Some(_))
     else
@@ -165,10 +166,10 @@ object predicateSupporter extends PredicateSupportRules {
         None,
         pve,
         v
-      )((s2, h2, snap, consumedChunks, v1) => {
+      )((s2, h2, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap.get), body, pve, v1, assumptionType)((s4, v2) => { // TODO ake: add edge from consumedChunks to new assumptions
+        produce(s3, toSf(snap.get), body, pve, v1, assumptionType)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
@@ -185,7 +186,7 @@ object predicateSupporter extends PredicateSupportRules {
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description)((s2, h1, snap, consumedChunks, v1) => { // TODO ake: add edges
+      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap.get), body, pve, v1, assumptionType)((s4, v2) => {

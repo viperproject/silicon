@@ -936,7 +936,7 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, consumedChunks, v3) => { // TODO ake: add edges from consumedChunks
+            consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
@@ -975,7 +975,7 @@ object evaluator extends EvaluationRules {
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, Option.when(withExp)(eArgs), v1))((s6, r, v4)
               => Q(s6, r._1, r._2, v4))})
 
-      case u @ ast.Unfolding(
+      case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
 
@@ -998,7 +998,7 @@ object evaluator extends EvaluationRules {
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(s4, acc, true, pve, v3)((s5, snap, consumedChunks, v4) => {
+                    consume(s4, acc, true, pve, v3)((s5, snap, v4) => {
                       val fr6 =
                         s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap.get)
                                            .changeDepthBy(+1)
@@ -1020,7 +1020,7 @@ object evaluator extends EvaluationRules {
                       val argsPairs: List[(Term, Option[ast.Exp])] = if (withExp) tArgs zip eArgsNew.get.map(Some(_)) else tArgs zip Seq.fill(tArgs.size)(None)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg).setConstrainable(s7.constrainableARPs, false)
-                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => { // TODO ake: add edges from consumedChunks
+                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(g = s7.g,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,
@@ -1052,7 +1052,7 @@ object evaluator extends EvaluationRules {
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
-        consume(s, eAss, false, pve, v)((s2, _, consumedChunks, v2) => { // TODO ake: what to do with chunks here?
+        consume(s, eAss, false, pve, v)((s2, _, v2) => {
           val s3 = s2.copy(g = s.g, h = s.h)
           eval(s3, eIn, pve, v2)(Q)
         })
@@ -1063,7 +1063,7 @@ object evaluator extends EvaluationRules {
         Q(s1, t, e0New.map(e0p => ast.SeqContains(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
         /* Note the reversed order of the arguments! */
 
-      case si @ ast.SeqIndex(e0, e1) =>
+      case ast.SeqIndex(e0, e1) =>
         evals2(s, Seq(e0, e1), Nil, _ => pve, v)({case (s1, Seq(t0, t1), esNew, v1) =>
           val eNew = esNew.map(es => ast.SeqIndex(es.head, es(1))(e.pos, e.info, e.errT))
           if (s1.triggerExp) {
