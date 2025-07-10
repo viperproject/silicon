@@ -46,8 +46,7 @@ trait RecordedPathConditions {
                  triggers: Seq[Trigger],
                  name: String,
                  isGlobal: Boolean,
-                 ignore: Term /* TODO: Hack, implement properly */,
-                 v: Verifier)
+                 ignore: Term /* TODO: Hack, implement properly */)
                 : (Seq[Term], Seq[Quantification])
 
   def quantifiedExp(quantifier: Quantifier,
@@ -334,8 +333,7 @@ private trait LayeredPathConditionStackLike {
                            triggers: Seq[Trigger],
                            name: String,
                            isGlobal: Boolean,
-                           ignore: Term,
-                           v: Verifier)
+                           ignore: Term)
                           : (Seq[Term], Seq[Quantification]) = {
 
     var globals = Vector.empty[Term]
@@ -344,8 +342,8 @@ private trait LayeredPathConditionStackLike {
     val ignores = ignore.topLevelConjuncts
 
     for (layer <- layers) {
-      val actualBranchCondition = layer.branchCondition.map(a => v.decider.wrapWithAssumptionAnalysisLabel(a, Set.empty, Set(a))).getOrElse(True)
-      val relevantNonGlobals = (layer.nonGlobalAssumptions -- ignores).map(a => v.decider.wrapWithAssumptionAnalysisLabel(a, Set.empty, Set(a)))
+      val actualBranchCondition = layer.branchCondition.getOrElse(True)
+      val relevantNonGlobals = layer.nonGlobalAssumptions -- ignores
       val (trueNonGlobals, additionalGlobals) = if (!actualBranchCondition.existsDefined{ case t if qvars.contains(t) => }) {
         // The branch condition is independent of all quantified variables
         // Any assumptions that are also independent of all quantified variables can be treated as global assumptions.
@@ -355,7 +353,7 @@ private trait LayeredPathConditionStackLike {
         (relevantNonGlobals, Seq())
       }
 
-      globals ++= layer.globalAssumptions.map(a => v.decider.wrapWithAssumptionAnalysisLabel(a, Set.empty, Set(a))) ++ additionalGlobals
+      globals ++= layer.globalAssumptions ++ additionalGlobals
 
       nonGlobals :+=
         Quantification(
@@ -435,11 +433,10 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
                  triggers: Seq[Trigger],
                  name: String,
                  isGlobal: Boolean,
-                 ignore: Term,
-                 v: Verifier)
+                 ignore: Term)
                 : (Seq[Term], Seq[Quantification]) = {
 
-    quantified(from, quantifier, qvars, triggers, name, isGlobal, ignore, v)
+    quantified(from, quantifier, qvars, triggers, name, isGlobal, ignore)
   }
 
   def quantifiedExp(quantifier: Quantifier,
@@ -607,11 +604,10 @@ private[decider] class LayeredPathConditionStack
                  triggers: Seq[Trigger],
                  name: String,
                  isGlobal: Boolean,
-                 ignore: Term,
-                 v: Verifier)
+                 ignore: Term)
                 : (Seq[Term], Seq[Quantification]) = {
 
-    quantified(layers, quantifier, qvars, triggers, name, isGlobal, ignore, v)
+    quantified(layers, quantifier, qvars, triggers, name, isGlobal, ignore)
   }
 
   def quantifiedExp(quantifier: Quantifier,

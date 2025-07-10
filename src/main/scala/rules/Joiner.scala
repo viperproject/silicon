@@ -99,15 +99,12 @@ object joiner extends JoiningRules {
         var feasibleBranchesExpNew: Option[List[ast.Exp]] = Option.when(withExp)(Nil)
 
         entries foreach (entry => {
-          val (pcs, pcsDependencies) = entry.pathConditions.conditionalizedWithAnalysis
+          val pcs = entry.pathConditions.conditionalized
           val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          val pcsLabelled = pcs map (pcsEntry => v.decider.wrapWithAssumptionAnalysisLabel(pcsEntry, Set.empty, pcsDependencies))
-          v.decider.assume(pcsLabelled, pcsExp, comment, enforceAssumption = false, assumptionType=AssumptionType.Internal)
-          val branchConditions = entry.pathConditions.branchConditions
-          val branchConditionsLabelled = v.decider.wrapWithAssumptionAnalysisLabel(And(branchConditions), Set.empty, branchConditions)
-          feasibleBranches = branchConditionsLabelled :: feasibleBranches
+          v.decider.assume(pcs, Option.when(withExp)(DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp.get))), enforceAssumption = false, AssumptionType.Internal)
+          feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
           feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
           feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)
         })

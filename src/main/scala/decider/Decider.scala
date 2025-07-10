@@ -64,7 +64,6 @@ trait Decider {
   def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
   def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
   def wrapWithAssumptionAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
-  def wrapPermissionWithAssumptionAnalysisLabel(perm: Term, sourceChunks: Iterable[Chunk]): Term
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit
   def assume(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit
@@ -345,13 +344,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
       labelNode.map(n => Implies(n.term, term)).getOrElse(term)
-    }
-
-    def wrapPermissionWithAssumptionAnalysisLabel(perm: Term, sourceChunks: Iterable[Chunk]): Term = {
-      if(!Verifier.config.enableAssumptionAnalysis()) return perm
-
-      val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, Set.empty)
-      labelNode.map(n => Ite(n.term, perm, NoPerm)).getOrElse(perm)
     }
 
     def addDebugExp(e: DebugExp): Unit = {

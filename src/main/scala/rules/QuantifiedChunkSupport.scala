@@ -551,18 +551,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         Forall(
           codomainQVar,
-          v.decider.wrapWithAssumptionAnalysisLabel(Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)), Set(chunk)),
+          Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
       })
 
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
-      val chunkTriggers = relevantChunks map (chunk => v.decider.wrapWithAssumptionAnalysisLabel(FieldTrigger(field.name, chunk.snapshotMap, codomainQVar), Set(chunk)))
       val resourceTriggerDefinition =
         Forall(
           codomainQVar,
-          And(chunkTriggers),
+          And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
           Trigger(Lookup(field.name, sm, codomainQVar)),
           s"qp.fvfResTrgDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
@@ -639,9 +638,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             transformedOptSmDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
             IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
 
-        val term = v.decider.wrapWithAssumptionAnalysisLabel(Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))), Set(chunk))
         Forall(
-          qvar, term,
+          qvar,
+          Implies(effectiveCondition, And(snapshotNotUnit, BuiltinEquals(lookupSummary, lookupChunk))),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.psmValDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
@@ -652,12 +651,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case r => r
     }
     val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
-
-      val chunkTriggers = relevantChunks map (chunk => v.decider.wrapWithAssumptionAnalysisLabel(ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program), Set(chunk)))
       val resourceTriggerDefinition =
         Forall(
           qvar,
-          And(chunkTriggers),
+          And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program))),
           Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)),
           s"qp.psmResTrgDef${v.counter(this).next()}",
           isGlobal = relevantQvars.isEmpty)
@@ -693,11 +690,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val permSummary = ResourcePermissionLookup(resource, pm, codomainQVars, s.program)
 
-    val chunkPerms = relevantChunks map (chunk => chunk.perm)
     val valueDefinitions =
       Forall(
         codomainQVars,
-        permSummary === BigPermSum(chunkPerms),
+        permSummary === BigPermSum(relevantChunks map (_.perm)),
         Trigger(permSummary),
         s"qp.resPrmSumDef${v.counter(this).next()}",
         isGlobal = true)
@@ -711,11 +707,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
       // TODO: Quantify over snapshot if resource is predicate.
       //       Also check other places where a similar quantifier is constructed.
-      val chunkTriggerDefs = relevantChunks map (chunk => v.decider.wrapWithAssumptionAnalysisLabel(ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program), Set(chunk)))
       val resourceTriggerDefinition =
       Forall(
         codomainQVars,
-        And(resourceTriggerFunction +: chunkTriggerDefs),
+        And(resourceTriggerFunction +:
+          relevantChunks.map(chunk =>
+            ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program))),
         Trigger(ResourcePermissionLookup(resource, pm, codomainQVars, s.program)),
         s"qp.resTrgDef${v.counter(this).next()}",
         isGlobal = true)
@@ -836,9 +833,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             quantifiedChunkSupporter.summarise(
               s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
           val smDef = SnapshotMapDefinition(resource, sm, valueDefs, optDomainDefinition.toSeq)
-
-          val chunkPerms = relevantChunks map (chunk => chunk.perm)
-          val totalPermissions = BigPermSum(chunkPerms)
+          val totalPermissions = BigPermSum(relevantChunks.map(_.perm))
 
           if (Verifier.config.disableValueMapCaching()) {
             (smDef, s.smCache)
@@ -1046,9 +1041,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
         val comment = "Check receiver injectivity"
         v.decider.prover.comment(comment)
-        val debugExp = Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true))
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), debugExp, AssumptionType.Internal)
-        v.decider.assert(receiverInjectivityCheck, timeout=Verifier.config.checkTimeout.toOption) {
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
+          Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), AssumptionType.Internal)
+        v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
@@ -1155,7 +1150,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
-    pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.PathCondition))
+    pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), assumptionType))
 
     val resourceIdentifier = resource match {
       case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
@@ -1304,9 +1299,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
-        val debugExp = Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true))
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), debugExp, AssumptionType.Internal)
-        v.decider.assert(receiverInjectivityCheck, assumptionType, Verifier.config.checkTimeout.toOption) {
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), AssumptionType.Internal)
+        v.decider.assert(receiverInjectivityCheck, assumptionType) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)

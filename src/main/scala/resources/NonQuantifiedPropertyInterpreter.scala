@@ -121,8 +121,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                                     info: Info): (Term, Option[ast.Exp]) = {
     val conditionTerm = buildPathCondition(condition, info)._1
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
-      val (term, exp) = buildPathCondition(thenDo, info)
-      (verifier.decider.wrapWithAssumptionAnalysisLabel(term, Set.empty, Set(conditionTerm)), exp)
+      buildPathCondition(thenDo, info)
     } else {
       buildPathCondition(otherwise, info)
     }
@@ -156,8 +155,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
         // check that only distinct tuples are handled
         // TODO: Is it possible to get this behavior without having to check every tuple?
         if (!info.pm.values.exists(chunk eq _)) {
-          val (resTerm, resExp) = builder(chunk)
-          Some((verifier.decider.wrapWithAssumptionAnalysisLabel(resTerm, Set(chunk)), resExp))
+          Some(builder(chunk))
         } else {
           None
         }

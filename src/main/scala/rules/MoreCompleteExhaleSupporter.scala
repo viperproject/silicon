@@ -105,7 +105,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
       summarisingSnapshotDefinitions :+=
-        v.decider.wrapWithAssumptionAnalysisLabel(Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap), Set(ch))
+        Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
     })
 
     val taggedSummarisingSnapshot =
@@ -217,15 +217,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         createFailure(ve, v, s, False, "branch is dead")
       }
     } else {
-      summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) => {
-        val assertExp = permSumExp.map(e => IsPositive(e)(e.pos, e.info, e.errT))
+      summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
         v.decider.assert(IsPositive(permSum), assumptionType) {
           case true =>
             Q(s1, snap, v1)
           case false =>
-            createFailure(ve, v, s1, IsPositive(permSum), assertExp)
-        }
-      })
+            createFailure(ve, v, s1, IsPositive(permSum), permSumExp.map(IsPositive(_)()))
+        })
     }
   }
 
@@ -308,11 +306,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     }
 
     if (relevantChunks.isEmpty) {
-      val assertExp = permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT))
       // if no permission is exhaled, return none
       v.decider.assert(perms === NoPerm, assumptionType) {
         case true => Q(s, h, None, Seq.empty, v)
-        case false => createFailure(ve, v, s, perms === NoPerm, assertExp)
+        case false => createFailure(ve, v, s, perms === NoPerm, permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT)))
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
@@ -424,12 +421,11 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s0, newHeap, None, consumedChunks, v)
           } else {
-            val assertExp = pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT))
             v.decider.assert(pNeeded === NoPerm, assumptionType) {
               case true =>
                 Q(s0, newHeap, None, consumedChunks, v)
               case false =>
-                createFailure(ve, v, s0, pNeeded === NoPerm, assertExp)
+                createFailure(ve, v, s0, pNeeded === NoPerm, pNeededExp.map(pn => ast.EqCmp(pn, ast.NoPerm()())(pn.pos, pn.info, pn.errT)))
             }
           }
         }
@@ -519,7 +515,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         }
       case false =>
         v.decider.finishDebugSubExp(s"consume permissions for ${resource.toString()}")
-        createFailure(ve, v, s, totalPermTaken !== NoPerm, totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())(tpt.pos, tpt.info, tpt.errT)))
+        createFailure(ve, v, s, totalPermTaken !== NoPerm, totalPermTakenExp.map(tpt => ast.NeCmp(tpt, ast.NoPerm()())()))
     }
   }
 

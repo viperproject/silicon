@@ -101,16 +101,12 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          v.decider.assumptionAnalyzer.disableTransitiveEdges()
-          pathCond.foreach(p => v.decider.assume(v.decider.wrapWithAssumptionAnalysisLabel(p._1, Set(ch)), Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
-          v.decider.assumptionAnalyzer.enableTransitiveEdges()
+          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
           val pathCond = interpreter.buildPathConditionsForResource(id, desc.delayedProperties(s.mayAssumeUpperBounds))
-          v.decider.assumptionAnalyzer.disableTransitiveEdges()
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
-          v.decider.assumptionAnalyzer.enableTransitiveEdges()
         }
 
         v.symbExLog.closeScope(sepIdentifier)
