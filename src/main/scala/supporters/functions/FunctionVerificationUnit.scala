@@ -21,7 +21,9 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -161,7 +163,15 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      val res = Seq(handleFunction(sInit, function))
+      val heap = if (Verifier.config.maskHeapMode()) {
+        val fieldChunks = sInit.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, DummyHeap(HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, DummyHeap(PredHeapSort)))
+        Heap(fieldChunks ++ predChunks)
+      } else {
+        sInit.h
+      }
+
+      val res = Seq(handleFunction(sInit.copy(h = heap), function))
 
       v.decider.resetProverOptions()
       symbExLog.closeMemberScope()

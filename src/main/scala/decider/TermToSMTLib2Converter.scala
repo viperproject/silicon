@@ -114,6 +114,8 @@ class TermToSMTLib2Converter
   }
 
   protected def render(term: Term): Cont = term match {
+    case hvr: HasVarRepr if hvr.varRepr.isDefined => render(hvr.varRepr.get)
+
     case lit: Literal => render(lit)
 
     case Ite(t0, t1, t2) =>

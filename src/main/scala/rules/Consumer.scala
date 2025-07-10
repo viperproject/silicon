@@ -269,7 +269,7 @@ object consumer extends ConsumptionRules {
             }),
             (s2, v2) => {
               v2.symbExLog.closeScope(uidImplies)
-              Q(s2, h, if (returnSnap) Some(Unit) else None, v2)
+              Q(s2, h, if (returnSnap) Some(unitTerm()) else None, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
@@ -365,7 +365,7 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(resAcc),
               insufficientPermissionReason = insuffReason,
               v1)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(unitTerm()) else None, v1)
         }
 
       case let: ast.Let if !let.isPure =>
@@ -406,7 +406,7 @@ object consumer extends ConsumptionRules {
               })
               case None =>
                 v2.symbExLog.closeScope(scopeUid)
-                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (h, if (returnSnap) Some(Unit) else None), v2)
+                QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (h, if (returnSnap) Some(unitTerm()) else None), v2)
             })
       })(entries => {
         val s2 = entries match {
@@ -478,7 +478,14 @@ object consumer extends ConsumptionRules {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
-      Q(s5, if (returnSnap) Some(Unit) else None, v4)
+      Q(s5, if (returnSnap) Some(unitTerm()) else None, v4)
     })
+  }
+
+  private def unitTerm(): Term = {
+    if (Verifier.config.maskHeapMode())
+      FakeMaskMapTerm(immutable.ListMap[Any, Term]())
+    else
+      Unit
   }
 }

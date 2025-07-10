@@ -92,8 +92,8 @@ object predicateSupporter extends PredicateSupportRules {
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
       val snapToProduce = if (Verifier.config.maskHeapMode()) {
-        val tmp = HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap.get, PredHeapSort),
-          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate)
+        val tmp = v1.decider.createAlias(HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap.get, PredHeapSort),
+          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate), s2)
         FakeMaskMapTerm(immutable.ListMap(predicate -> SnapToHeap(tmp, predicate, PredHeapSort)))
       } else {
         snap.get.convert(s2.predicateSnapMap(predicate))
@@ -136,7 +136,7 @@ object predicateSupporter extends PredicateSupportRules {
         val predSnap = packedSnap match {
           case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
           case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
-          case _ => HeapLookup(SnapToHeap(snap.get, predicate, PredHeapSort), toSnapTree(tArgs))
+          case _ => HeapLookup(v1.decider.createAlias(SnapToHeap(snap.get, predicate, PredHeapSort), s3), toSnapTree(tArgs))
         }
         (_: Sort, _: Verifier) => predSnap
       } else {

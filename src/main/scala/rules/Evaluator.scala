@@ -751,7 +751,7 @@ object evaluator extends EvaluationRules {
                         val predSnap = snap.get match {
                           case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
                           case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
-                          case _ => HeapLookup(SnapToHeap(snap.get, predicate, PredHeapSort), toSnapTree(tArgs))
+                          case _ => HeapLookup(v4.decider.createAlias(SnapToHeap(snap.get, predicate, PredHeapSort), s7a), toSnapTree(tArgs))
                         }
                         (_: Sort, _: Verifier) => predSnap
                       } else toSf(snap.get)

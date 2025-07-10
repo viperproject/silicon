@@ -105,11 +105,20 @@ class FunctionData(val programFunction: ast.Function,
   }
 
   val arguments = snapArgs ++ formalArgs.values
+  val argumentsDuringFunctionVerification = Seq(`?s`) ++ formalArgs.values
   val argumentExps =
-    if (Verifier.config.enableDebugging())
+    if (Verifier.config.enableDebugging()) {
+      // TODO: adapt
       Seq(Some(ast.LocalVar(`?s`.id.name, ast.InternalType)())) ++ formalArgs.keys.map(Some(_))
-    else
+    } else {
+      Seq.fill(snapArgs.size + formalArgs.size)(None)
+    }
+  val argumentExpsDuringFunctionVerification =
+    if (Verifier.config.enableDebugging()) {
+      Seq(Some(ast.LocalVar(`?s`.id.name, ast.InternalType)())) ++ formalArgs.keys.map(Some(_))
+    } else {
       Seq.fill(1 + formalArgs.size)(None)
+    }
 
   val functionApplication = App(function, snapArgs ++ formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, snapArgs ++ formalArgs.values.toSeq)
