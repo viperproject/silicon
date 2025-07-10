@@ -1,76 +1,76 @@
 field f: Int
 
 method sum(n: Int) returns (res: Int)
-  requires @dependency()(0 <= n)
+  requires @dependency("Explicit")(0 <= n)
   ensures  res == n * (n + 1) / 2
 {
-  @dependency()
+  @dependency("Implicit")
   res := 0
   var i: Int
-  @dependency()
+  @dependency("Implicit")
   i := 0;
-  while(@dependency()(i <= n))
-    invariant @dependency()(i <= (n + 1))
-    invariant @dependency()(res == (i - 1) * i / 2)
+  while(@dependency("PathCondition")(i <= n))
+    invariant @dependency("LoopInvariant")(i <= (n + 1))
+    invariant @dependency("LoopInvariant")(res == (i - 1) * i / 2)
   {
-    @dependency()
+    @dependency("Implicit")
     res := res + i
-    @dependency()
+    @dependency("Implicit")
     i := i + 1
   }
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert res == n * (n + 1) / 2
 }
 
 
 method sumPerm1(n: Int, res: Ref)
-  requires @dependency()(acc(res.f))
-  requires @dependency()(0 <= n)
+  requires @dependency("Explicit")(acc(res.f))
+  requires @dependency("Explicit")(0 <= n)
   ensures acc(res.f)
   ensures  res.f == n * (n + 1) / 2
 {
-  @dependency()
+  @dependency("Implicit")
   res.f := 0
   var i: Int
-  @dependency()
+  @dependency("Implicit")
   i := 0;
-  while(@dependency()(i <= n))
-    invariant @dependency()(acc(res.f))
-    invariant @dependency()(i <= (n + 1))
-    invariant @dependency()(res.f == (i - 1) * i / 2)
+  while(@dependency("PathCondition")(i <= n))
+    invariant @dependency("LoopInvariant")(acc(res.f))
+    invariant @dependency("LoopInvariant")(i <= (n + 1))
+    invariant @dependency("LoopInvariant")(res.f == (i - 1) * i / 2)
   {
-    @dependency()
+    @dependency("Implicit")
     res.f := res.f + i
-    @dependency()
+    @dependency("Implicit")
     i := i + 1
   }
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert res.f == n * (n + 1) / 2
 }
 
 method sumPerm2(n: Int, res: Ref)
-  requires @dependency()(acc(res.f))
-  requires @irrelevant()(0 <= n)
+  requires @dependency("Explicit")(acc(res.f))
+  requires @irrelevant("Explicit")(0 <= n)
   ensures acc(res.f)
 {
-  @irrelevant()
+  @irrelevant("Implicit")
   res.f := 0
   var i: Int
-  @irrelevant()
+  @irrelevant("Implicit")
   i := 0;
-  while(@irrelevant()(i <= n))
-    invariant @dependency()(acc(res.f))
-    invariant @irrelevant()(i <= (n + 1))
-    invariant @irrelevant()(res.f == (i - 1) * i / 2)
+  while(@irrelevant("PathCondition")(i <= n))
+    invariant @dependency("LoopInvariant")(acc(res.f))
+    invariant @irrelevant("LoopInvariant")(i <= (n + 1))
+    invariant @irrelevant("LoopInvariant")(res.f == (i - 1) * i / 2)
   {
-    @irrelevant()
+    @irrelevant("Implicit")
     res.f := res.f + i
-    @irrelevant()
+    @irrelevant("Implicit")
     i := i + 1
   }
 
-  @testAssertion() // only check permission flow
+  @testAssertion("Implicit") // only check permission flow
   res.f := 5
 }

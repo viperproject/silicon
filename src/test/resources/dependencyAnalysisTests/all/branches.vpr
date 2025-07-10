@@ -2,27 +2,27 @@ method branches1(a: Int, b: Int)
 {
   var n:Int, c: Bool
 
-  @dependency()
+  @dependency("Explicit")
   assume 0 < a
-  @dependency()
+  @dependency("Explicit")
   assume b > 4
 
-  @irrelevant()
+  @irrelevant("Explicit")
   assume a < 100
-  @irrelevant()
+  @irrelevant("Explicit")
   assume b < 50
-  @irrelevant()
+  @irrelevant("Explicit")
   assume c ==> a > 5
 
   if(c){
-    @dependency()
+    @dependency("Implicit")
     n := a + 1
   }else{
-    @dependency()
+    @dependency("Implicit")
     n := b + 1
   }
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert n > 1
 }
 
@@ -30,23 +30,23 @@ method branches2(a: Int, b: Int)
 {
   var n:Int, c: Bool
 
-  @dependency()
+  @dependency("Explicit")
   assume 0 < a
-  @irrelevant()
+  @irrelevant("Explicit")
   assume a < 100
-  @irrelevant()
+  @irrelevant("Explicit")
   assume a < b
-  @irrelevant()
+  @irrelevant("Explicit")
   assume b < 50
 
   var x: Int
   if(a >= n){
-    @irrelevant()
+    @irrelevant("Implicit")
     x := a + b
   }else{
-    @dependency()
+    @dependency("Implicit")
     x := n + 1
-    @testAssertion()
+    @testAssertion("Explicit")
     assert x > 1
   }
 }
@@ -55,13 +55,13 @@ method branches3(a: Int, b: Int)
 {
   var n:Int, c: Bool
 
-  @irrelevant()
+  @irrelevant("Explicit")
   assume 0 < a
-  @irrelevant()
+  @irrelevant("Explicit")
   assume a < 100
-  @dependency()
+  @dependency("Explicit")
   assume 0 < b
-  @irrelevant()
+  @irrelevant("Explicit")
   assume b < 50
 
   if(c){
@@ -72,14 +72,14 @@ method branches3(a: Int, b: Int)
 
   var x: Int
   if(a >= n){
-    @dependency()
+    @dependency("Implicit")
     x := a + b
   }else{
-    @dependency()
+    @dependency("Implicit")
     x := n + 1
   }
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert x > n
 }
 
@@ -88,33 +88,33 @@ method nestedBranches1(a: Int, b: Int)
 {
   var n:Int, c: Bool
 
-  @irrelevant()
+  @irrelevant("Explicit")
   assume 0 < a
-  @irrelevant()
+  @irrelevant("Explicit")
   assume a < 100
-  @dependency()
+  @dependency("Explicit")
   assume 0 < b
-  @irrelevant()
+  @irrelevant("Explicit")
   assume b < 50
-  @irrelevant()
+  @irrelevant("Explicit")
   assume c ==> a > 5
 
   if(c){
     if(a > b){
-      @dependency()
+      @dependency("Implicit")
       n := a - b
     }else{
-      @dependency()
+      @dependency("Implicit")
       n := a + b
     }
-    @dependency()
+    @dependency("Implicit")
     n := n - 1
   }else{
-    @dependency()
+    @dependency("Implicit")
     n := a + b
   }
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert n <= a + b
   assert c ==> n < a + b
 }

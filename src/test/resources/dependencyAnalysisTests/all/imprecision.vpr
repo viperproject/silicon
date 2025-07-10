@@ -2,70 +2,84 @@ field f: Int
 
 
 method permTest(a: Ref, b: Ref, n: Int)
-    requires @dependency()(acc(a.f))
-    requires @irrelevant()(acc(b.f)) && @irrelevant()(b.f > 0)
+    requires @dependency("Explicit")(acc(a.f))
+    requires @irrelevant("Explicit")(acc(b.f)) && @irrelevant("Explicit")(b.f > 0)
 {
-    @dependency()
+    @dependency("Explicit")
     assume n > 0
-    @irrelevant()
+    @irrelevant("Implicit")
     a.f := b.f + 2
-    @dependency()
+    @dependency("Implicit")
     a.f := n
-    @testAssertion()
+    @testAssertion("Explicit")
     assert a.f >= 0
 }
 
 
 method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency()(|xs| > 5)
-  requires @irrelevant()(|ys| > 3)
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
 {
-  @dependency()
+  @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  //@irrelevant() // TODO ake
+  //@irrelevant("Explicit") // TODO ake
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert xs[0].f > 0
 }
 
 method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency()(|xs| > 5)
-  requires @irrelevant()(|ys| > 3)
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
 {
-  @dependency()
+  @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  // @irrelevant() // TODO ake
+  // @irrelevant("Explicit") // TODO ake
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert xs[0].f > 0
 }
 
 method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency()(|xs| > 5)
-  requires @irrelevant()(|ys| > 3)
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
 {
-  @dependency()
+  @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> acc(x.f) && x.f > 0)
-  @irrelevant()
+  @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> acc(y.f)
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert xs[0].f > 0
 }
 
 method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency()(|xs| > 5)
-  requires @irrelevant()(|ys| > 3)
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
 {
-  @dependency()
+  @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> acc(x.f)
-  @irrelevant()
+  @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> acc(y.f)
 
-  @irrelevant()
+  @irrelevant("Implicit")
   xs[0].f := ys[0].f + 2
-  @testAssertion()
+  @testAssertion("Implicit")
   xs[0].f := 2
+}
+
+method nonUniqueUnsatCore(x: Ref)
+    requires x != null ==> acc(x.f)
+{
+    var a: Int
+    if(x == null){
+        @irrelevant("Explicit")
+        inhale a >= 0
+    }
+    @dependency("Explicit")
+    inhale a >= 0
+    @testAssertion("Explicit")
+    assert a >= 0
 }

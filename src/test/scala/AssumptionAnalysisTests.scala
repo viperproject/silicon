@@ -20,16 +20,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val ignores: Seq[String] = Seq()
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
+    "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
-//    "dependencyAnalysisTests/quick",
-//    "examples/binary-search",
-    //      "examples/graph-copy",
-    //      "examples/graph-marking",
-//    "examples/max_array",
-//    "examples/quickselect",
-//    "examples/longest-common-prefix",
-//    "examples/tree-delete-min",
-//    "fromSilver"
+//    "dependencyAnalysisTests/quick"
   )
 
   val irrelevantKeyword = "irrelevant"
@@ -93,7 +86,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
     val result = frontend.verifier.verify(program)
     if(result.isInstanceOf[verifier.Failure]) {
-      cancel("Program does not verify. Skip test.")
+      cancel(f"Program does not verify. Skip test.\n$result")
       return
     }
 

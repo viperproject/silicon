@@ -12,36 +12,36 @@ method basicApply()
 {
     var x: Int
     var y: Int
-    @dependency()
+    @dependency("Explicit")
     inhale x > 0
-    @dependency()
+    @dependency("Explicit")
     inhale x > 0 --* y > 0
-    @dependency()
+    @dependency("Implicit")
     apply x > 0 --* y > 0
-    @testAssertion()
+    @testAssertion("Explicit")
     assert y > 0
 }
 
 
 method basicPackage(l: Ref) 
-  requires @dependency()(list(l))
+  requires @dependency("Explicit")(list(l))
   ensures list(l)
   {
-    @dependency()
+    @dependency("Implicit")
     unfold list(l)
     var tmp : Ref
-    @dependency()
+    @dependency("Implicit")
     tmp := l.next
 
-    @dependency()
+    @dependency("Implicit")
     package list(tmp) --* list(l)
     {
       fold list(l) // TODO ake
     }
 
-    @dependency()
+    @dependency("Implicit")
     apply list(tmp) --* list(l)
 
-    @testAssertion()
+    @testAssertion("Explicit")
     assert list(l)
 }

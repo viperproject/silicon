@@ -23,7 +23,7 @@ method appendList1(this: Ref, e: Int)
   @irrelevant()
   assume 0 <= this.elem && this.elem < 100
 
-  if (@irrelevant()(this.next == null)) { // TODO ake: node does not exist?
+  if (@irrelevant()(this.next == null)) {
     var n: Ref
 
     @dependency()
@@ -53,7 +53,7 @@ method appendList2(this: Ref, e: Int)
   @irrelevant()
   assume 0 <= this.elem && this.elem < 100
 
-  if (this.next == null) { // TODO ake: node does not exist
+  if (@dependency()(this.next == null)) {
     var n: Ref
 
     @irrelevant()
@@ -84,7 +84,7 @@ method appendListFull(this: Ref, e: Int)
   @irrelevant()
   assume 0 <= this.elem && this.elem < 100
 
-  if (this.next == null) {
+  if (@dependency()(this.next == null)) {
     var n: Ref
 
     @dependency()

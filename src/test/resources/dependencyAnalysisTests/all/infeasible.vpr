@@ -1,49 +1,49 @@
 field f: Int
 
 method infeasibleBranch1(a: Int, b: Int)
-    requires @dependency()(a > 0)
+    requires @dependency("Explicit")(a > 0)
 {
-    if(@dependency()(a < 0)){
-        @testAssertion()
+    if(@dependency("PathCondition")(a < 0)){
+        @testAssertion("Explicit")
         assert false
     }
 }
 
 method infeasibleBranch2(a: Int, b: Int)
-    requires @dependency()(a > 0)
+    requires @dependency("Explicit")(a > 0)
 {
     var res: Int
-    if(@dependency()(a < 0)){
-        @irrelevant()
+    if(@dependency("PathCondition")(a < 0)){
+        @irrelevant("Explicit")
         assume res < 0
     }else{
-        @dependency()
+        @dependency("Explicit")
         assume res > 0
     }
-    @testAssertion()
+    @testAssertion("Explicit")
     assert res > 0
 }
 
 
 method infeasibleBranchPerm(a: Ref, b: Ref)
-    requires @dependency()(acc(a.f, 1/2))
-    requires @dependency()(a.f > 0)
+    requires @dependency("Explicit")(acc(a.f, 1/2))
+    requires @dependency("Explicit")(a.f > 0)
 {
-     if(@dependency()(a.f < 0)){
-        @testAssertion()
+     if(@dependency("PathCondition")(a.f < 0)){
+        @testAssertion("Implicit")
         a.f := a.f + 1
      }
 }
 
 
 method infeasibleBranchNoPerm(a: Int, b: Ref)
-    requires @dependency()(a > 0)
+    requires @dependency("Explicit")(a > 0)
 {
     var res: Int
-    if(@dependency()(a < 0)){
-        @irrelevant()
+    if(@dependency("PathCondition")(a < 0)){
+        @irrelevant("Implicit")
         res := b.f + 1
-        @testAssertion()
+        @testAssertion("Explicit")
         assert false
     }
 }

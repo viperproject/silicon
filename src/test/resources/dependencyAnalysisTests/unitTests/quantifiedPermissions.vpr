@@ -1,102 +1,102 @@
 field f: Int
 
 method quantifiedPerm1(xs: Seq[Ref]) {
-  assume @dependency()(|xs| > 5)
-  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+  assume @dependency("Explicit")(|xs| > 5)
+  inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
   @testAssertion()
   xs[0].f := 10
 }
 
 method quantifiedPerm2(xs: Seq[Ref]) {
-  assume @dependency()(|xs| > 5)
-  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+  assume @dependency("Explicit")(|xs| > 5)
+  inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
   @testAssertion()
   xs[0].f := xs[1].f + xs[4].f
 }
 
 method quantifiedPerm3(xs: Seq[Ref], y: Ref) {
-  assume @dependency()(|xs| > 5)
-  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
-  inhale @dependency()(acc(y.f, wildcard))
+  assume @dependency("Explicit")(|xs| > 5)
+  inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
+  inhale @dependency("Explicit")(acc(y.f, wildcard))
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert xs[0] != y
 }
 
 method quantifiedExhalePartiallyTest(xs: Seq[Ref]) {
   var res: Int
   assume |xs| > 5
-  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+  inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
-  @testAssertion()
+  @testAssertion("Explicit")
   exhale forall x: Ref :: x in xs ==> acc(x.f, 1/2)
 }
 
 method quantifiedExhalePartially(xs: Seq[Ref]) {
   var res: Int
-  assume @dependency()(|xs| > 5)
-  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+  assume @dependency("Explicit")(|xs| > 5)
+  inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
   exhale forall x: Ref :: x in xs ==> acc(x.f, 1/2)
-  @testAssertion()
+  @testAssertion("Implicit")
   res := xs[1].f + 1
 }
 
 method quantifiedExhaleFully(xs: Seq[Ref]) {
-  assume @irrelevant()(|xs| > 5)
-  inhale @dependency()(forall x: Ref :: x in xs ==> acc(x.f))
+  assume @irrelevant("Explicit")(|xs| > 5)
+  inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
-  @testAssertion()
+  @testAssertion("Explicit")
   exhale forall x: Ref :: x in xs ==> acc(x.f)
 }
 
 method quantifiedPermWrite1(xs: Seq[Ref]) {
-  @dependency()
+  @dependency("Explicit")
   assume |xs| > 5
-  @dependency()
+  @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  @testAssertion()
+  @testAssertion("Implicit")
   xs[0].f := 0
 }
 
 method quantifiedPermWrite2(xs: Seq[Ref]) {
-  @dependency()
+  @dependency("Explicit")
   assume |xs| > 5
-  @dependency()
+  @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  @dependency()
+  @dependency("Implicit")
   xs[0].f := 0
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert xs[0].f == 0
 }
 
 method quantifiedPermWrite3(xs: Seq[Ref]) {
-  @dependency()
+  @dependency("Explicit")
   assume |xs| > 5
-  @dependency()
+  @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  @irrelevant()
+  @irrelevant("Implicit")
   xs[0].f := 0
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert xs[0] != xs[1] ==> xs[1].f > 0
 }
 
 method quantifiedPermWrite4(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency()(|xs| > 5)
-  requires @irrelevant()(|ys| > 3)
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
 {
-  @dependency()
+  @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> acc(x.f)
-  @irrelevant()
+  @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> acc(y.f)
 
-  @testAssertion()
+  @testAssertion("Implicit")
   xs[0].f := 2
 }

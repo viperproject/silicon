@@ -2,72 +2,72 @@
 method branch1(){
     var x: Int, y: Int
 
-    if(@dependency()(x > 0)){
-        @dependency()
+    if(@dependency("PathCondition")(x > 0)){
+        @dependency("Implicit")
         y := x + 1
     }else{
-        @dependency()
+        @dependency("Implicit")
         y := -x + 1
     }
 
-    @testAssertion()
+    @testAssertion("Explicit")
     assert y > 0
 }
 
 method branch2(){
     var x: Int, y: Int
 
-    if(@irrelevant()(x > 0)){
-        @dependency()
+    if(@irrelevant("PathCondition")(x > 0)){
+        @dependency("Explicit")
         assume y > 0
     }else{
-        @dependency()
+        @dependency("Explicit")
         assume y >= 10
     }
 
-    @testAssertion()
+    @testAssertion("Explicit")
     assert y > 0
 }
 
 method branch3(){
     var x: Int, y: Int
 
-    if(@dependency()(x > 0)){
-        @dependency()
+    if(@dependency("PathCondition")(x > 0)){
+        @dependency("Implicit")
         y := x + 1
     }else{
-        @irrelevant()
+        @irrelevant("Explicit")
         assume y >= 10
     }
 
-    @testAssertion()
+    @testAssertion("Explicit")
     assert x > 0 ==> y > 0
 }
 
 method branch4(){
     var x: Int, y: Int
 
-    if(@dependency()(x > 0)){
-        @irrelevant()
+    if(@dependency("PathCondition")(x > 0)){
+        @irrelevant("Implicit")
         y := x + 1
     }else{
-        @dependency()
+        @dependency("Implicit")
         y := 10 - x
-        @testAssertion()
+        @testAssertion("Explicit")
         assert y > 0
     }
 }
 
 method branch5(){
     var x: Int, y: Int
-    @dependency()
+    @dependency("Explicit")
     assume y > 0
 
-    if(@irrelevant()(x > 0)){
-        @irrelevant()
+    if(@irrelevant("PathCondition")(x > 0)){
+        @irrelevant("Implicit")
         y := x + 1
     }else{
-        @testAssertion()
+        @testAssertion("Explicit")
         assert y >= 0
     }
 }

@@ -9,65 +9,65 @@ method sum(x: Int, y: Int) returns(res: Int)
 
 method call1(){
     var x: Int, y: Int
-    @dependency()
+    @dependency("Explicit")
     assume x > 10
-    @dependency()
+    @dependency("Explicit")
     assume y > 0
 
-    @testAssertion()
+    @testAssertion("Implicit")
     x := sum(x, y)
 }
 
 method call2(){
     var x: Int, y: Int, z: Int
-    @dependency()
+    @dependency("Explicit")
     assume x > 10
-    @dependency()
+    @dependency("Explicit")
     assume y > 0
 
-    @dependency()
+    @dependency("Implicit")
     z := sum(x, y)
 
-    @testAssertion()
+    @testAssertion("Explicit")
     assert z == x + y
 }
 
 method call3(x: Int, y: Int)
 {
-  @dependency()
+  @dependency("Explicit")
   assume x > 0
-  @dependency()
+  @dependency("Explicit")
   assume y > 0
 
   var n: Int, n2: Int
-  @dependency()
+  @dependency("Implicit")
   n := sum(x, y)
-  @dependency()
+  @dependency("Implicit")
   n2 := sum(x, y)
-  @dependency()
+  @dependency("Implicit")
   n := n + n2
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert n == 2*x + 2*y
 }
 
 
 method call4(x: Int, y: Int, z: Int)
 {
-  @dependency()
+  @dependency("Explicit")
   assume x > 0
-  @dependency()
+  @dependency("Explicit")
   assume y > 0
 
-  @irrelevant()
+  @irrelevant("Explicit")
   assume z > 0
 
   var n: Int, n2: Int
-  @dependency()
+  @dependency("Implicit")
   n := sum(x, y)
-  @irrelevant()
+  @irrelevant("Implicit")
   n2 := sum(x, z)
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert n == x + y
 }

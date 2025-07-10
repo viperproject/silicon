@@ -9,44 +9,44 @@ predicate greater5(n: Int){
 }
 
 method foldP(n: Int)
-    requires @dependency()(n > 10)
+    requires @dependency("Explicit")(n > 10)
 {
     var x: Int := 1
-    @testAssertion()
+    @testAssertion("Implicit")
     fold greater0(x + n)
 }
 
 method unfoldP(n: Int)
-  requires @dependency()(greater0(n))
+  requires @dependency("Explicit")(greater0(n))
 {
     var x: Int := 1
-    @dependency()
+    @dependency("Implicit")
     unfold greater0(n)
-    @dependency()
+    @dependency("Implicit")
     x := n + x
-    @testAssertion()
+    @testAssertion("Explicit")
     assert x > 1
 }
 
 method unfoldFoldP(a: Int, b: Int)
-    requires @dependency()(greater0(a)) && @dependency()(greater5(b))
+    requires @dependency("Explicit")(greater0(a)) && @dependency("Explicit")(greater5(b))
     ensures greater5(a + b)
 {
-    @dependency()
+    @dependency("Implicit")
     unfold greater0(a)
-    @dependency()
+    @dependency("Implicit")
     unfold greater5(b)
-    @testAssertion()
+    @testAssertion("Implicit")
     fold greater5(a + b)
 }
 
 method callWithPredicate(a: Int, b: Int)
-    requires @dependency()(greater0(a)) && @dependency()(greater5(b))
+    requires @dependency("Explicit")(greater0(a)) && @dependency("Explicit")(greater5(b))
     ensures greater5(a + b)
 {
-    @dependency()
+    @dependency("Implicit")
     unfoldFoldP(a, b)
 
-    @testAssertion()
+    @testAssertion("Explicit")
     assert greater5(a + b)
 }

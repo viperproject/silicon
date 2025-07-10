@@ -5,16 +5,16 @@ method loop1(){
     res := 0
     i := 10
     while(i > 0)
-        invariant @irrelevant()(i <= 10)
-        invariant @irrelevant()(i >= 0)
-        invariant @dependency()(res >= 0)
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant @dependency("LoopInvariant")(res >= 0)
     {
-        @dependency()
+        @dependency("Implicit")
         res := res + i
         i := i - 1
     }
 
-    @testAssertion()
+    @testAssertion("Explicit")
     assert res >= 0
 }
 
@@ -23,16 +23,16 @@ method loop2(){
     var res: Int
     res := 0
     i := 10
-    while(@dependency()(i > 0))
-        invariant @irrelevant()(i <= 10)
-        invariant @irrelevant()(i >= 0)
-        invariant @irrelevant()(res >= 0)
+    while(@dependency("PathCondition")(i > 0))
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant @irrelevant("LoopInvariant")(res >= 0)
     {
-        @irrelevant()
+        @irrelevant("Implicit")
         res := res + i
-        @dependency()
+        @dependency("Implicit")
         i := i - 1
-        @testAssertion()
+        @testAssertion("Explicit")
         assert i >= 0
     }
 }
@@ -42,16 +42,16 @@ method loop3(){
     var res: Int
     res := 0
     i := 10
-    while(@dependency()(i > 0))
-        invariant @irrelevant()(i <= 10)
-        invariant @irrelevant()(i >= 0)
-        invariant @dependency()(res >= 0)
+    while(@dependency("PathCondition")(i > 0))
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant @dependency("LoopInvariant")(res >= 0)
     {
-        @dependency()
+        @dependency("Implicit")
         res := res + i
-        @irrelevant()
+        @irrelevant("Implicit")
         i := i - 1
-        @testAssertion()
+        @testAssertion("Explicit")
         assert res > 0
     }
 }
@@ -59,22 +59,22 @@ method loop3(){
 method loop4(){
     var i: Int
     var res: Int
-    @dependency()
+    @dependency("Implicit")
     res := 0
-    @irrelevant()
+    @irrelevant("Implicit")
     i := 10
-    while(@irrelevant()(i > 0))
-        invariant @irrelevant()(i <= 10)
-        invariant @irrelevant()(i >= 0)
-        invariant @dependency()(res >= 0)
+    while(@irrelevant("PathCondition")(i > 0))
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant @dependency("LoopInvariant")(res >= 0)
     {
         res := res - 1
-        @irrelevant()
+        @irrelevant("Implicit")
         i := i - 1
-        @dependency()
+        @dependency("Explicit")
         assume res > 0
     }
 
-    @testAssertion()
+    @testAssertion("Explicit")
     assert res >= 0
 }

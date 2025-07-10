@@ -6,27 +6,27 @@ predicate tuple(this: Ref) {
 }
 
 method setTuple(this: Ref, l: Int, r: Int)
-  requires @dependency()(tuple(this))
+  requires @dependency("Explicit")(tuple(this))
   ensures tuple(this)
 {
-  @dependency()
+  @dependency("Implicit")
   unfold tuple(this)
-  @irrelevant()
+  @irrelevant("Implicit")
   this.left := l
-  @irrelevant()
+  @irrelevant("Implicit")
   this.right := r
-  @testAssertion()
+  @testAssertion("Implicit")
   fold tuple(this)
 }
 
 method addTuple(this: Ref) returns (sum: Int)
-  requires @dependency()(acc(tuple(this), 1/2))
+  requires @dependency("Explicit")(acc(tuple(this), 1/2))
   ensures acc(tuple(this), 1/2)
 {
-  @dependency()
+  @dependency("Implicit")
   unfold acc(tuple(this), 1/2)
-  @irrelevant()
+  @irrelevant("Implicit")
   sum := this.left + this.right
-  @testAssertion()
+  @testAssertion("Implicit")
   fold acc(tuple(this), 1/2)
 }

@@ -2,40 +2,36 @@ field f: Int
 
 
 method infeasible1(x: Ref)
-    requires @dependency()(acc(x.f, 1/2)) // missing dependency iff infeasible branches are skipped
-    requires @dependency()(x.f > 0) // missing dependency iff infeasible branches are skipped
+    requires acc(x.f, 1/2)
+    requires x.f > 0
 {
-     if(@dependency()(x.f < 0)){ // missing dependency iff infeasible branches are skipped
-        @testAssertion()
-        x.f := x.f + 1 // // missing node iff infeasible branches are skipped
+     if(x.f < 0){
+        x.f := x.f + 1 // missing node iff infeasible branches are skipped
+        assert x.f > 0
      }
 }
 
 
 method infeasible2(x: Ref)
-    requires @irrelevant()(x != null ==> acc(x.f)) // unexpected dependency iff infeasible branches are always executed
+    requires x != null ==> acc(x.f) // unexpected dependency
 {
-    if(@irrelevant()(x == null)){ // unexpected dependency iff infeasible branches are always executed
+    var a: Int
+    if(x == null){ // unexpected dependency
         var a: Int
-        @dependency()
         a := 0
-        @testAssertion()
         assert a >= 0
-    }
+     }
 }
 
 method infeasible3(x: Ref)
 {
-    if(@irrelevant()(x != null)){ // unexpected dependency iff infeasible branches are always executed
-        @irrelevant()
+    if(x != null){ // unexpected dependency iff infeasible branches are always executed
         inhale acc(x.f)
     }
 
-    if(@irrelevant()(x == null)){ // unexpected dependency iff infeasible branches are always executed
+    if(x == null){ // unexpected dependency iff infeasible branches are always executed
         var a: Int
-        @dependency()
         a := 0
-        @testAssertion()
         assert a >= 0
     }
 }
@@ -60,26 +56,44 @@ method currentPerm(x: Ref)
     assert perm(x.f) > 1/4
 }
 
-method noAlias(a: Ref, b: Ref, c: Ref)
-    requires @dependency()(acc(a.f))
-    requires @dependency()(acc(b.f, 1/2))
-    requires @irrelevant()(acc(c.f, 1/2))
+
+method automatedTest()
 {
-    @testAssertion()
-    assert a != b
+    var a: Int
+    a := 0
+    a := 1
+    a := 0
+    assert a == 0
 }
 
+field elem: Int
+field next: Ref
 
-method permTest(a: Ref, b: Ref, n: Int)
-    requires @dependency()(acc(a.f))
-    requires @irrelevant()(acc(b.f)) && @irrelevant()(b.f > 0)
-{
-    @dependency()
-    assume n > 0
-    @irrelevant()
-    a.f := b.f + 2
-    @dependency()
-    a.f := n
-    @testAssertion()
-    assert a.f >= 0
+predicate list(this: Ref) {
+  acc(this.elem) && acc(this.next) &&
+  (this.next != null ==> list(this.next))
 }
+
+method appendListFull(this: Ref, e: Int)
+  requires list(this)
+  requires 0 <= e && e < 100
+  ensures  list(this)
+{
+  unfold list(this)
+  assume 0 <= this.elem && this.elem < 100
+
+  if (this.next == null) {
+    var n: Ref
+
+    n := new(elem, next)
+    n.elem := e
+    n.next := null
+    this.next := n
+    fold list(n)
+  } else {
+    appendListFull(this.next, e)
+  }
+
+  fold list(this)
+}
+

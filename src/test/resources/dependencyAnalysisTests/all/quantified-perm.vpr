@@ -5,41 +5,41 @@ field second : Ref
 
 
 method quantifiedWritePerm(nodes: Set[Ref], x: Ref)
-  requires @irrelevant()(forall n:Ref :: { n.first } n in nodes ==>
+  requires @irrelevant("Explicit")(forall n:Ref :: { n.first } n in nodes ==>
     acc(n.first) && 
     (n.first != null ==> n.first in nodes))
-  requires @dependency()(forall n:Ref :: { n.second } n in nodes ==>
+  requires @dependency("Explicit")(forall n:Ref :: { n.second } n in nodes ==>
     acc(n.second) && 
     (n.second != null ==> n.second in nodes))
-  requires @dependency()(x in nodes)
+  requires @dependency("Explicit")(x in nodes)
 {
   var y : Ref
-  if(@dependency()(x.second != null)) {
-    @dependency()
+  if(@dependency("PathCondition")(x.second != null)) {
+    @dependency("Implicit")
     y := x.second // permissions covered by preconditions
-    @dependency()
+    @dependency("Implicit")
     y.second := y
-    @testAssertion()
+    @testAssertion("Explicit")
     assert x.second.second == x.second
   }
 }
 
 method quantifiedSum(nodes: Set[Ref], x: Ref)
-  requires @dependency()(forall n:Ref :: { n.first } n in nodes ==>
+  requires @dependency("Explicit")(forall n:Ref :: { n.first } n in nodes ==>
     acc(n.first) && 
     (n.first != null ==> n.first in nodes))
-  requires @dependency()(forall n:Ref :: { n.f } n in nodes ==>
+  requires @dependency("Explicit")(forall n:Ref :: { n.f } n in nodes ==>
     acc(n.f) && 0 <= n.f && n.f <= 100)
-  requires @dependency()(x in nodes)
+  requires @dependency("Explicit")(x in nodes)
 {
   var a: Int
-  @dependency()
+  @dependency("Implicit")
   a := x.f
-  if(@dependency()(x.first != null)) {
-    @dependency()
+  if(@dependency("PathCondition")(x.first != null)) {
+    @dependency("Implicit")
     a := a + x.first.f
   }
-  @testAssertion()
+  @testAssertion("Explicit")
   assert a >= 0
 }
 

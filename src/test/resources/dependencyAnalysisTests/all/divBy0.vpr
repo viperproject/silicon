@@ -15,7 +15,7 @@ method divBy0()
     var y: Int
     @dependency("Explicit")
     assume y > 0
-    @testAssertion()
+    @testAssertion("Implicit")
     x := x/y
 }
 
@@ -23,39 +23,39 @@ method basic()
 {
     var x: Int
     var y: Int
-    @irrelevant()
+    @irrelevant("Explicit")
     assume x > 0
-    @dependency()
+    @dependency("Explicit")
     assume y > 0
-    @dependency()
+    @dependency("Explicit")
     assume y < x
     @dependency("Implicit")
     x := x/y
-    @testAssertion()
+    @testAssertion("Explicit")
     assert x >= 1
 }
 
 
 method sumClient(x: Int, y: Int)
 {
-  @dependency()
+  @dependency("Explicit")
   assume x >= 0
-  @dependency()
+  @dependency("Explicit")
   assume y >= 0
-  @dependency()
+  @dependency("Explicit")
   assume x < y
   var n: Int
-  @dependency()
+  @dependency("Implicit")
   n := sum(x, y)
 
   // the following stmt reports dependency on n := sum(x, y) because (x < y && n == x + y && n > 100 ==> y != 0)
   // although you could also prove it via (0 <= x && x < y ==> y != 0)
   var n2: Int
-  @dependency()
+  @dependency("Implicit")
   n2 := sum(x/y, y)
-  @dependency()
+  @dependency("Implicit")
   n := n + n2
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert n >= x + 2*y
 }

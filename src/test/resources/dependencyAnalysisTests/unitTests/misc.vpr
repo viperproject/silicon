@@ -1,20 +1,20 @@
 field f: Int
 
 method divBy0(a: Ref, n: Int)
-    requires @dependency()(n > 0)
-    requires @dependency()(acc(a.f))
-    requires @irrelevant()(a.f > 0)
+    requires @dependency("Explicit")(n > 0)
+    requires @dependency("Explicit")(acc(a.f))
+    requires @irrelevant("Explicit")(a.f > 0)
 {
     var res: Int
-    @testAssertion()
+    @testAssertion("Implicit")
     res := a.f / n
 }
 
 method assumeFalse()
 {
     var a: Int
-    @dependency()
+    @dependency("Explicit")
     assume false
-    @testAssertion()
+    @testAssertion("Explicit")
     assert a == 2
 }

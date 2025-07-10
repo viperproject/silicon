@@ -4,24 +4,24 @@ field g: Int
 method foo(x: Ref, y: Ref)
 
 {
-	@dependency()
+	@dependency("Explicit")
     inhale acc(x.f)
-	@dependency()
+	@dependency("Explicit")
     inhale acc(y.f)
-    @irrelevant()
+    @irrelevant("Explicit")
     inhale acc(y.g)
 
-	@dependency()
+	@dependency("Explicit")
 	assume 0 < x.f
-    @irrelevant()
+    @irrelevant("Explicit")
 	assume x.f < 100
-    @irrelevant()
+    @irrelevant("Explicit")
 	assume y.f < 100
-    @irrelevant()
+    @irrelevant("Explicit")
 	assume 0 <= y.f
-	@dependency()
+	@dependency("Explicit")
 	assume x.f < y.f
 
-    @testAssertion()
+    @testAssertion("Explicit")
 	assert x.f / y.f <= 1
 }

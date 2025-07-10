@@ -16,20 +16,20 @@ function elems(start: Ref) : Seq[Int]
 }
 
 method appendit_wand1(l1 : Ref, l2: Ref)
-  requires @dependency()(list(l1))
-  requires @dependency()(list(l2))
+  requires @dependency("Explicit")(list(l1))
+  requires @dependency("Explicit")(list(l2))
   requires l2 != null
   ensures list(l1)
   {
-    @dependency()
+    @dependency("Implicit")
     unfold list(l1)
     if(l1.next == null) { // easy case
-      @dependency()
+      @dependency("Implicit")
       l1.next := l2
-      @testAssertion()
+      @testAssertion("Implicit")
       fold list(l1)
     } else {
-      @irrelevant()
+      @irrelevant("Explicit")
       assume false
     }
   }

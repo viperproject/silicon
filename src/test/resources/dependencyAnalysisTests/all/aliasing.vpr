@@ -2,44 +2,44 @@ field f: Int
 
 
 method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
-    requires @dependency()(acc(a.f, 1/2))
-    requires @dependency()(acc(b.f, 1/2))
-    requires @dependency()(c ==> a == b)
+    requires @dependency("Explicit")(acc(a.f, 1/2))
+    requires @dependency("Explicit")(acc(b.f, 1/2))
+    requires @dependency("Explicit")(c ==> a == b)
     requires a.f > 0 && n > 0 && b.f >= 0
     requires a.f < 100
     requires !c ==> a.f < b.f
 {
-    if(@dependency()(c)){
-        @testAssertion()
+    if(@dependency("PathCondition")(c)){
+        @testAssertion("Implicit")
         a.f := n + 1
     }
 }
 
 method aliasing1(x: Ref, n: Int)
-  requires @dependency()(acc(x.f))
-  requires @irrelevant()(n > 0)
-  requires @irrelevant()(x.f > n)
+  requires @dependency("Explicit")(acc(x.f))
+  requires @irrelevant("Explicit")(n > 0)
+  requires @irrelevant("Explicit")(x.f > n)
 {
-  @dependency()
+  @dependency("Implicit")
   x.f := n + 1
 
   var y: Ref
-  @dependency()
+  @dependency("Implicit")
   y := x
 
-  @testAssertion()
+  @testAssertion("Explicit")
   assert y.f > n
 }
 
 
 method aliasing2(x: Ref, y: Ref, n: Int)
-  requires @dependency()(acc(x.f, 1/2))
-  requires @dependency()(acc(y.f, 1/2))
-  requires @irrelevant()(n > 0)
-  requires @irrelevant()(x.f > n)
+  requires @dependency("Explicit")(acc(x.f, 1/2))
+  requires @dependency("Explicit")(acc(y.f, 1/2))
+  requires @irrelevant("Explicit")(n > 0)
+  requires @irrelevant("Explicit")(x.f > n)
 {
-  if(@dependency()(x == y)){
-    @testAssertion()
+  if(@dependency("PathCondition")(x == y)){
+    @testAssertion("Implicit")
     x.f := n + 1
   }
 }
