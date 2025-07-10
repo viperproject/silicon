@@ -14,27 +14,27 @@ function listLength(l:Ref) : Int
 }
 
 method appendList1(this: Ref, e: Int)
-  requires @irrelevant()(list(this))
-  requires @irrelevant()(0 <= e && e < 100)
+  requires list(this) // TODO ake: imprecise @irrelevant("Explicit")(list(this))
+  requires @irrelevant("Explicit")(0 <= e && e < 100)
   ensures  list(this)
 {
-  @irrelevant()
+  // @irrelevant("Implicit") TODO ake: imprecise
   unfold list(this)
-  @irrelevant()
+  @irrelevant("Explicit")
   assume 0 <= this.elem && this.elem < 100
 
-  if (@irrelevant()(this.next == null)) {
+  if (this.next == null) { // TODO ake: imprecise @irrelevant("PathCondition")(this.next == null)
     var n: Ref
 
-    @dependency()
+    @dependency("Implicit")
     n := new(elem, next)
-    @irrelevant()
+    @irrelevant("Implicit")
     n.elem := e
-    @dependency()
+    @dependency("Implicit")
     n.next := null
-    @irrelevant()
+    @irrelevant("Implicit")
     this.next := n
-    @testAssertion()
+    @testAssertion("Implicit")
     fold list(n)
   } else {
     appendList1(this.next, e)
@@ -44,30 +44,30 @@ method appendList1(this: Ref, e: Int)
 }
 
 method appendList2(this: Ref, e: Int)
-  requires @dependency()(list(this))
-  requires @dependency()(0 <= e && e < 100)
+  requires @dependency("Explicit")(list(this))
+  requires @dependency("Explicit")(0 <= e && e < 100)
   ensures  list(this)
 {
-  @dependency()
+  @dependency("Implicit")
   unfold list(this)
-  @irrelevant()
+  @irrelevant("Explicit")
   assume 0 <= this.elem && this.elem < 100
 
-  if (@dependency()(this.next == null)) {
+  if (@dependency("PathCondition")(this.next == null)) {
     var n: Ref
 
-    @irrelevant()
+    @irrelevant("Implicit")
     n := new(elem, next)
-    @irrelevant()
+    @irrelevant("Implicit")
     n.elem := e
-    @irrelevant()
+    @irrelevant("Implicit")
     n.next := null
-    @irrelevant()
+    @irrelevant("Implicit")
     this.next := n
-    @irrelevant()
+    @irrelevant("Implicit")
     fold list(n)
   } else {
-    @testAssertion()
+    @testAssertion("Implicit")
     appendList2(this.next, e)
   }
 
@@ -75,33 +75,33 @@ method appendList2(this: Ref, e: Int)
 }
 
 method appendListFull(this: Ref, e: Int)
-  requires @dependency()(list(this))
-  requires @dependency()(0 <= e && e < 100)
+  requires @dependency("Explicit")(list(this))
+  requires @dependency("Explicit")(0 <= e && e < 100)
   ensures  list(this)
 {
-  @dependency()
+  @dependency("Implicit")
   unfold list(this)
-  @irrelevant()
+  @irrelevant("Explicit")
   assume 0 <= this.elem && this.elem < 100
 
-  if (@dependency()(this.next == null)) {
+  if (@dependency("PathCondition")(this.next == null)) {
     var n: Ref
 
-    @dependency()
+    @dependency("Implicit")
     n := new(elem, next)
-    @irrelevant()
+    @irrelevant("Implicit")
     n.elem := e
-    @dependency()
+    @dependency("Implicit")
     n.next := null
-    @dependency()
+    @dependency("Implicit")
     this.next := n
-    @dependency()
+    @dependency("Implicit")
     fold list(n)
   } else {
-    @dependency()
+    @dependency("Implicit")
     appendListFull(this.next, e)
   }
 
-  @testAssertion()
+  @testAssertion("Implicit")
   fold list(this)
 }

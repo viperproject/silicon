@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters.IterableHasAsScala
 
 class AssumptionAnalysisTests extends AnyFunSuite {
 
-  val CHECK_PRECISION = false
+  val CHECK_PRECISION = true
   val ignores: Seq[String] = Seq()
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
@@ -34,9 +34,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   testDirectories foreach createTests
 
-  //  test("dependencyAnalysisTests/all" + "/" + "misc"){
-  //    executeTest("examples/max_array/", "max-array-standard", frontend)
-  //  }
+//    test("custom test"){
+//      executeTest("dependencyAnalysisTests/quick/", "test", frontend)
+//    }
 
   def createTests(dirName: String): Unit = {
     val path = Paths.get(getClass.getClassLoader.getResource(dirName).toURI)
@@ -313,7 +313,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     private def extractTestAssertionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
       graph.nodes.filter(node =>
         (node.getNodeType.equals("Assertion") || node.getNodeType.equals("Exhale") || node.getNodeType.equals("Check")) &&
-          node.sourceInfo.toString.contains("@" + testAssertionKeyword + "()")
+          node.sourceInfo.toString.contains("@" + testAssertionKeyword + "(")
       ).toSeq
     }
 
@@ -321,7 +321,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       graph.nodes.filter(node => {
         (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale") || node.getNodeType.equals("Infeasible")) &&
           !node.assumptionType.equals(AssumptionType.Internal) &&
-          node.sourceInfo.toString.contains("@" + dependencyKeyword + "()")
+          node.sourceInfo.toString.contains("@" + dependencyKeyword + "(")
       }
       ).toSeq
     }
@@ -330,7 +330,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       graph.nodes.filter(node => {
         (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale") || node.getNodeType.equals("Infeasible")) &&
           !node.assumptionType.equals(AssumptionType.Internal) &&
-          node.sourceInfo.toString.contains("@" + irrelevantKeyword + "()")
+          node.sourceInfo.toString.contains("@" + irrelevantKeyword + "(")
       }
       ).toSeq
     }

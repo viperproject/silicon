@@ -64,7 +64,7 @@ method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
   @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> acc(y.f)
 
-  @irrelevant("Implicit")
+  // @irrelevant("Implicit") // TODO ake: imprecise
   xs[0].f := ys[0].f + 2
   @testAssertion("Implicit")
   xs[0].f := 2
@@ -75,7 +75,7 @@ method nonUniqueUnsatCore(x: Ref)
 {
     var a: Int
     if(x == null){
-        @irrelevant("Explicit")
+        // @irrelevant("Explicit") // TODO ake: imprecise
         inhale a >= 0
     }
     @dependency("Explicit")

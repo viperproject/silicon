@@ -81,7 +81,7 @@ method quantifiedPermWrite3(xs: Seq[Ref]) {
   @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  @irrelevant("Implicit")
+  // @irrelevant("Implicit") // TODO ake: imprecise
   xs[0].f := 0
 
   @testAssertion("Explicit")
