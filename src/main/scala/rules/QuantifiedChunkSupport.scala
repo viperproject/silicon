@@ -487,7 +487,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         resource: ast.Resource,
                         optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
                         v: Verifier)
-                       : (Term, Seq[Quantification], Option[Quantification]) = {
+                       : (Term, Seq[Quantification], Seq[Term]) = {
     // TODO: Consider if axioms can be simplified in case codomainQVars is empty
 
     val snapshotMaps = relevantChunks.map(_.snapshotMap)
@@ -514,14 +514,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         (qvar, transformedOptSmDomainDefinitionCondition, (ch: QuantifiedBasicChunk) => IsPositive(ch.perm).replace(snapToCodomainTermsSubstitution))
     }
 
-    val qvarInDomainOfSummarisingSm = resource match {
+    val (domainTerm, hasDomain) = resource match {
       case field: ast.Field =>
-        SetIn(qvar, Domain(field.name, sm))
+        (Domain(field.name, sm), HasDomain(field.name, sm))
       case predicate: ast.Predicate =>
-        SetIn(qvar, PredicateDomain(predicate.name, sm))
+        (PredicateDomain(predicate.name, sm), HasPredicateDomain(predicate.name, sm))
       case wand: ast.MagicWand =>
-        SetIn(qvar, PredicateDomain(MagicWandIdentifier(wand, s.program).toString, sm))
+        val mwi = MagicWandIdentifier(wand, s.program).toString
+        (PredicateDomain(mwi, sm), HasPredicateDomain(mwi, sm))
     }
+
+    val qvarInDomainOfSummarisingSm = SetIn(qvar, domainTerm)
 
     val valueDefinitions =
       relevantChunks map (chunk => {
@@ -569,15 +572,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     val optDomainDefinition =
-      smDomainDefinitionCondition.map(condition =>
-        Forall(
-          qvar,
-          Iff(
-            qvarInDomainOfSummarisingSm,
-            condition),
-          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(qvarInDomainOfSummarisingSm)),
-          s"qp.psmDomDef${v.counter(this).next()}",
-          isGlobal = relevantQvars.isEmpty
+      smDomainDefinitionCondition.toSeq.flatMap(condition =>
+        Seq(
+          Forall(
+            qvar,
+            Iff(
+              qvarInDomainOfSummarisingSm,
+              condition),
+            if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(qvarInDomainOfSummarisingSm)),
+            s"qp.psmDomDef${v.counter(this).next()}",
+            isGlobal = relevantQvars.isEmpty
+          ),
+          hasDomain
         ))
 
     (sm, resourceAndValueDefinitions, optDomainDefinition)
