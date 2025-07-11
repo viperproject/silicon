@@ -1114,7 +1114,7 @@ object evaluator extends EvaluationRules {
       case ast.RangeSeq(e0, e1) => evalBinOp(s, e0, e1, SeqRanged, pve, v)((s1, t, e0New, e1New, v1) =>
         Q(s1, t, e0New.map(e0p => ast.RangeSeq(e0p, e1New.get)(e.pos, e.info, e.errT)), v1))
 
-      case seqUp @ ast.SeqUpdate(e0, e1, e2) =>
+      case ast.SeqUpdate(e0, e1, e2) =>
         evals2(s, Seq(e0, e1, e2), Nil, _ => pve, v)({ case (s1, Seq(t0, t1, t2), esNew, v1) =>
           val eNew = esNew.map(es => ast.SeqUpdate(es.head, es(1), es(2))(e.pos, e.info, e.errT))
           if (s1.triggerExp) {

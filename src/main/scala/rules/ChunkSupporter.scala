@@ -83,6 +83,7 @@ object chunkSupporter extends ChunkSupportRules {
               assumptionType: AssumptionType=AssumptionType.Implicit)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
+
     consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, assumptionType)((s2, h2, optSnap, v2) =>
       optSnap match {
         case Some(snap) =>
@@ -179,8 +180,7 @@ object chunkSupporter extends ChunkSupportRules {
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
       case Some(ch) =>
         if (s.assertReadAccessOnly) {
-          val termToCheck = Implies(IsPositive(perms), IsPositive(ch.perm))
-          if (v.decider.check(termToCheck, Verifier.config.assertTimeout.getOrElse(0), assumptionType)) {
+          if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0), assumptionType)) {
             (Complete(), s, h, Some(ch))
           } else {
             (Incomplete(perms, permsExp), s, h, None)

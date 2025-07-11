@@ -45,6 +45,7 @@ object havocSupporter extends SymbolicExecutionRules {
                 assumptionType: AssumptionType)
                 (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
+
     val pve = QuasihavocFailed(havoc)
 
     // If there is no havoc condition, use True as the condition
@@ -85,6 +86,7 @@ object havocSupporter extends SymbolicExecutionRules {
                    assumptionType: AssumptionType)
                    (Q: (State, Verifier) => VerificationResult)
                   : VerificationResult = {
+
     val pve = HavocallFailed(havocall)
     val ast.Quasihavocall(vars, lhs, eRsc) = havocall
     val qid = resourceName(s, eRsc)
@@ -131,7 +133,7 @@ object havocSupporter extends SymbolicExecutionRules {
         val comment = "QP receiver injectivity check is well-defined"
         val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp, AssumptionType.Internal)
-        v.decider.assert(receiverInjectivityCheck, timeout=Verifier.config.assertTimeout.toOption) {
+        v.decider.assert(receiverInjectivityCheck) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
           case true =>
             // Generate the inverse axioms

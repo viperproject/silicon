@@ -110,10 +110,6 @@ private class PathConditionStackLayer
 
   def branchCondition: Option[Term] = _branchCondition
   def branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = _branchConditionExp
-  def infeasibilityNodeId: Option[Int] = _infeasibilityNodeId
-  def setInfeasibilityNodeId(id: Option[Int]): Unit = {
-    _infeasibilityNodeId = id
-  }
   def globalAssumptions: InsertionOrderedSet[Term] = _globalAssumptions
   def globalDefiningAssumptions: InsertionOrderedSet[Term] = _globalDefiningAssumptions
   def nonGlobalDefiningAssumptions: InsertionOrderedSet[Term] = _nonGlobalDefiningAssumptions
@@ -124,6 +120,11 @@ private class PathConditionStackLayer
   def nonGlobalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _nonGlobalAssumptionDebugExps ++ debugExpStack.flatten
   def declarations: InsertionOrderedSet[Decl] = _declarations
   def analysisLabels: InsertionOrderedSet[Term] = _analysisLabels
+
+  def infeasibilityNodeId: Option[Int] = _infeasibilityNodeId
+  def setInfeasibilityNodeId(id: Option[Int]): Unit = {
+    _infeasibilityNodeId = id
+  }
 
   def assumptions: InsertionOrderedSet[Term] = globalAssumptions ++ nonGlobalAssumptions
   def assumptionDebugExps:  InsertionOrderedSet[DebugExp] = globalAssumptionDebugExps ++ nonGlobalAssumptionDebugExps
@@ -343,7 +344,7 @@ private trait LayeredPathConditionStackLike {
 
     unconditionalTerms ++ conditionalTerms
   }
-  
+
   protected def quantified(layers: Stack[PathConditionStackLayer],
                            quantifier: Quantifier,
                            qvars: Seq[Var],

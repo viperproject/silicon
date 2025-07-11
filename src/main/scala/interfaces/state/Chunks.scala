@@ -6,9 +6,9 @@
 
 package viper.silicon.interfaces.state
 
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, PermissionInhaleNode}
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType}
 import viper.silicon.resources.ResourceID
-import viper.silicon.state.terms.{PermMinus, Term, Var}
+import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
 
 trait Chunk {

@@ -80,7 +80,7 @@ trait Decider {
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, assumptionType: AssumptionType=AssumptionType.Implicit, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, assumptionType: AssumptionType=AssumptionType.Implicit, timeout: Option[Int] = None)(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -183,7 +183,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       // TODO: Change interface to make the cast unnecessary?
       val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
       layeredStack.layers.reverse.foreach(l => {
-        l.assumptions foreach prover.assume // TODO ake: labels?
+        l.assumptions foreach prover.assume
         prover.push(timeout = Verifier.config.pushTimeout.toOption)
       })
     }
@@ -381,13 +381,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
       }
 
-      if (filteredAssumptions.nonEmpty){
-        assumeWithoutSmokeChecks(filteredAssumptionsWithLabels, isDefinition=isDefinition)
-      }
+      if (filteredAssumptions.nonEmpty) assumeWithoutSmokeChecks(filteredAssumptionsWithLabels, isDefinition=isDefinition)
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], assumptionType: AssumptionType): Unit = {
-
       val assumptionsWithLabels = assumptions map (t => {
         val assumptionId = assumptionAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
@@ -424,7 +421,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, assumptionType: AssumptionType): Unit = {
-
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
@@ -542,18 +538,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       (result, assertNode)
     }
 
-    private def isKnownToBeTrue(t: Term) = {
-      t match {
-          case True =>
-            true
-          //    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
-          case _ if pcs.assumptions contains t =>
-            true
-          case q: Quantification if q.body == True =>
-            true
-          case _ =>
-            false
-        }
+    private def isKnownToBeTrue(t: Term) = t match {
+      case True => true
+  //    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
+      case _ if pcs.assumptions contains t => true
+      case q: Quantification if q.body == True => true
+      case _ => false
     }
 
     private def proverAssert(t: Term, timeout: Option[Int], label: String) = {

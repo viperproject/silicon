@@ -244,14 +244,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     if (!s.assertReadAccessOnly)
       actualConsumeComplete(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, assumptionType)(Q)
     else
-      summariseHeapAndAssertReadAccess(s, h, resource, perms, permsExp, args, argsExp, returnSnap, ve, v, assumptionType)(Q)
+      summariseHeapAndAssertReadAccess(s, h, resource, perms, args, argsExp, returnSnap, ve, v, assumptionType)(Q)
   }
 
   private def summariseHeapAndAssertReadAccess(s: State,
                                                h: Heap,
                                                resource: ast.Resource,
                                                perm: Term,
-                                               permExp: Option[ast.Exp],
                                                args: Seq[Term],
                                                argsExp: Option[Seq[ast.Exp]],
                                                returnSnap: Boolean,

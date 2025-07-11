@@ -221,8 +221,7 @@ abstract class ProverStdIO(uniqueId: String,
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
   def assume(term: Term): Unit = {
-    assume(term, "prover_" + proverLabelId)
-    proverLabelId += 1
+    assume(term, nextProverLabel())
   }
 
   def assume(term: Term, label: String): Unit = {
@@ -243,11 +242,11 @@ abstract class ProverStdIO(uniqueId: String,
     assume(termConverter.convert(term), finalLabel)
   }
 
-def nextProverLabel(): String = {
-  val label = "prover_" + proverLabelId
-  proverLabelId += 1
-  label
-}
+  def nextProverLabel(): String = {
+    val label = "prover_" + proverLabelId
+    proverLabelId += 1
+    label
+  }
 
   def assume(term: String, label: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
@@ -394,7 +393,6 @@ def nextProverLabel(): String = {
 
     if(result == Unsat && Verifier.config.enableAssumptionAnalysis())
       lastUnsatCore_ = extractUnsatCore()
-
 
     result
   }

@@ -408,9 +408,9 @@ object executor extends ExecutionRules {
               s2p,
               relevantChunks,
               Seq(`?r`),
-              Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)(eRcvr.pos, eRcvr.info, eRcvr.errT))),
+              Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
               `?r` === tRcvr,
-              eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)(eRcvr.pos, eRcvr.info, eRcvr.errT)),
+              eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)()),
               Some(Seq(tRcvr)),
               field,
               FullPerm,
@@ -445,31 +445,30 @@ object executor extends ExecutionRules {
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>{
-            eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
-              val resource = fa.res(s.program)
-              val ve = pve dueTo InsufficientPermission(fa)
-              val description = s"consume ${ass.pos}: $ass"
-              val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, ExpAnalysisSourceInfo(fa))
+        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
+          eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
+            val resource = fa.res(s.program)
+            val ve = pve dueTo InsufficientPermission(fa)
+            val description = s"consume ${ass.pos}: $ass"
+            val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, ExpAnalysisSourceInfo(fa))
+            v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, v3) => {
+              v2.decider.analysisSourceInfoStack.removeForcedSource()
+              val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
+              val id = BasicChunkIdentifier(field.name)
               v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-              chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, v3) => {
-                v2.decider.analysisSourceInfoStack.removeForcedSource()
-                val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
-                val id = BasicChunkIdentifier(field.name)
-                v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-                val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                  v3.decider.getAnalysisInfo(AssumptionType.Internal))
-                v2.decider.analysisSourceInfoStack.removeForcedSource()
-                chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
-                  val s5 = s4.copy(h = h4)
-                  val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
-                  val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
-                  v4.decider.assumptionAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v4.decider.analysisSourceInfoStack.getFullSourceInfo)
-                  Q(s6, v4)
-                })
+              val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
+                v3.decider.getAnalysisInfo(AssumptionType.Internal))
+              v2.decider.analysisSourceInfoStack.removeForcedSource()
+              chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
+                val s5 = s4.copy(h = h4)
+                val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
+                val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
+                v4.decider.assumptionAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v4.decider.analysisSourceInfoStack.getFullSourceInfo)
+                Q(s6, v4)
               })
             })
-          }
+          })
         )
 
       case stmt@ast.NewStmt(x, fields) =>
@@ -491,9 +490,7 @@ object executor extends ExecutionRules {
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT))),
               field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit), isExhale=false)
           } else {
-            val newChunk = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp,
-              v.decider.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
-            newChunk
+            BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp, v.decider.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
           }
         })
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
@@ -503,21 +500,19 @@ object executor extends ExecutionRules {
         v.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false, assumptionType=AssumptionType.Implicit)
         Q(s2, v)
 
-      case inhale @ ast.Inhale(a) =>
-        a match {
-          case _: ast.FalseLit if !Verifier.config.enableAssumptionAnalysis() =>
-            /* We're done */
-            Success()
-          case _ =>
-            produce(s, freshSnap, a, InhaleFailed(inhale), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, v1) => {
-              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-              if(Verifier.config.enableAssumptionAnalysis() && a.isInstanceOf[ast.FalseLit]) {
-                val (_, node) = v1.decider.checkAndGetInfeasibilityNode(False, Verifier.config.checkTimeout(), AssumptionType.Explicit)
-                v1.decider.pcs.setCurrentInfeasibilityNode(node)
-              }
-              Q(s1, v1)})
-        }
-
+      case inhale @ ast.Inhale(a) => a match {
+        case _: ast.FalseLit if !Verifier.config.enableAssumptionAnalysis() =>
+          /* We're done */
+          Success()
+        case _ =>
+          produce(s, freshSnap, a, InhaleFailed(inhale), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, v1) => {
+            v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
+            if(Verifier.config.enableAssumptionAnalysis() && a.isInstanceOf[ast.FalseLit]) {
+              val (_, node) = v1.decider.checkAndGetInfeasibilityNode(False, Verifier.config.checkTimeout(), AssumptionType.Explicit)
+              v1.decider.pcs.setCurrentInfeasibilityNode(node)
+            }
+            Q(s1, v1)})
+      }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)

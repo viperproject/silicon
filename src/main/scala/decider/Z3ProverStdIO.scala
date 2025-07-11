@@ -6,13 +6,12 @@
 
 package viper.silicon.decider
 
-import viper.silicon.common.config.Version
+import java.nio.file.{Path, Paths}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.verifier.Verifier
-import viper.silver.reporter.Reporter
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
-
-import java.nio.file.{Path, Paths}
+import viper.silver.reporter.Reporter
+import viper.silicon.common.config.Version
 
 
 object Z3ProverStdIO {

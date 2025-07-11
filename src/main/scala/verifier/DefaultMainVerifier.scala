@@ -59,7 +59,7 @@ class DefaultMainVerifier(config: Config,
 
   Verifier.config = config
 
-  override val debugMode: Boolean = config.enableDebugging()
+  override val debugMode = config.enableDebugging()
 
   private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
@@ -288,7 +288,7 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val results = v.cfgSupporter.verify(s, cfg) // TODO ake: assumption analysis
+          val results = v.cfgSupporter.verify(s, cfg)
             .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 

@@ -734,7 +734,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             : (PermMapDefinition, PmCache) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
     v.decider.assumptionAnalyzer.disableTransitiveEdges()
-    val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match { // TODO ake: do not get from cache when analysis is enabled
+    val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
         (pmDef, s.pmCache)

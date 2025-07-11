@@ -6,9 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionType, ExpAnalysisSourceInfo}
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-
+import viper.silicon.assumptionAnalysis.{ExpAnalysisSourceInfo}
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
@@ -54,16 +52,17 @@ object brancher extends BranchingRules {
      *   (2) the branch condition contains a quantified variable
      */
     val skipPathFeasibilityCheck = (
-        fromShortCircuitingAnd
-        || (   s.quantifiedVariables.nonEmpty
+         fromShortCircuitingAnd
+      || (   s.quantifiedVariables.nonEmpty
           && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
     val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
     /* True if the then-branch is to be explored */
-    val executeThenBranch = (skipPathFeasibilityCheck
-        || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+    val executeThenBranch = (
+         skipPathFeasibilityCheck
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
 
     val thenInfeasibilityNode: Option[Int] = if(Verifier.config.enableAssumptionAnalysis() && !executeThenBranch) {
       val (_, node) = v.decider.checkAndGetInfeasibilityNode(negatedCondition, Verifier.config.checkTimeout())
@@ -71,9 +70,10 @@ object brancher extends BranchingRules {
     } else None
 
     /* False if the then-branch is to be explored */
-    val executeElseBranch = (!executeThenBranch /* Assumes that ast least one branch is feasible */
-        || skipPathFeasibilityCheck
-        || !v.decider.check(condition, Verifier.config.checkTimeout()))
+    val executeElseBranch = (
+         !executeThenBranch /* Assumes that ast least one branch is feasible */
+      || skipPathFeasibilityCheck
+      || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
     val elseInfeasibilityNode: Option[Int] = if(Verifier.config.enableAssumptionAnalysis() && !executeElseBranch) {
       val (_, node) = v.decider.checkAndGetInfeasibilityNode(condition, Verifier.config.checkTimeout())
@@ -212,7 +212,7 @@ object brancher extends BranchingRules {
       val thenRes = if (executeThenBranch || Verifier.config.enableAssumptionAnalysis()) {
           v.symbExLog.markReachable(uidBranchPoint)
           v.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
-          val res = executionFlowController.locally(s, v)((s1, v1) => {
+          executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
@@ -222,7 +222,6 @@ object brancher extends BranchingRules {
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })
-          res
         } else {
           Unreachable()
         }
@@ -231,7 +230,6 @@ object brancher extends BranchingRules {
         v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
           condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
       }
-
       thenRes
     }.combine({
 
