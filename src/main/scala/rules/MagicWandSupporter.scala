@@ -359,7 +359,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
       }
     }
 
+    var analysisLabels = InsertionOrderedSet[Term]().empty
     val tempResult = executionFlowController.locally(sEmp, v)((s1, v1) => {
+      val prePackageMark = v.decider.pcs.mark()
       /* A snapshot (binary tree) will be constructed using First/Second datatypes,
        * that preserves the original root. The leafs of this tree will later appear
        * in the snapshot of the RHS at the appropriate places. Thus equating
@@ -401,15 +403,15 @@ object magicWandSupporter extends SymbolicExecutionRules {
         // The proof script should transform the current state such that we can consume the wand's RHS.
         val prevSourceInfo = v2.decider.analysisSourceInfoStack.getAnalysisSourceInfos
         v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(List.empty)
-        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => { // TODO ake: propagate assumption type!
+        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
+          v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(prevSourceInfo)
           // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
-          v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(prevSourceInfo)
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
             wand.right, true, pve, proofScriptVerifier
           )((s3, snapRhs, v3) => {
-
+            analysisLabels = v.decider.pcs.after(prePackageMark).analysisLabels
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, assumptionType)
           })
         })
@@ -423,6 +425,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
       createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v, assumptionType)
     }
+
+    // some of the analysis labels, introduced while verifying the package statement, might be needed later on -> reassume them
+    analysisLabels foreach (l => v.decider.assume(v.decider.wrapWithAssumptionAnalysisLabel(l, Set.empty, Set(l)), None, AssumptionType.Internal))
 
     val currentAnalysisSourceInfoStack = v.decider.analysisSourceInfoStack
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
@@ -439,10 +444,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._1))
           val expNew = Option.when(withExp)(viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2.get)))
           // Set the branch conditions
-          v1.decider.setCurrentBranchCondition(And(branchConditions), (exp, expNew))
+          v1.decider.setCurrentBranchCondition(And(branchConditions map (t => v1.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t)))), (exp, expNew))
 
           // Recreate all path conditions in the Z3 proof script that we recorded for that branch
-          v1.decider.assume(conservedPcs._1, conservedPcs._2, AssumptionType.Internal)
+          v1.decider.assume(conservedPcs._1 map (t => v1.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t))), conservedPcs._2, AssumptionType.Internal)
 
           // Execute the continuation Q
           Q(s2, magicWandChunk, v1)

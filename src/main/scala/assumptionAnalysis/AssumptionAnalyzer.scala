@@ -56,7 +56,6 @@ trait AssumptionAnalyzer {
   def createLabelNode(labelTerm: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = None
   def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, labelNode: Option[LabelNode], analysisInfo: AnalysisInfo, isExhale: Boolean): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo): CH = buildChunk(perm)
-  def getReassumeLabelNodes: Iterable[LabelNode] = Set.empty
 
   def computeProofCoverage(): Unit = {}
 }
@@ -306,18 +305,6 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
       addDependency(chunkNode, Some(labelNode.id))
     addPermissionDependencies(sourceChunks, Set(), chunkNode)
     chunk
-  }
-
-  private def createReassumeLabelNode(oldLabelNode: LabelNode): LabelNode = {
-    val newLabelNode = LabelNode(oldLabelNode.term)
-    // do not add to originalLabelNodes!
-    addNode(newLabelNode)
-    assumptionGraph.addEdges(Set(oldLabelNode.id), newLabelNode.id)
-    newLabelNode
-  }
-
-  override def getReassumeLabelNodes: Iterable[LabelNode] = { // TODO ake: work with scopes!
-    originalLabelNodes map createReassumeLabelNode
   }
 
   override def computeProofCoverage(): Unit = {

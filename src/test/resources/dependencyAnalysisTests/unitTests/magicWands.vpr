@@ -36,7 +36,8 @@ method basicPackage(l: Ref)
     @dependency("Implicit")
     package list(tmp) --* list(l)
     {
-      fold list(l) // TODO ake
+      @dependency()
+      fold list(l)
     }
 
     @dependency("Implicit")
@@ -44,4 +45,35 @@ method basicPackage(l: Ref)
 
     @testAssertion("Explicit")
     assert list(l)
+}
+
+
+predicate greater0(a: Int){
+    a > 0
+}
+
+method advancedPackage(a: Int, b: Int)
+  {
+
+    @dependency("Implicit")
+    package (greater0(a) && greater0(b)) --* greater0(a + b)
+    {
+      @dependency("Implicit")
+      unfold greater0(a)
+      @dependency("Implicit")
+      unfold greater0(b)
+      @dependency("Implicit")
+      fold greater0(a + b)
+    }
+
+    @dependency("Explicit")
+    inhale greater0(a)
+    @dependency("Explicit")
+    inhale greater0(b)
+
+    @dependency("Implicit")
+    apply (greater0(a) && greater0(b)) --* greater0(a + b)
+
+    @testAssertion("Explicit")
+    assert greater0(a + b)
 }

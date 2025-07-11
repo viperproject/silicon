@@ -143,7 +143,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
-    private var _isReassumeAnalysisLabelsRequired: Boolean = false
 
     var assumptionAnalyzer: AssumptionAnalyzer = new NoAssumptionAnalyzer()
     var analysisSourceInfoStack: AnalysisSourceInfoStack = AnalysisSourceInfoStack()
@@ -180,7 +179,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       pathConditions = other
       while (prover.pushPopScopeDepth > 1){
         prover.pop()
-        _isReassumeAnalysisLabelsRequired = true
       }
       // TODO: Change interface to make the cast unnecessary?
       val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
@@ -282,7 +280,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //val commentRecord = new CommentRecord("pop", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
       _prover.pop()
-      _isReassumeAnalysisLabelsRequired = true
       pathConditions.popScope()
       //symbExLog.closeScope(sepIdentifier)
     }
@@ -340,7 +337,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def wrapWithAssumptionAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = {
-      if(!Verifier.config.enableAssumptionAnalysis()) return term
+      if(!Verifier.config.enableAssumptionAnalysis() || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+        return term
 
       val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
       labelNode.map(n => Implies(n.term, term)).getOrElse(term)
@@ -473,12 +471,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assumeLabel(term: Term, assumptionLabel: String): Unit = {
-      // do not add to pathConditions!
+      pathConditions.addAnalysisLabel(term)
       prover.assume(term, assumptionLabel)
-    }
-
-    def reassumeAssumptionAnalysisLabels(): Unit = {
-      assumptionAnalyzer.getReassumeLabelNodes foreach (node => decider.assumeLabel(node.term, AssumptionAnalyzer.createAssumptionLabel(Some(node.id))))
     }
 
     /* Asserting facts */
@@ -488,11 +482,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         val nodeId = assumptionAnalyzer.addAssertFalseNode(!isAssert, assumptionType, analysisSourceInfoStack.getFullSourceInfo) // TODO ake: add node only if it can be verified
         (AssumptionAnalyzer.createAssertionLabel(nodeId), nodeId)
       }else{ ("", None) }
-
-      if(_isReassumeAnalysisLabelsRequired) {
-        reassumeAssumptionAnalysisLabels()
-        _isReassumeAnalysisLabelsRequired = false
-      }
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
       val result = prover.check(timeout, label) == Unsat
@@ -570,11 +559,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private def proverAssert(t: Term, timeout: Option[Int], label: String) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
-
-      if(_isReassumeAnalysisLabelsRequired) {
-        reassumeAssumptionAnalysisLabels()
-        _isReassumeAnalysisLabelsRequired = false
-      }
 
       val result = prover.assert(t, timeout, label)
 
