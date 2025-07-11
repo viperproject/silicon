@@ -319,10 +319,12 @@ class DefaultMainVerifier(config: Config,
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
       assumptionAnalyzers foreach (_.exportGraph())
       assumptionAnalyzers foreach (_.computeProofCoverage())
-      val joinedGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet)
-      joinedGraph.exportGraph("graphExports/joinedGraphs")
-      if(reporter.isInstanceOf[DependencyAnalysisReporter]) {
-        reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers = assumptionAnalyzers
+      if(Verifier.config.assumptionAnalysisExportPath.isDefined)
+        AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet).exportGraph("graphExports/joinedGraphs")
+      reporter match {
+        case analysisReporter: DependencyAnalysisReporter =>
+          analysisReporter.assumptionAnalyzers = assumptionAnalyzers
+        case _ =>
       }
     }
 
