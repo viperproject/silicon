@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
 trait ExpressionTranslator {
@@ -172,7 +173,8 @@ trait ExpressionTranslator {
 
       case fa@ast.FuncApp(name, args) =>
         // We are assuming here that only functions with empty preconditions are used.
-        val tArgs = Unit +: (args map f)
+        val snapArgs = if (Verifier.config.maskHeapMode()) Seq() else Seq(Unit)
+        val tArgs = snapArgs ++ (args map f)
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(fa.typ)
         val id = Identifier(name)

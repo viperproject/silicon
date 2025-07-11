@@ -114,7 +114,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         case (Some(c1), Some(c2)) =>
           val newMask = MaskSum(c1.mask, c2.mask)
           val newHeap = v.decider.createAlias(MergeHeaps(c1.heap, c1.mask, c2.heap, c2.mask), s.get)
-          if (r.isInstanceOf[ast.Field]) {
+          if (r.isInstanceOf[ast.Field] && s.isDefined && s.get.mayAssumeUpperBounds) {
             if (newMask != c1.mask && newMask != c2.mask)
               v.decider.assume(upperBoundAssertion(newMask, v), Option.when(withExp)(DebugExp.createInstance("Upper bound assertion for merged field mask")))
           }
@@ -362,10 +362,14 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
               // constrain wildcard
               v.decider.assume(PermLess(rPerm, maskValue), Option.when(withExp)(DebugExp.createInstance("Constrain wildcard permission")))
             }
-            var newMask = v1.decider.createAlias(MaskAdd(resChunk.mask, argTerm, PermNegation(rPerm)), s1)
-            newMask = newMask match {
-              case MaskAdd(resChunk.mask, argTerm, PermNegation(rPerm)) if !s.assertReadAccessOnly=> removeSingleAdd(resChunk.mask, argTerm, rPerm, s, v)
-              case _ => newMask
+            val newMask = if (s.assertReadAccessOnly) {
+              resChunk.mask
+            } else {
+              val added = v1.decider.createAlias(MaskAdd(resChunk.mask, argTerm, PermNegation(rPerm)), s1)
+              added match {
+                case MaskAdd(resChunk.mask, argTerm, PermNegation(rPerm)) => removeSingleAdd(resChunk.mask, argTerm, rPerm, s, v)
+                case _ => added
+              }
             }
 
             val taken = PermMin(maskValue, rPerm)
@@ -415,14 +419,18 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
             // constrain wildcard
             v.decider.assume(PermLess(permissions, maskValue), Option.when(withExp)(DebugExp.createInstance("Wildcard constraint")))
           }
-          var newMask = v.decider.createAlias(MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)), s)
-          newMask = newMask match {
-            case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) if !s.assertReadAccessOnly => removeSingleAdd(resChunk.mask, argTerm, permissions, s, v)
-            case _ => newMask
+          val newMask = if (s.assertReadAccessOnly) {
+            resChunk.mask
+          } else {
+            val added = v.decider.createAlias(MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)), s)
+            added match {
+              case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) => removeSingleAdd(resChunk.mask, argTerm, permissions, s, v)
+              case _ => added
+            }
           }
 
           if (assumeGoodMask)
-            v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask),
+            v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask, s.mayAssumeUpperBounds) else GoodMask(newMask),
               Option.when(withExp)(DebugExp.createInstance("Valid mask")))
 
           val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.assertReadAccessOnly) {
@@ -671,9 +679,9 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                   val newFr = s.functionRecorder.recordFieldInv(inverseFunctions).recordConstrainedVar(qpMask, qpMaskConstraint)
 
                   // simplify only if this mask will be used later
-                  val newMask = if (s.assertReadAccessOnly) MaskDiff(currentChunk.mask, qpMask) else subtractMask(currentChunk.mask, qpMask, resource, s.program, v)
+                  val newMask = if (s.assertReadAccessOnly) currentChunk.mask else subtractMask(currentChunk.mask, qpMask, resource, s.program, v)
                   if (assumeGoodMask)
-                    v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask),
+                    v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask, s.mayAssumeUpperBounds) else GoodMask(newMask),
                       Option.when(withExp)(DebugExp.createInstance("Valid mask")))
 
                   val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.assertReadAccessOnly) {
@@ -718,7 +726,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     }
     val newMask = v.decider.createAlias(MaskAdd(resChunk.mask, argTerm, tPerm), s)
     if (assumeGoodMask)
-      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask),
+      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask, s.mayAssumeUpperBounds) else GoodMask(newMask),
         Option.when(withExp)(DebugExp.createInstance("Valid mask")))
 
     val snapVal = snap match {
@@ -730,7 +738,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     val ch = resChunk.copy(newMask = newMask, newHeap = newHeap)
     val h1 = s.h - resChunk + ch
 
-    val permConstraint = if (resource.isInstanceOf[ast.Field])
+    val permConstraint = if (resource.isInstanceOf[ast.Field] && s.mayAssumeUpperBounds)
       And(Implies(perms.IsPositive(tPerm), argTerm !== Null), PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm))
     else True
     v.decider.assume(permConstraint, Option.when(withExp)(DebugExp.createInstance("Permission upper bound")))
@@ -900,7 +908,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
             v.decider.assume(qpMaskConstraint, Option.when(withExp)(DebugExp.createInstance("QP mask definition")))
 
             if (assumeGoodMask)
-              v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask),
+              v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask, s.mayAssumeUpperBounds) else GoodMask(newMask),
                 Option.when(withExp)(DebugExp.createInstance("Valid mask")))
 
             val ax = inverseFunctions.axiomInversesOfInvertibles
@@ -1027,7 +1035,11 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                  v: Verifier)
                                 (Q: (State, Verifier) => VerificationResult): VerificationResult = {
     val tSnap = sf(null, v)
-    produce(s, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals,
+    val resId = resource match {
+      case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
+      case _ => resource
+    }
+    produce(s, forall, resId, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals,
       auxNonGlobals, auxGlobalsExp, auxNonGlobalsExp, tCond, eCond, tArgs, eArgs, tSnap, tPerm, ePerm, pve,
       negativePermissionReason, notInjectiveReason, v)(Q)
   }

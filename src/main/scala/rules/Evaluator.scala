@@ -1282,7 +1282,7 @@ object evaluator extends EvaluationRules {
     else {
       if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: ast.PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
-          evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
+          evalTriggers(s1, eTriggerSets.tail, tTriggersSets ++ ts, pve, v1)(Q))
       } else {
         evalTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
@@ -1425,30 +1425,49 @@ object evaluator extends EvaluationRules {
   }
 
   def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
-                     (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
-    var triggers: Seq[Term] = Seq()
+                     (Q: (State, Seq[Seq[Term]], Verifier) => VerificationResult) : VerificationResult = {
+    var triggers: Seq[Seq[Term]] = Seq(Seq())
     var triggerAxioms: Seq[Term] = Seq()
     var smDefs: Seq[SnapshotMapDefinition] = Seq()
+    var sCur = s
 
     exps foreach {
-      case ra: ast.ResourceAccess if s.isUsedAsTrigger(ra.res(s.program)) =>
+      case ra: ast.ResourceAccess if sCur.isUsedAsTrigger(ra.res(sCur.program)) && !Verifier.config.maskHeapMode() =>
         val (axioms, trigs, _, smDef) = generateResourceTrigger(ra, s, pve, v)
-        triggers = triggers ++ trigs
+        triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
-      case e => evalTrigger(s.copy(triggerExp = true), Seq(e), pve, v)((_, t, _) => {
-        triggers = triggers ++ t
+      case ra: ast.ResourceAccess if Verifier.config.maskHeapMode() =>
+        val resource = ra.res(sCur.program)
+        val chunk = resource match {
+          case mw: ast.MagicWand =>
+            val mwi = MagicWandIdentifier(mw, sCur.program)
+            val (hNew, chunk) = maskHeapSupporter.findOrCreateMaskHeapChunk(sCur.h, mwi, v)
+            sCur = sCur.copy(h = hNew)
+            chunk
+          case _ => maskHeapSupporter.findMaskHeapChunk(sCur.h, resource)
+        }
+
+        evals(sCur.copy(triggerExp = true), ra.args(sCur.program), _ => pve, v)((_, tArgs, _, _) => {
+          val tRcv = if (resource.isInstanceOf[ast.Field]) tArgs.head else toSnapTree(tArgs)
+          val heapAccess = new HeapLookup(chunk.heap, tRcv)
+          val maskAccess = new HeapLookup(chunk.mask, tRcv)
+          triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++ triggers.map(ts => ts ++ Seq(maskAccess))
+          Success()
+        })
+      case e => evalTrigger(sCur.copy(triggerExp = true), Seq(e), pve, v)((_, t, _) => {
+        triggers = triggers.map(ts => ts ++ t)
         Success()
       })
     }
 
     val triggerString = exps.mkString(", ")
     v.decider.assume(triggerAxioms, Option.when(withExp)(DebugExp.createInstance(s"Heap Triggers ($triggerString)")), enforceAssumption = false)
-    var fr = s.functionRecorder
+    var fr = sCur.functionRecorder
     for (smDef <- smDefs){
       fr = fr.recordFvfAndDomain(smDef)
     }
-    Q(s.copy(functionRecorder = fr), triggers, v)
+    Q(sCur.copy(functionRecorder = fr), triggers, v)
   }
 
   private def generateResourceTrigger(ra: ast.ResourceAccess,

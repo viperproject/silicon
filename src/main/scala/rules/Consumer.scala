@@ -155,7 +155,10 @@ object consumer extends ConsumptionRules {
           } else {
             if (Verifier.config.maskHeapMode()) {
               val fst = immutable.ListMap.from(resMap.get)
-              val snd = snap2.get.asInstanceOf[FakeMaskMapTerm].masks
+              val snd = snap2.get match {
+                case mht: FakeMaskMapTerm => mht.masks
+                case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
+              }
               val newMap = maskHeapSupporter.mergePreservingFirstOrder(fst, snd)
               val term = if (isRecursive) FakeMaskMapTerm(newMap)
               else
@@ -172,8 +175,14 @@ object consumer extends ConsumptionRules {
             if (Verifier.config.maskHeapMode()) {
               if (returnSnap) {
                 val fst = immutable.ListMap.from(resMap.get)
-                val snd = snap1.get.asInstanceOf[FakeMaskMapTerm].masks
-                val third = snap2.get.asInstanceOf[FakeMaskMapTerm].masks
+                val snd = snap1.get match {
+                  case mht: FakeMaskMapTerm => mht.masks
+                  case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
+                }
+                val third = snap2.get match {
+                  case mht: FakeMaskMapTerm => mht.masks
+                  case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
+                }
                 val newMap = maskHeapSupporter.mergePreservingFirstOrder(maskHeapSupporter.mergePreservingFirstOrder(fst, snd), third)
                 val term = if (isRecursive) FakeMaskMapTerm(newMap)
                 else

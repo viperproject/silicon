@@ -1430,6 +1430,8 @@ object PermPlus extends CondFlyweightTermFactory[(Term, Term), PermPlus] {
     case (FractionPerm(n1, d1), FractionPerm(n2, d2)) if d1 == d2 => FractionPerm(Plus(n1, n2), d1)
     case (PermMinus(t00, t01), t1) if t01 == t1 => t00
     case (t0, PermMinus(t10, t11)) if t11 == t0 => t10
+    case (PermNegation(p0), p1) => PermMinus(p1, p0)
+    case (p0, PermNegation(p1)) => PermMinus(p0, p1)
 
     case (_, _) => createIfNonExistent(v0)
   }
@@ -1458,6 +1460,7 @@ object PermMinus extends CondFlyweightTermFactory[(Term, Term), PermMinus] {
     case (p0, PermMinus(p1, p2)) if p0 == p1 => p2
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
+    case (p0, PermNegation(p1)) => PermPlus(p0, p1)
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -2510,21 +2513,21 @@ object GoodMask extends CondFlyweightTermFactory[Term, GoodMask] {
   override def actualCreate(args: Term): GoodMask = new GoodMask(args)
 }
 
-class GoodFieldMask(val mask: Term) extends Term with ConditionalFlyweight[Term, GoodFieldMask] {
+class GoodFieldMask(val mask: Term, upperBound: Boolean) extends Term with ConditionalFlyweight[(Term, Boolean), GoodFieldMask] {
 
-  val equalityDefiningMembers = mask
+  val equalityDefiningMembers = (mask, upperBound)
 
   val sort = sorts.Bool
 }
 
-object GoodFieldMask extends CondFlyweightTermFactory[Term, GoodFieldMask] {
-  override def apply (v0: Term) = v0 match {
+object GoodFieldMask extends CondFlyweightTermFactory[(Term, Boolean), GoodFieldMask] {
+  override def apply (v0: (Term, Boolean)) = v0._1 match {
     case ZeroMask => True
     case PredZeroMask => True
     case _ => createIfNonExistent(v0)
   }
 
-  override def actualCreate(args: Term): GoodFieldMask = new GoodFieldMask(args)
+  override def actualCreate(args: (Term, Boolean)): GoodFieldMask = new GoodFieldMask(args._1, args._2)
 }
 
 class FakeMaskMapTerm(val masks: immutable.ListMap[Any, Term]) extends Term with ConditionalFlyweight[immutable.ListMap[Any, Term], FakeMaskMapTerm] {

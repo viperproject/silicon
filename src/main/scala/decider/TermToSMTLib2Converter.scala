@@ -308,8 +308,8 @@ class TermToSMTLib2Converter
     case GoodMask(mask) =>
       parens(text("$Hp.maskGood") <+> render(mask))
 
-    case GoodFieldMask(mask) =>
-      parens(text("$Hp.maskGoodField") <+> render(mask))
+    case GoodFieldMask(mask, upper) =>
+      parens(text("$Hp.maskGoodField") <+> render(mask) <+> (if (upper) text("true") else text("false")))
 
     case DummyHeap(sort) =>
       text("$Hp.default_") <> renderHeapType(sort)
