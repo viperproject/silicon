@@ -77,3 +77,16 @@ method advancedPackage(a: Int, b: Int)
     @testAssertion("Explicit")
     assert greater0(a + b)
 }
+
+method quantifiedWand(xs: Seq[Int], b: Int)
+    requires @dependency("Explicit")(|xs| > 2)
+    requires @dependency("Explicit")(forall x: Int :: x in xs ==> (greater0(x) --* greater0(x + b)))
+  {
+    @dependency("Explicit")
+    inhale greater0(xs[0])
+    @dependency("Implicit")
+    apply  greater0(xs[0]) --* greater0(xs[0] + b)
+
+    @testAssertion("Explicit")
+    assert greater0(xs[0] + b)
+}
