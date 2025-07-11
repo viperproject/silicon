@@ -23,8 +23,8 @@
           :qid |qp.$FVF<$FLD$>-eq-inner|
           )))
       (= vs ws))
-    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs)
-              ($SortWrappers.$FVF<$FLD$>To$Snap ws)
+    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs) ($FVF.has_domain_$FLD$ vs)
+              ($SortWrappers.$FVF<$FLD$>To$Snap ws) ($FVF.has_domain_$FLD$ ws)
               )
     :qid |qp.$FVF<$FLD$>-eq-outer|
     )))

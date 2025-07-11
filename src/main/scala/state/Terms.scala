@@ -2198,6 +2198,17 @@ object Domain extends CondFlyweightTermFactory[(String, Term), Domain] {
   override def actualCreate(args: (String, Term)): Domain = new Domain(args._1, args._2)
 }
 
+class HasDomain(val field: String, val fvf: Term) extends Term with ConditionalFlyweight[(String, Term), HasDomain] {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+
+  val sort = sorts.Bool
+  override val equalityDefiningMembers: (String, Term) = (field, fvf)
+}
+
+object HasDomain extends CondFlyweightTermFactory[(String, Term), HasDomain] {
+  override def actualCreate(args: (String, Term)): HasDomain = new HasDomain(args._1, args._2)
+}
+
 class FieldTrigger(val field: String, val fvf: Term, val at: Term) extends Term with ConditionalFlyweight[(String, Term, Term), FieldTrigger] {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
@@ -2243,6 +2254,16 @@ class PredicateDomain(val predname: String, val psf: Term) extends SetTerm /*wit
 
 object PredicateDomain extends CondFlyweightTermFactory[(String, Term), PredicateDomain] {
   override def actualCreate(args: (String, Term)): PredicateDomain = new PredicateDomain(args._1, args._2)
+}
+
+class HasPredicateDomain(val predname: String, val psf: Term) extends Term with ConditionalFlyweight[(String, Term), HasPredicateDomain] {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+  val sort = sorts.Bool
+  override val equalityDefiningMembers: (String, Term) = (predname, psf)
+}
+
+object HasPredicateDomain extends CondFlyweightTermFactory[(String, Term), HasPredicateDomain] {
+  override def actualCreate(args: (String, Term)): HasPredicateDomain = new HasPredicateDomain(args._1, args._2)
 }
 
 class PredicateTrigger(val predname: String, val psf: Term, val args: Seq[Term]) extends Term with ConditionalFlyweight[(String, Term, Seq[Term]), PredicateTrigger] {

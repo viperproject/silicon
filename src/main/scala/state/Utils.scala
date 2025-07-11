@@ -124,9 +124,11 @@ package object utils {
       val (vs, ts) = l.bindings.toSeq.unzip
       vs ++ ts :+ l.body
     case Domain(_, fvf) => fvf :: Nil
+    case HasDomain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case PermLookup(_, pm, at) => pm :: at :: Nil
     case PredicateDomain(_, psf) => psf :: Nil
+    case HasPredicateDomain(_, psf) => psf :: Nil
     case PredicateLookup(_, psf, args) => Seq(psf) ++ args
     case PredicatePermLookup(_, pm, args) => Seq(pm) ++ args
     case FieldTrigger(_, fvf, at) => fvf :: at :: Nil
@@ -245,11 +247,13 @@ package object utils {
 //      case Distinct(ts) => Distinct(ts map go)
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
       case Domain(f, fvf) => Domain(f, go(fvf))
+      case HasDomain(f, fvf) => HasDomain(f, go(fvf))
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
       case PermLookup(field, pm, at) => PermLookup(field, go(pm), go(at))
       case FieldTrigger(f, fvf, at) => FieldTrigger(f, go(fvf), go(at))
 
       case PredicateDomain(p, psf) => PredicateDomain(p, go(psf))
+      case HasPredicateDomain(p, psf) => HasPredicateDomain(p, go(psf))
       case PredicateLookup(p, psf, args) => PredicateLookup(p, go(psf), args map go)
       case PredicatePermLookup(predname, pm, args) => PredicatePermLookup(predname, go(pm), args map go)
       case PredicateTrigger(p, psf, args) => PredicateTrigger(p, go(psf), args map go)
