@@ -38,7 +38,6 @@ trait RecordedPathConditions {
   def contains(assumption: Term): Boolean
 
   def conditionalized: Seq[Term]
-  def conditionalizedWithAnalysis: (Seq[Term], Seq[Term]) // TODO ake: remove and integrated labels into conditionalized
 
   def conditionalizedExp: Seq[DebugExp]
 
@@ -280,22 +279,17 @@ private trait LayeredPathConditionStackLike {
   protected def declarations(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Decl] =
     InsertionOrderedSet(layers.flatMap(_.declarations)) // Note: Performance?
 
-  protected def contains(layers: Stack[PathConditionStackLayer], assumption: Term): Boolean =
-    layers exists (_.contains(assumption))
-
-  protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
-    conditionalizedWithAnalysis(layers)._1
-  }
-
   protected def analysisLabels(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.analysisLabels))
 
-  // TODO ake: remove?
-  protected def conditionalizedWithAnalysis(layers: Stack[PathConditionStackLayer]): (Seq[Term], Seq[Term]) = {
+  protected def contains(layers: Stack[PathConditionStackLayer], assumption: Term): Boolean =
+    layers exists (_.contains(assumption))
+
+
+  protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
     var unconditionalTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
     var implicationLHS: Term = True
-    var originalTerms = Vector.empty[Term]
 
     for (layer <- layers.reverseIterator) {
       unconditionalTerms ++= layer.globalAssumptions
@@ -303,15 +297,13 @@ private trait LayeredPathConditionStackLike {
       layer.branchCondition match {
         case Some(condition) =>
           implicationLHS = And(implicationLHS, condition)
-          originalTerms = originalTerms :+ condition
         case None =>
       }
 
       conditionalTerms :+= Implies(implicationLHS, And(layer.nonGlobalAssumptions))
-      originalTerms = originalTerms ++ layer.nonGlobalAssumptions ++ layer.globalAssumptions
     }
 
-    (unconditionalTerms ++ conditionalTerms, originalTerms)
+    unconditionalTerms ++ conditionalTerms
   }
 
   protected def conditionalizedExp(layers: Stack[PathConditionStackLayer]): Seq[DebugExp] = {
@@ -440,7 +432,6 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
   val conditionalized: Seq[Term] = conditionalized(from)
-  val conditionalizedWithAnalysis: (Seq[Term], Seq[Term]) = conditionalizedWithAnalysis(from)
   lazy val conditionalizedExp: Seq[DebugExp] = conditionalizedExp(from)
 
   def definitionsOnly(): RecordedPathConditions = {
@@ -620,7 +611,6 @@ private[decider] class LayeredPathConditionStack
   def contains(assumption: Term): Boolean = allAssumptions.contains(assumption)
 
   def conditionalized: Seq[Term] = conditionalized(layers)
-  override def conditionalizedWithAnalysis: (Seq[Term], Seq[Term]) = conditionalizedWithAnalysis(layers)
 
   def conditionalizedExp: Seq[DebugExp] = conditionalizedExp(layers)
 

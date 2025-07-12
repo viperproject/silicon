@@ -36,7 +36,6 @@ trait AssumptionAnalyzer {
   def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit
   def addNode(node: AssumptionAnalysisNode): Unit
   def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int]
-  def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
   def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
@@ -120,7 +119,7 @@ object AssumptionAnalyzer {
     val newGraph = new DefaultAssumptionAnalysisGraph
     assumptionAnalysisGraphs foreach (graph => newGraph.addNodes(graph.nodes))
     assumptionAnalysisGraphs foreach (graph => graph.edges foreach {case (s, t) => newGraph.addEdges(s, t)})
-    assumptionAnalysisGraphs foreach (graph => graph.transitiveEdges foreach {case (s, t) => newGraph.addEdges(s, t)}) // TODO ake: add transitive edges
+    assumptionAnalysisGraphs foreach (graph => graph.transitiveEdges foreach {case (s, t) => newGraph.addEdges(s, t)})
     val types = Set(AssumptionType.Implicit, AssumptionType.Explicit)
     val relevantAssumptionNodes = newGraph.nodes filter (node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
     newGraph.nodes filter (node => node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition)) foreach {node =>
@@ -187,15 +186,6 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, labelNode)
     addNode(node)
     Some(node.id)
-  }
-
-  // TODO ake: remove
-  override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-//    val node = PermissionAssertNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_)
-//    addNode(node)
-//    addPermissionDependencies(Set(chunk), Set(), Some(node.id))
-//    Some(node.id)
-    None
   }
 
   override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
@@ -333,7 +323,6 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   }
 
   override def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
-  override def addPermissionAssertNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
   override def addDependencyFromExhaleToInhale(inhaledChunk: Chunk, sourceInfo: AnalysisSourceInfo): Unit = {}
 

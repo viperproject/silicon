@@ -385,10 +385,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def assume(assumptions: Seq[Term], debugExps: Option[Seq[DebugExp]], assumptionType: AssumptionType): Unit = {
-      val assumptionsWithLabels = assumptions map (t => {
-        val assumptionId = assumptionAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
-        (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
-      })
+      val assumptionsWithLabels = addAssumptionLabels(assumptions, assumptionType)
 
       assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
       if (debugMode) {
@@ -396,28 +393,29 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    // TODO ake: review this
     def assume(assumptions: Iterable[Term], debugExps: Option[Iterable[DebugExp]], description: String, enforceAssumption: Boolean, assumptionType: AssumptionType): Unit = {
       val debugExp = Option.when(debugExps.isDefined)(DebugExp.createInstance(description, InsertionOrderedSet(debugExps.get)))
 
-      // TODO ake: put after filtering
-      val assumptionsWithLabels = assumptions map (t => {
-        val assumptionIds = assumptionAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
-        (t, AssumptionAnalyzer.createAssumptionLabel(assumptionIds))
-      })
-
-
       val filteredTerms =
-        if (enforceAssumption) assumptionsWithLabels
-        else assumptionsWithLabels filterNot(t => isKnownToBeTrue(t._1))
+        if (enforceAssumption) assumptions
+        else assumptions filterNot isKnownToBeTrue
 
       if(filteredTerms.isEmpty) return
+
+      val assumptionsWithLabels = addAssumptionLabels(filteredTerms, assumptionType)
 
       assumeWithoutSmokeChecks(InsertionOrderedSet(assumptionsWithLabels))
 
       if (debugMode && debugExp.isDefined) {
         addDebugExp(debugExp.get)
       }
+    }
+
+    private def addAssumptionLabels(filteredTerms: Iterable[Term], assumptionType: AssumptionType) = {
+      filteredTerms map (t => {
+        val assumptionIds = assumptionAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        (t, AssumptionAnalyzer.createAssumptionLabel(assumptionIds))
+      })
     }
 
     def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, assumptionType: AssumptionType): Unit = {
@@ -430,10 +428,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (debugMode) {
         addDebugExp(debugExp.get.withTerm(And(filteredTerms)))
       }
-      val termsWithLabel = filteredTerms map (t => {
-        val assumptionId = assumptionAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
-        (t, AssumptionAnalyzer.createAssumptionLabel(assumptionId))
-      })
+      val termsWithLabel = addAssumptionLabels(filteredTerms, assumptionType)
       assumeWithoutSmokeChecks(InsertionOrderedSet(termsWithLabel))
     }
 
