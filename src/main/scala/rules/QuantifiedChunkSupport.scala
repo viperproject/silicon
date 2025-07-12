@@ -1076,9 +1076,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 triggers = effectiveTriggers,
                 qidPrefix = qid
               )
-              v.decider.assumptionAnalyzer.disableTransitiveEdges() // TODO ake: issue #01
-              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, AssumptionType.Internal)
-              v.decider.assumptionAnalyzer.enableTransitiveEdges()
+              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, AssumptionType.Internal) // TODO ake: issue #01
             })
             val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
