@@ -967,7 +967,24 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                                         qVars: Seq[(Var, ast.LocalVar)],
                                         tArgs: Seq[Term],
                                         eArgs: Option[Seq[ast.Exp]]): Seq[(Term, (ast.Exp, Option[ast.Exp]), Seq[Var], Store, Seq[Trigger])] = {
-    ???
+    val resId = resource match {
+      case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
+      case _ => resource
+    }
+    val chunk = findMaskHeapChunkOptionally(s.h, resId)
+    if (chunk.isEmpty)
+      return Seq()
+    val mask = chunk.get.mask
+    val arg = resource match {
+      case _: ast.Field => tArgs(0)
+      case _ => toSnapTree(tArgs)
+    }
+    val perm = HeapLookup(mask, arg)
+    val tCond = PermLess(NoPerm, perm)
+    val eCond = ast.LocalVar("chunk has non-zero permission", ast.Bool)() // TODO
+    val tQvars = qVars map (_._1)
+    val tTrigger = Trigger(perm)
+    Seq((tCond, (eCond, None), tQvars, Store(), Seq(tTrigger)))
   }
 
   override def havocResource(s: State,
