@@ -22,3 +22,17 @@ method exhaleIrrelevant(x: Ref)
     @testAssertion("Implicit")
     inhale x.f > 0
 }
+
+method exhale2(){
+    var x: Ref
+    @dependency("Explicit")
+    inhale acc(x.f)
+    @dependency("Explicit")
+    inhale x.f > 0
+    @dependency("Implicit")
+    x.f := x.f + 1
+    // @irrelevant("Implicit") // TODO ake
+    exhale acc(x.f, 1/2)
+    @testAssertion("Explicit")
+    assert x.f > 1
+}

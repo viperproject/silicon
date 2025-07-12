@@ -53,20 +53,6 @@ method perm5(){
     exhale acc(x.f)
 }
 
-method perm6(){
-    var x: Ref
-    @dependency("Explicit")
-    inhale acc(x.f)
-    @dependency("Explicit")
-    inhale x.f > 0
-    @dependency("Implicit")
-    x.f := x.f + 1
-    // @irrelevant("Implicit") // TODO ake
-    exhale acc(x.f, 1/2)
-    @testAssertion("Explicit")
-    assert x.f > 1
-}
-
 method permAmount1(x: Ref, p: Perm)
   requires p > none
   requires @dependency("Explicit")(acc(x.f, p))
@@ -110,3 +96,4 @@ method exhaleInhale(a: Ref)
     @testAssertion("Explicit")
     assert perm(a.f) == 1/1
 }
+

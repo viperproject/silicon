@@ -20,6 +20,7 @@ method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
 // (2)   assume  k14 > Z       assume RdVar(k14)            (k14=wildcard)
 // (3)   assert Z < (xs[0] in xs? k7: Z) + (xs[0] in ys? k14: Z)
 
+// when accessing a qp resource, we check Z < (x in xs? …) + (y in ys? …) the unsat core contains dependencies to all qp perm amounts (e.g. wildcard)
 
 // ----------------------------------------------------------------
 // issue #02 - IMPRECISION caused by write to quantified resource

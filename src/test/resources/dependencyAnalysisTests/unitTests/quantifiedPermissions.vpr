@@ -81,7 +81,7 @@ method quantifiedPermWrite3(xs: Seq[Ref]) {
   @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  // @irrelevant("Implicit") // TODO ake: imprecise
+  @irrelevant("Implicit")
   xs[0].f := 0
 
   @testAssertion("Explicit")
@@ -99,4 +99,17 @@ method quantifiedPermWrite4(xs: Seq[Ref], ys: Seq[Ref])
 
   @testAssertion("Implicit")
   xs[0].f := 2
+}
+
+method quantifiedPermWildcard(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
+  @irrelevant("Explicit")
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
+
+  @testAssertion("Explicit")
+  assert xs[0].f > 0
 }

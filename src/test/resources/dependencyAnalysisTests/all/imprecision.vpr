@@ -73,3 +73,54 @@ method exhaleImprecision(){
     assert x.f > 1
 }
 
+method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
+  @irrelevant("Explicit") // this is precise (as opposed to quantifiedPerm3
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
+
+  @testAssertion("Explicit")
+  assert xs[0].f > 0
+}
+
+// issue #01 - imprecision due to wildcards
+// when accessing a qp resource, we check Z < (x in xs? …) + (y in ys? …) the unsat core contains dependencies to all qp perm amounts (e.g. wildcard)
+method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
+  @irrelevant("Explicit") // TODO ake: unexpected dependency (wildcards)
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
+
+  @testAssertion("Explicit")
+  assert xs[0].f > 0
+}
+
+// issue #01 - imprecision due to perm amounts
+// when accessing a qp resource, we check Z < (x in xs? …) + (y in ys? …) the unsat core contains dependencies to all qp perm amounts (e.g. wildcard)
+method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  var p1: Perm
+  @dependency("Explicit")
+  assume none < p1 && p1 < 1/2
+
+  var p2: Perm
+  @irrelevant("Explicit")
+  assume none < p2 && p2 < 1/2 // TODO ake: unexpected dependency
+
+  @dependency("Explicit")
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, p1) && x.f > 0))
+
+  @irrelevant("Explicit") // fixed imprecision (wildcards)
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, p2) && y.f > 0)
+
+  @testAssertion("Explicit")
+  assert xs[0].f > 0
+}

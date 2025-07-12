@@ -15,32 +15,6 @@ method permTest(a: Ref, b: Ref, n: Int)
 }
 
 
-method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
-{
-  @dependency("Explicit")
-  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  @irrelevant("Explicit") // fixed imprecision (wildcards)
-  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
-
-  @testAssertion("Explicit")
-  assert xs[0].f > 0
-}
-
-method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
-{
-  @dependency("Explicit")
-  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  @irrelevant("Explicit") // fixed imprecision (wildcards)
-  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
-
-  @testAssertion("Explicit")
-  assert xs[0].f > 0
-}
-
 method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency("Explicit")(|xs| > 5)
   requires @irrelevant("Explicit")(|ys| > 3)
@@ -54,6 +28,15 @@ method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
   assert xs[0].f > 0
 }
 
+// issue #02 - imprecision due to field assign with qp
+// issue: access to a quantified field depended on all writes to any location covered by this qp resource
+// expl:  when exhaling permission to a single location of a qp resource (e.g. for field assign),
+//        permissions for other locations are inhaled. The inhale of full permission after the field assign
+//        depends on this inhale.
+// solution:
+// - inhale of remaining permissions / full permission after assignments are labelled internal
+// - exhale is implicit
+// - lhs and rhs are split such that transitive edges only go from lhs to rhs
 method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency("Explicit")(|xs| > 5)
   requires @irrelevant("Explicit")(|ys| > 3)
@@ -69,6 +52,7 @@ method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
   xs[0].f := 2
 }
 
+// issue #03
 // Imprecision due to state consolidation triggered by assertion
 // state consolidation infers pair-wise non-aliasing of all 3 resources in one assumption.
 // This assumption depends on all preconditions.
@@ -78,7 +62,7 @@ method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
 method noAlias(a: Ref, b: Ref, c: Ref)
     requires @dependency("Explicit")(acc(a.f))
     requires @dependency("Explicit")(acc(b.f, 1/2))
-    requires @irrelevant("Explicit")(acc(c.f, 1/2))
+    requires @irrelevant("Explicit")(acc(c.f, 1/2)) // fixed imprecision (state consolidation)
 {
     @testAssertion("Explicit")
     assert a != b
