@@ -147,15 +147,19 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                            body: PropertyExpression[kinds.Boolean],
                            info: Info)
                             : (Term, Option[ast.Exp]) = {
-    val builder: GeneralChunk => (Term, Option[ast.Exp]) = chunkVariables match {
-      case c +: Seq() => chunk => buildPathCondition(body, info.addMapping(c, chunk))
-      case c +: tail => chunk => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
+    val builder: GeneralChunk => (Term, Option[ast.Exp]) = {chunk =>
+      val res = chunkVariables match {
+        case c +: Seq() => buildPathCondition(body, info.addMapping(c, chunk))
+        case c +: tail => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
+      }
+      (verifier.decider.wrapWithAssumptionAnalysisLabel(res._1, Set(chunk)), res._2)
     }
     val conds = chunks.flatMap { chunk =>
         // check that only distinct tuples are handled
         // TODO: Is it possible to get this behavior without having to check every tuple?
         if (!info.pm.values.exists(chunk eq _)) {
-          Some(builder(chunk))
+          val res = builder(chunk)
+          Some((verifier.decider.wrapWithAssumptionAnalysisLabel(res._1, Set(chunk)), res._2))
         } else {
           None
         }

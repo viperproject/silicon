@@ -68,3 +68,18 @@ method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
   @testAssertion("Implicit")
   xs[0].f := 2
 }
+
+// Imprecision due to state consolidation triggered by assertion
+// state consolidation infers pair-wise non-aliasing of all 3 resources in one assumption.
+// This assumption depends on all preconditions.
+// The assertion depends on this assumption.
+// solution: wrap with analysis labels (see viper.silicon.resources.NonQuantifiedPropertyInterpreter.buildForEach)
+// and disable transitive edges (see viper.silicon.rules.DefaultStateConsolidator.consolidate)
+method noAlias(a: Ref, b: Ref, c: Ref)
+    requires @dependency("Explicit")(acc(a.f))
+    requires @dependency("Explicit")(acc(b.f, 1/2))
+    requires @irrelevant("Explicit")(acc(c.f, 1/2))
+{
+    @testAssertion("Explicit")
+    assert a != b
+}

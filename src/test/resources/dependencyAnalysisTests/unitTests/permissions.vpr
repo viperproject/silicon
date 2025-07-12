@@ -94,7 +94,7 @@ method permAmount2(x: Ref, p: Perm)
 method noAlias(a: Ref, b: Ref, c: Ref)
     requires @dependency("Explicit")(acc(a.f))
     requires @dependency("Explicit")(acc(b.f, 1/2))
-    requires acc(c.f, 1/2) // TODO ake: imprecise @irrelevant("Explicit")()
+    requires @irrelevant("Explicit")(acc(c.f, 1/2))
 {
     @testAssertion("Explicit")
     assert a != b

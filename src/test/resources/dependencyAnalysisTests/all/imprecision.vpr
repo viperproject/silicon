@@ -73,11 +73,3 @@ method exhaleImprecision(){
     assert x.f > 1
 }
 
-method noAlias(a: Ref, b: Ref, c: Ref)
-    requires @dependency("Explicit")(acc(a.f))
-    requires @dependency("Explicit")(acc(b.f, 1/2))
-    requires @irrelevant("Explicit")(acc(c.f, 1/2)) // TODO ake: unexpected dependency
-{
-    @testAssertion("Explicit")
-    assert a != b
-}
