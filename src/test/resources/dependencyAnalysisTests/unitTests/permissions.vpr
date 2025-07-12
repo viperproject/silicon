@@ -1,5 +1,11 @@
 field f: Int
 
+method currentPerm(x: Ref)
+    requires @dependency("Explicit")(acc(x.f, 1/2))
+{
+    @testAssertion("Explicit")
+    assert perm(x.f) > 1/4
+}
 
 method perm1(){
     var x: Ref

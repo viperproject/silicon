@@ -1,0 +1,70 @@
+field f: Int
+
+method permTest(a: Ref, b: Ref, n: Int)
+    requires @dependency("Explicit")(acc(a.f))
+    requires @irrelevant("Explicit")(acc(b.f)) && @irrelevant("Explicit")(b.f > 0)
+{
+    @dependency("Explicit")
+    assume n > 0
+    @irrelevant("Implicit") // fixed imprecision (field assign)
+    a.f := b.f + 2
+    @dependency("Implicit")
+    a.f := n
+    @testAssertion("Explicit")
+    assert a.f >= 0
+}
+
+
+method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
+  @irrelevant("Explicit") // fixed imprecision (wildcards)
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
+
+  @testAssertion("Explicit")
+  assert xs[0].f > 0
+}
+
+method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
+  @irrelevant("Explicit") // fixed imprecision (wildcards)
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
+
+  @testAssertion("Explicit")
+  assert xs[0].f > 0
+}
+
+method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale (forall x: Ref :: x in xs ==> acc(x.f) && x.f > 0)
+  @irrelevant("Explicit") // fixed imprecision (heap summary)
+  inhale forall y: Ref :: y in ys ==> acc(y.f)
+
+  @testAssertion("Explicit")
+  assert xs[0].f > 0
+}
+
+method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+  @irrelevant("Explicit")
+  inhale forall y: Ref :: y in ys ==> acc(y.f)
+
+  @irrelevant("Implicit") // fixed imprecision (field assign with qp)
+  xs[0].f := ys[0].f + 2
+  @testAssertion("Implicit")
+  xs[0].f := 2
+}

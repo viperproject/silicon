@@ -1,0 +1,48 @@
+field f: Int
+
+// ----------------------------------------------------------------
+// issue #01: IMPRECISION cause by WILDCARDS
+
+method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))     // (1)
+  @irrelevant("Explicit") // ERROR: unexpected dependency
+  inhale forall y: Ref :: y in ys ==> acc(y.f, wildcard)    // (2)
+
+  @testAssertion("Explicit")
+  assert xs[0].f > 0         // (3)
+}
+
+// (1)   k7 = wildcard
+// (2)   assume  k14 > Z       assume RdVar(k14)            (k14=wildcard)
+// (3)   assert Z < (xs[0] in xs? k7: Z) + (xs[0] in ys? k14: Z)
+
+
+// ----------------------------------------------------------------
+// issue #02 - IMPRECISION caused by write to quantified resource
+
+
+method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+  @irrelevant("Explicit")
+  inhale forall y: Ref :: y in ys ==> acc(y.f)
+
+  @irrelevant("Implicit")
+  xs[0].f := ys[0].f + 2            // (1)
+  @testAssertion("Implicit")
+  xs[0].f := 2                      // (2)
+}
+
+// (2) imprecisely depends on (1)
+// issue: inhaling remaining permission of lhs was labelled as implicit
+// solution:
+// - inhale of remaining permissions / full permission after assignments are labelled internal
+// - exhale is implicit
+// - lhs and rhs are split such that transitive edges only go from lhs to rhs

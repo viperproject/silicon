@@ -1076,7 +1076,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 triggers = effectiveTriggers,
                 qidPrefix = qid
               )
-              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, assumptionType)
+              v.decider.assumptionAnalyzer.disableTransitiveEdges() // TODO ake: issue #01
+              v.decider.assume(pcsForChunk, pcsForChunkExp, pcsForChunkExp, AssumptionType.Internal)
+              v.decider.assumptionAnalyzer.enableTransitiveEdges()
             })
             val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
@@ -1713,7 +1715,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         if (constrainPermissions) {
           v.decider.prover.comment(s"Constrain original permissions $perms")
 
-          v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, AssumptionType.Internal)
+          v.decider.assume(permissionConstraint, permissionConstraintExp, permissionConstraintExp, assumptionType)
           remainingChunks =
             remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(assumptionType))
         } else {

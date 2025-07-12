@@ -1,85 +1,83 @@
 field f: Int
 
-
-method permTest(a: Ref, b: Ref, n: Int)
-    requires @dependency("Explicit")(acc(a.f))
-    requires @irrelevant("Explicit")(acc(b.f)) && @irrelevant("Explicit")(b.f > 0)
-{
-    @dependency("Explicit")
-    assume n > 0
-    @irrelevant("Implicit")
-    a.f := b.f + 2
-    @dependency("Implicit")
-    a.f := n
-    @testAssertion("Explicit")
-    assert a.f >= 0
-}
-
-
-method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
-{
-  @dependency("Explicit")
-  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  //@irrelevant("Explicit") // TODO ake
-  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
-
-  @testAssertion("Explicit")
-  assert xs[0].f > 0
-}
-
-method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
-{
-  @dependency("Explicit")
-  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  // @irrelevant("Explicit") // TODO ake
-  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
-
-  @testAssertion("Explicit")
-  assert xs[0].f > 0
-}
-
-method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
-{
-  @dependency("Explicit")
-  inhale (forall x: Ref :: x in xs ==> acc(x.f) && x.f > 0)
-  @irrelevant("Explicit")
-  inhale forall y: Ref :: y in ys ==> acc(y.f)
-
-  @testAssertion("Explicit")
-  assert xs[0].f > 0
-}
-
-method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
-{
-  @dependency("Explicit")
-  inhale forall x: Ref :: x in xs ==> acc(x.f)
-  @irrelevant("Explicit")
-  inhale forall y: Ref :: y in ys ==> acc(y.f)
-
-  // @irrelevant("Implicit") // TODO ake: imprecise
-  xs[0].f := ys[0].f + 2
-  @testAssertion("Implicit")
-  xs[0].f := 2
-}
-
+// When executing the branch, the 1st inhale is reported as a dependency, the 2nd inhale is ignored.
+// If the branch is not executed, the 2nd inhale is reported as a dependency
+// In reality, the 2nd inhale is all we need for the assertion.
 method nonUniqueUnsatCore(x: Ref)
     requires x != null ==> acc(x.f)
 {
     var a: Int
     if(x == null){
-        // @irrelevant("Explicit") // TODO ake: imprecise
+        // @irrelevant("Explicit") // imprecise
         inhale a >= 0
     }
+
     @dependency("Explicit")
     inhale a >= 0
+
     @testAssertion("Explicit")
     assert a >= 0
+}
+
+method unprovableInfeasibility(){
+    var a: Int
+
+    if (exists x: Int, y: Int, z: Int :: x > 0 && y > 0 && z > 0 && x*x*x + y*y*y == z*z*z) {
+        // complicated condition that is equivalent to false, but can’t be proven by solver
+        // effectively unreachable code
+
+        // @irrelevant("Explicit")
+        assume a == 0 // assumption 1
+    } else {
+        @dependency("Explicit")
+        assume a == 0 // assumption 2
+    }
+
+    @testAssertion("Explicit")
+    assert a == 0
+}
+
+// Implication causes branching.
+// If x == null is assumed, only the assignment is reported as a dependency
+// If x != null, the branch is infeasible, but we executed it anyways. The implication and branch condition are reported as dependencies.
+method infeasible2(x: Ref)
+    requires x != null ==> acc(x.f) // unexpected dependency
+{
+    if(x == null){ // unexpected dependency
+        var a: Int
+
+        @dependency("Implicit")
+        a := 0
+
+        @testAssertion("Explicit")
+        assert a >= 0
+     }
+}
+
+method exhaleImprecision(){
+    var x: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f)
+
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    @dependency("Implicit")
+    x.f := x.f + 1
+
+    @irrelevant("Implicit") // TODO ake: unexpected dependency
+    exhale acc(x.f, 1/2)
+
+    @testAssertion("Explicit")
+    assert x.f > 1
+}
+
+method noAlias(a: Ref, b: Ref, c: Ref)
+    requires @dependency("Explicit")(acc(a.f))
+    requires @dependency("Explicit")(acc(b.f, 1/2))
+    requires @irrelevant("Explicit")(acc(c.f, 1/2)) // TODO ake: unexpected dependency
+{
+    @testAssertion("Explicit")
+    assert a != b
 }

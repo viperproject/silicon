@@ -1,5 +1,26 @@
 field f: Int
 
+method exhaleInhale(a: Ref)
+    requires acc(a.f)
+{
+
+    exhale acc(a.f, 1/2)
+
+    inhale acc(a.f, 1/2)
+
+    assert perm(a.f) == write
+}
+
+method exhaleImprecision(){
+    var x: Ref
+
+    inhale acc(x.f)
+    inhale x.f > 0
+
+    exhale acc(x.f, 1/2)
+
+    assert x.f > 0
+}
 
 method infeasible1(x: Ref)
     requires acc(x.f, 1/2)
@@ -21,32 +42,6 @@ method infeasible2(x: Ref)
         a := 0
         assert a >= 0
      }
-}
-
-method infeasible3(x: Ref)
-{
-    if(x != null){ // unexpected dependency iff infeasible branches are always executed
-        inhale acc(x.f)
-    }
-
-    if(x == null){ // unexpected dependency iff infeasible branches are always executed
-        var a: Int
-        a := 0
-        assert a >= 0
-    }
-}
-
-method foo(a: Int, b:Int, x: Ref)
-    requires b >= 0
-    ensures a >= 0
-{
-    if(b < 0){
-        x.f := a
-    }else{
-        inhale a > 10
-    }
-
-    assert a > 0
 }
 
 
