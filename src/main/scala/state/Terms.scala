@@ -2247,7 +2247,6 @@ object PredicatePermLookup extends PreciseCondFlyweightFactory[(String, Term, Se
   override def actualCreate(args: (String, Term, Seq[Term])): PredicatePermLookup = new PredicatePermLookup(args._1, args._2, args._3)
 }
 
-/** Like HasDomain, but for predicate snap functions.  */
 class PredicateDomain(val predname: String, val psf: Term) extends SetTerm /*with PossibleTrigger*/ with ConditionalFlyweight[(String, Term), PredicateDomain] {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
   val elementsSort = sorts.Snap
@@ -2259,6 +2258,7 @@ object PredicateDomain extends CondFlyweightTermFactory[(String, Term), Predicat
   override def actualCreate(args: (String, Term)): PredicateDomain = new PredicateDomain(args._1, args._2)
 }
 
+/** Like HasDomain, but for predicate snap functions; see comment above. */
 class HasPredicateDomain(val predname: String, val psf: Term) extends Term with ConditionalFlyweight[(String, Term), HasPredicateDomain] {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
   val sort = sorts.Bool
