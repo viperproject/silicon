@@ -2198,6 +2198,8 @@ object Domain extends CondFlyweightTermFactory[(String, Term), Domain] {
   override def actualCreate(args: (String, Term)): Domain = new Domain(args._1, args._2)
 }
 
+/** Marks FVFs that have a defined domain (i.e. for which some information is available about Domain(field, fvf)).
+  * Only for these FVFs is it useful to trigger the extensionality axiom.  */
 class HasDomain(val field: String, val fvf: Term) extends Term with ConditionalFlyweight[(String, Term), HasDomain] {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
 
@@ -2245,6 +2247,7 @@ object PredicatePermLookup extends PreciseCondFlyweightFactory[(String, Term, Se
   override def actualCreate(args: (String, Term, Seq[Term])): PredicatePermLookup = new PredicatePermLookup(args._1, args._2, args._3)
 }
 
+/** Like HasDomain, but for predicate snap functions.  */
 class PredicateDomain(val predname: String, val psf: Term) extends SetTerm /*with PossibleTrigger*/ with ConditionalFlyweight[(String, Term), PredicateDomain] {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
   val elementsSort = sorts.Snap
