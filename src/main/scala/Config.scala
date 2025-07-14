@@ -842,6 +842,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val startAssumptionAnalysisTool: ScallopOption[Boolean] = opt[Boolean]("startAssumptionAnalysisTool",
+    descr = "Starts the assumption analysis command line tool after verification",
+    default = Some(false),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
@@ -903,6 +909,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (Some(_), Some(true)) => Right(())
     case (Some(_), Some(false)) =>
       Left(s"Option ${assumptionAnalysisExportPath.name} requires option ${enableAssumptionAnalysis.name}")
+  }
+
+  validateOpt(startAssumptionAnalysisTool, enableAssumptionAnalysis) {
+    case (Some(false), _) => Right(())
+    case (_, Some(true)) => Right(())
+    case (Some(true), Some(false)) =>
+      Left(s"Option ${startAssumptionAnalysisTool.name} requires option ${enableAssumptionAnalysis.name}")
   }
 
   validateOpt(startDebuggerAutomatically, enableDebugging) {

@@ -8,7 +8,8 @@ package viper.silicon.verifier
 
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 import viper.silicon._
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, DefaultAssumptionAnalyzer, DependencyAnalysisReporter}
+import assumptionAnalysis.{AssumptionAnalyzer, DefaultAssumptionAnalyzer, DependencyAnalysisReporter}
+import silicon.viper.assumptionAnalysis.AssumptionAnalysisUserTool
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
@@ -315,18 +316,30 @@ class DefaultMainVerifier(config: Config,
 
     if(Verifier.config.enableAssumptionAnalysis()){
       val assumptionAnalyzers = verificationResults.filter(_.assumptionAnalyzer.isInstanceOf[DefaultAssumptionAnalyzer]).map(_.assumptionAnalyzer)
+
       assumptionAnalyzers.foreach(_.assumptionGraph.removeLabelNodes())
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
+
       assumptionAnalyzers foreach (_.exportGraph())
       assumptionAnalyzers foreach (_.exportMergedGraph())
+
       assumptionAnalyzers foreach (_.computeProofCoverage())
+
+      val joinedGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet)
       if(Verifier.config.assumptionAnalysisExportPath.isDefined)
-        AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet).exportGraph("graphExports/joinedGraphs")
+        joinedGraph.exportGraph("graphExports/joinedGraphs")
+
+      if(Verifier.config.startAssumptionAnalysisTool()){
+        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraph.mergeNodesBySource())
+        commandLineTool.run()
+      }
+
       reporter match {
         case analysisReporter: DependencyAnalysisReporter =>
           analysisReporter.assumptionAnalyzers = assumptionAnalyzers
         case _ =>
       }
+
     }
 
     if (Verifier.config.startDebuggerAutomatically()){

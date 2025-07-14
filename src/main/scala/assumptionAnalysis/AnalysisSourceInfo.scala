@@ -18,6 +18,11 @@ object AnalysisSourceInfo {
 abstract class AnalysisSourceInfo {
   override def toString: String = getPositionString
 
+  def getLineNumber: Option[Int] = getPosition match {
+    case column: HasLineColumn => Some(column.line)
+    case _ => None
+  }
+
   def getPositionString: String = {
     AnalysisSourceInfo.extractPositionString(getPosition)
   }

@@ -44,12 +44,29 @@ trait AssumptionAnalysisGraph {
     false
   }
 
+  def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] = {
+    val depIds = (edges filter { case (s, ts) => ts.intersect(nodeIdsToAnalyze).nonEmpty }).keys.toSet
+
+    nodes.filter(node => depIds.contains(node.id) &&
+    ((node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
+      (node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition))
+      || node.isInstanceOf[InfeasibilityNode])
+    ).toSet
+  }
+
   def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] = {
     nodes.filter(node =>
       ((node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
         (node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition))
         || node.isInstanceOf[InfeasibilityNode]) &&
         existsAnyDependency(Set(node.id), nodeIdsToAnalyze)).toSet
+  }
+
+  def getAllNonInternalDependendees(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] = {
+    nodes.filter(node =>
+      ((node.isInstanceOf[GeneralAssertionNode] && !node.assumptionType.equals(AssumptionType.Internal))
+        || node.isInstanceOf[InfeasibilityNode]) &&
+        existsAnyDependency(nodeIdsToAnalyze, Set(node.id))).toSet
   }
 
   private def getNodesByProperties(nodeType: Option[String], assumptionType: Option[AssumptionType], sourceInfo: Option[String], position: Option[Position]): mutable.Seq[AssumptionAnalysisNode] = {
@@ -83,7 +100,7 @@ trait AssumptionAnalysisGraph {
       .groupBy(_.asInstanceOf[ChunkAnalysisInfo].getChunk)
   }
 
-  def getNodesPerTransitivitySourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
+  private def getNodesPerTransitivitySourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
     nodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges.toString)
   }
 
@@ -137,19 +154,19 @@ trait AssumptionAnalysisGraph {
   private def exportEdges(fileName: String): Unit = {
     val writer = new PrintWriter(fileName)
     writer.println("source,target,label")
-    edges foreach (e => e._2 foreach (t => writer.println(e._1 + "," + t + ",direct")))
-    transitiveEdges foreach (e => e._2 foreach (t => writer.println(e._1 + "," + t + ",transitive")))
+    edges foreach (e => e._2 foreach (t => writer.println(e._1.toString + "," + t + ",direct")))
+    transitiveEdges foreach (e => e._2 foreach (t => writer.println(e._1.toString + "," + t + ",transitive")))
     writer.close()
   }
 
   private def exportNodes(fileName: String): Unit = {
     val sep = "#"
     def getNodeExportString(node: AssumptionAnalysisNode): String = {
-      val parts = Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.getFineGrainedSource.toString)
+      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.getFineGrainedSource.toString)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
     val writer = new PrintWriter(fileName)
-    val headerParts = Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source")
+    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source")
     writer.println(headerParts.mkString(sep))
     nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
     writer.close()
@@ -195,7 +212,7 @@ trait AssumptionAnalysisGraph {
 
 
 class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
-  override var nodes: Seq[AssumptionAnalysisNode] = Seq()
+  override var nodes: mutable.Seq[AssumptionAnalysisNode] = mutable.Seq()
   override var edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
 
   override def addNode(node: AssumptionAnalysisNode): Unit = {
