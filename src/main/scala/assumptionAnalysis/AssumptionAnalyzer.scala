@@ -57,6 +57,23 @@ trait AssumptionAnalyzer {
   def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo): CH = buildChunk(perm)
 
   def computeProofCoverage(): Unit = {}
+
+  def exportMergedGraph(): Unit = {
+    if(Verifier.config.assumptionAnalysisExportPath.isEmpty) return
+
+    val mergedGraph = assumptionGraph.mergeNodesBySource()
+
+    val foldername: Option[String] = getMember map {
+      case ast.Method(name, _, _, _, _, _) => name
+      case ast.Function(name, _, _, _, _, _) => name
+      case ast.Domain(name, _, _, _, _) => name
+      case contracted: ast.Contracted => contracted.toString()
+      case location: ast.Location => location.pos.toString
+      case member: ast.ExtensionMember => member.pos.toString
+    }
+    mergedGraph.exportGraph(Verifier.config.assumptionAnalysisExportPath() + "/" + foldername.getOrElse("latestExport") + "_merged")
+  }
+
 }
 
 object AssumptionAnalyzer {

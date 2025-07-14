@@ -527,7 +527,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
-      if(result || !isCheck) assertNode foreach assumptionAnalyzer.addNode
+      if(result) assertNode foreach assumptionAnalyzer.addNode
 
       symbExLog.closeScope(sepIdentifier)
       (result, assertNode)

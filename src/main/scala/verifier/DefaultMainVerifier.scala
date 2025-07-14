@@ -318,6 +318,7 @@ class DefaultMainVerifier(config: Config,
       assumptionAnalyzers.foreach(_.assumptionGraph.removeLabelNodes())
       assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
       assumptionAnalyzers foreach (_.exportGraph())
+      assumptionAnalyzers foreach (_.exportMergedGraph())
       assumptionAnalyzers foreach (_.computeProofCoverage())
       if(Verifier.config.assumptionAnalysisExportPath.isDefined)
         AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet).exportGraph("graphExports/joinedGraphs")

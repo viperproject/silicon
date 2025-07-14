@@ -2,7 +2,7 @@ package viper.silicon.assumptionAnalysis
 
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.{False, Term}
+import viper.silicon.state.terms.{False, Term, True}
 import viper.silver.ast.Position
 
 import java.io.{File, PrintWriter}
@@ -83,7 +83,7 @@ trait AssumptionAnalysisGraph {
       .groupBy(_.asInstanceOf[ChunkAnalysisInfo].getChunk)
   }
 
-  private def getNodesPerTransitivitySourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
+  def getNodesPerTransitivitySourceInfo: Map[String, mutable.Seq[AssumptionAnalysisNode]] = {
     nodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges.toString)
   }
 
@@ -154,6 +154,43 @@ trait AssumptionAnalysisGraph {
     nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
     writer.close()
   }
+
+  def mergeNodesBySource(): AssumptionAnalysisGraph = {
+    def keepNode(n: AssumptionAnalysisNode): Boolean = n.isClosed || n.isInstanceOf[InfeasibilityNode]
+    val mergedGraph = new DefaultAssumptionAnalysisGraph
+    val nodeMap = mutable.HashMap[Int, Int]()
+    nodes.filter(keepNode).foreach{n =>
+      nodeMap.put(n.id, n.id)
+      mergedGraph.addNode(n)
+    }
+
+    val nodesBySource = nodes.filter(!keepNode(_))
+      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.sourceInfo.getTopLevelSource.toString, n.assumptionType))
+    nodesBySource foreach {case ((_, _, assumptionType), nodes) =>
+      val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])
+      if(assumptionNodes.nonEmpty) {
+        val newNode = SimpleAssumptionNode(True, None, assumptionNodes.head.sourceInfo, assumptionType, isClosed = true)
+        assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
+        mergedGraph.addNode(newNode)
+      }
+    }
+
+    nodesBySource foreach {case ((_, _, assumptionType), nodes) =>
+      val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
+      if(assertionNodes.nonEmpty){
+        val newNode = SimpleAssertionNode(True, assumptionType, assertionNodes.head.sourceInfo, isClosed=true)
+        assertionNodes foreach (n => nodeMap.put(n.id, newNode.id))
+        mergedGraph.addNode(newNode)
+      }
+    }
+
+    (edges ++ transitiveEdges) foreach {case (source, targets) =>
+      val newSource = nodeMap(source)
+      mergedGraph.addEdges(newSource, targets.map(nodeMap(_)))
+    }
+
+    mergedGraph
+  }
 }
 
 
@@ -171,8 +208,9 @@ class DefaultAssumptionAnalysisGraph extends AssumptionAnalysisGraph {
 
   override def addEdges(source: Int, targets: Iterable[Int]): Unit = {
     val oldTargets = edges.getOrElse(source, Set.empty)
-    if(targets.nonEmpty)
-      edges.update(source, oldTargets ++ targets)
+    val newTargets = targets.filter(_ != source)
+    if(newTargets.nonEmpty)
+      edges.update(source, oldTargets ++ newTargets)
   }
 
   override def addEdges(sources: Iterable[Int], target: Int): Unit = {

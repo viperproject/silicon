@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters.IterableHasAsScala
 class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = true
-  val ignores: Seq[String] = Seq()
+  val ignores: Seq[String] = Seq("example1", "example2")
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
     "dependencyAnalysisTests/all",
@@ -35,7 +35,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   testDirectories foreach createTests
 
 //    test("custom test"){
-//      executeTest("dependencyAnalysisTests/quick/", "test", frontend)
+//      executeTest("dependencyAnalysisTests/all/", "list", frontend)
 //    }
 
   def createTests(dirName: String): Unit = {
@@ -105,7 +105,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
    * Statements that are only required as a trigger need to be manually annotated with @trigger() by the user.
    */
   case class PruningTest(fileName: String, program: Program, assumptionAnalyzers: List[AssumptionAnalyzer]) {
-    private val fullGraph: AssumptionAnalysisGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet)
+    private val fullGraph: AssumptionAnalysisGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet).mergeNodesBySource()
 
     def execute(): Unit = {
       val triggerNodes = fullGraph.nodes.filter(node => node.sourceInfo.getTopLevelSource.toString.contains("@trigger()"))

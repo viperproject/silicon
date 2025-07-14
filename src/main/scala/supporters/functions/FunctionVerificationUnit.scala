@@ -254,6 +254,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
       val annotatedAssumptionTypeOpt = AssumptionAnalyzer.extractAssumptionTypeFromInfo(function.info)
+      decider.assumptionAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
