@@ -9,7 +9,8 @@ package viper.silicon.verifier
 import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
 import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
 import viper.silicon.Config
-import viper.silicon.assumptionAnalysis.AnalysisSourceInfo
+import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionType}
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.decider.ProverLike
@@ -31,7 +32,7 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     def assume(term: Term): Unit = workerVerifiers foreach (_.decider.prover.assume(term))
     def assume(term: Term, label: String): Unit = workerVerifiers foreach (_.decider.prover.assume(term, label))
     override def assumeAxioms(terms: InsertionOrderedSet[Term], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxioms(terms, description))
-    override def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])], description: String): Unit = workerVerifiers foreach (_.decider.prover.assumeAxiomsWithAnalysisInfo(axioms, description))
+    override def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])], description: String, assumptionType: AssumptionType=AssumptionType.Axiom): Unit = workerVerifiers foreach (_.decider.prover.assumeAxiomsWithAnalysisInfo(axioms, description, assumptionType))
     def declare(decl: Decl): Unit =  workerVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = workerVerifiers foreach (_.decider.prover.comment(content))
 

@@ -7,6 +7,7 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
@@ -177,11 +178,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           result1
 
         case (result1, phase1data) =>
-          emitAndRecordFunctionAxioms(data.limitedAxiom)
-          emitAndRecordFunctionAxioms(data.triggerAxiom)
-          emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
-          emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)
-          this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
+          emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.limitedAxiom)
+          emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.triggerAxiom)
+          emitAndRecordFunctionAxioms(if(function.body.isDefined) AssumptionType.Implicit else AssumptionType.Explicit, data.postAxiom: _*)
+          emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.postPreconditionPropagationAxiom: _*)
+          this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom
 
           if (function.body.isEmpty) {
             result1
@@ -193,8 +194,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               case fatalResult: FatalResult =>
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
-                emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
-                emitAndRecordFunctionAxioms(data.bodyPreconditionPropagationAxiom: _*)
+                emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.definitionalAxiom.toSeq: _*)
+                emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.bodyPreconditionPropagationAxiom: _*)
             }
 
             result1 && result2
@@ -281,9 +282,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(axiom: (Term, Option[AnalysisSourceInfo])*): Unit = {
-      decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(axiom), "Function axioms")
-      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
+    private def emitAndRecordFunctionAxioms(assumptionType: AssumptionType, axiom: (Term, Option[AnalysisSourceInfo])*): Unit = {
+      decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(axiom), "Function axioms", assumptionType)
+      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom // FIXME ake: propagate assumption type
     }
 
     private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Decl]] = {

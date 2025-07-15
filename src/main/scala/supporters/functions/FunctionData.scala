@@ -15,7 +15,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
 import viper.silicon.state.{FunctionPreconditionTransformer, Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
-import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
+import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.ast
@@ -206,21 +206,27 @@ class FunctionData(val programFunction: ast.Function,
     }
   }
 
-  lazy val postAxiom: Option[(Term, Option[AnalysisSourceInfo])] = {
+  lazy val postAxiom: Seq[(Term, Option[AnalysisSourceInfo])] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
 
     if (programFunction.posts.nonEmpty) {
       val pre = preconditionFunctionApplication
-      val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts)))) // TODO ake: why not introduce one axiom per postcondition?
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
-      val body = Let(toMap(bodyBindings), innermostBody)
 
-      Some((Forall(arguments, body, Trigger(limitedFunctionApplication)),
-        Option.when(isAnalysisEnabled)(ExpAnalysisSourceInfo(ast.Forall(argumentExps.filter(_.isDefined).map(v => ast.LocalVarDecl(v.get.name, v.get.typ)(v.get.pos)), Seq(),
-          ast.Implies(BigAnd(programFunction.pres), BigAnd(programFunction.posts))())(programFunction.pos, programFunction.info, programFunction.errT)))
-      ))
+      def wrapBody(body: Term): Term = Let(toMap(bodyBindings), body)
+
+      if(Verifier.config.enableAssumptionAnalysis()){
+        (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), Option.empty[AnalysisSourceInfo]) +:
+          programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>
+            val terms = expressionTranslator.translatePostcondition(program, Seq(p), this)
+            (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True), Some(ExpAnalysisSourceInfo(p)))
+          })
+      }else{
+        val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
+        Seq((Forall(arguments, wrapBody(innermostBody), Trigger(limitedFunctionApplication)), Option.empty[AnalysisSourceInfo]))
+      }
     } else
-      None
+      Seq.empty
   }
 
   /*

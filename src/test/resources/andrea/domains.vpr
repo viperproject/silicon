@@ -2,14 +2,14 @@ field val: Int
 define access(a)
   (forall j: Int :: 0 <= j && j < len(a) ==> acc(slot(a,j).val))
 
-@enableAssumptionAnalysis("false")
+
 domain IArray {
   function slot(a: IArray, i: Int): Ref
   function len(a: IArray): Int
   function first(r: Ref): IArray
   function second(r: Ref): Int
 
-  @enableAssumptionAnalysis("true")
+
   axiom all_diff {
     forall a: IArray, i: Int :: { slot(a,i) }
       first(slot(a,i)) == a && second(slot(a,i)) == i

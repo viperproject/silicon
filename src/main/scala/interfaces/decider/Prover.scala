@@ -6,6 +6,7 @@
 
 package viper.silicon.interfaces.decider
 
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.assumptionAnalysis._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
@@ -38,13 +39,13 @@ trait ProverLike {
     terms foreach assume
   }
 
-  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])], description: String): Unit = {
+  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])], description: String, assumptionType: AssumptionType=AssumptionType.Axiom): Unit = {
     if (debugMode)
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
 
     if(Verifier.config.enableAssumptionAnalysis()){
       axioms.foreach(axiom => {
-        val id = if(axiom._2.isDefined) preambleAssumptionAnalyzer.addAssumption(axiom._1, axiom._2.get, AssumptionType.Axiom) else None
+        val id = if(axiom._2.isDefined) preambleAssumptionAnalyzer.addAssumption(axiom._1, axiom._2.get, assumptionType) else None
         assume(axiom._1, AssumptionAnalyzer.createAxiomLabel(id))
       })
     } else{
