@@ -56,7 +56,7 @@ trait AssumptionAnalyzer {
   def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, labelNode: Option[LabelNode], analysisInfo: AnalysisInfo, isExhale: Boolean): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo): CH = buildChunk(perm)
 
-  def computeProofCoverage(): Unit = {}
+  def computeProofCoverage(): Option[(Double, Seq[String])] = None
 
   def exportMergedGraph(): Unit = {
     if(Verifier.config.assumptionAnalysisExportPath.isEmpty) return
@@ -314,17 +314,18 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     chunk
   }
 
-  override def computeProofCoverage(): Unit = {
+  override def computeProofCoverage(): Option[(Double, Seq[String])] = {
     val explicitAssertionNodes = assumptionGraph.getExplicitAssertionNodes
     val explicitAssertionNodeIds = explicitAssertionNodes map (_.id)
     val nodesPerSourceInfo = assumptionGraph.getNonInternalAssumptionNodesPerSource
-    val coveredNodes = nodesPerSourceInfo filter { case (_, nodes) =>
+    val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
       val nodeIds = (nodes map (_.id)).toSet
-      // it is either an explicit assertion itself or it has a dependency to an explicit assertion
-      nodeIds.intersect(explicitAssertionNodeIds).nonEmpty ||
-        assumptionGraph.existsAnyDependency(nodeIds, explicitAssertionNodeIds)
-    }
-    proofCoverage = coveredNodes.size.toDouble / nodesPerSourceInfo.size.toDouble
+      // it is not an explicit assertion itself and has no dependency to an explicit assertion
+      nodeIds.intersect(explicitAssertionNodeIds).isEmpty &&
+        !assumptionGraph.existsAnyDependency(nodeIds, explicitAssertionNodeIds)
+    }).keys.toSeq
+    proofCoverage = 1.0 - (uncoveredSources.size.toDouble / nodesPerSourceInfo.size.toDouble)
+    Some((proofCoverage, uncoveredSources))
   }
 }
 

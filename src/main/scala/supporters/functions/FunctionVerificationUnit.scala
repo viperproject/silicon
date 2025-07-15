@@ -180,7 +180,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.limitedAxiom)
           emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.triggerAxiom)
-          emitAndRecordFunctionAxioms(if(function.body.isDefined) AssumptionType.Implicit else AssumptionType.Explicit, data.postAxiom: _*)
+          emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.postAxiom: _*) // FIXME ake: if(function.body.isDefined) AssumptionType.Implicit else AssumptionType.Explicit
           emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.postPreconditionPropagationAxiom: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom
 
@@ -272,7 +272,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
+              decider.analysisSourceInfoStack.setForcedSource(ExpAnalysisSourceInfo(body))
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.Implicit)
+              decider.analysisSourceInfoStack.removeForcedSource()
               consumes(s2, posts, false, postconditionViolated, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Postcondition))((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}

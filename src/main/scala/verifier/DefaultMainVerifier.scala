@@ -330,7 +330,7 @@ class DefaultMainVerifier(config: Config,
         joinedGraph.exportGraph("graphExports/joinedGraphs")
 
       if(Verifier.config.startAssumptionAnalysisTool()){
-        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraph.mergeNodesBySource())
+        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraph.mergeNodesBySource(), assumptionAnalyzers)
         commandLineTool.run()
       }
 

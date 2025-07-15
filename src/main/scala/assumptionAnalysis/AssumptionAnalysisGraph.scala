@@ -90,6 +90,7 @@ trait AssumptionAnalysisGraph {
       nodes exists (node =>
         node.isInstanceOf[GeneralAssumptionNode] &&
         !node.assumptionType.equals(AssumptionType.Internal) &&
+        !node.assumptionType.equals(AssumptionType.Trigger) &&
         !node.assumptionType.equals(AssumptionType.Axiom))
     }
   }

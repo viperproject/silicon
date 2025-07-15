@@ -1,11 +1,13 @@
 package silicon.viper.assumptionAnalysis
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, AssumptionType}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, AssumptionAnalyzer, AssumptionType}
 
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
+import viper.silver.ast
+import viper.silver.ast.Method
 
-class AssumptionAnalysisUserTool(graph: AssumptionAnalysisGraph) {
+class AssumptionAnalysisUserTool(graph: AssumptionAnalysisGraph, assumptionAnalyzers: Seq[AssumptionAnalyzer]) {
 
   def run(): Unit = {
     println("Assumption Analysis Tool started. Enter line number or 'q' to quit.")
@@ -22,7 +24,9 @@ class AssumptionAnalysisUserTool(graph: AssumptionAnalysisGraph) {
     val lineOpt = userInput.toIntOption
     if(lineOpt.isDefined){
       val line = lineOpt.get
-      handleQuery(line)
+      handleDependencyQuery(line)
+    }else if(userInput.equalsIgnoreCase("coverage") || userInput.equalsIgnoreCase("cov")){
+      handleProofCoverageQuery()
     }else{
       println("Invalid input. Line number expected.")
     }
@@ -30,7 +34,24 @@ class AssumptionAnalysisUserTool(graph: AssumptionAnalysisGraph) {
     runInternal()
   }
 
-  private def handleQuery(line: Int): Unit = {
+  private def handleProofCoverageQuery(): Unit = {
+    println("Proof Coverage")
+    assumptionAnalyzers.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
+        case meth: Method => meth.body.isDefined
+        case func: ast.Function => func.body.isDefined
+        case _ => false
+      })
+      .foreach(aa => {
+        val (coverage, uncoveredSources) = aa.computeProofCoverage().get
+        println(s"${aa.getMember.map(_.name).getOrElse("")}")
+        println(s"coverage: $coverage")
+        if (!coverage.equals(1.0))
+          println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
+        println()
+      })
+  }
+
+  private def handleDependencyQuery(line: Int): Unit = {
 
     val queriedNodes = findNodeByLine(line)
     val directDependencies = graph.getDirectDependencies(queriedNodes.map(_.id)).toList.sortBy(_.sourceInfo.getLineNumber)
