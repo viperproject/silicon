@@ -24,6 +24,7 @@ trait GeneralChunk extends Chunk {
   def permPlus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
 
   val permExp: Option[ast.Exp]
+  val tag: Option[Int]
 }
 
 trait NonQuantifiedChunk extends GeneralChunk {
@@ -41,9 +42,7 @@ trait QuantifiedChunk extends GeneralChunk {
   val quantifiedVars: Seq[Var]
   val quantifiedVarExps: Option[Seq[ast.LocalVarDecl]]
   val invs: Option[InverseFunctions]
-  val tag: Option[Int]
   val orgCondition: Term
-  val singleRcvr: Seq[Seq[Term]]
 
   def snapshotMap: Term
   def valueAt(arguments: Seq[Term]): Term
@@ -51,5 +50,4 @@ trait QuantifiedChunk extends GeneralChunk {
   override def permMinus(perm: Term, permExp: Option[ast.Exp]): QuantifiedChunk
   override def permPlus(perm: Term, permExp: Option[ast.Exp]): QuantifiedChunk
   def withSnapshotMap(snap: Term): QuantifiedChunk
-  def addSingleRcvr(rcvr: Seq[Term]): QuantifiedChunk
 }

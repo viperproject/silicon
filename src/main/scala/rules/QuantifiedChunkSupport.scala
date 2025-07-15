@@ -439,7 +439,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments,
           optSingletonArgumentsExp,
           tag,
-          Seq(),
           hints)
 
       case predicate: ast.Predicate =>
@@ -457,7 +456,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           optSingletonArguments,
           optSingletonArgumentsExp,
           tag,
-          Seq(),
           hints)
 
       case wand: ast.MagicWand =>
@@ -1692,13 +1690,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               if (chunkUnused) {
                 untouchedChunks = untouchedChunks :+ ch
               } else {
-                remainingChunks = if (optQVarValues.nonEmpty){
-                  remainingChunks :+ ch.permMinus(permsTaken, permsTakenExp).addSingleRcvr(optQVarValues.get)
-                } else {
-                  remainingChunks :+ ch.permMinus(permsTaken, permsTakenExp)
-                }
+                remainingChunks = remainingChunks :+ ch.permMinus(permsTaken, permsTakenExp)
                 v.decider.prover.comment(s"new chunk: ${remainingChunks.last}")
-
               }
             }
           }
@@ -2082,19 +2075,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     v.decider.prover.comment(s"chunks tag: ${chunksWithSameTag}")
     if (chunksWithSameTag.nonEmpty)
       return chunksWithSameTag.headOption
-    relevantChunks foreach { ch =>
-      if (ch.singletonArguments.size == 1) {
-        chunk.singleRcvr foreach { rcvr =>
-          val eqCmp = And(rcvr.zip(ch.singletonArguments.head).map { case (r, e) => r === e })
-          v.decider.prover.comment(s"Check: ${eqCmp.toString}")
-          if (v.decider.check(eqCmp, 10 * Verifier.config.checkTimeout()))
-            v.decider.prover.comment("Merging check succeeded")
-          return Some(ch)
-        }
-        v.decider.prover.comment("Merging check failed")
-      }
-    }
-    return None
     relevantChunks foreach { ch =>
       val codomainQVars = chunk.quantifiedVars
       val replacedPerm = ch.perm.replace(ch.quantifiedVars, codomainQVars)

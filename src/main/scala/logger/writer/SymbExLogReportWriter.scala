@@ -31,31 +31,34 @@ object SymbExLogReportWriter {
   }
 
   private def heapChunkToJSON(chunk: Chunk) = chunk match {
-    case BasicChunk(PredicateID, id, args, _, snap, perm, _) =>
+    case BasicChunk(PredicateID, id, args, _, snap, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_predicate_chunk"),
         "predicate" -> JsString(id.toString),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
         "snap" -> TermWriter.toJSON(snap),
-        "perm" -> TermWriter.toJSON(perm)
+        "perm" -> TermWriter.toJSON(perm),
+        "tag" -> JsString(tag.toString)
       )
 
-    case BasicChunk(FieldID, id, Seq(receiver), _, snap, perm, _) =>
+    case BasicChunk(FieldID, id, Seq(receiver), _, snap, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_field_chunk"),
         "field" -> JsString(id.toString),
         "receiver" -> TermWriter.toJSON(receiver),
         "snap" -> TermWriter.toJSON(snap),
-        "perm" -> TermWriter.toJSON(perm)
+        "perm" -> TermWriter.toJSON(perm),
+        "tag" -> JsString(tag.toString)
       )
 
     // TODO: Are ID and bindings needed?
-    case MagicWandChunk(_, _, args, _, snap, perm, _) =>
+    case MagicWandChunk(_, _, args, _, snap, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_magic_wand_chunk"),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
         "snap" -> TermWriter.toJSON(snap),
-        "perm" -> TermWriter.toJSON(perm)
+        "perm" -> TermWriter.toJSON(perm),
+        "tag" -> JsString(tag.toString)
       )
 
     case QuantifiedFieldChunk(id, fvf, _, condition, _, perm, _, invs, receivers, _, tag, srcvr, hints) =>

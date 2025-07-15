@@ -114,11 +114,12 @@ object predicateSupporter extends PredicateSupportRules {
                          qpTag = None)
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.convert(sorts.Snap), tPerm, ePerm)
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.convert(sorts.Snap), tPerm, ePerm, s2.qpTag)
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor,
-                         permissionScalingFactorExp = s.permissionScalingFactorExp)
+                         permissionScalingFactorExp = s.permissionScalingFactorExp,
+                         qpTag = None)
         chunkSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) =>
           Q(s4.copy(h = h1), v2))
       }
