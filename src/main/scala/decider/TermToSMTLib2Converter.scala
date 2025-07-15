@@ -212,7 +212,7 @@ class TermToSMTLib2Converter
     case PermIntDiv(t0, t1) => renderBinaryOp("/", renderAsReal(t0), renderAsReal(t1))
     case PermPermDiv(t0, t1) => renderBinaryOp("/", renderAsReal(t0), renderAsReal(t1))
     case PermMin(t0, t1) => renderBinaryOp("$Perm.min", render(t0), render(t1))
-    case IsValidPermVar(v) => parens(text("$Perm.isValidVar") <+> render(v))
+    case IsValidPermVal(v) => parens(text("$Perm.isValidVar") <+> render(v))
     case IsReadPermVar(v) => parens(text("$Perm.isReadVar") <+> render(v))
 
     /* Sequences */
@@ -263,6 +263,8 @@ class TermToSMTLib2Converter
 
     case Domain(id, fvf) => parens(text("$FVF.domain_") <> id <+> render(fvf))
 
+    case HasDomain(id, fvf) => parens(text("$FVF.has_domain_") <> id <+> render(fvf))
+
     case Lookup(field, fvf, at) => //fvf.sort match {
 //      case _: sorts.PartialFieldValueFunction =>
       parens(text("$FVF.lookup_") <> field <+> render(fvf) <+> render(at))
@@ -281,6 +283,8 @@ class TermToSMTLib2Converter
     case PermLookup(field, pm, at) => parens(text("$FVF.perm_") <> field <+> render(pm) <+> render(at))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
+
+    case HasPredicateDomain(id, psf) => parens(text("$PSF.has_domain_") <> id <+> render(psf))
 
     case PredicateLookup(id, psf, args) =>
       val snap: Term = toSnapTree(args)

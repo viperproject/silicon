@@ -6,7 +6,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{Term, True}
 import viper.silicon.state.{BasicChunk, IdentifierFactory, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
@@ -26,7 +26,8 @@ case class ProofObligation(s: State,
                            v: Verifier,
                            proverEmits: Seq[String],
                            preambleAssumptions: Seq[DebugAxiom],
-                           branchConditions: Seq[(ast.Exp, ast.Exp)],
+                           branchConditions: Seq[Term],
+                           branchConditionExps: Seq[(ast.Exp, ast.Exp)],
                            assumptionsExp: InsertionOrderedSet[DebugExp],
                            assertion: Term,
                            eAssertion: DebugExp,
@@ -52,17 +53,31 @@ case class ProofObligation(s: State,
         }) +
       s"\n\t\t${originalErrorReason.readableMessage}\n\n"
 
-  private lazy val stateString: String =
-    s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+  private lazy val stateString: String = {
+    if (printConfig.printInternalTermRepresentation)
+      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._1}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+    else
+      s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\nHeap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+  }
 
-  private lazy val branchConditionString: String =
-    s"Branch Conditions:\n\t\t${branchConditions.map(bc => Simplifier.simplify(bc._2, true)).filter(bc => bc != ast.TrueLit()()).mkString("\n\t\t")}\n\n"
+  private lazy val branchConditionString: String = {
+    if (printConfig.printInternalTermRepresentation)
+      s"Branch Conditions:\n\t\t${branchConditions.filter(bc => bc != True).mkString("\n\t\t")}\n\n"
+    else
+      s"Branch Conditions:\n\t\t${branchConditionExps.map(bc => Simplifier.simplify(bc._2, true)).filter(bc => bc != ast.TrueLit()()).mkString("\n\t\t")}\n\n"
+  }
 
   private def chunkString(c: Chunk): String = {
+    if (printConfig.printInternalTermRepresentation)
+      return c.toString
     val res = c match {
       case bc: BasicChunk =>
+        val snapExpString = bc.snapExp match {
+          case Some(e) => s" -> ${Simplifier.simplify(e, true)}"
+          case _ => ""
+        }
         bc.resourceID match {
-          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${Simplifier.simplify(bc.permExp.get, true)})"
+          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${Simplifier.simplify(bc.permExp.get, true)})$snapExpString"
           case PredicateID => s"acc(${bc.id}(${bc.argsExp.mkString(", ")}), ${Simplifier.simplify(bc.permExp.get, true)})"
         }
       case mwc: MagicWandChunk =>
@@ -215,7 +230,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       }
 
       val obl = Some(ProofObligation(failureContext.state.get, failureContext.verifier.get, failureContext.proverDecls, failureContext.preambleAssumptions,
-        failureContext.branchConditions, failureContext.assumptions,
+        failureContext.branchConditions, failureContext.branchConditionExps, failureContext.assumptions,
         failureContext.failedAssertion, failureContext.failedAssertionExp, None,
         new DebugExpPrintConfiguration, currResult.message.reason,
         new DebugResolver(this.pprogram, this.resolver.names), new DebugTranslator(this.pprogram, translator.getMembers())))
@@ -321,7 +336,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
         obl.copy(timeout = Some(timeoutInt))
       }
     } catch {
-      case e: NumberFormatException =>
+      case _: NumberFormatException =>
         println("Invalid timeout value.")
         obl
     }
@@ -530,6 +545,13 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     readLine().toLowerCase match {
       case "true" | "1" | "t" => obl.printConfig.isPrintAxiomsEnabled = true
       case "false" | "0" | "f" => obl.printConfig.isPrintAxiomsEnabled = false
+      case _ =>
+    }
+
+    println(s"Enter the new value for printInternalTermRepresentation:")
+    readLine().toLowerCase match {
+      case "true" | "1" | "t" => obl.printConfig.printInternalTermRepresentation = true
+      case "false" | "0" | "f" => obl.printConfig.printInternalTermRepresentation = false
       case _ =>
     }
 

@@ -6,6 +6,8 @@
 
 package viper.silicon.resources
 
+import scala.annotation.unused
+
 /**
   * A resource description contains the assumptions that are added at several points during verificaton.
   * <ul>
@@ -14,16 +16,18 @@ package viper.silicon.resources
   *   <li>Static properties are also assumed when a new chunk is added to the heap. They descripe properties of the whole heap
   *   and are not allowed to contain the <code>This()</code> literal.</li>
   *   <li>Delayed properties are static properties that are only assumed after a state consolidation.</li>
+  *   <li>The flag withPermUpperBounds determines if properties that set upper bounds for permission amounts should
+  *   be included.</li>
   *  </ul>
   */
 trait ResourceDescription {
-  val instanceProperties: Seq[Property]
-  val delayedProperties: Seq[Property]
+  def instanceProperties(withPermUpperBounds: Boolean): Seq[Property]
+  def delayedProperties(withPermUpperBounds: Boolean): Seq[Property]
 }
 
 abstract class BasicDescription extends ResourceDescription {
-  override val instanceProperties = Seq(permAtLeastZero)
-  override val delayedProperties = Seq(valNeqImpliesLocNeq)
+  override def instanceProperties(@unused withPermUpperBounds: Boolean) = Seq(permAtLeastZero)
+  override def delayedProperties(@unused withPermUpperBounds: Boolean) = Seq(valNeqImpliesLocNeq)
 
   def permAtLeastZero: Property = {
     val description = "Permissions are non-negative"
@@ -47,8 +51,18 @@ class PredicateDescription extends BasicDescription {
 }
 
 class FieldDescription extends BasicDescription {
-  override val instanceProperties = Seq(permAtLeastZero, permAtMostOne, permImpliesNonNull)
-  override val delayedProperties = Seq(permUpperBoundDiseq, valNeqImpliesLocNeq)
+  override def instanceProperties(withPermUpperBounds: Boolean) = {
+    if (withPermUpperBounds)
+      Seq(permAtLeastZero, permAtMostOne, permImpliesNonNull)
+    else
+      Seq(permAtLeastZero, permImpliesNonNull)
+  }
+  override def delayedProperties(withPermUpperBounds: Boolean) = {
+    if (withPermUpperBounds)
+      Seq(permUpperBoundDiseq, valNeqImpliesLocNeq)
+    else
+      Seq(valNeqImpliesLocNeq)
+  }
 
   def permAtMostOne: Property = {
     val description = "Field permissions are at most one"
@@ -75,8 +89,8 @@ class FieldDescription extends BasicDescription {
 }
 
 class MagicWandDescription extends ResourceDescription {
-  override val instanceProperties = Seq(permAtLeastZero)
-  override val delayedProperties = Seq[Property]()
+  override def instanceProperties(withPermUpperBounds: Boolean) = Seq(permAtLeastZero)
+  override def delayedProperties(withPermUpperBounds: Boolean) = Seq[Property]()
 
   def permAtLeastZero: Property = {
     val description = "Permissons are non-negative"

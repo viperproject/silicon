@@ -22,7 +22,7 @@ import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
-import viper.silicon.supporters.PredicateData
+import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
@@ -150,6 +150,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
+      val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(function, reporter)
+      v.decider.setProverOptions(proverOptions)
+
       openSymbExLogger(function)
 
       val data = functionData(function)
@@ -157,13 +160,17 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       decider.prover.declare(ConstDecl(data.formalResult))
 
       val res = Seq(handleFunction(sInit, function))
+
+      v.decider.resetProverOptions()
       symbExLog.closeMemberScope()
       res
     }
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function)
-      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data), conservingSnapshotGeneration = true)
+      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data),
+        conservingSnapshotGeneration = true,
+        assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {
@@ -264,7 +271,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp)
-              consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {
+              consumes(s2, posts, false, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

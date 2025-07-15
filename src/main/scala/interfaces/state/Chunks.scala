@@ -35,7 +35,7 @@ trait NonQuantifiedChunk extends GeneralChunk {
   override def permMinus(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
   override def permPlus(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
   def withPerm(perm: Term, permExp: Option[ast.Exp]): NonQuantifiedChunk
-  def withSnap(snap: Term): NonQuantifiedChunk
+  def withSnap(snap: Term, snapExp: Option[ast.Exp]): NonQuantifiedChunk
 }
 
 trait QuantifiedChunk extends GeneralChunk {

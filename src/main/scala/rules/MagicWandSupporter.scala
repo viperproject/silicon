@@ -398,10 +398,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
-            wand.right, pve, proofScriptVerifier
+            wand.right, true, pve, proofScriptVerifier
           )((s3, snapRhs, v3) => {
 
-            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs, v3)
+            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3)
           })
         })
       })
@@ -457,28 +457,28 @@ object magicWandSupporter extends SymbolicExecutionRules {
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
-    consume(s, wand, pve, v)((s1, snapWand, v1) => {
+    consume(s, wand, true, pve, v)((s1, snapWand, v1) => {
       // Consume the wand's LHS "A".
-      consume(s1, wand.left, pve, v1)((s2, snapLhs, v2) => {
+      consume(s1, wand.left, true, pve, v1)((s2, snapLhs, v2) => {
         /* It is assumed that snap and MagicWandSnapshot.abstractLhs are structurally the same.
          * Equating the two snapshots is sound iff a wand is applied only once.
          * The old solution in this case did use this assumption:
          * v2.decider.assume(snap === snapWand.abstractLhs)
          */
-        assert(snapLhs.sort == sorts.Snap, s"expected snapshot but found: $snapLhs")
+        assert(snapLhs.get.sort == sorts.Snap, s"expected snapshot but found: $snapLhs")
 
         // Create copy of the state with a new labelled heap (i.e. `oldHeaps`) called "lhs".
         val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> this.getEvalHeap(s1)))
 
         // If the snapWand is a (wrapped) MagicWandSnapshot then lookup the snapshot of the right-hand side by applying snapLhs.
-        val magicWandSnapshotLookup = snapWand match {
-          case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs)
-          case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs)
+        val magicWandSnapshotLookup = snapWand.get match {
+          case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs.get)
+          case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs.get)
           // Fallback solution for quantified magic wands
           case predicateLookup: PredicateLookup =>
-            v2.decider.assume(snapLhs === First(snapWand), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", true)))
+            v2.decider.assume(snapLhs.get === First(snapWand.get), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", true)))
             Second(predicateLookup)
-          case _ => snapWand
+          case _ => snapWand.get
         }
 
         // Produce the wand's RHS.

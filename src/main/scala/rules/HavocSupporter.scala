@@ -143,6 +143,7 @@ object havocSupporter extends SymbolicExecutionRules {
               codomainQVarExps = codomainQVarsExp,
               additionalInvArgs = Seq(), // There are no additional quantified vars
               additionalInvArgExps = Option.when(withExp)(Seq()),
+              stateQVars = Seq(),
               userProvidedTriggers = None,
               qidPrefix = qid,
               v = v1
@@ -194,12 +195,12 @@ object havocSupporter extends SymbolicExecutionRules {
         val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
         val cond = replacementCond(lhs, ch.args, condInfo)
         val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
-        ch.withSnap(magicWandSnapshot)
+        ch.withSnap(magicWandSnapshot, None)
 
       case ch =>
         val havockedSnap = freshSnap(ch.snap.sort, v)
         val cond = replacementCond(lhs, ch.args, condInfo)
-        ch.withSnap(Ite(cond, havockedSnap, ch.snap))
+        ch.withSnap(Ite(cond, havockedSnap, ch.snap), None)
     }
     otherChunks ++ newChunks
   }

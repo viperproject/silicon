@@ -23,8 +23,8 @@
           :qid |qp.$PSF<$PRD$>-eq-inner|
           )))
       (= vs ws))
-    :pattern (($SortWrappers.$PSF<$PRD$>To$Snap vs)
-              ($SortWrappers.$PSF<$PRD$>To$Snap ws)
+    :pattern (($SortWrappers.$PSF<$PRD$>To$Snap vs) ($PSF.has_domain_$PRD$ vs)
+              ($SortWrappers.$PSF<$PRD$>To$Snap ws) ($PSF.has_domain_$PRD$ ws)
 ;              ($PSF.after_$PRD$ vs ws)
               )
     :qid |qp.$PSF<$PRD$>-eq-outer|
@@ -32,8 +32,10 @@
 
 (assert (forall ((s $Snap) (pm $PPM)) (!
     ($Perm.isValidVar ($PSF.perm_$PRD$ pm s))
-    :pattern (($PSF.perm_$PRD$ pm s)))))
+    :pattern (($PSF.perm_$PRD$ pm s))
+    :qid |qp.$PSF<$PRD$>-validvar|)))
 
 (assert (forall ((s $Snap) (f $S$)) (!
     (= ($PSF.loc_$PRD$ f s) true)
-    :pattern (($PSF.loc_$PRD$ f s)))))
+    :pattern (($PSF.loc_$PRD$ f s))
+    :qid |qp.$PSF<$PRD$>-loc|)))

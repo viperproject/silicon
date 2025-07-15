@@ -10,7 +10,7 @@ import viper.silicon.debugger.{DebugAxiom, DebugExp, DebugExpPrintConfiguration}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting._
-import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Term}
+import viper.silicon.state.terms.{BooleanLiteral, FunctionDecl, IntLiteral, MacroDecl, Term, Var}
 import viper.silicon.state.{State, Store}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -135,7 +135,8 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
   override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
 }
 
-case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Exp)],
+case class SiliconDebuggingFailureContext(branchConditions: Seq[Term],
+                                          branchConditionExps: Seq[(ast.Exp, ast.Exp)],
                                           counterExample: Option[Counterexample],
                                           reasonUnknown: Option[String],
                                           state: Option[State],
@@ -147,59 +148,8 @@ case class SiliconDebuggingFailureContext(branchConditions: Seq[(ast.Exp, ast.Ex
                                           assumptions: InsertionOrderedSet[DebugExp],
                                           failedAssertion: Term,
                                           failedAssertionExp: DebugExp) extends FailureContext {
-  lazy val branchConditionString: String = {
-    if (branchConditions.nonEmpty) {
-      val branchConditionsString =
-        branchConditions
-          .map(_._2)
-          .map(bc => s"$bc [ ${bc.pos} ] ")
-          .mkString("\t\t", " ~~> ", "")
 
-      s"\n\t\tunder branch conditions:\n$branchConditionsString"
-    } else {
-      ""
-    }
-  }
-
-  lazy val counterExampleString: String = {
-    counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
-  }
-
-  lazy val reasonUnknownString: String = {
-    if (reasonUnknown.isDefined) {
-      s"\nPotential prover incompleteness: ${reasonUnknown.get}"
-    } else {
-      ""
-    }
-  }
-
-  lazy val stateString: String = {
-    if (state.isDefined){
-      s"\n\nStore:\n\t\t${state.get.g.values.mkString("\n\t\t")}\n\nHeap:\n\t\t${state.get.h.values.mkString("\n\t\t")}"
-    } else {
-      ""
-    }
-  }
-
-  lazy val allAssumptionsString: String = {
-    if (assumptions.nonEmpty) {
-      val config = new DebugExpPrintConfiguration
-      config.isPrintInternalEnabled = true
-      s"\n\nassumptions:\n\t${assumptions.tail.foldLeft[String](assumptions.head.toString(config))((s, de) => de.toString(config) + s)}"
-    } else {
-      ""
-    }
-  }
-
-  lazy val failedAssertionString: String ={
-    if (failedAssertionExp.finalExp.isDefined){
-      s"\n\nFailed Assertion:\n\t\t${failedAssertionExp.finalExp.get.toString}"
-    } else {
-      failedAssertionExp.description.get
-    }
-  }
-
-  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString + stateString + allAssumptionsString + failedAssertionString
+  override lazy val toString: String = ""
 }
 
 trait SiliconCounterexample extends Counterexample {
@@ -216,11 +166,22 @@ case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chun
 
 case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {
   override val model: Model = {
-    Model(internalStore.values.filter{
-      case (_,v) => nativeModel.entries.contains(v.toString)
-    }.map{
-      case (k, v) => k.name -> nativeModel.entries(v.toString)
-    })
+    val variableValues = internalStore.values.filter {
+      case (_, (v: Var, _)) => nativeModel.entries.contains(v.toString)
+      case _ => false
+    }.map {
+      case (k, (v, _)) => k.name -> nativeModel.entries(v.toString)
+    }
+    val constantValues = internalStore.values.filter {
+      case (_, (_: IntLiteral, _)) => true
+      case (_, (_: BooleanLiteral, _)) => true
+      case _ => false
+    }.map {
+      case (k, (i: IntLiteral, _)) => k.name -> ConstantEntry(i.toString)
+      case (k, (b: BooleanLiteral, _)) => k.name -> ConstantEntry(b.toString)
+    }
+
+    Model(variableValues ++ constantValues)
   }
 
   override def withStore(s: Store): SiliconCounterexample = {

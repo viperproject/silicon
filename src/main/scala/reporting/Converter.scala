@@ -422,7 +422,7 @@ object Converter {
       case FullPerm => Some(Rational.one)
       case FractionPermLiteral(r) => Some(r)
       case _: FractionPerm => None
-      case IsValidPermVar(_) => None
+      case IsValidPermVal(_) => None
       case IsReadPermVar(_) => None
       case PermTimes(v1, v2) =>
         evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x * y))

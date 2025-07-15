@@ -70,16 +70,16 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, pve, v)((s1a, snap, v1) => {
+    consume(s1, body, true, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
-          snap.convert(terms.sorts.Snap) +: tArgs)
+          snap.get.convert(terms.sorts.Snap) +: tArgs)
         val eArgsString = eArgs.mkString(", ")
         v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
       }
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
-        val predSnap = snap.convert(s2.predicateSnapMap(predicate))
+        val predSnap = snap.get.convert(s2.predicateSnapMap(predicate))
         val formalArgs = s2.predicateFormalVarMap(predicate)
         val (sm, smValueDef) =
           quantifiedChunkSupporter.singletonSnapshotMap(s2, predicate, tArgs, predSnap, v1)
@@ -114,7 +114,7 @@ object predicateSupporter extends PredicateSupportRules {
                          qpTag = None)
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.convert(sorts.Snap), tPerm, ePerm, s2.qpTag)
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm, s2.qpTag)
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor,
@@ -158,18 +158,19 @@ object predicateSupporter extends PredicateSupportRules {
         pa,
         tPerm,
         ePerm,
+        true,
         None,
         pve,
         v
       )((s2, h2, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
+        produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
               App(s4.predicateData(predicate).triggerFunction,
-                snap.convert(terms.sorts.Snap) +: tArgs)
+                snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
             v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }
@@ -182,14 +183,14 @@ object predicateSupporter extends PredicateSupportRules {
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, ve, v, description)((s2, h1, snap, v1) => {
+      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
+        produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
-              App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
+              App(s4.predicateData(predicate).triggerFunction, snap.get +: tArgs)
             val eargs = eArgs.mkString(", ")
             v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${pa.predicateName}($eargs))")))
           }

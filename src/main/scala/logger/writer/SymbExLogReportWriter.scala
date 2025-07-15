@@ -31,7 +31,7 @@ object SymbExLogReportWriter {
   }
 
   private def heapChunkToJSON(chunk: Chunk) = chunk match {
-    case BasicChunk(PredicateID, id, args, _, snap, perm, _, tag) =>
+    case BasicChunk(PredicateID, id, args, _, snap, _, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_predicate_chunk"),
         "predicate" -> JsString(id.toString),
@@ -41,7 +41,7 @@ object SymbExLogReportWriter {
         "tag" -> JsString(tag.toString)
       )
 
-    case BasicChunk(FieldID, id, Seq(receiver), _, snap, perm, _, tag) =>
+    case BasicChunk(FieldID, id, Seq(receiver), _, snap, _, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_field_chunk"),
         "field" -> JsString(id.toString),
@@ -52,7 +52,7 @@ object SymbExLogReportWriter {
       )
 
     // TODO: Are ID and bindings needed?
-    case MagicWandChunk(_, _, args, _, snap, perm, _, tag) =>
+    case MagicWandChunk(_, _, args, _, snap, _, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_magic_wand_chunk"),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
@@ -71,7 +71,6 @@ object SymbExLogReportWriter {
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
         "receivers" -> JsArray(receivers.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
         "tag" -> JsString(tag.toString),
-        "single_rvcr" -> JsString(srcvr.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
@@ -86,7 +85,6 @@ object SymbExLogReportWriter {
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
         "singleton_args" -> JsArray(singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
         "tag" -> JsString(tag.toString),
-        "single_rvcr" -> JsString(srcvr.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
@@ -100,7 +98,6 @@ object SymbExLogReportWriter {
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
         "singleton_args" -> JsArray(singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).toVector),
         "tag" -> JsString(tag.toString),
-        "single_rvcr" -> JsString(srcvr.toString),
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 

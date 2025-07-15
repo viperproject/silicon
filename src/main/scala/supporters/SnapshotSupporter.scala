@@ -8,16 +8,19 @@ package viper.silicon.supporters
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
-import viper.silicon.state.{State, SymbolConverter}
+import viper.silicon.state.{MagicWandIdentifier, State, SymbolConverter}
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.Resource
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 
 import scala.annotation.unused
 
 trait SnapshotSupporter {
   def optimalSnapshotSort(a: ast.Exp, program: ast.Program): (Sort, Boolean)
+
+  def optimalSnapshotSort(r: ast.Resource, s: State, v: Verifier): Sort
 
   def createSnapshotPair(s: State,
                          sf: (Sort, Verifier) => Term,
@@ -30,6 +33,17 @@ trait SnapshotSupporter {
 class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends SnapshotSupporter {
   def optimalSnapshotSort(a: ast.Exp, program: ast.Program): (Sort, Boolean) =
     optimalSnapshotSort(a, program, Nil)
+
+  def optimalSnapshotSort(r: Resource, s: State, v: Verifier): Sort = r match {
+    case f: ast.Field => v.symbolConverter.toSort(f.typ)
+    case p: ast.Predicate if s.predicateSnapMap.contains(p) => s.predicateSnapMap(p)
+    case p: ast.Predicate =>
+      p.body.map(v.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
+        .getOrElse(sorts.Snap)
+    case mw: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(mw, s.program)) =>
+      sorts.Snap
+    case _: ast.MagicWand => sorts.MagicWandSnapFunction
+  }
 
   private def optimalSnapshotSort(a: ast.Exp, program: ast.Program, visited: Seq[String])
                                  : (Sort, Boolean) =

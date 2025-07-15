@@ -319,11 +319,13 @@ object producer extends ProductionRules {
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>
           produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
 
-      case accPred@ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
+      case accPred@ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), _) =>
+        val perm = accPred.perm
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, ePermNew, v2) =>
-            permissionSupporter.assertNotNegative(s2, tPerm, perm, ePermNew, pve, v2)((s3, v3) => {
-              val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
+            permissionSupporter.assertNotNegative(s2, tPerm, perm, ePermNew, pve, v2)((s2a, v3) => {
+              val s3 = s2a.copy(constrainableARPs = s.constrainableARPs)
+              val snap = sf(v3.snapshotSupporter.optimalSnapshotSort(field, s3, v3), v3)
               val gain = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(field))
                 PermTimes(tPerm, s3.permissionScalingFactor)
               else
@@ -334,19 +336,23 @@ object producer extends ProductionRules {
                 quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT))),
                   Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), snap, gain, gainExp, trigger, v3)(Q)
               } else {
-                val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), snap, gain, gainExp, s3.qpTag)
-                chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) =>
-                  Q(s4.copy(h = h4), v4))
-              }})))
+                val (debugHeapName, debugLabel) = v3.getDebugOldLabel(s3, accPred.pos)
+                val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, field)(), debugLabel)(accPred.pos, accPred.info, accPred.errT))
+                val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), snap, snapExp, gain, gainExp, s3.qpTag)
+                chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) => {
+                  val s5 = s4.copy(h = h4)
+                  val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s5
+                  Q(s6, v4)
+                })}})))
 
-      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
+      case accPred @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), _) =>
         val predicate = s.program.findPredicate(predicateName)
+        val perm = accPred.perm
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, perm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
-            permissionSupporter.assertNotNegative(s1a, tPerm, perm, ePermNew, pve, v1a)((s2, v2) => {
-              val snap = sf(
-                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
-                              .getOrElse(sorts.Snap), v2)
+            permissionSupporter.assertNotNegative(s1a, tPerm, perm, ePermNew, pve, v1a)((s1b, v2) => {
+              val s2 = s1b.copy(constrainableARPs = s.constrainableARPs)
+              val snap = sf(v2.snapshotSupporter.optimalSnapshotSort(predicate, s2, v2), v2)
               val gain = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(predicate))
                 PermTimes(tPerm, s2.permissionScalingFactor)
               else
@@ -359,7 +365,7 @@ object producer extends ProductionRules {
                   s2, predicate, formalArgs, Option.when(withExp)(predicate.formalArgs), tArgs, eArgsNew, snap, gain, gainExp, trigger, v2)(Q)
               } else {
                 val snap1 = snap.convert(sorts.Snap)
-                val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgsNew, snap1, gain, gainExp, s1.qpTag)
+                val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgsNew, snap1, None, gain, gainExp, s1.qpTag)
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                   if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {
@@ -376,8 +382,8 @@ object producer extends ProductionRules {
         val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
         evals(s, bodyVars, _ => pve, v)((s1, args, bodyVarsNew, v1) => {
           val (sm, smValueDef) =
-            quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
-          v1.decider.prover.comment("Definitional axioms for singleton-SM's value1")
+            quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(v1.snapshotSupporter.optimalSnapshotSort(wand, s1, v1), v1), v1)
+          v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val definitionalAxiomMark = v1.decider.setPathConditionMark()
           val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
           v1.decider.assumeDefinition(smValueDef, debugExp)
@@ -410,7 +416,7 @@ object producer extends ProductionRules {
           Q(s2, v1)})
 
       case wand: ast.MagicWand =>
-        val snap = sf(sorts.MagicWandSnapFunction, v)
+        val snap = sf(v.snapshotSupporter.optimalSnapshotSort(wand, s, v), v)
         magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snap), pve, v)((s1, chWand, v1) =>
           chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
             Q(s2.copy(h = h2), v2)))
@@ -425,9 +431,10 @@ object producer extends ProductionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), eCondNew, Some((Seq(tRcvr, tPerm), rcvrPerm, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
-            val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ), acc.loc.field.name), v1)
+            val tSnap = sf(sorts.FieldValueFunction(v1.snapshotSupporter.optimalSnapshotSort(acc.loc.field, s1, v1), acc.loc.field.name), v1)
+            val s1a = s1.copy(constrainableARPs = s.constrainableARPs)
             quantifiedChunkSupporter.produce(
-              s1,
+              s1a,
               forall,
               acc.loc.field,
               qvars, qvarExps, Seq(`?r`),
@@ -450,7 +457,7 @@ object producer extends ProductionRules {
               QPAssertionNotInjective(acc.loc),
               v1
             )(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -464,8 +471,9 @@ object producer extends ProductionRules {
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), eCondNew, Some((Seq(tPerm, tArgs @ _*), permArgs, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate), predicate.name), v1)
+            val s1a = s1.copy(constrainableARPs = s.constrainableARPs)
             quantifiedChunkSupporter.produce(
-              s1,
+              s1a,
               forall,
               predicate,
               qvars,
@@ -491,7 +499,7 @@ object producer extends ProductionRules {
               QPAssertionNotInjective(acc.loc),
               v1
             )(Q)
-          case (s1, _, _, _, _, None, v1) => Q(s1, v1)
+          case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>

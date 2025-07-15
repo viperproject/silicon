@@ -9,9 +9,9 @@ function req(x: Ref): Bool
 
 method test(x: Ref) {
   inhale acc(x.f)
-  //:: ExpectedOutput(application.precondition:insufficient.permission)
-  assert req(x) // Fails only without --enableMoreCompleteExhale (and should fail)
-  assert false  // Fails even with --enableMoreCompleteExhale (and should fail)
+  assert req(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
 }
 
 
@@ -33,5 +33,4 @@ predicate SomePredicate_pkg_F(param_pkg_V0: Ref) {
 method client2_pkg_F(param_pkg_V0: Ref) returns (res_pkg_V0: Int)
   requires acc(SomePredicate_pkg_F(param_pkg_V0), 1 / 2)
   ensures acc(SomePredicate_pkg_F(param_pkg_V0), 1 / 2)
-  //:: ExpectedOutput(application.precondition:insufficient.permission)
   ensures res_pkg_V0 == getter_pkg_F(param_pkg_V0)

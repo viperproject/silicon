@@ -17,6 +17,8 @@ import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
+import scala.annotation.unused
+
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
   // Instead of merging states by calling State.merge,
   // we can directly merge JoinDataEntries to obtain new States,
@@ -26,7 +28,7 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
     v.stateConsolidator(s).consolidate(res, v)
   }
 
-  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
+  def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], @unused v: Verifier): State = {
     State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
   }
 }
