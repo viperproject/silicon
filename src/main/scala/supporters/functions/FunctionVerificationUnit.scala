@@ -52,9 +52,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
-    private var emittedFunctionAxioms: Vector[(Term, AnalysisSourceInfo)] = Vector.empty
+    private var emittedFunctionAxioms: Vector[(Term, Option[AnalysisSourceInfo])] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
-    private var postConditionAxioms: Vector[(Term, AnalysisSourceInfo)] = Vector.empty
+    private var postConditionAxioms: Vector[(Term, Option[AnalysisSourceInfo])] = Vector.empty
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
@@ -281,7 +281,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(axiom: (Term, AnalysisSourceInfo)*): Unit = {
+    private def emitAndRecordFunctionAxioms(axiom: (Term, Option[AnalysisSourceInfo])*): Unit = {
       decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(axiom), "Function axioms")
       emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }

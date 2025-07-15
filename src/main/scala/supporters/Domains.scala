@@ -28,7 +28,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
-  private var collectedAxioms = InsertionOrderedSet[(Term, AnalysisSourceInfo)]()
+  private var collectedAxioms = InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])]()
   private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
@@ -105,8 +105,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
         val enableAnalysis = AssumptionAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
-        val exp = axiom.exp.withMeta((axiom.exp.pos, MakeInfoPair(axiom.exp.info, AssumptionAnalyzer.createEnableAnalysisInfo(enableAnalysis)), axiom.exp.errT))
-        collectedAxioms = collectedAxioms.incl(terms.And(tAxPres, tAx), ExpAnalysisSourceInfo(exp))
+        collectedAxioms = collectedAxioms.incl(terms.And(tAxPres, tAx), Option.when(enableAnalysis)(ExpAnalysisSourceInfo(axiom.exp)))
       })
     })
   }
