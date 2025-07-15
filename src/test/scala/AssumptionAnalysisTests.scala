@@ -2,9 +2,9 @@
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.SiliconFrontend
 import viper.silicon.assumptionAnalysis._
+import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier.VerificationResult
 import viper.silver.{ast, verifier}
@@ -20,9 +20,10 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val ignores: Seq[String] = Seq("example1", "example2")
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
-    "dependencyAnalysisTests/all",
-    "dependencyAnalysisTests/unitTests",
+//    "dependencyAnalysisTests/all",
+//    "dependencyAnalysisTests/unitTests",
 //    "dependencyAnalysisTests/quick"
+    "dependencyAnalysisTests/fromSilver"
   )
 
   val irrelevantKeyword = "irrelevant"
@@ -90,11 +91,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       return
     }
 
-    val assumptionAnalyzers = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalyzers
+    val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
 
-    PruningTest(filePrefix + "/" + fileName, program, assumptionAnalyzers).execute()
+    PruningTest(filePrefix + "/" + fileName, program, AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(assumptionAnalysisInterpreters.toSet)).execute()
 
-    AnnotatedTest(program, assumptionAnalyzers).execute()
+    AnnotatedTest(program, assumptionAnalysisInterpreters).execute()
   }
 
   /**
@@ -104,25 +105,24 @@ class AssumptionAnalysisTests extends AnyFunSuite {
    *
    * Statements that are only required as a trigger need to be manually annotated with @trigger() by the user.
    */
-  case class PruningTest(fileName: String, program: Program, assumptionAnalyzers: List[AssumptionAnalyzer]) {
-    private val fullGraph: AssumptionAnalysisGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet).mergeNodesBySource()
+  case class PruningTest(fileName: String, program: Program, fullGraphInterpreter: AssumptionAnalysisInterpreter) {
 
     def execute(): Unit = {
-      val triggerNodes = fullGraph.nodes.filter(node => node.sourceInfo.getTopLevelSource.toString.contains("@trigger()"))
+      val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.getTopLevelSource.toString.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber) // TODO ake: we also need all dependencies of trigger nodes!
       var id: Int = 0
-      fullGraph.getExplicitAssertionNodes.groupBy(_.sourceInfo.getPositionString).foreach { case (_, nodes) =>
-          pruneAndVerify(nodes ++ triggerNodes, "src/test/resources/" + fileName + s"_test$id.out")
+      // TODO ake: safer would be to work with position string instead of line numbers
+      fullGraphInterpreter.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber) foreach {line =>
+          pruneAndVerify(Set(line) ++ triggerNodeLines, "src/test/resources/" + fileName + s"_test$id.out")
           id += 1
         }
     }
 
-    private def pruneAndVerify(nodesToAnalyze: Set[AssumptionAnalysisNode], exportFileName: String): Unit = {
-      val sourcePositionsToAnalyze = nodesToAnalyze map (_.sourceInfo.getPositionString)
-      val explicitAssertionNodeIds = fullGraph.nodes.filter(n => sourcePositionsToAnalyze.contains(n.sourceInfo.getPositionString)).map(_.id).toSet
+    private def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {
+      val relevantNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
 
-      val dependencies = fullGraph.getAllNonInternalDependencies(explicitAssertionNodeIds)
+      val dependencies = fullGraphInterpreter.getAllNonInternalDependencies(relevantNodes.map(_.id))
 
-      val crucialNodes = nodesToAnalyze ++ dependencies
+      val crucialNodes = relevantNodes ++ dependencies
       val (newProgram, pruningFactor) = getPrunedProgram(crucialNodes)
       val result = frontend.verifier.verify(newProgram)
       exportPrunedProgram(exportFileName, newProgram, pruningFactor, result)
@@ -220,16 +220,16 @@ class AssumptionAnalysisTests extends AnyFunSuite {
    * but multiple dependency/irrelevant annotations are allowed
    *
    */
-  case class AnnotatedTest(program: Program, assumptionAnalyzers: List[AssumptionAnalyzer]) {
+  case class AnnotatedTest(program: Program, assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter]) {
     def execute(): Unit = {
-      val assumptionGraphs = assumptionAnalyzers map (_.assumptionGraph)
       val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts({ annotationInfo => annotationInfo.values.contains(irrelevantKeyword) || annotationInfo.values.contains(dependencyKeyword) })
-      val allAssumptionNodes = assumptionGraphs.flatMap(_.nodes.filter(_.isInstanceOf[GeneralAssumptionNode]))
+      val allAssumptionNodes = assumptionAnalysisInterpreters.flatMap(_.getNodes.filter(_.isInstanceOf[GeneralAssumptionNode])) // TODO ake: move to interpreter
 
+      // TODO ake: review all methods and see if we can reuse interpreter functionality
       var errorMsgs = stmtsWithAssumptionAnnotation.map(checkAssumptionNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
-      errorMsgs ++= assumptionAnalyzers flatMap checkTestAssertionNodeExists
-      errorMsgs ++= assumptionGraphs flatMap checkDependencies
-      val warnMsgs = assumptionGraphs flatMap checkNonDependencies
+      errorMsgs ++= assumptionAnalysisInterpreters flatMap checkTestAssertionNodeExists
+      errorMsgs ++= assumptionAnalysisInterpreters flatMap checkDependencies
+      val warnMsgs = assumptionAnalysisInterpreters flatMap checkNonDependencies
       if (CHECK_PRECISION)
         errorMsgs ++= warnMsgs
       else if (warnMsgs.nonEmpty) println(warnMsgs.mkString("\n")) // TODO ake: warning
@@ -273,66 +273,65 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       }
     }
 
-    private def checkTestAssertionNodeExists(assumptionAnalyzer: AssumptionAnalyzer): Seq[String] = {
-      val assumptionNodes = extractTestAssumptionNodesFromGraph(assumptionAnalyzer.assumptionGraph) ++ extractTestIrrelevantAssumptionNodesFromGraph(assumptionAnalyzer.assumptionGraph)
-      val assertionNodes = extractTestAssertionNodesFromGraph(assumptionAnalyzer.assumptionGraph)
+    private def checkTestAssertionNodeExists(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
+      val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNodes) ++ getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNodes)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNodes)
       if (assumptionNodes.nonEmpty && assertionNodes.isEmpty)
-        Seq(s"Missing testAssertion for member: ${assumptionAnalyzer.getMember.map(_.name).getOrElse("unknown")}")
+        Seq(s"Missing testAssertion for member: ${assumptionAnalysisInterpreter.getName}")
       else
         Seq.empty
     }
 
-    private def checkDependencies(assumptionGraph: AssumptionAnalysisGraph): Seq[String] = {
-      val assumptionNodes = extractTestAssumptionNodesFromGraph(assumptionGraph)
+    // TODO ake: check explicit and non internal dependencies using the interpreter functionalities
+    private def checkDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
+      val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNodes)
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
-      val assertionNodes = extractTestAssertionNodesFromGraph(assumptionGraph)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNodes)
+
+      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)).map(_.id)
 
       assumptionsPerSource.map({ case (_, assumptions) =>
-        val hasDeps = checkDependenciesForSingleSource(assumptionGraph, assumptions, assertionNodes)
-        Option.when(!hasDeps)(s"Missing dependency: ${assumptions.head.sourceInfo.toString}")
+        val hasDependency = dependencies.intersect(assumptions.map(_.id)).nonEmpty
+        Option.when(!hasDependency)(s"Missing dependency: ${assumptions.head.sourceInfo.toString}")
       }).filter(_.isDefined).map(_.get).toSeq
     }
 
-    private def checkNonDependencies(assumptionGraph: AssumptionAnalysisGraph): Seq[String] = {
-      val assumptionNodes = extractTestIrrelevantAssumptionNodesFromGraph(assumptionGraph)
+    private def checkNonDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
+      val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNodes)
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
-      val assertionNodes = extractTestAssertionNodesFromGraph(assumptionGraph)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNodes)
+
+      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)).map(_.id)
 
       assumptionsPerSource.map({ case (_, assumptions) =>
-        val hasDependency = checkDependenciesForSingleSource(assumptionGraph, assumptions, assertionNodes)
+        val hasDependency = dependencies.intersect(assumptions.map(_.id)).nonEmpty
         Option.when(hasDependency)(s"Unexpected dependency: ${assumptions.head.sourceInfo.toString}")
       }).filter(_.isDefined).map(_.get).toSeq
     }
 
-    private def checkDependenciesForSingleSource(assumptionGraph: AssumptionAnalysisGraph, assumptions: Seq[AssumptionAnalysisNode], assertions: Seq[AssumptionAnalysisNode]): Boolean = {
-      assumptions exists (assumption => {
-        assertions exists (assertion => assumptionGraph.existsAnyDependency(Set(assumption.id), Set(assertion.id)))
-      })
-    }
-
-    private def extractTestAssertionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
-      graph.nodes.filter(node =>
+    private def getTestAssertionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] = {
+      nodes.filter(node =>
         (node.getNodeType.equals("Assertion") || node.getNodeType.equals("Exhale") || node.getNodeType.equals("Check")) &&
           node.sourceInfo.toString.contains("@" + testAssertionKeyword + "(")
-      ).toSeq
+      )
     }
 
-    private def extractTestAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
-      graph.nodes.filter(node => {
+    private def getTestAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] = {
+      nodes.filter(node => {
         (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale") || node.getNodeType.equals("Infeasible")) &&
           !node.assumptionType.equals(AssumptionType.Internal) &&
           node.sourceInfo.toString.contains("@" + dependencyKeyword + "(")
       }
-      ).toSeq
+      )
     }
 
-    private def extractTestIrrelevantAssumptionNodesFromGraph(graph: AssumptionAnalysisGraph): Seq[AssumptionAnalysisNode] = {
-      graph.nodes.filter(node => {
+    private def getTestIrrelevantAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] = {
+      nodes.filter(node => {
         (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale") || node.getNodeType.equals("Infeasible")) &&
           !node.assumptionType.equals(AssumptionType.Internal) &&
           node.sourceInfo.toString.contains("@" + irrelevantKeyword + "(")
       }
-      ).toSeq
+      )
     }
   }
 }

@@ -107,7 +107,6 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       }
 
       symbExLog.closeMemberScope()
-      result.assumptionAnalyzer = v.decider.assumptionAnalyzer
       Seq(result)
     }
 

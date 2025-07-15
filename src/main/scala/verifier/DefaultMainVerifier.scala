@@ -6,10 +6,10 @@
 
 package viper.silicon.verifier
 
+import silicon.viper.assumptionAnalysis.AssumptionAnalysisUserTool
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 import viper.silicon._
-import assumptionAnalysis.{AssumptionAnalyzer, DefaultAssumptionAnalyzer, DependencyAnalysisReporter}
-import silicon.viper.assumptionAnalysis.AssumptionAnalysisUserTool
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, DependencyAnalysisReporter}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
@@ -315,28 +315,23 @@ class DefaultMainVerifier(config: Config,
      ++ methodVerificationResults)
 
     if(Verifier.config.enableAssumptionAnalysis()){
-      val assumptionAnalyzers = verificationResults.filter(_.assumptionAnalyzer.isInstanceOf[DefaultAssumptionAnalyzer]).map(_.assumptionAnalyzer)
+      val assumptionAnalysisInterpreters = verificationResults.filter(_.assumptionAnalysisInterpreter.isDefined).map(_.assumptionAnalysisInterpreter.get)
 
-      assumptionAnalyzers.foreach(_.assumptionGraph.removeLabelNodes())
-      assumptionAnalyzers.foreach(_.assumptionGraph.addTransitiveEdges())
+      assumptionAnalysisInterpreters foreach (_.exportGraph())
+      assumptionAnalysisInterpreters foreach (_.exportMergedGraph())
 
-      assumptionAnalyzers foreach (_.exportGraph())
-      assumptionAnalyzers foreach (_.exportMergedGraph())
-
-      assumptionAnalyzers foreach (_.computeProofCoverage())
-
-      val joinedGraph = AssumptionAnalyzer.joinGraphs(assumptionAnalyzers.map(_.assumptionGraph).toSet)
+      val joinedGraphInterpreter = AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(assumptionAnalysisInterpreters.toSet)
       if(Verifier.config.assumptionAnalysisExportPath.isDefined)
-        joinedGraph.exportGraph("graphExports/joinedGraphs")
+        joinedGraphInterpreter.exportGraph()
 
       if(Verifier.config.startAssumptionAnalysisTool()){
-        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraph.mergeNodesBySource(), assumptionAnalyzers)
+        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraphInterpreter, assumptionAnalysisInterpreters)
         commandLineTool.run()
       }
 
       reporter match {
         case analysisReporter: DependencyAnalysisReporter =>
-          analysisReporter.assumptionAnalyzers = assumptionAnalyzers
+          analysisReporter.assumptionAnalysisInterpreters = assumptionAnalysisInterpreters
         case _ =>
       }
 

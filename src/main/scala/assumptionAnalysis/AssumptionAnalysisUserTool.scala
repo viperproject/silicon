@@ -1,13 +1,13 @@
 package silicon.viper.assumptionAnalysis
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisNode, AssumptionAnalyzer, AssumptionType}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisInterpreter, AssumptionAnalysisNode, AssumptionAnalyzer, AssumptionType}
 
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 import viper.silver.ast
 import viper.silver.ast.Method
 
-class AssumptionAnalysisUserTool(graph: AssumptionAnalysisGraph, assumptionAnalyzers: Seq[AssumptionAnalyzer]) {
+class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpreter, memberInterpreters: Seq[AssumptionAnalysisInterpreter]) {
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
     "\n\t'cov [member names]' to print proof coverage of given member names or" +
@@ -49,7 +49,7 @@ class AssumptionAnalysisUserTool(graph: AssumptionAnalysisGraph, assumptionAnaly
 
   private def handleProofCoverageQuery(memberNames: Seq[String]): Unit = {
     println("Proof Coverage")
-    assumptionAnalyzers.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
+    memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
         case meth: Method => meth.body.isDefined && (memberNames.isEmpty || memberNames.contains(meth.name))
         case func: ast.Function => func.body.isDefined && (memberNames.isEmpty || memberNames.contains(func.name))
         case _ => false
@@ -65,23 +65,23 @@ class AssumptionAnalysisUserTool(graph: AssumptionAnalysisGraph, assumptionAnaly
   }
 
   private def handleDependencyQuery(lines: Set[Int]): Unit = {
-    val queriedNodes = lines flatMap findNodeByLine
-    val directDependencies = graph.getDirectDependencies(queriedNodes.map(_.id)).toList.sortBy(_.sourceInfo.getLineNumber)
-    val dependencies = graph.getAllNonInternalDependencies(queriedNodes.map(_.id)).toList.sortBy(_.sourceInfo.getLineNumber)
-    val dependees = graph.getAllNonInternalDependendees(queriedNodes.map(_.id)).toList.sortBy(_.sourceInfo.getLineNumber)
+    def getSourceInfoString(nodes: Set[AssumptionAnalysisNode]) = {
+      nodes.map(_.sourceInfo.getTopLevelSource).toList.sortBy(_.getLineNumber).mkString("\n\t")
+    }
+
+    val queriedNodes = lines flatMap fullGraphInterpreter.getNodesByLine
+    val directDependencies = getSourceInfoString(fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
+    val allDependencies = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
+    val explicitDependencies = getSourceInfoString(fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
+    val dependents = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependendents(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${queriedNodes.map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
 
-    println(s"\nDirect Dependencies:\n\t${directDependencies.map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
-    println(s"\nAll Dependencies:\n\t${dependencies.map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
-    println(s"\nExplicit Dependencies:\n\t${dependencies.filter(_.assumptionType.equals(AssumptionType.Explicit)).map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
+    println(s"\nDirect Dependencies:\n\t$directDependencies")
+    println(s"\nAll Dependencies:\n\t$allDependencies")
+    println(s"\nExplicit Dependencies:\n\t$explicitDependencies")
 
-    println(s"\nAll Dependees:\n\t${dependees.map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
+    println(s"\nAll Dependents:\n\t$dependents")
     println(s"\nDone.")
-
   }
-
-  private def findNodeByLine(line: Int): Set[AssumptionAnalysisNode] =
-    graph.nodes.filter(node => node.sourceInfo.getLineNumber.getOrElse(-1) == line).toSet
-
 }

@@ -31,9 +31,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
   def decider: Decider
 
   object methodSupporter extends MethodVerificationUnit with StatefulComponent {
+    import consumer._
     import executor._
     import producer._
-    import consumer._
 
     private var _units: Seq[ast.Method] = _
 
@@ -117,7 +117,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     consumes(s4, posts, false, postViolated, v4, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Postcondition))((_, _, _) =>
                       Success()))}) }  )})})
 
-      result.assumptionAnalyzer = v.decider.assumptionAnalyzer
+
+      v.decider.assumptionAnalyzer.finalizeGraph()
+      result.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.convertToInterpreter(method.name)
+
       v.decider.resetProverOptions()
 
       symbExLog.closeMemberScope()

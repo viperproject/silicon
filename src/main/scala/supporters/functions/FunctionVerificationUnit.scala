@@ -47,9 +47,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       extends FunctionVerificationUnit[Sort, Decl, Term]
          with StatefulComponent {
 
-    import producer._
     import consumer._
     import evaluator._
+    import producer._
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
@@ -160,7 +160,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val res = handleFunction(sInit, function)
       symbExLog.closeMemberScope()
-      res.assumptionAnalyzer = v.decider.assumptionAnalyzer
+
+      v.decider.assumptionAnalyzer.finalizeGraph()
+      res.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.convertToInterpreter(function.name)
+
       Seq(res)
     }
 
