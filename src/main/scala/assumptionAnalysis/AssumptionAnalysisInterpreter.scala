@@ -48,6 +48,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
   def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => graph.existsAnyDependency(nodeIdsToAnalyze, Set(node.id)))
 
+
   def getNonInternalAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
       (node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition))
@@ -59,9 +60,6 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
   private def getNonInternalAssumptionNodesPerSource: Map[String, Set[AssumptionAnalysisNode]] =
     getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
 
-
-  def getAssertionNodes: Set[AssumptionAnalysisNode] =
-    getNodes filter (node => node.isInstanceOf[GeneralAssertionNode])
 
   def getNonInternalAssertionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
       node.isInstanceOf[GeneralAssertionNode] && !node.assumptionType.equals(AssumptionType.Internal)
@@ -126,7 +124,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     val explicitAssertionNodeIds = explicitAssertionNodes map (_.id)
     val nodesPerSourceInfo = getNonInternalAssumptionNodesPerSource
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
-      val nodeIds = (nodes map (_.id)).toSet
+      val nodeIds = (nodes map (_.id))
       // it is not an explicit assertion itself and has no dependency to an explicit assertion
       nodeIds.intersect(explicitAssertionNodeIds).isEmpty &&
         !graph.existsAnyDependency(nodeIds, explicitAssertionNodeIds)

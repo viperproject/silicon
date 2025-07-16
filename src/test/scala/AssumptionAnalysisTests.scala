@@ -282,7 +282,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     private def checkDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
       val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getAssertionNodes)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
 
       val dependenciesTmp = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))
       val dependencies = dependenciesTmp.map(_.id)
@@ -296,7 +296,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     private def checkNonDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
       val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getAssertionNodes)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
 
       val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)).map(_.id)
 
