@@ -32,7 +32,14 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
   def getNodes: Seq[AssumptionAnalysisNode] = nodes.toSeq
   def getDirectEdges: Map[Int, Set[Int]] = edges.toMap
   def getTransitiveEdges: Map[Int, Set[Int]] = transitiveEdges.toMap
-  def getAllEdges: Map[Int, Set[Int]] = (edges ++ transitiveEdges).toMap
+  def getAllEdges: Map[Int, Set[Int]] = {
+    val keys = edges.keySet ++ transitiveEdges.keySet
+    val res = mutable.Map[Int, Set[Int]]()
+    keys foreach {key =>
+      res.update(key, edges.getOrElse(key, Set()) ++ transitiveEdges.getOrElse(key, Set()))
+    }
+    res.toMap
+  }
 
   def addNode(node: AssumptionAnalysisNode): Unit = {
     nodes = nodes :+ node
@@ -60,9 +67,10 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
   def existsAnyDependency(sources: Set[Int], targets: Set[Int]): Boolean = {
     var visited: Set[Int] = sources
     var queue: List[Int] = sources.toList
+    val allEdges = getAllEdges
     while(queue.nonEmpty){
       val curr = queue.head
-      val newVisits = edges.getOrElse(curr, Set()) ++ transitiveEdges.getOrElse(curr, Set())
+      val newVisits = allEdges.getOrElse(curr, Set())
       if(newVisits.intersect(targets).nonEmpty)
         return true
       visited = visited ++ Set(curr)

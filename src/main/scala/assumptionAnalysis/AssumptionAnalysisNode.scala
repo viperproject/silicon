@@ -16,6 +16,9 @@ trait AssumptionAnalysisNode {
 
   def getNodeString: String
   def getNodeType: String
+
+  override def hashCode(): Int =
+    toString.hashCode
 }
 
 trait GeneralAssumptionNode extends AssumptionAnalysisNode {
@@ -62,7 +65,7 @@ case class LabelNode(term: Term) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + description
 }
 
-case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo) extends AssumptionAnalysisNode {
+case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo) extends GeneralAssumptionNode {
   val term: Term = False
   val assumptionType: AssumptionType = AssumptionType.Implicit
   val isClosed: Boolean = true

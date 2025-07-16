@@ -73,7 +73,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     val directDependencies = getSourceInfoString(fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
     val allDependencies = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
     val explicitDependencies = getSourceInfoString(fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
-    val dependents = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependendents(queriedNodes.map(_.id)))
+    val dependents = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${queriedNodes.map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
 

@@ -20,7 +20,7 @@ trait AssumptionAnalyzer {
 
   def getMember: Option[ast.Member]
 
-  def getNodes: Iterable[AssumptionAnalysisNode]
+  def getNodes: Iterable[AssumptionAnalysisNode] // TODO ake: remove?
   def getChunkInhaleNode(chunk: Chunk): Option[PermissionInhaleNode]
 
   def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit

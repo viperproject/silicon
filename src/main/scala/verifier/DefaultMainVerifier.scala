@@ -320,9 +320,9 @@ class DefaultMainVerifier(config: Config,
       assumptionAnalysisInterpreters foreach (_.exportGraph())
       assumptionAnalysisInterpreters foreach (_.exportMergedGraph())
 
-      val joinedGraphInterpreter = AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(assumptionAnalysisInterpreters.toSet)
+      val joinedGraphInterpreter = AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll(".vpr", "")), assumptionAnalysisInterpreters.toSet)
       if(Verifier.config.assumptionAnalysisExportPath.isDefined)
-        joinedGraphInterpreter.exportGraph()
+        joinedGraphInterpreter.exportMergedGraph()
 
       if(Verifier.config.startAssumptionAnalysisTool()){
         val commandLineTool = new AssumptionAnalysisUserTool(joinedGraphInterpreter, assumptionAnalysisInterpreters)

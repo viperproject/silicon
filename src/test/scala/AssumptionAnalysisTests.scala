@@ -20,10 +20,10 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val ignores: Seq[String] = Seq("example1", "example2")
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
-//    "dependencyAnalysisTests/all",
-//    "dependencyAnalysisTests/unitTests",
+    "dependencyAnalysisTests/all",
+    "dependencyAnalysisTests/unitTests",
 //    "dependencyAnalysisTests/quick"
-    "dependencyAnalysisTests/fromSilver"
+//    "dependencyAnalysisTests/fromSilver"
   )
 
   val irrelevantKeyword = "irrelevant"
@@ -93,9 +93,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
 
-    PruningTest(filePrefix + "/" + fileName, program, AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(assumptionAnalysisInterpreters.toSet)).execute()
-
     AnnotatedTest(program, assumptionAnalysisInterpreters).execute()
+    PruningTest(filePrefix + "/" + fileName, program, AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(Some(fileName), assumptionAnalysisInterpreters.toSet)).execute()
   }
 
   /**
@@ -223,9 +222,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   case class AnnotatedTest(program: Program, assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter]) {
     def execute(): Unit = {
       val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts({ annotationInfo => annotationInfo.values.contains(irrelevantKeyword) || annotationInfo.values.contains(dependencyKeyword) })
-      val allAssumptionNodes = assumptionAnalysisInterpreters.flatMap(_.getNodes.filter(_.isInstanceOf[GeneralAssumptionNode])) // TODO ake: move to interpreter
+      val allAssumptionNodes = assumptionAnalysisInterpreters.flatMap(_.getNonInternalAssumptionNodes)
 
-      // TODO ake: review all methods and see if we can reuse interpreter functionality
       var errorMsgs = stmtsWithAssumptionAnnotation.map(checkAssumptionNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
       errorMsgs ++= assumptionAnalysisInterpreters flatMap checkTestAssertionNodeExists
       errorMsgs ++= assumptionAnalysisInterpreters flatMap checkDependencies
@@ -258,8 +256,6 @@ class AssumptionAnalysisTests extends AnyFunSuite {
         .map(ai => ai.values.getOrElse(irrelevantKeyword, ai.values.getOrElse(dependencyKeyword, List.empty))).getOrElse(List.empty)
       val assumptionType = annotationInfo.map(AssumptionType.fromString).filter(_.isDefined).map(_.get)
       val nodeExists = analysisNodes exists (analysisNode => {
-        analysisNode.isInstanceOf[GeneralAssumptionNode] &&
-          !analysisNode.asInstanceOf[GeneralAssumptionNode].assumptionType.equals(AssumptionType.Internal) &&
           extractSourceLine(analysisNode.sourceInfo.getPosition) == pos &&
           assumptionType.forall(_.equals(analysisNode.assumptionType))
       })
@@ -274,21 +270,22 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
 
     private def checkTestAssertionNodeExists(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
-      val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNodes) ++ getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNodes)
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNodes)
+      val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes) ++ getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
       if (assumptionNodes.nonEmpty && assertionNodes.isEmpty)
         Seq(s"Missing testAssertion for member: ${assumptionAnalysisInterpreter.getName}")
       else
         Seq.empty
     }
 
-    // TODO ake: check explicit and non internal dependencies using the interpreter functionalities
-    private def checkDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
-      val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNodes)
-      val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNodes)
 
-      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)).map(_.id)
+    private def checkDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
+      val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+      val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getAssertionNodes)
+
+      val dependenciesTmp = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))
+      val dependencies = dependenciesTmp.map(_.id)
 
       assumptionsPerSource.map({ case (_, assumptions) =>
         val hasDependency = dependencies.intersect(assumptions.map(_.id)).nonEmpty
@@ -297,9 +294,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
 
     private def checkNonDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
-      val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNodes)
+      val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNodes)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getAssertionNodes)
 
       val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)).map(_.id)
 
@@ -309,29 +306,16 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       }).filter(_.isDefined).map(_.get).toSeq
     }
 
-    private def getTestAssertionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] = {
-      nodes.filter(node =>
-        (node.getNodeType.equals("Assertion") || node.getNodeType.equals("Exhale") || node.getNodeType.equals("Check")) &&
-          node.sourceInfo.toString.contains("@" + testAssertionKeyword + "(")
-      )
-    }
+    private def getTestAssertionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
+      nodes.filter(node => node.sourceInfo.toString.contains("@" + testAssertionKeyword + "("))
 
-    private def getTestAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] = {
-      nodes.filter(node => {
-        (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale") || node.getNodeType.equals("Infeasible")) &&
-          !node.assumptionType.equals(AssumptionType.Internal) &&
-          node.sourceInfo.toString.contains("@" + dependencyKeyword + "(")
-      }
-      )
-    }
 
-    private def getTestIrrelevantAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] = {
-      nodes.filter(node => {
-        (node.getNodeType.equals("Assumption") || node.getNodeType.equals("Inhale") || node.getNodeType.equals("Infeasible")) &&
-          !node.assumptionType.equals(AssumptionType.Internal) &&
-          node.sourceInfo.toString.contains("@" + irrelevantKeyword + "(")
-      }
-      )
-    }
+    private def getTestAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
+      nodes.filter(_.sourceInfo.toString.contains("@" + dependencyKeyword + "("))
+
+
+    private def getTestIrrelevantAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
+      nodes.filter(_.sourceInfo.toString.contains("@" + irrelevantKeyword + "("))
+
   }
 }
