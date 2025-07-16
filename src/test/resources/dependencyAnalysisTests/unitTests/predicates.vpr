@@ -50,3 +50,24 @@ method callWithPredicate(a: Int, b: Int)
     @testAssertion("Explicit")
     assert greater5(a + b)
 }
+
+method unfoldPrecision(a: Int, b: Int)
+    requires @irrelevant("Explicit")(greater0(a))
+    requires @dependency("Explicit")(greater5(b))
+    ensures greater0(b)
+{
+    @irrelevant("Implicit")
+    unfold greater0(a)
+    @dependency("Implicit")
+    unfold greater5(b)
+    @testAssertion("Implicit")
+    fold greater0(b)
+}
+
+method foldPrecision(a: Int, b: Int)
+    requires @irrelevant("Explicit")(a > 5)
+    requires @dependency("Explicit")(b > 5)
+{
+    @testAssertion("Implicit")
+    fold greater0(b)
+}

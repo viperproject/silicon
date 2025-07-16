@@ -73,6 +73,7 @@ method exhaleImprecision(){
     assert x.f > 1
 }
 
+// this is precise as opposed to later examples with wildcards
 method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency("Explicit")(|xs| > 5)
   requires @irrelevant("Explicit")(|ys| > 3)
@@ -123,4 +124,59 @@ method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
 
   @testAssertion("Explicit")
   assert xs[0].f > 0
+}
+
+// havocs all resources of the given fields conditionally on whether it can prove
+// non-aliasing or not (e.g. x.f --> x == y? new snap : keep old snap)
+method quasihavoc1(x: Ref, y: Ref)
+    requires @dependency("Explicit")(acc(x.f))
+    requires @dependency("Explicit")(x.f == 3)
+    requires @dependency("Explicit")(x != y)
+{
+    // @irrelevant() // TODO ake
+    quasihavoc y.f   // does nothing. we have no permission
+    @testAssertion("Explicit")
+    assert x.f == 3
+}
+
+// in this example the loop condition and invariant res >= 0 would be enough
+// to prove the invariant res >= 0. However, the SMT solver chooses to prove it
+// via the invariant i>=0
+// interestingly, proving "res >= 0 is preserved by the loop body" has the following unsat core
+// old(res) >= 0, res = old(res) + old(i), i = old(i) - 1, i >= 0
+// the last one comes from the asserting that invariant i >= 0 is preserved!
+// the last two terms could be replaced by old(i) > 0 (the loop condition)
+method loop1(){
+    var i: Int
+    var res: Int
+    @dependency("Implicit")
+    res := 0
+    @dependency("Implicit")
+    i := 10
+    while(@dependency("PathCondition")(i > 0))
+        invariant @irrelevant("LoopInvariant")(i <= 10)
+        invariant i >= 0
+        invariant @dependency("LoopInvariant")(res >= 0)
+    {
+        @dependency("Implicit")
+        res := res + i
+        i := i - 1
+    }
+    @testAssertion("Explicit")
+    assert res >= 0
+}
+
+method inhaleImprecision(){
+    var x: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f, 1/2)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    //@irrelevant("Implicit") TODO ake: imprecision?
+    inhale acc(x.f, 1/2)
+
+    @testAssertion("Explicit")
+    assert x.f > 0
 }

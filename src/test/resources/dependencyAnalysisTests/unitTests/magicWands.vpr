@@ -90,3 +90,23 @@ method quantifiedWand(xs: Seq[Int], b: Int)
     @testAssertion("Explicit")
     assert greater0(xs[0] + b)
 }
+
+method packagePrecision(l: Ref)
+  requires @dependency("Explicit")(list(l))
+  {
+    @dependency("Implicit")
+    unfold list(l)
+    var tmp : Ref
+    @dependency("Implicit")
+    tmp := l.next
+
+    @irrelevant("Implicit")
+    package list(tmp) --* list(l)
+    {
+      @irrelevant("Implicit")
+      fold list(l)
+    }
+
+    @testAssertion("Explicit")
+    assert list(tmp)
+}

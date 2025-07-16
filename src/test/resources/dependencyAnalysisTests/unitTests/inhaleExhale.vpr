@@ -1,0 +1,53 @@
+field f: Int
+
+method exhaleInhale(a: Ref)
+    requires @dependency("Explicit")(acc(a.f))
+{
+    @dependency("Implicit")
+    exhale acc(a.f, 1/2)
+    @dependency("Explicit")
+    inhale acc(a.f, 1/2)
+    @testAssertion("Explicit")
+    assert perm(a.f) == write
+}
+
+method exhaleInhale2(a: Ref)
+    requires @dependency("Explicit")(acc(a.f))
+{
+    // @irrelevant("Implicit") TODO ake: imprecision?
+    exhale acc(a.f, 1/2)
+    // @irrelevant("Explicit") TODO ake: imprecision?
+    inhale acc(a.f, 1/2)
+    @testAssertion("Explicit")
+    assert perm(a.f) >= 1/2
+}
+
+method exhaleImprecision(){
+    var x: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    // @irrelevant("Implicit") TODO ake: imprecision?
+    exhale acc(x.f, 1/2)
+
+    @testAssertion("Explicit")
+    assert x.f > 0
+}
+
+method inhaleImprecision(){
+    var x: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f, 1/2)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    //@irrelevant("Implicit") TODO ake: imprecision?
+    inhale acc(x.f, 1/2)
+
+    @testAssertion("Explicit")
+    assert x.f > 0
+}

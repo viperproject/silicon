@@ -2,18 +2,20 @@
 method loop1(){
     var i: Int
     var res: Int
+    @dependency("Implicit")
     res := 0
+    // @irrelevant("Implicit") // imprecise
     i := 10
-    while(i > 0)
+    while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
-        invariant @irrelevant("LoopInvariant")(i >= 0)
+        invariant i >= 0
         invariant @dependency("LoopInvariant")(res >= 0)
     {
         @dependency("Implicit")
         res := res + i
+        // @irrelevant("Implicit") // imprecise
         i := i - 1
     }
-
     @testAssertion("Explicit")
     assert res >= 0
 }
@@ -21,7 +23,9 @@ method loop1(){
 method loop2(){
     var i: Int
     var res: Int
+    @irrelevant("Implicit")
     res := 0
+    @irrelevant("Implicit")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
@@ -40,7 +44,9 @@ method loop2(){
 method loop3(){
     var i: Int
     var res: Int
+    @dependency("Implicit")
     res := 0
+    @irrelevant("Implicit")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
@@ -68,6 +74,7 @@ method loop4(){
         invariant @irrelevant("LoopInvariant")(i >= 0)
         invariant @dependency("LoopInvariant")(res >= 0)
     {
+        @irrelevant("Implicit")
         res := res - 1
         @irrelevant("Implicit")
         i := i - 1

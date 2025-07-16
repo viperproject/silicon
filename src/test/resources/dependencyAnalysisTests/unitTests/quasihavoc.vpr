@@ -1,0 +1,35 @@
+field f: Int
+
+method quasihavoc1(x: Ref, y: Ref)
+    requires @dependency("Explicit")(acc(x.f))
+    requires @dependency("Explicit")(x.f == 3)
+    requires @dependency("Explicit")(x != y)
+{
+    @irrelevant() // TODO ake
+    quasihavoc y.f   // does nothing. we have no permission
+    @testAssertion("Explicit")
+    assert x.f == 3
+}
+
+method quasihavoc2(x: Ref, y: Ref)
+    requires @dependency("Explicit")(acc(x.f))
+    requires @irrelevant("Explicit")(acc(y.f))
+    requires @dependency("Explicit")(x.f == 42)
+{
+    @irrelevant()
+    quasihavoc y.f
+    @testAssertion("Explicit")
+    assert x.f == 42
+}
+
+method quasihavoc3(x: Ref)
+    requires @dependency("Explicit")(acc(x.f))
+    requires @irrelevant("Explicit")(x.f == 0)
+{
+    @irrelevant()
+    quasihavoc x.f
+    @dependency("Implicit")
+    x.f := 3
+    @testAssertion("Explicit")
+    assert x.f == 3
+}

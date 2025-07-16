@@ -28,7 +28,7 @@ method perm3(){
     @dependency("Explicit")
     inhale acc(x.f)
     @testAssertion("Implicit")
-    x.f := x.f + 1
+    x.f := 5
 }
 
 method perm4(){
@@ -53,8 +53,44 @@ method perm5(){
     exhale acc(x.f)
 }
 
+method fieldAccessPrecision(){
+    var x: Ref
+    var y: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    @irrelevant("Explicit")
+    inhale acc(y.f)
+    @irrelevant("Implicit")
+    y.f := y.f + 1
+
+    @testAssertion("Explicit")
+    assert x.f >= 0
+}
+
+method fieldAccessPrecision2(){
+    var x: Ref
+    var y: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f)
+    @irrelevant("Explicit")
+    inhale x.f > 0
+
+    @irrelevant("Explicit")
+    inhale acc(y.f)
+    @irrelevant("Implicit")
+    x.f := y.f + 1
+
+    @testAssertion("Explicit")
+    exhale acc(x.f)
+}
+
 method permAmount1(x: Ref, p: Perm)
-  requires p > none
+  requires @dependency("Explicit")(p > none)
   requires @dependency("Explicit")(acc(x.f, p))
 {
   @dependency("Explicit")
@@ -86,14 +122,5 @@ method noAlias(a: Ref, b: Ref, c: Ref)
     assert a != b
 }
 
-method exhaleInhale(a: Ref)
-    requires @dependency("Explicit")(acc(a.f))
-{
-    @dependency("Implicit")
-    exhale acc(a.f, 1/2)
-    @dependency("Explicit")
-    inhale acc(a.f, 1/2)
-    @testAssertion("Explicit")
-    assert perm(a.f) == 1/1
-}
+
 
