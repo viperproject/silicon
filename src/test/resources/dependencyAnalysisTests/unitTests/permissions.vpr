@@ -87,7 +87,9 @@ method fieldAccessPrecision2(){
 
     @testAssertion("Explicit")
     exhale acc(x.f)
-}method permAmount1(x: Ref, p: Perm)
+}
+
+method permAmount1(x: Ref, p: Perm)
    requires @dependency("Explicit")(p > none)
    requires @dependency("Explicit")(acc(x.f, p))
  {

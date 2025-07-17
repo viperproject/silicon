@@ -365,16 +365,16 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
             pSumExp = eqExp.map(eq => ast.PermAdd(pSumExp.get, ast.CondExp(eq, ch.permExp.get, ast.NoPerm()())(eq.pos, eq.info, eq.errT))())
 
-            val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Internal)).asInstanceOf[NonQuantifiedChunk]
-            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ch, pTaken, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+            val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Implicit)).asInstanceOf[NonQuantifiedChunk]
+            val _ = GeneralChunk.withPerm(ch, pTaken, None, v.decider.getAnalysisInfo(assumptionType), isExhale=true)
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), AssumptionType.Internal)) {
+            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), AssumptionType.Implicit)) {
               newChunks.append(newChunk)
             }
 
-            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout(), AssumptionType.Internal)
+            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout(), AssumptionType.Implicit)
           } else {
             newChunks.append(ch)
           }
@@ -387,7 +387,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
+          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Implicit))
         }
         val newHeap = Heap(allChunks)
 
@@ -397,7 +397,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         if (returnSnap) {
           summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
-            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(), AssumptionType.Internal)) {
+            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(), AssumptionType.Implicit)) {
               snap
             } else {
               Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
@@ -476,12 +476,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             ast.Implies(ast.Not(eqExp.get)(), ast.EqCmp(permTakenExp.get, ast.NoPerm()())())(pe.pos, pe.info, pe.errT))))
 
 
-        v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Internal)
+        v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Implicit)
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
-        v.decider.assumptionAnalyzer.addPermissionExhaleNode(ch, permTaken, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
-        GeneralChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Internal)).asInstanceOf[NonQuantifiedChunk] // TODO ake: casting
+        val _ = GeneralChunk.withPerm(ch, permTaken, None, v.decider.getAnalysisInfo(assumptionType), isExhale=true)
+        GeneralChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Implicit)).asInstanceOf[NonQuantifiedChunk] // TODO ake: casting
       })
 
     val totalTakenBounds =
@@ -493,7 +493,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val constraintExp = permsExp.map(pe => ast.Implies(ast.NeCmp(totalPermSumExp.get, ast.NoPerm()())(),
       ast.And(ast.PermLeCmp(ast.NoPerm()(), totalPermTakenExp.get)(), ast.PermLeCmp(totalPermTakenExp.get, totalPermSumExp.get)())(pe.pos, pe.info, pe.errT))())
 
-    v.decider.assume(totalTakenBounds, constraintExp, constraintExp, AssumptionType.Internal)
+    v.decider.assume(totalTakenBounds, constraintExp, constraintExp, AssumptionType.Implicit)
 
     newFr = newFr.recordConstraint(totalTakenBounds)
 
@@ -502,7 +502,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm), assumptionType) {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
-        v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Internal)
+        v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Implicit)
         if (returnSnap) {
           summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, v1) =>
             Q(s2, updatedChunks, Some(snap), v1))
@@ -546,7 +546,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       relevantChunks foreach (chunk => {
         val instantiatedPermSum = permissionSum.replace(freeReceiver, chunk.args.head)
         val exp = permissionSumExp.map(pse => ast.PermLeCmp(replaceVarsInExp(pse, Seq(freeReceiverExp.name), Seq(chunk.argsExp.get.head)), ast.FullPerm()())())
-        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm), exp, exp, AssumptionType.Internal)
+        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm), exp, exp, AssumptionType.Implicit)
       })
     }
   }

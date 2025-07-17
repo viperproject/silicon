@@ -11,6 +11,7 @@ import viper.silver.{ast, verifier}
 
 import java.io.PrintWriter
 import java.nio.file.{Files, Path, Paths}
+import scala.annotation.unused
 import scala.jdk.CollectionConverters.IterableHasAsScala
 
 
@@ -30,10 +31,13 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val dependencyKeyword = "dependency"
   val testAssertionKeyword = "testAssertion"
 
-  val commandLineArguments: Seq[String] =
+  var commandLineArguments: Seq[String] =
     Seq("--timeout", "100" /* seconds */ , "--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
 
   testDirectories foreach createTests
+
+  commandLineArguments = Seq("--enableMoreCompleteExhale") ++ commandLineArguments
+  createTests("dependencyAnalysisTests/mce")
 
 //    test("custom test"){
 //      executeTest("dependencyAnalysisTests/all/", "list", frontend)
@@ -141,6 +145,12 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val crucialNodesWithExpInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[ExpAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[ExpAnalysisSourceInfo])
       var total = 0
       var removed = 0
+      var nonDetermBoolCount = 0
+
+      def getNextNonDetermBool: String = {
+        nonDetermBoolCount += 1
+        s"nonDetermBool_$nonDetermBoolCount"
+      }
 
       val newProgram: ast.Program = ViperStrategy.Slim({
         case s @(_: ast.Seqn | _: ast.Goto) => s
@@ -153,9 +163,10 @@ class AssumptionAnalysisTests extends AnyFunSuite {
         case ifStmt@ast.If(cond, thenBody, elseBody) if !isCrucialExp(cond, crucialNodesWithExpInfo) =>
           total += 1
           removed += 1
+          val nonDetermBool = getNextNonDetermBool
           ast.Seqn(Seq(
-            ast.LocalVarDeclStmt(ast.LocalVarDecl("nonDetermBool", ast.Bool)())(),
-            ast.If(ast.LocalVar("nonDetermBool", ast.Bool)(), thenBody, elseBody)())
+            ast.LocalVarDeclStmt(ast.LocalVarDecl(nonDetermBool, ast.Bool)())(),
+            ast.If(ast.LocalVar(nonDetermBool, ast.Bool)(), thenBody, elseBody)())
             , Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
         case ifStmt: If =>
           total += 1
@@ -164,9 +175,10 @@ class AssumptionAnalysisTests extends AnyFunSuite {
           val newInvs = invs filter (isCrucialExp(_, crucialNodesWithExpInfo))
           total += 1 + invs.size
           removed += 1 + (invs.size - newInvs.size)
+          val nonDetermBool = getNextNonDetermBool
           ast.Seqn(Seq(
-            ast.LocalVarDeclStmt(ast.LocalVarDecl("nonDetermBool", ast.Bool)())(),
-            ast.While(ast.LocalVar("nonDetermBool", ast.Bool)(), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
+            ast.LocalVarDeclStmt(ast.LocalVarDecl(nonDetermBool, ast.Bool)())(),
+            ast.While(ast.LocalVar(nonDetermBool, ast.Bool)(), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
             , Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
         case whileStmt@ast.While(cond, invs, body) =>
           val newInvs = invs filter (isCrucialExp(_, crucialNodesWithExpInfo))
@@ -238,6 +250,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     private def extractAnnotatedStmts(annotationFilter: (ast.AnnotationInfo => Boolean)): Set[ast.Infoed] = {
       var nodesWithAnnotation: Set[ast.Infoed] = Set.empty
+      @unused
       val newP: ast.Program = ViperStrategy.Slim({
         case s: ast.Seqn => s
         case n: ast.Infoed =>

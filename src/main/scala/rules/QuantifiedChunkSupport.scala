@@ -1729,7 +1729,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 remainingChunks :+ QuantifiedBasicChunk.permMinus(ithChunk, ithPTaken, ithPTakenExp, v.decider.getAnalysisInfo(assumptionType))
             }
           }else{
-            v.decider.assumptionAnalyzer.addPermissionExhaleNode(ithChunk, ithPTaken, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+            val _ = GeneralChunk.withPerm(ithChunk, ithPTaken, None, v.decider.getAnalysisInfo(assumptionType), isExhale=true)
           }
         }
 

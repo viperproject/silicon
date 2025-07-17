@@ -1,0 +1,23 @@
+field f: Int
+
+method mce_test_1(a: Ref, b: Ref, c: Ref)
+{
+    var x: Int := 0
+
+
+    @dependency("Explicit")
+    inhale acc(a.f) // assumption 1
+    // @irrelevant("Explicit") // TODO ake: imprecise
+    inhale acc(b.f) // assumption 2
+
+    if (@dependency("PathCondition")(c == a || c == b)) {
+        @dependency("Implicit")
+        x := c.f
+    }
+
+    @dependency("Explicit")
+    assume c == a // assumption 3
+
+    @testAssertion("Explicit")
+    assert x == a.f
+}
