@@ -87,30 +87,28 @@ method fieldAccessPrecision2(){
 
     @testAssertion("Explicit")
     exhale acc(x.f)
-}
+}method permAmount1(x: Ref, p: Perm)
+   requires @dependency("Explicit")(p > none)
+   requires @dependency("Explicit")(acc(x.f, p))
+ {
+   @dependency("Explicit")
+   assume p > 1/2
+   @testAssertion("Explicit")
+   exhale acc(x.f, 1/2)
+ }
 
-method permAmount1(x: Ref, p: Perm)
-  requires @dependency("Explicit")(p > none)
-  requires @dependency("Explicit")(acc(x.f, p))
-{
-  @dependency("Explicit")
-  assume p > 1/2
-  @testAssertion("Explicit")
-  exhale acc(x.f, 1/2)
-}
-
-method permAmount2(x: Ref, p: Perm)
-  requires p > none
-  requires @dependency("Explicit")(acc(x.f, p))
-{
-  @dependency("Explicit")
-  inhale x.f > 0
-  @dependency("Explicit")
-  assume p > 1/2
-  exhale acc(x.f, 1/2)
-  @testAssertion("Explicit")
-  assert x.f > 0
-}
+ method permAmount2(x: Ref, p: Perm)
+   requires p > none
+   requires @dependency("Explicit")(acc(x.f, p))
+ {
+   @dependency("Explicit")
+   inhale x.f > 0
+   @dependency("Explicit")
+   assume p > 1/2
+   exhale acc(x.f, 1/2)
+   @testAssertion("Explicit")
+   assert x.f > 0
+ }
 
 
 method noAlias(a: Ref, b: Ref, c: Ref)

@@ -1,16 +1,5 @@
 field f: Int
 
-method exhaleInhale(a: Ref)
-    requires acc(a.f)
-{
-
-    exhale acc(a.f, 1/2)
-
-    inhale acc(a.f, 1/2)
-
-    assert perm(a.f) == write
-}
-
 method exhaleImprecision(){
     var x: Ref
 
@@ -31,6 +20,39 @@ method inhaleImprecision(){
     inhale acc(x.f, 1/2)
 
     assert x.f > 0
+}
+
+// issue #01 - imprecision due to wildcards
+// when accessing a qp resource, check Z < (x in xs? k1:Z) + (y in ys? k2:Z)
+// -> the unsat core contains dependencies to all qp perm amounts in order to assert k1, k2, ... >= Z
+method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
+  requires |xs| > 5
+  requires |ys| > 3
+{
+
+  inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
+  // TODO: unexpected dependency (wildcards)
+  inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
+
+  assert xs[0].f > 0
+}
+
+// havocs all resources of the given fields conditionally on whether it can prove non-aliasing or not
+method quasihavoc1(x: Ref, y: Ref)
+    requires acc(x.f)
+    requires x.f == 3
+    requires x != y
+{
+    // TODO: unexpected dependency
+    quasihavoc y.f   // x.f --> x==y? new snap : old snap
+
+    assert x.f == 3
+}
+
+method currentPerm(x: Ref)
+    requires acc(x.f, 1/2)
+{
+    assert perm(x.f) > 1/4
 }
 
 method infeasible1(x: Ref)
@@ -55,22 +77,6 @@ method infeasible2(x: Ref)
      }
 }
 
-
-method currentPerm(x: Ref)
-    requires acc(x.f, 1/2)
-{
-    assert perm(x.f) > 1/4
-}
-
-
-method automatedTest()
-{
-    var a: Int
-    a := 0
-    a := 1
-    a := 0
-    assert a == 0
-}
 
 field elem: Int
 field next: Ref
@@ -103,3 +109,42 @@ method appendListFull(this: Ref, e: Int)
   fold list(this)
 }
 
+
+method automatedTest()
+{
+    var a: Int
+    a := 0
+    a := 1
+    a := 0
+    assert a == 0
+}
+
+
+method dependencyDefinitionViaSLP_1()
+{
+  var a: Int, b: Int
+
+  // { true}
+  a := 1
+  // { (l0 ==> a==1) }
+  assert a > 0
+  // { (l0 ==> a==1) && (L1 ==> a > 0) }
+  assert a >= 0 // potentially depends only on L1?
+}
+
+function foo(a: Int): Int {
+  requires a > 0
+  ensures result > 0
+}
+
+method dependencyDefinitionViaSLP_2()
+{
+  var a: Int, b: Int
+
+  // { true}
+  a := 1
+  // { (l0 ==> a==1) }
+  b := foo(a)
+  // { (l0 ==> a==1) && (L1 ==> (a > 0 && b > 0))}
+  assert b > 0 // depends only on L1?
+}

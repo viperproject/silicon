@@ -1,4 +1,5 @@
 field f: Int
+field g: Int
 
 // When executing the branch, the 1st inhale is reported as a dependency, the 2nd inhale is ignored.
 // If the branch is not executed, the 2nd inhale is reported as a dependency
@@ -88,7 +89,7 @@ method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
 }
 
 // issue #01 - imprecision due to wildcards
-// when accessing a qp resource, we check Z < (x in xs? …) + (y in ys? …) the unsat core contains dependencies to all qp perm amounts (e.g. wildcard)
+// when accessing a qp resource, we check Z < (x in xs? k1:Z) + (y in ys? k2:Z) the unsat core contains dependencies to all qp perm amounts (e.g. wildcard)
 method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency("Explicit")(|xs| > 5)
   requires @irrelevant("Explicit")(|ys| > 3)
@@ -103,7 +104,7 @@ method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
 }
 
 // issue #01 - imprecision due to perm amounts
-// when accessing a qp resource, we check Z < (x in xs? …) + (y in ys? …) the unsat core contains dependencies to all qp perm amounts (e.g. wildcard)
+// when accessing a qp resource, we check Z < (x in xs? k1:Z) + (y in ys? k2:Z) the unsat core contains dependencies to all qp perm amounts
 method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency("Explicit")(|xs| > 5)
   requires @irrelevant("Explicit")(|ys| > 3)
@@ -119,7 +120,7 @@ method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
   @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, p1) && x.f > 0))
 
-  @irrelevant("Explicit") // fixed imprecision (wildcards)
+  // @irrelevant("Explicit") // TODO ake: unexpected dependency
   inhale forall y: Ref :: y in ys ==> (acc(y.f, p2) && y.f > 0)
 
   @testAssertion("Explicit")
@@ -127,7 +128,7 @@ method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
 }
 
 // havocs all resources of the given fields conditionally on whether it can prove
-// non-aliasing or not (e.g. x.f --> x == y? new snap : keep old snap)
+// non-aliasing or not (e.g. x.f --> x == y? new snap : old snap)
 method quasihavoc1(x: Ref, y: Ref)
     requires @dependency("Explicit")(acc(x.f))
     requires @dependency("Explicit")(x.f == 3)
@@ -139,6 +140,7 @@ method quasihavoc1(x: Ref, y: Ref)
     assert x.f == 3
 }
 
+// imprecision due to non-uniqueness of unsat core
 // in this example the loop condition and invariant res >= 0 would be enough
 // to prove the invariant res >= 0. However, the SMT solver chooses to prove it
 // via the invariant i>=0
@@ -151,7 +153,7 @@ method loop1(){
     var res: Int
     @dependency("Implicit")
     res := 0
-    @dependency("Implicit")
+
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
