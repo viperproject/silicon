@@ -1,0 +1,24 @@
+import "seqMerge.vpr"
+import "binarySearchSeq.vpr"
+
+method client()
+{
+  var idx: Int 
+
+  var as: Seq[Int] := Seq(4, 7, 9, 11, 14)
+  var bs: Seq[Int] := Seq(1, 3, 7, 10, 17)
+
+  // idx := binary_search(as, 7)
+  // assert idx == 1
+
+  var cs: Seq[Int]
+  cs := seq_merge(as, bs)
+
+  assert 10 in cs
+  assert 1 in cs
+
+  assert |cs| == 11
+  // idx := binary_search(cs, 1)
+  // assert idx == 1
+
+}
