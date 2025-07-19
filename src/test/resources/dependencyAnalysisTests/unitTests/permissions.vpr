@@ -3,6 +3,8 @@ field f: Int
 method currentPerm(x: Ref)
     requires @dependency("Explicit")(acc(x.f, 1/2))
 {
+    // $PrecisionTest: $READ_ONLY=x.f
+
     @testAssertion("Explicit")
     assert perm(x.f) > 1/4
 }
@@ -11,6 +13,9 @@ method perm1(){
     var x: Ref
     @dependency("Implicit")
     x := new(f)
+
+    // $PrecisionTest: $READ_WRITE=x.f
+
     @testAssertion("Explicit")
     inhale x.f > 0
 }
@@ -19,6 +24,9 @@ method perm2(){
     var x: Ref
     @dependency("Explicit")
     inhale acc(x.f, 1/2)
+
+    // $PrecisionTest: $READ_ONLY=x.f
+
     @testAssertion("Explicit")
     inhale x.f > 0
 }
@@ -27,6 +35,9 @@ method perm3(){
     var x: Ref
     @dependency("Explicit")
     inhale acc(x.f)
+
+    // $PrecisionTest: $READ_WRITE=x.f
+
     @testAssertion("Implicit")
     x.f := 5
 }
@@ -35,10 +46,15 @@ method perm4(){
     var x: Ref
     @dependency("Explicit")
     inhale acc(x.f)
+
     @dependency("Explicit")
     inhale x.f > 0
+
     @dependency("Implicit")
     x.f := x.f + 1
+
+    // $PrecisionTest: $READ_ONLY=x.f
+
     @testAssertion("Explicit")
     assert x.f > 1
 }
@@ -49,6 +65,9 @@ method perm5(){
     inhale acc(x.f)
     @irrelevant("Implicit")
     x.f := x.f + 1
+
+    // $PrecisionTest: $READ_WRITE=x.f
+
     @testAssertion("Explicit")
     exhale acc(x.f)
 }
@@ -118,6 +137,8 @@ method noAlias(a: Ref, b: Ref, c: Ref)
     requires @dependency("Explicit")(acc(b.f, 1/2))
     requires @irrelevant("Explicit")(acc(c.f, 1/2))
 {
+    // $PrecisionTest: $READ_WRITE=a.f $READ_ONLY=b.f,c.f
+
     @testAssertion("Explicit")
     assert a != b
 }
