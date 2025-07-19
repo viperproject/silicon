@@ -9,20 +9,24 @@ import viper.silver.frontend.SilFrontend
 import viper.silver.verifier.VerificationResult
 import viper.silver.{ast, verifier}
 
-import java.io.PrintWriter
+import java.io.{File, PrintWriter}
 import java.nio.file.{Files, Path, Paths}
 import scala.annotation.unused
 import scala.jdk.CollectionConverters.IterableHasAsScala
+import java.time._
+import java.time.format.DateTimeFormatter
 
 
 class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = true
+  val EXECUTE_PRECISION_BENCHMARK = false
   val ignores: Seq[String] = Seq("example1", "example2")
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
+//    "dependencyAnalysisTests/unitTests/permissions",
 //    "dependencyAnalysisTests/quick"
 //    "dependencyAnalysisTests/fromSilver"
   )
@@ -34,40 +38,55 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   var commandLineArguments: Seq[String] =
     Seq("--timeout", "100" /* seconds */ , "--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
 
-  testDirectories foreach createTests
+
+  if(EXECUTE_PRECISION_BENCHMARK) {
+    val directory = new File("precisionBenchmark")
+    directory.mkdir()
+    val now: LocalDateTime = LocalDateTime.now()
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
+    val writer = new PrintWriter(s"benchmark_${now.format(formatter)}.out")
+    visitFiles("dependencyAnalysisTests/unitTests/permissions", executePrecisionBenchmark(_, _, frontend, writer))
+    writer.close()
+  }
+
+  testDirectories foreach (dir => visitFiles(dir, createSingleTest))
 
   commandLineArguments = Seq("--enableMoreCompleteExhale") ++ commandLineArguments
-  createTests("dependencyAnalysisTests/mce")
+  visitFiles("dependencyAnalysisTests/mce", createSingleTest)
 
 //    test("custom test"){
 //      executeTest("dependencyAnalysisTests/all/", "list", frontend)
 //    }
 
-  def createTests(dirName: String): Unit = {
+  def visitFiles(dirName: String, function: (String, String) => Unit): Unit = {
     val path = Paths.get(getClass.getClassLoader.getResource(dirName).toURI)
-    createTests(path, dirName)
+    visitFiles(path, dirName, function)
   }
 
-  def createTests(path: Path, dirName: String): Unit = {
+  private def createSingleTest(dirName: String, fileName: String): Unit = {
+    test(dirName + "/" + fileName) {
+      try{
+        executeTest(dirName + "/", fileName, frontend)
+      }catch{
+        case t: Throwable => fail(t.getMessage)
+      }
+    }
+  }
+
+  def visitFiles(path: Path, dirName: String, function: (String, String) => Unit): Unit = {
     val directoryStream = Files.newDirectoryStream(path).asScala
     val dirContent = directoryStream.toList
 
     for (filePath: Path <- dirContent.sorted
          if Files.isReadable(filePath)) {
       if(Files.isDirectory(filePath)){
-        createTests(filePath, dirName + "/" + filePath.getFileName.toString)
+        visitFiles(filePath, dirName + "/" + filePath.getFileName.toString, function)
       }else{
         val rawFileName = filePath.getFileName.toString
         if (rawFileName.endsWith(".vpr")) {
           val fileName = rawFileName.replace(".vpr", "")
           if (!ignores.contains(fileName))
-            test(dirName + "/" + fileName) {
-              try{
-                executeTest(dirName + "/", fileName, frontend)
-              }catch{
-                case t: Throwable => fail(t.getMessage)
-              }
-            }
+            function(dirName, fileName)
         }
       }
     }
@@ -97,8 +116,26 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
     val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
 
-    AnnotatedTest(program, assumptionAnalysisInterpreters).execute()
+    new AnnotatedTest(program, assumptionAnalysisInterpreters).execute()
     PruningTest(filePrefix + "/" + fileName, program, AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(Some(fileName), assumptionAnalysisInterpreters.toSet)).execute()
+  }
+
+  def executePrecisionBenchmark(filePrefix: String,
+                                fileName: String,
+                                frontend: SilFrontend,
+                                writer: PrintWriter): Unit = {
+    println(s"$filePrefix - $fileName")
+    val program: Program = tests.loadProgram(filePrefix + "/", fileName, frontend)
+    val result = frontend.verifier.verify(program)
+    if(result.isInstanceOf[verifier.Failure]) {
+      cancel(f"Program does not verify. Skip test.\n$result")
+      return
+    }
+
+    val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
+    writer.println(s"$filePrefix - $fileName")
+    new AnnotatedPrecisionBenchmark(program, assumptionAnalysisInterpreters, writer).execute()
+    writer.println()
   }
 
   /**
@@ -231,7 +268,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
    * but multiple dependency/irrelevant annotations are allowed
    *
    */
-  case class AnnotatedTest(program: Program, assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter]) {
+  class AnnotatedTest(program: Program, assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter]) {
     def execute(): Unit = {
       val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts({ annotationInfo => annotationInfo.values.contains(irrelevantKeyword) || annotationInfo.values.contains(dependencyKeyword) })
       val allAssumptionNodes = assumptionAnalysisInterpreters.flatMap(_.getNonInternalAssumptionNodes)
@@ -248,7 +285,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       assert(check, "\n" + errorMsgs.mkString("\n"))
     }
 
-    private def extractAnnotatedStmts(annotationFilter: (ast.AnnotationInfo => Boolean)): Set[ast.Infoed] = {
+    protected def extractAnnotatedStmts(annotationFilter: (ast.AnnotationInfo => Boolean)): Set[ast.Infoed] = {
       var nodesWithAnnotation: Set[ast.Infoed] = Set.empty
       @unused
       val newP: ast.Program = ViperStrategy.Slim({
@@ -263,7 +300,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       nodesWithAnnotation
     }
 
-    private def checkAssumptionNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: ast.Infoed): Option[String] = {
+    protected def checkAssumptionNodeExists(analysisNodes: List[AssumptionAnalysisNode], node: ast.Infoed): Option[String] = {
       val pos = extractSourceLine(node.asInstanceOf[ast.Positioned].pos)
       val annotationInfo = node.info.getUniqueInfo[ast.AnnotationInfo]
         .map(ai => ai.values.getOrElse(irrelevantKeyword, ai.values.getOrElse(dependencyKeyword, List.empty))).getOrElse(List.empty)
@@ -275,14 +312,14 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       Option.when(!nodeExists)(s"Missing analysis node:\n${node.toString}\n$pos")
     }
 
-    private def extractSourceLine(pos: ast.Position): Int = {
+    protected def extractSourceLine(pos: ast.Position): Int = {
       pos match {
         case column: ast.HasLineColumn => column.line
         case _ => -1
       }
     }
 
-    private def checkTestAssertionNodeExists(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
+    protected def checkTestAssertionNodeExists(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
       val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes) ++ getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
       val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
       if (assumptionNodes.nonEmpty && assertionNodes.isEmpty)
@@ -292,7 +329,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
 
 
-    private def checkDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
+    protected def checkDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
       val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
       val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
@@ -306,7 +343,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       }).filter(_.isDefined).map(_.get).toSeq
     }
 
-    private def checkNonDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
+    protected def checkNonDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
       val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
       val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
@@ -319,16 +356,47 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       }).filter(_.isDefined).map(_.get).toSeq
     }
 
-    private def getTestAssertionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
+    protected def getTestAssertionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
       nodes.filter(node => node.sourceInfo.toString.contains("@" + testAssertionKeyword + "("))
 
 
-    private def getTestAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
+    protected def getTestAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
       nodes.filter(_.sourceInfo.toString.contains("@" + dependencyKeyword + "("))
 
 
-    private def getTestIrrelevantAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
+    protected def getTestIrrelevantAssumptionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
       nodes.filter(_.sourceInfo.toString.contains("@" + irrelevantKeyword + "("))
 
   }
+
+
+  class AnnotatedPrecisionBenchmark(program: Program, assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter],
+                                    writer: PrintWriter) extends AnnotatedTest(program, assumptionAnalysisInterpreters) {
+    override def execute(): Unit = {
+
+      assumptionAnalysisInterpreters foreach {a =>
+        val prec = computePrecision(a)
+        writer.println(s"${a.getMember.map(_.name).getOrElse("unknown")}: $prec")
+      }
+    }
+
+    protected def computePrecision(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Double = {
+      val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+      val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
+
+      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))
+      val dependenciesPerSource = dependencies groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
+      val dependencyIds = dependencies.map(_.id)
+
+      if(dependenciesPerSource.nonEmpty){
+        val wrongDependencies = assumptionsPerSource.filter({ case (_, assumptions) => dependencyIds.intersect(assumptions.map(_.id)).nonEmpty })
+        1.0 - (wrongDependencies.size.toDouble / dependenciesPerSource.size.toDouble)
+      }else{
+        1.0
+      }
+    }
+
+  }
 }
+
