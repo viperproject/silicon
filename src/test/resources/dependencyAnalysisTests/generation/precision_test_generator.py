@@ -83,11 +83,14 @@ def apply_snippet(snippet: str, method: str):
   return new_method
 
 
-def handle_template_file(path, snippet_preamble, snippets: dict[str, str]):
+def handle_template_file(path: str, output_path: str, snippet_preamble: str, snippets: dict[str, str]):
   preamble, methods = read_test_template(path)
-  os.makedirs(path.replace(".vpr", ""), exist_ok=True)
+  if not path.endswith(".vpr"):
+    return
+  program_foldername = path.replace(".vpr", "").split("\\")[-1]
+  os.makedirs(f"{output_path}\\{program_foldername}", exist_ok=True)
   for snippet_name, snippet in snippets.items():
-    f = open(path.replace(".vpr", f"\\{snippet_name}.vpr"), "w")
+    f = open(f"{output_path}\\{program_foldername}\\{snippet_name}.vpr", "w")
     f.write(preamble)
     f.write("\n")
     f.write(snippet_preamble)
@@ -98,8 +101,12 @@ def handle_template_file(path, snippet_preamble, snippets: dict[str, str]):
     f.close()
     
 
-preamble, snippet_dict = read_snippets_file("silicon\\src\\test\\resources\\dependencyAnalysisTests\\generation\\snippets.txt")
-print(preamble)
+def process_folder(folder_path: str, output_path: str, snippet_preamble: str, snippets: dict[str, str]):
+  files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+  for file in files:
+    handle_template_file(file, output_path, snippet_preamble, snippets)
 
-handle_template_file("silicon\\src\\test\\resources\\dependencyAnalysisTests\\unitTests\\permissions.vpr",
-                     preamble, snippet_dict)
+preamble, snippet_dict = read_snippets_file("silicon\\src\\test\\resources\\dependencyAnalysisTests\\generation\\snippets.txt")
+process_folder("silicon\\src\\test\\resources\\dependencyAnalysisTests\\unitTests", 
+               "silicon\\src\\test\\resources\\dependencyAnalysisTests\\precisionTests",
+               preamble, snippet_dict)

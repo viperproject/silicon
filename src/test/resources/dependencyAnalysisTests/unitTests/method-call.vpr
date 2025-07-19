@@ -28,6 +28,8 @@ method call2(){
     @dependency("Implicit")
     z := sum(x, y)
 
+    // $PrecisionTest: $READ_ONLY=x,y,z
+
     @testAssertion("Explicit")
     assert z == x + y
 }
@@ -42,6 +44,9 @@ method call3(x: Int, y: Int)
   var n: Int, n2: Int
   @dependency("Implicit")
   n := sum(x, y)
+
+  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=x,y,n
+
   @dependency("Implicit")
   n2 := sum(x, y)
   @dependency("Implicit")
@@ -65,6 +70,9 @@ method call4(x: Int, y: Int, z: Int)
   var n: Int, n2: Int
   @dependency("Implicit")
   n := sum(x, y)
+
+  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=n,z,x,y
+
   @irrelevant("Implicit")
   n2 := sum(x, z)
 

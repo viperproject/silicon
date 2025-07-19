@@ -1,3 +1,4 @@
+field f: Int 
 
 method branch1(){
     var x: Int, y: Int
@@ -9,6 +10,8 @@ method branch1(){
         @dependency("Implicit")
         y := -x + 1
     }
+
+    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y
 
     @testAssertion("Explicit")
     assert y > 0
@@ -25,12 +28,16 @@ method branch2(){
         assume y >= 10
     }
 
+    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y
+
     @testAssertion("Explicit")
     assert y > 0
 }
 
 method branch3(){
     var x: Int, y: Int
+
+    // $PrecisionTest: $READ_WRITE=x,y
 
     if(@dependency("PathCondition")(x > 0)){
         @dependency("Implicit")
@@ -50,6 +57,7 @@ method branch4(){
     if(@dependency("PathCondition")(x > 0)){
         @irrelevant("Implicit")
         y := x + 1
+        // $PrecisionTest: $READ_WRITE=x,y
     }else{
         @dependency("Implicit")
         y := 10 - x
@@ -62,6 +70,8 @@ method branch5(){
     var x: Int, y: Int
     @dependency("Explicit")
     assume y > 0
+
+    // $PrecisionTest: $READ_ONLY=x,y
 
     if(@irrelevant("PathCondition")(x > 0)){
         @irrelevant("Implicit")

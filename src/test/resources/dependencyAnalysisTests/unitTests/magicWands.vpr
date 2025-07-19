@@ -17,8 +17,12 @@ method basicApply()
     inhale x > 0
     @dependency("Explicit")
     inhale x > 0 --* y > 0
+
+    // $PrecisionTest: $READ_ONLY=x,y
+
     @dependency("Implicit")
     apply x > 0 --* y > 0
+
     @testAssertion("Explicit")
     assert y > 0
 }
@@ -40,6 +44,8 @@ method basicPackage(l: Ref)
       @dependency()
       fold list(l)
     }
+
+    // $PrecisionTest: // TODO ake
 
     @dependency("Implicit")
     apply list(tmp) --* list(l)
@@ -72,6 +78,8 @@ method advancedPackage(a: Int, b: Int)
     @dependency("Explicit")
     inhale greater0(b)
 
+    // $PrecisionTest: $READ_ONLY=a,b
+
     @dependency("Implicit")
     apply (greater0(a) && greater0(b)) --* greater0(a + b)
 
@@ -88,6 +96,8 @@ method quantifiedWand(xs: Seq[Int], b: Int)
     @dependency("Implicit")
     apply  greater0(xs[0]) --* greater0(xs[0] + b)
 
+    // $PrecisionTest: $READ_ONLY=xs[0],b,xs[1] // TODO ake: sequence update
+
     @testAssertion("Explicit")
     assert greater0(xs[0] + b)
 }
@@ -100,6 +110,8 @@ method packagePrecision(l: Ref)
     var tmp : Ref
     @dependency("Implicit")
     tmp := l.next
+
+    // $PrecisionTest: $READ_WRITE=l.val
 
     @irrelevant("Implicit")
     package list(tmp) --* list(l)
@@ -116,7 +128,9 @@ method packageExhale(x: Ref)
   requires @dependency("Explicit")(acc(x.f))
   {
 
+    // $PrecisionTest: $READ_WRITE=x.f
 
+    @dependency("Implicit")
     package acc(x.f, 1/2) --* acc(x.f)
 
 
@@ -130,6 +144,8 @@ method packageExhale2(x: Ref)
 
     @dependency("Implicit")
     package acc(x.f, 1/2) --* acc(x.f)
+
+    // $PrecisionTest: $READ_ONLY=x.f
 
     @dependency("Implicit")
     apply acc(x.f, 1/2) --* acc(x.f)

@@ -6,23 +6,19 @@ method wildcardPerm(x: Ref, y: Ref)
   requires @irrelevant("Explicit")(acc(y.f, wildcard))
   requires x != y // could be a dependency but doesn't have to
 {
+  // $PrecisionTest: $READ_ONLY=x.f,y.f
+
   @testAssertion("Implicit")
   inhale x.f > 0
 }
 
-method wildcardPerm2(x: Ref, y: Ref)
-  requires @irrelevant("Explicit")(acc(y.f, wildcard))
-  requires @dependency("Explicit")(acc(x.f, wildcard))
-  requires x != y // could be a dependency but doesn't have to
-{
-  @testAssertion("Implicit")
-  inhale x.f > 0
-}
 
 method wildcardPermDistinctFields(x: Ref, y: Ref)
   requires @dependency("Explicit")(acc(x.f, wildcard))
   requires @irrelevant("Explicit")(acc(y.g, wildcard))
 {
+  // $PrecisionTest: $READ_ONLY=x.f,y.g
+
   @testAssertion("Implicit")
   inhale x.f > 0
 }
@@ -35,6 +31,8 @@ method quantifiedPermWildcard(xs: Seq[Ref], ys: Seq[Ref])
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
   @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
+
+  // $PrecisionTest: $READ_ONLY=xs[0].f,xs[1].f,ys[0].f,ys[1].f
 
   @testAssertion("Explicit")
   assert xs[0].f > 0

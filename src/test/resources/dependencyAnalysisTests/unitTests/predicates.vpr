@@ -1,4 +1,4 @@
-
+field f: Int
 
 predicate greater0(n: Int){
   n > 0
@@ -11,7 +11,12 @@ predicate greater5(n: Int){
 method foldP(n: Int)
     requires @dependency("Explicit")(n > 10)
 {
-    var x: Int := 1
+    var x: Int 
+    @dependency("Implicit")
+    x := 1
+
+    // $PrecisionTest: $READ_ONLY=n,x
+
     @testAssertion("Implicit")
     fold greater0(x + n)
 }
@@ -19,11 +24,16 @@ method foldP(n: Int)
 method unfoldP(n: Int)
   requires @dependency("Explicit")(greater0(n))
 {
-    var x: Int := 1
+    var x: Int
+    @dependency("Implicit") 
+    x := 1
     @dependency("Implicit")
     unfold greater0(n)
     @dependency("Implicit")
     x := n + x
+
+    // $PrecisionTest: $READ_ONLY=x,n
+
     @testAssertion("Explicit")
     assert x > 1
 }
@@ -36,6 +46,9 @@ method unfoldFoldP(a: Int, b: Int)
     unfold greater0(a)
     @dependency("Implicit")
     unfold greater5(b)
+
+    // $PrecisionTest: $READ_ONLY=a,b
+
     @testAssertion("Implicit")
     fold greater5(a + b)
 }
@@ -46,6 +59,8 @@ method callWithPredicate(a: Int, b: Int)
 {
     @dependency("Implicit")
     unfoldFoldP(a, b)
+
+    // $PrecisionTest: $READ_ONLY=a,b
 
     @testAssertion("Explicit")
     assert greater5(a + b)
@@ -60,6 +75,9 @@ method unfoldPrecision(a: Int, b: Int)
     unfold greater0(a)
     @dependency("Implicit")
     unfold greater5(b)
+
+    // $PrecisionTest: $READ_ONLY=a,b
+
     @testAssertion("Implicit")
     fold greater0(b)
 }
@@ -68,6 +86,8 @@ method foldPrecision(a: Int, b: Int)
     requires @irrelevant("Explicit")(a > 5)
     requires @dependency("Explicit")(b > 5)
 {
+    // $PrecisionTest: $READ_ONLY=a,b
+
     @testAssertion("Implicit")
     fold greater0(b)
 }

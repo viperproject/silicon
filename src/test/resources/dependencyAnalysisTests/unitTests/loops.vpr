@@ -1,3 +1,4 @@
+field f:Int
 
 method loop1(){
     var i: Int
@@ -16,6 +17,9 @@ method loop1(){
         // @irrelevant("Implicit") // imprecise
         i := i - 1
     }
+
+    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i
+
     @testAssertion("Explicit")
     assert res >= 0
 }
@@ -34,6 +38,7 @@ method loop2(){
     {
         @irrelevant("Implicit")
         res := res + i
+        // $PrecisionTest: $READ_ONLY=res,i
         @dependency("Implicit")
         i := i - 1
         @testAssertion("Explicit")
@@ -46,6 +51,7 @@ method loop3(){
     var res: Int
     @dependency("Implicit")
     res := 0
+    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i
     @irrelevant("Implicit")
     i := 10
     while(@dependency("PathCondition")(i > 0))
@@ -65,6 +71,10 @@ method loop3(){
 method loop4(){
     var i: Int
     var res: Int
+
+
+    // $PrecisionTest: $READ_WRITE=i,res
+
     @dependency("Implicit")
     res := 0
     @irrelevant("Implicit")

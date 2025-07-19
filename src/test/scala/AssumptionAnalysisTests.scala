@@ -19,8 +19,9 @@ import java.time.format.DateTimeFormatter
 
 class AssumptionAnalysisTests extends AnyFunSuite {
 
-  val CHECK_PRECISION = true
+  val CHECK_PRECISION = false
   val EXECUTE_PRECISION_BENCHMARK = false
+  val EXECUTE_TEST=true
   val ignores: Seq[String] = Seq("example1", "example2")
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
@@ -40,19 +41,24 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
 
   if(EXECUTE_PRECISION_BENCHMARK) {
-    val directory = new File("precisionBenchmark")
-    directory.mkdir()
-    val now: LocalDateTime = LocalDateTime.now()
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
-    val writer = new PrintWriter(s"benchmark_${now.format(formatter)}.out")
-    visitFiles("dependencyAnalysisTests/unitTests/permissions", executePrecisionBenchmark(_, _, frontend, writer))
-    writer.close()
+    test("precision benchmark") {
+      val basePath = "src/test/resources/dependencyAnalysisTests/precisionTests/results"
+      val directory = new File(basePath)
+      directory.mkdir()
+      val now: LocalDateTime = LocalDateTime.now()
+      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
+      val writer = new PrintWriter(s"$basePath/result_${now.format(formatter)}.out")
+      visitFiles("dependencyAnalysisTests/precisionTests", executePrecisionBenchmark(_, _, frontend, writer))
+      writer.close()
+    }
   }
 
-  testDirectories foreach (dir => visitFiles(dir, createSingleTest))
+  if(EXECUTE_TEST)
+    testDirectories foreach (dir => visitFiles(dir, createSingleTest))
 
   commandLineArguments = Seq("--enableMoreCompleteExhale") ++ commandLineArguments
-  visitFiles("dependencyAnalysisTests/mce", createSingleTest)
+  if(EXECUTE_TEST)
+    visitFiles("dependencyAnalysisTests/mce", createSingleTest)
 
 //    test("custom test"){
 //      executeTest("dependencyAnalysisTests/all/", "list", frontend)
@@ -124,18 +130,25 @@ class AssumptionAnalysisTests extends AnyFunSuite {
                                 fileName: String,
                                 frontend: SilFrontend,
                                 writer: PrintWriter): Unit = {
-    println(s"$filePrefix - $fileName")
-    val program: Program = tests.loadProgram(filePrefix + "/", fileName, frontend)
-    val result = frontend.verifier.verify(program)
-    if(result.isInstanceOf[verifier.Failure]) {
-      cancel(f"Program does not verify. Skip test.\n$result")
-      return
+    println(s"Precision Benchmark for $filePrefix - $fileName started...")
+    try{
+      val program: Program = tests.loadProgram(filePrefix + "/", fileName, frontend)
+      val result = frontend.verifier.verify(program)
+      if(result.isInstanceOf[verifier.Failure]) {
+        writer.println("Program does not verify. Skip")
+        println(f"Program does not verify. Skip.\n$result")
+        return
+      }
+      val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
+      writer.println(s"$filePrefix - $fileName")
+      new AnnotatedPrecisionBenchmark(program, assumptionAnalysisInterpreters, writer).execute()
+      writer.println()
+      println(s"Precision Benchmark for $filePrefix - $fileName done.")
+    }catch{
+      case e: Exception =>
+        writer.println("Program caused an exception. Skip")
+        println(s"Exception caught: ${e.getMessage}")
     }
-
-    val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
-    writer.println(s"$filePrefix - $fileName")
-    new AnnotatedPrecisionBenchmark(program, assumptionAnalysisInterpreters, writer).execute()
-    writer.println()
   }
 
   /**

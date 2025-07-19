@@ -3,10 +3,13 @@ field f: Int
 method exhaleInhale(a: Ref)
     requires @dependency("Explicit")(acc(a.f))
 {
-    @dependency("Implicit")
+    @irrelevant("Implicit") // TODO ake
     exhale acc(a.f, 1/2)
-    @dependency("Explicit")
+    @irrelevant("Explicit")
     inhale acc(a.f, 1/2)
+
+    // $PrecisionTest: READ_WRITE=a.f
+
     @testAssertion("Explicit")
     assert perm(a.f) == write
 }
@@ -14,10 +17,13 @@ method exhaleInhale(a: Ref)
 method exhaleInhale2(a: Ref)
     requires @dependency("Explicit")(acc(a.f))
 {
-    // @irrelevant("Implicit") TODO ake: imprecision?
+    @irrelevant("Implicit") // TODO ake: imprecision
     exhale acc(a.f, 1/2)
-    // @irrelevant("Explicit") TODO ake: imprecision?
+    @irrelevant("Explicit") // TODO ake: imprecision
     inhale acc(a.f, 1/2)
+
+    // $PrecisionTest: READ_WRITE=a.f
+
     @testAssertion("Explicit")
     assert perm(a.f) >= 1/2
 }
@@ -30,8 +36,10 @@ method exhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    // @irrelevant("Implicit") TODO ake: imprecision?
+    @irrelevant("Implicit") // TODO ake: imprecision
     exhale acc(x.f, 1/2)
+
+    // $PrecisionTest: READ_ONLY=x.f
 
     @testAssertion("Explicit")
     assert x.f > 0
@@ -45,8 +53,10 @@ method inhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    //@irrelevant("Implicit") TODO ake: imprecision?
+    @irrelevant("Implicit") // TODO ake: imprecision
     inhale acc(x.f, 1/2)
+
+    // $PrecisionTest: READ_ONLY=x.f
 
     @testAssertion("Explicit")
     assert x.f > 0

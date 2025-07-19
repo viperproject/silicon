@@ -23,7 +23,7 @@ method inhaleImprecision(){
 }
 
 // issue #01 - imprecision due to wildcards
-// when accessing a qp resource, check Z < (x in xs? k1:Z) + (y in ys? k2:Z)
+// when accessing a qp resource, check Z < (l0? (x in xs? k1:Z): Z) + (y in ys? k2:Z)
 // -> the unsat core contains dependencies to all qp perm amounts in order to assert k1, k2, ... >= Z
 method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
   requires |xs| > 5

@@ -18,6 +18,11 @@ SNIPPET assignment$=${
   $RW_INT_0 := $RO_INT_0 + $RO_INT_1
 }
 
+SNIPPET assignment2$=${
+  @irrelevant("Implicit")
+  $RW_INT_1 := $RO_INT_0 + $RO_INT_1
+}
+
 // fold-unfold
 SNIPPET fold_unfold_1$=${
   var gen_i: Int 

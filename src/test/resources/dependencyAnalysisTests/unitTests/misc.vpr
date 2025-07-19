@@ -6,6 +6,9 @@ method divBy0(a: Ref, n: Int)
     requires @irrelevant("Explicit")(a.f > 0)
 {
     var res: Int
+
+    // $PrecisionTest: $READ_WRITE=a.f,res $READ_ONLY=n
+
     @testAssertion("Implicit")
     res := a.f / n
 }
@@ -15,6 +18,9 @@ method assumeFalse()
     var a: Int
     @dependency("Explicit")
     assume false
+
+    // $PrecisionTest: $READ_WRITE=a
+
     @testAssertion("Explicit")
     assert a == 2
 }
