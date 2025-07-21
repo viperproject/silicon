@@ -314,7 +314,7 @@ object executor extends ExecutionRules {
 
     if (stmts.nonEmpty)
       exec(s, stmts.head, v)((s1, v1) =>
-        execs(s1, stmts.tail, v1)(Q))
+        execs(s1.copy(heuristicsDepth = 0), stmts.tail, v1)(Q))
     else
       Q(s, v)
 

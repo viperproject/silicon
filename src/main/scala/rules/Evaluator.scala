@@ -136,9 +136,11 @@ object evaluator extends EvaluationRules {
               s2}
         else
           s2
-      val s4 = s3.copy(h = s.h,
-                       reserveHeaps = s.reserveHeaps,
-                       exhaleExt = s.exhaleExt)
+      val s4 =
+        if (s.exhaleExt)
+          s3.copy(h = s.h, reserveHeaps = s.reserveHeaps, exhaleExt = s.exhaleExt)
+        else
+          s3.copy(reserveHeaps = s.reserveHeaps, exhaleExt = s.exhaleExt)
       Q(s4, t, eNew, v1)})
   }
 

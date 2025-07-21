@@ -522,6 +522,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val enableAutomaticFolding: ScallopOption[Boolean] = opt[Boolean]("enableAutomaticFolding",
+    descr = "Enable automatic folding and unfolding",
+    default = Some(false),
+    noshort = true
+  )
+
+  val maxHeuristicsDepth: ScallopOption[Int] = opt[Int]("maxHeuristicsDepth",
+    descr = "Maximal number of nested heuristics applications (default: 3)",
+    default = Some(3),
+    noshort = true
+  )
+
   def mapCache[A](opt: Option[A]): Option[A] = opt match {
     case Some(_) if disableCaches() => None
     case _ => opt

@@ -104,6 +104,9 @@ case class Failure/*[ST <: Store[ST],
   override lazy val toString: String = message.readableMessage
 }
 
+class FailureWithArgs(override val message: VerificationError, override val continueVerification: Boolean = true, val args: Option[Seq[Term]]) extends Failure(message, continueVerification) {
+}
+
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
                                  counterExample: Option[Counterexample],
                                  reasonUnknown: Option[String]) extends FailureContext {
@@ -218,15 +221,15 @@ case class SiliconMappedCounterexample(internalStore: Store,
   private def functionsToString() : (String, String) = {
     //extractedModel.entries should be a bijection so we can invert the map
     //Since we only care about ref entries we can remove everything else
-    val invEntries = converter.extractedModel.entries.flatMap{ case (name, entry) => 
+    val invEntries = converter.extractedModel.entries.flatMap{ case (name, entry) =>
       entry match {
         case RefEntry(symName, _) => Some(symName -> name)
         case NullRefEntry(symName)=> Some(symName -> name)
         case _ => None
       }}
 
-    val replaceDomainFunction = converter.domains.map{ 
-      case DomainEntry(names, types, functions) => 
+    val replaceDomainFunction = converter.domains.map{
+      case DomainEntry(names, types, functions) =>
       DomainEntry(names, types, renameFunctions(functions, invEntries))
     }
     val bufDomains = replaceDomainFunction.nonEmpty match {
