@@ -1,0 +1,50 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+field next: Ref
+
+predicate node(x: Ref) { acc(x.val) && acc(x.next) }
+
+predicate list(x: Ref) {
+  x != null ==> acc(x.val) && acc(x.next) && list(x.next)
+}
+
+// Nested unfolding: x.next.val is hidden two predicate levels deep.
+method secondVal(x: Ref) returns (r: Int)
+  requires list(x) && x != null
+  requires unfolding list(x) in x.next != null
+{
+  r := x.next.val
+}
+
+// Folding the empty list via the implication in the predicate body.
+method emptyList() returns (x: Ref)
+  ensures list(x)
+{
+  x := null
+}
+
+// Folding a one-element list requires folding list(null) first.
+method singleton() returns (x: Ref)
+  ensures list(x)
+{
+  x := new(val, next)
+  x.next := null
+}
+
+// Folding with a predicate argument that is a field access.
+method twoNodes(x: Ref)
+  requires acc(x.val) && acc(x.next) && acc(x.next.val) && acc(x.next.next)
+  ensures node(x) && node(old(x.next))
+{
+}
+
+// Predicate arguments that are not plain variables.
+predicate pair(x: Ref, y: Ref) { acc(x.val) && acc(y.val) }
+
+method pairRead(a: Ref, b: Ref) returns (r: Int)
+  requires pair(a, b)
+{
+  r := a.val + b.val
+}

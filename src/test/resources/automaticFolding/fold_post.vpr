@@ -1,0 +1,53 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+predicate P(x: Ref) { acc(x.f) && acc(x.g) }
+
+// Postcondition requires the predicate, but only its body is held.
+method foldPost(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  ensures P(x)
+{
+}
+
+// Unfold to write and fold back for the postcondition.
+method roundTrip(x: Ref)
+  requires P(x)
+  ensures P(x)
+{
+  x.f := 3
+}
+
+// Calling a method that requires the predicate.
+method callee(x: Ref)
+  requires P(x)
+
+method caller(x: Ref)
+  requires acc(x.f) && acc(x.g)
+{
+  callee(x)
+}
+
+// Folding is impossible (missing acc(x.g)): the original error must be reported.
+method foldMissing(x: Ref)
+  requires acc(x.f)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures P(x)
+{
+}
+
+// The callee's formal argument differs from the caller's variables.
+method calleeY(y: Ref)
+  requires P(y)
+  ensures P(y)
+
+method callerDifferentName(a: Ref, x: Ref)
+  requires acc(a.f) && acc(a.g)
+  requires acc(x.f)
+  ensures acc(a.f) && acc(x.f)
+{
+  calleeY(a)
+}

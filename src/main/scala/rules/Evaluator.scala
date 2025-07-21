@@ -136,9 +136,12 @@ object evaluator extends EvaluationRules {
               s2}
         else
           s2
-      val s4 = s3.copy(h = s.h,
-                       reserveHeaps = s.reserveHeaps,
-                       exhaleExt = s.exhaleExt)
+      /* With automatic folding, heap changes made while evaluating (i.e. automatic unfolds) are kept */
+      val s4 =
+        if (s.exhaleExt || !Verifier.config.enableAutomaticFolding())
+          s3.copy(h = s.h, reserveHeaps = s.reserveHeaps, exhaleExt = s.exhaleExt)
+        else
+          s3.copy(reserveHeaps = s.reserveHeaps, exhaleExt = s.exhaleExt)
       Q(s4, t, eNew, v1)})
   }
 

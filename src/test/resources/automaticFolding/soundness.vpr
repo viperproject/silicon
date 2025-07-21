@@ -1,0 +1,48 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate P(x: Ref) { acc(x.f) }
+
+// Heuristics must not make the state inconsistent.
+method unfoldThenFalse(x: Ref)
+  requires P(x)
+{
+  var r: Int := x.f
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method foldThenFalse(x: Ref)
+  requires acc(x.f)
+{
+  assert P(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+// Values must be preserved across automatic unfold and fold.
+method values(x: Ref)
+  requires P(x) && unfolding P(x) in x.f == 1
+  ensures P(x) && unfolding P(x) in x.f == 2
+{
+  x.f := x.f + 1
+}
+
+method wrongValue(x: Ref)
+  requires P(x) && unfolding P(x) in x.f == 1
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures P(x) && unfolding P(x) in x.f == 3
+{
+  x.f := x.f + 1
+}
+
+// Unfolding must consume the predicate.
+method noDoubleUse(x: Ref)
+  requires P(x)
+{
+  x.f := 1
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert P(x) && acc(x.f)
+}

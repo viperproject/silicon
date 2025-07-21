@@ -1,0 +1,42 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate P(x: Ref) { acc(x.f) }
+
+// The invariant mentions the predicate, the loop body needs the field.
+method loop(x: Ref, n: Int)
+  requires P(x)
+  ensures P(x)
+{
+  var i: Int := 0
+  while (i < n)
+    invariant P(x)
+  {
+    x.f := x.f + 1
+    i := i + 1
+  }
+}
+
+// Several independent operations in a row, each needing a heuristic.
+method sequence(x: Ref, y: Ref)
+  requires P(x) && P(y)
+  ensures P(x) && P(y)
+{
+  x.f := 1
+  y.f := 2
+  x.f := y.f
+}
+
+// Branching on a value stored inside a predicate.
+method branch(x: Ref) returns (r: Int)
+  requires P(x)
+  ensures P(x)
+{
+  if (x.f > 0) {
+    r := 1
+  } else {
+    r := 2
+  }
+}

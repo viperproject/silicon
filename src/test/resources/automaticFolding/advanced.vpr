@@ -1,0 +1,76 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field val: Int
+field next: Ref
+
+predicate P(x: Ref) { acc(x.f) }
+predicate Abs(x: Ref)
+
+predicate list(x: Ref) {
+  x != null ==> acc(x.val) && acc(x.next) && list(x.next)
+}
+
+// Reading through a fractional predicate instance.
+method fractionalRead(x: Ref) returns (r: Int)
+  requires acc(P(x), 1/2)
+{
+  r := x.f
+}
+
+method fractionalFold(x: Ref)
+  requires acc(x.f, 1/2)
+  ensures acc(P(x), 1/2)
+{
+}
+
+// Abstract predicates can be neither folded nor unfolded.
+method abstractPred(x: Ref)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures Abs(x)
+{
+}
+
+method abstractRead(x: Ref) returns (r: Int)
+  requires Abs(x)
+{
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  r := x.f
+}
+
+// Function preconditions.
+function get(x: Ref): Int
+  requires P(x)
+{ unfolding P(x) in x.f }
+
+method callFunction(x: Ref) returns (r: Int)
+  requires acc(x.f)
+  ensures acc(x.f)
+{
+  r := get(x)
+}
+
+// Third list element: three levels of unfolding.
+method thirdVal(x: Ref) returns (r: Int)
+  requires list(x) && x != null
+  requires unfolding list(x) in x.next != null && unfolding list(x.next) in x.next.next != null
+{
+  r := x.next.next.val
+}
+
+// Unfolding in the postcondition.
+method exposeHead(x: Ref)
+  requires list(x) && x != null
+  ensures acc(x.val) && acc(x.next) && list(x.next)
+{
+}
+
+// Prepending to a list: needs a fold with a non-trivial argument.
+method prepend(x: Ref) returns (y: Ref)
+  requires list(x)
+  ensures list(y)
+{
+  y := new(val, next)
+  y.next := x
+}

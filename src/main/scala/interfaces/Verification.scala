@@ -218,15 +218,15 @@ case class SiliconMappedCounterexample(internalStore: Store,
   private def functionsToString() : (String, String) = {
     //extractedModel.entries should be a bijection so we can invert the map
     //Since we only care about ref entries we can remove everything else
-    val invEntries = converter.extractedModel.entries.flatMap{ case (name, entry) => 
+    val invEntries = converter.extractedModel.entries.flatMap{ case (name, entry) =>
       entry match {
         case RefEntry(symName, _) => Some(symName -> name)
         case NullRefEntry(symName)=> Some(symName -> name)
         case _ => None
       }}
 
-    val replaceDomainFunction = converter.domains.map{ 
-      case DomainEntry(names, types, functions) => 
+    val replaceDomainFunction = converter.domains.map{
+      case DomainEntry(names, types, functions) =>
       DomainEntry(names, types, renameFunctions(functions, invEntries))
     }
     val bufDomains = replaceDomainFunction.nonEmpty match {

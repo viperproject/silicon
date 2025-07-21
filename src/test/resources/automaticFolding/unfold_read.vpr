@@ -1,0 +1,36 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+predicate P(x: Ref) { acc(x.f) && acc(x.g) }
+
+// Reading a field that is only available inside a predicate instance.
+method read(x: Ref) returns (r: Int)
+  requires P(x)
+{
+  r := x.f
+}
+
+// Writing requires full permission, also hidden in the predicate.
+method writeField(x: Ref)
+  requires P(x)
+  ensures acc(x.f) && x.f == 5
+{
+  x.f := 5
+}
+
+// Permission to a field is asserted directly.
+method assertAcc(x: Ref)
+  requires P(x)
+{
+  assert acc(x.g)
+}
+
+// The predicate is not available at all: the original error must be reported.
+method noPred(x: Ref) returns (r: Int)
+{
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  r := x.f
+}
