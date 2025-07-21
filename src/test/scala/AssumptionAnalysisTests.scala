@@ -48,10 +48,12 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val now: LocalDateTime = LocalDateTime.now()
       val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
       val writer = new PrintWriter(s"$basePath/result_${now.format(formatter)}.out")
-      visitFiles("dependencyAnalysisTests/precisionTests", executePrecisionBenchmark(_, _, frontend, writer))
+      visitFiles("dependencyAnalysisTests/precisionTests", executePrecisionBenchmark(_, _, writer))
       writer.close()
     }
   }
+
+//  createSingleTest("dependencyAnalysisTests/quick", "test")
 
   if(EXECUTE_TEST)
     testDirectories foreach (dir => visitFiles(dir, createSingleTest))
@@ -60,9 +62,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   if(EXECUTE_TEST)
     visitFiles("dependencyAnalysisTests/mce", createSingleTest)
 
-//    test("custom test"){
-//      executeTest("dependencyAnalysisTests/all/", "list", frontend)
-//    }
+
+
 
   def visitFiles(dirName: String, function: (String, String) => Unit): Unit = {
     val path = Paths.get(getClass.getClassLoader.getResource(dirName).toURI)
@@ -72,6 +73,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   private def createSingleTest(dirName: String, fileName: String): Unit = {
     test(dirName + "/" + fileName) {
       try{
+        initFrontend()
         executeTest(dirName + "/", fileName, frontend)
       }catch{
         case t: Throwable => fail(t.getMessage)
@@ -98,7 +100,14 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
   }
 
-  def frontend: SiliconFrontend = {
+  var frontend: SiliconFrontend = createFrontend()
+
+  def initFrontend(): Unit = {
+    frontend.verifier.stop()
+    frontend = createFrontend()
+  }
+
+  def createFrontend(): SiliconFrontend = {
     val reporter = DependencyAnalysisReporter()
     val fe = new SiliconFrontend(reporter)
     val backend = fe.createVerifier("")
@@ -128,8 +137,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   def executePrecisionBenchmark(filePrefix: String,
                                 fileName: String,
-                                frontend: SilFrontend,
                                 writer: PrintWriter): Unit = {
+    initFrontend()
     println(s"Precision Benchmark for $filePrefix - $fileName started...")
     try{
       val program: Program = tests.loadProgram(filePrefix + "/", fileName, frontend)
@@ -148,7 +157,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       println(s"Precision Benchmark for $filePrefix - $fileName done.")
     }catch{
       case e: Exception =>
-        writer.println("Program caused an exception. Skip")
+        writer.println("Failed. Skip")
         println(s"Exception caught: ${e.getMessage}")
     }
   }
@@ -250,6 +259,10 @@ class AssumptionAnalysisTests extends AnyFunSuite {
           total += 1 + invs.size
           removed += (invs.size - newInvs.size)
           ast.Label(name, newInvs)(label.pos, label.info, label.errT)
+        case s: ast.Package if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
+          total += 1
+          removed += 1
+          ast.Inhale(ast.TrueLit()())()
         case s: Stmt if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
           total += 1
           removed += 1
@@ -439,6 +452,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       if(result.isInstanceOf[verifier.Failure]) {
         writer.println(s"!!!!!!!!!!!\nFailed to verify new program $exportFileName\n")
         println(s"!!!!!!!!!!!\nFailed to verify new program $exportFileName\n")
+        throw new Exception("Error: " + result.toString)
       }
     }
 

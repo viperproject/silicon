@@ -34,17 +34,20 @@ def extract_vars(line: str):
   var_decls = after.strip().split(" ")
   read_write_vars = []
   read_only_vars = []
+  invariant = ""
   for decl in var_decls:
     tmp = decl.split("=")
     if(tmp[0] == "$READ_ONLY"):
       read_only_vars = read_only_vars + tmp[1].split(",")
     elif(tmp[0] == "$READ_WRITE"):
       read_write_vars = read_write_vars + tmp[1].split(",")
+    elif(tmp[0] == "$INVARIANT"):
+      invariant = tmp[1]
   # print(f"line: {line}")
   # print(f"read only: {read_only_vars}")
   # print(f"read write: {read_write_vars}")
   # print()
-  return read_only_vars, read_write_vars
+  return read_only_vars, read_write_vars, invariant
 
 def replace_vars(snippet: str, placeholder: str, vars: list[str]):
   idx = 0
@@ -60,16 +63,36 @@ def replace_vars(snippet: str, placeholder: str, vars: list[str]):
   return snippet, gen_vars
 
 def generate_from_snippet(snippet: str, line: str):
-  read_only_vars, read_write_vars = extract_vars(line)
+  read_only_vars, read_write_vars, invariant = extract_vars(line)
+
+  snippet = snippet.replace("$INVARIANT", invariant if invariant != "" else "true")
+
+  # replace variables, generate new ones if necessary
+  snippet, gen_ro_refs = replace_vars(snippet, "$RO_REF_F_", [v.split(".")[0] for v in read_only_vars if v.endswith(".f")])
+  snippet, gen_rw_refs = replace_vars(snippet, "$RW_REF_F_", [v.split(".")[0] for v in read_write_vars if v.endswith(".f")])
   snippet, gen_vars_ro_field = replace_vars(snippet, "$RO_INT_FIELD_", [v for v in read_only_vars if "." in v])
   snippet, gen_vars_rw_field = replace_vars(snippet, "$RW_INT_FIELD_", [v for v in read_write_vars if "." in v])
+  snippet, gen_vars_ro_pure = replace_vars(snippet, "$RO_INT_PURE_", [v for v in read_only_vars if not "." in v])
+  snippet, gen_vars_rw_pure = replace_vars(snippet, "$RW_INT_PURE_", [v for v in read_write_vars if not "." in v])
   snippet, gen_vars_ro = replace_vars(snippet, "$RO_INT_", read_only_vars)
   snippet, gen_vars_rw = replace_vars(snippet, "$RW_INT_", read_write_vars)
+
+  # assume non-aliasing of references
+  generated_refs =   set(gen_rw_refs + gen_ro_refs + [v.split(".")[0] for v in (gen_vars_rw_field + gen_vars_ro_field) if "." in v]) 
+  existing_refs = set([v.split(".")[0] for v in (read_write_vars+read_only_vars) if "." in v])
+  # snippet = f"\n//generated: {generated_refs}\n//existing: {existing_refs}\n" + snippet
+  snippet = "\nvar gen_dummy_int: Int\n" + snippet
+  snippet = "\n".join([f"@irrelevant(\"Explicit\")\ninhale {a} != {b}" for a in generated_refs for b in existing_refs if a != b]) + snippet
+
+  # declare and initialize newly generated vars
   snippet = "".join([f"var {v.split(".")[0]}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v}, 1/2)\n" for v in gen_vars_ro_field]) + snippet
   snippet = "".join([f"var {v.split(".")[0]}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v})\n" for v in gen_vars_rw_field]) + snippet
-  all_vars = gen_vars_ro + gen_vars_rw
+  snippet = "".join([f"var {v}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v}.f)\n" for v in gen_rw_refs]) + snippet
+  snippet = "".join([f"var {v}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v}.f, 1/2)\n" for v in gen_ro_refs]) + snippet
+  all_vars = gen_vars_ro + gen_vars_rw + gen_vars_ro_pure + gen_vars_rw_pure
   if len(all_vars) > 0:
     snippet = "var " + ", ".join([f"{v}: Int" for v in all_vars]) + "\n" + snippet
+
   return snippet
 
 def apply_snippet(snippet: str, method: str):
