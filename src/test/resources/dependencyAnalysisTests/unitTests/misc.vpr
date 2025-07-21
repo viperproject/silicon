@@ -7,7 +7,7 @@ method divBy0(a: Ref, n: Int)
 {
     var res: Int
 
-    // $PrecisionTest: $READ_WRITE=a.f,res $READ_ONLY=n
+    // $PrecisionTest: $READ_WRITE=a.f,res $READ_ONLY=n $INVARIANT=n>0
 
     @testAssertion("Implicit")
     res := a.f / n
@@ -19,7 +19,7 @@ method assumeFalse()
     @dependency("Explicit")
     assume false
 
-    // $PrecisionTest: $READ_WRITE=a
+    // $PrecisionTest: $READ_WRITE=a $INVARIANT=a>0
 
     @testAssertion("Explicit")
     assert a == 2

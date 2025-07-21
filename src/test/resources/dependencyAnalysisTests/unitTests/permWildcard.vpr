@@ -32,7 +32,7 @@ method quantifiedPermWildcard(xs: Seq[Ref], ys: Seq[Ref])
   @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard))
 
-  // $PrecisionTest: $READ_ONLY=xs[0].f,xs[1].f,ys[0].f,ys[1].f
+  // $PrecisionTest: $READ_ONLY=xs[0].f,xs[1].f,ys[0].f,ys[1].f $INVARIANT=xs[0].f>0
 
   @testAssertion("Explicit")
   assert xs[0].f > 0

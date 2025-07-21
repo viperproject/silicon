@@ -11,7 +11,7 @@ method branch1(){
         y := -x + 1
     }
 
-    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y
+    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y $INVARIANT=y>0
 
     @testAssertion("Explicit")
     assert y > 0
@@ -28,7 +28,7 @@ method branch2(){
         assume y >= 10
     }
 
-    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y
+    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y $INVARIANT=y>0
 
     @testAssertion("Explicit")
     assert y > 0
@@ -47,7 +47,7 @@ method branch3(){
         assume y >= 10
     }
 
-    @testAssertion("Explicit")
+    @testAssertion("Explicit") $INVARIANT=y>0
     assert x > 10 ==> y > 0
 }
 
@@ -57,7 +57,7 @@ method branch4(){
     if(@dependency("PathCondition")(x > 0)){
         @irrelevant("Implicit")
         y := x + 1
-        // $PrecisionTest: $READ_WRITE=x,y
+        // $PrecisionTest: $READ_WRITE=x,y $INVARIANT=x>0
     }else{
         @dependency("Implicit")
         y := 10 - x
@@ -71,7 +71,7 @@ method branch5(){
     @dependency("Explicit")
     assume y > 0
 
-    // $PrecisionTest: $READ_ONLY=x,y
+    // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=y>0
 
     if(@irrelevant("PathCondition")(x > 0)){
         @irrelevant("Implicit")

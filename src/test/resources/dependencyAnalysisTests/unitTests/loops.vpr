@@ -18,7 +18,7 @@ method loop1(){
         i := i - 1
     }
 
-    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i
+    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i $INVARIANT=i>-1
 
     @testAssertion("Explicit")
     assert res >= 0
@@ -38,7 +38,7 @@ method loop2(){
     {
         @irrelevant("Implicit")
         res := res + i
-        // $PrecisionTest: $READ_ONLY=res,i
+        // $PrecisionTest: $READ_ONLY=res,i $INVARIANT=i>-1
         @dependency("Implicit")
         i := i - 1
         @testAssertion("Explicit")
@@ -51,7 +51,7 @@ method loop3(){
     var res: Int
     @dependency("Implicit")
     res := 0
-    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i
+    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i $INVARIANT=res>-1
     @irrelevant("Implicit")
     i := 10
     while(@dependency("PathCondition")(i > 0))

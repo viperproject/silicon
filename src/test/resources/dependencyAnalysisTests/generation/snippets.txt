@@ -43,7 +43,7 @@ SNIPPET div_by_0$=${
   }
 }
 
-SNIPPET inhale1$=${
+SNIPPET inhale=${
   @irrelevant("Explicit")
   inhale $INVARIANT
 }
@@ -230,6 +230,7 @@ SNIPPET while_pure$=${
   @irrelevant("Implicit")
   $RW_INT_PURE_1 := 0
   while(@irrelevant("PathCondition")($RW_INT_PURE_0 > 0))
+    invariant @irrelevant("LoopInvariant")($INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_0 <= gen_start)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_1 == (gen_start-$RW_INT_PURE_0)*$RO_INT_PURE_0)
   {
@@ -250,6 +251,7 @@ SNIPPET while_perm$=${
   while(@irrelevant("PathCondition")($RW_INT_FIELD_0 > 0))
     invariant @irrelevant("LoopInvariant")(acc($RW_INT_FIELD_0, write))
     invariant @irrelevant("LoopInvariant")(acc($RW_INT_FIELD_1, write))
+    invariant @irrelevant("LoopInvariant")($INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_0 <= gen_start)
     invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_1 == (gen_start-$RW_INT_FIELD_0)*$RO_INT_PURE_0)
   {
@@ -288,4 +290,4 @@ SNIPPET magic_wand_perm$=${
 }
 
 
-// TODO: goto, quasihavoc
+// TODO: goto, quasihavoc, assume, inhale

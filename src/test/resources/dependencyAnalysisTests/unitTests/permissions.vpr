@@ -53,7 +53,7 @@ method perm4(){
     @dependency("Implicit")
     x.f := x.f + 1
 
-    // $PrecisionTest: $READ_ONLY=x.f
+    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>1
 
     @testAssertion("Explicit")
     assert x.f > 1

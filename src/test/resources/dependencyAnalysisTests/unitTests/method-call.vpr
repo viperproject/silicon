@@ -14,6 +14,8 @@ method call1(){
     @dependency("Explicit")
     assume y > 0
 
+    // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=x>0
+
     @testAssertion("Implicit")
     x := sum(x, y)
 }
@@ -28,7 +30,7 @@ method call2(){
     @dependency("Implicit")
     z := sum(x, y)
 
-    // $PrecisionTest: $READ_ONLY=x,y,z
+    // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
 
     @testAssertion("Explicit")
     assert z == x + y
@@ -45,7 +47,7 @@ method call3(x: Int, y: Int)
   @dependency("Implicit")
   n := sum(x, y)
 
-  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=x,y,n
+  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=x,y,n $INVARIANT=x>0
 
   @dependency("Implicit")
   n2 := sum(x, y)
@@ -71,7 +73,7 @@ method call4(x: Int, y: Int, z: Int)
   @dependency("Implicit")
   n := sum(x, y)
 
-  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=n,z,x,y
+  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=n,z,x,y $INVARIANT=x>0
 
   @irrelevant("Implicit")
   n2 := sum(x, z)

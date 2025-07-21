@@ -24,10 +24,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val EXECUTE_TEST=true
   val ignores: Seq[String] = Seq("example1", "example2")
   val testDirectories: Seq[String] = Seq(
-//    "dependencyAnalysisTests",
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
-//    "dependencyAnalysisTests/unitTests/permissions",
+    "dependencyAnalysisTests/real-world-examples",
 //    "dependencyAnalysisTests/quick"
 //    "dependencyAnalysisTests/fromSilver"
   )
