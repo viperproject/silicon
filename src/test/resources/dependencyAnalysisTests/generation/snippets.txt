@@ -1,7 +1,11 @@
 field gen_f: Int
 
-predicate gen_confuse(i: Int, a: Int){
-  i >= 0 // TODO
+predicate gen_confuse(i: Int, inv: Bool){
+  i >= 0 && inv
+}
+
+predicate gen_confuse_with_impl(i: Int, inv: Bool){
+  i >= 0 ==> inv
 }
 
 function gen_add(a: Int, b: Int): Int
@@ -12,6 +16,14 @@ function gen_add_positive(a: Int, b: Int): Int
   ensures result == a + b
   ensures result >= 0
 
+method incr(a: Ref)
+  requires acc(a.f)
+  ensures acc(a.f)
+  ensures a.f == old(a.f) + 1
+{
+  a.f := a.f + 1
+}
+
 // assignments
 SNIPPET assignment$=${
   @irrelevant("Implicit")
@@ -20,31 +32,115 @@ SNIPPET assignment$=${
 
 SNIPPET assignment2$=${
   @irrelevant("Implicit")
-  $RW_INT_1 := $RO_INT_0 + $RO_INT_1
+  $RW_INT_0 := $RW_INT_1 + $RO_INT_0 + $RO_INT_1
+}
+
+SNIPPET div_by_0$=${
+  if($RO_INT_0 > 0){
+    $RW_INT_0 := $RO_INT_1 / $RO_INT_0
+  }else{
+    $RW_INT_0 := $RO_INT_1 * $RO_INT_0
+  }
+}
+
+SNIPPET inhale1$=${
+  @irrelevant("Explicit")
+  inhale $INVARIANT
+}
+
+SNIPPET assert1$=${
+  // @irrelevant() // TODO ake: missing node
+  assert $INVARIANT
+}
+
+
+SNIPPET exhale_inhale$=${
+  @irrelevant("Implicit")
+  exhale acc($RW_INT_FIELD_0, 1/2)
+
+  @irrelevant("Explicit")
+  inhale acc($RW_INT_FIELD_0, 1/2)
 }
 
 // fold-unfold
-SNIPPET fold_unfold_1$=${
+SNIPPET fold_unfold_basic$=${
   var gen_i: Int 
   @irrelevant("Implicit")
-  gen_i := 0
+  inhale gen_i > 10
   @irrelevant("Implicit")
-  fold gen_confuse(gen_i, $RO_INT_0)
+  fold gen_confuse(gen_i, $INVARIANT)
   @irrelevant("Implicit")
-  unfold gen_confuse(gen_i, $RO_INT_0)
+  unfold gen_confuse(gen_i, $INVARIANT)
 }
 
+// fold-unfold with implication
+SNIPPET fold_unfold_with_implication$=${
+  var gen_i: Int 
+  @irrelevant("Implicit")
+  fold gen_confuse_with_impl(gen_i, $INVARIANT)
+  @irrelevant("Implicit")
+  unfold gen_confuse_with_impl(gen_i, $INVARIANT)
+}
 
 // function call
 SNIPPET function_add$=${
   @irrelevant("Implicit")
   $RW_INT_0 := gen_add($RO_INT_0, $RO_INT_1)
   @irrelevant("Implicit")
-  $RW_INT_1 := gen_add($RO_INT_2, $RO_INT_3)
-  @irrelevant("Implicit")
-  $RW_INT_2 := gen_add($RW_INT_0, $RW_INT_1)
+  $RW_INT_1 := gen_add($RW_INT_0, $RO_INT_2)
   
-  assert $RW_INT_2 == $RO_INT_0 + $RO_INT_1 + $RO_INT_2 + $RO_INT_3
+  // @irrelevant() // TODO ake: might not hold due to aliasing
+  // assert $RW_INT_1 == $RO_INT_0 + $RO_INT_1 + $RO_INT_2
+}
+
+SNIPPET method_call$=${
+  @irrelevant("Implicit")
+  incr($RW_REF_F_0)
+}
+
+SNIPPET branch$=${
+  var gen_b: Bool
+  if(@irrelevant("PathCondition")($RO_INT_0 > 0 && $RO_INT_1 > 0 && gen_b)){
+    $RW_INT_0 := 10
+  }else{
+    var gen_i: Int
+    @irrelevant("Implicit")
+    gen_i := $RO_INT_0 + $RO_INT_1
+  }
+}
+
+SNIPPET nested_branch$=${
+  var gen_b: Bool
+  if(@irrelevant("PathCondition")($RO_INT_0 > 0 && $RO_INT_1 > 0 && gen_b)){
+    var gen_i: Int
+    @irrelevant("Implicit")
+    gen_i := $RO_INT_0 + $RO_INT_1
+    @irrelevant("Implicit")
+    $RW_INT_0 := 10
+  }else{
+    if(@irrelevant("PathCondition")($RO_INT_0 > 0)){
+      @irrelevant("Implicit")
+      $RW_INT_0 := 30
+    }else{
+      var gen_i: Int
+      @irrelevant("Implicit")
+      gen_i := $RO_INT_0 + $RO_INT_1
+    }
+  }
+}
+
+SNIPPET infeasible_branch$=${
+  if(@dependency("PathCondition")($INVARIANT)){
+    @irrelevant("Implicit")
+    $RW_INT_0 := 10
+  }else{
+    // unreachable
+    @irrelevant("Implicit")
+    $RO_INT_FIELD_0 := $RO_INT_1 - $RO_INT_0
+    
+    // @irrelevant() // TODO missing node
+    assert false
+  }
 }
 
 // branches & function calls
@@ -62,13 +158,13 @@ SNIPPET branch_function$=${
     }
   }
   
-  
+  // @irrelevant() // TODO ake
   assert $RW_INT_0 >= 0
 }
 
 
 // disjoint references
-SNIPPET ref_1$=${
+SNIPPET ref_field_f$=${
   var gen_x: Ref
   @irrelevant("Explicit")
   inhale acc(gen_x.f)
@@ -81,7 +177,7 @@ SNIPPET ref_1$=${
 }
 
 // disjoint references - disjoint fields
-SNIPPET ref_2$=${
+SNIPPET ref_disjoint_field$=${
   var gen_x: Ref
   @irrelevant("Explicit")
   inhale acc(gen_x.gen_f)
@@ -91,13 +187,10 @@ SNIPPET ref_2$=${
 
   @irrelevant("Implicit")
   $RW_INT_0 := gen_x.gen_f
-
-  @irrelevant("Implicit")
-  exhale acc(gen_x.gen_f, 3/4)
 }
 
 // disjoint references - quantified
-SNIPPET ref_quantified_1$=${
+SNIPPET ref_quantified_field_f$=${
   var gen_xs: Seq[Ref]
   @irrelevant("Explicit")
   inhale |gen_xs| > 2
@@ -108,18 +201,13 @@ SNIPPET ref_quantified_1$=${
 
   @irrelevant("Implicit")
   gen_xs[0].f := gen_xs[1].f + $RO_INT_0 - $RO_INT_1
-  @irrelevant("Implicit")
-  gen_xs[1].f := gen_xs[0].f - $RW_INT_0 + $RW_INT_1
 
   @irrelevant("Implicit")
-  $RW_INT_0 := gen_xs[0].f + gen_xs[1].f 
-
-  //@irrelevant("Implicit")
-  //exhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.f, 1/2) // TODO ake
+  $RW_INT_0 := gen_xs[0].f + gen_xs[1].f
 }
 
 // disjoint references - disjoint fields - quantified 
-SNIPPET ref_quantified_2$=${
+SNIPPET ref_quantified_disjoint_field$=${
   var gen_xs: Seq[Ref]
   @irrelevant("Explicit")
   inhale |gen_xs| > 2
@@ -130,24 +218,74 @@ SNIPPET ref_quantified_2$=${
 
   @irrelevant("Implicit")
   gen_xs[0].gen_f := gen_xs[1].gen_f + $RO_INT_0 - $RO_INT_1
-  @irrelevant("Implicit")
-  gen_xs[1].gen_f := gen_xs[0].gen_f - $RW_INT_0 + $RW_INT_1
 
   @irrelevant("Implicit")
   $RW_INT_0 := gen_xs[0].gen_f + gen_xs[1].gen_f 
-
-  //@irrelevant("Implicit")
-  //exhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.gen_f, 1/2) // TODO ake
 }
 
-
-SNIPPET exhale_inhale$=${
+SNIPPET while_pure$=${
+  var gen_start: Int
   @irrelevant("Implicit")
-  exhale acc($RW_INT_FIELD_0, 1/2)
+  gen_start := $RW_INT_PURE_0
+  @irrelevant("Implicit")
+  $RW_INT_PURE_1 := 0
+  while(@irrelevant("PathCondition")($RW_INT_PURE_0 > 0))
+    invariant @irrelevant("LoopInvariant")($RW_INT_PURE_0 <= gen_start)
+    invariant @irrelevant("LoopInvariant")($RW_INT_PURE_1 == (gen_start-$RW_INT_PURE_0)*$RO_INT_PURE_0)
+  {
+    @irrelevant("Implicit")
+    $RW_INT_PURE_1 := $RW_INT_PURE_1 + $RO_INT_PURE_0
+    @irrelevant("Implicit")
+    $RW_INT_PURE_0 := $RW_INT_PURE_0 - 1
+  }
+}
 
+SNIPPET while_perm$=${
+  var gen_start: Int
+  @irrelevant("Implicit")
+  gen_start := $RW_INT_FIELD_0
+  @irrelevant("Implicit")
+  $RW_INT_FIELD_1 := 0
   @irrelevant("Explicit")
-  inhale acc($RW_INT_FIELD_0, 1/2)
+  while(@irrelevant("PathCondition")($RW_INT_FIELD_0 > 0))
+    invariant @irrelevant("LoopInvariant")(acc($RW_INT_FIELD_0, write))
+    invariant @irrelevant("LoopInvariant")(acc($RW_INT_FIELD_1, write))
+    invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_0 <= gen_start)
+    invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_1 == (gen_start-$RW_INT_FIELD_0)*$RO_INT_PURE_0)
+  {
+    @irrelevant("Implicit")
+    $RW_INT_FIELD_1 := $RW_INT_FIELD_1 + $RO_INT_PURE_0
+    @irrelevant("Implicit")
+    $RW_INT_FIELD_0 := $RW_INT_FIELD_0 - 1
+  }
+}
+
+SNIPPET magic_wand_1$=${
+  var gen_i: Int
+  @irrelevant("Explicit")
+  inhale gen_i > 0
+  @irrelevant("Implicit")
+  package gen_i >= 0 --* $INVARIANT
+  @irrelevant("Implicit")
+  apply gen_i >= 0 --* $INVARIANT
+}
+
+SNIPPET magic_wand_2$=${
+  var gen_i: Int
+  @irrelevant("Explicit")
+  inhale gen_i > 0
+  @irrelevant("Implicit")
+  package $INVARIANT --* gen_i >= 0
+  @irrelevant("Implicit")
+  apply $INVARIANT --* gen_i >= 0
+}
+
+SNIPPET magic_wand_perm$=${
+  @irrelevant("Implicit")
+  package acc($RW_INT_FIELD_0, 1/2) --* acc($RW_INT_FIELD_0, write)
+  @irrelevant("Implicit")
+  apply acc($RW_INT_FIELD_0, 1/2) --* acc($RW_INT_FIELD_0, write)
 }
 
 
-// TODO: apply, package, goto, while, quasihavoc, inhale, assume, divBy0
+// TODO: goto, quasihavoc

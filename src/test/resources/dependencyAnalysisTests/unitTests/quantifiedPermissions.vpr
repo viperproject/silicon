@@ -25,7 +25,7 @@ method quantifiedPerm3(xs: Seq[Ref], y: Ref) {
   inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
   inhale @dependency("Explicit")(acc(y.f, wildcard))
 
-  // $PrecisionTest: $READ_WRITE=xs[0].f,y.f,xs[1].f,xs[4].f
+  // $PrecisionTest: $READ_WRITE=xs[0].f,xs[1].f,xs[4].f $READ_ONLY=y.f
 
   @testAssertion("Explicit")
   assert xs[0] != y

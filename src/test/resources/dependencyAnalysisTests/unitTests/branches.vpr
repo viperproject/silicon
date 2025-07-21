@@ -37,9 +37,9 @@ method branch2(){
 method branch3(){
     var x: Int, y: Int
 
-    // $PrecisionTest: $READ_WRITE=x,y
+    // $PrecisionTest: $READ_WRITE=y $READ_ONLY=x
 
-    if(@dependency("PathCondition")(x > 0)){
+    if(@dependency("PathCondition")(x > 10)){
         @dependency("Implicit")
         y := x + 1
     }else{
@@ -48,7 +48,7 @@ method branch3(){
     }
 
     @testAssertion("Explicit")
-    assert x > 0 ==> y > 0
+    assert x > 10 ==> y > 0
 }
 
 method branch4(){

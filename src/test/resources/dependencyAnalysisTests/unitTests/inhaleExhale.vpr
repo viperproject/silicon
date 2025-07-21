@@ -8,7 +8,7 @@ method exhaleInhale(a: Ref)
     @irrelevant("Explicit")
     inhale acc(a.f, 1/2)
 
-    // $PrecisionTest: READ_WRITE=a.f
+    // $PrecisionTest: $READ_WRITE=a.f
 
     @testAssertion("Explicit")
     assert perm(a.f) == write
@@ -22,7 +22,7 @@ method exhaleInhale2(a: Ref)
     @irrelevant("Explicit") // TODO ake: imprecision
     inhale acc(a.f, 1/2)
 
-    // $PrecisionTest: READ_WRITE=a.f
+    // $PrecisionTest: $READ_WRITE=a.f
 
     @testAssertion("Explicit")
     assert perm(a.f) >= 1/2
@@ -39,7 +39,7 @@ method exhaleImprecision(){
     @irrelevant("Implicit") // TODO ake: imprecision
     exhale acc(x.f, 1/2)
 
-    // $PrecisionTest: READ_ONLY=x.f
+    // $PrecisionTest: $READ_ONLY=x.f
 
     @testAssertion("Explicit")
     assert x.f > 0
@@ -56,7 +56,7 @@ method inhaleImprecision(){
     @irrelevant("Implicit") // TODO ake: imprecision
     inhale acc(x.f, 1/2)
 
-    // $PrecisionTest: READ_ONLY=x.f
+    // $PrecisionTest: $READ_ONLY=x.f
 
     @testAssertion("Explicit")
     assert x.f > 0

@@ -20,8 +20,8 @@ import java.time.format.DateTimeFormatter
 class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = false
-  val EXECUTE_PRECISION_BENCHMARK = true
-  val EXECUTE_TEST=false
+  val EXECUTE_PRECISION_BENCHMARK = false
+  val EXECUTE_TEST=true
   val ignores: Seq[String] = Seq("example1", "example2")
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
