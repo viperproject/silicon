@@ -100,6 +100,11 @@ object sorts {
     override lazy val toString = id.toString
   }
 
+  case object WandHeapSort extends Sort {
+    override def id: Identifier = Identifier("Hp[MWSF]")
+    override lazy val toString = id.toString
+  }
+
   case object PredHeapSort extends Sort {
     override def id: Identifier = Identifier("Hp[Pred]")
     override lazy val toString = id.toString

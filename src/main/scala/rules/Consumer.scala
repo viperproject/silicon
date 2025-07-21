@@ -460,7 +460,7 @@ object consumer extends ConsumptionRules {
      * the tryOrFail that wraps the consumption of each top-level conjunct would not consolidate
      * the right heap.
      */
-    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
+    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s, v),
                     reserveHeaps = Nil,
                     exhaleExt = false)
 

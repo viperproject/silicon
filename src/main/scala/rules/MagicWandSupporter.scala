@@ -12,8 +12,10 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
+import viper.silicon.resources.MagicWandID
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts.{PredHeapSort, WandHeapSort}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -321,17 +323,34 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
           val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
           val snapshotTerm = Combine(freshSnapRoot, snapRhs)
-          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s2, wand, tArgs, snapshotTerm, v2)
-          v2.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-          v2.decider.assumeDefinition(smValueDef, debugExp)
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
-            eArgsNew, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
+          val ch = if (Verifier.config.maskHeapMode()) {
+            val argTerm = toSnapTree(tArgs)
+            val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
+            val newHeap = HeapSingleton(argTerm, snapshotTerm, PredHeapSort)
+            val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
+            newChunk
+          } else {
+            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s2, wand, tArgs, snapshotTerm, v2)
+            v2.decider.prover.comment("Definitional axioms for singleton-SM's value")
+            val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
+            v2.decider.assumeDefinition(smValueDef, debugExp)
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
+              eArgsNew, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
+            ch
+          }
           val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
           (s2, ch, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)
         } else {
-          val ch = MagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
-            Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+          val ch = if (Verifier.config.maskHeapMode()) {
+            val argTerm = toSnapTree(tArgs)
+            val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
+            val newHeap = HeapSingleton(argTerm, wandSnapshot, WandHeapSort)
+            val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
+            newChunk
+          } else {
+            MagicWandChunk(MagicWandIdentifier(wand, s.program), s2.g.values, tArgs, eArgsNew, wandSnapshot, FullPerm,
+              Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)))
+          }
           val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
           // Partition path conditions into a set which include the freshSnapRoot and those which do not
           val (pcsWithFreshSnapRoot, pcsWithoutFreshSnapRoot) = conservedPcs.flatMap(pcs => pcs.conditionalized).partition(_.contains(freshSnapRoot))
@@ -470,7 +489,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         assert(snapLhs.get.sort == sorts.Snap, s"expected snapshot but found: $snapLhs")
 
         // Create copy of the state with a new labelled heap (i.e. `oldHeaps`) called "lhs".
-        val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> this.getEvalHeap(s1)))
+        val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> this.getEvalHeap(s1, v2)))
 
         // If the snapWand is a (wrapped) MagicWandSnapshot then lookup the snapshot of the right-hand side by applying snapLhs.
         val magicWandSnapshotLookup = snapWand.get match {
@@ -526,7 +545,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val (fr4, hUsed) = v2.stateConsolidator(s2).merge(s3.functionRecorder, s2, s2.reserveHeaps.head, Heap(usedChunks), v2)
+      val (fr4, hUsed) = if (Verifier.config.maskHeapMode())
+        (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => maskHeapSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2, Some(s2))))
+      else
+        v2.stateConsolidator(s2).merge(s3.functionRecorder, s2, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
       val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
 
@@ -539,7 +561,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       Q(s4, usedChunks.lastOption, v2)})
   }
 
-  def getEvalHeap(s: State): Heap = {
+  def getEvalHeap(s: State, v: Verifier): Heap = {
     if (s.exhaleExt) {
       /* s.reserveHeaps = [hUsed, hOps, sLhs, ...]
        * After a proof script statement such as fold has been executed, hUsed is empty and
@@ -554,7 +576,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * Since innermost assertions must be self-framing, combining hUsed, hOps and hLhs
        * is sound.
        */
-      s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
+      if (Verifier.config.maskHeapMode()) {
+        maskHeapSupporter.mergeWandHeaps(maskHeapSupporter.mergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v, Some(s)), s.reserveHeaps(2), v, Some(s))
+      } else {
+        s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
+      }
     } else
       s.h
   }

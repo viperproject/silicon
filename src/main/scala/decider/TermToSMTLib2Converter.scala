@@ -51,6 +51,7 @@ class TermToSMTLib2Converter
     case sorts.HeapSort(valueSort) => text("$Hp<") <> doRender(valueSort, true) <> ">"
     case sorts.PredHeapSort => text("$Hp<$Pred>")
     case sorts.PredMaskSort => text("$Hp<$PredMask>")
+    case sorts.WandHeapSort => text("$Hp<$MWSF>")
     case sorts.UserSort(id) => render(id)
     case sorts.SMTSort(id) => if (alwaysSanitize) render(id) else id.name
 
@@ -111,6 +112,7 @@ class TermToSMTLib2Converter
     case sorts.HeapSort(valueSort) => doRender(valueSort, true)
     case sorts.PredHeapSort => text("$Pred")
     case sorts.PredMaskSort => text("$PredMask")
+    case sorts.WandHeapSort => text("$MWSF")
   }
 
   protected def render(term: Term): Cont = term match {
@@ -341,12 +343,14 @@ class TermToSMTLib2Converter
         case f: ast.Field => f.name
         case p: ast.Predicate => p.name
         case _: MagicWandIdentifier => "WAND"
+        case _: MagicWandIdentifier => "WAND"
       }) <> ">" <+> render(snap))
 
     case HeapToSnap(heap, mask, resource) =>
       parens(text("$SortWrappers.$Heap<") <> (resource match {
         case f: ast.Field => f.name
         case p: ast.Predicate => p.name
+        case _: MagicWandIdentifier if heap.sort == sorts.WandHeapSort => "$MWSF"
         case _: MagicWandIdentifier => "WAND"
       }) <> ">To$Snap" <+> render(heap) <+> render(mask))
 

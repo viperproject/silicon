@@ -350,7 +350,7 @@ object executor extends ExecutionRules {
         execs(s, stmts, v)(Q)
 
       case ast.Label(name, _) =>
-        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
+        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s, v)))
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>
@@ -407,7 +407,7 @@ object executor extends ExecutionRules {
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
         addFieldPerms(s, fields, v)((s0, v0) => {
           val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
-          val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
+          val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1, v0))) else s1
           v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
           Q(s2, v0)
         })
@@ -429,7 +429,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
-        executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
+        executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s, v)), v)((s1, v1, QS) => {
           if (v1.decider.checkSmoke(true))
             QS(s1.copy(h = s.h), v1)
           else
@@ -522,7 +522,7 @@ object executor extends ExecutionRules {
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
-            val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1, v2)))
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)

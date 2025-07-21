@@ -122,7 +122,7 @@ object evaluator extends EvaluationRules {
      * evaluation to perform involves consuming or producing permissions, e.g. because of
      * an unfolding expression, these should not be recorded.
      */
-    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
+    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s, v),
                     reserveHeaps = Nil,
                     exhaleExt = false)
 
@@ -211,7 +211,7 @@ object evaluator extends EvaluationRules {
           val ve = pve dueTo InsufficientPermission(fa)
           v.heapSupporter.evalFieldAccess(s1, fa, tRcvr, eRcvr, ve, v1)((s2, snap, v2) => {
             val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld)
-              s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2)))
+              s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2, v2)))
             else s2
             Q(s3, snap, newFa, v2)
           })

@@ -216,7 +216,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
           }
           val s4 = s3.copy(h = h3 + ch)
           val (debugHeapName, _) = v.getDebugOldLabel(s4, ass.lhs.pos)
-          val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
+          val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4, v))) else s4
           Q(s5, v)
         case (Incomplete(_, _), s3, _) =>
           createFailure(ve, v, s3, "sufficient permission")
@@ -229,7 +229,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
           val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos)
-          val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
+          val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5, v4))) else s5
           Q(s6, v4)
         })
       })
