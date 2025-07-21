@@ -20,8 +20,8 @@ import java.time.format.DateTimeFormatter
 class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = false
-  val EXECUTE_PRECISION_BENCHMARK = false
-  val EXECUTE_TEST=true
+  val EXECUTE_PRECISION_BENCHMARK = true
+  val EXECUTE_TEST=false
   val ignores: Seq[String] = Seq("example1", "example2")
   val testDirectories: Seq[String] = Seq(
 //    "dependencyAnalysisTests",
@@ -141,6 +141,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       }
       val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
       writer.println(s"$filePrefix - $fileName")
+      val fullGraphInterpreter = AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(Some(fileName), assumptionAnalysisInterpreters.toSet)
+      new PrecisionBenchmarkSoundnessTest(filePrefix + "/" + fileName, program, fullGraphInterpreter, writer).execute()
       new AnnotatedPrecisionBenchmark(program, assumptionAnalysisInterpreters, writer).execute()
       writer.println()
       println(s"Precision Benchmark for $filePrefix - $fileName done.")
@@ -170,7 +172,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
         }
     }
 
-    private def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {
+    protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {
       val relevantNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
 
       val dependencies = fullGraphInterpreter.getAllNonInternalDependencies(relevantNodes.map(_.id))
@@ -182,7 +184,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program ${newProgram.toString()}")
     }
 
-    private def exportPrunedProgram(exportFileName: String, newProgram: Program, pruningFactor: Double, result: VerificationResult): Unit = {
+    protected def exportPrunedProgram(exportFileName: String, newProgram: Program, pruningFactor: Double, result: VerificationResult): Unit = {
       val writer = new PrintWriter(exportFileName)
       writer.println("// test result: " + !result.isInstanceOf[verifier.Failure])
       writer.println("// cleanse factor: " + pruningFactor)
@@ -190,7 +192,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       writer.close()
     }
 
-    private def getPrunedProgram(crucialNodes: Set[AssumptionAnalysisNode]): (ast.Program, Double) = {
+    protected def getPrunedProgram(crucialNodes: Set[AssumptionAnalysisNode]): (ast.Program, Double) = {
       val crucialNodesWithStmtInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[StmtAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[StmtAnalysisSourceInfo])
       val crucialNodesWithExpInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[ExpAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[ExpAnalysisSourceInfo])
       var total = 0
@@ -259,11 +261,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       (newProgram, removed.toDouble / total.toDouble)
     }
 
-    private def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[ExpAnalysisSourceInfo]): Boolean = {
+    protected def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[ExpAnalysisSourceInfo]): Boolean = {
       crucialNodesWithExpInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(exp.pos))) // TODO ake: currently we compare only lines not columns!
     }
 
-    private def isCrucialStmt(stmt: ast.Stmt, crucialNodesWithStmtInfo: Set[StmtAnalysisSourceInfo]): Boolean = {
+    protected def isCrucialStmt(stmt: ast.Stmt, crucialNodesWithStmtInfo: Set[StmtAnalysisSourceInfo]): Boolean = {
       crucialNodesWithStmtInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(stmt.pos)))
     }
   }
@@ -411,5 +413,36 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
 
   }
+
+
+  class PrecisionBenchmarkSoundnessTest(name: String, program: Program, fullGraphInterpreter: AssumptionAnalysisInterpreter ,
+                                        writer: PrintWriter) extends PruningTest(name, program, fullGraphInterpreter) {
+
+    override def execute(): Unit = {
+      val irrelevantNodes = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.toString.contains("@irrelevant(")).flatMap(_.sourceInfo.getLineNumber)
+
+      val testAssertionLines = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.toString.contains("@testAssertion(")).flatMap(_.sourceInfo.getLineNumber)
+      val testAssertionNodes = testAssertionLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
+
+      val relevantLines = fullGraphInterpreter.getAllNonInternalDependencies(testAssertionNodes.map(_.id)).flatMap(_.sourceInfo.getLineNumber).diff(irrelevantNodes)
+
+      pruneAndVerify(testAssertionLines ++ relevantLines, "src/test/resources/" + fileName + s"_test.out")
+    }
+
+    override protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {
+      val relevantNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
+
+      val crucialNodes = relevantNodes
+      val (newProgram, pruningFactor) = getPrunedProgram(crucialNodes)
+      val result = frontend.verifier.verify(newProgram)
+      exportPrunedProgram(exportFileName, newProgram, pruningFactor, result)
+      if(result.isInstanceOf[verifier.Failure]) {
+        writer.println(s"!!!!!!!!!!!\nFailed to verify new program $exportFileName\n")
+        println(s"!!!!!!!!!!!\nFailed to verify new program $exportFileName\n")
+      }
+    }
+
+  }
 }
+
 

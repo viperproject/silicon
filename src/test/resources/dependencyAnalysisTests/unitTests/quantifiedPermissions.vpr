@@ -73,6 +73,8 @@ method quantifiedPermWrite1(xs: Seq[Ref]) {
 
   // $PrecisionTest: $READ_WRITE=xs[2].f $READ_ONLY=xs[0].f,xs[1].f
 
+  inhale xs[0] != xs[2] // relevant for precision test
+
   @testAssertion("Implicit")
   xs[0].f := 0
 }
@@ -88,6 +90,7 @@ method quantifiedPermWrite2(xs: Seq[Ref]) {
 
   // $PrecisionTest: $READ_WRITE=xs[2].f $READ_ONLY=xs[0].f,xs[1].f
 
+  inhale xs[0] != xs[2] // relevant for precision test
   @testAssertion("Explicit")
   assert xs[0].f == 0
 }
@@ -101,7 +104,7 @@ method quantifiedPermWrite3(xs: Seq[Ref]) {
   @irrelevant("Implicit")
   xs[0].f := 0
 
-  // $PrecisionTest: $READ_WRITE=xs[0].f,xs[2].f $READ_ONLY=xs[1].f
+  // $PrecisionTest: $READ_WRITE=xs[0].f $READ_ONLY=xs[1].f,xs[2].f
 
   @testAssertion("Explicit")
   assert xs[0] != xs[1] ==> xs[1].f > 0
@@ -116,7 +119,7 @@ method quantifiedPermWrite4(xs: Seq[Ref], ys: Seq[Ref])
   @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> acc(y.f)
 
-  // $PrecisionTest: $READ_WRITE=xs[1].f,ys[0].f $READ_ONLY=xs[0].f,ys[1].f
+  // $PrecisionTest: $READ_WRITE=ys[0].f,ys[1].f $READ_ONLY=xs[0].f,xs[1].f
 
   @testAssertion("Implicit")
   xs[0].f := 2

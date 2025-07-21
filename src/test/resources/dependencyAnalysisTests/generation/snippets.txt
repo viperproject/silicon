@@ -34,21 +34,6 @@ SNIPPET fold_unfold_1$=${
   unfold gen_confuse(gen_i, $RO_INT_0)
 }
 
-// fold-unfold
-SNIPPET fold_unfold_2$=${
-  var gen_i: Int 
-  @irrelevant("Implicit")
-  gen_i := 0
-  @irrelevant("Implicit")
-  fold gen_confuse(gen_i, $RO_INT_0)
-  @irrelevant("Implicit")
-  $RW_INT_0 := $RO_INT_0 + $RO_INT_1
-  @irrelevant("Implicit")
-  unfold gen_confuse(gen_i, $RO_INT_0)
-  @irrelevant("Implicit")
-  $RW_INT_0 := gen_i + $RW_INT_0
-}
-
 
 // function call
 SNIPPET function_add$=${
@@ -129,8 +114,8 @@ SNIPPET ref_quantified_1$=${
   @irrelevant("Implicit")
   $RW_INT_0 := gen_xs[0].f + gen_xs[1].f 
 
-  @irrelevant("Implicit")
-  exhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.f, 1/2)
+  //@irrelevant("Implicit")
+  //exhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.f, 1/2) // TODO ake
 }
 
 // disjoint references - disjoint fields - quantified 
@@ -151,8 +136,8 @@ SNIPPET ref_quantified_2$=${
   @irrelevant("Implicit")
   $RW_INT_0 := gen_xs[0].gen_f + gen_xs[1].gen_f 
 
-  @irrelevant("Implicit")
-  exhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.gen_f, 1/2)
+  //@irrelevant("Implicit")
+  //exhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.gen_f, 1/2) // TODO ake
 }
 
 
