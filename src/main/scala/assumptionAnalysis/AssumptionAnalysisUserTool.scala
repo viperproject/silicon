@@ -37,8 +37,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
   private def handleUserInput(userInput: String): Unit = {
     val inputParts = userInput.split(" ")
     if (inputParts(0).equalsIgnoreCase("d") || inputParts(0).equalsIgnoreCase("dep")) {
-      val lines = inputParts.tail.flatMap(_.toIntOption).toSet
-      handleDependencyQuery(lines)
+      handleDependencyQuery(inputParts.tail.toSet)
     } else if (inputParts(0).equalsIgnoreCase("coverage") || inputParts(0).equalsIgnoreCase("cov")) {
       handleProofCoverageQuery(inputParts.tail)
     } else {
@@ -64,12 +63,21 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
       })
   }
 
-  private def handleDependencyQuery(lines: Set[Int]): Unit = {
+  private def handleDependencyQuery(inputs: Set[String]): Unit = {
     def getSourceInfoString(nodes: Set[AssumptionAnalysisNode]) = {
       nodes.map(_.sourceInfo.getTopLevelSource).toList.sortBy(_.getLineNumber).mkString("\n\t")
     }
 
-    val queriedNodes = lines flatMap fullGraphInterpreter.getNodesByLine
+    val queriedNodes = inputs flatMap (input => {
+      val parts = input.split("@")
+      if(parts.size == 2)
+        parts(1).toIntOption.map(fullGraphInterpreter.getNodesByPosition(parts(0), _)).getOrElse(Set.empty)
+      else if(parts.size == 1){
+        parts(0).toIntOption map fullGraphInterpreter.getNodesByLine getOrElse Set.empty
+      }else{
+        Set.empty
+      }
+    })
     val directDependencies = getSourceInfoString(fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
     val allDependencies = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
     val explicitDependencies = getSourceInfoString(fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))

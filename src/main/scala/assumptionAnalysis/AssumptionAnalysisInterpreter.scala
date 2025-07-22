@@ -35,6 +35,9 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
   def getNodesByLine(line: Int): Set[AssumptionAnalysisNode] =
     getNodes.filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
 
+  def getNodesByPosition(file: String, line: Int): Set[AssumptionAnalysisNode] =
+    getNodes.filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + ".vpr"))
+
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] =
     getNonInternalAssumptionNodes.filter(node => graph.getDirectEdges.get(node.id).exists(_.intersect(nodeIdsToAnalyze).nonEmpty))
 
@@ -124,7 +127,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     val explicitAssertionNodeIds = explicitAssertionNodes map (_.id)
     val nodesPerSourceInfo = getNonInternalAssumptionNodesPerSource
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
-      val nodeIds = (nodes map (_.id))
+      val nodeIds = nodes map (_.id)
       // it is not an explicit assertion itself and has no dependency to an explicit assertion
       nodeIds.intersect(explicitAssertionNodeIds).isEmpty &&
         !graph.existsAnyDependency(nodeIds, explicitAssertionNodeIds)
