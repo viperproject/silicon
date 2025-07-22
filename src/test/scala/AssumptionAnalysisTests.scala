@@ -11,10 +11,10 @@ import viper.silver.{ast, verifier}
 
 import java.io.{File, PrintWriter}
 import java.nio.file.{Files, Path, Paths}
-import scala.annotation.unused
-import scala.jdk.CollectionConverters.IterableHasAsScala
 import java.time._
 import java.time.format.DateTimeFormatter
+import scala.annotation.unused
+import scala.jdk.CollectionConverters.IterableHasAsScala
 
 
 class AssumptionAnalysisTests extends AnyFunSuite {
@@ -24,9 +24,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val EXECUTE_TEST=true
   val ignores: Seq[String] = Seq("example1", "example2", "graph-copy")
   val testDirectories: Seq[String] = Seq(
-    "dependencyAnalysisTests/all",
-    "dependencyAnalysisTests/unitTests",
-//    "dependencyAnalysisTests/real-world-examples",
+//    "dependencyAnalysisTests/all",
+//    "dependencyAnalysisTests/unitTests",
+    "dependencyAnalysisTests/real-world-examples",
 //    "dependencyAnalysisTests/quick"
 //    "dependencyAnalysisTests/fromSilver"
   )
@@ -213,6 +213,12 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
       val newProgram: ast.Program = ViperStrategy.Slim({
         case s @(_: ast.Seqn | _: ast.Goto) => s
+        case domain@ast.Domain(name, functions, axioms, typVars, interpretations) =>
+          val newAxioms = axioms filter (a =>
+            crucialNodeSourceInfos exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(a.exp.pos)) ||
+              n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(a.pos))))
+          ast.Domain(name, functions, newAxioms, typVars, interpretations)(domain.pos, domain.info, domain.errT)
+
         case meth@ast.Method(name, inVars, outVars, pres, posts, body) =>
           val newPres = pres filter (isCrucialExp(_, crucialNodeSourceInfos))
           val newPosts = posts filter (isCrucialExp(_, crucialNodeSourceInfos))
