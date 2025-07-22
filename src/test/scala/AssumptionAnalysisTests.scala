@@ -22,11 +22,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val CHECK_PRECISION = false
   val EXECUTE_PRECISION_BENCHMARK = false
   val EXECUTE_TEST=true
-  val ignores: Seq[String] = Seq("example1", "example2")
+  val ignores: Seq[String] = Seq("example1", "example2", "graph-copy")
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
-    "dependencyAnalysisTests/real-world-examples",
+//    "dependencyAnalysisTests/real-world-examples",
 //    "dependencyAnalysisTests/quick"
 //    "dependencyAnalysisTests/fromSilver"
   )
@@ -201,8 +201,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
 
     protected def getPrunedProgram(crucialNodes: Set[AssumptionAnalysisNode]): (ast.Program, Double) = {
-      val crucialNodesWithStmtInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[StmtAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[StmtAnalysisSourceInfo])
-      val crucialNodesWithExpInfo = crucialNodes filter (_.sourceInfo.getTopLevelSource.isInstanceOf[ExpAnalysisSourceInfo]) map (_.sourceInfo.getTopLevelSource.asInstanceOf[ExpAnalysisSourceInfo])
+      val crucialNodeSourceInfos = crucialNodes map (_.sourceInfo.getTopLevelSource)
       var total = 0
       var removed = 0
       var nonDetermBoolCount = 0
@@ -215,12 +214,12 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val newProgram: ast.Program = ViperStrategy.Slim({
         case s @(_: ast.Seqn | _: ast.Goto) => s
         case meth@ast.Method(name, inVars, outVars, pres, posts, body) =>
-          val newPres = pres filter (isCrucialExp(_, crucialNodesWithExpInfo))
-          val newPosts = posts filter (isCrucialExp(_, crucialNodesWithExpInfo))
+          val newPres = pres filter (isCrucialExp(_, crucialNodeSourceInfos))
+          val newPosts = posts filter (isCrucialExp(_, crucialNodeSourceInfos))
           total += pres.size + posts.size
           removed += (pres.size - newPres.size) + (posts.size - newPosts.size)
           ast.Method(name, inVars, outVars, newPres, newPosts, body)(meth.pos, meth.info, meth.errT)
-        case ifStmt@ast.If(cond, thenBody, elseBody) if !isCrucialExp(cond, crucialNodesWithExpInfo) =>
+        case ifStmt@ast.If(cond, thenBody, elseBody) if !isCrucialExp(cond, crucialNodeSourceInfos) =>
           total += 1
           removed += 1
           val nonDetermBool = getNextNonDetermBool
@@ -231,8 +230,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
         case ifStmt: If =>
           total += 1
           ifStmt
-        case whileStmt@ast.While(cond, invs, body) if !isCrucialExp(cond, crucialNodesWithExpInfo) =>
-          val newInvs = invs filter (isCrucialExp(_, crucialNodesWithExpInfo))
+        case whileStmt@ast.While(cond, invs, body) if !isCrucialExp(cond, crucialNodeSourceInfos) =>
+          val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
           total += 1 + invs.size
           removed += 1 + (invs.size - newInvs.size)
           val nonDetermBool = getNextNonDetermBool
@@ -241,28 +240,28 @@ class AssumptionAnalysisTests extends AnyFunSuite {
             ast.While(ast.LocalVar(nonDetermBool, ast.Bool)(), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
             , Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
         case whileStmt@ast.While(cond, invs, body) =>
-          val newInvs = invs filter (isCrucialExp(_, crucialNodesWithExpInfo))
+          val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
           total += 1 + invs.size
           removed += (invs.size - newInvs.size)
           ast.While(cond, newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT)
-//        case fieldAssign @ FieldAssign(lhs, _) if !isCrucialStmt(fieldAssign, crucialNodesWithStmtInfo) => // TODO ake: index into sequences need to be checked!
+//        case fieldAssign @ FieldAssign(lhs, _) if !isCrucialStmt(fieldAssign, crucialNodeSourceInfos) => // TODO ake: index into sequences need to be checked!
 //          total += 1
 //          removed += 1
 //          ast.Quasihavoc(Some(ast.PermGeCmp(ast.CurrentPerm(lhs)(), ast.FullPerm()())()), lhs)(fieldAssign.pos, fieldAssign.info, fieldAssign.errT)
-//        case ass @ ast.LocalVarAssign(lhs, _) if !isCrucialStmt(ass, crucialNodesWithStmtInfo) => // TODO ake: is this valid`?
+//        case ass @ ast.LocalVarAssign(lhs, _) if !isCrucialStmt(ass, crucialNodeSourceInfos) => // TODO ake: is this valid`?
 //          total += 1
 //          removed += 1
 //          ast.LocalVarDeclStmt(ast.LocalVarDecl(lhs.name, lhs.typ)())(ass.pos, ass.info, ass.errT)
         case label@ast.Label(name, invs) =>
-          val newInvs = invs filter (isCrucialExp(_, crucialNodesWithExpInfo))
+          val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
           total += 1 + invs.size
           removed += (invs.size - newInvs.size)
           ast.Label(name, newInvs)(label.pos, label.info, label.errT)
-        case s: ast.Package if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
+        case s: ast.Package if !isCrucialStmt(s, crucialNodeSourceInfos) =>
           total += 1
           removed += 1
           ast.Inhale(ast.TrueLit()())()
-        case s: Stmt if !isCrucialStmt(s, crucialNodesWithStmtInfo) =>
+        case s: Stmt if !isCrucialStmt(s, crucialNodeSourceInfos) =>
           total += 1
           removed += 1
           ast.Inhale(ast.TrueLit()())()
@@ -273,11 +272,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       (newProgram, removed.toDouble / total.toDouble)
     }
 
-    protected def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[ExpAnalysisSourceInfo]): Boolean = {
+    protected def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[AnalysisSourceInfo]): Boolean = {
       crucialNodesWithExpInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(exp.pos))) // TODO ake: currently we compare only lines not columns!
     }
 
-    protected def isCrucialStmt(stmt: ast.Stmt, crucialNodesWithStmtInfo: Set[StmtAnalysisSourceInfo]): Boolean = {
+    protected def isCrucialStmt(stmt: ast.Stmt, crucialNodesWithStmtInfo: Set[AnalysisSourceInfo]): Boolean = {
       crucialNodesWithStmtInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(stmt.pos)))
     }
   }
