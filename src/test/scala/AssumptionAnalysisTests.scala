@@ -171,7 +171,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   case class PruningTest(fileName: String, program: Program, fullGraphInterpreter: AssumptionAnalysisInterpreter) {
 
     def execute(): Unit = {
-      val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.getTopLevelSource.toString.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber) // TODO ake: we also need all dependencies of trigger nodes!
+      val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.getTopLevelSource.toString.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
       var id: Int = 0
       // TODO ake: safer would be to work with position string instead of line numbers
       fullGraphInterpreter.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber) foreach {line =>
@@ -244,14 +244,6 @@ class AssumptionAnalysisTests extends AnyFunSuite {
           total += 1 + invs.size
           removed += (invs.size - newInvs.size)
           ast.While(cond, newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT)
-//        case fieldAssign @ FieldAssign(lhs, _) if !isCrucialStmt(fieldAssign, crucialNodeSourceInfos) => // TODO ake: index into sequences need to be checked!
-//          total += 1
-//          removed += 1
-//          ast.Quasihavoc(Some(ast.PermGeCmp(ast.CurrentPerm(lhs)(), ast.FullPerm()())()), lhs)(fieldAssign.pos, fieldAssign.info, fieldAssign.errT)
-//        case ass @ ast.LocalVarAssign(lhs, _) if !isCrucialStmt(ass, crucialNodeSourceInfos) => // TODO ake: is this valid`?
-//          total += 1
-//          removed += 1
-//          ast.LocalVarDeclStmt(ast.LocalVarDecl(lhs.name, lhs.typ)())(ass.pos, ass.info, ass.errT)
         case label@ast.Label(name, invs) =>
           val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
           total += 1 + invs.size
@@ -305,7 +297,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val warnMsgs = assumptionAnalysisInterpreters flatMap checkNonDependencies
       if (CHECK_PRECISION)
         errorMsgs ++= warnMsgs
-      else if (warnMsgs.nonEmpty) println(warnMsgs.mkString("\n")) // TODO ake: warning
+      else if (warnMsgs.nonEmpty) println(warnMsgs.mkString("\n")) // TODO ake: should be a warning
 
       val check = errorMsgs.isEmpty
       assert(check, "\n" + errorMsgs.mkString("\n"))

@@ -13,7 +13,7 @@ def read_results_file(result_file_path: str) -> dict[tuple[str, str], list[tuple
       print(line)
       if not line or line.startswith("!") or line.startswith("Failed") \
         or line.startswith("Program caused an exception") \
-        or line.startswith("Program does not verify"): # TODO ake
+        or line.startswith("Program does not verify"):
           continue
       if line.startswith("dependencyAnalysisTests/precisionTests/"):
           # Save previous block if any

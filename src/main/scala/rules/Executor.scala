@@ -578,7 +578,7 @@ object executor extends ExecutionRules {
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
-        val s1 = v.stateConsolidator(s).consolidate(s, v) // TODO ake: assumption Type
+        val s1 = v.stateConsolidator(s).consolidate(s, v) // TODO ake: pass assumption Type
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
