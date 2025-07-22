@@ -418,7 +418,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
       if(dependenciesPerSource.nonEmpty){
         val wrongDependencies = assumptionsPerSource.filter({ case (_, assumptions) => dependencyIds.intersect(assumptions.map(_.id)).nonEmpty })
-        1.0 - (wrongDependencies.size.toDouble / dependenciesPerSource.size.toDouble)
+        1.0 - (wrongDependencies.size.toDouble / dependenciesPerSource.size.toDouble) // TODO ake: or / assumptionsPerSource.size.toDouble?
       }else{
         1.0
       }
@@ -433,12 +433,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     override def execute(): Unit = {
       val irrelevantNodes = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.toString.contains("@irrelevant(")).flatMap(_.sourceInfo.getLineNumber)
 
-      val testAssertionLines = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.toString.contains("@testAssertion(")).flatMap(_.sourceInfo.getLineNumber)
-      val testAssertionNodes = testAssertionLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
+      val relevantLines = fullGraphInterpreter.getNodes.flatMap(_.sourceInfo.getLineNumber).diff(irrelevantNodes)
 
-      val relevantLines = fullGraphInterpreter.getAllNonInternalDependencies(testAssertionNodes.map(_.id)).flatMap(_.sourceInfo.getLineNumber).diff(irrelevantNodes)
-
-      pruneAndVerify(testAssertionLines ++ relevantLines, "src/test/resources/" + fileName + s"_test.out")
+      pruneAndVerify(relevantLines, "src/test/resources/" + fileName + s"_test.out")
     }
 
     override protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Unit = {

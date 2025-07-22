@@ -47,7 +47,7 @@ method branch3(){
         assume y >= 10
     }
 
-    @testAssertion("Explicit") $INVARIANT=y>0
+    @testAssertion("Explicit")
     assert x > 10 ==> y > 0
 }
 
@@ -57,7 +57,7 @@ method branch4(){
     if(@dependency("PathCondition")(x > 0)){
         @irrelevant("Implicit")
         y := x + 1
-        // $PrecisionTest: $READ_WRITE=x,y $INVARIANT=x>0
+        // $PrecisionTest: $READ_WRITE=y $READ_ONLY=x $INVARIANT=x>0
     }else{
         @dependency("Implicit")
         y := 10 - x

@@ -24,37 +24,39 @@ method incr(a: Ref)
   a.f := a.f + 1
 }
 
-// assignments
-SNIPPET assignment$=${
+
+SNIPPET assignment_pure$=${
   @irrelevant("Implicit")
-  $RW_INT_0 := $RO_INT_0 + $RO_INT_1
+  $RW_INT_PURE_0 := $RO_INT_0 + $RO_INT_1
 }
 
-SNIPPET assignment2$=${
+SNIPPET assignment_field$=${
   @irrelevant("Implicit")
-  $RW_INT_0 := $RW_INT_1 + $RO_INT_0 + $RO_INT_1
+  $RW_INT_FIELD_0 := $RO_INT_0 + $RO_INT_1
 }
 
 SNIPPET div_by_0$=${
-  if($RO_INT_0 > 0){
+  if(@irrelevant("PathCondition")($RO_INT_0 > 0)){
+    @irrelevant("Implicit")
     $RW_INT_0 := $RO_INT_1 / $RO_INT_0
   }else{
+    @irrelevant("Implicit")
     $RW_INT_0 := $RO_INT_1 * $RO_INT_0
   }
 }
 
-SNIPPET inhale=${
+SNIPPET inhale_invariant$=${
   @irrelevant("Explicit")
   inhale $INVARIANT
 }
 
-SNIPPET assert1$=${
-  // @irrelevant() // TODO ake: missing node
+SNIPPET assert$=${
+  @irrelevant()
   assert $INVARIANT
 }
 
 
-SNIPPET exhale_inhale$=${
+SNIPPET exhale_inhale_perm$=${
   @irrelevant("Implicit")
   exhale acc($RW_INT_FIELD_0, 1/2)
 
@@ -88,9 +90,6 @@ SNIPPET function_add$=${
   $RW_INT_0 := gen_add($RO_INT_0, $RO_INT_1)
   @irrelevant("Implicit")
   $RW_INT_1 := gen_add($RW_INT_0, $RO_INT_2)
-  
-  // @irrelevant() // TODO ake: might not hold due to aliasing
-  // assert $RW_INT_1 == $RO_INT_0 + $RO_INT_1 + $RO_INT_2
 }
 
 SNIPPET method_call$=${
@@ -101,6 +100,7 @@ SNIPPET method_call$=${
 SNIPPET branch$=${
   var gen_b: Bool
   if(@irrelevant("PathCondition")($RO_INT_0 > 0 && $RO_INT_1 > 0 && gen_b)){
+    @irrelevant("Implicit")
     $RW_INT_0 := 10
   }else{
     var gen_i: Int
@@ -138,7 +138,7 @@ SNIPPET infeasible_branch$=${
     @irrelevant("Implicit")
     $RO_INT_FIELD_0 := $RO_INT_1 - $RO_INT_0
     
-    // @irrelevant() // TODO missing node
+    @irrelevant()
     assert false
   }
 }
@@ -158,13 +158,12 @@ SNIPPET branch_function$=${
     }
   }
   
-  // @irrelevant() // TODO ake
+  @irrelevant()
   assert $RW_INT_0 >= 0
 }
 
 
-// disjoint references
-SNIPPET ref_field_f$=${
+SNIPPET disjoint_ref$=${
   var gen_x: Ref
   @irrelevant("Explicit")
   inhale acc(gen_x.f)
@@ -176,8 +175,7 @@ SNIPPET ref_field_f$=${
   $RW_INT_0 := gen_x.f
 }
 
-// disjoint references - disjoint fields
-SNIPPET ref_disjoint_field$=${
+SNIPPET disjoint_ref_disjoint_field$=${
   var gen_x: Ref
   @irrelevant("Explicit")
   inhale acc(gen_x.gen_f)
@@ -189,8 +187,8 @@ SNIPPET ref_disjoint_field$=${
   $RW_INT_0 := gen_x.gen_f
 }
 
-// disjoint references - quantified
-SNIPPET ref_quantified_field_f$=${
+
+SNIPPET disjoint_ref_quantified$=${
   var gen_xs: Seq[Ref]
   @irrelevant("Explicit")
   inhale |gen_xs| > 2
@@ -206,8 +204,8 @@ SNIPPET ref_quantified_field_f$=${
   $RW_INT_0 := gen_xs[0].f + gen_xs[1].f
 }
 
-// disjoint references - disjoint fields - quantified 
-SNIPPET ref_quantified_disjoint_field$=${
+
+SNIPPET disjoint_ref_disjoint_field_quantified$=${
   var gen_xs: Seq[Ref]
   @irrelevant("Explicit")
   inhale |gen_xs| > 2
@@ -278,8 +276,6 @@ SNIPPET magic_wand_2$=${
   inhale gen_i > 0
   @irrelevant("Implicit")
   package $INVARIANT --* gen_i >= 0
-  @irrelevant("Implicit")
-  apply $INVARIANT --* gen_i >= 0
 }
 
 SNIPPET magic_wand_perm$=${
@@ -290,4 +286,46 @@ SNIPPET magic_wand_perm$=${
 }
 
 
-// TODO: goto, quasihavoc, assume, inhale
+SNIPPET quasihavoc$=${
+  @irrelevant("Implicit")
+  quasihavoc $RW_INT_FIELD_0
+}
+
+SNIPPET quasihavoc_disjoint_ref$=${
+  var gen_x: Ref
+  gen_x := new(f)
+  @irrelevant("Implicit")
+  quasihavoc gen_x.f
+}
+
+SNIPPET quasihavoc_disjoint_ref_disjoint_field$=${
+  var gen_x: Ref
+  @irrelevant("Implicit")
+  gen_x := new(gen_f)
+  @irrelevant("Implicit")
+  quasihavoc gen_x.gen_f
+}
+
+
+SNIPPET goto_pure$=${
+  @irrelevant("Implicit")
+  $RW_INT_PURE_0 := 0
+  var gen_n: Int
+  @irrelevant("Implicit")
+  gen_n := 0
+  label head
+    invariant @irrelevant("LoopInvariant")(gen_n >= 0)
+    invariant @irrelevant("LoopInvariant")($RW_INT_PURE_0 == gen_n * $RO_INT_PURE_0)
+
+  @irrelevant("Implicit")
+  $RW_INT_PURE_0 := $RW_INT_PURE_0 + $RO_INT_PURE_0
+  @irrelevant("Implicit")
+  gen_n := gen_n + 1
+
+  if(@irrelevant("PathCondition")($RW_INT_PURE_0 != 5 * $RO_INT_PURE_0)){
+    goto head
+  }
+
+  @irrelevant()
+  assert $RW_INT_PURE_0 == gen_n * $RO_INT_PURE_0
+}

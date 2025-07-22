@@ -78,7 +78,8 @@ method advancedPackage(a: Int, b: Int)
     @dependency("Explicit")
     inhale greater0(b)
 
-    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=greater0(b)
+    // $PrecisionTest: $READ_ONLY=a,b
+    // $INVARIANT=unfolding$_$greater0(b)$_$in$_$b>0
 
     @dependency("Implicit")
     apply (greater0(a) && greater0(b)) --* greater0(a + b)
@@ -96,7 +97,8 @@ method quantifiedWand(xs: Seq[Int], b: Int)
     @dependency("Implicit")
     apply  greater0(xs[0]) --* greater0(xs[0] + b)
 
-    // $PrecisionTest: $READ_ONLY=xs[0],b,xs[1] $INVARIANT=greater0(xs[0]) // TODO ake: sequence update
+    // $PrecisionTest: $READ_ONLY=xs[0],b,xs[1]
+    // $INVARIANT=unfolding$_$greater0(xs[0]+b)$_$in$_$xs[0]+b>0 // TODO ake: sequence update
 
     @testAssertion("Explicit")
     assert greater0(xs[0] + b)
@@ -128,7 +130,7 @@ method packageExhale(x: Ref)
   requires @dependency("Explicit")(acc(x.f))
   {
 
-    // $PrecisionTest: $READ_WRITE=x.f $INVARIANT=perm(x.f)>none
+    // $PrecisionTest: $READ_WRITE=x.f
 
     @dependency("Implicit")
     package acc(x.f, 1/2) --* acc(x.f)
@@ -145,7 +147,7 @@ method packageExhale2(x: Ref)
     @dependency("Implicit") // TODO ake: irrelevant
     package acc(x.f, 1/2) --* acc(x.f)
 
-    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=perm(x.f)>none
+    // $PrecisionTest: $READ_ONLY=x.f
 
     @dependency("Implicit")
     apply acc(x.f, 1/2) --* acc(x.f)

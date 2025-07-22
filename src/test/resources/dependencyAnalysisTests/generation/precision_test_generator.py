@@ -42,7 +42,7 @@ def extract_vars(line: str):
     elif(tmp[0] == "$READ_WRITE"):
       read_write_vars = read_write_vars + tmp[1].split(",")
     elif(tmp[0] == "$INVARIANT"):
-      invariant = tmp[1]
+      invariant = "=".join(tmp[1:]).replace("$_$", " ")
   # print(f"line: {line}")
   # print(f"read only: {read_only_vars}")
   # print(f"read write: {read_write_vars}")
@@ -77,11 +77,12 @@ def generate_from_snippet(snippet: str, line: str):
   snippet, gen_vars_ro = replace_vars(snippet, "$RO_INT_", read_only_vars)
   snippet, gen_vars_rw = replace_vars(snippet, "$RW_INT_", read_write_vars)
 
+  snippet = "\nvar gen_dummy_int: Int\n" + snippet
+
   # assume non-aliasing of references
   generated_refs =   set(gen_rw_refs + gen_ro_refs + [v.split(".")[0] for v in (gen_vars_rw_field + gen_vars_ro_field) if "." in v]) 
   existing_refs = set([v.split(".")[0] for v in (read_write_vars+read_only_vars) if "." in v])
   # snippet = f"\n//generated: {generated_refs}\n//existing: {existing_refs}\n" + snippet
-  snippet = "\nvar gen_dummy_int: Int\n" + snippet
   snippet = "\n".join([f"@irrelevant(\"Explicit\")\ninhale {a} != {b}" for a in generated_refs for b in existing_refs if a != b]) + snippet
 
   # declare and initialize newly generated vars
