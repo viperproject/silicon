@@ -21,12 +21,13 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = false
   val EXECUTE_PRECISION_BENCHMARK = false
-  val EXECUTE_TEST=true
+  val EXECUTE_TEST = true
+  val EXECUTE_PERFORMANCE_BENCHMARK = false
   val ignores: Seq[String] = Seq("example1", "example2", "graph-copy")
   val testDirectories: Seq[String] = Seq(
-//    "dependencyAnalysisTests/all",
-//    "dependencyAnalysisTests/unitTests",
-    "dependencyAnalysisTests/real-world-examples",
+    "dependencyAnalysisTests/all",
+    "dependencyAnalysisTests/unitTests",
+//    "dependencyAnalysisTests/real-world-examples",
 //    "dependencyAnalysisTests/quick"
 //    "dependencyAnalysisTests/fromSilver"
   )
@@ -35,8 +36,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val dependencyKeyword = "dependency"
   val testAssertionKeyword = "testAssertion"
 
-  var commandLineArguments: Seq[String] =
-    Seq("--timeout", "100" /* seconds */ , "--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
+  var baseCommandLineArguments: Seq[String] = Seq("--timeout", "100" /* seconds */)
+  var analysisCommandLineArguments: Seq[String] =
+    baseCommandLineArguments ++ Seq("--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
 
 
   if(EXECUTE_PRECISION_BENCHMARK) {
@@ -52,12 +54,24 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
   }
 
+  if(EXECUTE_PERFORMANCE_BENCHMARK)
+    test("performance benchmark") {
+      val basePath = "src/test/resources/dependencyAnalysisTests/performanceBenchmark"
+      val directory = new File(basePath)
+      directory.mkdir()
+      val now: LocalDateTime = LocalDateTime.now()
+      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
+      val writer = new PrintWriter(s"$basePath/result_${now.format(formatter)}.out")
+      testDirectories foreach (dir => visitFiles(dir, executePerformanceBenchmark(_, _, writer)))
+      writer.close()
+    }
+
 //  createSingleTest("dependencyAnalysisTests/quick", "test")
 
   if(EXECUTE_TEST)
     testDirectories foreach (dir => visitFiles(dir, createSingleTest))
 
-  commandLineArguments = Seq("--enableMoreCompleteExhale") ++ commandLineArguments
+  analysisCommandLineArguments = Seq("--enableMoreCompleteExhale") ++ analysisCommandLineArguments
   if(EXECUTE_TEST)
     visitFiles("dependencyAnalysisTests/mce", createSingleTest)
 
@@ -72,7 +86,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   private def createSingleTest(dirName: String, fileName: String): Unit = {
     test(dirName + "/" + fileName) {
       try{
-        initFrontend()
+        resetFrontend()
         executeTest(dirName + "/", fileName, frontend)
       }catch{
         case t: Throwable => fail(t.getMessage)
@@ -99,23 +113,31 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
   }
 
-  var frontend: SiliconFrontend = createFrontend()
+  var frontend: SiliconFrontend = createFrontend(analysisCommandLineArguments)
 
-  def initFrontend(): Unit = {
-    frontend.verifier.stop()
-    frontend = createFrontend()
-  }
-
-  def createFrontend(): SiliconFrontend = {
+  def createFrontend(commandLineArgs: Seq[String]): SiliconFrontend = {
     val reporter = DependencyAnalysisReporter()
     val fe = new SiliconFrontend(reporter)
     val backend = fe.createVerifier("")
-    backend.parseCommandLine(commandLineArguments ++ List("--ignoreFile", "dummy.sil"))
+    backend.parseCommandLine(commandLineArgs ++ List("--ignoreFile", "dummy.sil"))
     fe.init(backend)
     fe.setVerifier(backend)
     backend.start()
     fe
   }
+
+  def resetFrontend(): Unit = {
+    frontend.verifier.stop()
+    frontend = createFrontend(analysisCommandLineArguments)
+  }
+
+  var baselineFrontend: SiliconFrontend = createFrontend(baseCommandLineArguments)
+
+  def resetBaselineFrontend(): Unit = {
+    baselineFrontend.verifier.stop()
+    baselineFrontend = createFrontend(baseCommandLineArguments)
+  }
+
 
   def executeTest(filePrefix: String,
                   fileName: String,
@@ -137,7 +159,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   def executePrecisionBenchmark(filePrefix: String,
                                 fileName: String,
                                 writer: PrintWriter): Unit = {
-    initFrontend()
+    resetFrontend()
     println(s"Precision Benchmark for $filePrefix - $fileName started...")
     try{
       val program: Program = tests.loadProgram(filePrefix + "/", fileName, frontend)
@@ -159,6 +181,13 @@ class AssumptionAnalysisTests extends AnyFunSuite {
         writer.println("Failed. Skip")
         println(s"Exception caught: ${e.getMessage}")
     }
+  }
+
+  def executePerformanceBenchmark(filePrefix: String,
+                                fileName: String,
+                                writer: PrintWriter): Unit = {
+    val program: Program = tests.loadProgram(filePrefix + "/", fileName, frontend)
+    new PerformanceBenchmark(filePrefix + "/" + fileName, program, writer).execute()
   }
 
   /**
@@ -448,7 +477,51 @@ class AssumptionAnalysisTests extends AnyFunSuite {
         throw new Exception("Error: " + result.toString)
       }
     }
+  }
 
+  class PerformanceBenchmark(name: String, program: Program, writer: PrintWriter) {
+
+    def execute(): Unit = {
+      writer.println(f"TEST: $name")
+      println(f"TEST: $name")
+
+
+      val analysisDurationMs: Double = verifyAndMeasure(frontend)
+
+
+      val baselineDurationMs = verifyAndMeasure(baselineFrontend)
+
+      writer.println(f"analysis duration (ms): $analysisDurationMs")
+      writer.println(f"baseline duration (ms): $baselineDurationMs")
+      writer.println(f"diff analysis-baseline (ms): ${analysisDurationMs-baselineDurationMs}")
+      writer.println(f"analysis overhead (analysis/baseline) (ms): ${analysisDurationMs/baselineDurationMs}")
+      println(f"analysis overhead (analysis/baseline) (ms): ${analysisDurationMs/baselineDurationMs}")
+      writer.println()
+    }
+
+    private def verifyAndMeasure(frontend_ : SiliconFrontend) = {
+      val NUM_RUNS = 5
+      try {
+        resetFrontend()
+        resetBaselineFrontend()
+        // warumup
+        for (_ <- 0 until 2)
+        {
+          frontend_.verifier.verify(program)
+        }
+        Thread.sleep(100)
+        val startAnalysis = System.nanoTime()
+        for (_ <- 0 until NUM_RUNS) {
+          @unused
+          val result = frontend_.verifier.verify(program)
+        }
+        val endAnalysis = System.nanoTime()
+        val analysisDurationMs = (endAnalysis - startAnalysis) / 1e6 / NUM_RUNS
+        analysisDurationMs
+      }catch{
+        case _: Throwable => Double.NaN
+      }
+    }
   }
 }
 
