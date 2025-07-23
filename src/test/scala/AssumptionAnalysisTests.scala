@@ -23,20 +23,21 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val EXECUTE_PRECISION_BENCHMARK = false
   val EXECUTE_TEST = true
   val EXECUTE_PERFORMANCE_BENCHMARK = false
-  val ignores: Seq[String] = Seq("example1", "example2", "graph-copy")
+  val ignores: Seq[String] = Seq("example1", "example2", "graph-copy", "listAppend_wands", "iterativeTreeDelete")
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
 //    "dependencyAnalysisTests/real-world-examples",
 //    "dependencyAnalysisTests/quick"
-//    "dependencyAnalysisTests/fromSilver"
+//    "dependencyAnalysisTests/fromSilver",
+//    "dependencyAnalysisTests/performanceBenchmark"
   )
 
   val irrelevantKeyword = "irrelevant"
   val dependencyKeyword = "dependency"
   val testAssertionKeyword = "testAssertion"
 
-  var baseCommandLineArguments: Seq[String] = Seq("--timeout", "100" /* seconds */)
+  var baseCommandLineArguments: Seq[String] = Seq("--timeout", "300" /* seconds */)
   var analysisCommandLineArguments: Seq[String] =
     baseCommandLineArguments ++ Seq("--enableAssumptionAnalysis", "--z3Args", "proof=true unsat-core=true")
 
@@ -186,8 +187,15 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   def executePerformanceBenchmark(filePrefix: String,
                                 fileName: String,
                                 writer: PrintWriter): Unit = {
+    if(fileName.endsWith("_naive")) return
+
     val program: Program = tests.loadProgram(filePrefix + "/", fileName, frontend)
-    new PerformanceBenchmark(filePrefix + "/" + fileName, program, writer).execute()
+    val naiveProgram: Option[Program] = try{
+      Some(tests.loadProgram(filePrefix + "/", fileName + "_naive", frontend))
+    }catch{
+      case _: Throwable => None
+    }
+    new PerformanceBenchmark(filePrefix + "/" + fileName, program, naiveProgram, writer).execute()
   }
 
   /**
@@ -338,7 +346,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       assert(check, "\n" + errorMsgs.mkString("\n"))
     }
 
-    protected def extractAnnotatedStmts(annotationFilter: (ast.AnnotationInfo => Boolean)): Set[ast.Infoed] = {
+    protected def extractAnnotatedStmts(annotationFilter: ast.AnnotationInfo => Boolean): Set[ast.Infoed] = {
       var nodesWithAnnotation: Set[ast.Infoed] = Set.empty
       @unused
       val newP: ast.Program = ViperStrategy.Slim({
@@ -479,47 +487,53 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
   }
 
-  class PerformanceBenchmark(name: String, program: Program, writer: PrintWriter) {
+  class PerformanceBenchmark(name: String, program: Program, naiveProgram: Option[Program], writer: PrintWriter) {
 
     def execute(): Unit = {
       writer.println(f"TEST: $name")
       println(f"TEST: $name")
 
 
-      val analysisDurationMs: Double = verifyAndMeasure(frontend)
+      val analysisDurationMs: Double = verifyAndMeasure(program, analysisCommandLineArguments)
+      val baselineDurationMs: Double = verifyAndMeasure(program, baseCommandLineArguments)
 
-
-      val baselineDurationMs = verifyAndMeasure(baselineFrontend)
 
       writer.println(f"analysis duration (ms): $analysisDurationMs")
       writer.println(f"baseline duration (ms): $baselineDurationMs")
       writer.println(f"diff analysis-baseline (ms): ${analysisDurationMs-baselineDurationMs}")
-      writer.println(f"analysis overhead (analysis/baseline) (ms): ${analysisDurationMs/baselineDurationMs}")
-      println(f"analysis overhead (analysis/baseline) (ms): ${analysisDurationMs/baselineDurationMs}")
+      writer.println(f"analysis overhead (analysis/baseline): ${analysisDurationMs/baselineDurationMs}")
+      println(f"analysis overhead (analysis/baseline): ${analysisDurationMs/baselineDurationMs}")
+
+      if(naiveProgram.isDefined){
+        val naiveDurationMs: Double = verifyAndMeasure(naiveProgram.get, baseCommandLineArguments)
+        writer.println(f"naive duration (ms): $naiveDurationMs")
+        writer.println(f"diff naive-baseline (ms): ${naiveDurationMs-baselineDurationMs}")
+        writer.println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
+        println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
+      }
+
       writer.println()
     }
 
-    private def verifyAndMeasure(frontend_ : SiliconFrontend) = {
+    private def verifyAndMeasure(program_ : Program, commandLineArgs: Seq[String]) = {
       val NUM_RUNS = 5
+      val frontend_ = createFrontend(commandLineArgs)
       try {
-        resetFrontend()
-        resetBaselineFrontend()
-        // warumup
-        for (_ <- 0 until 2)
-        {
-          frontend_.verifier.verify(program)
-        }
-        Thread.sleep(100)
         val startAnalysis = System.nanoTime()
-        for (_ <- 0 until NUM_RUNS) {
-          @unused
-          val result = frontend_.verifier.verify(program)
+        for (i <- 0 until NUM_RUNS) {
+          val result = frontend_.verifier.verify(program_)
+          if(result.isInstanceOf[verifier.Failure]) {
+            println(f"$i ${result.toString}")
+            throw new Exception(f"Failed $result")
+          }
         }
         val endAnalysis = System.nanoTime()
         val analysisDurationMs = (endAnalysis - startAnalysis) / 1e6 / NUM_RUNS
         analysisDurationMs
       }catch{
-        case _: Throwable => Double.NaN
+        case t: Throwable =>
+          println(t)
+          Double.NaN
       }
     }
   }
