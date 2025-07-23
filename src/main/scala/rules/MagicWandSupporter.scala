@@ -429,7 +429,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
     // some of the analysis labels, introduced while verifying the package statement, might be needed later on -> reassume them
     analysisLabels foreach (l => v.decider.assume(v.decider.wrapWithAssumptionAnalysisLabel(l, Set.empty, Set(l)), None, AssumptionType.Internal))
 
-    val currentAnalysisSourceInfoStack = v.decider.analysisSourceInfoStack
+    val currentAnalysisSourceInfos = v.decider.analysisSourceInfoStack.getAnalysisSourceInfos
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
       prevRes && {
         val (state, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedState
@@ -440,7 +440,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // We execute the continuation Q in a new scope with all branch conditions and all conserved path conditions.
         executionFlowController.locally(s1, v)((s2, v1) => {
-          v1.decider.analysisSourceInfoStack = currentAnalysisSourceInfoStack
+          v1.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
           val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._1))
           val expNew = Option.when(withExp)(viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2.get)))
           // Set the branch conditions
