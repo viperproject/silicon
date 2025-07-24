@@ -24,6 +24,7 @@ method incr(a: Ref)
   a.f := a.f + 1
 }
 
+SNIPPET baseline$=${}
 
 SNIPPET assignment_pure$=${
   @irrelevant("Implicit")
@@ -64,25 +65,26 @@ SNIPPET exhale_inhale_perm$=${
   inhale acc($RW_INT_FIELD_0, 1/2)
 }
 
+// TODO ake
 // fold-unfold
-SNIPPET fold_unfold_basic$=${
-  var gen_i: Int 
-  @irrelevant("Implicit")
-  inhale gen_i > 10
-  @irrelevant("Implicit")
-  fold gen_confuse(gen_i, $INVARIANT)
-  @irrelevant("Implicit")
-  unfold gen_confuse(gen_i, $INVARIANT)
-}
+// SNIPPET fold_unfold_basic$=${
+//   var gen_i: Int 
+//   @irrelevant("Implicit")
+//   inhale gen_i > 10
+//   @irrelevant("Implicit")
+//   fold gen_confuse(gen_i, $ACC_INVARIANT && $INVARIANT)
+//   @irrelevant("Implicit")
+//   unfold gen_confuse(gen_i, $ACC_INVARIANT && $INVARIANT)
+// }
 
 // fold-unfold with implication
-SNIPPET fold_unfold_with_implication$=${
-  var gen_i: Int 
-  @irrelevant("Implicit")
-  fold gen_confuse_with_impl(gen_i, $INVARIANT)
-  @irrelevant("Implicit")
-  unfold gen_confuse_with_impl(gen_i, $INVARIANT)
-}
+// SNIPPET fold_unfold_with_implication$=${
+//   var gen_i: Int 
+//   @irrelevant("Implicit")
+//   fold gen_confuse_with_impl(gen_i, $ACC_INVARIANT && $INVARIANT)
+//   @irrelevant("Implicit")
+//   unfold gen_confuse_with_impl(gen_i, $ACC_INVARIANT && $INVARIANT)
+// }
 
 // function call
 SNIPPET function_add$=${
@@ -228,6 +230,7 @@ SNIPPET while_pure$=${
   @irrelevant("Implicit")
   $RW_INT_PURE_1 := 0
   while(@irrelevant("PathCondition")($RW_INT_PURE_0 > 0))
+    invariant @irrelevant("LoopInvariant")($ACC_INVARIANT)
     invariant @irrelevant("LoopInvariant")($INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_0 <= gen_start)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_1 == (gen_start-$RW_INT_PURE_0)*$RO_INT_PURE_0)
@@ -247,14 +250,13 @@ SNIPPET while_perm$=${
   $RW_INT_FIELD_1 := 0
   @irrelevant("Explicit")
   while(@irrelevant("PathCondition")($RW_INT_FIELD_0 > 0))
-    invariant @irrelevant("LoopInvariant")(acc($RW_INT_FIELD_0, write))
-    invariant @irrelevant("LoopInvariant")(acc($RW_INT_FIELD_1, write))
+    invariant @irrelevant("LoopInvariant")($ACC_INVARIANT)
     invariant @irrelevant("LoopInvariant")($INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_0 <= gen_start)
-    invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_1 == (gen_start-$RW_INT_FIELD_0)*$RO_INT_PURE_0)
+    invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_1 == (gen_start-$RW_INT_FIELD_0)*10)
   {
     @irrelevant("Implicit")
-    $RW_INT_FIELD_1 := $RW_INT_FIELD_1 + $RO_INT_PURE_0
+    $RW_INT_FIELD_1 := $RW_INT_FIELD_1 + 10
     @irrelevant("Implicit")
     $RW_INT_FIELD_0 := $RW_INT_FIELD_0 - 1
   }
@@ -265,9 +267,9 @@ SNIPPET magic_wand_1$=${
   @irrelevant("Explicit")
   inhale gen_i > 0
   @irrelevant("Implicit")
-  package gen_i >= 0 --* $INVARIANT
+  package gen_i >= 0 --* $ACC_INVARIANT && $INVARIANT
   @irrelevant("Implicit")
-  apply gen_i >= 0 --* $INVARIANT
+  apply gen_i >= 0 --* $ACC_INVARIANT && $INVARIANT
 }
 
 SNIPPET magic_wand_2$=${

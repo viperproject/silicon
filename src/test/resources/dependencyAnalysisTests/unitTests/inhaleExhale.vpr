@@ -3,12 +3,12 @@ field f: Int
 method exhaleInhale(a: Ref)
     requires @dependency("Explicit")(acc(a.f))
 {
-    @irrelevant("Implicit") // TODO ake
+    @irrelevant("Implicit")
     exhale acc(a.f, 1/2)
     @irrelevant("Explicit")
     inhale acc(a.f, 1/2)
 
-    // $PrecisionTest: $READ_WRITE=a.f
+    // $PrecisionTest: $READ_WRITE=a.f $ACC_INVARIANT=acc(a.f)
 
     @testAssertion("Explicit")
     assert perm(a.f) == write
@@ -17,12 +17,12 @@ method exhaleInhale(a: Ref)
 method exhaleInhale2(a: Ref)
     requires @dependency("Explicit")(acc(a.f))
 {
-    @irrelevant("Implicit") // TODO ake: imprecision
+    @irrelevant("Implicit")
     exhale acc(a.f, 1/2)
-    @irrelevant("Explicit") // TODO ake: imprecision
+    @irrelevant("Explicit")
     inhale acc(a.f, 1/2)
 
-    // $PrecisionTest: $READ_WRITE=a.f
+    // $PrecisionTest: $READ_WRITE=a.f $ACC_INVARIANT=acc(a.f)
 
     @testAssertion("Explicit")
     assert perm(a.f) >= 1/2
@@ -36,11 +36,10 @@ method exhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    @irrelevant("Implicit") // TODO ake: imprecision
+    @irrelevant("Implicit")
     exhale acc(x.f, 1/2)
 
-    // $PrecisionTest: $READ_ONLY=x.f
-    // $INVARIANT=x.f>0
+    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/2)
 
     @testAssertion("Explicit")
     assert x.f > 0
@@ -54,11 +53,10 @@ method inhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    @irrelevant("Implicit") // TODO ake: imprecision
+    @irrelevant("Implicit")
     inhale acc(x.f, 1/2)
 
-    // $PrecisionTest: $READ_ONLY=x.f
-    // $INVARIANT=x.f>0
+    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f)
 
     @testAssertion("Explicit")
     assert x.f > 0

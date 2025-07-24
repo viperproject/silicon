@@ -60,8 +60,7 @@ method callWithPredicate(a: Int, b: Int)
     @dependency("Implicit")
     unfoldFoldP(a, b)
 
-    // $PrecisionTest: $READ_ONLY=a,b
-    // $INVARIANT=unfolding$_$greater5(a+b)$_$in$_$a+b>0
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=unfolding$_$greater5(a+b)$_$in$_$a+b>0 $ACC_INVARIANT=greater5(a+b)
 
     @testAssertion("Explicit")
     assert greater5(a + b)

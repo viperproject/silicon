@@ -35,6 +35,7 @@ def extract_vars(line: str):
   read_write_vars = []
   read_only_vars = []
   invariant = ""
+  acc_invariant = ""
   for decl in var_decls:
     tmp = decl.split("=")
     if(tmp[0] == "$READ_ONLY"):
@@ -43,11 +44,13 @@ def extract_vars(line: str):
       read_write_vars = read_write_vars + tmp[1].split(",")
     elif(tmp[0] == "$INVARIANT"):
       invariant = "=".join(tmp[1:]).replace("$_$", " ")
+    elif(tmp[0] == "$ACC_INVARIANT"):
+      acc_invariant = "=".join(tmp[1:]).replace("$_$", " ")
   # print(f"line: {line}")
   # print(f"read only: {read_only_vars}")
   # print(f"read write: {read_write_vars}")
   # print()
-  return read_only_vars, read_write_vars, invariant
+  return read_only_vars + read_write_vars, read_write_vars, invariant, acc_invariant
 
 def replace_vars(snippet: str, placeholder: str, vars: list[str]):
   idx = 0
@@ -63,9 +66,9 @@ def replace_vars(snippet: str, placeholder: str, vars: list[str]):
   return snippet, gen_vars
 
 def generate_from_snippet(snippet: str, line: str):
-  read_only_vars, read_write_vars, invariant = extract_vars(line)
-
-  snippet = snippet.replace("$INVARIANT", invariant if invariant != "" else "true")
+  read_only_vars, read_write_vars, invariant, acc_invariant = extract_vars(line)
+  # print(f"read_only_vars: {read_only_vars}")
+  # print(f"read_write_vars:  {read_write_vars}")
 
   # replace variables, generate new ones if necessary
   snippet, gen_ro_refs = replace_vars(snippet, "$RO_REF_F_", [v.split(".")[0] for v in read_only_vars if v.endswith(".f")])
@@ -85,11 +88,17 @@ def generate_from_snippet(snippet: str, line: str):
   # snippet = f"\n//generated: {generated_refs}\n//existing: {existing_refs}\n" + snippet
   snippet = "\n".join([f"@irrelevant(\"Explicit\")\ninhale {a} != {b}" for a in generated_refs for b in existing_refs if a != b]) + snippet
 
+  gen_vars_ro_field = gen_vars_ro_field + [f"{v}.f" for v in gen_ro_refs]
+  gen_vars_rw_field = gen_vars_rw_field + [f"{v}.f" for v in gen_rw_refs]
+
+  snippet = snippet.replace("$INVARIANT", invariant if invariant != "" else "true")
+  acc_invariants = ([inv for inv in acc_invariant.split("&&") if inv != ""] ) + [f"acc({v}, 1/2)" for v in gen_vars_ro_field] + [f"acc({v})" for v in gen_vars_rw_field]
+  acc_invariant = " && ".join([f"@irrelevant(\"LoopInvariant\")({v})" for v in acc_invariants])
+  snippet = snippet.replace("$ACC_INVARIANT", acc_invariant if acc_invariant != "" else "true")
+
   # declare and initialize newly generated vars
   snippet = "".join([f"var {v.split(".")[0]}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v}, 1/2)\n" for v in gen_vars_ro_field]) + snippet
   snippet = "".join([f"var {v.split(".")[0]}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v})\n" for v in gen_vars_rw_field]) + snippet
-  snippet = "".join([f"var {v}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v}.f)\n" for v in gen_rw_refs]) + snippet
-  snippet = "".join([f"var {v}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v}.f, 1/2)\n" for v in gen_ro_refs]) + snippet
   all_vars = gen_vars_ro + gen_vars_rw + gen_vars_ro_pure + gen_vars_rw_pure
   if len(all_vars) > 0:
     snippet = "var " + ", ".join([f"{v}: Int" for v in all_vars]) + "\n" + snippet
@@ -130,7 +139,7 @@ def process_folder(folder_path: str, output_path: str, snippet_preamble: str, sn
   for file in files:
     handle_template_file(file, output_path, snippet_preamble, snippets)
 
-preamble, snippet_dict = read_snippets_file("silicon\\src\\test\\resources\\dependencyAnalysisTests\\generation\\snippets.txt")
+preamble, snippet_dict = read_snippets_file("silicon\\src\\test\\resources\\dependencyAnalysisTests\\benchmark_scripts\\snippets.txt")
 process_folder("silicon\\src\\test\\resources\\dependencyAnalysisTests\\unitTests", 
                "silicon\\src\\test\\resources\\dependencyAnalysisTests\\precisionTests",
                preamble, snippet_dict)
