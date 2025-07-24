@@ -122,17 +122,23 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     mergedGraph
   }
 
-  def computeProofCoverage(): Option[(Double, Seq[String])] = {
+  def computeProofCoverage(): (Double, Seq[String]) = {
     val explicitAssertionNodes = getExplicitAssertionNodes
-    val explicitAssertionNodeIds = explicitAssertionNodes map (_.id)
+    computeProofCoverage(explicitAssertionNodes)
+  }
+
+  def computeProofCoverage(assertionNodes: Set[AssumptionAnalysisNode]): (Double, Seq[String]) = {
+    val assertionNodeIds = assertionNodes map (_.id)
     val nodesPerSourceInfo = getNonInternalAssumptionNodesPerSource
+    if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Seq())
+
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
       val nodeIds = nodes map (_.id)
       // it is not an explicit assertion itself and has no dependency to an explicit assertion
-      nodeIds.intersect(explicitAssertionNodeIds).isEmpty &&
-        !graph.existsAnyDependency(nodeIds, explicitAssertionNodeIds)
+      nodeIds.intersect(assertionNodeIds).isEmpty &&
+        !graph.existsAnyDependency(nodeIds, assertionNodeIds)
     }).keys.toSeq
     val proofCoverage = 1.0 - (uncoveredSources.size.toDouble / nodesPerSourceInfo.size.toDouble)
-    Some((proofCoverage, uncoveredSources))
+    (proofCoverage, uncoveredSources)
   }
 }

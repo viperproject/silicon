@@ -63,9 +63,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val now: LocalDateTime = LocalDateTime.now()
       val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
       val writer = new PrintWriter(s"$basePath/result_${now.format(formatter)}.out")
+      val proofCoverageWriter = new PrintWriter(s"$basePath/proofCoverage_${now.format(formatter)}.out")
       writer.println(f"test name;\tbaseline (ms);\tanalysis (ms);\tanalysis/baseline\tprogram size")
-      testDirectories foreach (dir => visitFiles(dir, executePerformanceBenchmark(_, _, writer)))
+      testDirectories foreach (dir => visitFiles(dir, executePerformanceBenchmark(_, _, writer, proofCoverageWriter)))
       writer.close()
+      proofCoverageWriter.close()
     }
 
 //  createSingleTest("dependencyAnalysisTests/quick", "test")
@@ -187,7 +189,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   def executePerformanceBenchmark(filePrefix: String,
                                 fileName: String,
-                                writer: PrintWriter): Unit = {
+                                writer: PrintWriter,
+                                proofCoverageWriter: PrintWriter): Unit = {
     if(fileName.endsWith("_naive")) return
 
     val program: Program = tests.loadProgram(filePrefix + "/", fileName, frontend)
@@ -196,6 +199,24 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }catch{
       case _: Throwable => None
     }
+
+    val frontend_ = createFrontend(analysisCommandLineArguments)
+    val result = frontend_.verifier.verify(program)
+    if(result.isInstanceOf[verifier.Failure]) {
+      cancel(f"Program does not verify. Skip test.\n$result")
+      return
+    }
+
+    val assumptionAnalysisInterpreters = frontend_.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
+
+    proofCoverageWriter.println(filePrefix + "/" + fileName)
+    assumptionAnalysisInterpreters foreach (memberInterpreter => {
+      memberInterpreter.getExplicitAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource) foreach {case (source, nodes) =>
+          proofCoverageWriter.println(memberInterpreter.getName + " " + source.toString.replace("\n", " ") + " ---> " + memberInterpreter.computeProofCoverage(nodes)._1)}
+      proofCoverageWriter.println("overall " + memberInterpreter.getName + " ---> + " + memberInterpreter.computeProofCoverage()._1)
+    })
+    proofCoverageWriter.println()
+
     new PerformanceBenchmark(filePrefix + "/" + fileName, program, naiveProgram, writer, program.toString().split("\n").length).execute()
   }
 

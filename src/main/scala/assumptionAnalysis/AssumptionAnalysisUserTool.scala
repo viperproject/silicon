@@ -54,7 +54,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         case _ => false
       })
       .foreach(aa => {
-        val (coverage, uncoveredSources) = aa.computeProofCoverage().get
+        val (coverage, uncoveredSources) = aa.computeProofCoverage()
         println(s"${aa.getMember.map(_.name).getOrElse("")}")
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
