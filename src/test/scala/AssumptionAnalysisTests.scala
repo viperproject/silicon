@@ -63,6 +63,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val now: LocalDateTime = LocalDateTime.now()
       val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
       val writer = new PrintWriter(s"$basePath/result_${now.format(formatter)}.out")
+      writer.println(f"test name;\tbaseline (ms);\tanalysis (ms);\tanalysis/baseline\tprogram size")
       testDirectories foreach (dir => visitFiles(dir, executePerformanceBenchmark(_, _, writer)))
       writer.close()
     }
@@ -195,7 +196,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }catch{
       case _: Throwable => None
     }
-    new PerformanceBenchmark(filePrefix + "/" + fileName, program, naiveProgram, writer).execute()
+    new PerformanceBenchmark(filePrefix + "/" + fileName, program, naiveProgram, writer, program.toString().split("\n").length).execute()
   }
 
   /**
@@ -487,32 +488,29 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
   }
 
-  class PerformanceBenchmark(name: String, program: Program, naiveProgram: Option[Program], writer: PrintWriter) {
+  class PerformanceBenchmark(name: String, program: Program, naiveProgram: Option[Program], writer: PrintWriter, programSize: Int) {
+
+    private def printResult(str: String): Unit = {
+      writer.print(str)
+      print(str)
+    }
 
     def execute(): Unit = {
-      writer.println(f"TEST: $name")
-      println(f"TEST: $name")
-
+      printResult(f"$name;\t")
 
       val analysisDurationMs: Double = verifyAndMeasure(program, analysisCommandLineArguments)
       val baselineDurationMs: Double = verifyAndMeasure(program, baseCommandLineArguments)
 
-
-      writer.println(f"analysis duration (ms): $analysisDurationMs")
-      writer.println(f"baseline duration (ms): $baselineDurationMs")
-      writer.println(f"diff analysis-baseline (ms): ${analysisDurationMs-baselineDurationMs}")
-      writer.println(f"analysis overhead (analysis/baseline): ${analysisDurationMs/baselineDurationMs}")
-      println(f"analysis overhead (analysis/baseline): ${analysisDurationMs/baselineDurationMs}")
+      printResult(f"$baselineDurationMs;\t$analysisDurationMs;\t${analysisDurationMs/baselineDurationMs};\t$programSize\n")
 
       if(naiveProgram.isDefined){
         val naiveDurationMs: Double = verifyAndMeasure(naiveProgram.get, baseCommandLineArguments)
-        writer.println(f"naive duration (ms): $naiveDurationMs")
+        writer.println(f"naive duration (ms): $naiveDurationMs") // TODO ake
         writer.println(f"diff naive-baseline (ms): ${naiveDurationMs-baselineDurationMs}")
         writer.println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
         println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
       }
 
-      writer.println()
     }
 
     private def verifyAndMeasure(program_ : Program, commandLineArgs: Seq[String]) = {
