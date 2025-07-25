@@ -118,6 +118,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     consumes(s4, posts, false, postViolated, v4, postConditionType)((_, _, _) =>
                       Success()))}) }  )})})
 
+      if(method.body.isEmpty){
+        v.decider.assumptionAnalyzer.addCustomExpDependency(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts))
+      }
 
       result.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(method.name, _, Some(method)))
 

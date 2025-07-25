@@ -28,6 +28,7 @@ trait AssumptionAnalyzer {
   def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit
   def addNode(node: AssumptionAnalysisNode): Unit
   def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int]
+  def addAxiom(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int]
   def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNode: Option[LabelNode], analysisInfo: AnalysisInfo, isExhale: Boolean): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo): CH = buildChunk(perm)
   def createLabelNode(labelTerm: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode]
@@ -40,6 +41,8 @@ trait AssumptionAnalyzer {
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
   def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit
   def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit
+  def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit
+  def addFunctionAxiomEdges(): Unit
 
   def buildFinalGraph(): Option[AssumptionAnalysisGraph]
 }
@@ -131,6 +134,12 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   // adding assumption nodes
   override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = {
     val node = SimpleAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_)
+    addNode(node)
+    Some(node.id)
+  }
+
+  override def addAxiom(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = {
+    val node = AxiomAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_)
     addNode(node)
     Some(node.id)
   }
@@ -230,6 +239,12 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(sourceNodes map (_.id), targetNodes map (_.id))
   }
 
+  def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.Explicit, None))
+    val targetNodes = targetExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.ExplicitPostcondition, None))
+    assumptionGraph.addEdges(sourceNodeIds, targetNodes)
+  }
+
   override def buildFinalGraph(): Option[AssumptionAnalysisGraph] = {
     assumptionGraph.removeLabelNodes()
     val mergedGraph = buildAndGetMergedGraph()
@@ -237,8 +252,17 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     Some(mergedGraph)
   }
 
+  override def addFunctionAxiomEdges(): Unit = {
+    val axiomNodes = getNodes.filter(_.isInstanceOf[AxiomAssumptionNode])
+    val postcondNodes = getNodes.filter(n => n.assumptionType.equals(AssumptionType.ExplicitPostcondition) || n.assumptionType.equals(AssumptionType.ImplicitPostcondition))
+    axiomNodes foreach {aNode =>
+      val pNodes = postcondNodes filter (_.sourceInfo.toString.equals(aNode.sourceInfo.toString)) map (_.id)
+      assumptionGraph.addEdges(pNodes, aNode.id)
+    }
+  }
+
   private def buildAndGetMergedGraph(): AssumptionAnalysisGraph = {
-    def keepNode(n: AssumptionAnalysisNode): Boolean = n.isClosed || n.isInstanceOf[InfeasibilityNode]
+    def keepNode(n: AssumptionAnalysisNode): Boolean = n.isClosed || n.isInstanceOf[InfeasibilityNode] || n.isInstanceOf[AxiomAssumptionNode]
 
     val mergedGraph = new AssumptionAnalysisGraph
     val nodeMap = mutable.HashMap[Int, Int]()
@@ -249,6 +273,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
     val nodesBySource = assumptionGraph.getNodes.filter(!keepNode(_))
       .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.sourceInfo.getTopLevelSource.toString, n.sourceInfo.getFineGrainedSource, n.assumptionType))
+
     nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
       val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])
       if (assumptionNodes.nonEmpty) {
@@ -286,6 +311,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {}
   override def addNode(node: AssumptionAnalysisNode): Unit = {}
   override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int] = None
+  override def addAxiom(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = None
   override def createLabelNode(labelTerm: Term, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = None
 
   override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
@@ -296,6 +322,8 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}
   override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit = {}
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {}
+  override def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
+  override def addFunctionAxiomEdges(): Unit = {}
 
   override def buildFinalGraph(): Option[AssumptionAnalysisGraph] = None
 }

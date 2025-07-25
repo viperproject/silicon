@@ -161,6 +161,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val res = handleFunction(sInit, function)
       symbExLog.closeMemberScope()
 
+      v.decider.assumptionAnalyzer.addFunctionAxiomEdges()
+
       res.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(function.name, _, Some(function)))
 
       Seq(res)
@@ -187,6 +189,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom
 
           if (function.body.isEmpty) {
+            decider.assumptionAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
+            decider.assumptionAnalyzer.addCustomExpDependency(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts))
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -233,7 +237,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
-          produces(s1, freshSnap, posts, ContractNotWellformed, v, AssumptionType.Explicit)((s2, _) => {
+          produces(s1, freshSnap, posts, ContractNotWellformed, v, AssumptionType.ExplicitPostcondition)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 
@@ -289,7 +293,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def emitAndRecordFunctionAxioms(axiom: (Term, Option[(AnalysisSourceInfo, AssumptionType)])*): Unit = {
       decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(axiom), "Function axioms")
-      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom // FIXME ake: propagate assumption type
+      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }
 
     private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Decl]] = {

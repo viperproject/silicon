@@ -12,10 +12,15 @@ object AssumptionAnalysisInterpreter {
     assumptionAnalysisInterpreters foreach (interpreter => newGraph.addNodes(interpreter.getGraph.getNodes))
     assumptionAnalysisInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (s, t) => newGraph.addEdges(s, t)})
 
+    // add edges between identical axioms since they were added to each interpreter // TODO ake: merge instead?
+    newGraph.getNodes.filter(_.isInstanceOf[AxiomAssumptionNode]).groupBy(n => (n.sourceInfo.toString, n.assumptionType)).foreach{case (_, nodes) =>
+      newGraph.addEdges(nodes.map(_.id), nodes.map(_.id))
+    }
+
     val types = Set(AssumptionType.Implicit, AssumptionType.Explicit)
     val relevantAssumptionNodes = newGraph.nodes filter (node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
 
-    newGraph.nodes filter (node => node.isInstanceOf[GeneralAssertionNode] && postconditionTypes.contains(node.assumptionType)) foreach { node => // TODO ake: check if this also works for functions
+    newGraph.nodes filter (node => postconditionTypes.contains(node.assumptionType)) foreach { node =>
       val nodeSourceInfoString = node.sourceInfo.getTopLevelSource.toString
       val assumptionNodesForJoin = relevantAssumptionNodes filter (aNode => aNode.sourceInfo.getFineGrainedSource.toString.equals(nodeSourceInfoString))
       newGraph.addEdges(node.id, assumptionNodesForJoin map (_.id))
@@ -57,10 +62,10 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
   def getNonInternalAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
-       (node.isInstanceOf[GeneralAssertionNode] && postconditionTypes.contains(node.assumptionType))
+       postconditionTypes.contains(node.assumptionType)
     )
 
-  def getExplicitAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
+  def getExplicitAssumptionNodes: Set[AssumptionAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
     explicitAssumptionTypes.contains(node.assumptionType)
     )
 
@@ -69,7 +74,8 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
 
   def getNonInternalAssertionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
-      node.isInstanceOf[GeneralAssertionNode] && !node.assumptionType.equals(AssumptionType.Internal)
+    (node.isInstanceOf[GeneralAssertionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
+      postconditionTypes.contains(node.assumptionType)
     )
 
   def getExplicitAssertionNodes: Set[AssumptionAnalysisNode] =
