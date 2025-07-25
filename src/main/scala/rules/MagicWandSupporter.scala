@@ -371,7 +371,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
       // Produce the wand's LHS.
-      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, AssumptionType.Internal)((sLhs, v2) => {
+      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, AssumptionType.Implicit)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
 
         /* Expected shape of reserveHeaps is either

@@ -39,7 +39,7 @@ trait ProverLike {
     terms foreach assume
   }
 
-  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])], description: String, assumptionType: AssumptionType=AssumptionType.Axiom): Unit = {
+  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])], description: String, assumptionType: AssumptionType=AssumptionType.Explicit): Unit = {
     if (debugMode)
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
 

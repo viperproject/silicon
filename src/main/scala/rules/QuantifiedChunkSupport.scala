@@ -1042,7 +1042,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val comment = "Check receiver injectivity"
         v.decider.prover.comment(comment)
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
-          Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), AssumptionType.Internal)
+          Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), assumptionType)
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
@@ -1299,7 +1299,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), AssumptionType.Internal)
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), assumptionType)
         v.decider.assert(receiverInjectivityCheck, assumptionType) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
@@ -1314,8 +1314,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment("Definitional axioms for inverse functions")
 
             v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)),
-              Option.when(withExp)(DebugExp.createInstance("Inverse Function Axioms", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
-            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance("Inverse function axiom", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
+              Option.when(withExp)(DebugExp.createInstance("Inverse Function Axioms", isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance("Inverse function axiom", isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
 
             if (s.heapDependentTriggers.contains(resourceIdentifier)){
               v.decider.assume(
@@ -1323,7 +1323,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   formalQVars,
                   Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.get.sm, formalQVars, s.program)),
                   Trigger(inverseFunctions.inversesOf(formalQVars)))),
-                Option.when(withExp)(DebugExp.createInstance("Inverse Function", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
+                Option.when(withExp)(DebugExp.createInstance("Inverse Function", isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
             }
 
 
@@ -1389,11 +1389,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   isExhale = true
                 )
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Inverse functions for quantified permission", isInternal_ = true))
-                v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program), debugExp, AssumptionType.Internal)
-                v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses, debugExp, AssumptionType.Internal)
+                v.decider.assume(FunctionPreconditionTransformer.transform(inverseFunctions.axiomInvertiblesOfInverses, s3.program), debugExp, assumptionType)
+                v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses, debugExp, assumptionType)
                 val substitutedAxiomInversesOfInvertibles = inverseFunctions.axiomInversesOfInvertibles.replace(formalQVars, tArgs)
-                v.decider.assume(FunctionPreconditionTransformer.transform(substitutedAxiomInversesOfInvertibles, s3.program), debugExp, AssumptionType.Internal)
-                v.decider.assume(substitutedAxiomInversesOfInvertibles, debugExp, AssumptionType.Internal)
+                v.decider.assume(FunctionPreconditionTransformer.transform(substitutedAxiomInversesOfInvertibles, s3.program), debugExp, assumptionType)
+                v.decider.assume(substitutedAxiomInversesOfInvertibles, debugExp, assumptionType)
                 val h2 = Heap(remainingChunks ++ otherChunks)
                 val s4 = s3.copy(smCache = smCache2,
                                  constrainableARPs = s.constrainableARPs)

@@ -168,6 +168,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function)
+      val assumptionType = if(function.body.isDefined) AssumptionType.Implicit else AssumptionType.Explicit
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data),
         conservingSnapshotGeneration = true,
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
@@ -180,10 +181,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           result1
 
         case (result1, phase1data) =>
-          emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.limitedAxiom)
-          emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.triggerAxiom)
-          emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.postAxiom: _*) // FIXME ake: if(function.body.isDefined) AssumptionType.Implicit else AssumptionType.Explicit
-          emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.postPreconditionPropagationAxiom: _*)
+          emitAndRecordFunctionAxioms(assumptionType, data.limitedAxiom)
+          emitAndRecordFunctionAxioms(assumptionType, data.triggerAxiom)
+          emitAndRecordFunctionAxioms(assumptionType, data.postAxiom: _*)
+          emitAndRecordFunctionAxioms(assumptionType, data.postPreconditionPropagationAxiom: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom
 
           if (function.body.isEmpty) {
@@ -196,8 +197,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               case fatalResult: FatalResult =>
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
-                emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.definitionalAxiom.toSeq: _*)
-                emitAndRecordFunctionAxioms(AssumptionType.Axiom, data.bodyPreconditionPropagationAxiom: _*)
+                emitAndRecordFunctionAxioms(assumptionType, data.definitionalAxiom.toSeq: _*)
+                emitAndRecordFunctionAxioms(assumptionType, data.bodyPreconditionPropagationAxiom: _*)
             }
 
             result1 && result2

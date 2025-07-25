@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces.state
 
-import viper.silicon.assumptionAnalysis.AnalysisInfo
+import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType}
 import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
@@ -40,7 +40,7 @@ object GeneralChunk {
   def permMinus(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo): GeneralChunk = {
     val newChunk = analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
-      newPerm, analysisInfo, isExhale=false, createLabel=false) // TODO ake: assumption type?
+      newPerm, analysisInfo.withAssumptionType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
     @unused // we still need to register the chunk to have a sound analysis
     val exhaledChunk = analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), { finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
