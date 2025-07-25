@@ -1,0 +1,47 @@
+field f: Int
+
+function sum(x: Int, y: Int) : Int
+  requires x >= 0 && y >= 0
+  ensures result == x + y
+  ensures result >= 0
+{
+ x + y
+}
+
+function sumUnverified(x: Int, y: Int): Int
+  requires x >= 0 && y >= 0
+  ensures result == x + y
+  ensures result >= 0
+
+method call2(){
+    var x: Int, y: Int, z: Int
+    @dependency("Explicit")
+    assume x > 10
+    @dependency("Explicit")
+    assume y > 0
+
+    @dependency("Implicit")
+    z := sum(x, y)
+
+    // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
+
+    @testAssertion("Explicit")
+    assert z == x + y
+}
+
+method call2Unv(){
+    var x: Int, y: Int, z: Int
+    @dependency("Explicit")
+    assume x > 10
+    @dependency("Explicit")
+    assume y > 0
+
+    @dependency("Implicit")
+    z := sumUnverified(x, y)
+
+    // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
+
+    @testAssertion("Explicit")
+    assert z == x + y
+}
+
