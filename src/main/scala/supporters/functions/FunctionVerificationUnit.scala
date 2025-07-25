@@ -8,7 +8,7 @@ package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
@@ -161,8 +161,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val res = handleFunction(sInit, function)
       symbExLog.closeMemberScope()
 
-      v.decider.assumptionAnalyzer.finalizeGraph()
-      res.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.convertToInterpreter(function.name)
+      res.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(function.name, _, Some(function)))
 
       Seq(res)
     }

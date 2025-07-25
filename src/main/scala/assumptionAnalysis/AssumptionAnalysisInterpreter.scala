@@ -78,50 +78,6 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     graph.exportGraph(Verifier.config.assumptionAnalysisExportPath() + "/" + name)
   }
 
-  def exportMergedGraph(): Unit = {
-    if(Verifier.config.assumptionAnalysisExportPath.isEmpty) return
-    val mergedGraph = mergeNodesBySource()
-    mergedGraph.exportGraph(Verifier.config.assumptionAnalysisExportPath() + "/" + name + "_merged")
-  }
-
-  private def mergeNodesBySource(): AssumptionAnalysisGraph = {
-    def keepNode(n: AssumptionAnalysisNode): Boolean = n.isClosed || n.isInstanceOf[InfeasibilityNode]
-
-    val mergedGraph = new AssumptionAnalysisGraph
-    val nodeMap = mutable.HashMap[Int, Int]()
-    graph.getNodes.filter(keepNode).foreach{n =>
-      nodeMap.put(n.id, n.id)
-      mergedGraph.addNode(n)
-    }
-
-    val nodesBySource = graph.getNodes.filter(!keepNode(_))
-      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.sourceInfo.getTopLevelSource.toString, n.assumptionType))
-    nodesBySource foreach {case ((_, _, assumptionType), nodes) =>
-      val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])
-      if(assumptionNodes.nonEmpty) {
-        val newNode = SimpleAssumptionNode(True, None, assumptionNodes.head.sourceInfo, assumptionType, isClosed = true)
-        assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
-        mergedGraph.addNode(newNode)
-      }
-    }
-
-    nodesBySource foreach {case ((_, _, assumptionType), nodes) =>
-      val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
-      if(assertionNodes.nonEmpty){
-        val newNode = SimpleAssertionNode(True, assumptionType, assertionNodes.head.sourceInfo, isClosed=true)
-        assertionNodes foreach (n => nodeMap.put(n.id, newNode.id))
-        mergedGraph.addNode(newNode)
-      }
-    }
-
-    graph.getAllEdges foreach {case (source, targets) =>
-      val newSource = nodeMap(source)
-      mergedGraph.addEdges(newSource, targets.map(nodeMap(_)))
-    }
-
-    mergedGraph
-  }
-
   def computeProofCoverage(): (Double, Seq[String]) = {
     val explicitAssertionNodes = getExplicitAssertionNodes
     computeProofCoverage(explicitAssertionNodes)

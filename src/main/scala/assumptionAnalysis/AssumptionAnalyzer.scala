@@ -5,6 +5,8 @@ import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms._
 import viper.silver.ast
 
+import scala.collection.mutable
+
 
 trait AssumptionAnalyzer {
   protected val assumptionGraph: AssumptionAnalysisGraph = new AssumptionAnalysisGraph()
@@ -39,8 +41,7 @@ trait AssumptionAnalyzer {
   def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit
   def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit
 
-  def finalizeGraph(): Unit
-  def convertToInterpreter(name: String): Option[AssumptionAnalysisInterpreter]
+  def buildFinalGraph(): Option[AssumptionAnalysisGraph]
 }
 
 object AssumptionAnalyzer {
@@ -229,13 +230,50 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(sourceNodes map (_.id), targetNodes map (_.id))
   }
 
-  override def finalizeGraph(): Unit = {
+  override def buildFinalGraph(): Option[AssumptionAnalysisGraph] = {
     assumptionGraph.removeLabelNodes()
-    assumptionGraph.addTransitiveEdges()
+    val mergedGraph = mergeNodesAndGetNewGraph()
+    mergedGraph.addTransitiveEdges()
+    Some(mergedGraph)
   }
 
-  override def convertToInterpreter(name: String): Option[AssumptionAnalysisInterpreter] =
-    Some(new AssumptionAnalysisInterpreter(name, assumptionGraph, getMember))
+  private def mergeNodesAndGetNewGraph(): AssumptionAnalysisGraph = {
+    def keepNode(n: AssumptionAnalysisNode): Boolean = n.isClosed || n.isInstanceOf[InfeasibilityNode]
+
+    val mergedGraph = new AssumptionAnalysisGraph
+    val nodeMap = mutable.HashMap[Int, Int]()
+    assumptionGraph.getNodes.filter(keepNode).foreach { n =>
+      nodeMap.put(n.id, n.id)
+      mergedGraph.addNode(n)
+    }
+
+    val nodesBySource = assumptionGraph.getNodes.filter(!keepNode(_))
+      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.sourceInfo.getTopLevelSource.toString, n.sourceInfo.getFineGrainedSource, n.assumptionType))
+    nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
+      val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])
+      if (assumptionNodes.nonEmpty) {
+        val newNode = SimpleAssumptionNode(True, None, assumptionNodes.head.sourceInfo, assumptionType, isClosed = false)
+        assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
+        mergedGraph.addNode(newNode)
+      }
+    }
+
+    nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
+      val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
+      if (assertionNodes.nonEmpty) {
+        val newNode = SimpleAssertionNode(True, assumptionType, assertionNodes.head.sourceInfo, isClosed = false)
+        assertionNodes foreach (n => nodeMap.put(n.id, newNode.id))
+        mergedGraph.addNode(newNode)
+      }
+    }
+
+    assumptionGraph.getAllEdges foreach { case (source, targets) =>
+      val newSource = nodeMap(source)
+      mergedGraph.addEdges(newSource, targets.map(nodeMap(_)))
+    }
+
+    mergedGraph
+  }
 }
 
 class NoAssumptionAnalyzer extends AssumptionAnalyzer {
@@ -259,7 +297,5 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit = {}
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {}
 
-  override def finalizeGraph(): Unit = {}
-
-  override def convertToInterpreter(name: String): Option[AssumptionAnalysisInterpreter] = None
+  override def buildFinalGraph(): Option[AssumptionAnalysisGraph] = None
 }

@@ -154,10 +154,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       return
     }
 
-    val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
+    val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
+    val joinedAssumptionAnalysisInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedAssumptionAnalysisInterpreter
 
     new AnnotatedTest(program, assumptionAnalysisInterpreters).execute()
-    PruningTest(filePrefix + "/" + fileName, program, AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(Some(fileName), assumptionAnalysisInterpreters.toSet)).execute()
+    PruningTest(filePrefix + "/" + fileName, program, joinedAssumptionAnalysisInterpreter.get).execute()
   }
 
   def executePrecisionBenchmark(filePrefix: String,
@@ -173,10 +174,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
         println(f"Program does not verify. Skip.\n$result")
         return
       }
-      val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
+      val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
+      val fullGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedAssumptionAnalysisInterpreter
+      
       writer.println(s"$filePrefix - $fileName")
-      val fullGraphInterpreter = AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(Some(fileName), assumptionAnalysisInterpreters.toSet)
-      new PrecisionBenchmarkSoundnessTest(filePrefix + "/" + fileName, program, fullGraphInterpreter, writer).execute()
+      new PrecisionBenchmarkSoundnessTest(filePrefix + "/" + fileName, program, fullGraphInterpreter.get, writer).execute()
       new AnnotatedPrecisionBenchmark(program, assumptionAnalysisInterpreters, writer).execute()
       writer.println()
       println(s"Precision Benchmark for $filePrefix - $fileName done.")
@@ -207,7 +209,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       return
     }
 
-    val assumptionAnalysisInterpreters = frontend_.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreters
+    val assumptionAnalysisInterpreters = frontend_.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
 
     proofCoverageWriter.println(filePrefix + "/" + fileName)
     assumptionAnalysisInterpreters foreach (memberInterpreter => {

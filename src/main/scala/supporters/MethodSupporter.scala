@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, AssumptionAnalyzer, AssumptionType}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
@@ -118,8 +118,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                       Success()))}) }  )})})
 
 
-      v.decider.assumptionAnalyzer.finalizeGraph()
-      result.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.convertToInterpreter(method.name)
+      result.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(method.name, _, Some(method)))
 
       v.decider.resetProverOptions()
 

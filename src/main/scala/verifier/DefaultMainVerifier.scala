@@ -318,11 +318,10 @@ class DefaultMainVerifier(config: Config,
       val assumptionAnalysisInterpreters = verificationResults.filter(_.assumptionAnalysisInterpreter.isDefined).map(_.assumptionAnalysisInterpreter.get)
 
       assumptionAnalysisInterpreters foreach (_.exportGraph())
-      assumptionAnalysisInterpreters foreach (_.exportMergedGraph())
 
       val joinedGraphInterpreter = AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll(".vpr", "")), assumptionAnalysisInterpreters.toSet)
       if(Verifier.config.assumptionAnalysisExportPath.isDefined)
-        joinedGraphInterpreter.exportMergedGraph()
+        joinedGraphInterpreter.exportGraph()
 
       if(Verifier.config.startAssumptionAnalysisTool()){
         val commandLineTool = new AssumptionAnalysisUserTool(joinedGraphInterpreter, assumptionAnalysisInterpreters)
@@ -331,7 +330,8 @@ class DefaultMainVerifier(config: Config,
 
       reporter match {
         case analysisReporter: DependencyAnalysisReporter =>
-          analysisReporter.assumptionAnalysisInterpreters = assumptionAnalysisInterpreters
+          analysisReporter.assumptionAnalysisInterpretersPerMember = assumptionAnalysisInterpreters
+          analysisReporter.joinedAssumptionAnalysisInterpreter = Some(joinedGraphInterpreter)
         case _ =>
       }
 
