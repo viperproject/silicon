@@ -44,15 +44,15 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] =
     getNonInternalAssumptionNodes.filter(node => graph.getDirectEdges.get(node.id).exists(_.intersect(nodeIdsToAnalyze).nonEmpty))
 
-  def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] =
-    getNonInternalAssumptionNodes.filter(node => graph.existsAnyDependency(Set(node.id), nodeIdsToAnalyze))
+  def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] =
+    getNonInternalAssumptionNodes.filter(node => graph.existsAnyDependency(Set(node.id), nodeIdsToAnalyze, includeInfeasibilityNodes))
 
-  def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] =
-    getExplicitAssumptionNodes.filter(node => graph.existsAnyDependency(Set(node.id), nodeIdsToAnalyze))
+  def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] =
+    getExplicitAssumptionNodes.filter(node => graph.existsAnyDependency(Set(node.id), nodeIdsToAnalyze, includeInfeasibilityNodes))
 
 
-  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] =
-    getNonInternalAssertionNodes.filter(node => graph.existsAnyDependency(nodeIdsToAnalyze, Set(node.id)))
+  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] =
+    getNonInternalAssertionNodes.filter(node => graph.existsAnyDependency(nodeIdsToAnalyze, Set(node.id), includeInfeasibilityNodes))
 
 
   def getNonInternalAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
@@ -95,7 +95,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
       val nodeIds = nodes map (_.id)
       // it is not an explicit assertion itself and has no dependency to an explicit assertion
       nodeIds.intersect(assertionNodeIds).isEmpty &&
-        !graph.existsAnyDependency(nodeIds, assertionNodeIds)
+        !graph.existsAnyDependency(nodeIds, assertionNodeIds, includeInfeasibilityNodes=true)
     }).keys.toSeq
     val proofCoverage = 1.0 - (uncoveredSources.size.toDouble / nodesPerSourceInfo.size.toDouble)
     (proofCoverage, uncoveredSources)

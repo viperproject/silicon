@@ -232,12 +232,12 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
   override def buildFinalGraph(): Option[AssumptionAnalysisGraph] = {
     assumptionGraph.removeLabelNodes()
-    val mergedGraph = mergeNodesAndGetNewGraph()
+    val mergedGraph = buildAndGetMergedGraph()
     mergedGraph.addTransitiveEdges()
     Some(mergedGraph)
   }
 
-  private def mergeNodesAndGetNewGraph(): AssumptionAnalysisGraph = {
+  private def buildAndGetMergedGraph(): AssumptionAnalysisGraph = {
     def keepNode(n: AssumptionAnalysisNode): Boolean = n.isClosed || n.isInstanceOf[InfeasibilityNode]
 
     val mergedGraph = new AssumptionAnalysisGraph

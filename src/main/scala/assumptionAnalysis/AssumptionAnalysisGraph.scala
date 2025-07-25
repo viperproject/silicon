@@ -19,7 +19,7 @@ trait ReadOnlyAssumptionAnalysisGraph {
   def getTransitiveEdges: Map[Int, Set[Int]]
   def getAllEdges: Map[Int, Set[Int]]
 
-  def existsAnyDependency(sources: Set[Int], targets: Set[Int]): Boolean
+  def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean
 
   def exportGraph(dirName: String): Unit
 }
@@ -64,13 +64,14 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
     sources foreach (addEdges(_, targets))
   }
 
-  def existsAnyDependency(sources: Set[Int], targets: Set[Int]): Boolean = {
+  def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean = {
+    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = sources
     var queue: List[Int] = sources.toList
     val allEdges = getAllEdges
     while(queue.nonEmpty){
       val curr = queue.head
-      val newVisits = allEdges.getOrElse(curr, Set())
+      val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
       if(newVisits.intersect(targets).nonEmpty)
         return true
       visited = visited ++ Set(curr)
