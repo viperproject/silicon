@@ -1,12 +1,11 @@
 package viper.silicon.assumptionAnalysis
 
-import viper.silicon.state.terms.True
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
-import scala.collection.mutable
-
 object AssumptionAnalysisInterpreter {
+  private val postconditionTypes = Set(AssumptionType.ExplicitPostcondition, AssumptionType.ImplicitPostcondition)
+
   def joinGraphsAndGetInterpreter(name: Option[String], assumptionAnalysisInterpreters: Set[AssumptionAnalysisInterpreter]): AssumptionAnalysisInterpreter = {
     val newGraph = new AssumptionAnalysisGraph
 
@@ -16,7 +15,7 @@ object AssumptionAnalysisInterpreter {
     val types = Set(AssumptionType.Implicit, AssumptionType.Explicit)
     val relevantAssumptionNodes = newGraph.nodes filter (node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
 
-    newGraph.nodes filter (node => node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition)) foreach {node => // TODO ake: check if this also works for functions
+    newGraph.nodes filter (node => node.isInstanceOf[GeneralAssertionNode] && postconditionTypes.contains(node.assumptionType)) foreach { node => // TODO ake: check if this also works for functions
       val nodeSourceInfoString = node.sourceInfo.getTopLevelSource.toString
       val assumptionNodesForJoin = relevantAssumptionNodes filter (aNode => aNode.sourceInfo.getFineGrainedSource.toString.equals(nodeSourceInfoString))
       newGraph.addEdges(node.id, assumptionNodesForJoin map (_.id))
@@ -27,6 +26,10 @@ object AssumptionAnalysisInterpreter {
 }
 
 class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnalysisGraph, member: Option[ast.Member]=None) {
+  protected val explicitAssumptionTypes = Set(AssumptionType.Explicit, AssumptionType.ExplicitPostcondition)
+  protected val postconditionTypes = Set(AssumptionType.ExplicitPostcondition, AssumptionType.ImplicitPostcondition)
+  protected val explicitAssertionTypes = Set(AssumptionType.Explicit) ++ postconditionTypes
+
   private def getGraph: ReadOnlyAssumptionAnalysisGraph = graph
   def getName: String = name
   def getMember: Option[ast.Member] = member
@@ -54,11 +57,12 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
   def getNonInternalAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
-      (node.isInstanceOf[GeneralAssertionNode] && node.assumptionType.equals(AssumptionType.Postcondition))
+       (node.isInstanceOf[GeneralAssertionNode] && postconditionTypes.contains(node.assumptionType))
     )
 
   def getExplicitAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
-    node.assumptionType.equals(AssumptionType.Explicit) || node.assumptionType.equals(AssumptionType.Postcondition))
+    explicitAssumptionTypes.contains(node.assumptionType)
+    )
 
   private def getNonInternalAssumptionNodesPerSource: Map[String, Set[AssumptionAnalysisNode]] =
     getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
@@ -69,8 +73,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     )
 
   def getExplicitAssertionNodes: Set[AssumptionAnalysisNode] =
-    getNonInternalAssertionNodes.filter(node =>
-      node.assumptionType.equals(AssumptionType.Postcondition) || node.assumptionType.equals(AssumptionType.Explicit))
+    getNonInternalAssertionNodes.filter(node => explicitAssertionTypes.contains(node.assumptionType))
 
 
   def exportGraph(): Unit = {

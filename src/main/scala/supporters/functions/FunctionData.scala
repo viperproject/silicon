@@ -7,7 +7,8 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
@@ -85,15 +86,15 @@ class FunctionData(val programFunction: ast.Function,
   val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
   val preconditionFunctionApplication = App(preconditionFunction, `?s` +: formalArgs.values.toSeq)
 
-  val limitedAxiom: (Quantification, Option[StringAnalysisSourceInfo]) =
+  val limitedAxiom: (Quantification, Option[(StringAnalysisSourceInfo, AssumptionType)]) =
     (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication)),
-      Option.when(isAnalysisEnabled)(StringAnalysisSourceInfo("Limited Axiom", programFunction.pos)))
+      Option.when(isAnalysisEnabled)((StringAnalysisSourceInfo("Limited Axiom", programFunction.pos), AssumptionType.Internal)))
 
-  val triggerAxiom: (Quantification, Option[StringAnalysisSourceInfo]) =
+  val triggerAxiom: (Quantification, Option[(StringAnalysisSourceInfo, AssumptionType)]) =
     (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
-      Option.when(isAnalysisEnabled)(StringAnalysisSourceInfo("Trigger Axiom", programFunction.pos)))
+      Option.when(isAnalysisEnabled)((StringAnalysisSourceInfo("Trigger Axiom", programFunction.pos), AssumptionType.Trigger)))
 
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
@@ -206,7 +207,7 @@ class FunctionData(val programFunction: ast.Function,
     }
   }
 
-  lazy val postAxiom: Seq[(Term, Option[AnalysisSourceInfo])] = {
+  lazy val postAxiom: Seq[(Term, Option[(AnalysisSourceInfo, AssumptionType)])] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
 
     if (programFunction.posts.nonEmpty) {
@@ -216,14 +217,15 @@ class FunctionData(val programFunction: ast.Function,
       def wrapBody(body: Term): Term = Let(toMap(bodyBindings), body)
 
       if(Verifier.config.enableAssumptionAnalysis()){
-        (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), Option.empty[AnalysisSourceInfo]) +:
+        val assumptionType = if(programFunction.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition
+        (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), Option.empty[(AnalysisSourceInfo, AssumptionType)]) +:
           programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>
             val terms = expressionTranslator.translatePostcondition(program, Seq(p), this)
-            (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True), Some(ExpAnalysisSourceInfo(p)))
+            (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True), Some((ExpAnalysisSourceInfo(p), assumptionType)))
           })
       }else{
         val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
-        Seq((Forall(arguments, wrapBody(innermostBody), Trigger(limitedFunctionApplication)), Option.empty[AnalysisSourceInfo]))
+        Seq((Forall(arguments, wrapBody(innermostBody), Trigger(limitedFunctionApplication)), None))
       }
     } else
       Seq.empty
@@ -280,7 +282,7 @@ class FunctionData(val programFunction: ast.Function,
     expressionTranslator.translate(program, programFunction, this)
   }
 
-  lazy val definitionalAxiom: Option[(Term, Option[AnalysisSourceInfo])] = {
+  lazy val definitionalAxiom: Option[(Term, Option[(AnalysisSourceInfo, AssumptionType)])] = {
     assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
 
     optBody.map(translatedBody => {
@@ -295,27 +297,28 @@ class FunctionData(val programFunction: ast.Function,
       val allTriggers = (
            Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
-      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)(StringAnalysisSourceInfo("definitionalAxiom", programFunction.pos)))
+      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((ExpAnalysisSourceInfo(programFunction.body.get), AssumptionType.Implicit)))
     })
   }
 
-  lazy val bodyPreconditionPropagationAxiom: Seq[(Term, Option[AnalysisSourceInfo])] = {
+  lazy val bodyPreconditionPropagationAxiom: Seq[(Term, Option[(AnalysisSourceInfo, AssumptionType)])] = {
     val pre = preconditionFunctionApplication
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
       (Forall(arguments, body, Seq(Trigger(functionApplication))),
-        Option.when(isAnalysisEnabled)(StringAnalysisSourceInfo("bodyPreconditionPropagationAxiom", programFunction.pos)))
+        Option.when(isAnalysisEnabled)((StringAnalysisSourceInfo("bodyPreconditionPropagationAxiom", programFunction.pos), AssumptionType.Implicit)))
     }) else None
     bodyPreconditions.toSeq
   }
 
-  lazy val postPreconditionPropagationAxiom: Seq[(Term, Option[AnalysisSourceInfo])] = {
+  lazy val postPreconditionPropagationAxiom: Seq[(Term, Option[(AnalysisSourceInfo, AssumptionType)])] = {
     val pre = preconditionFunctionApplication
     val postPreconditions = if (programFunction.posts.nonEmpty) {
+      val assumptionType = if(programFunction.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
       bodies.map(b => (Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))),
-        Option.when(isAnalysisEnabled)(StringAnalysisSourceInfo("postPreconditionPropagationAxiom", programFunction.pos))))
+        Option.when(isAnalysisEnabled)((StringAnalysisSourceInfo("postPreconditionPropagationAxiom", programFunction.pos), assumptionType))))
     } else Seq()
     postPreconditions
   }

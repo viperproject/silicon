@@ -39,13 +39,14 @@ trait ProverLike {
     terms foreach assume
   }
 
-  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])], description: String, assumptionType: AssumptionType=AssumptionType.Explicit): Unit = {
+  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, Option[(AnalysisSourceInfo, AssumptionType)])], description: String): Unit = {
     if (debugMode)
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
 
     if(Verifier.config.enableAssumptionAnalysis()){
       axioms.foreach(axiom => {
-        val id = if(axiom._2.isDefined) preambleAssumptionAnalyzer.addAssumption(axiom._1, axiom._2.get, assumptionType) else None
+        val axiomInfo = axiom._2
+        val id = if(axiomInfo.isDefined) preambleAssumptionAnalyzer.addAssumption(axiom._1, axiomInfo.get._1, axiomInfo.get._2) else None
         assume(axiom._1, AssumptionAnalyzer.createAxiomLabel(id))
       })
     } else{

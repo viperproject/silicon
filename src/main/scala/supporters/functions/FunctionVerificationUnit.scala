@@ -53,9 +53,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
-    private var emittedFunctionAxioms: Vector[(Term, Option[AnalysisSourceInfo])] = Vector.empty
+    private var emittedFunctionAxioms: Vector[(Term, Option[(AnalysisSourceInfo, AssumptionType)])] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
-    private var postConditionAxioms: Vector[(Term, Option[AnalysisSourceInfo])] = Vector.empty
+    private var postConditionAxioms: Vector[(Term, Option[(AnalysisSourceInfo, AssumptionType)])] = Vector.empty
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
@@ -168,7 +168,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function)
-      val assumptionType = if(function.body.isDefined) AssumptionType.Implicit else AssumptionType.Explicit
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data),
         conservingSnapshotGeneration = true,
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
@@ -181,10 +180,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           result1
 
         case (result1, phase1data) =>
-          emitAndRecordFunctionAxioms(assumptionType, data.limitedAxiom)
-          emitAndRecordFunctionAxioms(assumptionType, data.triggerAxiom)
-          emitAndRecordFunctionAxioms(assumptionType, data.postAxiom: _*)
-          emitAndRecordFunctionAxioms(assumptionType, data.postPreconditionPropagationAxiom: _*)
+          emitAndRecordFunctionAxioms(data.limitedAxiom)
+          emitAndRecordFunctionAxioms(data.triggerAxiom)
+          emitAndRecordFunctionAxioms(data.postAxiom: _*)
+          emitAndRecordFunctionAxioms(data.postPreconditionPropagationAxiom: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom
 
           if (function.body.isEmpty) {
@@ -197,8 +196,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               case fatalResult: FatalResult =>
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
-                emitAndRecordFunctionAxioms(assumptionType, data.definitionalAxiom.toSeq: _*)
-                emitAndRecordFunctionAxioms(assumptionType, data.bodyPreconditionPropagationAxiom: _*)
+                emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
+                emitAndRecordFunctionAxioms(data.bodyPreconditionPropagationAxiom: _*)
             }
 
             result1 && result2
@@ -258,6 +257,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
       val annotatedAssumptionTypeOpt = AssumptionAnalyzer.extractAssumptionTypeFromInfo(function.info)
+      val postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(function.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
       decider.assumptionAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
@@ -278,7 +278,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               decider.analysisSourceInfoStack.setForcedSource(ExpAnalysisSourceInfo(body))
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.Implicit)
               decider.analysisSourceInfoStack.removeForcedSource()
-              consumes(s2, posts, false, postconditionViolated, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Postcondition))((s3, _, _) => {
+              consumes(s2, posts, false, postconditionViolated, v, postConditionType)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 
@@ -287,8 +287,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(assumptionType: AssumptionType, axiom: (Term, Option[AnalysisSourceInfo])*): Unit = {
-      decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(axiom), "Function axioms", assumptionType)
+    private def emitAndRecordFunctionAxioms(axiom: (Term, Option[(AnalysisSourceInfo, AssumptionType)])*): Unit = {
+      decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(axiom), "Function axioms")
       emittedFunctionAxioms = emittedFunctionAxioms ++ axiom // FIXME ake: propagate assumption type
     }
 

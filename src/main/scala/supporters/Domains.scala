@@ -6,7 +6,8 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, ExpAnalysisSourceInfo}
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
 import viper.silicon.interfaces.PreambleContributor
@@ -28,7 +29,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
-  private var collectedAxioms = InsertionOrderedSet[(Term, Option[AnalysisSourceInfo])]()
+  private var collectedAxioms = InsertionOrderedSet[(Term, Option[(AnalysisSourceInfo, AssumptionType)])]()
   private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
@@ -105,7 +106,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
         val enableAnalysis = AssumptionAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
-        collectedAxioms = collectedAxioms.incl(terms.And(tAxPres, tAx), Option.when(enableAnalysis)(ExpAnalysisSourceInfo(axiom.exp)))
+        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), Option.when(enableAnalysis)((ExpAnalysisSourceInfo(axiom.exp), AssumptionType.Explicit))))
       })
     })
   }
