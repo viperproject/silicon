@@ -176,7 +176,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       }
       val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
       val fullGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedAssumptionAnalysisInterpreter
-      
+
       writer.println(s"$filePrefix - $fileName")
       new PrecisionBenchmarkSoundnessTest(filePrefix + "/" + fileName, program, fullGraphInterpreter.get, writer).execute()
       new AnnotatedPrecisionBenchmark(program, assumptionAnalysisInterpreters, writer).execute()
@@ -279,7 +279,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
             crucialNodeSourceInfos exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(a.exp.pos)) ||
               n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(a.pos))))
           ast.Domain(name, functions, newAxioms, typVars, interpretations)(domain.pos, domain.info, domain.errT)
-
+        case function@ast.Function(name, formalArgs, typ, pres, posts, body) =>
+          val newPres = pres filter (isCrucialExp(_, crucialNodeSourceInfos))
+          val newPosts = posts filter (isCrucialExp(_, crucialNodeSourceInfos))
+          val newBody = body filter (isCrucialExp(_, crucialNodeSourceInfos))
+          ast.Function(name, formalArgs, typ, newPres, newPosts, newBody)(function.pos, function.info, function.errT)
         case meth@ast.Method(name, inVars, outVars, pres, posts, body) =>
           val newPres = pres filter (isCrucialExp(_, crucialNodeSourceInfos))
           val newPosts = posts filter (isCrucialExp(_, crucialNodeSourceInfos))
