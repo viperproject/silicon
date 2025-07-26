@@ -672,11 +672,24 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )(exhaleModeConverter)
 
+  val exhaleModeOptionQP: ScallopOption[ExhaleMode] = opt[ExhaleMode]("exhaleModeQP",
+    descr = "Exhale mode for quantified permissions. Options are 0 (greedy, default), 1 (more complete exhale), 2 (more complete exhale on demand).",
+    default = None,
+    noshort = true
+  )(exhaleModeConverter)
+
   lazy val exhaleMode: ExhaleMode = {
     if (exhaleModeOption.isDefined)
       exhaleModeOption()
     else if (moreCompleteExhale())
       ExhaleMode.MoreComplete
+    else
+      ExhaleMode.Greedy
+  }
+
+  lazy val exhaleModeQP: ExhaleMode = {
+    if (exhaleModeOptionQP.isDefined)
+      exhaleModeOptionQP()
     else
       ExhaleMode.Greedy
   }

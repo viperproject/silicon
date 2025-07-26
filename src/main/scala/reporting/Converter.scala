@@ -345,10 +345,10 @@ object Converter {
   def extractHeap(h: Iterable[Chunk], model: Model): ExtractedHeap = {
     var entries: Vector[HeapEntry] = Vector()
     h foreach {
-      case c @ BasicChunk(FieldID, _, _, _, _, _, _, _) =>
+      case c @ BasicChunk(FieldID, _, _, _, _, _, _, _, _) =>
         val entry = extractField(c, model)
         entries = entries :+ entry
-      case c @ BasicChunk(PredicateID, _, _, _, _, _, _, _) =>
+      case c @ BasicChunk(PredicateID, _, _, _, _, _, _, _, _) =>
         val entry = extractPredicate(c, model)
         entries = entries :+ entry
       case c: BasicChunk =>

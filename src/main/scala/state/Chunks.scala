@@ -78,13 +78,14 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
  */
 case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 fvf: Term,
+                                orgCondition: Term,
                                 condition: Term,
                                 conditionExp: Option[ast.Exp],
                                 permValue: Term,
                                 permValueExp: Option[ast.Exp],
                                 invs: Option[InverseFunctions],
                                 singletonRcvr: Option[Seq[Term]],
-                                singletonRcvrExp: Option[ast.Exp],
+                                singletonRcvrExp: Option[Seq[ast.Exp]],
                                 tag: Option[Int],
                                 hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
@@ -100,9 +101,9 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
   override val quantifiedVarExps = if (Verifier.config.enableDebugging()) Some(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())) else None
 
   override def snapshotMap: Term = fvf
-  override def singletonArguments: Option[Seq[Term]] = singletonRcvr.map(Seq(_))
+  override def singletonArguments: Option[Seq[Term]] = singletonRcvr
 
-  override def singletonArgumentExps: Option[Seq[ast.Exp]] = singletonRcvrExp.map(Seq(_))
+  override def singletonArgumentExps: Option[Seq[ast.Exp]] = singletonRcvrExp
 
   def valueAt(rcvr: Term): Term = Lookup(id.name, fvf, rcvr)
 

@@ -330,6 +330,11 @@ class DefaultMainVerifier(config: Config,
         false
       case None => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
+    val mceQP = AnnotationSupporter.getExhaleModeQP(member, reporter) match {
+      case Some(ExhaleMode.MoreComplete) => true
+      case Some(ExhaleMode.Greedy) | Some(ExhaleMode.MoreCompleteOnDemand) => false
+      case None => Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete
+    }
     val moreJoinsAnnotated = AnnotationSupporter.getJoinMode(member, reporter)
     val moreJoins = if (member.isInstanceOf[ast.Method]) {
       moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(JoinMode.Off))
@@ -380,6 +385,7 @@ class DefaultMainVerifier(config: Config,
           currentMember = Some(member),
           heapDependentTriggers = resourceTriggers,
           moreCompleteExhale = mce,
+          moreCompleteExhaleQP = mceQP,
           moreJoins = moreJoins)
   }
 
@@ -402,6 +408,7 @@ class DefaultMainVerifier(config: Config,
       predicateSnapMap = predSnapGenerator.snapMap,
       predicateFormalVarMap = predSnapGenerator.formalVarMap,
       moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete,
+      moreCompleteExhaleQP = Verifier.config.exhaleModeQP == ExhaleMode.MoreComplete,
       moreJoins = Verifier.config.moreJoins())
   }
 

@@ -16,6 +16,7 @@ import viper.silver.reporter.{AnnotationWarning, Reporter}
 object AnnotationSupporter {
   val proverConfigAnnotation = "proverConfigArgs"
   val exhaleModeAnnotation = "exhaleMode"
+  val exhaleModeAnnotationQP = "exhaleModeQP"
   val joinModeAnnotation = "moreJoins"
   val stateConsolidationModeAnnotation = "stateConsolidationMode"
 
@@ -49,6 +50,23 @@ object AnnotationSupporter {
             Some(ExhaleMode.MoreCompleteOnDemand)
           case v =>
             reporter report AnnotationWarning(s"Member ${member.name} has invalid ${exhaleModeAnnotation} annotation value $v. Annotation will be ignored.")
+            None
+        }
+      case _ => None
+    }
+  }
+
+  def getExhaleModeQP(member: ast.Member, reporter: Reporter): Option[ExhaleMode] = {
+    member.info.getUniqueInfo[ast.AnnotationInfo] match {
+      case Some(ai) if ai.values.contains(exhaleModeAnnotationQP) =>
+        ai.values(exhaleModeAnnotationQP) match {
+          case Seq("0") | Seq("greedy") =>
+            Some(ExhaleMode.Greedy)
+          case Seq("1") | Seq("mce") | Seq("moreCompleteExhale") => Some(ExhaleMode.MoreComplete)
+          case Seq("2") | Seq("mceOnDemand") =>
+            Some(ExhaleMode.MoreCompleteOnDemand)
+          case v =>
+            reporter report AnnotationWarning(s"Member ${member.name} has invalid ${exhaleModeAnnotationQP} annotation value $v. Annotation will be ignored.")
             None
         }
       case _ => None

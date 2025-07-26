@@ -24,7 +24,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
   // TODO: simplify once singleton quantified chunks are not used anymore
   private val nonQuantifiedChunks = heap.flatMap {
     case c: NonQuantifiedChunk => Some(c)
-    case c: QuantifiedBasicChunk if c.singletonArguments.length == 1 => Some(c)
+    case c: QuantifiedBasicChunk if c.singletonArguments.getOrElse(Seq()).length == 1 => Some(c)
     case _ => None
   }
 
@@ -42,7 +42,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
 
   // TODO: remove once singleton quantified chunks are not used anymore
   def buildPathConditionForChunk(chunk: QuantifiedBasicChunk, property: Property): (Term, Option[ast.Exp]) = {
-    require(chunk.singletonArguments.length == 1)
+    require(chunk.singletonArguments.getOrElse(Seq()).length == 1)
     val info = Info(Map(This() -> chunk), chunk.resourceID)
     buildPathCondition(property.expression, info)
   }

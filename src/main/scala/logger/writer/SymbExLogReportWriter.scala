@@ -52,7 +52,7 @@ object SymbExLogReportWriter {
       )
 
     // TODO: Are ID and bindings needed?
-    case MagicWandChunk(_, _, args, _, snap, _, perm, _, tag) =>
+    case MagicWandChunk(_, _, args, _, snap, perm, _, tag) =>
       JsObject(
         "type" -> JsString("basic_magic_wand_chunk"),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
@@ -61,7 +61,7 @@ object SymbExLogReportWriter {
         "tag" -> JsString(tag.toString)
       )
 
-    case QuantifiedFieldChunk(id, fvf, _, condition, _, perm, _, invs, receivers, _, tag, srcvr, hints) =>
+    case QuantifiedFieldChunk(id, fvf, _, condition, _, perm, _, invs, receivers, _, tag, hints) =>
       JsObject(
         "type" -> JsString("quantified_field_chunk"),
         "field" -> JsString(id.toString),
@@ -74,7 +74,7 @@ object SymbExLogReportWriter {
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedPredicateChunk(id, vars, _, psf, _,condition, _, perm, _, invs, singletonArgs, _, tag, srcvr, hints) =>
+    case QuantifiedPredicateChunk(id, vars, _, psf, _,condition, _, perm, _, invs, singletonArgs, _, tag, hints) =>
       JsObject(
         "type" -> JsString("quantified_predicate_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),
@@ -88,7 +88,7 @@ object SymbExLogReportWriter {
         "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
-    case QuantifiedMagicWandChunk(id, vars, _, wsf, _, perm, _, invs, singletonArgs, _, tag, srcvr, hints) =>
+    case QuantifiedMagicWandChunk(id, vars, _, wsf, _, perm, _, invs, singletonArgs, _, tag, hints) =>
       JsObject(
         "type" -> JsString("quantified_magic_wand_chunk"),
         "vars" -> JsArray(vars.map(TermWriter.toJSON).toVector),

@@ -217,12 +217,12 @@ object evaluator extends EvaluationRules {
           lookupFunction((s2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(functionRecorder = fr)
-            val debugOldLabel = v2.getDebugOldLabel(s3)
+            val (debugHeapName, debugLabel) = v2.getDebugOldLabel(s3, fa.pos)
             val newFa = Option.when(withExp)({
               if (s3.isEvalInOld) ast.FieldAccess(eArgs.get.head, fa.field)(e.pos, e.info, e.errT)
-              else ast.DebugLabelledOld(ast.FieldAccess(eArgs.get.head, fa.field)(), debugOldLabel)(e.pos, e.info, e.errT)
+              else ast.DebugLabelledOld(ast.FieldAccess(eArgs.get.head, fa.field)(), debugLabel)(e.pos, e.info, e.errT)
             })
-            val s4 = if (Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugOldLabel -> magicWandSupporter.getEvalHeap(s3))) else s3
+            val s4 = if (Verifier.config.enableDebugging() && !s3.isEvalInOld) s3.copy(oldHeaps = s3.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s3))) else s3
             Q(s4, tSnap, newFa, v1)
           })
         })
