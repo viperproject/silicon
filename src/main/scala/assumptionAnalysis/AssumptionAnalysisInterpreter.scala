@@ -3,6 +3,8 @@ package viper.silicon.assumptionAnalysis
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
+import java.io.File
+
 object AssumptionAnalysisInterpreter {
   private val postconditionTypes = Set(AssumptionType.ExplicitPostcondition, AssumptionType.ImplicitPostcondition)
 
@@ -84,6 +86,8 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
   def exportGraph(): Unit = {
     if(Verifier.config.assumptionAnalysisExportPath.isEmpty) return
+    val directory = new File(Verifier.config.assumptionAnalysisExportPath())
+    directory.mkdir()
     graph.exportGraph(Verifier.config.assumptionAnalysisExportPath() + "/" + name)
   }
 
