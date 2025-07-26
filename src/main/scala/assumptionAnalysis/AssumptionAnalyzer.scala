@@ -93,6 +93,29 @@ object AssumptionAnalyzer {
   def isAssumptionLabel(label: String): Boolean = label.startsWith("assumption_")
 
   def isAxiomLabel(label: String): Boolean = label.startsWith("axiom_")
+
+  def joinGraphsAndGetInterpreter(name: Option[String], assumptionAnalysisInterpreters: Set[AssumptionAnalysisInterpreter]): AssumptionAnalysisInterpreter = {
+    val newGraph = new AssumptionAnalysisGraph
+
+    assumptionAnalysisInterpreters foreach (interpreter => newGraph.addNodes(interpreter.getGraph.getNodes))
+    assumptionAnalysisInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (s, t) => newGraph.addEdges(s, t)})
+
+    // add edges between identical axioms since they were added to each interpreter // TODO ake: merge instead?
+    newGraph.getNodes.filter(_.isInstanceOf[AxiomAssumptionNode]).groupBy(n => (n.sourceInfo.toString, n.assumptionType)).foreach{case (_, nodes) =>
+      newGraph.addEdges(nodes.map(_.id), nodes.map(_.id))
+    }
+
+    val types = Set(AssumptionType.Implicit, AssumptionType.Explicit)
+    val relevantAssumptionNodes = newGraph.nodes filter (node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
+
+    newGraph.nodes filter (node => AssumptionType.postconditionTypes.contains(node.assumptionType)) foreach { node =>
+      val nodeSourceInfoString = node.sourceInfo.getTopLevelSource.toString
+      val assumptionNodesForJoin = relevantAssumptionNodes filter (aNode => aNode.sourceInfo.getFineGrainedSource.toString.equals(nodeSourceInfoString))
+      newGraph.addEdges(node.id, assumptionNodesForJoin map (_.id))
+    }
+
+    new AssumptionAnalysisInterpreter(name.getOrElse("joined"), newGraph)
+  }
 }
 
 class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {

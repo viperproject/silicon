@@ -5,20 +5,19 @@ object AssumptionType extends Enumeration {
   val Explicit, LoopInvariant, PathCondition, Rewrite, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition = Value
 
   def fromString(s: String): Option[Value] = values.find(_.toString == s)
-}
-object AssertionType extends Enumeration {
-  type AssertionType = Value
-  val Explicit, Implicit = Value
 
-  def fromString(s: String): Option[Value] = values.find(_.toString == s)
+  def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition)
+  def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition) // used to join graphs via postconditions
+  def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit) ++ postconditionTypes
+  def internalTypes: Set[AssumptionType] = Set(Internal) // will always be hidden from user
 }
+
 import viper.silicon.assumptionAnalysis.AssumptionType._
-import viper.silicon.assumptionAnalysis.AssertionType._
 import viper.silicon.decider.Decider
 
 
 case class AnalysisInfo(decider: Decider, assumptionAnalyzer: AssumptionAnalyzer, sourceInfo: AnalysisSourceInfo,
-                        assumptionType: AssumptionType, assertionType: AssertionType=AssertionType.Implicit) {
+                        assumptionType: AssumptionType) {
   def withAssumptionType(newAssumptionType: AssumptionType): AnalysisInfo = {
     copy(assumptionType=newAssumptionType)
   }

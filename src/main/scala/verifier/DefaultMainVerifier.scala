@@ -9,7 +9,7 @@ package viper.silicon.verifier
 import silicon.viper.assumptionAnalysis.AssumptionAnalysisUserTool
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 import viper.silicon._
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, DependencyAnalysisReporter}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, DependencyAnalysisReporter}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
@@ -319,7 +319,7 @@ class DefaultMainVerifier(config: Config,
 
       assumptionAnalysisInterpreters foreach (_.exportGraph())
 
-      val joinedGraphInterpreter = AssumptionAnalysisInterpreter.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll(".vpr", "")), assumptionAnalysisInterpreters.toSet)
+      val joinedGraphInterpreter = AssumptionAnalyzer.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll(".vpr", "")), assumptionAnalysisInterpreters.toSet)
       if(Verifier.config.assumptionAnalysisExportPath.isDefined)
         joinedGraphInterpreter.exportGraph()
 
