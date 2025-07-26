@@ -904,6 +904,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateOpt(rawProverArgs, enableAssumptionAnalysis) {
+    case (_, Some(false)) => Right(())
+    case (Some(args), Some(true)) if args.contains("proof=true") && args.contains("unsat-core=true") => Right(())
+    case (_, _) =>
+      Left(s"Option ${enableAssumptionAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
+  }
+
   validateOpt(assumptionAnalysisExportPath, enableAssumptionAnalysis) {
     case (None, _) => Right(())
     case (Some(_), Some(true)) => Right(())
@@ -914,7 +921,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   validateOpt(startAssumptionAnalysisTool, enableAssumptionAnalysis) {
     case (Some(false), _) => Right(())
     case (_, Some(true)) => Right(())
-    case (Some(true), Some(false)) =>
+    case (_, _) =>
       Left(s"Option ${startAssumptionAnalysisTool.name} requires option ${enableAssumptionAnalysis.name}")
   }
 
