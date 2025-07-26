@@ -74,12 +74,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   if(EXECUTE_TEST)
     testDirectories foreach (dir => visitFiles(dir, createSingleTest))
-
-  analysisCommandLineArguments = Seq("--enableMoreCompleteExhale") ++ analysisCommandLineArguments
-  if(EXECUTE_TEST)
+    analysisCommandLineArguments = Seq("--enableMoreCompleteExhale") ++ analysisCommandLineArguments
     visitFiles("dependencyAnalysisTests/mce", createSingleTest)
-
-
 
 
   def visitFiles(dirName: String, function: (String, String) => Unit): Unit = {
@@ -364,11 +360,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
       var errorMsgs = stmtsWithAssumptionAnnotation.map(checkAssumptionNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
       errorMsgs ++= assumptionAnalysisInterpreters flatMap checkTestAssertionNodeExists
-      errorMsgs ++= assumptionAnalysisInterpreters flatMap checkDependencies
-      val warnMsgs = assumptionAnalysisInterpreters flatMap checkNonDependencies
-      if (CHECK_PRECISION)
-        errorMsgs ++= warnMsgs
-      else if (warnMsgs.nonEmpty) println(warnMsgs.mkString("\n")) // TODO ake: should be a warning
+      errorMsgs ++= assumptionAnalysisInterpreters flatMap checkAllDependencies
+      errorMsgs ++= assumptionAnalysisInterpreters flatMap checkExplicitDependencies
 
       val check = errorMsgs.isEmpty
       assert(check, "\n" + errorMsgs.mkString("\n"))
@@ -418,31 +411,43 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
 
 
-    protected def checkDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
-      val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
-      val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
+    protected def checkAllDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
       val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
+      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))map(_.id)
 
-      val dependenciesTmp = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))
-      val dependencies = dependenciesTmp.map(_.id)
+      val relevantAssumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+      val resRelevant: Seq[String] = checkDependenciesAndGetErrorMsgs(relevantAssumptionNodes, dependencies, isDependencyExpected = true, "Missing dependency")
 
-      assumptionsPerSource.map({ case (_, assumptions) =>
-        val hasDependency = dependencies.intersect(assumptions.map(_.id)).nonEmpty
-        Option.when(!hasDependency)(s"Missing dependency: ${assumptions.head.sourceInfo.toString}")
-      }).filter(_.isDefined).map(_.get).toSeq
+      val resIrrelevant = if(CHECK_PRECISION){
+        val irrelevantNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+        checkDependenciesAndGetErrorMsgs(irrelevantNodes, dependencies, isDependencyExpected = false, "Unexpected dependency")
+      } else Seq.empty
+
+      resRelevant ++ resIrrelevant
     }
 
-    protected def checkNonDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
-      val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
-      val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
+    protected def checkExplicitDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
       val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
+      val dependencies = assumptionAnalysisInterpreter.getAllExplicitDependencies(assertionNodes.map(_.id)).map(_.id)
 
-      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)).map(_.id)
+      val allTestAssumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
 
-      assumptionsPerSource.map({ case (_, assumptions) =>
+      val relevantAssumptionNodes = allTestAssumptionNodes.filter(_.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Explicit\")"))
+      val resRelevant: Seq[String] = checkDependenciesAndGetErrorMsgs(relevantAssumptionNodes, dependencies, isDependencyExpected = true, "Missing explicit dependency")
+
+      val irrelevantNodes = allTestAssumptionNodes.filterNot(_.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Explicit\")"))
+      val resIrrelevant = checkDependenciesAndGetErrorMsgs(irrelevantNodes, dependencies, isDependencyExpected = false, "Unexpected explicit dependency")
+
+      resRelevant ++ resIrrelevant
+    }
+
+    protected def checkDependenciesAndGetErrorMsgs(relevantAssumptionNodes: Set[AssumptionAnalysisNode], dependencies: Set[Int], isDependencyExpected: Boolean, errorMsg: String): Seq[String] = {
+      val relevantAssumptionsPerSource = relevantAssumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
+      val resRelevant = relevantAssumptionsPerSource.map({ case (_, assumptions) =>
         val hasDependency = dependencies.intersect(assumptions.map(_.id)).nonEmpty
-        Option.when(hasDependency)(s"Unexpected dependency: ${assumptions.head.sourceInfo.toString}")
+        Option.when(!(isDependencyExpected == hasDependency))(s"$errorMsg: ${assumptions.head.sourceInfo.toString}")
       }).filter(_.isDefined).map(_.get).toSeq
+      resRelevant
     }
 
     protected def getTestAssertionNodes(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] =
@@ -515,7 +520,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
   }
 
-  class PerformanceBenchmark(name: String, program: Program, naiveProgram: Option[Program], writer: PrintWriter, programSize: Int) {
+  class PerformanceBenchmark(name: String, program: Program, @unused naiveProgram: Option[Program], writer: PrintWriter, programSize: Int) {
 
     private def printResult(str: String): Unit = {
       writer.print(str)
@@ -530,13 +535,14 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
       printResult(f"$baselineDurationMs;\t$analysisDurationMs;\t${analysisDurationMs/baselineDurationMs};\t$programSize\n")
 
-      if(naiveProgram.isDefined){
-        val naiveDurationMs: Double = verifyAndMeasure(naiveProgram.get, baseCommandLineArguments)
-        writer.println(f"naive duration (ms): $naiveDurationMs") // TODO ake
-        writer.println(f"diff naive-baseline (ms): ${naiveDurationMs-baselineDurationMs}")
-        writer.println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
-        println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
-      }
+      // TODO ake: rewrite if we want to support this
+//      if(naiveProgram.isDefined){
+//        val naiveDurationMs: Double = verifyAndMeasure(naiveProgram.get, baseCommandLineArguments)
+//        writer.println(f"naive duration (ms): $naiveDurationMs")
+//        writer.println(f"diff naive-baseline (ms): ${naiveDurationMs-baselineDurationMs}")
+//        writer.println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
+//        println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
+//      }
 
     }
 

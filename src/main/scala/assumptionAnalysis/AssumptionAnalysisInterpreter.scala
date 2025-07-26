@@ -63,8 +63,8 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
 
   def getNonInternalAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
-      (node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
-       postconditionTypes.contains(node.assumptionType)
+      (node.isInstanceOf[GeneralAssumptionNode] && !node.assumptionType.equals(AssumptionType.Internal))
+        || postconditionTypes.contains(node.assumptionType) // postconditions act as assumptions for callers
     )
 
   def getExplicitAssumptionNodes: Set[AssumptionAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
@@ -76,8 +76,8 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
 
   def getNonInternalAssertionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
-    (node.isInstanceOf[GeneralAssertionNode] && !node.assumptionType.equals(AssumptionType.Internal)) ||
-      postconditionTypes.contains(node.assumptionType)
+    (node.isInstanceOf[GeneralAssertionNode] && !node.assumptionType.equals(AssumptionType.Internal))
+      || postconditionTypes.contains(node.assumptionType)
     )
 
   def getExplicitAssertionNodes: Set[AssumptionAnalysisNode] =
