@@ -39,9 +39,9 @@ def extract_vars(line: str):
   for decl in var_decls:
     tmp = decl.split("=")
     if(tmp[0] == "$READ_ONLY"):
-      read_only_vars = read_only_vars + tmp[1].split(",")
+      read_only_vars = read_only_vars + [v.replace(";", ",") for v in tmp[1].split(",")]
     elif(tmp[0] == "$READ_WRITE"):
-      read_write_vars = read_write_vars + tmp[1].split(",")
+      read_write_vars = read_write_vars + [v.replace(";", ",") for v in tmp[1].split(",")]
     elif(tmp[0] == "$INVARIANT"):
       invariant = "=".join(tmp[1:]).replace("$_$", " ")
     elif(tmp[0] == "$ACC_INVARIANT"):

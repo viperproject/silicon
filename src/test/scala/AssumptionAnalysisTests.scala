@@ -4,7 +4,6 @@ import viper.silicon.SiliconFrontend
 import viper.silicon.assumptionAnalysis._
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier.VerificationResult
 import viper.silver.{ast, verifier}
@@ -276,7 +275,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
    */
   case class AnnotatedTest(program: Program, assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter]) {
     def execute(): Unit = {
-      val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts({ annotationInfo => annotationInfo.values.contains(irrelevantKeyword) || annotationInfo.values.contains(dependencyKeyword) })
+      val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts({ annotationInfo => annotationInfo.values.contains(irrelevantKeyword + "(\"") || annotationInfo.values.contains(dependencyKeyword) })
       val allAssumptionNodes = assumptionAnalysisInterpreters.flatMap(_.getNonInternalAssumptionNodes)
 
       var errorMsgs = stmtsWithAssumptionAnnotation.map(checkAssumptionNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq

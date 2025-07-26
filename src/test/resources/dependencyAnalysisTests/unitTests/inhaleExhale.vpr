@@ -14,20 +14,6 @@ method exhaleInhale(a: Ref)
     assert perm(a.f) == write
 }
 
-method exhaleInhale2(a: Ref)
-    requires @dependency("Explicit")(acc(a.f))
-{
-    @irrelevant("Implicit")
-    exhale acc(a.f, 1/2)
-    @irrelevant("Explicit")
-    inhale acc(a.f, 1/2)
-
-    // $PrecisionTest: $READ_WRITE=a.f $ACC_INVARIANT=acc(a.f)
-
-    @testAssertion("Explicit")
-    assert perm(a.f) >= 1/2
-}
-
 method exhaleImprecision(){
     var x: Ref
 

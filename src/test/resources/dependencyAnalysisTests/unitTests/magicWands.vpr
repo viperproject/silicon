@@ -20,7 +20,7 @@ method basicApply()
 
     // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=x>0
 
-    @dependency("Implicit")
+    @dependency("Rewrite")
     apply x > 0 --* y > 0
 
     @testAssertion("Explicit")
@@ -38,16 +38,16 @@ method basicPackage(l: Ref)
     @dependency("Implicit")
     tmp := l.next
 
-    @dependency("Implicit")
+    // $PrecisionTest: $READ_WRITE=l.val $ACC_INVARIANT=acc(l.val)&&acc(l.next)
+
+    @dependency("Rewrite")
     package list(tmp) --* list(l)
     {
       @dependency()
       fold list(l)
     }
 
-    // $PrecisionTest: // TODO ake
-
-    @dependency("Implicit")
+    @dependency("Rewrite")
     apply list(tmp) --* list(l)
 
     @testAssertion("Explicit")
@@ -62,7 +62,7 @@ predicate greater0(a: Int){
 method advancedPackage(a: Int, b: Int)
   {
 
-    @dependency("Implicit")
+    @dependency("Rewrite")
     package (greater0(a) && greater0(b)) --* greater0(a + b)
     {
       @dependency("Implicit")
@@ -78,9 +78,9 @@ method advancedPackage(a: Int, b: Int)
     @dependency("Explicit")
     inhale greater0(b)
 
-    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=unfolding$_$greater0(b)$_$in$_$b>0 $ACC_INVARIANT=greater0(b)
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=(unfolding$_$greater0(b)$_$in$_$b>0) $ACC_INVARIANT=greater0(b)
 
-    @dependency("Implicit")
+    @dependency("Rewrite")
     apply (greater0(a) && greater0(b)) --* greater0(a + b)
 
     @testAssertion("Explicit")
@@ -93,10 +93,10 @@ method quantifiedWand(xs: Seq[Int], b: Int)
   {
     @dependency("Explicit")
     inhale greater0(xs[0])
-    @dependency("Implicit")
+    @dependency("Rewrite")
     apply  greater0(xs[0]) --* greater0(xs[0] + b)
 
-    // $PrecisionTest: $READ_ONLY=xs[0],b,xs[1] $INVARIANT=unfolding$_$greater0(xs[0]+b)$_$in$_$xs[0]+b>0 $ACC_INVARIANT=greater0(xs[0]+b) // TODO ake: sequence update
+    // $PrecisionTest: $READ_ONLY=xs[0],b,xs[1] $INVARIANT=(unfolding$_$greater0(xs[0]+b)$_$in$_$xs[0]+b>0) $ACC_INVARIANT=greater0(xs[0]+b) // TODO ake: sequence update
 
     @testAssertion("Explicit")
     assert greater0(xs[0] + b)
@@ -105,7 +105,7 @@ method quantifiedWand(xs: Seq[Int], b: Int)
 method packagePrecision(l: Ref)
   requires @dependency("Explicit")(list(l))
   {
-    @dependency("Implicit")
+    @dependency("Rewrite")
     unfold list(l)
     var tmp : Ref
     @dependency("Implicit")
@@ -113,10 +113,10 @@ method packagePrecision(l: Ref)
 
     // $PrecisionTest: $READ_WRITE=l.val $ACC_INVARIANT=acc(l.val)
 
-    @irrelevant("Implicit")
+    @irrelevant("Rewrite")
     package list(tmp) --* list(l)
     {
-      @irrelevant("Implicit")
+      @irrelevant("Rewrite")
       fold list(l)
     }
 
@@ -128,28 +128,13 @@ method packageExhale(x: Ref)
   requires @dependency("Explicit")(acc(x.f))
   {
 
-    // $PrecisionTest: $READ_WRITE=x.f $ACC_INVARIANT=acc(x.f)
-
     @dependency("Implicit")
     package acc(x.f, 1/2) --* acc(x.f)
+
+    // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=acc(x.f,1/2)
 
 
     @testAssertion("Explicit")
     assert perm(x.f) == 1/2
 }
 
-method packageExhale2(x: Ref)
-  requires @dependency("Explicit")(acc(x.f))
-  {
-
-    @dependency("Implicit") // TODO ake: irrelevant?
-    package acc(x.f, 1/2) --* acc(x.f)
-
-    // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=acc(x.f,1/2)
-
-    @dependency("Implicit")
-    apply acc(x.f, 1/2) --* acc(x.f)
-
-    @testAssertion("Explicit")
-    exhale acc(x.f)
-}

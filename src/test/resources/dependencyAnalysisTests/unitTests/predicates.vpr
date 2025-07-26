@@ -47,7 +47,7 @@ method unfoldFoldP(a: Int, b: Int)
     @dependency("Implicit")
     unfold greater5(b)
 
-    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=a>0
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=b>0
 
     @testAssertion("Implicit")
     fold greater5(a + b)
@@ -60,7 +60,7 @@ method callWithPredicate(a: Int, b: Int)
     @dependency("Implicit")
     unfoldFoldP(a, b)
 
-    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=unfolding$_$greater5(a+b)$_$in$_$a+b>0 $ACC_INVARIANT=greater5(a+b)
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=(unfolding$_$greater5(a+b)$_$in$_$a+b>0) $ACC_INVARIANT=greater5(a+b)
 
     @testAssertion("Explicit")
     assert greater5(a + b)
@@ -71,12 +71,13 @@ method unfoldPrecision(a: Int, b: Int)
     requires @dependency("Explicit")(greater5(b))
     ensures greater0(b)
 {
+    
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=(unfolding$_$greater0(a)$_$in$_$a>0) $ACC_INVARIANT=greater0(a)
+
     @irrelevant("Implicit")
     unfold greater0(a)
     @dependency("Implicit")
     unfold greater5(b)
-
-    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=b>0
 
     @testAssertion("Implicit")
     fold greater0(b)
@@ -86,7 +87,7 @@ method foldPrecision(a: Int, b: Int)
     requires @irrelevant("Explicit")(a > 5)
     requires @dependency("Explicit")(b > 5)
 {
-    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=a>0
+    // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=b>2
 
     @testAssertion("Implicit")
     fold greater0(b)

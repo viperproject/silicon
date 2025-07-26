@@ -14,7 +14,7 @@ method branches1(a: Int, b: Int)
   @irrelevant("Explicit")
   assume c ==> a > 5
 
-  if(c){
+  if(@irrelevant("PathCondition")(c)){
     @dependency("Implicit")
     n := a + 1
   }else{
@@ -40,7 +40,7 @@ method branches2(a: Int, b: Int)
   assume b < 50
 
   var x: Int
-  if(a >= n){
+  if(@dependency("PathCondition")(a >= n)){
     @irrelevant("Implicit")
     x := a + b
   }else{
@@ -55,23 +55,11 @@ method branches3(a: Int, b: Int)
 {
   var n:Int, c: Bool
 
-  @irrelevant("Explicit")
-  assume 0 < a
-  @irrelevant("Explicit")
-  assume a < 100
   @dependency("Explicit")
   assume 0 < b
-  @irrelevant("Explicit")
-  assume b < 50
-
-  if(c){
-    n := a + 1
-  }else{
-    n := b + 1
-  }
 
   var x: Int
-  if(a >= n){
+  if(@dependency("PathCondition")(a >= n)){
     @dependency("Implicit")
     x := a + b
   }else{
@@ -99,8 +87,8 @@ method nestedBranches1(a: Int, b: Int)
   @irrelevant("Explicit")
   assume c ==> a > 5
 
-  if(c){
-    if(a > b){
+  if(@irrelevant("PathCondition")(c)){
+    if(@irrelevant("PathCondition")(a > b)){
       @dependency("Implicit")
       n := a - b
     }else{

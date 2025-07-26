@@ -34,7 +34,7 @@ method sumPerm1(n: Int, res: Ref)
   res.f := 0
   var i: Int
   @dependency("Implicit")
-  i := 0;
+  i := 0
   while(@dependency("PathCondition")(i <= n))
     invariant @dependency("LoopInvariant")(acc(res.f))
     invariant @dependency("LoopInvariant")(i <= (n + 1))

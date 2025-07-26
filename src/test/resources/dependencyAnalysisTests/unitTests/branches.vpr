@@ -9,9 +9,9 @@ method branch1(){
     }else{
         @dependency("Implicit")
         y := -x + 1
-    }
 
-    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y $INVARIANT=y>0
+        // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y $INVARIANT=y>-1
+    }
 
     @testAssertion("Explicit")
     assert y > 0
@@ -28,7 +28,7 @@ method branch2(){
         assume y >= 10
     }
 
-    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y $INVARIANT=y>0
+    // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y $INVARIANT=y>-1
 
     @testAssertion("Explicit")
     assert y > 0

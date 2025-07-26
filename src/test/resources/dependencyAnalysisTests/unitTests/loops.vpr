@@ -5,16 +5,16 @@ method loop1(){
     var res: Int
     @dependency("Implicit")
     res := 0
-    // @irrelevant("Implicit") // imprecise
+    @irrelevant("Implicit")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
-        invariant i >= 0
+        invariant @irrelevant("LoopInvariant")(i >= 0)
         invariant @dependency("LoopInvariant")(res >= 0)
     {
         @dependency("Implicit")
         res := res + i
-        // @irrelevant("Implicit") // imprecise
+        @irrelevant("Implicit") 
         i := i - 1
     }
 
@@ -38,7 +38,7 @@ method loop2(){
     {
         @irrelevant("Implicit")
         res := res + i
-        // $PrecisionTest: $READ_ONLY=res,i $INVARIANT=i>-1
+        // $PrecisionTest: $READ_ONLY=res,i $INVARIANT=i<20
         @dependency("Implicit")
         i := i - 1
         @testAssertion("Explicit")
@@ -51,7 +51,7 @@ method loop3(){
     var res: Int
     @dependency("Implicit")
     res := 0
-    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i $INVARIANT=res>-1
+    // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i $INVARIANT=res<10
     @irrelevant("Implicit")
     i := 10
     while(@dependency("PathCondition")(i > 0))
@@ -71,7 +71,6 @@ method loop3(){
 method loop4(){
     var i: Int
     var res: Int
-
 
     // $PrecisionTest: $READ_WRITE=i,res
 

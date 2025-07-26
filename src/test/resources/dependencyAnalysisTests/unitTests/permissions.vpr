@@ -53,7 +53,7 @@ method perm4(){
     @dependency("Implicit")
     x.f := x.f + 1
 
-    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>1 $ACC_INVARIANT=acc(x.f,1/2)
+    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/2)
 
     @testAssertion("Explicit")
     assert x.f > 1
@@ -72,48 +72,15 @@ method perm5(){
     exhale acc(x.f)
 }
 
-method fieldAccessPrecision(){
-    var x: Ref
-    var y: Ref
-
-    @dependency("Explicit")
-    inhale acc(x.f)
-    @dependency("Explicit")
-    inhale x.f > 0
-
-    @irrelevant("Explicit")
-    inhale acc(y.f)
-    @irrelevant("Implicit")
-    y.f := y.f + 1
-
-    @testAssertion("Explicit")
-    assert x.f >= 0
-}
-
-method fieldAccessPrecision2(){
-    var x: Ref
-    var y: Ref
-
-    @dependency("Explicit")
-    inhale acc(x.f)
-    @irrelevant("Explicit")
-    inhale x.f > 0
-
-    @irrelevant("Explicit")
-    inhale acc(y.f)
-    @irrelevant("Implicit")
-    x.f := y.f + 1
-
-    @testAssertion("Explicit")
-    exhale acc(x.f)
-}
-
 method permAmount1(x: Ref, p: Perm)
    requires @dependency("Explicit")(p > none)
    requires @dependency("Explicit")(acc(x.f, p))
  {
    @dependency("Explicit")
    assume p > 1/2
+
+   // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=p>1/2&&acc(x.f,p)
+
    @testAssertion("Explicit")
    exhale acc(x.f, 1/2)
  }
@@ -126,6 +93,10 @@ method permAmount1(x: Ref, p: Perm)
    inhale x.f > 0
    @dependency("Explicit")
    assume p > 1/2
+
+    // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=p>1/2&&acc(x.f,p/2) $INVARIANT=x.f>-10
+
+   @irrelevant("Implicit")
    exhale acc(x.f, 1/2)
    @testAssertion("Explicit")
    assert x.f > 0

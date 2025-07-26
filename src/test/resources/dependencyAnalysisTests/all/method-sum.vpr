@@ -18,13 +18,15 @@ method sumClient(x: Int, y: Int)
   assume y >= 0
   @dependency("Explicit")
   assume x < y
+  var n: Int 
   @dependency("Implicit")
-  var n: Int := sum(x, y)
+  n := sum(x, y)
 
   // the following stmt reports dependency on n := sum(x, y) because (x < y && n == x + y && n > 100 ==> y != 0)
   // although you could also prove it via (0 <= x && x < y ==> y != 0)
+  var n2: Int 
   @dependency("Implicit")
-  var n2: Int := sum(x/y, y)
+  n2 := sum(x/y, y)
   @dependency("Implicit")
   n := n + n2
 
@@ -40,12 +42,15 @@ method sumClient2(x: Int, y: Int)
   assume y >= 0
   @irrelevant("Explicit")
   assume x < y
+  var n: Int 
   @irrelevant("Implicit")
-  var n: Int := sum(x, x)
+  n := sum(x, x)
+  @irrelevant()
   assert n >= 100
 
+  var n2: Int 
   @dependency("Implicit")
-  var n2: Int := sum(y, y)
+  n2 := sum(y, y)
   @testAssertion("Explicit")
   assert n2 == 2*y
 }

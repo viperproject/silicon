@@ -1,5 +1,20 @@
 field f: Int
 
+method packageExhale2(x: Ref)
+  requires @dependency("Explicit")(acc(x.f))
+  {
+
+    @irrelevant("Rewrite")
+    package acc(x.f, 1/2) --* acc(x.f)
+
+    @irrelevant("Rewrite")
+    apply acc(x.f, 1/2) --* acc(x.f)
+
+    @testAssertion("Explicit")
+    exhale acc(x.f)
+}
+
+
 method exhaleImprecision(){
     var x: Ref
 

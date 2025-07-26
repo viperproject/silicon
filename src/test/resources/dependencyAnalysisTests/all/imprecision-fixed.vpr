@@ -67,3 +67,39 @@ method noAlias(a: Ref, b: Ref, c: Ref)
     @testAssertion("Explicit")
     assert a != b
 }
+
+method fieldAccessPrecision(){
+    var x: Ref
+    var y: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    @irrelevant("Explicit")
+    inhale acc(y.f)
+    @irrelevant("Implicit")
+    y.f := y.f + 1
+
+    @testAssertion("Explicit")
+    assert x.f >= 0
+}
+
+method fieldAccessPrecision2(){
+    var x: Ref
+    var y: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f)
+    @irrelevant("Explicit")
+    inhale x.f > 0
+
+    @irrelevant("Explicit")
+    inhale acc(y.f)
+    @irrelevant("Implicit")
+    x.f := y.f + 1
+
+    @testAssertion("Explicit")
+    exhale acc(x.f)
+}

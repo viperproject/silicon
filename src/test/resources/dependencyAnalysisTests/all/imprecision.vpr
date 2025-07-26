@@ -5,11 +5,11 @@ field g: Int
 // If the branch is not executed, the 2nd inhale is reported as a dependency
 // In reality, the 2nd inhale is all we need for the assertion.
 method nonUniqueUnsatCore(x: Ref)
-    requires x != null ==> acc(x.f)
+    requires @irrelevant("Explicit")(x != null ==> acc(x.f))
 {
     var a: Int
-    if(x == null){
-        // @irrelevant("Explicit") // imprecise
+    if(@irrelevant("PathCondition")(x == null)){
+        @irrelevant("Explicit") // imprecise
         inhale a >= 0
     }
 
@@ -26,8 +26,7 @@ method unprovableInfeasibility(){
     if (exists x: Int, y: Int, z: Int :: x > 0 && y > 0 && z > 0 && x*x*x + y*y*y == z*z*z) {
         // complicated condition that is equivalent to false, but can’t be proven by solver
         // effectively unreachable code
-
-        // @irrelevant("Explicit")
+        @irrelevant("Explicit")
         assume a == 0 // assumption 1
     } else {
         @dependency("Explicit")
@@ -42,9 +41,9 @@ method unprovableInfeasibility(){
 // If x == null is assumed, only the assignment is reported as a dependency
 // If x != null, the branch is infeasible, but we executed it anyways. The implication and branch condition are reported as dependencies.
 method infeasible2(x: Ref)
-    requires x != null ==> acc(x.f) // unexpected dependency
+    requires @irrelevant("Explicit")(x != null ==> acc(x.f)) // unexpected dependency
 {
-    if(x == null){ // unexpected dependency
+    if(@irrelevant("PathCondition")(x == null)){ // unexpected dependency
         var a: Int
 
         @dependency("Implicit")
@@ -67,7 +66,7 @@ method exhaleImprecision(){
     @dependency("Implicit")
     x.f := x.f + 1
 
-    // @irrelevant("Implicit") // TODO ake: unexpected dependency
+    @irrelevant("Implicit") // unexpected dependency
     exhale acc(x.f, 1/2)
 
     @testAssertion("Explicit")
@@ -96,7 +95,7 @@ method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
 {
   @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
-  // @irrelevant("Explicit") // TODO ake: unexpected dependency (wildcards)
+  @irrelevant("Explicit") // unexpected dependency (wildcards)
   inhale forall y: Ref :: y in ys ==> (acc(y.f, wildcard) && y.f > 0)
 
   @testAssertion("Explicit")
@@ -114,13 +113,13 @@ method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
   assume none < p1 && p1 < 1/2
 
   var p2: Perm
-  // @irrelevant("Explicit")
-  assume none < p2 && p2 < 1/2 // TODO ake: unexpected dependency
+  @irrelevant("Explicit")
+  assume none < p2 && p2 < 1/2 // unexpected dependency
 
   @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, p1) && x.f > 0))
 
-  // @irrelevant("Explicit") // TODO ake: unexpected dependency
+  @irrelevant("Explicit") // unexpected dependency
   inhale forall y: Ref :: y in ys ==> (acc(y.f, p2) && y.f > 0)
 
   @testAssertion("Explicit")
@@ -134,7 +133,7 @@ method quasihavoc1(x: Ref, y: Ref)
     requires @dependency("Explicit")(x.f == 3)
     requires @dependency("Explicit")(x != y)
 {
-    // @irrelevant() // TODO ake
+    @irrelevant() // unexpected dependency
     quasihavoc y.f   // does nothing. we have no permission
     @testAssertion("Explicit")
     assert x.f == 3
@@ -154,14 +153,16 @@ method loop1(){
     @dependency("Implicit")
     res := 0
 
+    @irrelevant("Implicit")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
-        invariant i >= 0
+        invariant @irrelevant("LoopInvariant")(i >= 0)
         invariant @dependency("LoopInvariant")(res >= 0)
     {
         @dependency("Implicit")
         res := res + i
+        @irrelevant("Implicit")
         i := i - 1
     }
     @testAssertion("Explicit")
@@ -176,9 +177,23 @@ method inhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    //@irrelevant("Implicit") TODO ake: imprecision?
+    @irrelevant("Implicit")
     inhale acc(x.f, 1/2)
 
     @testAssertion("Explicit")
     assert x.f > 0
+}
+
+method packageExhale2(x: Ref)
+  requires @dependency("Explicit")(acc(x.f))
+  {
+
+    @irrelevant("Rewrite")
+    package acc(x.f, 1/2) --* acc(x.f)
+
+    @irrelevant("Rewrite")
+    apply acc(x.f, 1/2) --* acc(x.f)
+
+    @testAssertion("Explicit")
+    exhale acc(x.f)
 }

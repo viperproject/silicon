@@ -22,6 +22,6 @@ method foo(x: Ref, y: Ref)
 	@dependency("Explicit")
 	assume x.f < y.f
 
-    @testAssertion("Explicit")
+  @testAssertion("Explicit")
 	assert x.f / y.f <= 1
 }

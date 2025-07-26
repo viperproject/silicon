@@ -1,0 +1,19 @@
+field f: Int
+
+method assert1(a: Int)
+  requires @dependency("Explicit")(a > 0)
+{
+  @irrelevant()
+  assert a >= 0
+  @testAssertion("Explicit")
+  assert a >= 0
+}
+
+method assume1(a: Int)
+  requires @dependency("Explicit")(a > 0)
+{
+  @irrelevant("Explicit")
+  assume a >= 0
+  @testAssertion("Explicit")
+  assert a > 0
+}

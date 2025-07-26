@@ -1,3 +1,4 @@
+field f: Int
 field val: Int
 define access(a)
   (forall j: Int :: 0 <= j && j < len(a) ==> acc(slot(a,j).val))
@@ -23,27 +24,39 @@ domain IArray {
 
 method domain1()
 {
-  // Create an integer array with three elements
   var a: IArray
   @irrelevant("Explicit")
   inhale len(a) == 3
 
-  // $PrecisionTest: $ACC_INVARIANT=access(a) $INVARIANT=len(a)==3
+  // $PrecisionTest: $INVARIANT=len(a)>0
 
   @testAssertion("Implicit")
-  inhale access(a) // access to all array slots
+  inhale access(a) 
 }
 
 method domain2()
 {
-  // Create an integer array with three elements
+  var a: IArray
+  @dependency("Explicit")
+  inhale len(a) == 3
+
+  @dependency("Explicit")
+  inhale access(a)
+
+  // $PrecisionTest: $READ_WRITE=slot(a;0).val $INVARIANT=0<len(a) $ACC_INVARIANT=access(a)
+
+  @testAssertion("Implicit")
+  slot(a,0).val := 0
+}
+
+method domain3()
+{
   var a: IArray
   @irrelevant("Explicit")
   inhale len(a) == 3
   @dependency("Explicit")
-  inhale access(a) // access to all array slots
+  inhale access(a) 
 
-  // Initialize the elements of an array
   var i: Int
   @dependency("Implicit")
   i := 0
@@ -52,9 +65,9 @@ method domain2()
     invariant @dependency("LoopInvariant")(0 <= i)
     invariant @irrelevant("LoopInvariant")(i <= len(a))
   {
-    // $PrecisionTest: $READ_ONLY=i $INVARIANT=i<=len(a) $ACC_INVARIANT=access(a)
+    // $PrecisionTest: $READ_ONLY=i $READ_WRITE=slot(a;i).val $INVARIANT=-1<i&&i<len(a) $ACC_INVARIANT=access(a)
     @testAssertion("Implicit")
-    slot(a,i).val := -i // models a[i] := -i
+    slot(a,i).val := -i
     @dependency("Implicit")
     i := i + 1
   }
