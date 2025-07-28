@@ -878,7 +878,7 @@ object evaluator extends EvaluationRules {
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1)((s2, v2, QB) => {
+          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1, assumptionType=assumptionType)((s2, v2, QB) => {
             val pres = func.pres.map(_.transform {
               /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
                * for Carbon issue #210, fail if the subsequent code that strips out triggers from

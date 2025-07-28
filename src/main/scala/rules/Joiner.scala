@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, StringAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
@@ -35,7 +36,7 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
 
 trait JoiningRules extends SymbolicExecutionRules {
 
-  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
+  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true, assumptionType: AssumptionType = AssumptionType.Implicit)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -43,7 +44,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 }
 
 object joiner extends JoiningRules {
-  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
+  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true, assumptionType: AssumptionType = AssumptionType.Implicit)
                  (block: (State, Verifier, (State, D,  Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -103,13 +104,13 @@ object joiner extends JoiningRules {
           val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
           v.decider.prover.comment(comment)
-          v.decider.assume(pcs, Option.when(withExp)(DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp.get))), enforceAssumption = false, AssumptionType.Implicit)
+          v.decider.assume(pcs, Option.when(withExp)(DebugExp.createInstance(comment, InsertionOrderedSet(pcsExp.get))), enforceAssumption = false, assumptionType)
           feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
           feasibleBranchesExp = feasibleBranchesExp.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._1)) :: fbe)
           feasibleBranchesExpNew = feasibleBranchesExpNew.map(fbe => BigAnd(entry.pathConditions.branchConditionExps.map(_._2.get)) :: fbe)
         })
         // Assume we are in a feasible branch
-        v.decider.assume(Or(feasibleBranches), Option.when(withExp)(DebugExp.createInstance(Some("Feasible Branches"), feasibleBranchesExp.map(BigOr(_)), feasibleBranchesExpNew.map(BigOr(_)), InsertionOrderedSet.empty)), AssumptionType.Implicit)
+        v.decider.assume(Or(feasibleBranches), Option.when(withExp)(DebugExp.createInstance(Some("Feasible Branches"), feasibleBranchesExp.map(BigOr(_)), feasibleBranchesExpNew.map(BigOr(_)), InsertionOrderedSet.empty)), assumptionType)
         Q(sJoined, dataJoined, v)
       }
     }
