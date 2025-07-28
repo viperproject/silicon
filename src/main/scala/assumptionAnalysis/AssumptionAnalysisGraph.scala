@@ -15,11 +15,12 @@ object AssumptionAnalysisGraphHelper {
 
 trait ReadOnlyAssumptionAnalysisGraph {
   def getNodes: Seq[AssumptionAnalysisNode]
-  def getDirectEdges: Map[Int, Set[Int]]
-  def getTransitiveEdges: Map[Int, Set[Int]]
-  def getAllEdges: Map[Int, Set[Int]]
+  def getDirectEdges: Map[Int, Set[Int]] // target -> direct dependencies
+  def getTransitiveEdges: Map[Int, Set[Int]] // target -> direct dependencies
+  def getAllEdges: Map[Int, Set[Int]] // target -> direct dependencies
 
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean
+  def getAllDependencies(sources: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int]
 
   def exportGraph(dirName: String): Unit
 }
@@ -50,29 +51,29 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
   }
 
   def addEdges(source: Int, targets: Iterable[Int]): Unit = {
-    val oldTargets = edges.getOrElse(source, Set.empty)
-    val newTargets = targets.filter(_ != source)
-    if(newTargets.nonEmpty)
-      edges.update(source, oldTargets ++ newTargets)
+    addEdges(Set(source), targets)
   }
 
   def addEdges(sources: Iterable[Int], target: Int): Unit = {
-    addEdges(sources, Set(target))
+    val oldSources = edges.getOrElse(target, Set.empty)
+    val newSources = sources.filter(_ != target)
+    if(newSources.nonEmpty)
+      edges.update(target, oldSources ++ newSources)
   }
 
   def addEdges(sources: Iterable[Int], targets: Iterable[Int]): Unit = {
-    sources foreach (addEdges(_, targets))
+    targets foreach (addEdges(sources, _))
   }
 
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean = {
     val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
-    var visited: Set[Int] = sources
-    var queue: List[Int] = sources.toList
+    var visited: Set[Int] = targets
+    var queue: List[Int] = targets.toList
     val allEdges = getAllEdges
     while(queue.nonEmpty){
       val curr = queue.head
       val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
-      if(newVisits.intersect(targets).nonEmpty)
+      if(newVisits.intersect(sources).nonEmpty)
         return true
       visited = visited ++ Set(curr)
       queue = queue.tail ++ (newVisits filter (!visited.contains(_)))
@@ -80,14 +81,28 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
     false
   }
 
-  private def addTransitiveEdges(source: AssumptionAnalysisNode, targets: Iterable[AssumptionAnalysisNode]): Unit = {
-    val oldTargets = transitiveEdges.getOrElse(source.id, Set.empty)
-    val newTargets = targets map(_.id) // filter(_ > source.id) does not work due to loop invariants
-    if(newTargets.nonEmpty) transitiveEdges.update(source.id, oldTargets ++ newTargets)
+  def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int] = {
+    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    var visited: Set[Int] = targets
+    var queue: List[Int] = targets.toList
+    val allEdges = getAllEdges
+    while(queue.nonEmpty){
+      val curr = queue.head
+      val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
+      visited = visited ++ Set(curr)
+      queue = queue.tail ++ (newVisits filter (!visited.contains(_)))
+    }
+    visited  // TODO ake: cache result?
   }
 
-  private def addTransitiveEdges(source: Iterable[AssumptionAnalysisNode], targets: Iterable[AssumptionAnalysisNode]): Unit = {
-    source foreach (s => addTransitiveEdges(s, targets))
+  private def addTransitiveEdges(sources: Iterable[AssumptionAnalysisNode], target: AssumptionAnalysisNode): Unit = {
+    val oldSources = transitiveEdges.getOrElse(target.id, Set.empty)
+    val newSources = sources map(_.id) // filter(_ > target.id) does not work due to loop invariants
+    if(newSources.nonEmpty) transitiveEdges.update(target.id, oldSources ++ newSources)
+  }
+
+  private def addTransitiveEdges(sources: Iterable[AssumptionAnalysisNode], targets: Iterable[AssumptionAnalysisNode]): Unit = {
+    targets foreach (t => addTransitiveEdges(sources, t))
   }
 
   // TODO ake: maybe move to AssumptionAnalyzer?
@@ -114,7 +129,7 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
     val successors = edges.getOrElse(id, Set.empty)
     edges.remove(id)
     predecessors foreach (pid => edges.update(pid, edges.getOrElse(pid, Set.empty).filter(_ != id)))
-    addEdges(predecessors, successors)
+    addEdges(successors, predecessors)
   }
 
   // TODO ake: maybe move to AssumptionAnalyzer?

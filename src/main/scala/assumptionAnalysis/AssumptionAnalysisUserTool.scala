@@ -82,7 +82,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     val allDependencies = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
     val allDependenciesWithoutInfeasibility = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
     val explicitDependencies = getSourceInfoString(fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
-    val dependents = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
+//    val dependents = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${queriedNodes.map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
 
@@ -91,7 +91,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     println(s"\nDependencies without infeasibility:\n\t$allDependenciesWithoutInfeasibility")
     println(s"\nExplicit Dependencies:\n\t$explicitDependencies")
 
-    println(s"\nAll Dependents:\n\t$dependents")
+//    println(s"\nAll Dependents:\n\t$dependents") TODO ake
     println(s"\nDone.")
   }
 }

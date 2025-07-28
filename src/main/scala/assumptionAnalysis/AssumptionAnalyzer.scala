@@ -98,7 +98,7 @@ object AssumptionAnalyzer {
     val newGraph = new AssumptionAnalysisGraph
 
     assumptionAnalysisInterpreters foreach (interpreter => newGraph.addNodes(interpreter.getGraph.getNodes))
-    assumptionAnalysisInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (s, t) => newGraph.addEdges(s, t)})
+    assumptionAnalysisInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
     // add edges between identical axioms since they were added to each interpreter // TODO ake: merge instead?
     newGraph.getNodes.filter(_.isInstanceOf[AxiomAssumptionNode]).groupBy(n => (n.sourceInfo.toString, n.assumptionType)).foreach{case (_, nodes) =>
@@ -315,9 +315,9 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
       }
     }
 
-    assumptionGraph.getAllEdges foreach { case (source, targets) =>
-      val newSource = nodeMap(source)
-      mergedGraph.addEdges(newSource, targets.map(nodeMap(_)))
+    assumptionGraph.getAllEdges foreach { case (target, deps) =>
+      val newTarget = nodeMap(target)
+      mergedGraph.addEdges(deps.map(nodeMap(_)), newTarget)
     }
 
     mergedGraph

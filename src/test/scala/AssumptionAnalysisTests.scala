@@ -178,9 +178,9 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       writer.println()
       println(s"Precision Benchmark for $filePrefix - $fileName done.")
     }catch{
-      case e: Exception =>
+      case t: Throwable =>
         writer.println("Failed. Skip")
-        println(s"Exception caught: ${e.getMessage}")
+        println(s"Exception caught: ${t.getMessage}")
     }
   }
 
