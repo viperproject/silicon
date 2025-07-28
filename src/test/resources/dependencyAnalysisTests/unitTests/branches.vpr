@@ -43,8 +43,10 @@ method branch3(){
         @dependency("Implicit")
         y := x + 1
     }else{
+        @irrelevant("Implicit")
+        y := 10
         @irrelevant("Explicit")
-        assume y >= 10
+        assume y > 0
     }
 
     @testAssertion("Explicit")

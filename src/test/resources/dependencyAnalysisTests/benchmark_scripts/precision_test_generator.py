@@ -86,7 +86,7 @@ def generate_from_snippet(snippet: str, line: str):
   generated_refs =   set(gen_rw_refs + gen_ro_refs + [v.split(".")[0] for v in (gen_vars_rw_field + gen_vars_ro_field) if "." in v]) 
   existing_refs = set([v.split(".")[0] for v in (read_write_vars+read_only_vars) if "." in v])
   # snippet = f"\n//generated: {generated_refs}\n//existing: {existing_refs}\n" + snippet
-  snippet = "\n".join([f"@irrelevant(\"Explicit\")\ninhale {a} != {b}" for a in generated_refs for b in existing_refs if a != b]) + snippet
+  snippet = "\n".join([f"inhale {a} != {b}" for a in generated_refs for b in existing_refs if a != b]) + snippet
 
   gen_vars_ro_field = gen_vars_ro_field + [f"{v}.f" for v in gen_ro_refs]
   gen_vars_rw_field = gen_vars_rw_field + [f"{v}.f" for v in gen_rw_refs]

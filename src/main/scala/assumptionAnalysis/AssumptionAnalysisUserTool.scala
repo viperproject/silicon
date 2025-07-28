@@ -10,7 +10,8 @@ import viper.silver.ast.Method
 class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpreter, memberInterpreters: Seq[AssumptionAnalysisInterpreter]) {
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
-    "\n\t'cov [member names]' to print proof coverage of given member names or" +
+    "\n\t'cov [members]' to print proof coverage of given member or" +
+    "\n\t'covL member [line numbers]' to print proof coverage of given lines of given member or" +
     "\n\t'q' to quit"
 
   def run(): Unit = {
@@ -40,6 +41,8 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
       handleDependencyQuery(inputParts.tail.toSet)
     } else if (inputParts(0).equalsIgnoreCase("coverage") || inputParts(0).equalsIgnoreCase("cov")) {
       handleProofCoverageQuery(inputParts.tail)
+    }else if (inputParts(0).equalsIgnoreCase("covLines") || inputParts(0).equalsIgnoreCase("covL")) {
+      handleProofCoverageLineQuery(inputParts.tail)
     } else {
       println("Invalid input.")
       println(infoString)
@@ -55,6 +58,31 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
       })
       .foreach(aa => {
         val (coverage, uncoveredSources) = aa.computeProofCoverage()
+        println(s"${aa.getMember.map(_.name).getOrElse("")}")
+        println(s"coverage: $coverage")
+        if (!coverage.equals(1.0))
+          println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
+        println()
+      })
+  }
+
+  private def handleProofCoverageLineQuery(memberNames: Seq[String]): Unit = {
+    if(memberNames.isEmpty) return // TODO ake: invalid input handling
+
+    println("Proof Coverage")
+    val lines = memberNames.tail.flatMap(_.toIntOption)
+    memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
+        case meth: Method => meth.body.isDefined && meth.name.equalsIgnoreCase(memberNames.head)
+        case func: ast.Function => func.body.isDefined && func.name.equalsIgnoreCase(memberNames.head)
+        case _ => false
+      })
+      .foreach(aa => {
+        val (coverage, uncoveredSources) = if(lines.nonEmpty){
+          val assertions = lines flatMap aa.getNodesByLine
+          aa.computeProofCoverage(assertions.toSet)
+        }else{
+          aa.computeProofCoverage()
+        }
         println(s"${aa.getMember.map(_.name).getOrElse("")}")
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))

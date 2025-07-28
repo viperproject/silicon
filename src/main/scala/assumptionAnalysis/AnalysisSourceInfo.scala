@@ -158,7 +158,7 @@ case class AnalysisSourceInfoStack() {
   def getForcedSource: Option[AnalysisSourceInfo] = forcedMainSource
 
   def setForcedSource(description: String): Unit = {
-    forcedMainSource = Some(StringAnalysisSourceInfo(description, getFullSourceInfo.getPosition))
+    forcedMainSource = Some(StringAnalysisSourceInfo(description, NoPosition))
   }
 
   def setForcedSource(source: AnalysisSourceInfo): Unit = {

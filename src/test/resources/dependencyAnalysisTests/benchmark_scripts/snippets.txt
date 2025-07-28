@@ -132,7 +132,7 @@ SNIPPET nested_branch$=${
 }
 
 SNIPPET infeasible_branch$=${
-  if(@dependency("PathCondition")($INVARIANT)){
+  if(@irrelevant("PathCondition")($INVARIANT)){
     @irrelevant("Implicit")
     $RW_INT_0 := 10
   }else{
@@ -295,6 +295,7 @@ SNIPPET quasihavoc$=${
 
 SNIPPET quasihavoc_disjoint_ref$=${
   var gen_x: Ref
+  @irrelevant("Implicit")
   gen_x := new(f)
   @irrelevant("Implicit")
   quasihavoc gen_x.f

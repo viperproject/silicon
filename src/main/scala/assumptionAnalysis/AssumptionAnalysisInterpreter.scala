@@ -77,7 +77,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
   def computeProofCoverage(assertionNodes: Set[AssumptionAnalysisNode]): (Double, Seq[String]) = {
     val assertionNodeIds = assertionNodes map (_.id)
-    val nodesPerSourceInfo = getNonInternalAssumptionNodesPerSource
+    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource.toString)
     if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Seq())
 
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
