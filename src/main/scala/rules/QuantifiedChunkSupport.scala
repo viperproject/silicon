@@ -412,8 +412,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     resource match {
       case field: ast.Field =>
         assert(arguments.length == 1)
-        //assert(optSingletonArguments.length == 1)
-        //assert(optSingletonArgumentsExp.length == 1)
+        assert(optSingletonArguments.fold(true)(_.length == 1))
+        assert(optSingletonArgumentsExp.fold(true)(_.length == 1))
 
         QuantifiedFieldChunk(
           BasicChunkIdentifier(field.name),
@@ -1037,7 +1037,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            : VerificationResult = {
 
     val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
-    val comment = "Definitional axioms for singleton-SM's value4"
+    val comment = "Definitional axioms for singleton-SM's value"
     v.decider.prover.comment(comment)
     val definitionalAxiomMark = v.decider.setPathConditionMark()
     v.decider.assumeDefinition(smValueDef, Option.when(withExp)(DebugExp.createInstance(comment, true)))
@@ -1300,8 +1300,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   (result, s4, h2, Some(consumedChunk))
                 })((s4, optCh, v3) =>
                   optCh match {
-                    case Some(ch) => QS(s4, s4.h, Some(ch.snapshotMap.convert(sorts.Snap)), v3)
-                    case _ => QS(s4, s4.h, Some(v3.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))), v3)
+                    case Some(ch) if returnSnap => Q(s4, s4.h, Some(ch.snapshotMap.convert(sorts.Snap)), v3)
+                    case None if returnSnap =>
+                      Q(s4, s4.h, Some(freshSnap(sorts.Snap, v3)), v3)
+                    case _ => Q(s4, s4.h, None, v3)
                   }
                 )
               } else {
@@ -1326,17 +1328,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   case (Complete(), s2, remainingChunks, untouchedChunks) =>
                     val h3 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
                     val newTag =  Some(quantifiedChunkSupporter.mostCommonTag(relevantChunks.diff(untouchedChunks)).getOrElse(v.counter(this).next()))  // extract tags from all involved chunks and pick majority
-                    val optSmDomainDefinitionCondition2 =
-                      if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
-                      else None
-                    if (relevantChunks.diff(untouchedChunks).size == 1 && !s2.smDomainNeeded) {
-                      val fr3 = s2.functionRecorder.recordFieldInv(inverseFunctions)
-                      val s3 = s2.copy(functionRecorder = fr3,
-                        partiallyConsumedHeap = Some(h3),
-                        constrainableARPs = s1.constrainableARPs,
-                        qpTag = newTag)
-                      QS(s3, h3, Some(relevantChunks.diff(untouchedChunks).head.snapshotMap.convert(sorts.Snap)), v1)
-                    } else {
+                    if (returnSnap) {
+                      val optSmDomainDefinitionCondition2 =
+                        if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
+                        else None
                       val (smDef2, smCache2) =
                         quantifiedChunkSupporter.summarisingSnapshotMap(
                           s2, resource, formalQVars, relevantChunks.diff(untouchedChunks), v1, optSmDomainDefinitionCondition2)
@@ -1348,6 +1343,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         smCache = smCache2,
                         qpTag = newTag)
                       QS(s3, h3, Some(smDef2.sm.convert(sorts.Snap)), v1)
+                    } else {
+                      Q(s2, h3, None, v)
                     }
                   case (Incomplete(_, _), s2, _, _) =>
                     createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
@@ -1458,16 +1455,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           chunkOrderHeuristics,
           v
         )
-        ("four")
         result match {
           case (Complete(), s1, remainingChunks, untouchedChunks) =>
             val h1 = Heap(remainingChunks ++ untouchedChunks ++ otherChunks)
             val newTag = Some(quantifiedChunkSupporter.mostCommonTag(relevantChunks.diff(untouchedChunks)).getOrElse(v.counter(this).next()))  // extract tags from all involved chunks and pick majority
-            if (false && relevantChunks.diff(untouchedChunks).size == 1) {
-              val s2 = s1.copy(qpTag = newTag)
-              val snap = ResourceLookup(resource, relevantChunks.diff(untouchedChunks).head.snapshotMap, arguments, s2.program).convert(sorts.Snap)
-              QS(s2, h1,  Some(snap), v)
-            } else {
+            if (returnSnap) {
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s = s1,
@@ -1482,6 +1474,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 qpTag = newTag)
               val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
               QS(s2, h1, Some(snap), v)
+             } else {
+              Q(s1, h1, None, v)
             }
           case (Incomplete(_, _), _, _, _) =>
             resourceAccess match {
@@ -1590,7 +1584,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val permsProvided = ch.perm
         val permsProvidedExp = ch.permExp
 
-        val (superSetCheck, subSetCheck) = if (s.moreCompleteExhale) {
+        val (superSetCheck, subSetCheck) = if (s.moreCompleteExhaleQP) {
           (True, True)
         } else {
           (Forall(codomainQVars, Implies(And(condition, IsPositive(permsNeeded)), IsPositive(permsProvided)), Nil),
@@ -2143,7 +2137,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         : VerificationResult = {
       // Always use lookupComplete; see lookupGreedy for details.
         val lookupFunction =
-          if (true || s.moreCompleteExhale || s.triggerExp) lookupComplete _
+          if (true || s.moreCompleteExhaleQP || s.triggerExp) lookupComplete _
           else lookupGreedy _
         lookupFunction(s, resourceAcc, tArgs, argsExp, ve, v)((s2, tSnap, v2) =>
           Q(s2, tSnap, v2))

@@ -320,7 +320,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         evals(s4, bodyVars, _ => pve, v3)((s5, args, _, v4) => {
           val snapshotTerm = Combine(freshSnapRoot, snapRhs)
           val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, snapshotTerm, v4)
-          v4.decider.prover.comment("Definitional axioms for singleton-SM's value2")
+          v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
           val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
           v4.decider.assumeDefinition(smValueDef, debugExp)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, args,
