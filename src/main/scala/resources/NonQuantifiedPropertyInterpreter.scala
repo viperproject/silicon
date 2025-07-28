@@ -83,7 +83,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
       case c: QuantifiedBasicChunk =>
         val permTerm = c.perm.replace(c.quantifiedVars, c.singletonArguments.get)
         if (withExp)
-          (permTerm, Some(replaceVarsInExp(c.permExp.get, c.quantifiedVarExps.get.map(_.name), c.singletonArgumentExps.head)))
+          (permTerm, Some(replaceVarsInExp(c.permExp.get, c.quantifiedVarExps.get.map(_.name), c.singletonArgumentExps.get)))
         else
           (permTerm, None)
     }
@@ -110,7 +110,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk => (c.args, c.argsExp)
       // TODO: remove once singleton quantified chunks are not used anymore
-      case c: QuantifiedBasicChunk => (c.singletonArguments.get, Option.when(withExp)(c.singletonArgumentExps.head))
+      case c: QuantifiedBasicChunk => (c.singletonArguments.get, Option.when(withExp)(c.singletonArgumentExps.get))
     }
   }
 
