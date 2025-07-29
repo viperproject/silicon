@@ -2,7 +2,7 @@ package viper.silicon.assumptionAnalysis
 
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.terms.{False, Term}
+import viper.silicon.state.terms.{False, Term, Var}
 
 trait AssumptionAnalysisNode {
   val id: Int = AssumptionAnalysisGraphHelper.nextId()
@@ -60,7 +60,7 @@ case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSo
   override def getNodeString: String = "exhale " + chunk.toString
 }
 
-case class LabelNode(term: Term) extends GeneralAssumptionNode {
+case class LabelNode(term: Var) extends GeneralAssumptionNode {
   val sourceInfo: AnalysisSourceInfo = NoAnalysisSourceInfo()
   val assumptionType: AssumptionType = AssumptionType.Internal
   val isClosed: Boolean = true
