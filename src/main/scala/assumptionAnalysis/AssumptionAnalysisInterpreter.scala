@@ -37,6 +37,9 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     getExplicitAssumptionNodes.filter(node => allDependencies.contains(node.id))
   }
 
+  def filterOutNodesBySourceInfo(nodes: Set[AssumptionAnalysisNode], excludeInfos: Set[AnalysisSourceInfo]): Set[AssumptionAnalysisNode] =
+    nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.toString.equals(node.sourceInfo.getTopLevelSource.toString)))
+
   def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => graph.existsAnyDependency(nodeIdsToAnalyze, Set(node.id), includeInfeasibilityNodes))
 
@@ -70,22 +73,26 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     graph.exportGraph(Verifier.config.assumptionAnalysisExportPath() + "/" + name)
   }
 
-  def computeProofCoverage(): (Double, Seq[String]) = {
-    val explicitAssertionNodes = getExplicitAssertionNodes
+  private def getNodesWithIdenticalSource(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] = {
+    val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource.toString)
+    getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource.toString))
+  }
+
+  def computeProofCoverage(): (Double, Set[String]) = {
+    val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
     computeProofCoverage(explicitAssertionNodes)
   }
 
-  def computeProofCoverage(assertionNodes: Set[AssumptionAnalysisNode]): (Double, Seq[String]) = {
+  def computeProofCoverage(assertionNodes: Set[AssumptionAnalysisNode]): (Double, Set[String]) = {
     val assertionNodeIds = assertionNodes map (_.id)
+    val dependencies = graph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
+    val coveredNodes = dependencies ++ assertionNodeIds
     val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource.toString)
-    if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Seq())
+    if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Set())
 
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
-      val nodeIds = nodes map (_.id)
-      // it is not an explicit assertion itself and has no dependency to an explicit assertion
-      nodeIds.intersect(assertionNodeIds).isEmpty &&
-        !graph.existsAnyDependency(nodeIds, assertionNodeIds, includeInfeasibilityNodes=true)
-    }).keys.toSeq
+      coveredNodes.intersect(nodes map (_.id)).isEmpty
+    }).keys.toSet
     val proofCoverage = 1.0 - (uncoveredSources.size.toDouble / nodesPerSourceInfo.size.toDouble)
     (proofCoverage, uncoveredSources)
   }

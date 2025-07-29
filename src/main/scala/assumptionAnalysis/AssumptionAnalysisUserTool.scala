@@ -93,7 +93,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
 
   private def handleDependencyQuery(inputs: Set[String]): Unit = {
     def getSourceInfoString(nodes: Set[AssumptionAnalysisNode]) = {
-      nodes.map(_.sourceInfo.getTopLevelSource).toList.sortBy(_.getLineNumber).mkString("\n\t")
+      nodes.groupBy(node => node.sourceInfo.getTopLevelSource.toString).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
     }
 
     val queriedNodes = inputs flatMap (input => {
@@ -106,10 +106,10 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         Set.empty
       }
     })
-    val directDependencies = getSourceInfoString(fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
-    val allDependencies = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
-    val allDependenciesWithoutInfeasibility = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
-    val explicitDependencies = getSourceInfoString(fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
+    val directDependencies = getSourceInfoString(fullGraphInterpreter.filterOutNodesBySourceInfo(fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)), queriedNodes.map(_.sourceInfo)))
+    val allDependencies = getSourceInfoString(fullGraphInterpreter.filterOutNodesBySourceInfo(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)), queriedNodes.map(_.sourceInfo)))
+    val allDependenciesWithoutInfeasibility = getSourceInfoString(fullGraphInterpreter.filterOutNodesBySourceInfo(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false), queriedNodes.map(_.sourceInfo)))
+    val explicitDependencies = getSourceInfoString(fullGraphInterpreter.filterOutNodesBySourceInfo(fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)), queriedNodes.map(_.sourceInfo)))
 //    val dependents = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${queriedNodes.map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
