@@ -281,7 +281,7 @@ object executor extends ExecutionRules {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                        if (v2.decider.checkSmoke() && !Verifier.config.enableAssumptionAnalysis())
+                        if (v2.decider.checkSmoke() && !Verifier.config.disableInfeasibilityChecks())
                           Success()
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
@@ -500,7 +500,7 @@ object executor extends ExecutionRules {
         Q(s2, v)
 
       case inhale @ ast.Inhale(a) => a match {
-        case _: ast.FalseLit if !Verifier.config.enableAssumptionAnalysis() =>
+        case _: ast.FalseLit if !Verifier.config.disableInfeasibilityChecks() =>
           /* We're done */
           Success()
         case _ =>

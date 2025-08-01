@@ -836,6 +836,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableInfeasibilityChecks: ScallopOption[Boolean] = opt[Boolean]("disableInfeasibilityChecks",
+    descr = "Disable infeasibility checks. As a consequence all paths will be explored to the end. (Potentially) huge performance overhead!",
+    default = Some(false),
+    noshort = true
+  )
+
   val assumptionAnalysisExportPath: ScallopOption[String] = opt[String]("assumptionAnalysisExportPath",
     descr = "Path to the directory where the assumption analysis graphs should be exported to",
     default = None,

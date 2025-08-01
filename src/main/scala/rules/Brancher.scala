@@ -112,7 +112,7 @@ object brancher extends BranchingRules {
     val currentAnalysisSourceInfos = v.decider.analysisSourceInfoStack.getAnalysisSourceInfos
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
-      if (executeElseBranch || Verifier.config.enableAssumptionAnalysis()) {
+      if (executeElseBranch || Verifier.config.disableInfeasibilityChecks()) {
         /* [BRANCH-PARALLELISATION] */
         /* Compute the following sets
          *   1. only if the else-branch needs to be explored
@@ -193,7 +193,7 @@ object brancher extends BranchingRules {
       }
 
     val elseBranchFuture: Future[Seq[VerificationResult]] =
-      if (executeElseBranch || Verifier.config.enableAssumptionAnalysis()) {
+      if (executeElseBranch || Verifier.config.disableInfeasibilityChecks()) {
         if (parallelizeElseBranch) {
           /* [BRANCH-PARALLELISATION] */
           v.verificationPoolManager.queueVerificationTask(v0 => {
@@ -209,7 +209,7 @@ object brancher extends BranchingRules {
       }
 
     val res = {
-      val thenRes = if (executeThenBranch || Verifier.config.enableAssumptionAnalysis()) {
+      val thenRes = if (executeThenBranch || Verifier.config.disableInfeasibilityChecks()) {
           v.symbExLog.markReachable(uidBranchPoint)
           v.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
           executionFlowController.locally(s, v)((s1, v1) => {

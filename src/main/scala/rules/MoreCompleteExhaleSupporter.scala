@@ -207,7 +207,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       if (v.decider.checkSmoke(true)) {
-        if (s.isInPackage || Verifier.config.enableAssumptionAnalysis()) {
+        if (s.isInPackage || Verifier.config.disableInfeasibilityChecks()) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           Q(s, snap, v)
         } else {

@@ -39,7 +39,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   var baseCommandLineArguments: Seq[String] = Seq("--timeout", "300" /* seconds */)
   var analysisCommandLineArguments: Seq[String] =
-    baseCommandLineArguments ++ Seq("--enableAssumptionAnalysis", "--proverArgs", "proof=true unsat-core=true")
+    baseCommandLineArguments ++ Seq("--enableAssumptionAnalysis", "--disableInfeasibilityChecks", "--proverArgs", "proof=true unsat-core=true")
 
 
   if(EXECUTE_PRECISION_BENCHMARK) {

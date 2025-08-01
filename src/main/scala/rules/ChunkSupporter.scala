@@ -146,7 +146,7 @@ object chunkSupporter extends ChunkSupportRules {
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
             case (_, s2, h2, _) if v1.decider.checkSmoke(isAssert=true, assumptionType) =>
-              if(Verifier.config.enableAssumptionAnalysis())
+              if(Verifier.config.disableInfeasibilityChecks())
                 QS(s2.copy(h = s.h), h2, None, v1)
               else
                 Success() // TODO: Mark branch as dead?
@@ -268,7 +268,7 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout(), assumptionType) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(isAssert=true, assumptionType) =>
-        if (s.isInPackage || Verifier.config.enableAssumptionAnalysis()) {
+        if (s.isInPackage || Verifier.config.disableInfeasibilityChecks()) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           Q(s, snap, v)
         } else {
