@@ -10,6 +10,8 @@ import viper.silver.ast.Method
 class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpreter, memberInterpreters: Seq[AssumptionAnalysisInterpreter]) {
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
+    "\n\t'downDep [line numbers]' to print all dependents of the given line numbers or" +
+    "\n\t'hasDep [line numbers]' to print whether there exists any dependency between any pair of the given lines or" +
     "\n\t'cov [members]' to print proof coverage of given member or" +
     "\n\t'covL member [line numbers]' to print proof coverage of given lines of given member or" +
     "\n\t'q' to quit"
@@ -36,12 +38,16 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
   }
 
   private def handleUserInput(userInput: String): Unit = {
-    val inputParts = userInput.split(" ")
-    if (inputParts(0).equalsIgnoreCase("d") || inputParts(0).equalsIgnoreCase("dep")) {
+    val inputParts = userInput.split(" ").toSeq
+    if (inputParts.head.equalsIgnoreCase("dep")) {
       handleDependencyQuery(inputParts.tail.toSet)
-    } else if (inputParts(0).equalsIgnoreCase("coverage") || inputParts(0).equalsIgnoreCase("cov")) {
+    } else if (inputParts.head.equalsIgnoreCase("downDep")) {
+      handleDependentsQuery(inputParts.tail.toSet)
+    } else if (inputParts.head.equalsIgnoreCase("hasDep")) {
+      handleHasDependencyQuery(inputParts.tail.toSet)
+    } else if (inputParts.head.equalsIgnoreCase("coverage") || inputParts.head.equalsIgnoreCase("cov")) {
       handleProofCoverageQuery(inputParts.tail)
-    }else if (inputParts(0).equalsIgnoreCase("covLines") || inputParts(0).equalsIgnoreCase("covL")) {
+    }else if (inputParts.head.equalsIgnoreCase("covLines") || inputParts.head.equalsIgnoreCase("covL")) {
       handleProofCoverageLineQuery(inputParts.tail)
     } else {
       println("Invalid input.")
@@ -57,8 +63,8 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         case _ => false
       })
       .foreach(aa => {
-        val (coverage, uncoveredSources) = aa.computeProofCoverage()
-        println(s"${aa.getMember.map(_.name).getOrElse("")}")
+        val ((coverage, uncoveredSources), time) = measureTime(aa.computeProofCoverage())
+        println(s"${aa.getMember.map(_.name).getOrElse("")} (${time}ms)")
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
@@ -77,13 +83,13 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         case _ => false
       })
       .foreach(aa => {
-        val (coverage, uncoveredSources) = if(lines.nonEmpty){
+        val ((coverage, uncoveredSources), time) = if(lines.nonEmpty){
           val assertions = lines flatMap aa.getNodesByLine
-          aa.computeProofCoverage(assertions.toSet)
+          measureTime(aa.computeProofCoverage(assertions.toSet))
         }else{
-          aa.computeProofCoverage()
+          measureTime(aa.computeProofCoverage())
         }
-        println(s"${aa.getMember.map(_.name).getOrElse("")}")
+        println(s"${aa.getMember.map(_.name).getOrElse("")}  (${time}ms)")
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
@@ -91,12 +97,12 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
       })
   }
 
-  private def handleDependencyQuery(inputs: Set[String]): Unit = {
-    def getSourceInfoString(nodes: Set[AssumptionAnalysisNode]) = {
-      nodes.map(_.sourceInfo.getTopLevelSource).toList.sortBy(_.getLineNumber).mkString("\n\t")
-    }
+  private def getSourceInfoString(nodes: Set[AssumptionAnalysisNode]) = {
+    nodes.map(_.sourceInfo.getTopLevelSource).toList.sortBy(_.getLineNumber).map(_.toString).mkString("\n\t")
+  }
 
-    val queriedNodes = inputs flatMap (input => {
+  private def getQueriedNodesFromInput(inputs: Set[String])= {
+    inputs flatMap (input => {
       val parts = input.split("@")
       if(parts.size == 2)
         parts(1).toIntOption.map(fullGraphInterpreter.getNodesByPosition(parts(0), _)).getOrElse(Set.empty)
@@ -106,20 +112,59 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         Set.empty
       }
     })
-    val directDependencies = getSourceInfoString(fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
-    val allDependencies = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
-    val allDependenciesWithoutInfeasibility = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
-    val explicitDependencies = getSourceInfoString(fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
-//    val dependents = getSourceInfoString(fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
+  }
 
-    println(s"Queried:\n\t${queriedNodes.map(_.sourceInfo.getTopLevelSource.toString).mkString("\n\t")}")
+  private def handleDependencyQuery(inputs: Set[String]): Unit = {
 
-    println(s"\nDirect Dependencies:\n\t$directDependencies")
-    println(s"\nAll Dependencies:\n\t$allDependencies")
-    println(s"\nDependencies without infeasibility:\n\t$allDependenciesWithoutInfeasibility")
-    println(s"\nExplicit Dependencies:\n\t$explicitDependencies")
+    val queriedNodes = getQueriedNodesFromInput(inputs)
 
-//    println(s"\nAll Dependents:\n\t$dependents") TODO ake
+    val (directDependencies, timeDirect) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
+    val (allDependencies, timeAll) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
+    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
+    val (explicitDependencies, timeExplicit) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
+
+    println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
+
+    println(s"\nDirect Dependencies (${timeDirect}ms):\n\t${getSourceInfoString(directDependencies)}")
+    println(s"\nAll Dependencies (${timeAll}ms):\n\t${getSourceInfoString(allDependencies)}")
+    println(s"\nDependencies without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(allDependenciesWithoutInfeasibility)}")
+    println(s"\nExplicit Dependencies (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependencies)}")
+
     println(s"\nDone.")
+  }
+
+  private def handleDependentsQuery(inputs: Set[String]): Unit = {
+
+    val queriedNodes = getQueriedNodesFromInput(inputs)
+
+    val (allDependents, timeAll) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
+    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
+    val (explicitDependents, timeExplicit) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllExplicitDependents(queriedNodes.map(_.id)))
+
+    println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
+
+    println(s"\nAll Dependents (${timeAll}ms):\n\t${getSourceInfoString(allDependents)}")
+    println(s"\nDependents without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(dependentsWithoutInfeasibility)}")
+    println(s"\nExplicit Dependents (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependents)}")
+
+    println(s"\nDone.")
+  }
+
+  private def handleHasDependencyQuery(inputs: Set[String]): Unit = {
+    val queriedNodes = getQueriedNodesFromInput(inputs)
+
+    val (depExists, time) = measureTime[Boolean](fullGraphInterpreter.hasAnyDependency(queriedNodes))
+
+    println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
+    println(s"Dependency exists? $depExists")
+    println(s"\nDone in ${time}ms.")
+  }
+
+  private def measureTime[T](function: => T): (T, Double) = {
+    val startAnalysis = System.nanoTime()
+    val res = function
+    val endAnalysis = System.nanoTime()
+    val durationMs = (endAnalysis - startAnalysis) / 1e6
+    (res, durationMs)
   }
 }

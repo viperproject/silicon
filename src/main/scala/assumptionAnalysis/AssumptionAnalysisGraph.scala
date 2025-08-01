@@ -21,6 +21,7 @@ trait ReadOnlyAssumptionAnalysisGraph {
 
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean
   def getAllDependencies(sources: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int]
+  def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int]
 
   def exportGraph(dirName: String): Unit
 }
@@ -67,7 +68,7 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
 
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean = {
     val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
-    var visited: Set[Int] = targets
+    var visited: Set[Int] = Set.empty
     var queue: List[Int] = targets.toList
     val allEdges = getAllEdges
     while(queue.nonEmpty){
@@ -83,7 +84,7 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
 
   def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
-    var visited: Set[Int] = targets
+    var visited: Set[Int] = Set.empty
     var queue: List[Int] = targets.toList
     val allEdges = getAllEdges
     while(queue.nonEmpty){
@@ -92,7 +93,20 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
       visited = visited ++ Set(curr)
       queue = queue.tail ++ (newVisits filter (!visited.contains(_)))
     }
-    visited  // TODO ake: cache result?
+    visited
+  }
+
+  def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int] = {
+    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    var visited: Set[Int] = Set.empty
+    var queue: Set[Int] = sources
+    val allEdges = getAllEdges
+    while(queue.nonEmpty){
+      val newVisits = allEdges.filter{case (t, s) => s.intersect(queue).nonEmpty && !infeasibilityNodeIds.contains(t)}.keys.toSet
+      visited = visited ++ queue
+      queue = newVisits diff visited
+    }
+    visited
   }
 
   private def addTransitiveEdges(sources: Iterable[AssumptionAnalysisNode], target: AssumptionAnalysisNode): Unit = {

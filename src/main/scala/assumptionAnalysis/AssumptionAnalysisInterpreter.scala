@@ -28,18 +28,24 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
   }
 
   def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
-    val allDependencies = graph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes) // TODO ake: cache result?
+    val allDependencies = graph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
     getNonInternalAssumptionNodes.filter(node => allDependencies.contains(node.id))
   }
 
   def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
-    val allDependencies = graph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes)  // TODO ake: cache result?
+    val allDependencies = graph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
     getExplicitAssumptionNodes.filter(node => allDependencies.contains(node.id))
   }
 
-  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] =
-    getNonInternalAssertionNodes.filter(node => graph.existsAnyDependency(nodeIdsToAnalyze, Set(node.id), includeInfeasibilityNodes))
+  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
+    val allDependents = graph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
+    getNonInternalAssumptionNodes.filter(node => allDependents.contains(node.id))
+  }
 
+  def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
+    val allDependents = graph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
+    getExplicitAssertionNodes.filter(node => allDependents.contains(node.id))
+  }
 
   def getNonInternalAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
@@ -49,6 +55,10 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
   def getExplicitAssumptionNodes: Set[AssumptionAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
     AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)
     )
+
+  def hasAnyDependency(nodesToAnalyze: Set[AssumptionAnalysisNode], includeInfeasibilityNodes: Boolean = true): Boolean =
+    nodesToAnalyze.intersect(getNonInternalAssumptionNodes)
+      .exists(node => graph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
 
   private def getNonInternalAssumptionNodesPerSource: Map[String, Set[AssumptionAnalysisNode]] =
     getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
