@@ -98,7 +98,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
   }
 
   private def getSourceInfoString(nodes: Set[AssumptionAnalysisNode]) = {
-    nodes.map(_.sourceInfo.getTopLevelSource).toList.sortBy(_.getLineNumber).map(_.toString).mkString("\n\t")
+    nodes.groupBy(node => node.sourceInfo.getTopLevelSource.toString).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
   }
 
   private def getQueriedNodesFromInput(inputs: Set[String])= {
@@ -115,7 +115,6 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
   }
 
   private def handleDependencyQuery(inputs: Set[String]): Unit = {
-
     val queriedNodes = getQueriedNodesFromInput(inputs)
 
     val (directDependencies, timeDirect) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
