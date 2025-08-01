@@ -18,14 +18,14 @@ def plot_absolute_runtimes(header: list[str], test_results: dict[str, list[float
   result1 = []
   result2 = []
   for name, result in test_results.items():
-    names.append(name)
+    names.append(name.removeprefix("dependencyAnalysisTests/"))
     result1.append(result[0])
     result2.append(result[1])
 
   x = np.arange(len(names))
   width = 0.35
 
-  fig, ax = plt.subplots()
+  fig, ax = plt.subplots(figsize=(12, 6))
   ax.bar(x - width/2, result1, width, label=header[1])
   ax.bar(x + width/2, result2, width, label=header[2])
 
@@ -36,18 +36,19 @@ def plot_absolute_runtimes(header: list[str], test_results: dict[str, list[float
   ax.legend()
 
   plt.tight_layout()
-  plt.show()
+  # plt.show()
   plt.savefig(out_file.replace(".out", "_absolute_runtimes.png"))
+  # plt.show()
 
 def plot_overhead(header: list[str], test_results: dict[str, list[float]], out_file: str):
   names = []
   result1 = []
   for name, result in test_results.items():
-    names.append(name)
+    names.append(name.removeprefix("dependencyAnalysisTests/"))
     result1.append(result[2])
 
-  fig, ax = plt.subplots()
-  ax.bar(names, result1, label=header[3])
+  fig, ax = plt.subplots(figsize=(12, 6))
+  ax.bar(names, result1)
 
   ax.set_ylabel('analysis runtime/baseline runtime')
   ax.set_title('Overhead of the Analysis')
@@ -55,8 +56,8 @@ def plot_overhead(header: list[str], test_results: dict[str, list[float]], out_f
   ax.legend()
 
   plt.tight_layout()
-  plt.show()
   plt.savefig(out_file.replace(".out", "_overhead.png"))
+  # plt.show()
 
 def plot_overhead_vs_program_size(header: list[str], test_results: dict[str, list[float]], out_file: str):
   names = []
@@ -67,6 +68,7 @@ def plot_overhead_vs_program_size(header: list[str], test_results: dict[str, lis
     result1.append(result[2])
     result2.append(result[3])
 
+  plt.figure(figsize=(12,6))
   plt.scatter(result2, result1)
 
   plt.ylabel('analysis runtime/baseline runtime')
@@ -76,7 +78,7 @@ def plot_overhead_vs_program_size(header: list[str], test_results: dict[str, lis
 
   plt.grid(True)
   plt.tight_layout()
-  plt.show()
+  # plt.show()
   plt.savefig(out_file.replace(".out", "_overhead_vs_size.png"))
 
 input_file = input("Input file: ")
