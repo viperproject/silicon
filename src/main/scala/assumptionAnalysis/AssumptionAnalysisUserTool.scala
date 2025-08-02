@@ -68,7 +68,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
-        println()
+        println("Done.")
       })
   }
 
@@ -93,7 +93,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
-        println()
+        println("Done.")
       })
   }
 

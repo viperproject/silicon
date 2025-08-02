@@ -292,8 +292,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     }
 
     private def emitAndRecordFunctionAxioms(axiom: (Term, Option[(AnalysisSourceInfo, AssumptionType)])*): Unit = {
-      decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(axiom), "Function axioms")
-      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
+      val cleanAxiom =
+        if(!Verifier.config.enableAssumptionAnalysis()) axiom
+        else axiom.map(a => (a._1.transform{
+          case Var(name, _, _) if name.name.startsWith("analysisLabel") => True
+        }(), a._2))
+      decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(cleanAxiom), "Function axioms")
+
+      emittedFunctionAxioms = emittedFunctionAxioms ++ cleanAxiom
     }
 
     private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Decl]] = {
