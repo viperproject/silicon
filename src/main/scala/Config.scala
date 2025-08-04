@@ -179,6 +179,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val reportUnsatCore: ScallopOption[Boolean] = opt[Boolean]("reportUnsatCore",
+    descr = "For every check, retrieve the unsat core if it was proven successfully. Create an unsat core file with unsat cores used per method per branch.",
+    default = Some(false),
+    noshort = true
+  )
+
+  val localizeProof: ScallopOption[Boolean] = opt[Boolean]("localizeProof",
+    descr = "Use an unsat core file to localize the proof.",
+    default = Some(false),
+    noshort = true
+  )
+
   val recursivePredicateUnfoldings: ScallopOption[Int] = opt[Int]("recursivePredicateUnfoldings",
     descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
              + "other instances of themselves (default: 1)"),
@@ -439,7 +451,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   lazy val outputProverLog: Boolean = {
-    enableTempDirectory.isSupplied || rawProverLogFile.isSupplied || rawZ3LogFile.isSupplied
+    (enableTempDirectory.isSupplied) || rawProverLogFile.isSupplied || rawZ3LogFile.isSupplied
   }
 
   private val rawZ3Exe = opt[String]("z3Exe",

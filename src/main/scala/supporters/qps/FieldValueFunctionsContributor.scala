@@ -31,6 +31,7 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
   private var collectedSorts: InsertionOrderedSet[sorts.FieldValueFunction] = InsertionOrderedSet.empty
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
+  private val preambleLoc = if (config.reportUnsatCore()) "unsat_cores/" else if (config.localizeProof()) "guarded/" else ""
 
   /* Lifetime */
 
@@ -81,7 +82,7 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
   }
 
   def generateFunctionDecls: Iterable[PreambleBlock] = {
-    val templateFile = "/field_value_functions_declarations.smt2"
+    val templateFile = s"/${preambleLoc}field_value_functions_declarations.smt2"
 
     collectedFields map (f => {
       val sort = symbolConverter.toSort(f.typ)
@@ -95,8 +96,8 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
 
   def generateAxioms: Iterable[PreambleBlock] = {
     val templateFile =
-      if (config.disableISCTriggers()) "/field_value_functions_axioms_no_triggers.smt2"
-      else "/field_value_functions_axioms.smt2"
+      if (config.disableISCTriggers()) s"/${preambleLoc}field_value_functions_axioms_no_triggers.smt2"
+      else s"/${preambleLoc}field_value_functions_axioms.smt2"
 
     collectedFields map (f => {
       val sort = symbolConverter.toSort(f.typ)

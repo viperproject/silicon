@@ -78,6 +78,7 @@ class DefaultMainVerifier(config: Config,
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
+  private val preambleLoc = if (config.reportUnsatCore()) "unsat_cores/" else if (config.localizeProof()) "guarded/" else ""
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
@@ -210,8 +211,11 @@ class DefaultMainVerifier(config: Config,
 
     allProvers.comment("/" * 10 + " Static preamble")
     emitStaticPreamble(allProvers)
+    println("before")
 
     val (functionData, predicateData) = analyzeProgramAndEmitPreambleContributions(program, allProvers) // TODO: Add support for cfgs.
+
+    println("after")
 
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
@@ -459,7 +463,7 @@ class DefaultMainVerifier(config: Config,
     }
 
     sink.comment("\n; /preamble.smt2")
-    preambleReader.emitPreamble("/preamble.smt2", sink, false)
+    preambleReader.emitPreamble(s"/${preambleLoc}preamble.smt2", sink, false)
   }
 
   /* Prover preamble: After program analysis */
@@ -598,14 +602,14 @@ class DefaultMainVerifier(config: Config,
           while (sanitizedSortString.contains(s"$$T$i$$")) {
             i += 1
           }
-
-          preambleReader.emitParametricPreamble("/sortwrappers.smt2",
+          
+          preambleReader.emitParametricPreamble(s"/${preambleLoc}sortwrappers.smt2",
             Map("$T$" -> s"$$T$i$$",
                 "$S$" -> sanitizedSortString,
                 s"$$T$i$$" -> sortString),
             sink)
         } else {
-          preambleReader.emitParametricPreamble("/sortwrappers.smt2",
+          preambleReader.emitParametricPreamble(s"/${preambleLoc}sortwrappers.smt2",
             Map("$S$" -> sanitizedSortString,
                 "$T$" -> sortString),
             sink)

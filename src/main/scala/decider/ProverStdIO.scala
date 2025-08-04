@@ -20,7 +20,6 @@ import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, QuantifierInstantiationsMessage, Reporter}
 import viper.silver.verifier.Model
-
 import scala.collection.mutable
 
 abstract class ProverStdIO(uniqueId: String,
@@ -43,6 +42,7 @@ abstract class ProverStdIO(uniqueId: String,
   var proverPath: Path = _
   var lastReasonUnknown : String = _
   var lastModel : String = _
+  var lastUnsatCore : mutable.ArrayBuffer[String] = mutable.ArrayBuffer()
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -240,8 +240,16 @@ abstract class ProverStdIO(uniqueId: String,
   def assume(term: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    writeLine("(assert " + term + ")")
+    if (Verifier.config.reportUnsatCore()) {
+      writeLine("(assert " + randomlyNamedExpression(term) + ")")
+    } else {
+      writeLine("(assert " + term + ")")
+    }
     readSuccess()
+  }
+
+  def enableAxioms(axs: List[String]): Unit = {
+    axs.map(ax => assume(s"($ax true)"))
   }
 
   def assert(goal: Term, timeout: Option[Int] = None): Boolean =
@@ -265,7 +273,11 @@ abstract class ProverStdIO(uniqueId: String,
     push()
     setTimeout(timeout)
 
-    writeLine("(assert (not " + goal + "))")
+    if (Verifier.config.reportUnsatCore()) {
+      writeLine("(assert (not " + randomlyNamedExpression(goal) + "))")
+    } else {
+      writeLine("(assert (not " + goal + "))")
+    }
     readSuccess()
 
     val startTime = System.currentTimeMillis()
@@ -276,6 +288,8 @@ abstract class ProverStdIO(uniqueId: String,
     if (!result) {
       retrieveAndSaveModel()
       retrieveReasonUnknown()
+    } else {
+      retrieveUnsatCore()
     }
 
     pop()
@@ -316,6 +330,15 @@ abstract class ProverStdIO(uniqueId: String,
       if (result.startsWith("(:reason-unknown \""))
         result = result.substring(18, result.length - 2)
       lastReasonUnknown = result
+    }
+  }
+
+  protected def retrieveUnsatCore(): Unit = {
+    if (Verifier.config.reportUnsatCore()) {
+      writeLine("(get-unsat-core)")
+      val result = readLine()
+      comment(result)
+      lastUnsatCore += result
     }
   }
 
@@ -421,6 +444,10 @@ abstract class ProverStdIO(uniqueId: String,
 //    resetAssumptionCounter()
 //  }
 
+  def namedExpression(a: String, name: String): String = s"(! $a :named $name)"
+
+  def randomlyNamedExpression(a: String): String = namedExpression(a, identifierFactory.fresh("assertion").name)
+
   /* TODO: Handle multi-line output, e.g. multiple error messages. */
 
   protected def readSuccess(): Unit = {
@@ -515,6 +542,12 @@ abstract class ProverStdIO(uniqueId: String,
   override def clearLastAssert(): Unit = {
     lastReasonUnknown = null
     lastModel = null
+  }
+
+  override def getUnsatCore(): mutable.ArrayBuffer[String] = {
+    val ret = lastUnsatCore
+    lastUnsatCore = mutable.ArrayBuffer()
+    ret
   }
 
   def getAllDecls(): Seq[Decl] = allDecls

@@ -8,6 +8,7 @@ package viper.silicon.decider
 
 import com.typesafe.scalalogging.Logger
 import viper.silicon.debugger.DebugExp
+import viper.silicon.optimizations.ProofEssence
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -48,6 +49,8 @@ trait Decider {
 
   def pushScope(): Unit
   def popScope(): Unit
+  def guardedPush(axs: List[String]): Unit
+  def guardedPop(): Unit
 
   def checkSmoke(isAssert: Boolean = false): Boolean
 
@@ -129,6 +132,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _proverOptions: Map[String, String] = Map.empty
     private var _proverResetOptions: Map[String, String] = Map.empty
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
+    private var guarded: Boolean = false
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -247,6 +251,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       _prover.pop()
       pathConditions.popScope()
       //symbExLog.closeScope(sepIdentifier)
+    }
+
+    def guardedPush(axs: List[String]): Unit = {
+      _prover.push()
+      guarded = true
+      _prover.enableAxioms(axs)
+    }
+
+    def guardedPop(): Unit = {
+      _prover.pop()
+      guarded = false
     }
 
     def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit = {
@@ -409,7 +424,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
+      if (Verifier.config.localizeProof() && !guarded)
+        guardedPush(List(ProofEssence.globalGuardName))
+
       val result = prover.assert(t, timeout)
+
+      if (Verifier.config.localizeProof() && !guarded)
+        guardedPop()
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

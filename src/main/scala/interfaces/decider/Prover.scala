@@ -14,6 +14,7 @@ import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.Model
+import scala.collection.mutable.ArrayBuffer
 
 sealed abstract class Result
 object Sat extends Result
@@ -50,6 +51,7 @@ trait Prover extends ProverLike with StatefulComponent {
   def isModelValid(): Boolean
   def getModel(): Model
   def getReasonUnknown(): String
+  def getUnsatCore(): ArrayBuffer[String]
   def clearLastAssert(): Unit
   def name: String
   def minVersion: Version
@@ -63,6 +65,8 @@ trait Prover extends ProverLike with StatefulComponent {
   def push(n: Int = 1, timeout: Option[Int] = None): Unit
 
   def pop(n: Int = 1): Unit
+
+  def enableAxioms(axs: List[String]): Unit
 
   def getAllDecls(): Seq[Decl]
 

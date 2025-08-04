@@ -10,6 +10,9 @@ import viper.silicon.verifier.Verifier
 import scala.io.Source
 
 object ProofEssence {
+
+  val globalGuardName = "$GlobalGuard"
+
   def branchGuards(name: String, branch: String): List[String] = {
     val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${name}_unsatCoreCache.cache")
     val cacheMap: Map[String, String] = {
@@ -28,6 +31,7 @@ object ProofEssence {
         pattern.findAllMatchIn(coresStr).map(_.group(1)).toList
       case None => Nil
     }
+    println(s"Cores = $cores")
     cores
   }
 }

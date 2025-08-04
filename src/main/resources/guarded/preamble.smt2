@@ -57,7 +57,6 @@
 ; --- Guarding ---
 
 (declare-fun $GlobalGuard (Bool) Bool)
-
 ; --- End static preamble ---
 
 ; (get-proof "stdout")

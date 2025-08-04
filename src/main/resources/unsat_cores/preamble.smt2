@@ -54,10 +54,6 @@
 (define-fun $Math.clip ((a Int)) Int
     (ite (< a 0) 0 a))
 
-; --- Guarding ---
-
-(declare-fun $GlobalGuard (Bool) Bool)
-
 ; --- End static preamble ---
 
 ; (get-proof "stdout")

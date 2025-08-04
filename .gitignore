@@ -24,3 +24,4 @@ viper_tutorial_examples
 .bsp/
 .bloop/
 .metals/
+.aider*

@@ -281,6 +281,10 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
+  def enableAxioms(axs: List[String]): Unit = {
+    // TODO
+  }
+
   def cleanTriggers(term: Term): Term = {
     triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
     val cleanTerm = term.transform {
@@ -512,6 +516,8 @@ class Z3ProverAPI(uniqueId: String,
     }
     ViperModel(entries.toMap)
   }
+
+  override def getUnsatCore(): mutable.ArrayBuffer[String] = mutable.ArrayBuffer("TODO")
 
   override def hasModel(): Boolean = {
     lastModel != null

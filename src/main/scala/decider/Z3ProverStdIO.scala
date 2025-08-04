@@ -71,5 +71,10 @@ class Z3ProverStdIO(uniqueId: String,
       writeLine(s"(set-option :smt.arith.nl false)")
       readSuccess()
     }
+    if (Verifier.config.reportUnsatCore()) {
+      comment("We enable the unsat core creation")
+      writeLine("(set-option :produce-unsat-cores true)")
+      readSuccess()
+    }
   }
 }

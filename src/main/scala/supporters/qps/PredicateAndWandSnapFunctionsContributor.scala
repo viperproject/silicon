@@ -54,6 +54,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
   private var collectedSorts: InsertionOrderedSet[Sort] = InsertionOrderedSet.empty // TODO: Make Set[sorts.PredicateSnapFunction]
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
+  private val preambleLoc = if (config.reportUnsatCore()) "unsat_cores/" else ""
 
   /* Lifetime */
 
@@ -115,7 +116,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
   }
 
   def generateFunctionDecls: Iterable[PreambleBlock] = {
-    val snapsTemplateFile = "/predicate_snap_functions_declarations.smt2"
+    val snapsTemplateFile = s"/${preambleLoc}predicate_snap_functions_declarations.smt2"
 
     val predicatesPreamble =
       collectedPredicates map (p => {
@@ -142,8 +143,8 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
 
   def generateAxioms: Iterable[PreambleBlock] = {
     val templateFile =
-      if (config.disableISCTriggers()) "/predicate_snap_functions_axioms_no_triggers.smt2"
-      else "/predicate_snap_functions_axioms.smt2"
+      if (config.disableISCTriggers()) s"/${preambleLoc}predicate_snap_functions_axioms_no_triggers.smt2"
+      else s"/${preambleLoc}predicate_snap_functions_axioms.smt2"
 
     val predicatesPreamble =
       collectedPredicates map (p => {
