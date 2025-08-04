@@ -61,8 +61,8 @@ trait Decider {
 
   def startDebugSubExp(): Unit
 
-  def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
-  def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
+  def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
+  def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
   def wrapWithAssumptionAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit
@@ -155,10 +155,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }else{
         removeAssumptionAnalyzer()
       }
+      analysisSourceInfoStack = AnalysisSourceInfoStack()
     }
 
     override def removeAssumptionAnalyzer(): Unit = {
       assumptionAnalyzer = new NoAssumptionAnalyzer
+      analysisSourceInfoStack = AnalysisSourceInfoStack()
     }
 
     def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
@@ -305,11 +307,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    def registerChunk[CH <: GeneralChunk](buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
+    def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
       registerDerivedChunk[CH](Set.empty, buildChunk, perm, analysisInfo, isExhale)
     }
 
-    def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: (Term => CH), perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
+    def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
       if(!Verifier.config.enableAssumptionAnalysis())
         return buildChunk(perm)
 

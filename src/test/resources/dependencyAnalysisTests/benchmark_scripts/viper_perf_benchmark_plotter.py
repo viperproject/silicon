@@ -4,10 +4,10 @@ import numpy as np
 def import_result(file: str):
   with open(file, mode="r") as f:
     contents = f.readlines()
-  header = [c.strip() for c in contents[0].split(";")]
+  header = [c.strip() for c in contents[0].split(",")]
   results = {}
   for line in contents[1:]:
-      parts = line.split(';')
+      parts = line.split(',')
       test_name = parts[0].strip()
       runtimes = [float(x.strip()) for x in parts[1:]]
       results[test_name] = runtimes

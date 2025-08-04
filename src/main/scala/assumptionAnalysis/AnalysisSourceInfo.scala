@@ -1,6 +1,5 @@
 package viper.silicon.assumptionAnalysis
 
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
 
@@ -112,64 +111,4 @@ case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, 
   override def getFineGrainedSource: AnalysisSourceInfo = fineGrainedSource.getFineGrainedSource
 
   override def isAnalysisEnabled: Boolean = coarseGrainedSource.isAnalysisEnabled && fineGrainedSource.isAnalysisEnabled
-}
-
-
-case class AnalysisSourceInfoStack() {
-  private var sourceInfos: List[AnalysisSourceInfo] = List.empty
-  private var forcedMainSource: Option[AnalysisSourceInfo] = None
-
-  def getAnalysisSourceInfos: List[AnalysisSourceInfo] = sourceInfos
-
-  def getFullSourceInfo: AnalysisSourceInfo = {
-    if(!Verifier.config.enableAssumptionAnalysis()) return NoAnalysisSourceInfo()
-    if(forcedMainSource.isDefined)
-      return forcedMainSource.get
-    if(sourceInfos.size <= 1){
-      sourceInfos.headOption.getOrElse(NoAnalysisSourceInfo())
-    } else{
-      CompositeAnalysisSourceInfo(sourceInfos.last, sourceInfos.head)
-    }
-  }
-
-  def addAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): Unit = {
-    if(!Verifier.config.enableAssumptionAnalysis()) return
-    sourceInfos = analysisSourceInfo +: sourceInfos
-  }
-
-  def setAnalysisSourceInfo(analysisSourceInfo: List[AnalysisSourceInfo]): Unit = {
-    if(!Verifier.config.enableAssumptionAnalysis()) return
-    sourceInfos = analysisSourceInfo
-  }
-
-  def popAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): Unit = {
-    if(!Verifier.config.enableAssumptionAnalysis()) return
-
-    var currSourceInfo = sourceInfos
-    // popping just one source info might not be enough since infeasible branches might return without popping the source info
-    while(currSourceInfo.nonEmpty && !currSourceInfo.head.equals(analysisSourceInfo)) {
-      currSourceInfo = currSourceInfo.tail
-    }
-    if(currSourceInfo.isEmpty || !currSourceInfo.head.equals(analysisSourceInfo))
-      throw new RuntimeException("unexpected source info")
-    sourceInfos = currSourceInfo.tail
-  }
-
-  def getForcedSource: Option[AnalysisSourceInfo] = forcedMainSource
-
-  def setForcedSource(description: String): Unit = {
-    forcedMainSource = Some(StringAnalysisSourceInfo(description, NoPosition))
-  }
-
-  def setForcedSource(source: AnalysisSourceInfo): Unit = {
-    forcedMainSource = Some(source)
-  }
-
-  def setForcedSource(sourceOpt: Option[AnalysisSourceInfo]): Unit = {
-    forcedMainSource = sourceOpt
-  }
-
-  def removeForcedSource(): Unit = {
-    forcedMainSource = None
-  }
 }

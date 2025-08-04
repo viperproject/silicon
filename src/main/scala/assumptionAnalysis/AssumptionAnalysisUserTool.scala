@@ -1,11 +1,11 @@
 package silicon.viper.assumptionAnalysis
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisGraph, AssumptionAnalysisInterpreter, AssumptionAnalysisNode, AssumptionAnalyzer, AssumptionType}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, AssumptionAnalysisNode}
+import viper.silver.ast
+import viper.silver.ast.Method
 
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
-import viper.silver.ast
-import viper.silver.ast.Method
 
 class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpreter, memberInterpreters: Seq[AssumptionAnalysisInterpreter]) {
   private val infoString = "Enter " +
@@ -68,8 +68,8 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
-        println("Done.")
       })
+    println("Done.")
   }
 
   private def handleProofCoverageLineQuery(memberNames: Seq[String]): Unit = {
@@ -93,8 +93,8 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
-        println("Done.")
       })
+    println("Done.")
   }
 
   private def getSourceInfoString(nodes: Set[AssumptionAnalysisNode]) = {
@@ -128,8 +128,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     println(s"\nAll Dependencies (${timeAll}ms):\n\t${getSourceInfoString(allDependencies)}")
     println(s"\nDependencies without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(allDependenciesWithoutInfeasibility)}")
     println(s"\nExplicit Dependencies (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependencies)}")
-
-    println(s"\nDone.")
+    println("Done.")
   }
 
   private def handleDependentsQuery(inputs: Set[String]): Unit = {
@@ -145,8 +144,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     println(s"\nAll Dependents (${timeAll}ms):\n\t${getSourceInfoString(allDependents)}")
     println(s"\nDependents without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(dependentsWithoutInfeasibility)}")
     println(s"\nExplicit Dependents (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependents)}")
-
-    println(s"\nDone.")
+    println("Done.")
   }
 
   private def handleHasDependencyQuery(inputs: Set[String]): Unit = {

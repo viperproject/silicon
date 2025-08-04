@@ -64,7 +64,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
       val writer = new PrintWriter(s"$basePath/result_${now.format(formatter)}.out")
       val proofCoverageWriter = new PrintWriter(s"$basePath/proofCoverage_${now.format(formatter)}.out")
-      writer.println(f"test name;\tbaseline (ms);\tanalysis (ms);\tanalysis/baseline\tprogram size")
+      writer.println(f"test name,baseline (ms),analysis (ms),analysis/baseline,program size")
       testDirectories foreach (dir => visitFiles(dir, executePerformanceBenchmark(_, _, writer, proofCoverageWriter)))
       writer.close()
       proofCoverageWriter.close()
@@ -453,12 +453,12 @@ class AssumptionAnalysisTests extends AnyFunSuite {
     }
 
     def execute(): Unit = {
-      printResult(f"$name;\t")
+      printResult(f"$name,")
 
       val analysisDurationMs: Double = verifyAndMeasure(program, analysisCommandLineArguments)
       val baselineDurationMs: Double = verifyAndMeasure(program, baseCommandLineArguments)
 
-      printResult(f"$baselineDurationMs;\t$analysisDurationMs;\t${analysisDurationMs/baselineDurationMs};\t$programSize\n")
+      printResult(f"$baselineDurationMs,$analysisDurationMs,${analysisDurationMs/baselineDurationMs},$programSize\n")
 
       // TODO ake: rewrite if we want to support this
 //      if(naiveProgram.isDefined){

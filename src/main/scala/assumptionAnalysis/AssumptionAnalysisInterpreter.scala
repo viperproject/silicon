@@ -39,7 +39,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
   def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
     val allDependents = graph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
-    getNonInternalAssumptionNodes.filter(node => allDependents.contains(node.id))
+    getNonInternalAssertionNodes.filter(node => allDependents.contains(node.id))
   }
 
   def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
