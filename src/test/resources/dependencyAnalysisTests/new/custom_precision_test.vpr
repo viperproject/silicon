@@ -1,0 +1,209 @@
+field f: Int
+field g: Int
+
+
+method branching(x: Ref, a: Int, b: Bool, n: Int)
+  requires acc(x.f) && x.f > 0
+  ensures acc(x.f)
+{
+  var res: Int
+
+  if(a > 0){
+    res := a
+  }else{
+    res := x.f
+  }
+
+  if(b){
+    x.f := 1
+    res := res + 1
+  }else{
+    x.f := 2
+    res := res + 2
+  }
+
+  if(a > 0){
+    assert res > a
+  }else{
+    assert x.f >= 1
+    assert b ==> res > a
+    assert !b ==> res > 2
+  }
+}
+
+method branching2(x: Ref, a: Int, b: Bool, n: Int)
+  requires acc(x.f) && x.f > 0
+  ensures acc(x.f)
+{
+  var res: Ref
+  res := new(f)
+
+  if(a > 0){
+    res.f := a
+  }else{
+    res.f := x.f
+  }
+
+  if(b){
+    x.f := 1
+    res.f := res.f + 1
+  }else{
+    x.f := 2
+    res.f := res.f + 2
+  }
+
+  if(a > 0){
+    assert res.f > a
+  }else{
+    assert x.f >= 1
+    assert b ==> res.f > a
+    assert !b ==> res.f > 2
+  }
+}
+
+method assign(x: Ref, val: Int)
+  requires acc(x.f)
+  requires val > 0
+  ensures acc(x.f)
+  ensures x.f == val
+{
+  x.f := val
+}
+
+method branchingMethod(x: Ref, a: Int, b: Bool, n: Int)
+  requires acc(x.f) && x.f > 0
+  ensures acc(x.f)
+{
+  var res: Ref
+  res := new(f)
+
+  if(a > 0){
+    res.f := a
+  }else{
+    res.f := x.f
+  }
+
+  if(b){
+    x.f := 1
+    assign(res, res.f + 1)
+  }else{
+    x.f := 2
+    assign(res, res.f + 2)
+  }
+
+  if(a > 0){
+    assert res.f > a
+  }else{
+    assert x.f >= 1
+    assert b ==> res.f > a
+    assert !b ==> res.f > 2
+  }
+}
+
+function retVal(val: Int): Int
+  requires val > 0
+{
+  val
+}
+
+method branchingFunction(x: Ref, a: Int, b: Bool, n: Int)
+  requires acc(x.f) && x.f > 0
+  ensures acc(x.f)
+{
+  var res: Ref
+  res := new(f)
+
+  if(a > 0){
+    res.f := a
+  }else{
+    res.f := x.f
+  }
+
+  if(b){
+    x.f := 1
+    res.f := retVal(res.f + 1)
+  }else{
+    x.f := 2
+    res.f := retVal(res.f + 2)
+  }
+
+  if(a > 0){
+    assert res.f > a
+  }else{
+    assert x.f >= 1
+    assert b ==> res.f > a
+    assert !b ==> res.f > 2
+  }
+}
+
+method branchingDiv0(x: Ref, a: Int, b: Bool, n: Int)
+  requires acc(x.f) && x.f > 0
+  ensures acc(x.f)
+{
+  var res: Ref
+  res := new(f)
+
+  if(a > 0){
+    res.f := a
+  }else{
+    res.f := x.f
+  }
+
+  if(b){
+    x.f := 1
+    res.f := (res.f*res.f+res.f)/res.f
+  }else{
+    x.f := 2
+    res.f := (res.f*res.f + 2*res.f)/res.f
+  }
+
+  if(a > 0){
+    assert res.f > a
+  }else{
+    assert x.f >= 1
+    assert b ==> res.f > a
+    assert !b ==> res.f > 2
+  }
+}
+
+method branchNLoops(x: Ref, a: Int, b: Bool, n: Int)
+  requires acc(x.f) && x.f > 0
+  ensures acc(x.f)
+{
+  var res: Ref
+  res := new(f)
+  var whatever: Bool := b
+
+  if(a > 0){
+    res.f := a
+  }else{
+    res.f := x.f
+  }
+
+  while(whatever)
+    invariant acc(x.f)
+    invariant acc(res.f)
+    invariant x != res
+    invariant res.f > 0
+    invariant x.f >= 1
+  {
+    if(a > 0){
+      x.f := x.f + 4
+      res.f := res.f + a
+    }else{
+      x.f := x.f + 1
+      res.f := res.f + 2
+    }
+    if(res.f > 5){
+      whatever := false
+    }
+  }
+
+  if(a > 0){
+    assert res.f >= 0
+  }else{
+    assert x.f >= 1
+    assert b ==> res.f > a
+    assert !b ==> res.f > 0
+  }
+}
