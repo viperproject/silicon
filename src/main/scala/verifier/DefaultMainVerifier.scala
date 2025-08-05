@@ -173,6 +173,7 @@ class DefaultMainVerifier(config: Config,
       * (top-down should also work, but the default of 'innermost' won't).
       * See also [[viper.silicon.utils.ast.autoTrigger]].
       */
+    println("MY FORK")
     var program: ast.Program =
       originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
