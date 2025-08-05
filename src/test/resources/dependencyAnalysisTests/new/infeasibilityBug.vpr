@@ -1,0 +1,28 @@
+field Value: Int
+field Left: Ref
+field Right: Ref
+
+predicate tree(self: Ref) {
+  acc(self.Left) && acc(self.Value) && acc(self.Right) &&
+  (self.Left != null ==> tree(self.Left)) &&
+  (self.Right != null ==> tree(self.Right))
+}
+
+
+function Contains(self: Ref, v: Int): Bool
+  requires self != null ==> tree(self)
+{
+  self != null && (unfolding tree(self) in (Contains(self.Left, v) || Contains(self.Right, v)))
+}
+
+
+method Insert(self: Ref, v: Int) returns (res: Ref)
+{
+    inhale acc(self.Left) && acc(self.Value) && acc(self.Right)
+    inhale self.Left == null
+    inhale tree(self.Right)
+    inhale Contains(self.Right, v) // self.Right := Insert(self.Right, v)
+    fold tree(self)
+    assert self != null
+    assert Contains(self, v)
+}
