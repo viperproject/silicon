@@ -331,7 +331,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         val chunkInhaleNode = assumptionAnalyzer.getChunkInhaleNode(sourceChunks.head)
         return chunkInhaleNode.map(_.labelNode)
       }
-      val (label, _) = fresh(ast.LocalVar("analysisLabel", ast.Bool)())
+      val (label, _) = fresh(ast.LocalVar(AssumptionAnalyzer.analysisLabelName, ast.Bool)())
       val labelNode = assumptionAnalyzer.createLabelNode(label, sourceChunks, sourceTerms)
       val smtLabel = AssumptionAnalyzer.createAssumptionLabel(labelNode.map(_.id))
       assumeLabel(label, smtLabel)

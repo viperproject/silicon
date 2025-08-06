@@ -295,7 +295,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val cleanAxiom =
         if(!Verifier.config.enableAssumptionAnalysis()) axiom
         else axiom.map(a => (a._1.transform{
-          case Var(name, _, _) if name.name.startsWith("analysisLabel") => True
+          case Var(name, _, _) if name.name.startsWith(AssumptionAnalyzer.analysisLabelName) => True
         }(), a._2))
       decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(cleanAxiom), "Function axioms")
 

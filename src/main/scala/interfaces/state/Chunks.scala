@@ -41,7 +41,7 @@ object GeneralChunk {
     val newChunk = analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), {finalPerm =>
       chunk.permMinus(finalPerm, newPermExp)},
       newPerm, analysisInfo.withAssumptionType(AssumptionType.Internal), isExhale=false, createLabel=false) // TODO ake: assumption type? maybe for exhale we want to have Implicit?
-    @unused // we still need to register the chunk to have a sound analysis
+    @unused // we need to register the chunk to have a sound analysis
     val exhaledChunk = analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), { finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfo, isExhale=true, createLabel=false)
@@ -77,6 +77,10 @@ object NonQuantifiedChunk {
     analysisInfo.decider.registerDerivedChunk[NonQuantifiedChunk](Set(chunk), {_ =>
       chunk.withSnap(snap, snapExp)},
       chunk.perm, analysisInfo, isExhale=false, createLabel=false)
+  }
+
+  def withPerm(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo, isExhale: Boolean=false): NonQuantifiedChunk = {
+    GeneralChunk.withPerm(chunk, newPerm, newPermExp, analysisInfo, isExhale).asInstanceOf[NonQuantifiedChunk]
   }
 }
 

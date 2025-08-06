@@ -48,6 +48,7 @@ trait AssumptionAnalyzer {
 }
 
 object AssumptionAnalyzer {
+  val analysisLabelName: String = "$$analysisLabel$$"
   private val assumptionTypeAnnotationKey = "assumptionType"
   private val enableAssumptionAnalysisAnnotationKey = "enableAssumptionAnalysis"
 

@@ -480,8 +480,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
+        @unused // required in order to ensure a sound assumption analysis
         val _ = GeneralChunk.withPerm(ch, permTaken, None, v.decider.getAnalysisInfo(assumptionType), isExhale=true)
-        GeneralChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Implicit)).asInstanceOf[NonQuantifiedChunk] // TODO ake: casting
+        NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Implicit))
       })
 
     val totalTakenBounds =

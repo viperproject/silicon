@@ -14,16 +14,16 @@ function listLength(l:Ref) : Int
 }
 
 method appendList1(this: Ref, e: Int)
-  requires list(this) // TODO ake: imprecise @irrelevant("Explicit")(list(this))
+  requires @irrelevant("Explicit")(list(this))
   requires @irrelevant("Explicit")(0 <= e && e < 100)
   ensures  list(this)
 {
-  // @irrelevant("Implicit") TODO ake: imprecise
+  @irrelevant("Implicit")
   unfold list(this)
   @irrelevant("Explicit")
   assume 0 <= this.elem && this.elem < 100
 
-  if (this.next == null) { // TODO ake: imprecise @irrelevant("PathCondition")(this.next == null)
+  if (@irrelevant("PathCondition")(this.next == null)) {
     var n: Ref
 
     @dependency("Implicit")

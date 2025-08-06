@@ -5,7 +5,7 @@ method quasihavoc1(x: Ref, y: Ref)
     requires @dependency("Explicit")(x.f == 3)
     requires @dependency("Explicit")(x != y)
 {
-    @irrelevant() // TODO ake
+    @irrelevant()
     quasihavoc y.f   // does nothing. we have no permission
     @testAssertion("Explicit")
     assert x.f == 3
