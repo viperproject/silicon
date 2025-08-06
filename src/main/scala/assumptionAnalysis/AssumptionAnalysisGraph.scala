@@ -162,8 +162,8 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
   private def exportEdges(fileName: String): Unit = {
     val writer = new PrintWriter(fileName)
     writer.println("source,target,label")
-    edges foreach (e => e._2 foreach (t => writer.println(e._1.toString + "," + t + ",direct")))
-    transitiveEdges foreach (e => e._2 foreach (t => writer.println(e._1.toString + "," + t + ",transitive")))
+    edges foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",direct")))
+    transitiveEdges foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",transitive")))
     writer.close()
   }
 
