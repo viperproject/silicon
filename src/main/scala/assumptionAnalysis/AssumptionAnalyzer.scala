@@ -44,8 +44,6 @@ trait AssumptionAnalyzer {
   def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit
   def addFunctionAxiomEdges(): Unit
 
-  def  addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Unit = {}
-
   def buildFinalGraph(): Option[AssumptionAnalysisGraph]
 }
 
@@ -213,12 +211,6 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     else
       Some(SimpleAssertionNode(term, assumptionType, analysisSourceInfo, isClosed_))
   }
-  
-  def addAssertNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val node = createAssertOrCheckNode(term, assumptionType, analysisSourceInfo, isCheck=false)
-    node foreach addNode
-    node map (_.id)
-  }
 
   override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = {
     val node = createAssertOrCheckNode(False, assumptionType, sourceInfo, isCheck)
@@ -329,13 +321,6 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     }
 
     mergedGraph
-  }
-
-  override def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Unit = {
-    val newAssertionNodeId = addAssertNode(False, assumptionType, analysisSourceInfo)
-    val newAssumptionNodeId = addAssumption(False, analysisSourceInfo, assumptionType)
-    addDependency(infeasNodeId, newAssumptionNodeId)
-    addDependency(infeasNodeId, newAssertionNodeId)
   }
 }
 
