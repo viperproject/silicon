@@ -92,3 +92,48 @@ method foldPrecision(a: Int, b: Int)
     @testAssertion("Implicit")
     fold greater0(b)
 }
+
+method unfolding1(n: Int)
+    requires @dependency("Explicit")(greater5(n))
+{
+
+    // $PrecisionTest: $READ_ONLY=n $INVARIANT=(unfolding$_$greater5(n)$_$in$_$n>0) $ACC_INVARIANT=greater5(n)
+
+    @testAssertion("Explicit")
+    assert unfolding greater5(n) in n > 0
+}
+
+predicate implPred(a: Int, x: Ref){
+  a > 0 ==> acc(x.f)
+}
+
+method unfoldWithImpl(a: Int, x: Ref)
+  requires @dependency("Explicit")(implPred(a, x))
+{
+  @dependency("Rewrite")
+  unfold implPred(a, x)
+  if(@dependency("PathCondition")(a > 5)){
+    @irrelevant("Implicit")
+    x.f := a
+
+    // $PrecisionTest: $READ_ONLY=a $READ_WRITE=x.f $INVARIANT=a>=0 $ACC_INVARIANT=acc(x.f)
+  }
+  @testAssertion("Implicit")
+  fold implPred(a, x)
+}
+
+method unfoldingWithImpl(a: Int, x: Ref)
+  requires @dependency("Explicit")(implPred(a, x))
+{
+  var res: Int
+  if(@dependency("PathCondition")(a > 5)){
+
+    // $PrecisionTest: $READ_ONLY=a $READ_WRITE=res $INVARIANT=a>0
+
+    @testAssertion("Implicit")
+    res := unfolding implPred(a, x) in x.f
+  }else{
+    @irrelevant("Implicit")
+    res := a
+  }
+}

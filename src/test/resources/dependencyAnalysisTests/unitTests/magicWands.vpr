@@ -138,3 +138,18 @@ method packageExhale(x: Ref)
     assert perm(x.f) == 1/2
 }
 
+method applying1()
+{
+    var x: Int
+    var y: Int
+    @dependency("Explicit")
+    inhale x > 0
+    @dependency("Explicit")
+    inhale x > 0 --* y > 0
+
+    // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=x>0
+
+    @testAssertion("Explicit")
+    assert applying (x > 0 --* y > 0) in y > 0
+}
+
