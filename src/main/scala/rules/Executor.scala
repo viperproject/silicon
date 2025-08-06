@@ -327,10 +327,19 @@ object executor extends ExecutionRules {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     val sourceInfo = StmtAnalysisSourceInfo(stmt)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
-    exec2(s, stmt, v)((s1, v1) => {
+    if(Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableAssumptionAnalysis() &&
+      v.decider.pcs.getCurrentInfeasibilityNode.nonEmpty){
+      v.decider.assumptionAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode,
+        v.decider.analysisSourceInfoStack.getFullSourceInfo, AssumptionType.Implicit)
       v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
-      v1.symbExLog.closeScope(sepIdentifier)
-      Q(s1, v1)})
+      Q(s, v)
+    }else {
+      exec2(s, stmt, v)((s1, v1) => {
+        v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
+        v1.symbExLog.closeScope(sepIdentifier)
+        Q(s1, v1)
+      })
+    }
   }
 
   def exec2(state: State, stmt: ast.Stmt, v: Verifier)
