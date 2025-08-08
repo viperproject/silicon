@@ -204,6 +204,11 @@ object consumer extends ConsumptionRules {
      * time permissions have been consumed.
      */
 
+    if(v.decider.isPathInfeasible()){
+      v.decider.assumptionAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+      return Q(s, h, Option.when(returnSnap)(Unit), v)
+    }
+
     v.logger.debug(s"\nCONSUME ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
     v.logger.debug("h = " + v.stateFormatter.format(h))
