@@ -444,7 +444,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       })
     }
 
-    private def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], isDefinition: Boolean = false) = {
+    private def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], isDefinition: Boolean = false): None.type = {
+      if (Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined) return None
+
       val terms = termsWithLabel map (_._1)
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = symbExLog.openScope(assumeRecord)
@@ -457,7 +459,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       /* Add terms to the prover's assumptions */
-      termsWithLabel foreach{case (t, label) => prover.assume(t, label)}
+      termsWithLabel foreach { case (t, label) => prover.assume(t, label) }
 
       symbExLog.closeScope(sepIdentifier)
       None
@@ -477,7 +479,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }else{ ("", None) }
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      val result = prover.check(timeout, label) == Unsat
+      val isInfeasiblePath = Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined
+      val result = isInfeasiblePath || prover.check(timeout, label) == Unsat
       if(result) {
         if(pcs.getCurrentInfeasibilityNode.isDefined){
           assumptionAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNodeId)
@@ -525,6 +528,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
       val asserted = if(Verifier.config.enableAssumptionAnalysis()) t.equals(True) else isKnownToBeTrue(t)
+
       val assertNode = if(!asserted) assumptionAnalyzer.createAssertOrCheckNode(t, assumptionType, decider.analysisSourceInfoStack.getFullSourceInfo, isCheck) else None
 
       val result = asserted || proverAssert(t, timeout, AssumptionAnalyzer.createAssertionLabel(assertNode map (_.id)))
@@ -547,7 +551,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val result = prover.assert(t, timeout, label)
+      val isInfeasiblePath = Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined
+      val result = isInfeasiblePath || prover.assert(t, timeout, label)
 
       if(result)
         if(pcs.getCurrentInfeasibilityNode.isDefined) {
