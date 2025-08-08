@@ -64,6 +64,7 @@ trait Decider {
   def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
   def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
   def wrapWithAssumptionAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
+  def isPathInfeasible(): Boolean
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit
   def assume(t: Term, debugExp: Option[DebugExp], assumptionType: AssumptionType): Unit
@@ -346,6 +347,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       labelNode.map(n => Implies(n.term, term)).getOrElse(term)
     }
 
+    def isPathInfeasible(): Boolean = Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined
+
     def addDebugExp(e: DebugExp): Unit = {
       if (debugMode) {
         pathConditions.addDebugExp(e)
@@ -445,7 +448,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def assumeWithoutSmokeChecks(termsWithLabel: InsertionOrderedSet[(Term, String)], isDefinition: Boolean = false): None.type = {
-      if (Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined) return None
+      if (isPathInfeasible()) return None
 
       val terms = termsWithLabel map (_._1)
       val assumeRecord = new DeciderAssumeRecord(terms)
@@ -479,8 +482,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }else{ ("", None) }
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      val isInfeasiblePath = Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined
-      val result = isInfeasiblePath || prover.check(timeout, label) == Unsat
+      val result = isPathInfeasible() || prover.check(timeout, label) == Unsat
       if(result) {
         if(pcs.getCurrentInfeasibilityNode.isDefined){
           assumptionAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNodeId)
@@ -551,8 +553,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val isInfeasiblePath = Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined
-      val result = isInfeasiblePath || prover.assert(t, timeout, label)
+      val result = isPathInfeasible() || prover.assert(t, timeout, label)
 
       if(result)
         if(pcs.getCurrentInfeasibilityNode.isDefined) {

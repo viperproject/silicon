@@ -1688,7 +1688,14 @@ object evaluator extends EvaluationRules {
     val joinSort = v.symbolConverter.toSort(joinType)
     assert(entries.nonEmpty, "Expected at least one join data entry")
 
-    entries match {
+    // join entries coming from feasible paths only!
+    val feasibleEntries = entries filter (!Verifier.config.disableInfeasibilityChecks() || _.pathConditions.infeasibilityNodeId.isEmpty)
+
+    feasibleEntries match {
+      case Seq() =>
+        /* feasibility checks are disabled and all entries are infeasible, we can return any state and data */
+        v.decider.pcs.setCurrentInfeasibilityNode(entries.head.pathConditions.infeasibilityNodeId)
+        (entries.head.s, entries.head.data)
       case Seq(entry) =>
         /* If there is only one entry, i.e. one branch to join, it is assumed that the other
          * branch was infeasible, and the branch conditions are therefore ignored.

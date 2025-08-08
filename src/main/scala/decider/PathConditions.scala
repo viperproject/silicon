@@ -32,6 +32,7 @@ trait RecordedPathConditions {
   def definingAssumptionExps: InsertionOrderedSet[DebugExp]
   def declarations: InsertionOrderedSet[Decl]
   def analysisLabels: InsertionOrderedSet[Term]
+  def infeasibilityNodeId: Option[Int]
 
   def definitionsOnly: RecordedPathConditions
 
@@ -282,6 +283,9 @@ private trait LayeredPathConditionStackLike {
   protected def analysisLabels(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.analysisLabels))
 
+  protected def infeasibilityNodeId(layers: Stack[PathConditionStackLayer]): Option[Int] =
+    layers.flatMap(_.infeasibilityNodeId).headOption
+
   protected def contains(layers: Stack[PathConditionStackLayer], assumption: Term): Boolean =
     layers exists (_.contains(assumption))
 
@@ -428,6 +432,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val definingAssumptionExps: InsertionOrderedSet[DebugExp] = definingAssumptionExps(from)
   val declarations: InsertionOrderedSet[Decl] = declarations(from)
   val analysisLabels: InsertionOrderedSet[Term] = analysisLabels(from)
+  val infeasibilityNodeId: Option[Int] = infeasibilityNodeId(from)
 
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
@@ -604,6 +609,8 @@ private[decider] class LayeredPathConditionStack
     InsertionOrderedSet(layers.flatMap(_.declarations)) // Note: Performance?
 
   def analysisLabels: InsertionOrderedSet[Term] = InsertionOrderedSet(layers.flatMap(_.analysisLabels))
+
+  override def infeasibilityNodeId: Option[Mark] = layers.flatMap(_.infeasibilityNodeId).headOption
 
   def definingAssumptions: InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++ layers.flatMap(_.nonGlobalDefiningAssumptions)) // Note: Performance?

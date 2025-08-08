@@ -99,7 +99,8 @@ object joiner extends JoiningRules {
         var feasibleBranchesExp: Option[List[ast.Exp]] = Option.when(withExp)(Nil)
         var feasibleBranchesExpNew: Option[List[ast.Exp]] = Option.when(withExp)(Nil)
 
-        entries foreach (entry => {
+        // infeasible branches can be skipped
+        entries filter (entry => !Verifier.config.disableInfeasibilityChecks() || entry.pathConditions.infeasibilityNodeId.isEmpty) foreach (entry => {
           val pcs = entry.pathConditions.conditionalized
           val pcsExp = Option.when(withExp)(entry.pathConditions.conditionalizedExp)
           val comment = "Joined path conditions"
