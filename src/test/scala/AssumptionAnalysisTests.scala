@@ -20,13 +20,13 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = false
   val EXECUTE_PRECISION_BENCHMARK = false
-  val EXECUTE_TEST = true
+  val EXECUTE_TEST = false
   val EXECUTE_PERFORMANCE_BENCHMARK = false
   val ignores: Seq[String] = Seq("example1", "example2", "iterativeTreeDelete")
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
-//    "dependencyAnalysisTests/real-world-examples",
+    "dependencyAnalysisTests/real-world-examples",
 //    "dependencyAnalysisTests/quick"
 //    "dependencyAnalysisTests/fromSilver",
 //    "dependencyAnalysisTests/performanceBenchmark"
@@ -70,7 +70,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       proofCoverageWriter.close()
     }
 
-//  createSingleTest("dependencyAnalysisTests/quick", "test")
+//  createSingleTest("dependencyAnalysisTests/real-world-examples", "listAppend")
 
   if(EXECUTE_TEST)
     testDirectories foreach (dir => visitFiles(dir, createSingleTest))
@@ -413,7 +413,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
       if(dependenciesPerSource.nonEmpty){
         val wrongDependencies = assumptionsPerSource.filter({ case (_, assumptions) => dependencyIds.intersect(assumptions.map(_.id)).nonEmpty })
-        1.0 - (wrongDependencies.size.toDouble / dependenciesPerSource.size.toDouble) // TODO ake: or / assumptionsPerSource.size.toDouble?
+        1.0 - (wrongDependencies.size.toDouble / dependenciesPerSource.size.toDouble)
       }else{
         1.0
       }
@@ -459,16 +459,6 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       val baselineDurationMs: Double = verifyAndMeasure(program, baseCommandLineArguments)
 
       printResult(f"$baselineDurationMs,$analysisDurationMs,${analysisDurationMs/baselineDurationMs},$programSize\n")
-
-      // TODO ake: rewrite if we want to support this
-//      if(naiveProgram.isDefined){
-//        val naiveDurationMs: Double = verifyAndMeasure(naiveProgram.get, baseCommandLineArguments)
-//        writer.println(f"naive duration (ms): $naiveDurationMs")
-//        writer.println(f"diff naive-baseline (ms): ${naiveDurationMs-baselineDurationMs}")
-//        writer.println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
-//        println(f"naive overhead (naive/baseline): ${naiveDurationMs/baselineDurationMs}")
-//      }
-
     }
 
     private def verifyAndMeasure(program_ : Program, commandLineArgs: Seq[String]) = {

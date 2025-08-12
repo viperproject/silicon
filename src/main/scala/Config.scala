@@ -832,13 +832,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableAssumptionAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableAssumptionAnalysis",
     descr = "Enable assumption analysis mode",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
   val disableInfeasibilityChecks: ScallopOption[Boolean] = opt[Boolean]("disableInfeasibilityChecks",
     descr = "Disable infeasibility checks. As a consequence all paths will be explored to the end. (Potentially) huge performance overhead!",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
