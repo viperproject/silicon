@@ -7,13 +7,15 @@ import viper.silver.ast.Method
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
-class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpreter, memberInterpreters: Seq[AssumptionAnalysisInterpreter]) {
+class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpreter, memberInterpreters: Seq[AssumptionAnalysisInterpreter],
+                                 program: ast.Program) {
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
     "\n\t'downDep [line numbers]' to print all dependents of the given line numbers or" +
     "\n\t'hasDep [line numbers]' to print whether there exists any dependency between any pair of the given lines or" +
     "\n\t'cov [members]' to print proof coverage of given member or" +
     "\n\t'covL member [line numbers]' to print proof coverage of given lines of given member or" +
+    "\n\t'prune [line numbers]' to prune the program with respect to the given line numbers and export the new program or" +
     "\n\t'q' to quit"
 
   def run(): Unit = {
@@ -49,6 +51,8 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
       handleProofCoverageQuery(inputParts.tail)
     }else if (inputParts.head.equalsIgnoreCase("covLines") || inputParts.head.equalsIgnoreCase("covL")) {
       handleProofCoverageLineQuery(inputParts.tail)
+    }else if(inputParts.head.equalsIgnoreCase("prune")){
+      handlePruningRequest(inputParts.tail)
     } else {
       println("Invalid input.")
       println(infoString)
@@ -163,5 +167,18 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     val endAnalysis = System.nanoTime()
     val durationMs = (endAnalysis - startAnalysis) / 1e6
     (res, durationMs)
+  }
+
+  private def handlePruningRequest(inputs: Seq[String]): Unit = {
+    println("exportFileName: ")
+    val exportFileName = readLine()
+
+    val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
+    val dependencies = fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id))
+    val crucialNodes = queriedNodes ++ dependencies
+    println(s"Found ${crucialNodes.size} crucial nodes. Pruning...")
+
+    fullGraphInterpreter.pruneProgramAndExport(crucialNodes, program, exportFileName)
+    println("Done.")
   }
 }

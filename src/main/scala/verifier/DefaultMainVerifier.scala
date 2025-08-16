@@ -324,7 +324,7 @@ class DefaultMainVerifier(config: Config,
         joinedGraphInterpreter.exportGraph()
 
       if(Verifier.config.startAssumptionAnalysisTool()){
-        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraphInterpreter, assumptionAnalysisInterpreters)
+        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraphInterpreter, assumptionAnalysisInterpreters, originalProgram)
         commandLineTool.run()
       }
 
