@@ -1,0 +1,48 @@
+
+method sequenceUpdate(xs: Seq[Int], ys: Seq[Int]) returns (res: Seq[Int])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @irrelevant("Explicit")
+  inhale forall x: Int :: x in xs ==> x > 0
+  @irrelevant("Explicit")
+  inhale forall y: Int :: y in ys ==> y >= 0
+
+  @dependency("Implicit")
+  res := xs[0 := 1]
+
+  @testAssertion("Explicit")
+  assert res[0] == 1
+}
+
+method sequence1(xs: Seq[Int], ys: Seq[Int]) returns (res: Seq[Int])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires @irrelevant("Explicit")(|ys| > 3)
+{
+  @dependency("Explicit")
+  inhale forall x: Int :: x in xs ==> x > 0
+  @irrelevant("Explicit")
+  inhale forall y: Int :: y in ys ==> y >= 0
+
+  @dependency("Implicit")
+  res := xs[0 := 1]
+
+  @testAssertion("Explicit")
+  assert forall x: Int :: x in res ==> x > 0
+}
+
+method sequence2(xs: Seq[Int], ys: Seq[Int]) returns (res: Seq[Int])
+  requires @irrelevant("Explicit")(|xs| > 5)
+  requires @dependency("Explicit")(|ys| > 3)
+{
+  @irrelevant("Explicit")
+  inhale forall x: Int :: x in xs ==> x > 0
+  @dependency("Explicit")
+  inhale forall y: Int :: y in ys ==> y >= 0
+
+  @irrelevant("Implicit")
+  res := xs[0 := 1]
+
+  @testAssertion("Explicit")
+  assert forall y: Int :: y in ys ==> y >= 0
+}
