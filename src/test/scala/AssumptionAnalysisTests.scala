@@ -20,7 +20,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   val CHECK_PRECISION = false
   val EXECUTE_PRECISION_BENCHMARK = false
-  val EXECUTE_TEST = false
+  val EXECUTE_TEST = true
   val EXECUTE_PERFORMANCE_BENCHMARK = false
   val ignores: Seq[String] = Seq("example1", "example2", "iterativeTreeDelete")
   val testDirectories: Seq[String] = Seq(
@@ -72,10 +72,11 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
 //  createSingleTest("dependencyAnalysisTests/real-world-examples", "listAppend")
 
-  if(EXECUTE_TEST)
+  if(EXECUTE_TEST) {
     testDirectories foreach (dir => visitFiles(dir, createSingleTest))
     analysisCommandLineArguments = Seq("--enableMoreCompleteExhale") ++ analysisCommandLineArguments
     visitFiles("dependencyAnalysisTests/mce", createSingleTest)
+  }
 
 
   def visitFiles(dirName: String, function: (String, String) => Unit): Unit = {

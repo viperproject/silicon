@@ -92,9 +92,10 @@ def generate_from_snippet(snippet: str, line: str):
   gen_vars_rw_field = gen_vars_rw_field + [f"{v}.f" for v in gen_rw_refs]
 
   snippet = snippet.replace("$INVARIANT", invariant if invariant != "" else "true")
-  acc_invariants = ([inv for inv in acc_invariant.split("&&") if inv != ""] ) + [f"acc({v}, 1/2)" for v in gen_vars_ro_field] + [f"acc({v})" for v in gen_vars_rw_field]
-  acc_invariant = " && ".join([f"@irrelevant(\"LoopInvariant\")({v})" for v in acc_invariants])
+  gen_acc_invariants = [f"acc({v}, 1/2)" for v in gen_vars_ro_field] + [f"acc({v})" for v in gen_vars_rw_field]
+  gen_acc_invariant = " && ".join([f"@irrelevant(\"LoopInvariant\")({v})" for v in gen_acc_invariants])
   snippet = snippet.replace("$ACC_INVARIANT", acc_invariant if acc_invariant != "" else "true")
+  snippet = snippet.replace("$GEN_ACC_INVARIANT", gen_acc_invariant if gen_acc_invariant != "" else "true")
 
   # declare and initialize newly generated vars
   snippet = "".join([f"var {v.split(".")[0]}: Ref\n@irrelevant(\"Explicit\")\ninhale acc({v}, 1/2)\n" for v in gen_vars_ro_field]) + snippet

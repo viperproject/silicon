@@ -1,11 +1,11 @@
 field gen_f: Int
 
-predicate gen_confuse(i: Int, inv: Bool){
-  i >= 0 && inv
+predicate gen_confuse(i: Int){
+  i >= 0
 }
 
-predicate gen_confuse_with_impl(i: Int, inv: Bool){
-  i >= 0 ==> inv
+predicate gen_confuse_with_impl(i: Int, x: Ref){
+  i >= 0 ==> acc(x.f)
 }
 
 function gen_add(a: Int, b: Int): Int
@@ -24,6 +24,12 @@ method incr(a: Ref)
   a.f := a.f + 1
 }
 
+method gen_incr_pure(a: Int) returns (res: Int)
+  ensures res == a + 1
+{
+  res := a + 1
+}
+
 SNIPPET baseline$=${}
 
 SNIPPET assignment_pure$=${
@@ -36,7 +42,7 @@ SNIPPET assignment_field$=${
   $RW_INT_FIELD_0 := $RO_INT_0 + $RO_INT_1
 }
 
-SNIPPET div_by_0$=${
+SNIPPET branch_div0$=${
   if(@irrelevant("PathCondition")($RO_INT_0 > 0)){
     @irrelevant("Implicit")
     $RW_INT_0 := $RO_INT_1 / $RO_INT_0
@@ -47,44 +53,30 @@ SNIPPET div_by_0$=${
 }
 
 SNIPPET inhale_invariant$=${
+  var gen_i: Int
   @irrelevant("Explicit")
-  inhale $INVARIANT
+  inhale $INVARIANT && gen_i > 0
 }
 
 SNIPPET assert$=${
-  @irrelevant()
-  assert $INVARIANT
-}
-
-
-SNIPPET exhale_inhale_perm$=${
-  @irrelevant("Implicit")
-  exhale acc($RW_INT_FIELD_0, 1/2)
-
+  var gen_i: Int
   @irrelevant("Explicit")
-  inhale acc($RW_INT_FIELD_0, 1/2)
+  inhale gen_i > 0
+  @irrelevant()
+  assert $INVARIANT && gen_i > 0
 }
 
-// TODO ake
-// fold-unfold
-// SNIPPET fold_unfold_basic$=${
-//   var gen_i: Int 
-//   @irrelevant("Implicit")
-//   inhale gen_i > 10
-//   @irrelevant("Implicit")
-//   fold gen_confuse(gen_i, $ACC_INVARIANT && $INVARIANT)
-//   @irrelevant("Implicit")
-//   unfold gen_confuse(gen_i, $ACC_INVARIANT && $INVARIANT)
-// }
 
 // fold-unfold with implication
-// SNIPPET fold_unfold_with_implication$=${
-//   var gen_i: Int 
-//   @irrelevant("Implicit")
-//   fold gen_confuse_with_impl(gen_i, $ACC_INVARIANT && $INVARIANT)
-//   @irrelevant("Implicit")
-//   unfold gen_confuse_with_impl(gen_i, $ACC_INVARIANT && $INVARIANT)
-// }
+SNIPPET fold_unfold_with_implication$=${
+  var gen_x: Ref
+  @irrelevant("Explicit")
+  inhale acc(gen_x.f)
+  @irrelevant("Implicit")
+  fold gen_confuse_with_impl($RO_INT_0, gen_x)
+  @irrelevant("Implicit")
+  unfold gen_confuse_with_impl($RO_INT_0, gen_x)
+}
 
 // function call
 SNIPPET function_add$=${
@@ -94,9 +86,18 @@ SNIPPET function_add$=${
   $RW_INT_1 := gen_add($RW_INT_0, $RO_INT_2)
 }
 
-SNIPPET method_call$=${
+
+SNIPPET method_call_impure$=${
+  var gen_ref_0: Ref
   @irrelevant("Implicit")
-  incr($RW_REF_F_0)
+  gen_ref_0 := new(f)
+  @irrelevant("Implicit")
+  incr(gen_ref_0)
+}
+
+SNIPPET method_call_pure$=${
+  @irrelevant("Implicit")
+  $RW_INT_0 := gen_incr_pure($RO_INT_0)
 }
 
 SNIPPET branch$=${
@@ -230,8 +231,8 @@ SNIPPET while_pure$=${
   @irrelevant("Implicit")
   $RW_INT_PURE_1 := 0
   while(@irrelevant("PathCondition")($RW_INT_PURE_0 > 0))
-    invariant @irrelevant("LoopInvariant")($ACC_INVARIANT)
-    invariant @irrelevant("LoopInvariant")($INVARIANT)
+    invariant $ACC_INVARIANT
+    invariant @irrelevant("LoopInvariant")($GEN_ACC_INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_0 <= gen_start)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_1 == (gen_start-$RW_INT_PURE_0)*$RO_INT_PURE_0)
   {
@@ -248,10 +249,9 @@ SNIPPET while_perm$=${
   gen_start := $RW_INT_FIELD_0
   @irrelevant("Implicit")
   $RW_INT_FIELD_1 := 0
-  @irrelevant("Explicit")
   while(@irrelevant("PathCondition")($RW_INT_FIELD_0 > 0))
-    invariant @irrelevant("LoopInvariant")($ACC_INVARIANT)
-    invariant @irrelevant("LoopInvariant")($INVARIANT)
+    invariant $ACC_INVARIANT
+    invariant @irrelevant("LoopInvariant")($GEN_ACC_INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_0 <= gen_start)
     invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_1 == (gen_start-$RW_INT_FIELD_0)*10)
   {
@@ -262,29 +262,17 @@ SNIPPET while_perm$=${
   }
 }
 
-SNIPPET magic_wand_1$=${
-  var gen_i: Int
-  @irrelevant("Explicit")
-  inhale gen_i > 0
-  @irrelevant("Implicit")
-  package gen_i >= 0 --* $ACC_INVARIANT && $INVARIANT
-  @irrelevant("Implicit")
-  apply gen_i >= 0 --* $ACC_INVARIANT && $INVARIANT
-}
-
-SNIPPET magic_wand_2$=${
-  var gen_i: Int
-  @irrelevant("Explicit")
-  inhale gen_i > 0
-  @irrelevant("Implicit")
-  package $INVARIANT --* gen_i >= 0
-}
-
-SNIPPET magic_wand_perm$=${
-  @irrelevant("Implicit")
-  package acc($RW_INT_FIELD_0, 1/2) --* acc($RW_INT_FIELD_0, write)
-  @irrelevant("Implicit")
-  apply acc($RW_INT_FIELD_0, 1/2) --* acc($RW_INT_FIELD_0, write)
+SNIPPET magic_wand$=${
+    var gen_i: Int
+    var gen_x: Ref
+    @irrelevant("Explicit")
+    inhale gen_i > 0
+    @irrelevant("Explicit")
+    inhale acc(gen_x.f) && gen_x.f > 0
+    @irrelevant("Implicit")
+    package gen_i >= 0 --* acc(gen_x.f) && gen_x.f > 0
+    @irrelevant("Implicit")
+    apply gen_i >= 0 --* acc(gen_x.f) && gen_x.f > 0
 }
 
 
