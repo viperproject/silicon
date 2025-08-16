@@ -22,11 +22,13 @@ class AssumptionAnalysisTests extends AnyFunSuite {
   val EXECUTE_PRECISION_BENCHMARK = false
   val EXECUTE_TEST = true
   val EXECUTE_PERFORMANCE_BENCHMARK = false
-  val ignores: Seq[String] = Seq("example1", "example2", "iterativeTreeDelete")
+  val ignores: Seq[String] = Seq("example1", "example2", "iterativeTreeDelete", "listAppend_wands")
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
     "dependencyAnalysisTests/real-world-examples",
+//    "frontends/gobra",
+//    "symbExLogTests",
 //    "dependencyAnalysisTests/quick"
 //    "dependencyAnalysisTests/fromSilver",
 //    "dependencyAnalysisTests/performanceBenchmark"

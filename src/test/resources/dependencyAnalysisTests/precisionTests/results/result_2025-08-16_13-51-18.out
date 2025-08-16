@@ -1,0 +1,3584 @@
+dependencyAnalysisTests/precisionTests/branches - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 0.75
+branch2: 0.5
+branch3: 0.6666666666666667
+branch4: 1.0
+branch5: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/branches - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 0.75
+branch2: 0.6666666666666667
+branch3: 0.6666666666666667
+branch4: 1.0
+branch5: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/branches - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 0.6
+branch2: 0.4
+branch3: 0.4
+branch4: 1.0
+branch5: 0.25
+
+dependencyAnalysisTests/precisionTests/branches - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 0.5
+branch2: 0.4
+branch3: 0.4
+branch4: 1.0
+branch5: 0.19999999999999996
+
+dependencyAnalysisTests/precisionTests/branches - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 0.75
+branch2: 0.6666666666666667
+branch3: 0.6666666666666667
+branch4: 1.0
+branch5: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/branches - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 0.6
+branch2: 0.4
+branch3: 0.5
+branch4: 1.0
+branch5: 0.25
+
+dependencyAnalysisTests/precisionTests/branches - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - while_perm
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/branches - while_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+branch1: 1.0
+branch2: 1.0
+branch3: 1.0
+branch4: 1.0
+branch5: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 0.75
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 0.8
+
+dependencyAnalysisTests/precisionTests/domain - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 0.6923076923076923
+
+dependencyAnalysisTests/precisionTests/domain - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 0.25
+domain2: 0.5
+domain3: 0.7272727272727273
+
+dependencyAnalysisTests/precisionTests/domain - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 0.33333333333333337
+domain2: 0.75
+domain3: 0.8888888888888888
+
+dependencyAnalysisTests/precisionTests/domain - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 0.6666666666666667
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 0.8
+
+dependencyAnalysisTests/precisionTests/domain - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 0.75
+domain3: 0.8888888888888888
+
+dependencyAnalysisTests/precisionTests/domain - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - while_perm
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/domain - while_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+domain1: 1.0
+domain2: 1.0
+domain3: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 0.6666666666666667
+call2: 0.8
+call3: 0.8571428571428572
+call4: 0.8
+
+dependencyAnalysisTests/precisionTests/function-call - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 0.5
+call2: 0.6666666666666667
+call3: 0.75
+call4: 0.5714285714285714
+
+dependencyAnalysisTests/precisionTests/function-call - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 0.4
+call2: 0.6666666666666667
+call3: 0.75
+call4: 0.5714285714285714
+
+dependencyAnalysisTests/precisionTests/function-call - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 0.6666666666666667
+call2: 0.8
+call3: 0.8571428571428572
+call4: 0.8
+
+dependencyAnalysisTests/precisionTests/function-call - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 0.6666666666666667
+call2: 0.8
+call3: 0.8571428571428572
+call4: 0.8
+
+dependencyAnalysisTests/precisionTests/function-call - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - while_perm
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/function-call - while_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+sum: 1.0
+sumUnverified: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.5
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.5
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.5
+inhaleImprecision: 0.5
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.5
+inhaleImprecision: 0.4
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.25
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.25
+exhaleImprecision: 0.4
+inhaleImprecision: 0.4
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.16666666666666663
+exhaleImprecision: 0.33333333333333337
+inhaleImprecision: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.25
+exhaleImprecision: 0.5
+inhaleImprecision: 0.5
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.1428571428571429
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.25
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.5
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.5
+inhaleImprecision: 0.4
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.25
+exhaleImprecision: 0.5
+inhaleImprecision: 0.5
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.19999999999999996
+exhaleImprecision: 0.4
+inhaleImprecision: 0.4
+
+dependencyAnalysisTests/precisionTests/inhaleExhale - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+exhaleInhale: 0.33333333333333337
+exhaleImprecision: 0.6666666666666667
+inhaleImprecision: 0.6666666666666667
+
+Program dependencyAnalysisTests/precisionTests/inhaleExhale/while_perm does not verify. Skip
+Program dependencyAnalysisTests/precisionTests/inhaleExhale/while_pure does not verify. Skip
+dependencyAnalysisTests/precisionTests/loops - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.625
+loop2: 1.0
+loop3: 0.8333333333333334
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 0.4285714285714286
+loop3: 0.8333333333333334
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.625
+loop2: 0.2727272727272727
+loop3: 0.7142857142857143
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.5
+loop2: 0.2727272727272727
+loop3: 0.625
+loop4: 0.5
+
+dependencyAnalysisTests/precisionTests/loops - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+Program dependencyAnalysisTests/precisionTests/loops/goto_pure does not verify. Skip
+dependencyAnalysisTests/precisionTests/loops - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.5555555555555556
+loop2: 0.5
+loop3: 0.8333333333333334
+loop4: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/loops - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.625
+loop2: 0.375
+loop3: 0.7142857142857143
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+dependencyAnalysisTests/precisionTests/loops - while_perm
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+loop1: 0.7142857142857143
+loop2: 1.0
+loop3: 1.0
+loop4: 1.0
+
+Program dependencyAnalysisTests/precisionTests/loops/while_pure does not verify. Skip
+dependencyAnalysisTests/precisionTests/magicWands - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 0.75
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 0.75
+
+dependencyAnalysisTests/precisionTests/magicWands - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 0.75
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 0.75
+
+dependencyAnalysisTests/precisionTests/magicWands - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 0.6
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 0.6
+
+dependencyAnalysisTests/precisionTests/magicWands - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 0.6666666666666667
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 0.5
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 0.5
+basicPackage: 0.6666666666666667
+advancedPackage: 0.7
+quantifiedWand: 0.5714285714285714
+packagePrecision: 0.5
+packageExhale: 0.4
+applying1: 0.5
+
+dependencyAnalysisTests/precisionTests/magicWands - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 0.75
+basicPackage: 0.8571428571428572
+advancedPackage: 0.875
+quantifiedWand: 0.8
+packagePrecision: 0.75
+packageExhale: 0.6666666666666667
+applying1: 0.75
+
+dependencyAnalysisTests/precisionTests/magicWands - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 0.33333333333333337
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 0.6666666666666667
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 0.6
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 0.6
+
+dependencyAnalysisTests/precisionTests/magicWands - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 0.8571428571428572
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 0.6
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 0.5
+applying1: 1.0
+
+dependencyAnalysisTests/precisionTests/magicWands - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+basicApply: 1.0
+basicPackage: 1.0
+advancedPackage: 1.0
+quantifiedWand: 1.0
+packagePrecision: 1.0
+packageExhale: 1.0
+applying1: 1.0
+
+Failed. Skip
+Failed. Skip
+dependencyAnalysisTests/precisionTests/method-call - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 0.6666666666666667
+call2: 0.75
+call3: 0.8333333333333334
+call4: 0.75
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 0.5
+call2: 0.6
+call3: 0.7142857142857143
+call4: 0.5
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 0.4
+call2: 0.6
+call3: 0.7142857142857143
+call4: 0.5
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 0.6666666666666667
+call2: 0.75
+call3: 0.8333333333333334
+call4: 0.75
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 0.6666666666666667
+call2: 0.75
+call3: 0.8333333333333334
+call4: 0.75
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - while_perm
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/method-call - while_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+sum: 1.0
+sumUnverified: 1.0
+abs: 1.0
+call1: 1.0
+call2: 1.0
+call3: 1.0
+call4: 1.0
+absClient1: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 0.5
+
+dependencyAnalysisTests/precisionTests/misc - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 0.6666666666666667
+assumeFalse: 0.5
+
+dependencyAnalysisTests/precisionTests/misc - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 0.4
+assumeFalse: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/misc - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 0.33333333333333337
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 0.4
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 0.5
+
+dependencyAnalysisTests/precisionTests/misc - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 0.6666666666666667
+assumeFalse: 0.5
+
+dependencyAnalysisTests/precisionTests/misc - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 0.6666666666666667
+assumeFalse: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/misc - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 0.6666666666666667
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 0.5
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 1.0
+
+dependencyAnalysisTests/precisionTests/misc - while_perm
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 0.5
+
+dependencyAnalysisTests/precisionTests/misc - while_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+divBy0: 1.0
+assumeFalse: 0.5
+
+dependencyAnalysisTests/precisionTests/permissions - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 0.75
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.6666666666666667
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 0.75
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.6666666666666667
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 0.33333333333333337
+perm1: 0.33333333333333337
+perm2: 0.33333333333333337
+perm3: 1.0
+perm4: 0.5
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.5714285714285714
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 0.25
+perm1: 0.25
+perm2: 0.25
+perm3: 0.25
+perm4: 0.5
+perm5: 0.25
+permAmount1: 0.5
+permAmount2: 0.5
+noAlias: 0.4
+
+dependencyAnalysisTests/precisionTests/permissions - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 0.5
+perm1: 0.5
+perm2: 0.5
+perm3: 0.5
+perm4: 0.75
+perm5: 0.5
+permAmount1: 0.75
+permAmount2: 0.6666666666666667
+noAlias: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/permissions - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 0.19999999999999996
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 0.5
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 0.75
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.6666666666666667
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 0.5
+perm1: 0.5
+perm2: 0.33333333333333337
+perm3: 0.5
+perm4: 0.6666666666666667
+perm5: 0.5
+permAmount1: 0.6
+permAmount2: 0.625
+noAlias: 0.5
+
+dependencyAnalysisTests/precisionTests/permissions - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 0.33333333333333337
+perm1: 0.33333333333333337
+perm2: 0.33333333333333337
+perm3: 0.33333333333333337
+perm4: 0.6
+perm5: 0.33333333333333337
+permAmount1: 0.6
+permAmount2: 0.5714285714285714
+noAlias: 0.4
+
+dependencyAnalysisTests/precisionTests/permissions - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+currentPerm: 1.0
+perm1: 1.0
+perm2: 1.0
+perm3: 1.0
+perm4: 1.0
+perm5: 1.0
+permAmount1: 1.0
+permAmount2: 0.8
+noAlias: 1.0
+
+dependencyAnalysisTests/precisionTests/permissions - while_perm
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/permissions/while_perm
+
+
+dependencyAnalysisTests/precisionTests/permissions - while_pure
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/permissions/while_pure
+
+
+dependencyAnalysisTests/precisionTests/permWildcard - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - assignment_field
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/permWildcard/assignment_field
+
+
+dependencyAnalysisTests/precisionTests/permWildcard - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 0.4
+
+dependencyAnalysisTests/precisionTests/permWildcard - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/permWildcard - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/permWildcard - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 0.25
+wildcardPermDistinctFields: 0.33333333333333337
+quantifiedPermWildcard: 0.4
+
+dependencyAnalysisTests/precisionTests/permWildcard - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 0.25
+wildcardPermDistinctFields: 0.25
+quantifiedPermWildcard: 0.5
+
+dependencyAnalysisTests/precisionTests/permWildcard - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 0.5
+wildcardPermDistinctFields: 0.5
+quantifiedPermWildcard: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/permWildcard - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/permWildcard - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 0.33333333333333337
+
+dependencyAnalysisTests/precisionTests/permWildcard - quasihavoc
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/permWildcard/quasihavoc
+
+
+dependencyAnalysisTests/precisionTests/permWildcard - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 0.25
+wildcardPermDistinctFields: 0.33333333333333337
+quantifiedPermWildcard: 0.4
+
+dependencyAnalysisTests/precisionTests/permWildcard - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+wildcardPerm: 1.0
+wildcardPermDistinctFields: 1.0
+quantifiedPermWildcard: 1.0
+
+dependencyAnalysisTests/precisionTests/permWildcard - while_perm
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/permWildcard/while_perm
+
+
+dependencyAnalysisTests/precisionTests/permWildcard - while_pure
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/permWildcard/while_pure
+
+
+dependencyAnalysisTests/precisionTests/predicates - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 0.6666666666666667
+unfoldP: 0.8
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 0.5
+unfolding1: 0.33333333333333337
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 0.75
+
+dependencyAnalysisTests/precisionTests/predicates - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 0.6666666666666667
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 0.6666666666666667
+foldPrecision: 1.0
+unfolding1: 0.6666666666666667
+unfoldWithImpl: 0.8
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 0.6666666666666667
+unfoldP: 0.8
+unfoldFoldP: 0.75
+callWithPredicate: 1.0
+unfoldPrecision: 0.4
+foldPrecision: 0.33333333333333337
+unfolding1: 0.6666666666666667
+unfoldWithImpl: 0.8
+unfoldingWithImpl: 0.75
+
+dependencyAnalysisTests/precisionTests/predicates - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 0.5
+unfoldP: 0.6666666666666667
+unfoldFoldP: 0.6
+callWithPredicate: 1.0
+unfoldPrecision: 0.33333333333333337
+foldPrecision: 0.25
+unfolding1: 0.5
+unfoldWithImpl: 0.5714285714285714
+unfoldingWithImpl: 0.75
+
+dependencyAnalysisTests/precisionTests/predicates - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 0.6
+
+dependencyAnalysisTests/precisionTests/predicates - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 0.4
+unfoldP: 0.5714285714285714
+unfoldFoldP: 0.5
+callWithPredicate: 0.4
+unfoldPrecision: 0.2857142857142857
+foldPrecision: 0.19999999999999996
+unfolding1: 0.4
+unfoldWithImpl: 0.5714285714285714
+unfoldingWithImpl: 0.5
+
+dependencyAnalysisTests/precisionTests/predicates - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 0.8
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 0.6666666666666667
+unfoldP: 0.8
+unfoldFoldP: 0.75
+callWithPredicate: 0.6666666666666667
+unfoldPrecision: 0.5
+foldPrecision: 0.5
+unfolding1: 0.5
+unfoldWithImpl: 0.8
+unfoldingWithImpl: 0.75
+
+dependencyAnalysisTests/precisionTests/predicates - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 0.5
+unfoldP: 0.6666666666666667
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 0.0
+unfolding1: 0.5
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/predicates - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 0.5
+unfoldP: 0.8
+unfoldFoldP: 0.75
+callWithPredicate: 1.0
+unfoldPrecision: 0.33333333333333337
+foldPrecision: 0.33333333333333337
+unfolding1: 0.5
+unfoldWithImpl: 0.6666666666666667
+unfoldingWithImpl: 0.75
+
+dependencyAnalysisTests/precisionTests/predicates - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 0.8
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 0.6666666666666667
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+foldP: 1.0
+unfoldP: 1.0
+unfoldFoldP: 1.0
+callWithPredicate: 1.0
+unfoldPrecision: 1.0
+foldPrecision: 1.0
+unfolding1: 1.0
+unfoldWithImpl: 1.0
+unfoldingWithImpl: 1.0
+
+dependencyAnalysisTests/precisionTests/predicates - while_perm
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/predicates/while_perm
+
+
+dependencyAnalysisTests/precisionTests/predicates - while_pure
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/predicates/while_pure
+
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 0.6666666666666667
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 0.75
+quantifiedExhalePartiallyTest: 1.0
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 1.0
+quantifiedPermWrite1: 1.0
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.5
+quantifiedExhalePartially: 0.75
+quantifiedExhaleFully: 0.5
+quantifiedPermWrite1: 0.6666666666666667
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 1.0
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 1.0
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 1.0
+quantifiedPermWrite1: 1.0
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 1.0
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 1.0
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 1.0
+quantifiedPermWrite1: 1.0
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.5
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 0.5
+quantifiedPermWrite1: 0.6666666666666667
+quantifiedPermWrite2: 0.75
+quantifiedPermWrite3: 0.6
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.5
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 0.5
+quantifiedPermWrite1: 0.5
+quantifiedPermWrite2: 0.75
+quantifiedPermWrite3: 0.6
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 0.5714285714285714
+quantifiedExhalePartiallyTest: 0.5
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 0.5
+quantifiedPermWrite1: 0.4
+quantifiedPermWrite2: 0.6
+quantifiedPermWrite3: 0.5
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.5
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 0.5
+quantifiedPermWrite1: 0.6666666666666667
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.5
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 0.5
+quantifiedPermWrite1: 0.6666666666666667
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.5
+quantifiedExhalePartially: 1.0
+quantifiedExhaleFully: 0.5
+quantifiedPermWrite1: 0.6666666666666667
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.4
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.25
+quantifiedExhalePartially: 0.4
+quantifiedExhaleFully: 0.25
+quantifiedPermWrite1: 0.6666666666666667
+quantifiedPermWrite2: 0.5
+quantifiedPermWrite3: 0.5
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 0.4
+quantifiedPerm2: 0.4
+quantifiedPerm3: 0.5
+quantifiedExhalePartiallyTest: 0.19999999999999996
+quantifiedExhalePartially: 0.33333333333333337
+quantifiedExhaleFully: 0.19999999999999996
+quantifiedPermWrite1: 0.5
+quantifiedPermWrite2: 0.6
+quantifiedPermWrite3: 0.4285714285714286
+quantifiedPermWrite4: 0.4
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 0.6666666666666667
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.33333333333333337
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 0.33333333333333337
+quantifiedPermWrite1: 0.6666666666666667
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+Program dependencyAnalysisTests/precisionTests/quantifiedPermissions/goto_pure does not verify. Skip
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 0.6666666666666667
+quantifiedPerm2: 0.5
+quantifiedPerm3: 0.75
+quantifiedExhalePartiallyTest: 0.33333333333333337
+quantifiedExhalePartially: 0.5
+quantifiedExhaleFully: 0.33333333333333337
+quantifiedPermWrite1: 0.5
+quantifiedPermWrite2: 0.75
+quantifiedPermWrite3: 0.6
+quantifiedPermWrite4: 0.5
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 0.5
+quantifiedPerm2: 0.5
+quantifiedPerm3: 0.6666666666666667
+quantifiedExhalePartiallyTest: 1.0
+quantifiedExhalePartially: 1.0
+quantifiedExhaleFully: 1.0
+quantifiedPermWrite1: 1.0
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 1.0
+quantifiedPerm3: 0.4285714285714286
+quantifiedExhalePartiallyTest: 1.0
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 1.0
+quantifiedPermWrite1: 1.0
+quantifiedPermWrite2: 0.4285714285714286
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 0.6
+quantifiedExhalePartiallyTest: 1.0
+quantifiedExhalePartially: 0.5
+quantifiedExhaleFully: 1.0
+quantifiedPermWrite1: 1.0
+quantifiedPermWrite2: 0.75
+quantifiedPermWrite3: 0.75
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - method_call_pure
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/quantifiedPermissions/method_call_pure
+
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 0.5
+quantifiedExhalePartially: 0.6666666666666667
+quantifiedExhaleFully: 0.5
+quantifiedPermWrite1: 0.5
+quantifiedPermWrite2: 0.6
+quantifiedPermWrite3: 0.5
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 0.6666666666666667
+quantifiedPerm2: 0.6666666666666667
+quantifiedPerm3: 0.75
+quantifiedExhalePartiallyTest: 0.33333333333333337
+quantifiedExhalePartially: 0.5
+quantifiedExhaleFully: 0.33333333333333337
+quantifiedPermWrite1: 0.6666666666666667
+quantifiedPermWrite2: 0.6666666666666667
+quantifiedPermWrite3: 0.75
+quantifiedPermWrite4: 0.4
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 0.5
+quantifiedPerm2: 0.5
+quantifiedPerm3: 0.6
+quantifiedExhalePartiallyTest: 0.33333333333333337
+quantifiedExhalePartially: 0.4
+quantifiedExhaleFully: 0.33333333333333337
+quantifiedPermWrite1: 0.5
+quantifiedPermWrite2: 0.6
+quantifiedPermWrite3: 0.6
+quantifiedPermWrite4: 0.4
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quantifiedPerm1: 1.0
+quantifiedPerm2: 1.0
+quantifiedPerm3: 1.0
+quantifiedExhalePartiallyTest: 1.0
+quantifiedExhalePartially: 1.0
+quantifiedExhaleFully: 1.0
+quantifiedPermWrite1: 1.0
+quantifiedPermWrite2: 1.0
+quantifiedPermWrite3: 1.0
+quantifiedPermWrite4: 1.0
+
+dependencyAnalysisTests/precisionTests/quantifiedPermissions - while_perm
+!!!!!!!!!!!
+Failed to verify soundness of precision test dependencyAnalysisTests/precisionTests/quantifiedPermissions/while_perm
+
+
+Program dependencyAnalysisTests/precisionTests/quantifiedPermissions/while_pure does not verify. Skip
+dependencyAnalysisTests/precisionTests/quasihavoc - assert
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - assignment_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - assignment_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - baseline
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - branch_div0
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - branch_function
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - disjoint_ref_disjoint_field_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - disjoint_ref_quantified
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - fold_unfold_with_implication
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - function_add
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - goto_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - infeasible_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - inhale_invariant
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - magic_wand
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - method_call_impure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - method_call_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - nested_branch
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - quasihavoc
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - quasihavoc_disjoint_ref
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - quasihavoc_disjoint_ref_disjoint_field
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - while_perm
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
+dependencyAnalysisTests/precisionTests/quasihavoc - while_pure
+gen_add: 1.0
+gen_add_positive: 1.0
+incr: 1.0
+gen_incr_pure: 1.0
+quasihavoc1: 0.75
+quasihavoc2: 0.5
+quasihavoc3: 0.6666666666666667
+
