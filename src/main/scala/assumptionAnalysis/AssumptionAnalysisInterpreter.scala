@@ -17,10 +17,10 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
   def getNodes: Set[AssumptionAnalysisNode] = graph.getNodes.toSet
 
   def getNodesByLine(line: Int): Set[AssumptionAnalysisNode] =
-    getNodes.filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
+    getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
 
   def getNodesByPosition(file: String, line: Int): Set[AssumptionAnalysisNode] =
-    getNodes.filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
+    getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
 
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] = {
     val directDependencyIds = nodeIdsToAnalyze flatMap (id => graph.getDirectEdges.getOrElse(id, Set.empty))

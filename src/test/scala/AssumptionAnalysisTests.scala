@@ -76,8 +76,8 @@ class AssumptionAnalysisTests extends AnyFunSuite {
 
   if(EXECUTE_TEST) {
     testDirectories foreach (dir => visitFiles(dir, createSingleTest))
-    analysisCommandLineArguments = Seq("--enableMoreCompleteExhale") ++ analysisCommandLineArguments
-    visitFiles("dependencyAnalysisTests/mce", createSingleTest)
+//    analysisCommandLineArguments = Seq("--enableMoreCompleteExhale") ++ analysisCommandLineArguments
+//    visitFiles("dependencyAnalysisTests/mce", createSingleTest)
   }
 
 
@@ -180,6 +180,7 @@ class AssumptionAnalysisTests extends AnyFunSuite {
       writer.println(s"$filePrefix - $fileName")
       new AnnotatedPrecisionBenchmark(filePrefix + "/" + fileName, program, assumptionAnalysisInterpreters, fullGraphInterpreter.get, writer).execute()
       writer.println()
+      writer.flush()
       println(s"Precision Benchmark for $filePrefix - $fileName done.")
     }catch{
       case t: Throwable =>

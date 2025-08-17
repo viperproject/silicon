@@ -501,8 +501,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): (Boolean, Option[Int]) = {
+      var infeasibilityNodeId: Option[Int] = pcs.getCurrentInfeasibilityNode
+      if(infeasibilityNodeId.isDefined){
+        return (true, infeasibilityNodeId)
+      }
       val (success, checkNode) = deciderAssert(t, assumptionType, Some(timeout), isCheck=true)
-      var infeasibilityNodeId: Option[Int] = None
       if(success){
         infeasibilityNodeId = assumptionAnalyzer.addInfeasibilityNode(isCheck = true, analysisSourceInfoStack.getFullSourceInfo)
         assumptionAnalyzer.addDependency(checkNode.map(_.id), infeasibilityNodeId)
@@ -556,7 +559,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = isPathInfeasible() || prover.assert(t, timeout, label)
 
       if(result)
-        if(pcs.getCurrentInfeasibilityNode.isDefined) {
+        if(pcs.getCurrentInfeasibilityNode.isDefined) { // TODO ake: should be checked before calling prover.assert
           assumptionAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(AssumptionAnalyzer.getIdFromLabel(label)))
         }else{
           assumptionAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
