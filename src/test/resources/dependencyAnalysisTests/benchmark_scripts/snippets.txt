@@ -101,27 +101,26 @@ SNIPPET method_call_pure$=${
 }
 
 SNIPPET branch$=${
-  var gen_b: Bool
-  if(@irrelevant("PathCondition")($RO_INT_0 > 0 && $RO_INT_1 > 0 && gen_b)){
+  var gen_i: Int
+  if(@irrelevant("PathCondition")($RO_INT_0 > gen_i)){
     @irrelevant("Implicit")
     $RW_INT_0 := 10
   }else{
-    var gen_i: Int
     @irrelevant("Implicit")
-    gen_i := $RO_INT_0 + $RO_INT_1
+    $RW_INT_0 := $RO_INT_0 + $RO_INT_1
   }
 }
 
 SNIPPET nested_branch$=${
-  var gen_b: Bool
-  if(@irrelevant("PathCondition")($RO_INT_0 > 0 && $RO_INT_1 > 0 && gen_b)){
+  var gen_c: Int
+  if(@irrelevant("PathCondition")($RO_INT_0 > gen_c && $RO_INT_1 > gen_c)){
     var gen_i: Int
     @irrelevant("Implicit")
     gen_i := $RO_INT_0 + $RO_INT_1
     @irrelevant("Implicit")
     $RW_INT_0 := 10
   }else{
-    if(@irrelevant("PathCondition")($RO_INT_0 > 0)){
+    if(@irrelevant("PathCondition")($RO_INT_0 > gen_c + 5)){
       @irrelevant("Implicit")
       $RW_INT_0 := 30
     }else{
@@ -148,13 +147,16 @@ SNIPPET infeasible_branch$=${
 
 // branches & function calls
 SNIPPET branch_function$=${
-  if(@irrelevant("PathCondition")($RO_INT_0 > 0 && $RO_INT_1 > 0)){
+  var gen_c: Int
+  @irrelevant("Explicit")
+  inhale gen_c > 0
+  if(@irrelevant("PathCondition")($RO_INT_0 > gen_c && $RO_INT_1 > gen_c)){
     @irrelevant("Implicit")
     $RW_INT_0 := gen_add_positive($RO_INT_0, $RO_INT_1)
   }else{
-    if(@irrelevant("PathCondition")($RO_INT_0 > 0)){
+    if(@irrelevant("PathCondition")($RO_INT_0 > gen_c)){
       @irrelevant("Implicit")
-      $RW_INT_0 := gen_add_positive($RO_INT_0, -$RO_INT_1)
+      $RW_INT_0 := gen_add_positive($RO_INT_0, gen_c)
     }else{
       @irrelevant("Implicit")
       $RW_INT_0 := 0
@@ -225,12 +227,14 @@ SNIPPET disjoint_ref_disjoint_field_quantified$=${
 }
 
 SNIPPET while_pure$=${
-  var gen_start: Int
+  var gen_start: Int, gen_c: Int
+  @irrelevant("Explicit")
+  inhale gen_c >= 0
   @irrelevant("Implicit")
   gen_start := $RW_INT_PURE_0
   @irrelevant("Implicit")
   $RW_INT_PURE_1 := 0
-  while(@irrelevant("PathCondition")($RW_INT_PURE_0 > 0))
+  while(@irrelevant("PathCondition")($RW_INT_PURE_0 > gen_c))
     invariant $ACC_INVARIANT
     invariant @irrelevant("LoopInvariant")($GEN_ACC_INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_0 <= gen_start)
@@ -244,12 +248,14 @@ SNIPPET while_pure$=${
 }
 
 SNIPPET while_perm$=${
-  var gen_start: Int
+  var gen_start: Int, gen_c: Int
+  @irrelevant("Explicit")
+  inhale gen_c >= 0
   @irrelevant("Implicit")
   gen_start := $RW_INT_FIELD_0
   @irrelevant("Implicit")
   $RW_INT_FIELD_1 := 0
-  while(@irrelevant("PathCondition")($RW_INT_FIELD_0 > 0))
+  while(@irrelevant("PathCondition")($RW_INT_FIELD_0 > gen_c))
     invariant $ACC_INVARIANT
     invariant @irrelevant("LoopInvariant")($GEN_ACC_INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_FIELD_0 <= gen_start)

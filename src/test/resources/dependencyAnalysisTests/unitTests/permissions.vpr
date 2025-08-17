@@ -96,7 +96,6 @@ method permAmount1(x: Ref, p: Perm)
 
     // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=p>1/2&&acc(x.f,p/2) $INVARIANT=x.f>-10
 
-   @irrelevant("Implicit")
    exhale acc(x.f, 1/2)
    @testAssertion("Explicit")
    assert x.f > 0

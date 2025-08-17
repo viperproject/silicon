@@ -1,0 +1,25 @@
+field f: Int
+
+method inhale1(){
+    var x: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f, 1/2)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    inhale acc(x.f, 1/2)
+
+
+var gen_dummy_int: Int
+{
+  var gen_i: Int
+  @irrelevant("Explicit")
+  inhale gen_i > 0 // dependency of the assertion
+  @irrelevant()
+  assert x.f>0 && gen_i > 0 // reported as internal dependency
+}
+
+    @testAssertion("Explicit")
+    assert x.f > 0
+}

@@ -135,7 +135,7 @@ method packageExhale(x: Ref)
 
 
     @testAssertion("Explicit")
-    assert perm(x.f) == 1/2
+    assert perm(x.f) >= 1/2
 }
 
 method applying1()

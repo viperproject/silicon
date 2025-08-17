@@ -4,7 +4,6 @@ method quantifiedPerm1(xs: Seq[Ref]) {
   assume @dependency("Explicit")(|xs| > 5)
   inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
-  @irrelevant("Explicit")
   inhale xs[0] != xs[1]
 
   // $PrecisionTest: $READ_WRITE=xs[0].f,xs[1].f $INVARIANT=|xs|>0 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f)
@@ -17,7 +16,6 @@ method quantifiedPerm2(xs: Seq[Ref]) {
   assume @dependency("Explicit")(|xs| > 5)
   inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
-  @irrelevant("Explicit")
   inhale xs[0] != xs[4]
 
   // $PrecisionTest: $READ_WRITE=xs[0].f,xs[4].f $INVARIANT=|xs|>4 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f)
@@ -39,11 +37,9 @@ method quantifiedPerm3(xs: Seq[Ref], y: Ref) {
 
 method quantifiedExhalePartiallyTest(xs: Seq[Ref]) {
   var res: Int
-  @irrelevant("Explicit")
   assume |xs| > 5
   inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
-  @irrelevant("Explicit")
   inhale xs[0] != xs[4]
 
   // $PrecisionTest: $READ_WRITE=xs[0].f,xs[4].f $INVARIANT=|xs|>0 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f)
@@ -57,7 +53,6 @@ method quantifiedExhalePartially(xs: Seq[Ref]) {
   assume @dependency("Explicit")(|xs| > 5)
   inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
-  @irrelevant("Explicit")
   exhale forall x: Ref :: x in xs ==> acc(x.f, 1/2)
 
   // $PrecisionTest: $READ_WRITE=res $READ_ONLY=xs[1].f,xs[0].f,xs[2].f $INVARIANT=|xs|>0 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f,1/2)
@@ -67,10 +62,9 @@ method quantifiedExhalePartially(xs: Seq[Ref]) {
 }
 
 method quantifiedExhaleFully(xs: Seq[Ref]) {
-  assume @irrelevant("Explicit")(|xs| > 5)
+  assume |xs| > 5
   inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
 
-  @irrelevant("Explicit")
   inhale xs[0] != xs[2]
 
   // $PrecisionTest: $READ_WRITE=xs[0].f,xs[2].f $READ_ONLY=xs[1].f $INVARIANT=|xs|>0 $ACC_INVARIANT=|xs|>5&&forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f)
@@ -85,7 +79,6 @@ method quantifiedPermWrite1(xs: Seq[Ref]) {
   @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  @irrelevant("Explicit")
   inhale xs[0] != xs[2]
 
   // $PrecisionTest: $READ_WRITE=xs[2].f $READ_ONLY=xs[0].f,xs[1].f $INVARIANT=xs[0].f>0 $ACC_INVARIANT=|xs|>5&&(forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f))
@@ -103,7 +96,6 @@ method quantifiedPermWrite2(xs: Seq[Ref]) {
   @dependency("Implicit")
   xs[0].f := 0
 
-  @irrelevant("Explicit")
   inhale xs[0] != xs[2]
 
   // $PrecisionTest: $READ_ONLY=xs[0].f,xs[1].f $INVARIANT=xs[0].f<3 $ACC_INVARIANT=|xs|>5&&(forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f,1/4))
@@ -129,14 +121,13 @@ method quantifiedPermWrite3(xs: Seq[Ref]) {
 
 method quantifiedPermWrite4(xs: Seq[Ref], ys: Seq[Ref])
   requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
+  requires |ys| > 3
 {
   @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> acc(x.f)
   @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> acc(y.f)
 
-  @irrelevant("Explicit")
   inhale ys[0] != ys[1]
 
   // $PrecisionTest: $READ_WRITE=ys[0].f,ys[1].f $READ_ONLY=xs[0].f,xs[1].f $INVARIANT=|ys|>3 $ACC_INVARIANT=|xs|>5&&|ys|>3&&(forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f))&&(forall$_$y:Ref::y$_$in$_$ys$_$==>$_$acc(y.f))

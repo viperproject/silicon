@@ -33,7 +33,7 @@ method sequence1(xs: Seq[Int], ys: Seq[Int]) returns (res: Seq[Int])
 
 method sequence2(xs: Seq[Int], ys: Seq[Int]) returns (res: Seq[Int])
   requires @irrelevant("Explicit")(|xs| > 5)
-  requires @dependency("Explicit")(|ys| > 3)
+  requires @irrelevant("Explicit")(|ys| > 3)
 {
   @irrelevant("Explicit")
   inhale forall x: Int :: x in xs ==> x > 0

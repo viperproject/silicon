@@ -1,0 +1,48 @@
+field f: Int
+
+method exhaleInhale(a: Ref) // inhaleExhale/assignment_field
+    requires @dependency("Explicit")(acc(a.f))
+{
+    exhale acc(a.f, 1/2)
+    inhale acc(a.f, 1/2)
+
+var gen_RO_INT_1: Int
+
+var gen_dummy_int: Int
+{
+  @irrelevant("Implicit")
+  a.f := a.f + gen_RO_INT_1 // reported as dependency on mce, why?
+}
+
+    @testAssertion("Explicit")
+    assert perm(a.f) == write
+}
+
+method exhale1(){ // inhaleExhale/magicWand -> reports dependency to gen_x access inhale (aliasing checks?)
+    var x: Ref
+
+    @dependency("Explicit")
+    inhale acc(x.f)
+    @dependency("Explicit")
+    inhale x.f > 0
+
+    exhale acc(x.f, 1/2)
+
+
+var gen_dummy_int: Int
+{
+    var gen_i: Int
+    var gen_x: Ref
+    @irrelevant("Explicit")
+    inhale gen_i > 0
+    @irrelevant("Explicit")
+    inhale acc(gen_x.f) && gen_x.f > 0
+    @irrelevant("Implicit")
+    package gen_i >= 0 --* acc(gen_x.f) && gen_x.f > 0
+    @irrelevant("Implicit")
+    apply gen_i >= 0 --* acc(gen_x.f) && gen_x.f > 0
+}
+
+    @testAssertion("Explicit")
+    assert x.f > 0
+}

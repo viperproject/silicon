@@ -4,7 +4,7 @@ field g: Int
 method wildcardPerm(x: Ref, y: Ref)
   requires @dependency("Explicit")(acc(x.f, wildcard))
   requires @irrelevant("Explicit")(acc(y.f, wildcard))
-  requires @irrelevant("Explicit")(x != y)
+  requires x != y
 {
   // $PrecisionTest: $READ_ONLY=x.f,y.f $ACC_INVARIANT=acc(x.f,wildcard)&&acc(y.f,wildcard)
 

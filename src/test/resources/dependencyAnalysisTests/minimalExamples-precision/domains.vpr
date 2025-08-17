@@ -1,0 +1,51 @@
+field f: Int
+field val: Int
+define access(a)
+  (forall j: Int :: 0 <= j && j < len(a) ==> acc(slot(a,j).val))
+
+
+domain IArray {
+  function slot(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: { slot(a,i) }
+      first(slot(a,i)) == a && second(slot(a,i)) == i
+  }
+
+  axiom len_nonneg {
+    forall a: IArray :: { len(a) }
+      len(a) >= 0
+  }
+}
+
+function gen_add_positive(a: Int, b: Int): Int
+  requires a >= 0 && b >= 0
+  ensures result == a + b
+  ensures result >= 0
+
+method domain2a() // assert
+{
+  var a: IArray
+  @dependency("Explicit")
+  inhale len(a) == 3
+
+  @dependency("Explicit")
+  inhale access(a)
+
+
+var gen_dummy_int: Int
+{
+  var gen_i: Int
+  @irrelevant("Explicit")
+  inhale gen_i > 0 // dependency via the assertion
+  @irrelevant()
+  assert 0<len(a) && gen_i > 0
+}
+
+  @testAssertion("Implicit")
+  slot(a,0).val := 0
+}

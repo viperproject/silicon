@@ -1,0 +1,43 @@
+field f: Int
+
+method incr(a: Ref)
+  requires acc(a.f)
+  ensures acc(a.f)
+  ensures a.f == old(a.f) + 1
+{
+  a.f := a.f + 1
+}
+predicate implPred(a: Int, x: Ref){
+  a > 0 ==> acc(x.f)
+}
+
+
+method unfoldingWithImpl(a: Int, x: Ref)
+  requires @dependency("Explicit")(implPred(a, x))
+{
+  var res: Int
+  if(@dependency("PathCondition")(a > 5)){
+
+
+var gen_dummy_int: Int
+{
+  var gen_xs: Seq[Ref]
+  @irrelevant("Explicit")
+  inhale |gen_xs| > 2
+  @irrelevant("Explicit")
+  inhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.f)
+  @irrelevant("Explicit")
+  inhale forall gen_x: Ref :: gen_x in gen_xs ==> gen_x.f < 0
+  @irrelevant("Implicit")
+  gen_xs[0].f := gen_xs[1].f + a - res
+  @irrelevant("Implicit")
+  res := gen_xs[0].f + gen_xs[1].f
+}
+
+    @testAssertion("Implicit")
+    res := unfolding implPred(a, x) in x.f
+  }else{
+    @irrelevant("Implicit")
+    res := a
+  }
+}

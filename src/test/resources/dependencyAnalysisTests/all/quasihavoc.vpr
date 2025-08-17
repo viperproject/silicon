@@ -33,3 +33,4 @@ method quasihavoc3(x: Ref)
     @testAssertion("Explicit")
     assert x.f == 3
 }
+

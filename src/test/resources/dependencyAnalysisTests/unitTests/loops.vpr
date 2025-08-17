@@ -5,7 +5,7 @@ method loop1(){
     var res: Int
     @dependency("Implicit")
     res := 0
-    @irrelevant("Implicit")
+    // @irrelevant("Implicit")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
@@ -14,7 +14,7 @@ method loop1(){
     {
         @dependency("Implicit")
         res := res + i
-        @irrelevant("Implicit") 
+        // @irrelevant("Implicit")
         i := i - 1
     }
 

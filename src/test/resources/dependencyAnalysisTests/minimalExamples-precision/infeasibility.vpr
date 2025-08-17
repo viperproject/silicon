@@ -1,0 +1,56 @@
+field f: Int
+
+predicate gen_confuse_with_impl(i: Int, x: Ref){
+  i >= 0 ==> acc(x.f)
+}
+function gen_add_positive(a: Int, b: Int): Int
+  requires a >= 0 && b >= 0
+  ensures result == a + b
+  ensures result >= 0
+
+method branch1(){
+  var x: Int, y: Int
+
+  x := 10
+
+  inhale y > 0
+
+  var gen_dummy_int: Int
+  var gen_x: Ref
+  inhale acc(gen_x.f)
+
+  fold gen_confuse_with_impl(y, gen_x)
+  unfold gen_confuse_with_impl(y, gen_x) // causes branching, one branch is infeasible, reported as dependency
+
+  assert x > 0
+}
+
+method branch2(){
+  var x: Int, y: Int
+
+  x := 10
+
+  // inhale y > 0 // ONLY DIFFERENCE!!!
+
+  var gen_dummy_int: Int
+  var gen_x: Ref
+  inhale acc(gen_x.f)
+
+  inhale gen_confuse_with_impl(y, gen_x)
+  unfold gen_confuse_with_impl(y, gen_x) // causes branching, all branches feasible, not reported as dependency
+
+  assert x > 0
+}
+
+method branch_implication(){
+  var x: Int, y: Int
+
+  if(x > 0){
+    inhale y > 0
+  }else{
+    inhale y > 0
+  }
+
+  assert y > 0
+  assert x > 0 ==> y > 0 // precise
+}

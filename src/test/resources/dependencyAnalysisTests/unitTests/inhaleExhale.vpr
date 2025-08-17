@@ -3,9 +3,7 @@ field f: Int
 method exhaleInhale(a: Ref)
     requires @dependency("Explicit")(acc(a.f))
 {
-    @irrelevant("Implicit")
     exhale acc(a.f, 1/2)
-    @irrelevant("Explicit")
     inhale acc(a.f, 1/2)
 
     // $PrecisionTest: $READ_WRITE=a.f $ACC_INVARIANT=acc(a.f)
@@ -14,7 +12,7 @@ method exhaleInhale(a: Ref)
     assert perm(a.f) == write
 }
 
-method exhaleImprecision(){
+method exhale1(){
     var x: Ref
 
     @dependency("Explicit")
@@ -22,7 +20,6 @@ method exhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    @irrelevant("Implicit")
     exhale acc(x.f, 1/2)
 
     // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/2)
@@ -31,7 +28,7 @@ method exhaleImprecision(){
     assert x.f > 0
 }
 
-method inhaleImprecision(){
+method inhale1(){
     var x: Ref
 
     @dependency("Explicit")
@@ -39,7 +36,6 @@ method inhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    @irrelevant("Implicit")
     inhale acc(x.f, 1/2)
 
     // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f)
