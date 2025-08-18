@@ -8,8 +8,16 @@ predicate gen_confuse_with_impl(i: Int, x: Ref){
   i >= 0 ==> acc(x.f)
 }
 
+predicate gen_confuse_gen_field(i: Int, x: Ref){
+  i >= 0 ==> acc(x.gen_f)
+}
+
 function gen_add(a: Int, b: Int): Int
-  ensures result == a + b
+{ a + b }
+
+function gen_add_impure(x: Ref, b: Int): Int
+  requires acc(x.f)
+  ensures result == x.f + b
 
 function gen_add_positive(a: Int, b: Int): Int
   requires a >= 0 && b >= 0
@@ -24,41 +32,29 @@ method incr(a: Ref)
   a.f := a.f + 1
 }
 
+method incr_gen_f(a: Ref)
+  requires acc(a.gen_f)
+  ensures acc(a.gen_f)
+  ensures a.gen_f == old(a.gen_f) + 1
+{
+  a.gen_f := a.gen_f + 1
+}
+
 method gen_incr_pure(a: Int) returns (res: Int)
   ensures res == a + 1
 {
   res := a + 1
 }
 
-SNIPPET baseline$=${}
+SNIPPET 00_baseline$=${}
 
-SNIPPET assignment_pure$=${
-  @irrelevant("Implicit")
-  $RW_INT_PURE_0 := $RO_INT_0 + $RO_INT_1
-}
-
-SNIPPET assignment_field$=${
-  @irrelevant("Implicit")
-  $RW_INT_FIELD_0 := $RO_INT_0 + $RO_INT_1
-}
-
-SNIPPET branch_div0$=${
-  if(@irrelevant("PathCondition")($RO_INT_0 > 0)){
-    @irrelevant("Implicit")
-    $RW_INT_0 := $RO_INT_1 / $RO_INT_0
-  }else{
-    @irrelevant("Implicit")
-    $RW_INT_0 := $RO_INT_1 * $RO_INT_0
-  }
-}
-
-SNIPPET inhale_invariant$=${
+SNIPPET 01_inhale_invariant$=${
   var gen_i: Int
   @irrelevant("Explicit")
   inhale $INVARIANT && gen_i > 0
 }
 
-SNIPPET assert$=${
+SNIPPET 02_assert_invariant$=${
   var gen_i: Int
   @irrelevant("Explicit")
   inhale gen_i > 0
@@ -66,9 +62,77 @@ SNIPPET assert$=${
   assert $INVARIANT && gen_i > 0
 }
 
+SNIPPET 03_assignment_pure$=${
+  @irrelevant("Implicit")
+  $RW_INT_PURE_0 := $RO_INT_0 + $RO_INT_1
+}
+
+SNIPPET 04_assignment_field$=${
+  @irrelevant("Implicit")
+  $RW_INT_FIELD_0 := $RO_INT_0 + $RO_INT_1
+}
+
+SNIPPET 05_assignment_disjoint_ref$=${
+  var gen_x: Ref
+  @irrelevant("Explicit")
+  inhale acc(gen_x.f)
+
+  @irrelevant("Implicit")
+  gen_x.f := $RO_INT_0 + $RO_INT_1
+
+  @irrelevant("Implicit")
+  $RW_INT_0 := gen_x.f
+}
+
+SNIPPET 06_assignment_disjoint_ref_disjoint_field$=${
+  var gen_x: Ref
+  @irrelevant("Explicit")
+  inhale acc(gen_x.gen_f)
+
+  @irrelevant("Implicit")
+  gen_x.gen_f := $RO_INT_0 + $RO_INT_1
+
+  @irrelevant("Implicit")
+  $RW_INT_0 := gen_x.gen_f
+}
+
+
+SNIPPET 07_assignment_disjoint_ref_quantified$=${
+  var gen_xs: Seq[Ref]
+  @irrelevant("Explicit")
+  inhale |gen_xs| > 2
+  @irrelevant("Explicit")
+  inhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.f)
+  @irrelevant("Explicit")
+  inhale forall gen_x: Ref :: gen_x in gen_xs ==> gen_x.f < 0
+
+  @irrelevant("Implicit")
+  gen_xs[0].f := gen_xs[1].f + $RO_INT_0 - $RO_INT_1
+
+  @irrelevant("Implicit")
+  $RW_INT_0 := gen_xs[0].f + gen_xs[1].f
+}
+
+
+SNIPPET 08_assignment_disjoint_ref_disjoint_field_quantified$=${
+  var gen_xs: Seq[Ref]
+  @irrelevant("Explicit")
+  inhale |gen_xs| > 2
+  @irrelevant("Explicit")
+  inhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.gen_f)
+  @irrelevant("Explicit")
+  inhale forall gen_x: Ref :: gen_x in gen_xs ==> gen_x.gen_f < 0
+
+  @irrelevant("Implicit")
+  gen_xs[0].gen_f := gen_xs[1].gen_f + $RO_INT_0 - $RO_INT_1
+
+  @irrelevant("Implicit")
+  $RW_INT_0 := gen_xs[0].gen_f + gen_xs[1].gen_f 
+}
+
 
 // fold-unfold with implication
-SNIPPET fold_unfold_with_implication$=${
+SNIPPET 09_fold_unfold_with_implication$=${
   var gen_x: Ref
   @irrelevant("Explicit")
   inhale acc(gen_x.f)
@@ -79,7 +143,7 @@ SNIPPET fold_unfold_with_implication$=${
 }
 
 // function call
-SNIPPET function_add$=${
+SNIPPET 10_function_add_pure$=${
   @irrelevant("Implicit")
   $RW_INT_0 := gen_add($RO_INT_0, $RO_INT_1)
   @irrelevant("Implicit")
@@ -87,7 +151,20 @@ SNIPPET function_add$=${
 }
 
 
-SNIPPET method_call_impure$=${
+SNIPPET 11_function_add_impure$=${
+  var gen_ref_0: Ref
+  @irrelevant("Implicit")
+  gen_ref_0 := new(f)
+  @irrelevant("Implicit")
+  gen_ref_0.f := gen_add_impure(gen_ref_0, $RO_INT_0)
+}
+
+SNIPPET 12_method_call_pure$=${
+  @irrelevant("Implicit")
+  $RW_INT_0 := gen_incr_pure($RO_INT_0)
+}
+
+SNIPPET 13_method_call_impure$=${
   var gen_ref_0: Ref
   @irrelevant("Implicit")
   gen_ref_0 := new(f)
@@ -95,12 +172,7 @@ SNIPPET method_call_impure$=${
   incr(gen_ref_0)
 }
 
-SNIPPET method_call_pure$=${
-  @irrelevant("Implicit")
-  $RW_INT_0 := gen_incr_pure($RO_INT_0)
-}
-
-SNIPPET branch$=${
+SNIPPET 14_branch$=${
   var gen_i: Int
   if(@irrelevant("PathCondition")($RO_INT_0 > gen_i)){
     @irrelevant("Implicit")
@@ -111,7 +183,7 @@ SNIPPET branch$=${
   }
 }
 
-SNIPPET nested_branch$=${
+SNIPPET 15_branch_nested$=${
   var gen_c: Int
   if(@irrelevant("PathCondition")($RO_INT_0 > gen_c && $RO_INT_1 > gen_c)){
     var gen_i: Int
@@ -131,7 +203,7 @@ SNIPPET nested_branch$=${
   }
 }
 
-SNIPPET infeasible_branch$=${
+SNIPPET 16_branch_infeasible$=${
   if(@irrelevant("PathCondition")($INVARIANT)){
     @irrelevant("Implicit")
     $RW_INT_0 := 10
@@ -145,8 +217,7 @@ SNIPPET infeasible_branch$=${
   }
 }
 
-// branches & function calls
-SNIPPET branch_function$=${
+SNIPPET 17_branch_function$=${
   var gen_c: Int
   @irrelevant("Explicit")
   inhale gen_c > 0
@@ -168,65 +239,7 @@ SNIPPET branch_function$=${
 }
 
 
-SNIPPET disjoint_ref$=${
-  var gen_x: Ref
-  @irrelevant("Explicit")
-  inhale acc(gen_x.f)
-
-  @irrelevant("Implicit")
-  gen_x.f := $RO_INT_0 + $RO_INT_1
-
-  @irrelevant("Implicit")
-  $RW_INT_0 := gen_x.f
-}
-
-SNIPPET disjoint_ref_disjoint_field$=${
-  var gen_x: Ref
-  @irrelevant("Explicit")
-  inhale acc(gen_x.gen_f)
-
-  @irrelevant("Implicit")
-  gen_x.gen_f := $RO_INT_0 + $RO_INT_1
-
-  @irrelevant("Implicit")
-  $RW_INT_0 := gen_x.gen_f
-}
-
-
-SNIPPET disjoint_ref_quantified$=${
-  var gen_xs: Seq[Ref]
-  @irrelevant("Explicit")
-  inhale |gen_xs| > 2
-  @irrelevant("Explicit")
-  inhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.f)
-  @irrelevant("Explicit")
-  inhale forall gen_x: Ref :: gen_x in gen_xs ==> gen_x.f < 0
-
-  @irrelevant("Implicit")
-  gen_xs[0].f := gen_xs[1].f + $RO_INT_0 - $RO_INT_1
-
-  @irrelevant("Implicit")
-  $RW_INT_0 := gen_xs[0].f + gen_xs[1].f
-}
-
-
-SNIPPET disjoint_ref_disjoint_field_quantified$=${
-  var gen_xs: Seq[Ref]
-  @irrelevant("Explicit")
-  inhale |gen_xs| > 2
-  @irrelevant("Explicit")
-  inhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.gen_f)
-  @irrelevant("Explicit")
-  inhale forall gen_x: Ref :: gen_x in gen_xs ==> gen_x.gen_f < 0
-
-  @irrelevant("Implicit")
-  gen_xs[0].gen_f := gen_xs[1].gen_f + $RO_INT_0 - $RO_INT_1
-
-  @irrelevant("Implicit")
-  $RW_INT_0 := gen_xs[0].gen_f + gen_xs[1].gen_f 
-}
-
-SNIPPET while_pure$=${
+SNIPPET 18_while_pure$=${
   var gen_start: Int, gen_c: Int
   @irrelevant("Explicit")
   inhale gen_c >= 0
@@ -247,7 +260,7 @@ SNIPPET while_pure$=${
   }
 }
 
-SNIPPET while_perm$=${
+SNIPPET 19_while_perm$=${
   var gen_start: Int, gen_c: Int
   @irrelevant("Explicit")
   inhale gen_c >= 0
@@ -268,7 +281,7 @@ SNIPPET while_perm$=${
   }
 }
 
-SNIPPET magic_wand$=${
+SNIPPET 20_magic_wand$=${
     var gen_i: Int
     var gen_x: Ref
     @irrelevant("Explicit")
@@ -282,12 +295,12 @@ SNIPPET magic_wand$=${
 }
 
 
-SNIPPET quasihavoc$=${
+SNIPPET 21_quasihavoc$=${
   @irrelevant("Implicit")
   quasihavoc $RW_INT_FIELD_0
 }
 
-SNIPPET quasihavoc_disjoint_ref$=${
+SNIPPET 22_quasihavoc_disjoint_ref$=${
   var gen_x: Ref
   @irrelevant("Implicit")
   gen_x := new(f)
@@ -295,7 +308,7 @@ SNIPPET quasihavoc_disjoint_ref$=${
   quasihavoc gen_x.f
 }
 
-SNIPPET quasihavoc_disjoint_ref_disjoint_field$=${
+SNIPPET 23_quasihavoc_disjoint_ref_disjoint_field$=${
   var gen_x: Ref
   @irrelevant("Implicit")
   gen_x := new(gen_f)
@@ -304,7 +317,7 @@ SNIPPET quasihavoc_disjoint_ref_disjoint_field$=${
 }
 
 
-SNIPPET goto_pure$=${
+SNIPPET 24_goto_pure$=${
   @irrelevant("Implicit")
   $RW_INT_PURE_0 := 0
   var gen_n: Int
@@ -325,4 +338,84 @@ SNIPPET goto_pure$=${
 
   @irrelevant()
   assert $RW_INT_PURE_0 == gen_n * $RO_INT_PURE_0
+}
+
+SNIPPET 25_unrelated_sync_points$=${
+  var gen_i: Int, gen_j: Int, gen_n: Int, gen_p: Int
+  var gen_x: Ref
+  var gen_xs: Seq[Ref]
+  @irrelevant("Implicit")
+  gen_x := new(gen_f)
+  @irrelevant("Explicit")
+  inhale gen_x.gen_f >= 0
+  
+  @irrelevant("Explicit")
+  inhale |gen_xs| > 2
+  @irrelevant("Explicit")
+  inhale forall gen_xi: Ref :: gen_xi in gen_xs ==> acc(gen_xi.gen_f)
+  @irrelevant("Explicit")
+  inhale forall gen_xi: Ref :: gen_xi in gen_xs ==> gen_xi.gen_f < 0
+
+  @irrelevant("Explicit")
+  inhale gen_i > 0
+  @irrelevant("Explicit")
+  inhale 0 <= gen_n && gen_n < 100
+
+  @irrelevant("Rewrite")
+  fold gen_confuse_gen_field(gen_p, gen_x)
+  @irrelevant("Implicit")
+  gen_i := gen_add_positive(gen_i, gen_n)
+  @irrelevant("Rewrite")
+  unfold gen_confuse_gen_field(gen_p, gen_x)
+
+  while(@irrelevant("PathCondition")(gen_n > 0))
+    invariant @irrelevant("Invariant")(acc(gen_x.gen_f))
+    invariant @irrelevant("Invariant")(forall gen_xi: Ref :: gen_xi in gen_xs ==> acc(gen_xi.gen_f, 1/2))
+    invariant @irrelevant("Invariant")(gen_x.gen_f >= 0)
+    invariant @irrelevant("Invariant")(gen_n >= 0)
+  {
+    @irrelevant("Implicit")
+    gen_x.gen_f := gen_x.gen_f + gen_n
+    @irrelevant("Implicit")
+    gen_j := gen_xs[1].gen_f
+  }
+
+  @irrelevant("Implicit")
+  gen_j := gen_add(gen_j, gen_i)
+
+  @irrelevant("Implicit")
+  incr_gen_f(gen_x)
+  @irrelevant("Implicit")
+  incr_gen_f(gen_xs[2])
+  @irrelevant("Rewrite")
+  package gen_i >= 0 --* acc(gen_x.gen_f)
+  @irrelevant("Rewrite")
+  package gen_i >= 0 --* acc(gen_xs[0].gen_f)
+
+  if(@irrelevant("PathCondition")(gen_j < 0)){
+    @irrelevant("Implicit")
+    gen_j := -gen_j
+  }
+
+  @irrelevant()
+  assert gen_j >= 0
+
+  @irrelevant("Rewrite")
+  apply gen_i >= 0 --* acc(gen_x.gen_f)
+  @irrelevant("Rewrite")
+  apply gen_i >= 0 --* acc(gen_xs[0].gen_f)
+
+  @irrelevant("Implicit")
+  gen_x.gen_f := gen_i + gen_n
+
+  @irrelevant("Implicit")
+  gen_xs[0].gen_f := 10
+
+  @irrelevant("Implicit")
+  gen_xs[0].gen_f := gen_xs[1].gen_f + gen_n
+
+  @irrelevant()
+  assert gen_n == 0
+  @irrelevant()
+  assert gen_xs[0] != gen_xs[1] && gen_xs[1] != gen_xs[2] ==> gen_xs[0].gen_f < 0
 }

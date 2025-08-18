@@ -35,17 +35,18 @@ def read_results_file(result_file_path: str) -> dict[tuple[str, str], list[tuple
 def build_table(out_file_path: str, results: dict[tuple[str, str], list[tuple[str, float]]]):
     f = open(out_file_path, mode="w")
     header = sorted(set([interference_name for (_, interference_name) in results.keys()]))
-    header_summary_columns =  ["|", "max", "min", "avg"]
+    header_summary_columns = [] # /["|", "max", "min", "avg"]
     base_test_names = sorted(set([base_name.strip() for (base_name, _) in results.keys()]))
     column_1_width = max([len(h) for h in base_test_names]) + 4
-    column_widths = [len(h + "     ") for h in (header + header_summary_columns)]
-    f.write("".ljust(column_1_width) + "  " + "     ".join(header + header_summary_columns))
+    column_widths = [len(h + "  ") for h in (header + header_summary_columns)]
+    f.write("".ljust(column_1_width) + " &  " + "  &  ".join(header + header_summary_columns))
     f.write("\n")
 
     for base_test in base_test_names:
         f.write(base_test.ljust(column_1_width))
         current_test_results = []
         for idx, h in enumerate(header):
+            f.write(" & ")
             if not (base_test, h) in results.keys():
                 f.write("NaN".center(column_widths[idx]))
                 continue
@@ -55,11 +56,11 @@ def build_table(out_file_path: str, results: dict[tuple[str, str], list[tuple[st
             f.write(f"{avg:.3f}".center(column_widths[idx]))
 
         # print summary
-        f.write("|".center(column_widths[idx+1]))
-        f.write(f"{max(current_test_results):.3f}".center(column_widths[idx+2]))
-        f.write(f"{min(current_test_results):.3f}".center(column_widths[idx+3]))
-        f.write(f"{sum(current_test_results)/len(current_test_results):.3f}".center(column_widths[idx+4]))
-        f.write("\n")
+        # f.write("|".center(column_widths[idx+1]))
+        # f.write(f"{max(current_test_results):.3f}".center(column_widths[idx+2]))
+        # f.write(f"{min(current_test_results):.3f}".center(column_widths[idx+3]))
+        # f.write(f"{sum(current_test_results)/len(current_test_results):.3f}".center(column_widths[idx+4]))
+        f.write("\\\\ \n")
 
 result_file_name = input("file name: ")
 raw_results = read_results_file("silicon\\src\\test\\resources\\dependencyAnalysisTests\\precisionTests\\results\\" + result_file_name)
