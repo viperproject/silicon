@@ -15,7 +15,7 @@ import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort, PredMaskSort, WandHeapSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Sort, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, SnapToHeap, Sort, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, Store, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -93,13 +93,13 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
   def findMaskHeapChunkOptionally(h: Heap, r: Any) = h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == r).asInstanceOf[Option[BasicMaskHeapChunk]]
 
-  def findOrCreateMaskHeapChunk(h: Heap, res: Any, v: Verifier) = {
+  def findOrCreateMaskHeapChunk(h: Heap, res: Any, s: State, v: Verifier) = {
     h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == res) match {
       case Some(c: BasicMaskHeapChunk) => (h, c)
       case None =>
         res match {
           case mwi: MagicWandIdentifier =>
-            val heapSort = if (true) WandHeapSort else PredHeapSort
+            val heapSort = if (s.qpMagicWands.contains(mwi)) PredHeapSort else WandHeapSort
             val newHeap = v.decider.fresh("mwHeap", heapSort, Option.when(withExp)(PUnknown()))
             val newChunk = BasicMaskHeapChunk(MagicWandID, mwi, PredZeroMask, newHeap)
             (h + newChunk, newChunk)
@@ -130,6 +130,21 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
     val mergedHeap = Heap(mergedChunks)
     mergedHeap
+  }
+
+  def convertFromSnapshot(as: Seq[ast.Exp], snap: Term, s: State, v: Verifier): immutable.ListMap[Any, Term] = {
+    val resources = getResourceSeq(as, s.program)
+    convertFromSnapshot(snap, resources, s, v)
+  }
+
+  def convertFromSnapshot(snap: Term, resources: Seq[Any], s: State, v: Verifier): immutable.ListMap[Any, Term] = {
+    val snapParts = fromSnapTree(snap, resources.size)
+    val heapParts = snapParts.zip(resources).map(tpl => (tpl._2,
+      tpl._1 match {
+        case HeapToSnap(_, msk, _) => msk
+      }))
+      //v.decider.createAlias(SnapToHeap(tpl._1, tpl._2, if (tpl._2.isInstanceOf[ast.Field]) HeapSort(v.symbolConverter.toSort(tpl._2.asInstanceOf[ast.Field].typ)) else PredHeapSort), s)))
+    immutable.ListMap.from(heapParts)
   }
 
   def convertToSnapshot(masks: Map[Any, Term], resources: Seq[Any], h: Heap, s: State, d: Decider) = {
@@ -349,7 +364,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
       }
       magicWandSupporter.transfer(s, permissions, permissionsExp, failure, Seq(), v)((s1, h1a, rPerm, rPermExp, v1) => {
         val (h1, resChunk) = resourceToFind match {
-          case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(h1a, mwi, v1)
+          case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(h1a, mwi, s1, v1)
           case r: ast.Resource => (h1a, findMaskHeapChunk(h1a, r))
         }
 
@@ -401,7 +416,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         }
       )
     } else {
-      val (hp, resChunk) = findOrCreateMaskHeapChunk(h, resourceToFind, v)
+      val (hp, resChunk) = findOrCreateMaskHeapChunk(h, resourceToFind, s, v)
 
       val consumeExact = terms.utils.consumeExactRead(permissions, s.constrainableARPs)
 
@@ -493,7 +508,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
   : VerificationResult = {
 
-    val (inverseFunctions, _) =
+    val (inverseFunctions, imagesOfCodomain) =
       quantifiedChunkSupporter.getFreshInverseFunctions(
         qvars,
         qvarExps,
@@ -567,7 +582,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         v.decider.assert(completeReceiverInjectivityCheck) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
-            val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
+            val condOfInvOfLoc = And(And(imagesOfCodomain), tCond).replace(qvarsToInvOfLoc)
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
@@ -592,42 +607,47 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
               magicWandSupporter.transfer(s, lossOfInvOfLoc, lossExp, failure, formalQVars, v)((s1, h1a, rPerm, rPermExp, v1) => {
 
                 val (hp, currentChunk) = resourceToFind match {
-                  case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(h1a, mwi, v)
+                  case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(h1a, mwi, s1, v)
                   case r: ast.Resource => (h1a, findMaskHeapChunk(h1a, r))
                 }
 
                 // assert enough permissions
                 val currentPerm = HeapLookup(currentChunk.mask, argTerm)
 
-                val allPerms = if (constrainPermissions) {
-                  Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm, currentPerm)), Seq(), "sufficientPerms")
+                if (currentPerm == NoPerm) {
+                  (Incomplete(rPerm, None), s1, hp, None)
                 } else {
-                  Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(rPerm, currentPerm)), Seq(), "sufficientPerms")
-                }
+                  val allPerms = if (constrainPermissions) {
+                    Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm, currentPerm)), Seq(), "sufficientPerms")
+                  } else {
+                    Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(rPerm, currentPerm)), Seq(), "sufficientPerms")
+                  }
 
-                // remove permissions
-                val (qpMask, newFr) = {
-                  val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort, Option.when(withExp)(PUnknown()))
+                  // remove permissions
+                  val (qpMask, newFr) = {
+                    val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort, Option.when(withExp)(PUnknown()))
+                    val qpMaskGet = HeapLookup(qpMask, argTerm)
+                    val conditionalizedPermissions = Ite(condOfInvOfLoc, PermMin(rPerm, currentPerm), NoPerm)
+                    val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+                    v.decider.assume(qpMaskConstraint, Option.when(withExp)(DebugExp.createInstance("QP mask definition")))
+                    (qpMask, s.functionRecorder.recordFieldInv(inverseFunctions).recordConstrainedVar(qpMask, qpMaskConstraint))
+                  }
+
+                  val remainingMask = MaskDiff(currentChunk.mask, qpMask)
+                  val consumedChunk = currentChunk.copy(newMask = qpMask)
+                  val remainingChunk = currentChunk.copy(newMask = remainingMask)
+
                   val qpMaskGet = HeapLookup(qpMask, argTerm)
-                  val conditionalizedPermissions = Ite(condOfInvOfLoc, PermMin(rPerm, currentPerm), NoPerm)
-                  val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
-                  v.decider.assume(qpMaskConstraint, Option.when(withExp)(DebugExp.createInstance("QP mask definition")))
-                  (qpMask, s.functionRecorder.recordFieldInv(inverseFunctions).recordConstrainedVar(qpMask, qpMaskConstraint))
+
+                  val s1p = s1.copy(functionRecorder = newFr)
+
+                  if (v.decider.check(allPerms, 0)) {
+                    (Complete(), s1p, hp - currentChunk + remainingChunk, Some(consumedChunk))
+                  } else {
+                    (Incomplete(PermMinus(rPerm, qpMaskGet), None), s1p, hp - currentChunk + remainingChunk, Some(consumedChunk))
+                  }
                 }
 
-                val remainingMask = MaskDiff(currentChunk.mask, qpMask)
-                val consumedChunk = currentChunk.copy(newMask = qpMask)
-                val remainingChunk = currentChunk.copy(newMask = remainingMask)
-
-                val qpMaskGet = HeapLookup(qpMask, argTerm)
-
-                val s1p = s1.copy(functionRecorder = newFr)
-
-                if (v.decider.check(allPerms, 0)) {
-                  (Complete(), s1p, hp - currentChunk + remainingChunk, Some(consumedChunk))
-                } else {
-                  (Incomplete(PermMinus(rPerm, qpMaskGet), None), s1p, hp - currentChunk + remainingChunk, Some(consumedChunk))
-                }
               })((s4, optCh, v2) => {
                 optCh match {
                   case Some(ch) if returnSnap =>
@@ -641,8 +661,10 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
                 }
               })
             } else {
+              // TODO: adapt tCond to include And(imagesOfCodomain)?
+
               val (hp, currentChunk) = resourceToFind match {
-                case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(h, mwi, v)
+                case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(h, mwi, s, v)
                 case r: ast.Resource => (h, findMaskHeapChunk(h, r))
               }
 
@@ -725,7 +747,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
       case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
       case _ => resource
     }
-    val (h0, resChunk) = findOrCreateMaskHeapChunk(s.h, resId, v)
+    val (h0, resChunk) = findOrCreateMaskHeapChunk(s.h, resId, s, v)
 
     val argTerm = resId match {
       case _: ast.Field => tArgs(0)
@@ -826,7 +848,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
     }
 
     val (hp, currentChunk) = resourceToFind match {
-      case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(s.h, mwi, v)
+      case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(s.h, mwi, s, v)
       case r: ast.Resource => (s.h, findMaskHeapChunk(s.h, r))
     }
     val newMask =  MaskSum(currentChunk.mask, qpMask)
@@ -880,10 +902,11 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
 
     val commentNonGlobals = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(commentNonGlobals)
+    val auxNonGlobalsWithEffectiveTriggers = auxNonGlobals.map(_.copy(
+      vars = effectiveTriggersQVars,
+      triggers = effectiveTriggers))
     v.decider.assume(
-      auxNonGlobals.map(_.copy(
-        vars = effectiveTriggersQVars,
-        triggers = effectiveTriggers)),
+      auxNonGlobalsWithEffectiveTriggers,
       Option.when(withExp)(DebugExp.createInstance(description = commentNonGlobals, children = auxNonGlobalsExp.get)), enforceAssumption = false)
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
@@ -1101,10 +1124,16 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
       negativePermissionReason, notInjectiveReason, insufficientPermissionReason, returnSnap, v)(Q)
   }
 
-  override def getEmptyHeap(program: ast.Program, v: Verifier): Heap = {
-    val fieldChunks = program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)), Option.when(withExp)(PUnknown()))))
-    val predChunks = program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort, Option.when(withExp)(PUnknown()))))
-    Heap(fieldChunks ++ predChunks)
+  override def getEmptyHeap(program: ast.Program, v: Verifier, mayDefineNewVars: Boolean): Heap = {
+    if (!mayDefineNewVars) {
+      val fieldChunks = program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, DummyHeap(HeapSort(v.symbolConverter.toSort(f.typ)))))
+      val predChunks = program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, DummyHeap(PredHeapSort)))
+      Heap(fieldChunks ++ predChunks)
+    } else{
+      val fieldChunks = program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)), Option.when(withExp)(PUnknown()))))
+      val predChunks = program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort, Option.when(withExp)(PUnknown()))))
+      Heap(fieldChunks ++ predChunks)
+    }
   }
 
   override def evalCurrentPerm(s: State,

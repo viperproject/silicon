@@ -159,7 +159,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                                tArgs: Seq[Term],
                                eArgs: Option[Seq[ast.Exp]]): Seq[(Term, (ast.Exp, Option[ast.Exp]), Seq[Var], Store, Seq[Trigger])]
 
-  def getEmptyHeap(program: ast.Program, v: Verifier): Heap
+  def getEmptyHeap(program: ast.Program, v: Verifier, mayDefineNewVars: Boolean = true): Heap
 
 }
 
@@ -842,7 +842,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
     }
   }
 
-  def getEmptyHeap(program: ast.Program, v: Verifier): Heap = {
+  def getEmptyHeap(program: ast.Program, v: Verifier, mayDefineNewVars: Boolean): Heap = {
     Heap()
   }
 }

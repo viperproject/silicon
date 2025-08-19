@@ -493,6 +493,16 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // If the snapWand is a (wrapped) MagicWandSnapshot then lookup the snapshot of the right-hand side by applying snapLhs.
         val magicWandSnapshotLookup = snapWand.get match {
+          case HeapToSnap(hp, MaskAdd(_, args, _), _) if Verifier.config.maskHeapMode() =>
+            val lookup = HeapLookup(hp, args)
+            lookup.sort match {
+              case sorts.MagicWandSnapFunction =>
+                val snapshot = MagicWandSnapshot(lookup)
+                snapshot.applyToMWSF(snapLhs.get)
+              case sorts.Snap =>
+                v2.decider.assume(snapLhs.get === First(lookup), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", true)))
+                Second(lookup)
+            }
           case snapshot: MagicWandSnapshot => snapshot.applyToMWSF(snapLhs.get)
           case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs.get)
           // Fallback solution for quantified magic wands

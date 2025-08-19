@@ -8,7 +8,7 @@ package viper.silicon.supporters.functions
 
 import scala.annotation.unused
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.state.{FunctionPreconditionTransformer, Identifier, IdentifierFactory, MagicWandIdentifier, SymbolConverter}
+import viper.silicon.state.{FunctionPreconditionTransformer, Identifier, IdentifierFactory, MagicWandIdentifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silver.ast
 import viper.silver.ast.utility.{Expressions, Functions}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -520,7 +520,7 @@ class FunctionData(val programFunction: ast.Function,
       val heaps1: Seq[Var] = heapVars.map(v => Var(identifierFactory.fresh(v.id.name), v.sort, false))
       val heaps2: Seq[Var] = heapVars.map(v => Var(identifierFactory.fresh(v.id.name), v.sort, false))
       val restArgs: Seq[Var] = arguments.drop(resources.size)
-      val (condTerm, argTerm, heap) = func._2 match {
+      val (condTerm, argTermOrig, heap) = func._2 match {
         case QuantifiedPermissionAssertion(_, cond, ast.AccessPredicate(la, perm)) =>
           val condTrans = translateExp(cond)
           val permGreaterNone = Greater(translateExp(perm.replace(ast.WildcardPerm()(), ast.FullPerm()())), NoPerm)
@@ -542,6 +542,15 @@ class FunctionData(val programFunction: ast.Function,
           val heap = snapArgs(heapIndex)
           (And(condTrans, permGreaterNone), argTerm, heap)
       }
+      val qvars = func._2.variables.map(vd => translateExp(vd.localVar).asInstanceOf[Var])
+      val qvarNames = qvars.map(_.id.name).toSet
+      val argTerm = argTermOrig.transform({ case v: Var =>
+        v.id match {
+          case sid: SuffixedIdentifier if qvarNames.contains(sid.prefix.name) =>
+            Var(SimpleIdentifier(sid.prefix.name), v.sort, false)
+          case _ => v
+        }
+      })()
       val cond1 = condTerm.replace(heapVars, heaps1)
       val cond2 = condTerm.replace(heapVars, heaps2)
       val argTerm1 = argTerm.replace(heapVars, heaps1)
@@ -550,7 +559,6 @@ class FunctionData(val programFunction: ast.Function,
       val heap2 = heap.replace(heapVars, heaps2)
       val lookup1 = HeapLookup(heap1, argTerm1)
       val lookup2 = HeapLookup(heap2, argTerm2)
-      val qvars = func._2.variables.map(vd => translateExp(vd.localVar).asInstanceOf[Var])
       val sameVals: Term = Forall(qvars, Implies(And(cond1, cond2), lookup1 === lookup2), Trigger(Seq(lookup1, lookup2)))
       val app1: Term = App(func._1, heaps1 ++ restArgs)
       val app2: Term = App(func._1, heaps2 ++ restArgs)

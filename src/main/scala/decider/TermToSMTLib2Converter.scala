@@ -338,11 +338,11 @@ class TermToSMTLib2Converter
       parens(text("$Hp.overlap_") <> renderHeapType(h1.sort) <+> render(h1) <+> render(m1) <+> render(h2) <+> render(m2))
 
 
-    case SnapToHeap(snap, resource, _) =>
+    case SnapToHeap(snap, resource, s) =>
       parens(text("$SortWrappers.$SnapTo$Heap<") <> (resource match {
         case f: ast.Field => f.name
         case p: ast.Predicate => p.name
-        case _: MagicWandIdentifier => "WAND"
+        case _: MagicWandIdentifier if s == sorts.WandHeapSort => "$MWSF"
         case _: MagicWandIdentifier => "WAND"
       }) <> ">" <+> render(snap))
 

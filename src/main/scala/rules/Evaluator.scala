@@ -1442,7 +1442,7 @@ object evaluator extends EvaluationRules {
         val chunk = resource match {
           case mw: ast.MagicWand =>
             val mwi = MagicWandIdentifier(mw, sCur.program)
-            val (hNew, chunk) = maskHeapSupporter.findOrCreateMaskHeapChunk(sCur.h, mwi, v)
+            val (hNew, chunk) = maskHeapSupporter.findOrCreateMaskHeapChunk(sCur.h, mwi, sCur, v)
             sCur = sCur.copy(h = hNew)
             chunk
           case _ => maskHeapSupporter.findMaskHeapChunk(sCur.h, resource)

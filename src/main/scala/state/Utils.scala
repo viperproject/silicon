@@ -282,6 +282,7 @@ package object utils {
       case IdenticalOnKnownLocations(oh, nh, msk) => IdenticalOnKnownLocations(go(oh), go(nh), go(msk))
       case GoodMask(m) => GoodMask(go(m))
       case GoodFieldMask(m, u) => GoodFieldMask(go(m), u)
+      case DummyHeap(_) => term
       case PermNegation(p) => PermNegation(go(p))
     }
 

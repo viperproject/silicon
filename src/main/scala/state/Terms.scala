@@ -11,6 +11,7 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.state.terms.sorts.WandHeapSort
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
@@ -790,6 +791,8 @@ object Quantification
 
   private val qidCounter = new AtomicInteger()
 
+  private val triggerGenerator = new TriggerGenerator()
+
   def transformSeqTerms(t: Trigger): Seq[Trigger] = {
     val transformed = Trigger(t.p.map(_.transform{
       case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
@@ -834,7 +837,12 @@ object Quantification
             weight: Option[Int])
            : Quantification = {
 
-    val rewrittenTriggers = if (Verifier.config.useOldAxiomatization()) triggers else triggers.flatMap(transformSeqTerms(_))
+    val rewrittenTriggers = {
+      if (Verifier.config.useOldAxiomatization())
+        triggers
+      else
+        triggers.flatMap(transformSeqTerms).filter(_.p.forall(triggerGenerator.isPossibleTrigger))
+    }
 
 //    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
@@ -2386,6 +2394,7 @@ class HeapLookup(val heap: Term, val at: Term) extends Term with ConditionalFlyw
     case sorts.PredHeapSort => sorts.Snap
     case sorts.PredMaskSort => sorts.Perm
     case sorts.HeapSort(valueSort) => valueSort
+    case sorts.WandHeapSort => sorts.MagicWandSnapFunction
   }
 }
 

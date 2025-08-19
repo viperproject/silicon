@@ -154,15 +154,18 @@ object consumer extends ConsumptionRules {
             Q(s2, h2, None, v2)
           } else {
             if (Verifier.config.maskHeapMode()) {
+              val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
               val fst = immutable.ListMap.from(resMap.get)
               val snd = snap2.get match {
                 case mht: FakeMaskMapTerm => mht.masks
                 case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
+                case snp =>
+                  maskHeapSupporter.convertFromSnapshot(snp, resources, s2, v2)
               }
               val newMap = maskHeapSupporter.mergePreservingFirstOrder(fst, snd)
               val term = if (isRecursive) FakeMaskMapTerm(newMap)
               else
-                maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), h, s2, v2.decider)
+                maskHeapSupporter.convertToSnapshot(newMap, resources, h, s2, v2.decider)
               Q(s2, h2, Some(term), v2)
             } else {
               Q(s2, h2, snap2, v2)
@@ -175,13 +178,19 @@ object consumer extends ConsumptionRules {
             if (Verifier.config.maskHeapMode()) {
               if (returnSnap) {
                 val fst = immutable.ListMap.from(resMap.get)
+                val resources1 = maskHeapSupporter.getResourceSeq(Seq(tlcs.head), s.program)
                 val snd = snap1.get match {
                   case mht: FakeMaskMapTerm => mht.masks
                   case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
+                  case snp =>
+                    maskHeapSupporter.convertFromSnapshot(snp, resources1, s2, v2)
                 }
+                val resources2 = maskHeapSupporter.getResourceSeq(tlcs.tail, s.program)
                 val third = snap2.get match {
                   case mht: FakeMaskMapTerm => mht.masks
                   case hts: HeapToSnap => immutable.ListMap(hts.r -> hts.mask)
+                  case snp =>
+                    maskHeapSupporter.convertFromSnapshot(snp, resources2, s2, v2)
                 }
                 val newMap = maskHeapSupporter.mergePreservingFirstOrder(maskHeapSupporter.mergePreservingFirstOrder(fst, snd), third)
                 val term = if (isRecursive) FakeMaskMapTerm(newMap)

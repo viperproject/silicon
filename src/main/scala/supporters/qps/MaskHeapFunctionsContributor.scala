@@ -28,6 +28,7 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
+  private var wandHeapsRequired: Boolean = false
   private var collectedFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty
   private var collectedPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty
 
@@ -45,6 +46,7 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
     predicateSorts = InsertionOrderedSet.empty
     collectedFunctionDecls = Seq.empty
     collectedAxioms = Seq.empty
+    wandHeapsRequired = false
   }
 
   def stop(): Unit = {}
@@ -65,7 +67,12 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
           case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
         }
           + sorts.MaskSort)
-      predicateSorts = InsertionOrderedSet(Seq(PredHeapSort, PredMaskSort, WandHeapSort))
+      predicateSorts = InsertionOrderedSet(Seq(PredHeapSort, PredMaskSort))
+
+      if (program.existsDefined { case ast.MagicWand(_, _) => true }) {
+        wandHeapsRequired = true
+        predicateSorts += WandHeapSort
+      }
 
       collectedFunctionDecls = generateFunctionDecls
       collectedAxioms = generateAxioms
@@ -107,11 +114,13 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
       val predMapsSubstitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$S$" -> termConverter.convert(sorts.Perm), "$T$" -> "$PredMask", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
       val predMapsDeclarations = preambleReader.readParametricPreamble(mapsFile, predMapsSubstitutions)
 
-      // map MWSF (snap to MWSF)
-      val wandSubstitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$MWSF", "$Hp<$Perm>" -> "$Hp<$MWSF>", "$S$" -> termConverter.convert(sorts.MagicWandSnapFunction), "$T$" -> "$MWSF", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
-      val wandDeclarations = preambleReader.readParametricPreamble(mapsFile, wandSubstitutions)
-
-      val predMapsResult = Seq((s"$mapsFile [Pred]", declarations), (s"$mapsFile [PredMask]", predMapsDeclarations), (s"$mapsFile [MWSF]", wandDeclarations))
+      var predMapsResult = Seq((s"$mapsFile [Pred]", declarations), (s"$mapsFile [PredMask]", predMapsDeclarations))
+      if (wandHeapsRequired) {
+        // map MWSF (snap to MWSF)
+        val wandSubstitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$S$" -> termConverter.convert(sorts.MagicWandSnapFunction), "$T$" -> "$MWSF", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
+        val wandDeclarations = preambleReader.readParametricPreamble(mapsFile, wandSubstitutions)
+        predMapsResult = predMapsResult :+ (s"$mapsFile [MWSF]", wandDeclarations)
+      }
 
       val predMaskDeclarations = preambleReader.readParametricPreamble(maskFile, Map(termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap), termConverter.convert(sorts.Perm) -> "$PredMask", "zeroMask" -> "zeroPredMask"))
       val predMaskResult = (s"$maskFile", predMaskDeclarations)
@@ -135,15 +144,20 @@ class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String
 
       (s"$wrapperFile [predicate: $pred.name,]", declarations)
     })
-    val wandWrapperResults = Seq("").map(_ => {
-      val substitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$MWSF", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$T$" -> "$MWSF", "$FLD$" -> "$MWSF", "$S$" -> termConverter.convert(sorts.MagicWandSnapFunction), termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
-      val declarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
-
-      (s"$wrapperFile [wands,]", declarations)
-    })
 
 
-    mapsResults ++ Seq(maskResult) ++ predResults ++ wrapperResults ++ predWrapperResults ++ wandWrapperResults
+    var result = mapsResults ++ Seq(maskResult) ++ predResults ++ wrapperResults ++ predWrapperResults
+
+    if (wandHeapsRequired) {
+      val wandWrapperResults = Seq("").map(_ => {
+        val substitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$MWSF", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$T$" -> "$MWSF", "$FLD$" -> "$MWSF", "$S$" -> termConverter.convert(sorts.MagicWandSnapFunction), termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
+        val declarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
+
+        (s"$wrapperFile [wands,]", declarations)
+      })
+      result = result ++ wandWrapperResults
+    }
+    result
   }
 
   def generateAxioms: Iterable[PreambleBlock] = {
