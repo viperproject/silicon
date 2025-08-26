@@ -671,6 +671,8 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
               // assert enough permissions
               val currentPerm = HeapLookup(currentChunk.mask, argTerm)
 
+              val tCondP = And(And(imagesOfCodomain), tCond).replace(formalQVars, tArgs)
+
               val argTermQvars = resource match {
                 case _: ast.Field => tArgs(0)
                 case _: ast.Predicate => toSnapTree(tArgs)
@@ -679,12 +681,12 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
               val currentPermQvars = HeapLookup(currentChunk.mask, argTermQvars)
 
               val sufficientPerm = if (s.assertReadAccessOnly) {
-                Forall(qvars, Implies(tCond, Implies(PermLess(NoPerm, loss), PermLess(NoPerm, currentPermQvars))), tTriggers, "sufficientPerms")
+                Forall(qvars, Implies(tCondP, Implies(PermLess(NoPerm, loss), PermLess(NoPerm, currentPermQvars))), tTriggers, "sufficientPerms")
               } else {
                 if (constrainPermissions) {
-                  Forall(qvars, Implies(tCond, PermLess(NoPerm, currentPermQvars)), tTriggers, "sufficientPerms")
+                  Forall(qvars, Implies(tCondP, PermLess(NoPerm, currentPermQvars)), tTriggers, "sufficientPerms")
                 } else {
-                  Forall(qvars, Implies(tCond, PermAtMost(loss, currentPermQvars)), tTriggers, "sufficientPerms")
+                  Forall(qvars, Implies(tCondP, PermAtMost(loss, currentPermQvars)), tTriggers, "sufficientPerms")
                 }
               }
               val completeSufficientPerm = Implies(FunctionPreconditionTransformer.transform(sufficientPerm, s.program), sufficientPerm)

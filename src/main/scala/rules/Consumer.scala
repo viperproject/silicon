@@ -139,7 +139,7 @@ object consumer extends ConsumptionRules {
             if (isRecursive)
               FakeMaskMapTerm(newMap)
             else
-              maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), h, s, v.decider)
+              maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), magicWandSupporter.getEvalHeap(s.copy(h=h), v), s, v.decider)
           case _ => Unit
         }
       })
@@ -165,7 +165,7 @@ object consumer extends ConsumptionRules {
               val newMap = maskHeapSupporter.mergePreservingFirstOrder(fst, snd)
               val term = if (isRecursive) FakeMaskMapTerm(newMap)
               else
-                maskHeapSupporter.convertToSnapshot(newMap, resources, h, s2, v2.decider)
+                maskHeapSupporter.convertToSnapshot(newMap, resources, magicWandSupporter.getEvalHeap(s.copy(h=h), v2), s2, v2.decider)
               Q(s2, h2, Some(term), v2)
             } else {
               Q(s2, h2, snap2, v2)
@@ -193,9 +193,10 @@ object consumer extends ConsumptionRules {
                     maskHeapSupporter.convertFromSnapshot(snp, resources2, s2, v2)
                 }
                 val newMap = maskHeapSupporter.mergePreservingFirstOrder(maskHeapSupporter.mergePreservingFirstOrder(fst, snd), third)
+                // TODO: getEvalHeap should probably use h for s.h?
                 val term = if (isRecursive) FakeMaskMapTerm(newMap)
                 else
-                  maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), h, s2, v2.decider)
+                  maskHeapSupporter.convertToSnapshot(newMap, maskHeapSupporter.getResourceSeq(tlcs, s.program), magicWandSupporter.getEvalHeap(s.copy(h=h), v2), s2, v2.decider)
                 Q(s2, h2, Some(term), v2)
               } else {
                 Q(s2, h2, None, v2)

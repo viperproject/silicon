@@ -131,6 +131,7 @@ package object utils {
     case PredicatePermLookup(_, pm, args) => Seq(pm) ++ args
     case FieldTrigger(_, fvf, at) => fvf :: at :: Nil
     case PredicateTrigger(_, psf, args) => psf +: args
+    case MagicWandSnapshot(s) => s :: Nil
     case HeapLookup(h, at) => h :: at :: Nil
     case HeapUpdate(h, at, v) => h :: at :: v :: Nil
     case IdenticalOnKnownLocations(oh, nh, m) => oh :: nh :: m :: Nil

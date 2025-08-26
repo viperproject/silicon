@@ -131,7 +131,7 @@ object predicateSupporter extends PredicateSupportRules {
         .setConstrainable(constrainableWildcards, false)
 
       val newSf = if (Verifier.config.maskHeapMode()) {
-        val packedSnap = maskHeapSupporter.convertToSnapshot(snap.get.asInstanceOf[FakeMaskMapTerm].masks, Seq(predicate), s.h, s2, v1.decider)
+        val packedSnap = maskHeapSupporter.convertToSnapshot(snap.get.asInstanceOf[FakeMaskMapTerm].masks, Seq(predicate), magicWandSupporter.getEvalHeap(s, v1), s2, v1.decider)
 
         val predSnap = packedSnap match {
           case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
