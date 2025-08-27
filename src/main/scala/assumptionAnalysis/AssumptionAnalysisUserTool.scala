@@ -137,7 +137,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
 
   private def handleDependentsQuery(inputs: Set[String]): Unit = {
 
-    val queriedNodes = getQueriedNodesFromInput(inputs)
+    val queriedNodes = getQueriedNodesFromInput(inputs).intersect(fullGraphInterpreter.getNonInternalAssumptionNodes)
 
     val (allDependents, timeAll) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
     val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id), includeInfeasibilityNodes=false))

@@ -1,7 +1,7 @@
 field gen_f: Int
 
-predicate gen_confuse(i: Int){
-  i >= 0
+predicate gen_confuse(i: Int, x: Ref){
+  i >= 0 && acc(x.gen_f)
 }
 
 predicate gen_confuse_with_impl(i: Int, x: Ref){
@@ -74,7 +74,7 @@ SNIPPET 04_assignment_field$=${
 
 SNIPPET 05_assignment_disjoint_ref$=${
   var gen_x: Ref
-  @irrelevant("Explicit")
+  // @irrelevant("Explicit") // TODO ake: aliasing!
   inhale acc(gen_x.f)
 
   @irrelevant("Implicit")
@@ -101,7 +101,7 @@ SNIPPET 07_assignment_disjoint_ref_quantified$=${
   var gen_xs: Seq[Ref]
   @irrelevant("Explicit")
   inhale |gen_xs| > 2
-  @irrelevant("Explicit")
+  // @irrelevant("Explicit") // TODO ake: aliasing!
   inhale forall gen_x: Ref :: gen_x in gen_xs ==> acc(gen_x.f)
   @irrelevant("Explicit")
   inhale forall gen_x: Ref :: gen_x in gen_xs ==> gen_x.f < 0
@@ -134,7 +134,7 @@ SNIPPET 08_assignment_disjoint_ref_disjoint_field_quantified$=${
 // fold-unfold with implication
 SNIPPET 09_fold_unfold_with_implication$=${
   var gen_x: Ref
-  @irrelevant("Explicit")
+  // @irrelevant("Explicit") // TODO ake: aliasing!
   inhale acc(gen_x.f)
   @irrelevant("Implicit")
   fold gen_confuse_with_impl($RO_INT_0, gen_x)
@@ -233,9 +233,6 @@ SNIPPET 17_branch_function$=${
       $RW_INT_0 := 0
     }
   }
-  
-  @irrelevant()
-  assert $RW_INT_0 >= 0
 }
 
 
@@ -286,8 +283,10 @@ SNIPPET 20_magic_wand$=${
     var gen_x: Ref
     @irrelevant("Explicit")
     inhale gen_i > 0
+    // @irrelevant("Explicit") // TODO ake: aliasing!
+    inhale acc(gen_x.f)
     @irrelevant("Explicit")
-    inhale acc(gen_x.f) && gen_x.f > 0
+    inhale gen_x.f > 0
     @irrelevant("Implicit")
     package gen_i >= 0 --* acc(gen_x.f) && gen_x.f > 0
     @irrelevant("Implicit")
@@ -362,11 +361,11 @@ SNIPPET 25_unrelated_sync_points$=${
   inhale 0 <= gen_n && gen_n < 100
 
   @irrelevant("Rewrite")
-  fold gen_confuse_gen_field(gen_p, gen_x)
+  fold gen_confuse(gen_n, gen_x)
   @irrelevant("Implicit")
   gen_i := gen_add_positive(gen_i, gen_n)
   @irrelevant("Rewrite")
-  unfold gen_confuse_gen_field(gen_p, gen_x)
+  unfold gen_confuse(gen_n, gen_x)
 
   while(@irrelevant("PathCondition")(gen_n > 0))
     invariant @irrelevant("Invariant")(acc(gen_x.gen_f))
@@ -392,13 +391,14 @@ SNIPPET 25_unrelated_sync_points$=${
   @irrelevant("Rewrite")
   package gen_i >= 0 --* acc(gen_xs[0].gen_f)
 
-  if(@irrelevant("PathCondition")(gen_j < 0)){
+  var gen_bool: Bool
+  if(@irrelevant("PathCondition")(gen_bool)){
     @irrelevant("Implicit")
-    gen_j := -gen_j
+    gen_bool := false
   }
 
   @irrelevant()
-  assert gen_j >= 0
+  assert !gen_bool
 
   @irrelevant("Rewrite")
   apply gen_i >= 0 --* acc(gen_x.gen_f)

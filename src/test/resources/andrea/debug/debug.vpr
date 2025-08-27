@@ -1,0 +1,89 @@
+method quantifiedPermWrite4(xs: Seq[Ref], ys: Seq[Ref])
+  requires @dependency("Explicit")(|xs| > 5)
+  requires |ys| > 3
+{
+  @dependency("Explicit")
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+  @irrelevant("Explicit")
+  inhale forall y: Ref :: y in ys ==> acc(y.f)
+
+  inhale ys[0] != ys[1]
+
+
+var gen_dummy_int: Int
+{
+  @irrelevant("Implicit")
+  ys[0].f := gen_incr_pure(xs[0].f)
+}
+
+  @testAssertion("Implicit")
+  xs[0].f := 2
+}
+
+method quantifiedPermWrite32(xs: Seq[Ref]) {
+  @dependency("Explicit")
+  assume |xs| > 5
+  @dependency("Explicit")
+  inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
+
+  @irrelevant("Implicit")
+  xs[0].f := 0
+
+
+var gen_dummy_int: Int
+{
+  var gen_c: Int
+  if(@irrelevant("PathCondition")(xs[1].f > gen_c && xs[2].f > gen_c)){
+    var gen_i: Int
+    @irrelevant("Implicit")
+    gen_i := xs[1].f + xs[2].f
+    @irrelevant("Implicit")
+    xs[0].f := 10
+  }else{
+    if(@irrelevant("PathCondition")(xs[1].f > gen_c + 5)){
+      @irrelevant("Implicit")
+      xs[0].f := 30
+    }else{
+      var gen_i: Int
+      @irrelevant("Implicit")
+      gen_i := xs[1].f + xs[2].f
+    }
+  }
+}
+
+  @testAssertion("Explicit")
+  assert xs[0] != xs[1] ==> xs[1].f > 0
+}
+
+method quantifiedPerm2(xs: Seq[Ref]) {
+  assume @dependency("Explicit")(|xs| > 5)
+  inhale @dependency("Explicit")(forall x: Ref :: x in xs ==> acc(x.f))
+
+  inhale xs[0] != xs[4]
+
+
+var gen_dummy_int: Int
+{
+  var gen_start: Int, gen_c: Int
+  @irrelevant("Explicit")
+  inhale gen_c >= 0
+  @irrelevant("Implicit")
+  gen_start := xs[0].f
+  @irrelevant("Implicit")
+  xs[4].f := 0
+  while(@irrelevant("PathCondition")(xs[0].f > gen_c))
+    invariant forall x:Ref::x in xs ==> acc(x.f)
+    invariant @irrelevant("LoopInvariant")(true)
+    invariant @irrelevant("LoopInvariant")(xs[0].f <= gen_start)
+    invariant @irrelevant("LoopInvariant")(xs[4].f == (gen_start-xs[0].f)*10)
+  {
+    @irrelevant("Implicit")
+    xs[4].f := xs[4].f + 10
+    @irrelevant("Implicit")
+    xs[0].f := xs[0].f - 1
+  }
+}
+
+  @testAssertion()
+  xs[0].f := xs[1].f + xs[4].f
+}
