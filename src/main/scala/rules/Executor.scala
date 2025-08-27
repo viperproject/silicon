@@ -634,7 +634,9 @@ object executor extends ExecutionRules {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            v2.decider.assumptionAnalyzer.disableTransitiveEdges()
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, finalAssumptionType)((s5, v3) => {
+              v2.decider.assumptionAnalyzer.enableTransitiveEdges()
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)

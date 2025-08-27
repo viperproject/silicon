@@ -38,7 +38,7 @@ method sumClient2(x: Int, y: Int)
 {
   @irrelevant("Explicit")
   assume x >= 0
-  @dependency("Explicit")
+  @irrelevant("Explicit")
   assume y >= 0
   @irrelevant("Explicit")
   assume x < y

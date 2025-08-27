@@ -41,7 +41,7 @@ trait AssumptionAnalyzer {
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
   def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit
   def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit
-  def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit
+  def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], sourceAssumptionType: AssumptionType = AssumptionType.Explicit, targetAssumptionType: AssumptionType = AssumptionType.ExplicitPostcondition): Unit
   def addFunctionAxiomEdges(): Unit
 
   def  addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Unit = {}
@@ -108,12 +108,22 @@ object AssumptionAnalyzer {
       newGraph.addEdges(nodes.map(_.id), nodes.map(_.id))
     }
 
+    // join graphs via method postconditions
     val types = Set(AssumptionType.Implicit, AssumptionType.Explicit)
     val relevantAssumptionNodes = newGraph.nodes filter (node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
 
     newGraph.nodes filter (node => AssumptionType.postconditionTypes.contains(node.assumptionType)) foreach { node =>
       val nodeSourceInfoString = node.sourceInfo.getTopLevelSource.toString
       val assumptionNodesForJoin = relevantAssumptionNodes filter (aNode => aNode.sourceInfo.getFineGrainedSource.toString.equals(nodeSourceInfoString))
+      newGraph.addEdges(node.id, assumptionNodesForJoin map (_.id))
+    }
+
+    // join graphs via method preconditions
+    val relevantAssumptionNodes_pre = newGraph.nodes filter (node => node.isInstanceOf[GeneralAssumptionNode] && node.assumptionType.equals(AssumptionType.Precondition))
+
+    newGraph.nodes filter (node => node.isInstanceOf[GeneralAssertionNode]) foreach { node =>
+      val nodeSourceInfoString = node.sourceInfo.getFineGrainedSource.toString
+      val assumptionNodesForJoin = relevantAssumptionNodes_pre filter (aNode => aNode.sourceInfo.getTopLevelSource.toString.equals(nodeSourceInfoString))
       newGraph.addEdges(node.id, assumptionNodesForJoin map (_.id))
     }
 
@@ -271,9 +281,9 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     assumptionGraph.addEdges(sourceNodes map (_.id), targetNodes map (_.id))
   }
 
-  def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
-    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.Explicit, None))
-    val targetNodes = targetExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.ExplicitPostcondition, None))
+  def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], sourceAssumptionType: AssumptionType = AssumptionType.Explicit, targetAssumptionType: AssumptionType = AssumptionType.ExplicitPostcondition): Unit = {
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), sourceAssumptionType, None))
+    val targetNodes = targetExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), targetAssumptionType, None))
     assumptionGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
@@ -361,7 +371,7 @@ class NoAssumptionAnalyzer extends AssumptionAnalyzer {
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}
   override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit = {}
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {}
-  override def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
+  override def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], sourceAssumptionType: AssumptionType = AssumptionType.Explicit, targetAssumptionType: AssumptionType = AssumptionType.ExplicitPostcondition): Unit = {}
   override def addFunctionAxiomEdges(): Unit = {}
 
   override def buildFinalGraph(): Option[AssumptionAnalysisGraph] = None

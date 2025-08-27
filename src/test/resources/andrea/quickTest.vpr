@@ -1,21 +1,45 @@
 field f: Int
 
-function sum(x: Int, y: Int) : Int
-  requires x >= 0 && y >= 0 && y > -5 && x > -4
-  ensures result == x + y && result >= 0
+method sum(x: Int, y: Int) returns(res: Int)
+  requires x >= 0 && y >= 0
+  ensures res == x + y
 {
- x + y
+ res := x + y
 }
 
-function sumUnverified(x: Int, y: Int): Int
-  requires y > -5 && x > -4
-  ensures result == x + y && result >= 0
+method sumUnverified(x: Int, y: Int) returns(res: Int)
+  requires x >= 0 && y >= 0
+  ensures res == x + y
+  ensures res >= 0
 
-method call2(){
-    var x: Int, y: Int, z: Int
+method abs(x: Ref) 
+  requires acc(x.f)
+  ensures acc(x.f)
+  ensures x.f >= 0
+{
+ if(x.f < 0){
+  x.f := -x.f
+ }
+}
+
+method call1(){
+    var x: Int, y: Int
     @dependency("Explicit")
     assume x > 10
     @dependency("Explicit")
+    assume y > 0
+
+    // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=y>-5
+
+    @testAssertion("Implicit")
+    x := sum(x, y)
+}
+
+method call2(){
+    var x: Int, y: Int, z: Int
+    @irrelevant("Explicit")
+    assume x > 10
+    @irrelevant("Explicit")
     assume y > 0
 
     @dependency("Implicit")
@@ -23,22 +47,65 @@ method call2(){
 
     // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
 
-    assert z >= 0
-}
-
-method call2Unv(){
-    var x: Int, y: Int, z: Int
-    @dependency("Explicit")
-    assume x > 10
-    @dependency("Explicit")
-    assume y > 0
-
-    @dependency("Implicit")
-    z := sumUnverified(x, y)
-
-    // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
-
     @testAssertion("Explicit")
     assert z == x + y
 }
+
+method call3(x: Int, y: Int)
+{
+  @dependency("Explicit")
+  assume x > 0
+  @dependency("Explicit")
+  assume y > 0
+
+  var n: Int, n2: Int
+  @dependency("Explicit")
+  n := sumUnverified(x, y)
+
+  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=x,y,n $INVARIANT=x>0
+
+  @dependency("Explicit")
+  n2 := sumUnverified(x, y)
+  @dependency("Implicit")
+  n := n + n2
+
+  @testAssertion("Explicit")
+  assert n == 2*x + 2*y
+}
+
+
+method call4(x: Int, y: Int, z: Int)
+{
+  @irrelevant("Explicit")
+  assume x > 0
+  @irrelevant("Explicit")
+  assume y > 0
+
+  @irrelevant("Explicit")
+  assume z > 0
+
+  var n: Int, n2: Int
+  @dependency("Implicit")
+  n := sum(x, y)
+
+  // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=n,z,x,y $INVARIANT=x>0
+
+  @irrelevant("Implicit")
+  n2 := sum(x, z)
+
+  @testAssertion("Explicit")
+  assert n == x + y
+}
+
+method absClient1(x: Ref)
+  requires @dependency("Precondition")(acc(x.f))
+  requires @irrelevant("Precondition")(x.f > 0)
+{
+  @dependency("Implicit")
+  abs(x)
+
+  @testAssertion("Explicit")
+  assert x.f >= 0
+}
+
 

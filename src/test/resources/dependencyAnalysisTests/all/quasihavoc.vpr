@@ -1,9 +1,9 @@
 field f: Int
 
 method quasihavoc1(x: Ref, y: Ref)
-    requires @dependency("Explicit")(acc(x.f))
-    requires @dependency("Explicit")(x.f == 3)
-    requires @dependency("Explicit")(x != y)
+    requires @dependency("Precondition")(acc(x.f))
+    requires @dependency("Precondition")(x.f == 3)
+    requires @dependency("Precondition")(x != y)
 {
     @irrelevant()
     quasihavoc y.f   // does nothing. we have no permission
@@ -12,9 +12,9 @@ method quasihavoc1(x: Ref, y: Ref)
 }
 
 method quasihavoc2(x: Ref, y: Ref)
-    requires @dependency("Explicit")(acc(x.f))
-    requires @irrelevant("Explicit")(acc(y.f))
-    requires @dependency("Explicit")(x.f == 42)
+    requires @dependency("Precondition")(acc(x.f))
+    requires @irrelevant("Precondition")(acc(y.f))
+    requires @dependency("Precondition")(x.f == 42)
 {
     @irrelevant()
     quasihavoc y.f
@@ -23,8 +23,8 @@ method quasihavoc2(x: Ref, y: Ref)
 }
 
 method quasihavoc3(x: Ref)
-    requires @dependency("Explicit")(acc(x.f))
-    requires @irrelevant("Explicit")(x.f == 0)
+    requires @dependency("Precondition")(acc(x.f))
+    requires @irrelevant("Precondition")(x.f == 0)
 {
     @irrelevant()
     quasihavoc x.f

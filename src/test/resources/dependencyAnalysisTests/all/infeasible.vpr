@@ -1,7 +1,7 @@
 field f: Int
 
 method infeasibleBranch1(a: Int, b: Int)
-    requires @dependency("Explicit")(a > 0)
+    requires @dependency("Precondition")(a > 0)
 {
     if(@dependency("PathCondition")(a < 0)){
         @testAssertion("Explicit")
@@ -10,7 +10,7 @@ method infeasibleBranch1(a: Int, b: Int)
 }
 
 method infeasibleBranch2(a: Int, b: Int)
-    requires @dependency("Explicit")(a > 0)
+    requires @dependency("Precondition")(a > 0)
 {
     var res: Int
     if(@dependency("PathCondition")(a < 0)){
@@ -26,8 +26,8 @@ method infeasibleBranch2(a: Int, b: Int)
 
 
 method infeasibleBranchPerm(a: Ref, b: Ref)
-    requires @dependency("Explicit")(acc(a.f, 1/2))
-    requires @dependency("Explicit")(a.f > 0)
+    requires @dependency("Precondition")(acc(a.f, 1/2))
+    requires @dependency("Precondition")(a.f > 0)
 {
      if(@dependency("PathCondition")(a.f < 0)){
         @testAssertion("Implicit")
@@ -37,7 +37,7 @@ method infeasibleBranchPerm(a: Ref, b: Ref)
 
 
 method infeasibleBranchNoPerm(a: Int, b: Ref)
-    requires @dependency("Explicit")(a > 0)
+    requires @dependency("Precondition")(a > 0)
 {
     var res: Int
     if(@dependency("PathCondition")(a < 0)){

@@ -2,11 +2,11 @@ package viper.silicon.assumptionAnalysis
 
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
-  val Explicit, LoopInvariant, PathCondition, Rewrite, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition = Value
+  val Explicit, Precondition, LoopInvariant, PathCondition, Rewrite, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition = Value
 
   def fromString(s: String): Option[Value] = values.find(_.toString == s)
 
-  def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition)
+  def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition, Precondition)
   def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition) // used to join graphs via postconditions
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit) ++ postconditionTypes
   def internalTypes: Set[AssumptionType] = Set(Internal) // will always be hidden from user

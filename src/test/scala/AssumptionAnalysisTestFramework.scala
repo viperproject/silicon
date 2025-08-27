@@ -206,10 +206,10 @@ trait AssumptionAnalysisTestFramework {
 
       val allTestAssumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
 
-      val relevantAssumptionNodes = allTestAssumptionNodes.filter(_.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Explicit\")"))
+      val relevantAssumptionNodes = allTestAssumptionNodes.filter(n => n.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Explicit\")") || n.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Precondition\")"))
       val resRelevant: Seq[String] = checkDependenciesAndGetErrorMsgs(relevantAssumptionNodes, dependencies, isDependencyExpected = true, "Missing explicit dependency")
 
-      val irrelevantNodes = allTestAssumptionNodes.filterNot(_.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Explicit\")"))
+      val irrelevantNodes = allTestAssumptionNodes.filterNot(n => n.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Explicit\")") || n.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Precondition\")"))
       val resIrrelevant = checkDependenciesAndGetErrorMsgs(irrelevantNodes, dependencies, isDependencyExpected = false, "Unexpected explicit dependency")
 
       resRelevant ++ resIrrelevant

@@ -37,9 +37,9 @@ method call1(){
 
 method call2(){
     var x: Int, y: Int, z: Int
-    @dependency("Explicit")
+    @irrelevant("Explicit")
     assume x > 10
-    @dependency("Explicit")
+    @irrelevant("Explicit")
     assume y > 0
 
     @dependency("Implicit")
@@ -76,9 +76,9 @@ method call3(x: Int, y: Int)
 
 method call4(x: Int, y: Int, z: Int)
 {
-  @dependency("Explicit")
+  @irrelevant("Explicit")
   assume x > 0
-  @dependency("Explicit")
+  @irrelevant("Explicit")
   assume y > 0
 
   @irrelevant("Explicit")
@@ -98,8 +98,8 @@ method call4(x: Int, y: Int, z: Int)
 }
 
 method absClient1(x: Ref)
-  requires @dependency("Explicit")(acc(x.f))
-  requires @irrelevant("Explicit")(x.f > 0)
+  requires @dependency("Precondition")(acc(x.f))
+  requires @irrelevant("Precondition")(x.f > 0)
 {
   @dependency("Implicit")
   abs(x)
@@ -107,3 +107,5 @@ method absClient1(x: Ref)
   @testAssertion("Explicit")
   assert x.f >= 0
 }
+
+

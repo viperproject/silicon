@@ -9,7 +9,7 @@ predicate greater5(n: Int){
 }
 
 method foldP(n: Int)
-    requires @dependency("Explicit")(n > 10)
+    requires @dependency("Precondition")(n > 10)
 {
     var x: Int 
     @dependency("Implicit")
@@ -22,7 +22,7 @@ method foldP(n: Int)
 }
 
 method unfoldP(n: Int)
-  requires @dependency("Explicit")(greater0(n))
+  requires @dependency("Precondition")(greater0(n))
 {
     var x: Int
     @dependency("Implicit") 
@@ -39,7 +39,7 @@ method unfoldP(n: Int)
 }
 
 method unfoldFoldP(a: Int, b: Int)
-    requires @dependency("Explicit")(greater0(a)) && @dependency("Explicit")(greater5(b))
+    requires @dependency("Precondition")(greater0(a)) && @dependency("Precondition")(greater5(b))
     ensures greater5(a + b)
 {
     @dependency("Implicit")
@@ -54,7 +54,7 @@ method unfoldFoldP(a: Int, b: Int)
 }
 
 method callWithPredicate(a: Int, b: Int)
-    requires @dependency("Explicit")(greater0(a)) && @dependency("Explicit")(greater5(b))
+    requires @dependency("Precondition")(greater0(a)) && @dependency("Precondition")(greater5(b))
     ensures greater5(a + b)
 {
     @dependency("Implicit")
@@ -67,8 +67,8 @@ method callWithPredicate(a: Int, b: Int)
 }
 
 method unfoldPrecision(a: Int, b: Int)
-    requires @irrelevant("Explicit")(greater0(a))
-    requires @dependency("Explicit")(greater5(b))
+    requires @irrelevant("Precondition")(greater0(a))
+    requires @dependency("Precondition")(greater5(b))
     ensures greater0(b)
 {
     
@@ -84,8 +84,8 @@ method unfoldPrecision(a: Int, b: Int)
 }
 
 method foldPrecision(a: Int, b: Int)
-    requires @irrelevant("Explicit")(a > 5)
-    requires @dependency("Explicit")(b > 5)
+    requires @irrelevant("Precondition")(a > 5)
+    requires @dependency("Precondition")(b > 5)
 {
     // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=b>2
 
@@ -94,7 +94,7 @@ method foldPrecision(a: Int, b: Int)
 }
 
 method unfolding1(n: Int)
-    requires @dependency("Explicit")(greater5(n))
+    requires @dependency("Precondition")(greater5(n))
 {
 
     // $PrecisionTest: $READ_ONLY=n $INVARIANT=(unfolding$_$greater5(n)$_$in$_$n>0) $ACC_INVARIANT=greater5(n)
@@ -108,7 +108,7 @@ predicate implPred(a: Int, x: Ref){
 }
 
 method unfoldWithImpl(a: Int, x: Ref)
-  requires @dependency("Explicit")(implPred(a, x))
+  requires @dependency("Precondition")(implPred(a, x))
 {
   @dependency("Rewrite")
   unfold implPred(a, x)
@@ -123,7 +123,7 @@ method unfoldWithImpl(a: Int, x: Ref)
 }
 
 method unfoldingWithImpl(a: Int, x: Ref)
-  requires @dependency("Explicit")(implPred(a, x))
+  requires @dependency("Precondition")(implPred(a, x))
 {
   var res: Int
   if(@dependency("PathCondition")(a > 5)){
