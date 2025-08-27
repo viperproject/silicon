@@ -7,7 +7,7 @@ import viper.silver.ast.Method
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
-class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpreter, memberInterpreters: Seq[AssumptionAnalysisInterpreter],
+class AssumptionAnalysisUserTool(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter,
                                  program: ast.Program) {
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
@@ -58,17 +58,22 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
       println(infoString)
     }
   }
-
-  private def handleProofCoverageQuery(memberNames: Seq[String]): Unit = {
-    println("Proof Coverage")
-    memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
+  
+  private def findMembersByName(memberNames: Seq[String]): Set[ast.Member] = {
+    assumptionAnalysisInterpreter.getMembers.filter(ms => ms match {
         case meth: Method => meth.body.isDefined && (memberNames.isEmpty || memberNames.contains(meth.name))
         case func: ast.Function => func.body.isDefined && (memberNames.isEmpty || memberNames.contains(func.name))
         case _ => false
-      })
-      .foreach(aa => {
-        val ((coverage, uncoveredSources), time) = measureTime(aa.computeProofCoverage())
-        println(s"${aa.getMember.map(_.name).getOrElse("")} (${time}ms)")
+      }
+    )
+  }
+
+  private def handleProofCoverageQuery(memberNames: Seq[String]): Unit = {
+    println("Proof Coverage")
+    findMembersByName(memberNames)
+      .foreach(mm => {
+        val ((coverage, uncoveredSources), time) = measureTime(assumptionAnalysisInterpreter.computeProofCoverage(member = Some(mm)))
+        println(s"${mm.name} (${time}ms)")
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
@@ -81,19 +86,15 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
 
     println("Proof Coverage")
     val lines = memberNames.tail.flatMap(_.toIntOption)
-    memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
-        case meth: Method => meth.body.isDefined && meth.name.equalsIgnoreCase(memberNames.head)
-        case func: ast.Function => func.body.isDefined && func.name.equalsIgnoreCase(memberNames.head)
-        case _ => false
-      })
-      .foreach(aa => {
+    findMembersByName(memberNames)
+      .foreach(mm => {
         val ((coverage, uncoveredSources), time) = if(lines.nonEmpty){
-          val assertions = lines flatMap aa.getNodesByLine
-          measureTime(aa.computeProofCoverage(assertions.toSet))
+          val assertions = lines flatMap assumptionAnalysisInterpreter.getNodesByLine
+          measureTime(assumptionAnalysisInterpreter.computeProofCoverage(assertions.toSet, Some(mm)))
         }else{
-          measureTime(aa.computeProofCoverage())
+          measureTime(assumptionAnalysisInterpreter.computeProofCoverage(member=Some(mm)))
         }
-        println(s"${aa.getMember.map(_.name).getOrElse("")}  (${time}ms)")
+        println(s"${mm.name}  (${time}ms)")
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
@@ -109,9 +110,9 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     inputs flatMap (input => {
       val parts = input.split("@")
       if(parts.size == 2)
-        parts(1).toIntOption.map(fullGraphInterpreter.getNodesByPosition(parts(0), _)).getOrElse(Set.empty)
+        parts(1).toIntOption.map(assumptionAnalysisInterpreter.getNodesByPosition(parts(0), _)).getOrElse(Set.empty)
       else if(parts.size == 1){
-        parts(0).toIntOption map fullGraphInterpreter.getNodesByLine getOrElse Set.empty
+        parts(0).toIntOption map assumptionAnalysisInterpreter.getNodesByLine getOrElse Set.empty
       }else{
         Set.empty
       }
@@ -121,10 +122,10 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
   private def handleDependencyQuery(inputs: Set[String]): Unit = {
     val queriedNodes = getQueriedNodesFromInput(inputs)
 
-    val (directDependencies, timeDirect) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
-    val (allDependencies, timeAll) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
-    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
-    val (explicitDependencies, timeExplicit) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
+    val (directDependencies, timeDirect) = measureTime[Set[AssumptionAnalysisNode]](assumptionAnalysisInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
+    val (allDependencies, timeAll) = measureTime[Set[AssumptionAnalysisNode]](assumptionAnalysisInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
+    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](assumptionAnalysisInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
+    val (explicitDependencies, timeExplicit) = measureTime[Set[AssumptionAnalysisNode]](assumptionAnalysisInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -137,11 +138,11 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
 
   private def handleDependentsQuery(inputs: Set[String]): Unit = {
 
-    val queriedNodes = getQueriedNodesFromInput(inputs).intersect(fullGraphInterpreter.getNonInternalAssumptionNodes)
+    val queriedNodes = getQueriedNodesFromInput(inputs).intersect(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
 
-    val (allDependents, timeAll) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
-    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
-    val (explicitDependents, timeExplicit) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllExplicitDependents(queriedNodes.map(_.id)))
+    val (allDependents, timeAll) = measureTime[Set[AssumptionAnalysisNode]](assumptionAnalysisInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
+    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](assumptionAnalysisInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
+    val (explicitDependents, timeExplicit) = measureTime[Set[AssumptionAnalysisNode]](assumptionAnalysisInterpreter.getAllExplicitDependents(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -154,7 +155,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
   private def handleHasDependencyQuery(inputs: Set[String]): Unit = {
     val queriedNodes = getQueriedNodesFromInput(inputs)
 
-    val (depExists, time) = measureTime[Boolean](fullGraphInterpreter.hasAnyDependency(queriedNodes))
+    val (depExists, time) = measureTime[Boolean](assumptionAnalysisInterpreter.hasAnyDependency(queriedNodes))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
     println(s"Dependency exists? $depExists")
@@ -174,11 +175,11 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     val exportFileName = readLine()
 
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
-    val dependencies = fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id))
+    val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id))
     val crucialNodes = queriedNodes ++ dependencies
     println(s"Found ${crucialNodes.size} crucial nodes. Pruning...")
 
-    fullGraphInterpreter.pruneProgramAndExport(crucialNodes, program, exportFileName)
+    assumptionAnalysisInterpreter.pruneProgramAndExport(crucialNodes, program, exportFileName)
     println("Done.")
   }
 }

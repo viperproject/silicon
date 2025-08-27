@@ -122,7 +122,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         v.decider.assumptionAnalyzer.addCustomExpDependency(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), sourceAssumptionType = AssumptionType.Precondition)
       }
 
-      result.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(method.name, _, Some(method)))
+      result.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(method.name, _, Set(method)))
 
       v.decider.resetProverOptions()
 

@@ -163,7 +163,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       v.decider.assumptionAnalyzer.addFunctionAxiomEdges()
 
-      res.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(function.name, _, Some(function)))
+      res.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(function.name, _, Set(function)))
 
       Seq(res)
     }

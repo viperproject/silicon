@@ -324,14 +324,13 @@ class DefaultMainVerifier(config: Config,
         joinedGraphInterpreter.exportGraph()
 
       if(Verifier.config.startAssumptionAnalysisTool()){
-        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraphInterpreter, assumptionAnalysisInterpreters, originalProgram)
+        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraphInterpreter, originalProgram)
         commandLineTool.run()
       }
 
       reporter match {
         case analysisReporter: DependencyAnalysisReporter =>
-          analysisReporter.assumptionAnalysisInterpretersPerMember = assumptionAnalysisInterpreters
-          analysisReporter.joinedAssumptionAnalysisInterpreter = Some(joinedGraphInterpreter)
+          analysisReporter.assumptionAnalysisInterpreter = Some(joinedGraphInterpreter)
         case _ =>
       }
 

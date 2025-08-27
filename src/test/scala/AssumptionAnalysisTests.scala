@@ -81,11 +81,10 @@ class AssumptionAnalysisTests extends AnyFunSuite with AssumptionAnalysisTestFra
       return
     }
 
-    val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
-    val joinedAssumptionAnalysisInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedAssumptionAnalysisInterpreter
+    val joinedAssumptionAnalysisInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreter.get
 
-    AnnotatedTest(program, assumptionAnalysisInterpreters, CHECK_PRECISION).execute()
-    PruningTest(filePrefix + "/" + fileName, program, joinedAssumptionAnalysisInterpreter.get).execute()
+    AnnotatedTest(program, joinedAssumptionAnalysisInterpreter, CHECK_PRECISION).execute()
+    PruningTest(filePrefix + "/" + fileName, program, joinedAssumptionAnalysisInterpreter).execute()
   }
 
   def executePerformanceBenchmark(filePrefix: String,
@@ -108,13 +107,13 @@ class AssumptionAnalysisTests extends AnyFunSuite with AssumptionAnalysisTestFra
       return
     }
 
-    val assumptionAnalysisInterpreters = frontend_.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
+    val assumptionAnalysisInterpreter = frontend_.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreter.get
 
     proofCoverageWriter.println(filePrefix + "/" + fileName)
-    assumptionAnalysisInterpreters foreach (memberInterpreter => {
-      memberInterpreter.getExplicitAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource) foreach {case (source, nodes) =>
-          proofCoverageWriter.println(memberInterpreter.getName + " " + source.toString.replace("\n", " ") + " ---> " + memberInterpreter.computeProofCoverage(nodes)._1)}
-      proofCoverageWriter.println("overall " + memberInterpreter.getName + " ---> + " + memberInterpreter.computeProofCoverage()._1)
+    assumptionAnalysisInterpreter.getMembers foreach (member => {
+      assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getExplicitAssertionNodes, member).groupBy(_.sourceInfo.getTopLevelSource) foreach {case (source, nodes) =>
+          proofCoverageWriter.println(member.name + " " + source.toString.replace("\n", " ") + " ---> " + assumptionAnalysisInterpreter.computeProofCoverage(nodes, Some(member))._1)}
+      proofCoverageWriter.println("overall " + member.name + " ---> + " + assumptionAnalysisInterpreter.computeProofCoverage(Some(member))._1)
     })
     proofCoverageWriter.println()
 

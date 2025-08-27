@@ -9,11 +9,11 @@ import viper.silver.ast.{If, Stmt}
 import java.io.{File, PrintWriter}
 
 
-class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnalysisGraph, member: Option[ast.Member]=None) {
+class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnalysisGraph, members: Set[ast.Member]=Set.empty) {
 
   def getGraph: ReadOnlyAssumptionAnalysisGraph = graph
   def getName: String = name
-  def getMember: Option[ast.Member] = member
+  def getMembers: Set[ast.Member] = members
   def getNodes: Set[AssumptionAnalysisNode] = graph.getNodes.toSet
 
   def getNodesByLine(line: Int): Set[AssumptionAnalysisNode] =
@@ -21,6 +21,22 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
 
   def getNodesByPosition(file: String, line: Int): Set[AssumptionAnalysisNode] =
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
+
+
+  def getAllNodesByMember(member: ast.Member): Set[AssumptionAnalysisNode]  = {
+    getNodes.filter(m => m.member.isDefined && m.member.get.equals(member))
+  }
+
+  def filterByMember(nodes: Set[AssumptionAnalysisNode], member: ast.Member): Set[AssumptionAnalysisNode] = {
+    nodes.intersect(getAllNodesByMember(member))
+  }
+
+  def filterByMemberOpt(nodes: Set[AssumptionAnalysisNode], member: Option[ast.Member]): Set[AssumptionAnalysisNode] = {
+    if(member.isDefined)
+      return nodes.intersect(getAllNodesByMember(member.get))
+    nodes
+  }
+
 
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] = {
     val directDependencyIds = nodeIdsToAnalyze flatMap (id => graph.getDirectEdges.getOrElse(id, Set.empty))
@@ -88,16 +104,16 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource.toString))
   }
 
-  def computeProofCoverage(): (Double, Set[String]) = {
-    val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
-    computeProofCoverage(explicitAssertionNodes)
+  def computeProofCoverage(member: Option[ast.Member] = None): (Double, Set[String]) = {
+    val explicitAssertionNodes = getNodesWithIdenticalSource(filterByMemberOpt(getExplicitAssertionNodes, member))
+    computeProofCoverage(explicitAssertionNodes, member)
   }
 
-  def computeProofCoverage(assertionNodes: Set[AssumptionAnalysisNode]): (Double, Set[String]) = {
+  def computeProofCoverage(assertionNodes: Set[AssumptionAnalysisNode], member: Option[ast.Member]): (Double, Set[String]) = {
     val assertionNodeIds = assertionNodes map (_.id)
-    val dependencies = graph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
+    val dependencies = filterByMemberOpt(getAllNonInternalDependencies(assertionNodeIds, includeInfeasibilityNodes=true), member).map(_.id)
     val coveredNodes = dependencies ++ assertionNodeIds
-    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource.toString)
+    val nodesPerSourceInfo = filterByMemberOpt(getNonInternalAssumptionNodes, member).filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource.toString)
     if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Set())
 
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>

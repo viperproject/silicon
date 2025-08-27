@@ -2,7 +2,7 @@ package viper.silicon.tests
 
 import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, DependencyAnalysisReporter}
 import viper.silver.ast.Program
-import viper.silver.verifier
+import viper.silver.{ast, verifier}
 import viper.silver.verifier.VerificationResult
 
 import java.io.{File, PrintWriter}
@@ -36,13 +36,12 @@ object AssumptionAnalysisPrecisionBenchmark extends AssumptionAnalysisTestFramew
         println(f"Program $filePrefix/$fileName does not verify. Skip.\n$result")
         return
       }
-      val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
-      val fullGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedAssumptionAnalysisInterpreter
+      val fullGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpreter
 
 
       println(s"Precision Benchmark for $filePrefix - $fileName started...")
       writer.println(s"$filePrefix - $fileName")
-      new AnnotatedPrecisionBenchmark(filePrefix + "/" + fileName, program, assumptionAnalysisInterpreters, fullGraphInterpreter.get, writer).execute()
+      new AnnotatedPrecisionBenchmark(filePrefix + "/" + fileName, program, fullGraphInterpreter.get, writer).execute()
       writer.println()
       writer.flush()
       println(s"Precision Benchmark for $filePrefix - $fileName done.")
@@ -54,9 +53,8 @@ object AssumptionAnalysisPrecisionBenchmark extends AssumptionAnalysisTestFramew
   }
 
   class AnnotatedPrecisionBenchmark(fileName: String, program: Program,
-                                    assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter],
-                                    fullGraphInterpreter: AssumptionAnalysisInterpreter,
-                                    writer: PrintWriter) extends AnnotatedTest(program, assumptionAnalysisInterpreters, true) {
+                                    assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter,
+                                    writer: PrintWriter) extends AnnotatedTest(program, assumptionAnalysisInterpreter, checkPrecision=true) {
     override def execute(): Unit = {
       if(!verifyTestSoundness()){
         writer.println(s"!!!!!!!!!!!\nFailed to verify soundness of precision test $fileName\n")
@@ -64,18 +62,18 @@ object AssumptionAnalysisPrecisionBenchmark extends AssumptionAnalysisTestFramew
         return
       }
 
-      assumptionAnalysisInterpreters foreach {a =>
-        val prec = computePrecision(a)
-        writer.println(s"${a.getMember.map(_.name).getOrElse("unknown")}: $prec")
+      assumptionAnalysisInterpreter.getMembers foreach { m =>
+        val prec = computePrecision(m)
+        writer.println(s"${m.name}: $prec")
       }
     }
 
-    protected def computePrecision(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Double = {
-      val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+    protected def computePrecision(member: ast.Member): Double = {
+      val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes, member))
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getNonInternalAssertionNodes, member))
 
-      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))
+      val dependencies = assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)), member)
       val dependenciesPerSource = dependencies groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
       val dependencyIds = dependencies.map(_.id)
 
@@ -88,16 +86,16 @@ object AssumptionAnalysisPrecisionBenchmark extends AssumptionAnalysisTestFramew
     }
 
     protected def verifyTestSoundness(): Boolean = {
-      val irrelevantNodes = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.toString.contains("@irrelevant(")).flatMap(_.sourceInfo.getLineNumber)
+      val irrelevantNodes = assumptionAnalysisInterpreter.getNodes.filter(node => node.sourceInfo.toString.contains("@irrelevant(")).flatMap(_.sourceInfo.getLineNumber)
 
-      val relevantLines = fullGraphInterpreter.getNodes.flatMap(_.sourceInfo.getLineNumber).diff(irrelevantNodes)
+      val relevantLines = assumptionAnalysisInterpreter.getNodes.flatMap(_.sourceInfo.getLineNumber).diff(irrelevantNodes)
 
       pruneAndVerify(relevantLines, "src/test/resources/" + fileName + s"_test.out")
     }
 
     protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Boolean = {
-      val crucialNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
-      val (newProgram, pruningFactor) = fullGraphInterpreter.getPrunedProgram(crucialNodes, program)
+      val crucialNodes = relevantLines.flatMap(line => assumptionAnalysisInterpreter.getNodesByLine(line))
+      val (newProgram, pruningFactor) = assumptionAnalysisInterpreter.getPrunedProgram(crucialNodes, program)
       val result = frontend.verifier.verify(newProgram)
 //      exportPrunedProgram(exportFileName, newProgram, pruningFactor, result) // can be used for debugging
       !result.isInstanceOf[verifier.Failure]

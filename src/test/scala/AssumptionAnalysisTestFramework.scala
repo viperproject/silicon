@@ -127,15 +127,15 @@ trait AssumptionAnalysisTestFramework {
    * but multiple dependency/irrelevant annotations are allowed
    *
    */
-  case class AnnotatedTest(program: Program, assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter], checkPrecision: Boolean) {
+  case class AnnotatedTest(program: Program, assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter, checkPrecision: Boolean) {
     def execute(): Unit = {
       val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts({ annotationInfo => annotationInfo.values.contains(irrelevantKeyword + "(\"") || annotationInfo.values.contains(dependencyKeyword) })
-      val allAssumptionNodes = assumptionAnalysisInterpreters.flatMap(_.getNonInternalAssumptionNodes)
+      val allAssumptionNodes = assumptionAnalysisInterpreter.getNonInternalAssumptionNodes
 
-      var errorMsgs = stmtsWithAssumptionAnnotation.map(checkAssumptionNodeExists(allAssumptionNodes, _)).filter(_.isDefined).map(_.get).toSeq
-      errorMsgs ++= assumptionAnalysisInterpreters flatMap checkTestAssertionNodeExists
-      errorMsgs ++= assumptionAnalysisInterpreters flatMap checkAllDependencies
-      errorMsgs ++= assumptionAnalysisInterpreters flatMap checkExplicitDependencies
+      var errorMsgs = stmtsWithAssumptionAnnotation.map(checkAssumptionNodeExists(allAssumptionNodes.toList, _)).filter(_.isDefined).map(_.get).toSeq
+      errorMsgs ++= assumptionAnalysisInterpreter.getMembers flatMap checkTestAssertionNodeExists
+      errorMsgs ++= assumptionAnalysisInterpreter.getMembers flatMap checkAllDependencies
+      errorMsgs ++= assumptionAnalysisInterpreter.getMembers flatMap checkExplicitDependencies
 
       val check = errorMsgs.isEmpty
       assert(check, "\n" + errorMsgs.mkString("\n"))
@@ -175,36 +175,39 @@ trait AssumptionAnalysisTestFramework {
       }
     }
 
-    protected def checkTestAssertionNodeExists(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
-      val assumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes) ++ getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
+    protected def checkTestAssertionNodeExists(member: ast.Member): Seq[String] = {
+      val allAssumptionNodes = assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes, member)
+      val assumptionNodes = getTestAssumptionNodes(allAssumptionNodes) ++ getTestIrrelevantAssumptionNodes(allAssumptionNodes)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getNonInternalAssertionNodes, member))
       if (assumptionNodes.nonEmpty && assertionNodes.isEmpty)
-        Seq(s"Missing testAssertion for member: ${assumptionAnalysisInterpreter.getName}")
+        Seq(s"Missing testAssertion for member: ${member.name}")
       else
         Seq.empty
     }
 
 
-    protected def checkAllDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
-      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))map(_.id)
+    protected def checkAllDependencies(member: ast.Member): Seq[String] = {
+      val allAssumptionNodes = assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes, member)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getNonInternalAssertionNodes, member))
+      val dependencies = assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)), member).map(_.id)
 
-      val relevantAssumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+      val relevantAssumptionNodes = getTestAssumptionNodes(allAssumptionNodes)
       val resRelevant: Seq[String] = checkDependenciesAndGetErrorMsgs(relevantAssumptionNodes, dependencies, isDependencyExpected = true, "Missing dependency")
 
       val resIrrelevant = if(checkPrecision){
-        val irrelevantNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+        val irrelevantNodes = getTestIrrelevantAssumptionNodes(allAssumptionNodes)
         checkDependenciesAndGetErrorMsgs(irrelevantNodes, dependencies, isDependencyExpected = false, "Unexpected dependency")
       } else Seq.empty
 
       resRelevant ++ resIrrelevant
     }
 
-    protected def checkExplicitDependencies(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Seq[String] = {
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
-      val dependencies = assumptionAnalysisInterpreter.getAllExplicitDependencies(assertionNodes.map(_.id)).map(_.id)
+    protected def checkExplicitDependencies(member: ast.Member): Seq[String] = {
+      val allAssumptionNodes = assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes, member)
+      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getNonInternalAssertionNodes, member))
+      val dependencies = assumptionAnalysisInterpreter.filterByMember(assumptionAnalysisInterpreter.getAllExplicitDependencies(assertionNodes.map(_.id)), member).map(_.id)
 
-      val allTestAssumptionNodes = getTestAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+      val allTestAssumptionNodes = getTestAssumptionNodes(allAssumptionNodes)
 
       val relevantAssumptionNodes = allTestAssumptionNodes.filter(n => n.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Explicit\")") || n.sourceInfo.toString.contains("@" + dependencyKeyword + "(\"Precondition\")"))
       val resRelevant: Seq[String] = checkDependenciesAndGetErrorMsgs(relevantAssumptionNodes, dependencies, isDependencyExpected = true, "Missing explicit dependency")

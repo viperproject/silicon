@@ -127,7 +127,7 @@ object AssumptionAnalyzer {
       newGraph.addEdges(node.id, assumptionNodesForJoin map (_.id))
     }
 
-    new AssumptionAnalysisInterpreter(name.getOrElse("joined"), newGraph)
+    new AssumptionAnalysisInterpreter(name.getOrElse("joined"), newGraph, assumptionAnalysisInterpreters.flatMap(_.getMembers))
   }
 }
 
@@ -169,13 +169,13 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
   // adding assumption nodes
   override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_)
+    val node = SimpleAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_, member = getMember)
     addNode(node)
     Some(node.id)
   }
 
   override def addAxiom(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = {
-    val node = AxiomAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_)
+    val node = AxiomAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_, member = getMember)
     addNode(node)
     Some(node.id)
   }
@@ -198,20 +198,20 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   }
 
   private def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, labelNode: LabelNode): Option[Int] = {
-    val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, labelNode)
+    val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, labelNode, member = getMember)
     addNode(node)
     Some(node.id)
   }
 
   private def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
-    val node = PermissionExhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_)
+    val node = PermissionExhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, member = getMember)
     addNode(node)
     addPermissionDependencies(Set(chunk), Set(), Some(node.id))
     Some(node.id)
   }
 
   override def createLabelNode(label: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = {
-    val labelNode = LabelNode(label)
+    val labelNode = LabelNode(label, member = getMember)
     addNode(labelNode)
     assumptionGraph.addEdges(getChunkNodeIds(sourceChunks.toSet) ++ getNodeIdsByTerm(sourceTerms.toSet), labelNode.id)
     Some(labelNode)
@@ -220,9 +220,9 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   // adding assertion nodes
   override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
     if(isCheck)
-      Some(SimpleCheckNode(term, assumptionType, analysisSourceInfo, isClosed_))
+      Some(SimpleCheckNode(term, assumptionType, analysisSourceInfo, isClosed_, member = getMember))
     else
-      Some(SimpleAssertionNode(term, assumptionType, analysisSourceInfo, isClosed_))
+      Some(SimpleAssertionNode(term, assumptionType, analysisSourceInfo, isClosed_, member = getMember))
   }
   
   def addAssertNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo): Option[Int] = {
@@ -238,7 +238,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
   }
 
   override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val node = InfeasibilityNode(sourceInfo)
+    val node = InfeasibilityNode(sourceInfo, member = getMember)
     addNode(node)
     Some(node.id)
   }
@@ -319,7 +319,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
       val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])
       if (assumptionNodes.nonEmpty) {
-        val newNode = SimpleAssumptionNode(True, None, assumptionNodes.head.sourceInfo, assumptionType, isClosed = false)
+        val newNode = SimpleAssumptionNode(True, None, assumptionNodes.head.sourceInfo, assumptionType, isClosed = false, member = getMember)
         assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addNode(newNode)
       }
@@ -328,7 +328,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
     nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
       val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
       if (assertionNodes.nonEmpty) {
-        val newNode = SimpleAssertionNode(True, assumptionType, assertionNodes.head.sourceInfo, isClosed = false)
+        val newNode = SimpleAssertionNode(True, assumptionType, assertionNodes.head.sourceInfo, isClosed = false, member = getMember)
         assertionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addNode(newNode)
       }
