@@ -193,8 +193,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableSimplifiedUnfolds: ScallopOption[Boolean] = opt[Boolean]("disableSimplifiedUnfolds",
-    descr = (  "Disable an optimization that reuses the results of verifying a predicate to simplify the process "
+  val enableSimplifiedUnfolds: ScallopOption[Boolean] = opt[Boolean]("enableSimplifiedUnfolds",
+    descr = (  "Enable an optimization that reuses the results of verifying a predicate to simplify the process "
              + "of unfolding it (via an unfold statement or an unfolding expression)."),
     default = Some(false),
     noshort = true

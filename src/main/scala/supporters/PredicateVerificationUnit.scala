@@ -101,7 +101,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       val ins = predicate.formalArgs.map(_.localVar)
       val snap = freshSnap(sorts.Snap, v)
       val argVars = ins.map(x => (x, decider.fresh(x)))
-      var funcRecorder: FunctionRecorder = if (Verifier.config.disableSimplifiedUnfolds()) {
+      var funcRecorder: FunctionRecorder = if (!Verifier.config.enableSimplifiedUnfolds()) {
         NoopFunctionRecorder
       } else {
         ActualFunctionRecorder(Right((predicate, Seq(snap) ++ argVars.map(_._2._1))))
@@ -135,7 +135,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                   })})
       }
 
-      val overallResult = if (predicate.body.isDefined && !result.isFatal && !Verifier.config.disableSimplifiedUnfolds())
+      val overallResult = if (predicate.body.isDefined && !result.isFatal && Verifier.config.enableSimplifiedUnfolds())
         Some(makePredTree(branchResults)) else None
 
       this.predicateData(predicate).predContents = overallResult
