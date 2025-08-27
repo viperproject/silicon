@@ -13,7 +13,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
-import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
+import viper.silicon.rules.{InverseFunctions, PermMapDefinition, SnapshotMapDefinition, functionSupporter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
 import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
@@ -30,6 +30,7 @@ trait FunctionRecorderHandler {
   protected[functions] var locToSnap: Map[(ast.LocationAccess, Seq[ExpContext]), Term] = Map.empty
   protected[functions] var fappToSnap: Map[(ast.FuncApp, Seq[ExpContext]), Term] = Map.empty
   protected[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
+  protected[this] var freshPermMaps: InsertionOrderedSet[PermMapDefinition] = InsertionOrderedSet.empty
   protected[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   protected[this] var freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   protected[this] var freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
@@ -54,6 +55,7 @@ trait FunctionRecorderHandler {
     locToSnap = mergedFunctionRecorder.locToSnap
     fappToSnap = mergedFunctionRecorder.fappToSnap
     freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
+    freshPermMaps = mergedFunctionRecorder.freshPermMaps
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
     freshConstrainedVars = mergedFunctionRecorder.freshConstrainedVars
     freshConstraints = mergedFunctionRecorder.freshConstraints
@@ -72,6 +74,12 @@ trait FunctionRecorderHandler {
         case x: Var => ConstDecl(x)
         case App(f: Function, _) => FunctionDecl(f)
         case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
+      })
+    freshSymbolsAcrossAllPhases ++= freshPermMaps map (pmDef =>
+      pmDef.pm match {
+        case x: Var => ConstDecl(x)
+        case App(f: Function, _) => FunctionDecl(f)
+        case other => sys.error(s"Unexpected permission map $other of type ${other.getClass.getSimpleName}")
       })
   }
 
@@ -162,6 +170,7 @@ class FunctionData(val programFunction: ast.Function,
     val nested = (
          freshFieldInvs.flatMap(_.definitionalAxioms)
       ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
+      ++ freshPermMaps.flatMap (pmDef => pmDef.valueDefinitions)
       ++ freshConstrainedVars.map(_._2)
       ++ freshConstraints)
 

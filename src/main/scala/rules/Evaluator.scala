@@ -317,7 +317,7 @@ object evaluator extends EvaluationRules {
                     val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                     val fr2 =
                       s2.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                        .recordFvfAndDomain(smDef1)
+                        .recordFvfAndDomain(smDef1).recordPermMap(pmDef1)
                     val s3 = s2.copy(functionRecorder = fr2)
                     Q(s3, smLookup, newFa, v1)
                 }
@@ -579,7 +579,8 @@ object evaluator extends EvaluationRules {
                       quantifiedChunkSupporter.summarisingPermissionMap(
                         s1, wand, formalVars, relevantChunks, null, v1)
 
-                    (s1.copy(pmCache = pmCache), pmDef)
+                    val newFr = s1.functionRecorder.recordPermMap(pmDef)
+                    (s1.copy(pmCache = pmCache, functionRecorder = newFr), pmDef)
                   }
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
 
@@ -595,8 +596,8 @@ object evaluator extends EvaluationRules {
                     val (pmDef, pmCache) =
                       quantifiedChunkSupporter.summarisingPermissionMap(
                         s1, field, Seq(`?r`), relevantChunks, null, v1)
-
-                    (s1.copy(pmCache = pmCache), pmDef)
+                    val newFr = s1.functionRecorder.recordPermMap(pmDef)
+                    (s1.copy(pmCache = pmCache, functionRecorder = newFr), pmDef)
                   }
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")

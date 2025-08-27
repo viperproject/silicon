@@ -646,12 +646,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   }
 
   def summarisingPermissionMap(s: State,
-                             resource: ast.Resource,
-                             formalQVars: Seq[Var],
-                             relevantChunks: Seq[QuantifiedBasicChunk],
-                             smDef: SnapshotMapDefinition,
-                             v: Verifier)
-                            : (PermMapDefinition, PmCache) = {
+                               resource: ast.Resource,
+                               formalQVars: Seq[Var],
+                               relevantChunks: Seq[QuantifiedBasicChunk],
+                               smDef: SnapshotMapDefinition,
+                               v: Verifier)
+                              : (PermMapDefinition, PmCache) = {
 
     Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
