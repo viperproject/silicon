@@ -20,7 +20,7 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
 import viper.silicon.interfaces._
 import viper.silicon.rules.executionFlowController
-import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecorderHandler}
+import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecorder, FunctionRecorderHandler, NoopFunctionRecorder}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
 
@@ -101,7 +101,12 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       val ins = predicate.formalArgs.map(_.localVar)
       val snap = freshSnap(sorts.Snap, v)
       val argVars = ins.map(x => (x, decider.fresh(x)))
-      var funcRecorder = ActualFunctionRecorder(Right((predicate, Seq(snap) ++ argVars.map(_._2._1))))
+      var funcRecorder: FunctionRecorder = if (Verifier.config.disableSimplifiedUnfolds()) {
+        NoopFunctionRecorder
+      } else {
+        ActualFunctionRecorder(Right((predicate, Seq(snap) ++ argVars.map(_._2._1))))
+      }
+
       val s = sInit.copy(g = Store(argVars),
                          h = Heap(),
                          oldHeaps = OldHeaps(),
@@ -130,7 +135,8 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                   })})
       }
 
-      val overallResult = if (predicate.body.isDefined && !result.isFatal) Some(makePredTree(branchResults)) else None
+      val overallResult = if (predicate.body.isDefined && !result.isFatal && !Verifier.config.disableSimplifiedUnfolds())
+        Some(makePredTree(branchResults)) else None
 
       this.predicateData(predicate).predContents = overallResult
       this.predicateData(predicate).params = Some(Seq(snap) ++ argVars.map(_._2._1))

@@ -193,6 +193,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableSimplifiedUnfolds: ScallopOption[Boolean] = opt[Boolean]("disableSimplifiedUnfolds",
+    descr = (  "Disable an optimization that reuses the results of verifying a predicate to simplify the process "
+             + "of unfolding it (via an unfold statement or an unfolding expression)."),
+    default = Some(false),
+    noshort = true
+  )
+
   val logLevel: ScallopOption[String] = opt[String]("logLevel",
     descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF",
     default = None,
