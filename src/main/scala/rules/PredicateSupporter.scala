@@ -16,7 +16,7 @@ import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.supporters.{PredBranchNode, PredLeafNode, PredTree}
+import viper.silicon.supporters.{PredicateBranchNode, PredicateLeafNode, PredicateContentsTree}
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -129,11 +129,11 @@ object predicateSupporter extends PredicateSupportRules {
     })
   }
 
-  def doTree(s: State, tree: PredTree, toReplace: silicon.Map[Term, Term], v: Verifier, isUnfolding: Boolean = false)
-            (Q: (State, Verifier) => VerificationResult)
+  def producePredicateContents(s: State, tree: PredicateContentsTree, toReplace: silicon.Map[Term, Term], v: Verifier, isUnfolding: Boolean = false)
+                              (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
     tree match {
-      case PredLeafNode(h, assumptions) =>
+      case PredicateLeafNode(h, assumptions) =>
         v.decider.assume(assumptions.map(_.replace(toReplace)).toSeq, None)
         val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk].permScale(s.permissionScalingFactor))
 
@@ -178,17 +178,17 @@ object predicateSupporter extends PredicateSupportRules {
         }
 
         Q(s1, v)
-      case PredBranchNode(cond, left, right) =>
+      case PredicateBranchNode(cond, left, right) =>
         val substCond = cond.replace(toReplace)
 
         if (!isUnfolding && s.moreJoins.id >= JoinMode.Impure.id) {
           joiner.join[scala.Null, scala.Null](s, v, resetState = false)((s1, v1, QB) => {
             brancher.branch(s1, substCond, (ast.TrueLit()(), None), v1)(
               (s2, v2) => {
-                doTree(s2, left, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
+                producePredicateContents(s2, left, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
               },
               (s2, v2) => {
-                doTree(s2, right, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
+                producePredicateContents(s2, right, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
               }
             )
           }) (entries => {
@@ -205,10 +205,10 @@ object predicateSupporter extends PredicateSupportRules {
         } else {
           brancher.branch(s, substCond, (ast.TrueLit()(), None), v)(
             (s1, v1) => {
-              doTree(s1, left, toReplace, v1, isUnfolding)(Q)
+              producePredicateContents(s1, left, toReplace, v1, isUnfolding)(Q)
             },
             (s2, v2) => {
-              doTree(s2, right, toReplace, v2, isUnfolding)(Q)
+              producePredicateContents(s2, right, toReplace, v2, isUnfolding)(Q)
             }
           )
         }
@@ -254,12 +254,12 @@ object predicateSupporter extends PredicateSupportRules {
       )((s2, h2, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
-        if (s3.predicateData(predicate).unfoldTree.isDefined) {
+        if (s3.predicateData(predicate).predContents.isDefined) {
           // emit all symbols - NO! do that once and forall!
           // walk though branches, always substituting
           // assume and add to heap, substituting args, perms, snaps, making basic chunks singleton chunks if needed.
           val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
-          doTree(s3, s3.predicateData(predicate).unfoldTree.get, toReplace, v1, false)((s4, v4) => {
+          producePredicateContents(s3, s3.predicateData(predicate).predContents.get, toReplace, v1, false)((s4, v4) => {
             v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
             if (!Verifier.config.disableFunctionUnfoldTrigger()) {
               val predicateTrigger =
@@ -297,12 +297,12 @@ object predicateSupporter extends PredicateSupportRules {
       chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
-        if (s3.predicateData(predicate).unfoldTree.isDefined) {
+        if (s3.predicateData(predicate).predContents.isDefined) {
           // emit all symbols - NO! do that once and forall!
           // walk though branches, always substituting
           // assume and add to heap, substituting args, perms, snaps, making basic chunks singleton chunks if needed.
           val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
-          doTree(s3, s3.predicateData(predicate).unfoldTree.get, toReplace, v1, false)((s4, v4) => {
+          producePredicateContents(s3, s3.predicateData(predicate).predContents.get, toReplace, v1, false)((s4, v4) => {
             v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
             if (!Verifier.config.disableFunctionUnfoldTrigger()) {
               val predicateTrigger =

@@ -27,8 +27,8 @@ import viper.silver.reporter.Reporter
 
 trait FunctionRecorderHandler {
 
-  protected[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
-  protected[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
+  protected[functions] var locToSnap: Map[(ast.LocationAccess, Seq[ExpContext]), Term] = Map.empty
+  protected[functions] var fappToSnap: Map[(ast.FuncApp, Seq[ExpContext]), Term] = Map.empty
   protected[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   protected[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   protected[this] var freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
@@ -257,7 +257,7 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predAcc, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
+           expressionTranslator.getOrFail(locToSnap, predAcc, Seq(), sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
         +: expressionTranslator.translatePrecondition(program, predAcc.args, this))
 
       val fapp = App(triggerFunction, args)

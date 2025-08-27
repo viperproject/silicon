@@ -20,7 +20,7 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
 import viper.silicon.interfaces._
 import viper.silicon.rules.executionFlowController
-import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecorder, FunctionRecorderHandler}
+import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecorderHandler}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
 
@@ -31,7 +31,7 @@ class PredicateData(predicate: ast.Predicate)
                     */
                    (private val symbolConvert: SymbolConverter) extends FunctionRecorderHandler {
 
-  var unfoldTree: Option[PredTree] = None
+  var predContents: Option[PredicateContentsTree] = None
   var params: Option[Seq[Var]] = None
 
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
@@ -39,21 +39,13 @@ class PredicateData(predicate: ast.Predicate)
   val triggerFunction =
     Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
 
-  def getAxioms(): Seq[Term] = {
-    val nested = (
-      freshFieldInvs.flatMap(_.definitionalAxioms)
-        ++ freshFvfsAndDomains.flatMap(fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
-        ++ freshConstrainedVars.map(_._2)
-        ++ freshConstraints)
-    Seq()
-  }
 }
 
-trait PredTree
+trait PredicateContentsTree
 
-case class PredBranchNode(cond: Term, left: PredTree, right: PredTree) extends PredTree
+case class PredicateBranchNode(cond: Term, left: PredicateContentsTree, right: PredicateContentsTree) extends PredicateContentsTree
 
-case class PredLeafNode(heap: Heap, assumptions: InsertionOrderedSet[Term]) extends PredTree
+case class PredicateLeafNode(heap: Heap, assumptions: InsertionOrderedSet[Term]) extends PredicateContentsTree
 
 trait PredicateVerificationUnit
     extends VerifyingPreambleContributor[Sort, Decl, Term, ast.Predicate] {
@@ -140,7 +132,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
       val overallResult = if (predicate.body.isDefined && !result.isFatal) Some(makePredTree(branchResults)) else None
 
-      this.predicateData(predicate).unfoldTree = overallResult
+      this.predicateData(predicate).predContents = overallResult
       this.predicateData(predicate).params = Some(Seq(snap) ++ argVars.map(_._2._1))
       this.predicateData(predicate).addRecorders(Seq(funcRecorder))
 
@@ -148,17 +140,17 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       Seq(result)
     }
 
-    def makePredTree(branches: Seq[(Seq[Term], Heap, InsertionOrderedSet[Term])]): PredTree = {
+    def makePredTree(branches: Seq[(Seq[Term], Heap, InsertionOrderedSet[Term])]): PredicateContentsTree = {
       if (branches.head._1.isEmpty) {
         assert(branches.length == 1)
-        PredLeafNode(branches.head._2, branches.head._3)
+        PredicateLeafNode(branches.head._2, branches.head._3)
       } else {
         val branchCond = branches.head._1.head
         val (trueBranches, falseBranches) = branches.partition(_._1.head == branchCond)
         if (trueBranches.nonEmpty && falseBranches.nonEmpty) {
           val trueTree = makePredTree(trueBranches.map(brnchs => (brnchs._1.tail, brnchs._2, brnchs._3)))
           val falseTree = makePredTree(falseBranches.map(brnchs => (brnchs._1.tail, brnchs._2, brnchs._3)))
-          PredBranchNode(branchCond, trueTree, falseTree)
+          PredicateBranchNode(branchCond, trueTree, falseTree)
         } else if (trueBranches.nonEmpty) {
           makePredTree(trueBranches.map(brnchs => (brnchs._1.tail, brnchs._2, brnchs._3)))
         } else {
@@ -198,7 +190,6 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
     /* Predicate supporter generates no axioms */
     val axiomsAfterVerification: Iterable[Term] = Seq.empty
     def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
-      predicateData.values.map(_.getAxioms) foreach (ax => sink.assumeAxioms(InsertionOrderedSet(ax), ""))
     }
 
     /* Lifetime */
