@@ -9,21 +9,23 @@ package viper.silicon.supporters.functions
 import viper.silver.ast
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition}
+import viper.silicon.rules.{InverseFunctions, PermMapDefinition, SnapshotMapDefinition}
 import viper.silicon.{Map, Stack}
 import viper.silicon.state.terms._
+import viper.silver.ast.AbstractLocalVar
 
 // TODO: FunctionRecorder records Function, Var, etc., which are later on turned into corresponding
 //       declarations (e.g. FunctionDecl), see FunctionData's field freshSymbolsAcrossAllPhases.
 //       Only macros are already recorded as MacroDecls — this should be the case for Functions,
 //       etc. as well.
 trait FunctionRecorder extends Mergeable[FunctionRecorder] {
-  def data: Option[FunctionData]
+  def arguments: Option[Seq[(Var, Option[ast.AbstractLocalVar])]]
   private[functions] def locToSnaps: Map[(ast.LocationAccess, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]]
   def locToSnap: Map[(ast.LocationAccess, Seq[ExpContext]), Term]
   private[functions] def fappToSnaps: Map[(ast.FuncApp, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]]
   def fappToSnap: Map[(ast.FuncApp, Seq[ExpContext]), Term]
   def freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition]
+  def freshPermMaps: InsertionOrderedSet[PermMapDefinition]
   def freshFieldInvs: InsertionOrderedSet[InverseFunctions]
   def freshConstrainedVars: InsertionOrderedSet[(Var, Term)]
   def freshConstraints: InsertionOrderedSet[Term]
@@ -33,6 +35,7 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder
+  def recordPermMap(pmDef: PermMapDefinition): FunctionRecorder
   def recordFieldInv(inv: InverseFunctions): FunctionRecorder
   def recordConstrainedVar(v: Var, constraint: Term): FunctionRecorder
   def recordConstraint(constraint: Term): FunctionRecorder
@@ -47,14 +50,16 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def leaveQuantifiedExp(q: ast.QuantifiedExp): FunctionRecorder
 }
 
+
 trait ExpContext
 case class LetContext(l: ast.Let) extends ExpContext
 case class QuantifierContext(q: ast.QuantifiedExp) extends ExpContext
 
-case class ActualFunctionRecorder(private val _data: FunctionData,
+case class ActualFunctionRecorder(private val _data: Either[FunctionData, (ast.Predicate, Seq[Var])],
                                   private[functions] val locToSnaps: Map[(ast.LocationAccess, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   private[functions] val fappToSnaps: Map[(ast.FuncApp, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet(),
+                                  freshPermMaps: InsertionOrderedSet[PermMapDefinition] = InsertionOrderedSet(),
                                   freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet(),
                                   freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
                                   freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet(),
@@ -99,7 +104,10 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
    * unfolding's in-clause, which, as argued before, are not part of f.
    */
 
-  val data = Some(_data)
+  override def arguments: Option[Stack[(Var, Option[AbstractLocalVar])]] = _data match {
+    case Left(fd) => Some(fd.arguments.zip(fd.argumentExps))
+    case Right((_, args)) => Some(args.map((_, None)))
+  }
 
   private def exprToSnap[E <: ast.Exp]
                         (recordings: Map[(E, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]])
@@ -194,6 +202,10 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     if (depth <= 2) copy(freshFvfsAndDomains = freshFvfsAndDomains + fvfDef)
     else this
 
+  def recordPermMap(pmDef: PermMapDefinition): ActualFunctionRecorder =
+    if (depth <= 2) copy(freshPermMaps = freshPermMaps + pmDef)
+    else this
+
   def recordFieldInv(inv: InverseFunctions): ActualFunctionRecorder =
     if (depth <= 2) copy(freshFieldInvs = freshFieldInvs + inv)
     else this
@@ -207,7 +219,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     else this
 
   def recordFreshSnapshot(snap: Function): ActualFunctionRecorder =
-    if (depth <= 1) copy(freshSnapshots = freshSnapshots + snap)
+    if (depth <= 3) copy(freshSnapshots = freshSnapshots + snap)
     else this
 
   def recordPathSymbol(symbol: Function): ActualFunctionRecorder =
@@ -249,7 +261,6 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     if (depth > 1) return this
 
     assert(other.getClass == this.getClass)
-    assert(other.asInstanceOf[ActualFunctionRecorder]._data eq this._data)
 
     var lts = locToSnaps
     var fts = fappToSnaps
@@ -269,6 +280,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     }
 
     val fvfs = freshFvfsAndDomains ++ other.freshFvfsAndDomains
+    val pmDefs = freshPermMaps ++ other.freshPermMaps
     val fieldInvs = freshFieldInvs ++ other.freshFieldInvs
     val arps = freshConstrainedVars ++ other.freshConstrainedVars
     val constraints = freshConstraints ++ other.freshConstraints
@@ -279,6 +291,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     copy(locToSnaps = lts,
          fappToSnaps = fts,
          freshFvfsAndDomains = fvfs,
+         freshPermMaps = pmDefs,
          freshFieldInvs = fieldInvs,
          freshConstrainedVars = arps,
          freshConstraints = constraints,
@@ -303,12 +316,14 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 }
 
 case object NoopFunctionRecorder extends FunctionRecorder {
-  val data: Option[FunctionData] = None
+  def arguments: Option[Seq[(viper.silicon.state.terms.Var, Option[viper.silver.ast.AbstractLocalVar])]] = None
   private[functions] val fappToSnaps: Map[(ast.FuncApp, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val fappToSnap: Map[(ast.FuncApp, Seq[ExpContext]), Term] = Map.empty
   private[functions] val locToSnaps: Map[(ast.LocationAccess, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val locToSnap: Map[(ast.LocationAccess, Seq[ExpContext]), Term] = Map.empty
+
   val freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
+  val freshPermMaps: InsertionOrderedSet[PermMapDefinition] = InsertionOrderedSet.empty
   val freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   val freshConstrainedVars: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   val freshConstraints: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
@@ -325,6 +340,7 @@ case object NoopFunctionRecorder extends FunctionRecorder {
 
   def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): NoopFunctionRecorder.type = this
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): NoopFunctionRecorder.type = this
+  def recordPermMap(pmDef: PermMapDefinition): NoopFunctionRecorder.type = this
   def recordFieldInv(inv: InverseFunctions): NoopFunctionRecorder.type = this
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): NoopFunctionRecorder.type = this
   def recordConstrainedVar(arp: Var, constraint: Term): NoopFunctionRecorder.type = this

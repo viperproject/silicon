@@ -168,7 +168,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function)
-      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data),
+      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(Left(data)),
         conservingSnapshotGeneration = true,
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 

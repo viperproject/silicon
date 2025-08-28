@@ -148,7 +148,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.p map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal | _: MagicWandChunkTerm | _: Distinct => term
+      case _: Var | _: Function | _: Literal | _: MagicWandChunkTerm | _: Distinct | _: AppHint => term
 
       case Quantification(quantifier, variables, body, triggers, name, isGlobal, weight) =>
         Quantification(quantifier, variables map go, go(body), triggers map goTriggers, name, isGlobal, weight)

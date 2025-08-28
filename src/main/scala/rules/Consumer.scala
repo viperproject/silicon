@@ -383,7 +383,7 @@ object consumer extends ConsumptionRules {
               val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: ${eRcvrNew.get.toString}.${field.name}"))
               v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp)
               //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
-              s2.copy(smCache = smCache1)
+              s2.copy(smCache = smCache1, functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1))
             } else {
               s2
             }
@@ -427,7 +427,7 @@ object consumer extends ConsumptionRules {
                   s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
               val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}(${eArgsNew.mkString(", ")}))", isInternal_ = true))
               v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp)
-              s2.copy(smCache = smCache1)
+              s2.copy(smCache = smCache1, functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1))
             } else {
               s2
             }
@@ -497,7 +497,7 @@ object consumer extends ConsumptionRules {
             val predName = MagicWandIdentifier(wand, s.program).toString
             val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger($predName($argsString))", isInternal_ = true))
             v1.decider.assume(PredicateTrigger(predName, smDef1.sm, tArgs), debugExp)
-            s1.copy(smCache = smCache1)
+            s1.copy(smCache = smCache1, functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1))
           } else {
             s1
           }
