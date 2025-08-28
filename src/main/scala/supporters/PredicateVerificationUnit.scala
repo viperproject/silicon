@@ -8,6 +8,7 @@ package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.debugger.DebugExp
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
@@ -43,7 +44,7 @@ class PredicateData(predicate: ast.Predicate)
 
 trait PredicateContentsTree
 
-case class PredicateBranchNode(cond: Term, left: PredicateContentsTree, right: PredicateContentsTree) extends PredicateContentsTree
+case class PredicateBranchNode(cond: Term, condExp: (ast.Exp, Option[ast.Exp]), left: PredicateContentsTree, right: PredicateContentsTree) extends PredicateContentsTree
 
 case class PredicateLeafNode(heap: Heap, assumptions: InsertionOrderedSet[Term]) extends PredicateContentsTree
 
@@ -114,7 +115,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
       val err = PredicateNotWellformed(predicate)
 
-      var branchResults: Seq[(Seq[Term], Heap, InsertionOrderedSet[Term])] = Seq()
+      var branchResults: Seq[(Seq[Term], Seq[(ast.Exp, Option[ast.Exp])], Heap, InsertionOrderedSet[Term])] = Seq()
 
 
       val result = predicate.body match {
@@ -126,10 +127,12 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
                   produce(s1, toSf(snap), body, err, v)((s2, v2) => {
                     val branchConds = v2.decider.pcs.branchConditions.reverse
+                    val branchCondExps = v2.decider.pcs.branchConditionExps.reverse
+                    assert(branchConds.length == branchCondExps.length)
                     val heap = s2.h
                     val assumptions = v2.decider.pcs.assumptions
                     branchResults = branchResults :+
-                      (branchConds, heap, assumptions)
+                      (branchConds, branchCondExps, heap, assumptions)
                     funcRecorder = funcRecorder.merge(s2.functionRecorder)
                     Success()
                   })})
@@ -146,22 +149,23 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       Seq(result)
     }
 
-    def makePredTree(branches: Seq[(Seq[Term], Heap, InsertionOrderedSet[Term])]): PredicateContentsTree = {
+    def makePredTree(branches: Seq[(Seq[Term], Seq[(ast.Exp, Option[ast.Exp])], Heap, InsertionOrderedSet[Term])]): PredicateContentsTree = {
       if (branches.head._1.isEmpty) {
         assert(branches.length == 1)
-        PredicateLeafNode(branches.head._2, branches.head._3)
+        PredicateLeafNode(branches.head._3, branches.head._4)
       } else {
         val branchCond = branches.head._1.head
+        val branchCondExp = branches.head._2.head
         val (trueBranches, falseBranches) = branches.partition(_._1.head == branchCond)
         if (trueBranches.nonEmpty && falseBranches.nonEmpty) {
-          val trueTree = makePredTree(trueBranches.map(brnchs => (brnchs._1.tail, brnchs._2, brnchs._3)))
-          val falseTree = makePredTree(falseBranches.map(brnchs => (brnchs._1.tail, brnchs._2, brnchs._3)))
-          PredicateBranchNode(branchCond, trueTree, falseTree)
+          val trueTree = makePredTree(trueBranches.map(brnchs => (brnchs._1.tail, brnchs._2.tail, brnchs._3, brnchs._4)))
+          val falseTree = makePredTree(falseBranches.map(brnchs => (brnchs._1.tail, brnchs._2.tail, brnchs._3, brnchs._4)))
+          PredicateBranchNode(branchCond, branchCondExp, trueTree, falseTree)
         } else if (trueBranches.nonEmpty) {
-          makePredTree(trueBranches.map(brnchs => (brnchs._1.tail, brnchs._2, brnchs._3)))
+          makePredTree(trueBranches.map(brnchs => (brnchs._1.tail, brnchs._2.tail, brnchs._3, brnchs._4)))
         } else {
           assert(falseBranches.nonEmpty)
-          makePredTree(falseBranches.map(brnchs => (brnchs._1.tail, brnchs._2, brnchs._3)))
+          makePredTree(falseBranches.map(brnchs => (brnchs._1.tail, brnchs._2.tail, brnchs._3, brnchs._4)))
         }
       }
     }

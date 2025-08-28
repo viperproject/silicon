@@ -134,8 +134,9 @@ object predicateSupporter extends PredicateSupportRules {
             : VerificationResult = {
     tree match {
       case PredicateLeafNode(h, assumptions) =>
-        v.decider.assume(assumptions.map(_.replace(toReplace)).toSeq, None)
-        val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk].permScale(s.permissionScalingFactor))
+        val debugExp = Option.when(withExp)(DebugExp.createInstance("Assumption from unfolded predicate body"))
+        v.decider.assume(assumptions.map(a => (a.replace(toReplace), debugExp)).toSeq)
+        val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk].permScale(s.permissionScalingFactor, s.permissionScalingFactorExp))
 
         val quantifiedResourceIdentifiers: Set[ChunkIdentifer] = s.qpPredicates.map(p => BasicChunkIdentifier(p.name)) ++ s.qpFields.map(f => BasicChunkIdentifier(f.name)) ++ s.qpMagicWands
 
@@ -170,20 +171,16 @@ object predicateSupporter extends PredicateSupportRules {
           }
         })
         val substHeap = Heap(substChunksOptQps)
-        val s1 = if (true) {  // merge or just append?
-          val (fr1, h1) = v.stateConsolidator(s).merge(newFr, s, s.h, substHeap, v)
-          s.copy(h = h1, functionRecorder = fr1)
-        } else {
-          s.copy(h = s.h + substHeap, functionRecorder = newFr)
-        }
+        val (fr1, h1) = v.stateConsolidator(s).merge(newFr, s, s.h, substHeap, v)
+        val s1 = s.copy(h = h1, functionRecorder = fr1)
 
         Q(s1, v)
-      case PredicateBranchNode(cond, left, right) =>
+      case PredicateBranchNode(cond, condExp, left, right) =>
         val substCond = cond.replace(toReplace)
 
         if (!isUnfolding && s.moreJoins.id >= JoinMode.Impure.id) {
           joiner.join[scala.Null, scala.Null](s, v, resetState = false)((s1, v1, QB) => {
-            brancher.branch(s1, substCond, (ast.TrueLit()(), None), v1)(
+            brancher.branch(s1, substCond, condExp, v1)(
               (s2, v2) => {
                 producePredicateContents(s2, left, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
               },
@@ -203,7 +200,7 @@ object predicateSupporter extends PredicateSupportRules {
             (s2, null)
           }) ((sp, _, vp) => Q(sp, vp))
         } else {
-          brancher.branch(s, substCond, (ast.TrueLit()(), None), v)(
+          brancher.branch(s, substCond, condExp, v)(
             (s1, v1) => {
               producePredicateContents(s1, left, toReplace, v1, isUnfolding)(Q)
             },
@@ -255,9 +252,6 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
         if (s3.predicateData(predicate).predContents.isDefined) {
-          // emit all symbols - NO! do that once and forall!
-          // walk though branches, always substituting
-          // assume and add to heap, substituting args, perms, snaps, making basic chunks singleton chunks if needed.
           val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
           producePredicateContents(s3, s3.predicateData(predicate).predContents.get, toReplace, v1, false)((s4, v4) => {
             v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
@@ -298,9 +292,6 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         if (s3.predicateData(predicate).predContents.isDefined) {
-          // emit all symbols - NO! do that once and forall!
-          // walk though branches, always substituting
-          // assume and add to heap, substituting args, perms, snaps, making basic chunks singleton chunks if needed.
           val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
           producePredicateContents(s3, s3.predicateData(predicate).predContents.get, toReplace, v1, false)((s4, v4) => {
             v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
@@ -331,17 +322,4 @@ object predicateSupporter extends PredicateSupportRules {
       })
     }
   }
-
-/* NOTE: Possible alternative to storing the permission scaling factor in the context
- *       or passing it to produce/consume as an explicit argument.
- *       Carbon uses Permissions.multiplyExpByPerm as well (but does not extend the
- *       store).
- */
-//    private def scale(γ: ST, body: ast.Exp, perm: Term) = {
-//      /* TODO: Ensure that variable name does not clash with any Silver identifier already in use */
-//      val scaleFactorVar = ast.LocalVar(identifierFactory.fresh("p'unf").name)(ast.Perm)
-//      val scaledBody = ast.utility.Permissions.multiplyExpByPerm(body, scaleFactorVar)
-//
-//      (γ + (scaleFactorVar -> perm), scaledBody)
-//    }
 }
