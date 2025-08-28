@@ -1,0 +1,75 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method test1()
+{
+  var m : Map[Int, Bool] := Map()
+  assert |Map[Int, Bool]()| == 0
+  assert |m| == 0
+  
+  var d : Set[Int] := domain(m)
+  assert d == Set()
+  
+  var r : Set[Bool] := range(m)
+  assert |range(m)| == 0
+}
+
+method test2()
+{
+  var m : Map[Int, Bool] := Map()
+  m := m[2 := true]
+  
+  assert m[2]
+  assert domain(m) == Set(2)
+  assert range(m) == Set(true)
+}
+
+method test3()
+{
+  var m : Map[Int, Int] := Map(2 := 12, 3 := 24, 4 := 36)
+  
+  assert |m| == 3
+  assert m[2] == 12 && m[3] == 24 && m[4] == 36
+  assert domain(m) == Set(4, 2, 3)
+  assert range(m) == Set(24, 12, 36)
+  assert 3 in m
+  assert !(1 in m)
+}
+
+method test4()
+{
+  var m1 : Map[Int, Bool] := Map(2 := false, 4 := true, 6 := false)
+  var m2 : Map[Int, Bool] := Map(6 := false, 2 := false)
+  
+  assert !(4 in m2)
+  assert m1 != m2
+  assert m2[4 := true][4]
+  assert m1 == m1[4 := true]
+  assert m1 == m2[4 := true]
+}
+
+method test5(m : Map[Int, Map[Int, Bool]])
+  requires forall i : Int :: { i in m } (0 <= i && i < 4 <==> i in m)
+  requires forall i : Int, j : Int :: { j in m[i] } i in m ==> (0 <= j && j < 4 <==> j in m[i])
+  requires forall i : Int, j : Int :: { m[i][j] } i in m && j in m ==> (m[i][j] <==> i == j)
+{
+  assert m[2][2]
+  assert !m[1][2]
+  assert domain(m) == Set(0, 1, 2, 3)
+  assert domain(m[0]) == Set(0, 1, 2, 3)
+  assert m[2] == Map(0 := false, 1 := false, 2 := true, 3 := false)
+  assert Map(0 := false, 1 := false, 2 := true, 3 := false) in range(m)
+}
+
+field val : Int
+
+method test6(m : Map[Int, Ref], x : Int)
+  requires forall i: Int, j: Int :: { i in m, j in m } i in m && j in m && i != j ==> m[i] != m[j]
+  requires forall k : Int :: { k in m } k in m ==> acc(m[k].val)
+{
+  if (x in m)
+  {
+    m[x].val := m[x].val + x
+  }
+}
+

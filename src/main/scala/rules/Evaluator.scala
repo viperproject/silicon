@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 import viper.silver.ast
@@ -181,6 +182,11 @@ object evaluator extends EvaluationRules {
           failIfDivByZero(s1, tFP, e1, e1New, t1, predef.Zero, pve, v1)((s2, t, v2)
             => Q(s2, t, e0New.map(ast.FractionalPerm(_, e1New.get)(e.pos, e.info, e.errT)), v2)))
 
+      case _: ast.WildcardPerm if s.assertReadAccessOnly =>
+        // We are in a context where permission amounts do not matter, so we can safely translate a wildcard to
+        // a full permission.
+        Q(s, FullPerm, eOpt, v)
+
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints, eVar) = v.decider.freshARP()
         val constraintExp = Option.when(withExp)(DebugExp.createInstance(s"${eVar.get.toString} > none", true))
@@ -256,22 +262,30 @@ object evaluator extends EvaluationRules {
                   val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
                   v1.decider.assume(trigger, triggerExp)
                 }
-                val (permCheck, permCheckExp) =
+                val (permCheck, permCheckExp, s1a) =
                   if (s1.triggerExp) {
-                    (True, Option.when(withExp)(TrueLit()()))
+                    (True, Option.when(withExp)(TrueLit()()), s1)
                   } else {
+                    val (s1a, lhs) = tRcvr match {
+                      case _: Literal | _: Var => (s1, True)
+                      case _ =>
+                        // Make sure the receiver exists on the SMT level and is thus able to trigger any relevant quantifiers.
+                        val rcvrVar = v1.decider.appliedFresh("rcvr", tRcvr.sort, s1.relevantQuantifiedVariables.map(_._1))
+                        val newFuncRec = s1.functionRecorder.recordFreshSnapshot(rcvrVar.applicable.asInstanceOf[Function])
+                        (s1.copy(functionRecorder = newFuncRec), BuiltinEquals(rcvrVar, tRcvr))
+                    }
                     val permVal = relevantChunks.head.perm
                     val totalPermissions = permVal.replace(relevantChunks.head.quantifiedVars, Seq(tRcvr))
-                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
+                    (Implies(lhs, IsPositive(totalPermissions)), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)), s1a)
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1a, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
                     val fr2 =
-                      s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                    val s2 = s1.copy(functionRecorder = fr2)
+                      s1a.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
+                    val s2 = s1a.copy(functionRecorder = fr2)
                     Q(s2, smLookup, newFa, v1)
                 }
               } else {
@@ -303,7 +317,7 @@ object evaluator extends EvaluationRules {
                     val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                     val fr2 =
                       s2.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                        .recordFvfAndDomain(smDef1)
+                        .recordFvfAndDomain(smDef1).recordPermMap(pmDef1)
                     val s3 = s2.copy(functionRecorder = fr2)
                     Q(s3, smLookup, newFa, v1)
                 }
@@ -360,12 +374,12 @@ object evaluator extends EvaluationRules {
             evalInOldState(s, lbl, e0, pve, v)((s1, t0, e0New, v1) =>
               Q(s1, t0, e0New.map(ast.LabelledOld(_, lbl)(old.pos, old.info, old.errT)), v1))}
 
-      case ast.Let(x, e0, e1) =>
+      case l@ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
           val t = v1.decider.appliedFresh("letvar", v1.symbolConverter.toSort(x.typ), s1.relevantQuantifiedVariables.map(_._1))
           val debugExp = Option.when(withExp)(DebugExp.createInstance("letvar assignment", InsertionOrderedSet(DebugExp.createInstance(ast.EqCmp(x.localVar, e0)(), ast.EqCmp(x.localVar, e0New.get)()))))
           v1.decider.assumeDefinition(BuiltinEquals(t, t0), debugExp)
-          val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t.applicable.asInstanceOf[Function])
+          val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t.applicable.asInstanceOf[Function]).enterLet(l)
           val possibleTriggersBefore = if (s1.recordPossibleTriggers) s1.possibleTriggers else Map.empty
           eval(s1.copy(g = s1.g + (x.localVar, (t0, e0New)), functionRecorder = newFuncRec), e1, pve, v1)((s2, t2, e1New, v2) => {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
@@ -375,7 +389,8 @@ object evaluator extends EvaluationRules {
             } else {
               s2.possibleTriggers
             }
-            Q(s2.copy(possibleTriggers = newPossibleTriggers), t2, e0New.map(ast.Let(x, _, e1New.get)(e.pos, e.info, e.errT)), v2)
+            val s3 = s2.copy(possibleTriggers = newPossibleTriggers, functionRecorder = s2.functionRecorder.leaveLet(l))
+            Q(s3, t2, e0New.map(ast.Let(x, _, e1New.get)(e.pos, e.info, e.errT)), v2)
           })
         })
 
@@ -564,7 +579,8 @@ object evaluator extends EvaluationRules {
                       quantifiedChunkSupporter.summarisingPermissionMap(
                         s1, wand, formalVars, relevantChunks, null, v1)
 
-                    (s1.copy(pmCache = pmCache), pmDef)
+                    val newFr = s1.functionRecorder.recordPermMap(pmDef)
+                    (s1.copy(pmCache = pmCache, functionRecorder = newFr), pmDef)
                   }
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
 
@@ -580,8 +596,8 @@ object evaluator extends EvaluationRules {
                     val (pmDef, pmCache) =
                       quantifiedChunkSupporter.summarisingPermissionMap(
                         s1, field, Seq(`?r`), relevantChunks, null, v1)
-
-                    (s1.copy(pmCache = pmCache), pmDef)
+                    val newFr = s1.functionRecorder.recordPermMap(pmDef)
+                    (s1.copy(pmCache = pmCache, functionRecorder = newFr), pmDef)
                   }
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
@@ -755,13 +771,13 @@ object evaluator extends EvaluationRules {
         if (usesQPChunks) {
             val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
             bindQuantRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-              val s3 = s2.copy(h = s.h, g = s.g)
+              val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
               Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
             })
         } else {
           val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
           bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, Option.when(withExp)(Seq.empty), v)((s2, ts, es, v1) => {
-            val s3 = s2.copy(h = s.h, g = s.g)
+            val s3 = s2.copy(h = s.h, g = s.g, quantifiedVariables = s.quantifiedVariables)
             Q(s3, And(ts), Option.when(withExp)(BigAnd(es.get)), v1)
           })
         }
@@ -815,7 +831,8 @@ object evaluator extends EvaluationRules {
           }
         }
         val name = s"prog.$posString"
-        evalQuantified(s, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
+        val s0 = s.copy(functionRecorder = s.functionRecorder.enterQuantifiedExp(sourceQuant))
+        evalQuantified(s0, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
           case (s1, tVars, eVars, _, _, Some((Seq(tBody), bodyNew, tTriggers, (tAuxGlobal, tAux), auxExps)), v1) =>
             val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
             val auxGlobalsExp = auxExps.map(_._1)
@@ -844,7 +861,8 @@ object evaluator extends EvaluationRules {
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name, quantWeight)
             val eQuantNew = Option.when(withExp)(buildQuantExp(qantOp, eVars.get, bodyNew.get.head, Seq.empty))
-            Q(s1, tQuant, eQuantNew, v1)
+            val s2 = s1.copy(functionRecorder = s1.functionRecorder.leaveQuantifiedExp(sourceQuant))
+            Q(s2, tQuant, eQuantNew, v1)
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
             if (v1.decider.checkSmoke(true)) {
@@ -859,6 +877,8 @@ object evaluator extends EvaluationRules {
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
+          val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fapp.pos)
+          val s1a = if (Verifier.config.enableDebugging()) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> s1.h)) else s1
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
            *       in an expression that is used as a function argument?
@@ -869,7 +889,7 @@ object evaluator extends EvaluationRules {
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1)((s2, v2, QB) => {
+          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1)((s2, v2, QB) => {
             val pres = func.pres.map(_.transform {
               /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
                * for Carbon issue #210, fail if the subsequent code that strips out triggers from
@@ -955,7 +975,11 @@ object evaluator extends EvaluationRules {
                                moreJoins = s2.moreJoins,
                                assertReadAccessOnly = s2.assertReadAccessOnly)
               val funcAppNew = eArgsNew.map(args => ast.FuncApp(funcName, args)(fapp.pos, fapp.info, fapp.typ, fapp.errT))
-              QB(s5, (tFApp, funcAppNew), v3)})
+              val funcAppNewOld = Option.when(withExp)({
+                if (s5.isEvalInOld || pres.forall(_.isPure)) funcAppNew.get
+                else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
+              })
+              QB(s5, (tFApp, funcAppNewOld), v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
              */
@@ -1007,16 +1031,33 @@ object evaluator extends EvaluationRules {
                       val argsPairs: List[(Term, Option[ast.Exp])] = if (withExp) tArgs zip eArgsNew.get.map(Some(_)) else tArgs zip Seq.fill(tArgs.size)(None)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg).setConstrainable(s7.constrainableARPs, false)
-                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
-                        val s9 = s8.copy(g = s7.g,
-                                         functionRecorder = s8.functionRecorder.changeDepthBy(-1),
-                                         recordVisited = s3.recordVisited,
-                                         permissionScalingFactor = s6.permissionScalingFactor,
-                                         permissionScalingFactorExp = s6.permissionScalingFactorExp,
-                                         constrainableARPs = s1.constrainableARPs)
-                                   .decCycleCounter(predicate)
-                        val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                        eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})})
+
+                      if (s7a.predicateData(predicate).predContents.isDefined) {
+                        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s7a.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
+                        predicateSupporter.producePredicateContents(s7a, s7a.predicateData(predicate).predContents.get, toReplace, v4, true)((s8, v5) => {
+                          val s9 = s8.copy(g = s7.g,
+                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                            recordVisited = s3.recordVisited,
+                            permissionScalingFactor = s6.permissionScalingFactor,
+                            permissionScalingFactorExp = s6.permissionScalingFactorExp,
+                            constrainableARPs = s1.constrainableARPs)
+                            .decCycleCounter(predicate)
+                          val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
+                          eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
+                        })
+                      } else {
+                        produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
+                          val s9 = s8.copy(g = s7.g,
+                                           functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                                           recordVisited = s3.recordVisited,
+                                           permissionScalingFactor = s6.permissionScalingFactor,
+                                           permissionScalingFactorExp = s6.permissionScalingFactorExp,
+                                           constrainableARPs = s1.constrainableARPs)
+                                     .decCycleCounter(predicate)
+                          val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
+                          eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
+                      }
+                    })
                   })(join(eIn.typ, "joined_unfolding", s2.relevantQuantifiedVariables.map(_._1),
                     Option.when(withExp)(s2.relevantQuantifiedVariables.map(_._2.get)), v2))((s12, r12, v7)
                     => {
@@ -1027,7 +1068,8 @@ object evaluator extends EvaluationRules {
                   createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
-          Q(s, unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
+          val newFuncRec = s.functionRecorder.recordFreshSnapshot(unknownValue.applicable.asInstanceOf[Function])
+          Q(s.copy(functionRecorder = newFuncRec), unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
         }
 
       case ast.Applying(wand, eIn) =>

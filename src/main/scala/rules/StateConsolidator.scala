@@ -79,7 +79,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
           val roundSepIdentifier = v.symbExLog.openScope(roundLog)
 
-          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
+          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v)
 
           snapEqs foreach (t => v.decider.assume(t, Option.when(withExp)(DebugExp.createInstance("Snapshot Equations", true))))
 
@@ -131,7 +131,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
-    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, v)
+    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, s.functionRecorderQuantifiedVariables().map(_._1), v)
 
     v.decider.assume(snapEqs, Option.when(withExp)(DebugExp.createInstance("Snapshot", isInternal_ = true)), enforceAssumption = false)
 
@@ -149,6 +149,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def singleMerge(fr: FunctionRecorder,
                           destChunks: Seq[Chunk],
                           newChunks: Seq[Chunk],
+                          qvars: Seq[Var],
                           v: Verifier)
                          : (FunctionRecorder,
                             Seq[Chunk],
@@ -171,7 +172,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
       findMatchingChunk(accMergedChunks, nextChunk, v) match {
         case Some(ch) =>
-          mergeChunks(fr1, ch, nextChunk, v) match {
+          mergeChunks(fr1, ch, nextChunk, qvars, v) match {
             case Some((fr2, newChunk, snapEq)) =>
               (fr2, newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accNewChunks, accSnapEqs + snapEq)
             case None =>
@@ -196,9 +197,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
   // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)
   // and returns the merged chunk or None, if the chunks could not be merged
-  private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = (chunk1, chunk2) match {
+  private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = (chunk1, chunk2) match {
     case (BasicChunk(rid1, id1, args1, args1Exp, snap1, snap1Exp, perm1, perm1Exp), BasicChunk(_, _, _, _, snap2, _, perm2, perm2Exp)) =>
-      val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, v)
+      val (fr2, combinedSnap, snapEq) = combineSnapshots(fr1, snap1, snap2, perm1, perm2, qvars, v)
 
       Some(fr2, BasicChunk(rid1, id1, args1, args1Exp, combinedSnap, snap1Exp, PermPlus(perm1, perm2), perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())), snapEq)
     case (l@QuantifiedFieldChunk(id1, fvf1, condition1, condition1Exp,  perm1, perm1Exp, invs1, singletonRcvr1, singletonRcvr1Exp, hints1),
@@ -206,14 +207,14 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       assert(l.quantifiedVars == Seq(`?r`))
       assert(r.quantifiedVars == Seq(`?r`))
       // We need to use l.perm/r.perm here instead of perm1 and perm2 since the permission amount might be dependent on the condition/domain
-      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, fvf1, fvf2, l.perm, r.perm, v)
+      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combineFieldSnapshotMaps(fr1, id1.name, qvars, fvf1, fvf2, l.perm, r.perm, v)
       val permSum = PermPlus(perm1, perm2)
       val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1, perm2Exp.get)())
       val bestHints = if (hints1.nonEmpty) hints1 else hints2
       Some(fr2, QuantifiedFieldChunk(id1, combinedSnap, condition1, condition1Exp, permSum, permSumExp, invs1, singletonRcvr1, singletonRcvr1Exp, bestHints), snapEq)
     case (l@QuantifiedPredicateChunk(id1, qVars1, qVars1Exp, psf1, _, _, perm1, perm1Exp, _, _, _, _),
           r@QuantifiedPredicateChunk(_, qVars2, qVars2Exp, psf2, condition2, condition2Exp, perm2, perm2Exp, invs2, singletonArgs2, singletonArgs2Exp, hints2)) =>
-      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
+      val (fr2, combinedSnap, snapEq) = quantifiedChunkSupporter.combinePredicateSnapshotMaps(fr1, id1.name, qVars2, qvars, psf1, psf2, l.perm.replace(qVars1, qVars2), r.perm, v)
 
       val permSum = PermPlus(perm1.replace(qVars1, qVars2), perm2)
       val permSumExp = perm1Exp.map(p1 => ast.PermAdd(p1.replace(qVars1Exp.get.zip(qVars2Exp.get).toMap), perm2Exp.get)())
@@ -230,10 +231,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     * @param t2 The second chunk's snapshot.
     * @param p1 The first chunk's permission amount.
     * @param p2 The second chunk's permission amount.
+    * @param qvars Quantified variables in the current context.
     * @param v The verifier to use.
     * @return A tuple (fr, snap, def) of functionRecorder, a snapshot snap and a term def constraining snap.
     */
-  private def combineSnapshots(fr: FunctionRecorder, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
+  private def combineSnapshots(fr: FunctionRecorder, t1: Term, t2: Term, p1: Term, p2: Term, qvars: Seq[Var], v: Verifier): (FunctionRecorder, Term, Term) = {
     (IsPositive(p1), IsPositive(p2)) match {
       case (True, b2) => (fr, t1, Implies(b2, t1 === t2))
       case (b1, True) => (fr, t2, Implies(b1, t2 === t1))
@@ -243,8 +245,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
          * we have to introduce a fresh snapshot. Note that it is not sound
          * to use t1 or t2 and constrain it.
          */
-        val t3 = v.decider.fresh(t1.sort, Option.when(withExp)(PUnknown()))
-        (fr.recordConstrainedVar(t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2))), t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
+        val t3 = v.decider.appliedFresh("ms", t1.sort, qvars)
+        val newFr = fr.recordPathSymbol(t3.applicable.asInstanceOf[Function]).recordConstraint(And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
+        (newFr, t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
     }
   }
 

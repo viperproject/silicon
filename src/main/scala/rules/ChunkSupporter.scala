@@ -253,10 +253,15 @@ object chunkSupporter extends ChunkSupportRules {
     val id = ChunkIdentifier(resource, s.program)
     val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
     findRes match {
-      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
+      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.assertTimeout.getOrElse(0)) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(true) =>
-        Success() // TODO: Mark branch as dead?
+        if (s.isInPackage) {
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          Q(s, snap, v)
+        } else {
+          Success() // TODO: Mark branch as dead?
+        }
       case _ =>
         createFailure(ve, v, s, "looking up chunk", true)
     }
