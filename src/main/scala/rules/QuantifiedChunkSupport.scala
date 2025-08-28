@@ -783,7 +783,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       quantifiedChunkSupporter.summarisingPermissionMap(
         s1, resource, codomainQVars, relevantChunks, smDef, v)
 
-    val s2 = s1.copy(pmCache = pmCache)
+    val s2 = s1.copy(pmCache = pmCache, functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef).recordPermMap(pmDef))
 
     (s2, smDef, pmDef)
   }
@@ -1335,8 +1335,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                       else None
                     val (smDef2, smCache2) = quantifiedChunkSupporter.summarisingSnapshotMap(
                       s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
-                    val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
+                    var fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
                       .recordFieldInv(inverseFunctions)
+                    fr3 = smDef1 match {
+                      case None => fr3
+                      case Some(smDef) => fr3.recordFvfAndDomain(smDef)
+                    }
                     val s3 = s2.copy(functionRecorder = fr3,
                       partiallyConsumedHeap = Some(h3),
                       constrainableARPs = s.constrainableARPs,
