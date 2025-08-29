@@ -53,7 +53,7 @@ class MappedCounterexampleTests extends SiliconTests {
     override val outputIdPattern: String = "([^:]*)(:([^,]*))?"
 
     private def isExpectedCounterexample(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
-      def parseExpectedCounterexample(id: OutputAnnotationId, expectedCounterexampleString: String): Option[ExpectedCounterexampleAnnotation] = {
+      def parseExpectedCounterexample(id: OutputAnnotationId, expectedCounterexampleString: String): Option[ExpectedMappedCounterexampleAnnotation] = {
         // in order to reuse as much of the existing Viper parser as possible, we have to initialize the `_file` and `_line_offset` fields:
         val fp = new FastParser()
         fp._file = file.toAbsolutePath
@@ -68,7 +68,7 @@ class MappedCounterexampleTests extends SiliconTests {
         val cParser = new CounterexampleParser(fp)
         // now parsing is actually possible:
         fastparse.parse(expectedCounterexampleString, cParser.expectedCounterexample(_)) match {
-          case Parsed.Success(expectedCounterexample, _) => Some(ExpectedCounterexampleAnnotation(id, file, lineNr, expectedCounterexample))
+          case Parsed.Success(expectedCounterexample, _) => Some(ExpectedMappedCounterexampleAnnotation(id, file, lineNr, expectedCounterexample))
           case Parsed.Failure(_, _, extra) =>
             println(s"Parsing expected counterexample failed in file $file: ${extra.trace().longAggregateMsg}")
             None
@@ -88,7 +88,7 @@ class MappedCounterexampleTests extends SiliconTests {
 }
 
 /** represents an expected output (identified by `id`) with an associated (possibly partial) counterexample model */
-case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, forLineNr: Int, expectedCounterexample: ExpectedCounterexample) extends CustomAnnotation {
+case class ExpectedMappedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, forLineNr: Int, expectedCounterexample: ExpectedCounterexample) extends CustomAnnotation {
   override def matches(actual: AbstractOutput): Boolean =
     id.matches(actual.fullId) && actual.isSameLine(file, forLineNr) && containsModel(actual)
 
@@ -164,5 +164,5 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
 
   override def notFoundError: TestError = TestCustomError(s"Expected the following counterexample on line $forLineNr: $expectedCounterexample")
 
-  override def withForLineNr(line: Int = forLineNr): ExpectedCounterexampleAnnotation = ExpectedCounterexampleAnnotation(id, file, line, expectedCounterexample)
+  override def withForLineNr(line: Int = forLineNr): ExpectedMappedCounterexampleAnnotation = ExpectedMappedCounterexampleAnnotation(id, file, line, expectedCounterexample)
 }

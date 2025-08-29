@@ -26,14 +26,14 @@ import viper.silver.verifier.Rational
 /**
   * CounterexampleGenerator class used for generating an "extended" CE.
   */
-case class CounterexampleGenerator(model: Model, internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, program: ast.Program) extends  SiliconCounterexample {
+case class ExtendedCounterexample(model: Model, internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, program: ast.Program) extends  SiliconCounterexample {
   val imCE = IntermediateCounterexampleModel(model, internalStore, heap, oldHeaps, program)
 
-  val (ceStore, refOcc) = CounterexampleGenerator.detStore(internalStore, imCE.basicVariables, imCE.allCollections)
-  val nameTranslationMap = CounterexampleGenerator.detTranslationMap(ceStore, refOcc)
-  var ceHeaps = imCE.allBasicHeaps.reverse.map(bh => (bh._1, CounterexampleGenerator.detHeap(bh._2, program, imCE.allCollections, nameTranslationMap, model)))
-
-  val domainsAndFunctions = CounterexampleGenerator.detTranslatedDomains(imCE.DomainEntries, nameTranslationMap) ++ CounterexampleGenerator.detTranslatedFunctions(imCE.nonDomainFunctions, nameTranslationMap)
+  val (ceStore, refOcc) = ExtendedCounterexample.detStore(internalStore, imCE.basicVariables, imCE.allCollections)
+  val nameTranslationMap = ExtendedCounterexample.detTranslationMap(ceStore, refOcc)
+  val ceHeaps = imCE.allBasicHeaps.reverse.map(bh => (bh._1, ExtendedCounterexample.detHeap(bh._2, program, imCE.allCollections, nameTranslationMap, model)))
+  lazy val heaps = ceHeaps.toMap
+  val domainsAndFunctions = ExtendedCounterexample.detTranslatedDomains(imCE.DomainEntries, nameTranslationMap) ++ ExtendedCounterexample.detTranslatedFunctions(imCE.nonDomainFunctions, nameTranslationMap)
   override def toString: String = {
     var finalString = "      Extended Counterexample: \n"
     finalString += "   Store: \n"
@@ -49,7 +49,7 @@ case class CounterexampleGenerator(model: Model, internalStore: Store, heap: Ite
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    CounterexampleGenerator(model, s, heap, oldHeaps, program)
+    ExtendedCounterexample(model, s, heap, oldHeaps, program)
   }
 }
 
@@ -87,7 +87,7 @@ case class IntermediateCounterexampleModel(model: Model, internalStore: Store, h
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    CounterexampleGenerator(model, s, heap, oldHeaps, program).imCE
+    ExtendedCounterexample(model, s, heap, oldHeaps, program).imCE
   }
 }
 
@@ -98,7 +98,7 @@ object IntermediateCounterexampleModel {
     */
   def detBasicVariables(model: Model, store: Store): Seq[CEVariable] = {
     var res = Seq[CEVariable]()
-    for ((k, v) <- store.values) {
+    for ((k, (v, _)) <- store.values) {
       if (v.toString.contains('@')) {
         model.entries.get(v.toString) match {
           case Some(x) =>
@@ -1101,7 +1101,7 @@ object IntermediateCounterexampleModel {
   }
 }
 
-object CounterexampleGenerator {
+object ExtendedCounterexample {
   /**
     * Combine a local variable with its ast node.
     */
@@ -1184,7 +1184,7 @@ object CounterexampleGenerator {
               var found = false
               for (coll <- collections) {
                 if (bhe.valueID == coll.id) {
-                  if (translNames.get(bhe.reference.head).isDefined) {
+                  if (false && translNames.get(bhe.reference.head).isDefined) {
                     ans +:= (fv, FieldFinalEntry(translNames.get(bhe.reference.head).get, bhe.field.head, coll, bhe.perm, fv.typ, bhe.het))
                   } else {
                     ans +:= (fv, FieldFinalEntry(bhe.reference.head, bhe.field.head, coll, bhe.perm, fv.typ, bhe.het))
@@ -1193,7 +1193,7 @@ object CounterexampleGenerator {
                 }
               }
               if (!found) {
-                if (translNames.get(bhe.reference.head).isDefined) {
+                if (false && translNames.get(bhe.reference.head).isDefined) {
                   ans +:= (fv, FieldFinalEntry(translNames.get(bhe.reference.head).get, bhe.field.head, CEVariable("#undefined", ConstantEntry(bhe.valueID), Some(fv.typ)), bhe.perm, fv.typ, bhe.het))
                 } else {
                   ans +:= (fv, FieldFinalEntry(bhe.reference.head, bhe.field.head, CEVariable("#undefined", ConstantEntry(bhe.valueID), Some(fv.typ)), bhe.perm, fv.typ, bhe.het))
@@ -1205,7 +1205,7 @@ object CounterexampleGenerator {
           for ((pn, pv) <- program.predicatesByName) {
             if (pn == bhe.reference.head) {
               val refNames = bhe.field.map(x =>
-                if (translNames.get(x).isDefined) {
+                if (false && translNames.get(x).isDefined) {
                   translNames.get(x).get
                 } else {
                   x
