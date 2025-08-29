@@ -26,14 +26,20 @@ import viper.silver.verifier.Rational
 /**
   * CounterexampleGenerator class used for generating an "extended" CE.
   */
-case class ExtendedCounterexample(model: Model, internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, program: ast.Program) extends  SiliconCounterexample {
-  val imCE = IntermediateCounterexampleModel(model, internalStore, heap, oldHeaps, program)
+case class SiliconExtendedCounterexample(model: Model,
+                                         internalStore: Store,
+                                         heap: Iterable[Chunk],
+                                         oldHeaps: State.OldHeaps,
+                                         program: ast.Program) extends SiliconCounterexample with ExtendedCounterexample {
+  val imCE = SiliconIntermediateCounterexample(model, internalStore, heap, oldHeaps, program)
 
-  val (ceStore, refOcc) = ExtendedCounterexample.detStore(internalStore, imCE.basicVariables, imCE.allCollections)
-  val nameTranslationMap = ExtendedCounterexample.detTranslationMap(ceStore, refOcc)
-  val ceHeaps = imCE.allBasicHeaps.reverse.map(bh => (bh._1, ExtendedCounterexample.detHeap(bh._2, program, imCE.allCollections, nameTranslationMap, model)))
-  lazy val heaps = ceHeaps.toMap
-  val domainsAndFunctions = ExtendedCounterexample.detTranslatedDomains(imCE.DomainEntries, nameTranslationMap) ++ ExtendedCounterexample.detTranslatedFunctions(imCE.nonDomainFunctions, nameTranslationMap)
+  val (ceStore, refOcc) = SiliconExtendedCounterexample.detStore(internalStore, imCE.basicVariables, imCE.allCollections)
+  val nameTranslationMap = SiliconExtendedCounterexample.detTranslationMap(ceStore, refOcc)
+  val ceHeaps = imCE.allBasicHeaps.reverse.map(bh => (bh._1, SiliconExtendedCounterexample.detHeap(bh._2, program, imCE.allCollections, nameTranslationMap, model)))
+
+  val domainEntries = SiliconExtendedCounterexample.detTranslatedDomains(imCE.domainEntries, nameTranslationMap)
+  val functionEntries =  SiliconExtendedCounterexample.detTranslatedFunctions(imCE.nonDomainFunctions, nameTranslationMap)
+  val domainsAndFunctions = domainEntries ++ functionEntries
   override def toString: String = {
     var finalString = "      Extended Counterexample: \n"
     finalString += "   Store: \n"
@@ -49,24 +55,28 @@ case class ExtendedCounterexample(model: Model, internalStore: Store, heap: Iter
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    ExtendedCounterexample(model, s, heap, oldHeaps, program)
+    SiliconExtendedCounterexample(model, s, heap, oldHeaps, program)
   }
 }
 
 /**
-  * CounterexampleGenerator class used for generating an "interemediate" CE.
+  * CounterexampleGenerator class used for generating an "intermediate" CE.
   */
-case class IntermediateCounterexampleModel(model: Model, internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, program: ast.Program) extends SiliconCounterexample {
-  val basicVariables = IntermediateCounterexampleModel.detBasicVariables(model, internalStore)
-  val allSequences = IntermediateCounterexampleModel.detSequences(model)
-  val allSets = IntermediateCounterexampleModel.detSets(model)
-  val allMultisets = IntermediateCounterexampleModel.detMultisets(model)
-  val allCollections = allSequences ++ allSets ++ allMultisets
-  var allBasicHeaps = Seq(("current", BasicHeap(IntermediateCounterexampleModel.detHeap(model, heap, program.predicatesByName))))
-  oldHeaps.foreach {case (n, h) => allBasicHeaps +:= ((n, BasicHeap(IntermediateCounterexampleModel.detHeap(model, h.values, program.predicatesByName))))}
+case class SiliconIntermediateCounterexample(model: Model,
+                                             internalStore: Store,
+                                             heap: Iterable[Chunk],
+                                             oldHeaps: State.OldHeaps,
+                                             program: ast.Program) extends SiliconCounterexample with IntermediateCounterexample {
+  val basicVariables: Seq[CEVariable] = SiliconIntermediateCounterexample.detBasicVariables(model, internalStore)
+  val allSequences: Seq[CEValue] = SiliconIntermediateCounterexample.detSequences(model)
+  val allSets: Seq[CEValue] = SiliconIntermediateCounterexample.detSets(model)
+  val allMultisets: Seq[CEValue] = SiliconIntermediateCounterexample.detMultisets(model)
+  var allBasicHeaps: Seq[(String, BasicHeap)] = Seq(("current", BasicHeap(SiliconIntermediateCounterexample.detHeap(model, heap, program.predicatesByName))))
+  oldHeaps.foreach {case (n, h) => allBasicHeaps +:= ((n, BasicHeap(SiliconIntermediateCounterexample.detHeap(model, h.values, program.predicatesByName))))}
 
-  val DomainEntries = IntermediateCounterexampleModel.getAllDomains(model, program)
-  val nonDomainFunctions = IntermediateCounterexampleModel.getAllFunctions(model, program)
+  def basicHeaps: Seq[(String, BasicHeap)] = allBasicHeaps
+  val domainEntries: Seq[BasicDomainEntry] = SiliconIntermediateCounterexample.getAllDomains(model, program)
+  val nonDomainFunctions: Seq[BasicFunctionEntry] = SiliconIntermediateCounterexample.getAllFunctions(model, program)
 
   override def toString: String = {
     var finalString = "      Intermediate Counterexample: \n"
@@ -77,21 +87,21 @@ case class IntermediateCounterexampleModel(model: Model, internalStore: Store, h
       finalString += allCollections.map(x => x.toString).mkString("", "\n", "\n")
     if (!allBasicHeaps.filter(y => !y._2.basicHeapEntries.isEmpty).isEmpty)
       finalString += allBasicHeaps.filter(y => !y._2.basicHeapEntries.isEmpty).map(x => "   " + x._1 + " Heap: \n" + x._2.toString).mkString("", "\n", "\n")
-    if (!DomainEntries.isEmpty || !nonDomainFunctions.isEmpty)
+    if (!domainEntries.isEmpty || !nonDomainFunctions.isEmpty)
       finalString ++= "   Domains:\n"
-    if (!DomainEntries.isEmpty)
-      finalString += DomainEntries.map(x => x.toString).mkString("", "\n", "\n")
+    if (!domainEntries.isEmpty)
+      finalString += domainEntries.map(x => x.toString).mkString("", "\n", "\n")
     if (!nonDomainFunctions.isEmpty)
       finalString += nonDomainFunctions.map(x => x.toString).mkString("", "\n", "\n")
     finalString
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    ExtendedCounterexample(model, s, heap, oldHeaps, program).imCE
+    SiliconExtendedCounterexample(model, s, heap, oldHeaps, program).imCE
   }
 }
 
-object IntermediateCounterexampleModel {
+object SiliconIntermediateCounterexample {
 
   /**
     * Determines the local variables and their value.
@@ -1013,7 +1023,7 @@ object IntermediateCounterexampleModel {
   /**
     * Extract all the functions occuring inside of a domain.
     */
-  def getAllFunctions(model: Model, program: ast.Program): Seq[BasicFunction] = {
+  def getAllFunctions(model: Model, program: ast.Program): Seq[BasicFunctionEntry] = {
     val funcs = program.collect {
       case f: ast.Function => f
     }
@@ -1023,7 +1033,7 @@ object IntermediateCounterexampleModel {
   /**
     * Determine all the inputs and outputs combinations of a function occruing the counterexample model.
     */
-  def detFunction(model: Model, func: ast.FuncLike, genmap: scala.collection.immutable.Map[ast.TypeVar, ast.Type], program: ast.Program, hd: Boolean): BasicFunction = {
+  def detFunction(model: Model, func: ast.FuncLike, genmap: scala.collection.immutable.Map[ast.TypeVar, ast.Type], program: ast.Program, hd: Boolean): BasicFunctionEntry = {
     def toSort(typ: ast.Type): Either[Throwable, Sort] = Try(symbolConverter.toSort(typ)).toEither
     def toSortWithSubstitutions(typ: ast.Type, typeErrorMsg: String): Either[String, Sort] = {
       toSort(typ)
@@ -1042,11 +1052,11 @@ object IntermediateCounterexampleModel {
       .map(x => toSortWithSubstitutions(x.typ, s"typeError in arg type ${x.typ}"))
       .partitionMap(identity)
     if (argSortErrors.nonEmpty) {
-      return BasicFunction("ERROR", argTyp, resTyp, Map.empty, s"$fname ${argSortErrors.head}")
+      return BasicFunctionEntry("ERROR", argTyp, resTyp, Map.empty, s"$fname ${argSortErrors.head}")
     }
     val resSort = toSortWithSubstitutions(resTyp, s"typeError in return type $resTyp")
       .fold(err => {
-        return BasicFunction("ERROR", argTyp, resTyp, Map.empty, s"$fname $err")
+        return BasicFunctionEntry("ERROR", argTyp, resTyp, Map.empty, s"$fname $err")
       }, identity)
     val smtfunc = func match {
       case t: ast.Function => symbolConverter.toFunction(t).id
@@ -1060,7 +1070,7 @@ object IntermediateCounterexampleModel {
     val modelfname = try {
       (keys.filter(_.contains(fname + "%limited")) ++ keys.filter(_ == fname) ++ keys.filter(_ == kek)).head
     } catch {
-      case _: Throwable => return BasicFunction("ERROR", argTyp, resTyp, Map.empty, s"$fname model function not found")
+      case _: Throwable => return BasicFunctionEntry("ERROR", argTyp, resTyp, Map.empty, s"$fname model function not found")
     }
     var heapStateList = Map[ValueEntry, String]()
     var heapStateCounter = 0
@@ -1092,16 +1102,16 @@ object IntermediateCounterexampleModel {
             options += (temp -> v.toString)
           }
         }
-        BasicFunction(fname, argTyp, resTyp, options, els.toString)
-      case Some(ConstantEntry(t)) => BasicFunction(fname, argTyp, resTyp, Map.empty, t)
-      case Some(ApplicationEntry(n, args)) => BasicFunction(fname, argTyp, resTyp, Map.empty, ApplicationEntry(n, args).toString)
-      case Some(x) => BasicFunction(fname, argTyp, resTyp, Map.empty, x.toString)
-      case None => BasicFunction(fname, argTyp, resTyp, Map.empty, "#undefined")
+        BasicFunctionEntry(fname, argTyp, resTyp, options, els.toString)
+      case Some(ConstantEntry(t)) => BasicFunctionEntry(fname, argTyp, resTyp, Map.empty, t)
+      case Some(ApplicationEntry(n, args)) => BasicFunctionEntry(fname, argTyp, resTyp, Map.empty, ApplicationEntry(n, args).toString)
+      case Some(x) => BasicFunctionEntry(fname, argTyp, resTyp, Map.empty, x.toString)
+      case None => BasicFunctionEntry(fname, argTyp, resTyp, Map.empty, "#undefined")
     }
   }
 }
 
-object ExtendedCounterexample {
+object SiliconExtendedCounterexample {
   /**
     * Combine a local variable with its ast node.
     */
@@ -1239,15 +1249,15 @@ object ExtendedCounterexample {
     domEntries.map(de => BasicDomainEntry(de.name, de.types, detTranslatedFunctions(de.functions, namesMap)))
   }
 
-  def detTranslatedFunctions(funEntries: Seq[BasicFunction], namesMap: Map[String, String]): Seq[BasicFunction] = {
+  def detTranslatedFunctions(funEntries: Seq[BasicFunctionEntry], namesMap: Map[String, String]): Seq[BasicFunctionEntry] = {
     funEntries.map(bf => detNameTranslationOfFunction(bf, namesMap))
   }
 
-  def detNameTranslationOfFunction(fun: BasicFunction, namesMap: Map[String, String]): BasicFunction = {
+  def detNameTranslationOfFunction(fun: BasicFunctionEntry, namesMap: Map[String, String]): BasicFunctionEntry = {
     val translatedFun = fun.options.map { case (in, out) =>
       (in.map(intName => namesMap.getOrElse(intName, intName)), namesMap.getOrElse(out, out))
     }
     val translatedEls = namesMap.getOrElse(fun.default, fun.default)
-    BasicFunction(fun.fname, fun.argtypes, fun.returnType, translatedFun, translatedEls)
+    BasicFunctionEntry(fun.fname, fun.argtypes, fun.returnType, translatedFun, translatedEls)
   }
 }

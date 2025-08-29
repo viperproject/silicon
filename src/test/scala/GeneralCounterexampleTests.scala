@@ -9,7 +9,7 @@ package viper.silicon.tests
 import viper.silicon.Silicon
 import viper.silver.testing.{AbstractOutput, CustomAnnotation, DefaultAnnotatedTestInput, DefaultTestInput, OutputAnnotationId, SilOutput, TestAnnotation, TestAnnotationParser, TestCustomError, TestError, TestInput}
 import fastparse._
-import viper.silicon.reporting.{ExtendedCounterexample, LitIntEntry, LitPermEntry, NullRefEntry, RecursiveRefEntry, RefEntry, SeqEntry}
+import viper.silicon.reporting.SiliconExtendedCounterexample
 import viper.silver.ast
 import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIdnUseExp, PIntLit, PLookup, PSymOp, PUnExp}
@@ -103,19 +103,19 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
 
   def containsExpectedCounterexample(failureContext: FailureContext): Boolean =
     failureContext.counterExample match {
-      case Some(ce: ExtendedCounterexample) => meetsExpectations(expectedCounterexample, ce)
+      case Some(ce: SiliconExtendedCounterexample) => meetsExpectations(expectedCounterexample, ce)
       case _ => false
     }
 
   /** returns true if model2 contains at least the content expressed by model1 */
-  def meetsExpectations(model1: ExpectedCounterexample, model2: ExtendedCounterexample): Boolean = {
+  def meetsExpectations(model1: ExpectedCounterexample, model2: SiliconExtendedCounterexample): Boolean = {
     model1.exprs.forall {
       case accPred: PAccPred => containsAccessPredicate(accPred, model2)
       case PBinExp(lhs, r, rhs) if r.rs == PSymOp.EqEq => containsEquality(lhs, rhs, model2)
     }
   }
 
-  def containsAccessPredicate(accPred: PAccPred, model: ExtendedCounterexample): Boolean = {
+  def containsAccessPredicate(accPred: PAccPred, model: SiliconExtendedCounterexample): Boolean = {
     resolve(Vector(accPred.loc, accPred.perm), model).exists {
       case Vector((_, actualPermOpt), (expectedPermAmount, _)) =>
         actualPermOpt.exists(actualPermAmount =>
@@ -125,12 +125,12 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
     }
   }
 
-  def containsEquality(lhs: PExp, rhs: PExp, model: ExtendedCounterexample): Boolean =
+  def containsEquality(lhs: PExp, rhs: PExp, model: SiliconExtendedCounterexample): Boolean =
     resolveWoPerm(Vector(lhs, rhs), model).exists { case Vector(resolvedLhs, resolvedRhs) =>
       areEqualEntries(resolvedLhs, resolvedRhs) }
 
   /** resolves `expr` to a model entry in the given model. In case it's a field access, the corresponding permissions are returned as well */
-  def resolve(expr: PExp, model: ExtendedCounterexample): Option[(CEValue, Option[Rational])] = expr match {
+  def resolve(expr: PExp, model: SiliconExtendedCounterexample): Option[(CEValue, Option[Rational])] = expr match {
     case PIntLit(value) => Some(CEValueOnly(ConstantEntry(value.toString()), Some(viper.silver.ast.Int)), None)
     case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some(CEValueOnly(ApplicationEntry("-", Seq(ConstantEntry(value.toString()))), Some(ast.Int)), None)
     case PBinExp(PIntLit(n), r, PIntLit(d)) if r.rs == PSymOp.Div =>
@@ -140,7 +140,7 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
     case PFieldAccess(rcv, _, idnuse) =>
       val rcvValue = resolveWoPerm(rcv, model)
       rcvValue.flatMap {
-        case CEVariable(name, entry, _) => model.heaps.get("current").flatMap(_.heapEntries.find({
+        case CEVariable(name, entry, _) => model.heapMap.get("current").flatMap(_.heapEntries.find({
           case (f: ast.Field, ffi: FieldFinalEntry) if f.name == idnuse.name && (ffi.ref == name || ffi.ref == entry.toString) => true
           case _ => false
         }).map(he =>
@@ -166,15 +166,15 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
     }
   }
 
-  def resolve(exprs: Vector[PExp], model: ExtendedCounterexample): Option[Vector[(CEValue, Option[Rational])]] = {
+  def resolve(exprs: Vector[PExp], model: SiliconExtendedCounterexample): Option[Vector[(CEValue, Option[Rational])]] = {
     val entries = exprs.map(expr => resolve(expr, model)).collect{ case Some(entry) => entry }
     if (exprs.size == entries.size) Some(entries) else None
   }
 
-  def resolveWoPerm(expr: PExp, model: ExtendedCounterexample): Option[CEValue] =
+  def resolveWoPerm(expr: PExp, model: SiliconExtendedCounterexample): Option[CEValue] =
     resolve(expr, model).map(_._1)
 
-  def resolveWoPerm(exprs: Vector[PExp], model: ExtendedCounterexample): Option[Vector[CEValue]] = {
+  def resolveWoPerm(exprs: Vector[PExp], model: SiliconExtendedCounterexample): Option[Vector[CEValue]] = {
     val entries = exprs.map(expr => resolveWoPerm(expr, model)).collect{ case Some(entry) => entry }
     if (exprs.size == entries.size) Some(entries) else None
   }
