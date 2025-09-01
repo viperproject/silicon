@@ -4,6 +4,7 @@ import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, Assumpti
 import viper.silver.ast
 import viper.silver.ast.Method
 
+import java.io.PrintWriter
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
@@ -51,8 +52,10 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
       handleProofCoverageQuery(inputParts.tail)
     }else if (inputParts.head.equalsIgnoreCase("covLines") || inputParts.head.equalsIgnoreCase("covL")) {
       handleProofCoverageLineQuery(inputParts.tail)
-    }else if(inputParts.head.equalsIgnoreCase("prune")){
+    }else if(inputParts.head.equalsIgnoreCase("prune")) {
       handlePruningRequest(inputParts.tail)
+    }else if(inputParts.head.equalsIgnoreCase("benchmark")){
+      handleBenchmarkQuery()
     } else {
       println("Invalid input.")
       println(infoString)
@@ -180,5 +183,41 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
 
     fullGraphInterpreter.pruneProgramAndExport(crucialNodes, program, exportFileName)
     println("Done.")
+  }
+
+  private def handleBenchmarkQuery(): Unit = {
+    val N = 12
+    var check = true
+    println("Result file name: ")
+    val exportFileName = readLine()
+    val writer = new PrintWriter(exportFileName)
+    writer.println("queried line,#deps,runtimes [ms]")
+
+    while(check){
+      println("enter line number(s) for query or 'q' to quit")
+      val userInput = readLine()
+      if(userInput.equalsIgnoreCase("q")){
+        println("Quit.")
+        check = false
+      }else{
+        val inputs = userInput.split(" ").toSet
+
+        val queriedNodes = getQueriedNodesFromInput(inputs)
+        var allTimes = Seq.empty[Double]
+        var numDeps = 0
+
+        for (_ <- 0 to N) {
+          val (allDependencies, time) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
+          allTimes = allTimes :+ time
+          numDeps = allDependencies.size
+        }
+
+        writer.println(s"$userInput,$numDeps,${allTimes.mkString(",")}")
+        println(s"Avg: ${allTimes.sum/allTimes.size}")
+      }
+    }
+
+    writer.close()
+
   }
 }
