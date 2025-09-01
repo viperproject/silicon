@@ -289,37 +289,44 @@ object evaluator extends EvaluationRules {
                     Q(s2, smLookup, newFa, v1)
                 }
               } else {
-                val (s2, smDef1, pmDef1) =
-                  quantifiedChunkSupporter.heapSummarisingMaps(
-                    s = s1,
-                    resource = fa.field,
-                    codomainQVars = Seq(`?r`),
-                    relevantChunks = relevantChunks,
-                    optSmDomainDefinitionCondition = None,
-                    optQVarsInstantiations = None,
-                    v = v1)
-                if (s2.heapDependentTriggers.contains(fa.field)) {
-                  val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
-                  val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-                  v1.decider.assume(trigger, triggerExp)
-                }
-                val (permCheck, permCheckExp) =
-                  if (s2.triggerExp) {
-                    (True, Option.when(withExp)(TrueLit()()))
-                  } else {
-                    val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
-                    (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
+                if (true) {
+                  consume(s1.copy(assertReadAccessOnly = true), ast.FieldAccessPredicate(fa, None)(fa.pos), true, pve, v1)((s2, snap, v2) => {
+                    val snap2 = snap.get.convert(v2.symbolConverter.toSort(fa.field.typ))
+                    Q(s2.copy(assertReadAccessOnly = s1.assertReadAccessOnly), snap2, newFa, v2)
+                  })
+                } else {
+                  val (s2, smDef1, pmDef1) =
+                    quantifiedChunkSupporter.heapSummarisingMaps(
+                      s = s1,
+                      resource = fa.field,
+                      codomainQVars = Seq(`?r`),
+                      relevantChunks = relevantChunks,
+                      optSmDomainDefinitionCondition = None,
+                      optQVarsInstantiations = None,
+                      v = v1)
+                  if (s2.heapDependentTriggers.contains(fa.field)) {
+                    val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
+                    val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
+                    v1.decider.assume(trigger, triggerExp)
                   }
-                v1.decider.assert(permCheck) {
-                  case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
-                  case true =>
-                    val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
-                    val fr2 =
-                      s2.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                        .recordFvfAndDomain(smDef1).recordPermMap(pmDef1)
-                    val s3 = s2.copy(functionRecorder = fr2)
-                    Q(s3, smLookup, newFa, v1)
+                  val (permCheck, permCheckExp) =
+                    if (s2.triggerExp) {
+                      (True, Option.when(withExp)(TrueLit()()))
+                    } else {
+                      val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
+                      (IsPositive(totalPermissions), Option.when(withExp)(ast.PermGtCmp(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT), ast.NoPerm()())(fa.pos, fa.info, fa.errT)))
+                    }
+                  v1.decider.assert(permCheck) {
+                    case false =>
+                      createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
+                    case true =>
+                      val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
+                      val fr2 =
+                        s2.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
+                          .recordFvfAndDomain(smDef1).recordPermMap(pmDef1)
+                      val s3 = s2.copy(functionRecorder = fr2)
+                      Q(s3, smLookup, newFa, v1)
+                  }
                 }
               }
               }})
