@@ -18,7 +18,7 @@ import viper.silver.verifier.{FailureContext, VerificationError}
 import java.nio.file.Path
 
 class MappedCounterexampleTests extends SiliconTests {
-  override val testDirectories: Seq[String] = Seq("counterexamples")
+  override val testDirectories: Seq[String] = Seq("counterexample_mapped")
 
   override def configureVerifiersFromConfigMap(configMap: Map[String, Any]): Unit = {
     val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap(configMap).getOrElse("silicon", Map()))

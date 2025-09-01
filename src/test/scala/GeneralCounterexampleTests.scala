@@ -12,7 +12,7 @@ import viper.silver.testing.{CounterexampleTestInput, DefaultAnnotatedTestInput}
 import java.nio.file.Path
 
 class GeneralCounterexampleTests extends SiliconTests {
-  override val testDirectories: Seq[String] = Seq("counterexamples")
+  override val testDirectories: Seq[String] = Seq("counterexample_mapped", "counterexample_general")
 
   override def configureVerifiersFromConfigMap(configMap: Map[String, Any]): Unit = {
     val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap(configMap).getOrElse("silicon", Map()))
