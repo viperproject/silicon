@@ -25,6 +25,7 @@
 (set-option :smt.qi.eager_threshold 100)
 (set-option :smt.arith.solver 2)
 (set-option :model.v2 true)
+(set-option :model.partial true)
 
 ; We want unlimited multipatterns
 (set-option :smt.qi.max_multi_patterns 1000)
