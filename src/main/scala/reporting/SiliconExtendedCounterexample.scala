@@ -39,7 +39,7 @@ case class SiliconExtendedCounterexample(model: Model,
 
   val domainEntries = SiliconExtendedCounterexample.detTranslatedDomains(imCE.domainEntries, nameTranslationMap)
   val functionEntries =  SiliconExtendedCounterexample.detTranslatedFunctions(imCE.nonDomainFunctions, nameTranslationMap)
-  val domainsAndFunctions = domainEntries ++ functionEntries
+
   override def toString: String = {
     var finalString = "      Extended Counterexample: \n"
     finalString += "   Store: \n"
@@ -147,7 +147,7 @@ object SiliconIntermediateCounterexample {
     * and are not assigned to their actual value. Additionally, not every sequence in the output set will be mentioned
     * in the "extended" CE as only sequences that are used in the method containing the verification error will be mentioned there.
     */
-  def detSequences(model: Model): Set[CEValue] = {
+  def detSequences(model: Model): Seq[CEValue] = {
     var res = Map[String, Seq[String]]()
     var tempMap = Map[(String, Seq[String]), String]()
     for ((opName, opValues) <- model.entries) {
@@ -246,7 +246,7 @@ object SiliconIntermediateCounterexample {
         }
       }
     }
-    var ans = Set[CEValue]()
+    var ans = Seq[CEValue]()
     res.foreach {
       case (n, s) =>
         val typ: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1")) match {
@@ -261,7 +261,7 @@ object SiliconIntermediateCounterexample {
           }
           counter += 1
         }
-        ans += CESequence(n, BigInt(s.length), entries, s, typ)
+        ans +:= CESequence(n, BigInt(s.length), entries, s, typ)
     }
     ans
   }
@@ -271,7 +271,7 @@ object SiliconIntermediateCounterexample {
     * and are not assigned to their actual value. Additionally, not every set in the output set will be mentioned
     * in the "extended" CE as only sets that are used in the method containing the verification error will be mentioned there.
     */
-  def detSets(model: Model): Set[CEValue] = {
+  def detSets(model: Model): Seq[CEValue] = {
     var res = Map[String, Set[String]]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Set_empty") {
@@ -361,7 +361,7 @@ object SiliconIntermediateCounterexample {
         }
       }
     }
-    var ans = Set[CEValue]()
+    var ans = Seq[CEValue]()
     res.foreach {
       case (n, s) =>
         val typ: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1")) match {
@@ -374,7 +374,7 @@ object SiliconIntermediateCounterexample {
             containment += ((e, true))
           }
         }
-        ans += CESet(n, BigInt(s.size), containment, s, typ)
+        ans +:= CESet(n, BigInt(s.size), containment, s, typ)
     }
     ans
   }
@@ -384,7 +384,7 @@ object SiliconIntermediateCounterexample {
     * and are not assigned to their actual value. Additionally, not every multiset in the output set will be mentioned
     * in the "extended" CE as only multisets that are used in the method containing the verification error will be mentioned there.
     */
-  def detMultisets(model: Model): Set[CEValue] = {
+  def detMultisets(model: Model): Seq[CEValue] = {
     var res = Map[String, scala.collection.immutable.Map[String, Int]]()
     for ((opName, opValues) <- model.entries) {
       if (opName == "Multiset_empty") {
@@ -477,7 +477,7 @@ object SiliconIntermediateCounterexample {
         }
       }
     }
-    var ans = Set[CEValue]()
+    var ans = Seq[CEValue]()
     res.foreach {
       case (n, s) =>
         val typ: Option[Type] = detASTTypeFromString(n.replaceAll(".*?<(.*)>.*", "$1")) match {
@@ -485,7 +485,7 @@ object SiliconIntermediateCounterexample {
           case None => None
         }
         val size = s.values.sum
-        ans += CEMultiset(n, BigInt(size), s, typ)
+        ans +:= CEMultiset(n, BigInt(size), s, typ)
     }
     ans
   }
@@ -1115,7 +1115,7 @@ object SiliconExtendedCounterexample {
   /**
     * Combine a local variable with its ast node.
     */
-  def detStore(store: Store, variables: Seq[CEVariable], collections: Set[CEValue]): (StoreCounterexample, Map[String, (String, Int)])  = {
+  def detStore(store: Store, variables: Seq[CEVariable], collections: Seq[CEValue]): (StoreCounterexample, Map[String, (String, Int)])  = {
     var refOccurences = Map[String, (String, Int)]()
     var ans = Seq[StoreEntry]()
     for ((k, _) <- store.values) {
@@ -1184,7 +1184,7 @@ object SiliconExtendedCounterexample {
   /**
     * Match heap resources to their ast node and translate all identifiers (for fields and references)
     */
-  def detHeap(basicHeap: BasicHeap, program: Program, collections: Set[CEValue], translNames: Map[String, String], model: Model): HeapCounterexample = {
+  def detHeap(basicHeap: BasicHeap, program: Program, collections: Seq[CEValue], translNames: Map[String, String], model: Model): HeapCounterexample = {
     var ans = Seq[(Resource, FinalHeapEntry)]()
     for (bhe <- basicHeap.basicHeapEntries) {
       bhe.het match {
