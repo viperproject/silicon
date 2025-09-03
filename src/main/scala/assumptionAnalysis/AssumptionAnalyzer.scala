@@ -103,9 +103,12 @@ object AssumptionAnalyzer {
     assumptionAnalysisInterpreters foreach (interpreter => newGraph.addNodes(interpreter.getGraph.getNodes))
     assumptionAnalysisInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
-    // add edges between identical axioms since they were added to each interpreter // TODO ake: merge instead?
+    // add edges for axioms since they were added to each interpreter
     newGraph.getNodes.filter(_.isInstanceOf[AxiomAssumptionNode]).groupBy(n => (n.sourceInfo.toString, n.assumptionType)).foreach{case (_, nodes) =>
-      newGraph.addEdges(nodes.map(_.id), nodes.map(_.id))
+      newGraph.addEdges(nodes.map(_.id), nodes.map(_.id)) // TODO ake: is this necessary; maybe nodes could be merged instead?
+      // add edges to assertions that were required to prove the axiom, e.g. to verify the function body/postcondition
+      val assertionNodes = newGraph.getNodes.filter(n => n.isInstanceOf[GeneralAssertionNode] && n.sourceInfo.getTopLevelSource.equals(nodes.head.sourceInfo.getTopLevelSource))
+      newGraph.addEdges( assertionNodes.map(_.id), nodes.map(_.id))
     }
 
     val types = Set(AssumptionType.Implicit, AssumptionType.Explicit)

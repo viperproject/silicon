@@ -1,0 +1,84 @@
+field f: Int
+
+predicate greater0(x: Ref){
+    acc(x.f) && x.f > 0
+}
+
+
+function div100(n: Int): Int
+  requires n > 0
+  ensures result >= 0
+{
+  100/n
+}
+
+function div100Postcond(n: Int): Int
+  requires n > 0
+  ensures result >= 0
+  ensures result == 100/n
+
+
+function foo(x: Ref): Int
+  requires greater0(x)
+{
+  unfolding greater0(x) in x.f
+}
+
+function fooPostcond(x: Ref): Int
+  requires greater0(x)
+  ensures result == unfolding greater0(x) in x.f
+
+
+method predicateClient(x: Ref)
+    requires acc(x.f)
+{
+  var a: Int
+  @dependency("Implicit")
+  x.f := 10
+  @dependency("Rewrite")
+  fold greater0(x)
+  @dependency("Implicit")
+  a := foo(x)
+
+  @testAssertion("Explicit")
+  assert a == 10
+}
+
+method predicateClientPostcond(x: Ref)
+    requires acc(x.f)
+{
+  var a: Int
+  @dependency("Implicit")
+  x.f := 10
+  @dependency("Rewrite")
+  fold greater0(x)
+  @dependency("Explicit")
+  a := fooPostcond(x)
+
+  @testAssertion("Explicit")
+  assert a == 10
+}
+
+
+method callDiv(){
+  var x: Int
+  @dependency("Explicit")
+  assume x > 10
+  @dependency("Implicit")
+  x := div100(x)
+
+  @testAssertion("Explicit")
+  assert x < 10
+}
+
+method callDivPostcond(){
+  var x: Int
+  @dependency("Explicit")
+  assume x > 10
+  @dependency("Explicit")
+  x := div100Postcond(x)
+
+  @testAssertion("Explicit")
+  assert x < 10
+}
+
