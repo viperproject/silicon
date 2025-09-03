@@ -191,7 +191,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     println("Result file name: ")
     val exportFileName = readLine()
     val writer = new PrintWriter(exportFileName)
-    writer.println("queried line,#deps,runtimes [ms]")
+    writer.println("queried line,#lowLevelDeps,#deps,runtimes [ms]")
 
     while(check){
       println("enter line number(s) for query or 'q' to quit")
@@ -205,14 +205,16 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         val queriedNodes = getQueriedNodesFromInput(inputs)
         var allTimes = Seq.empty[Double]
         var numDeps = 0
+        var numLowLevelDeps = 0
 
         for (_ <- 0 to N) {
           val (allDependencies, time) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
           allTimes = allTimes :+ time
-          numDeps = allDependencies.size
+          numLowLevelDeps = allDependencies.size
+          numDeps = allDependencies.groupBy(node => node.sourceInfo.getTopLevelSource.toString).size
         }
 
-        writer.println(s"$userInput,$numDeps,${allTimes.mkString(",")}")
+        writer.println(s"$userInput,$numLowLevelDeps,$numDeps,${allTimes.mkString(",")}")
         println(s"Avg: ${allTimes.sum/allTimes.size}")
       }
     }
