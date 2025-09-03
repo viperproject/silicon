@@ -109,7 +109,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       }
 
       val s = sInit.copy(g = Store(argVars),
-                         h = Heap(),
+                         h = v.heapSupporter.getEmptyHeap(sInit.program),
                          oldHeaps = OldHeaps(),
                          functionRecorder = funcRecorder)
 
