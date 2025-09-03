@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 import viper.silver.ast
@@ -725,16 +726,33 @@ object evaluator extends EvaluationRules {
                       val argsPairs: List[(Term, Option[ast.Exp])] = if (withExp) tArgs zip eArgsNew.get.map(Some(_)) else tArgs zip Seq.fill(tArgs.size)(None)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg).setConstrainable(s7.constrainableARPs, false)
-                      produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
-                        val s9 = s8.copy(g = s7.g,
-                                         functionRecorder = s8.functionRecorder.changeDepthBy(-1),
-                                         recordVisited = s3.recordVisited,
-                                         permissionScalingFactor = s6.permissionScalingFactor,
-                                         permissionScalingFactorExp = s6.permissionScalingFactorExp,
-                                         constrainableARPs = s1.constrainableARPs)
-                                   .decCycleCounter(predicate)
-                        val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                        eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})})
+
+                      if (s7a.predicateData(predicate).predContents.isDefined) {
+                        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s7a.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
+                        predicateSupporter.producePredicateContents(s7a, s7a.predicateData(predicate).predContents.get, toReplace, v4, true)((s8, v5) => {
+                          val s9 = s8.copy(g = s7.g,
+                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                            recordVisited = s3.recordVisited,
+                            permissionScalingFactor = s6.permissionScalingFactor,
+                            permissionScalingFactorExp = s6.permissionScalingFactorExp,
+                            constrainableARPs = s1.constrainableARPs)
+                            .decCycleCounter(predicate)
+                          val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
+                          eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
+                        })
+                      } else {
+                        produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
+                          val s9 = s8.copy(g = s7.g,
+                                           functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                                           recordVisited = s3.recordVisited,
+                                           permissionScalingFactor = s6.permissionScalingFactor,
+                                           permissionScalingFactorExp = s6.permissionScalingFactorExp,
+                                           constrainableARPs = s1.constrainableARPs)
+                                     .decCycleCounter(predicate)
+                          val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
+                          eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
+                      }
+                    })
                   })(join(eIn.typ, "joined_unfolding", s2.relevantQuantifiedVariables.map(_._1),
                     Option.when(withExp)(s2.relevantQuantifiedVariables.map(_._2.get)), v2))((s12, r12, v7)
                     => {
@@ -745,7 +763,8 @@ object evaluator extends EvaluationRules {
                   createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
-          Q(s, unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
+          val newFuncRec = s.functionRecorder.recordFreshSnapshot(unknownValue.applicable.asInstanceOf[Function])
+          Q(s.copy(functionRecorder = newFuncRec), unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
         }
 
       case ast.Applying(wand, eIn) =>

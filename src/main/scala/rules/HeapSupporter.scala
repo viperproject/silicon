@@ -363,7 +363,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
                 optQVarsInstantiations = None,
                 v = v)
             val perms = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
-            (s2.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1)), perms, smDef1.sm)
+            (s2.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1).recordPermMap(pmDef1)), perms, smDef1.sm)
           }
           if (s2.heapDependentTriggers.contains(fa.field)) {
             val trigger = FieldTrigger(fa.field.name, sm, tRcvr)
@@ -432,7 +432,7 @@ class DefaultHeapSupporter extends HeapSupportRules {
       val debugExp = Option.when(withExp)(DebugExp.createInstance(Some(s"Resource trigger(${name}($eArgsStr))"), Some(resAcc),
         Some(resAcc), None, isInternal_ = true, InsertionOrderedSet.empty))
       v.decider.assume(trigger(smDef1.sm), debugExp)
-      s.copy(smCache = smCache1)
+      s.copy(smCache = smCache1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1))
     } else {
       s
     }

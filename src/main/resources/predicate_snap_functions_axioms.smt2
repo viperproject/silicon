@@ -23,8 +23,8 @@
           :qid |qp.$PSF<$PRD$>-eq-inner|
           )))
       (= vs ws))
-    :pattern (($SortWrappers.$PSF<$PRD$>To$Snap vs)
-              ($SortWrappers.$PSF<$PRD$>To$Snap ws)
+    :pattern (($SortWrappers.$PSF<$PRD$>To$Snap vs) ($PSF.has_domain_$PRD$ vs)
+              ($SortWrappers.$PSF<$PRD$>To$Snap ws) ($PSF.has_domain_$PRD$ ws)
 ;              ($PSF.after_$PRD$ vs ws)
               )
     :qid |qp.$PSF<$PRD$>-eq-outer|

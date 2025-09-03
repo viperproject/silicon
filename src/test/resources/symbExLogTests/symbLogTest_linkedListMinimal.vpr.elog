@@ -1,37 +1,37 @@
 predicate lseg
-  Branch this@0@00 != end@1@00:
+  Branch this@1@00 != end@2@00:
     comment: Reachable
     Join
-      Branch First:(Second:($t@2@00)) != end@1@00:
+      Branch First:(Second:($t@0@00)) != end@2@00:
         comment: Reachable
         Join
-          Branch First:(Second:(First:(Second:(Second:($t@2@00))))) != end@1@00:
+          Branch First:(Second:(First:(Second:(Second:($t@0@00))))) != end@2@00:
             comment: Reachable
             Join
-              Branch First:(Second:(First:(Second:(Second:($t@2@00))))) != end@1@00:
+              Branch First:(Second:(First:(Second:(Second:($t@0@00))))) != end@2@00:
                 comment: Reachable
-              Branch First:(Second:(First:(Second:(Second:($t@2@00))))) == end@1@00:
+              Branch First:(Second:(First:(Second:(Second:($t@0@00))))) == end@2@00:
                 comment: Unreachable
-          Branch First:(Second:(First:(Second:(Second:($t@2@00))))) == end@1@00:
+          Branch First:(Second:(First:(Second:(Second:($t@0@00))))) == end@2@00:
             comment: Reachable
             Join
-              Branch First:(Second:(First:(Second:(Second:($t@2@00))))) != end@1@00:
+              Branch First:(Second:(First:(Second:(Second:($t@0@00))))) != end@2@00:
                 comment: Unreachable
-              Branch First:(Second:(First:(Second:(Second:($t@2@00))))) == end@1@00:
+              Branch First:(Second:(First:(Second:(Second:($t@0@00))))) == end@2@00:
                 comment: Reachable
         Join
-          Branch First:(Second:($t@2@00)) != end@1@00:
+          Branch First:(Second:($t@0@00)) != end@2@00:
             comment: Reachable
-          Branch First:(Second:($t@2@00)) == end@1@00:
+          Branch First:(Second:($t@0@00)) == end@2@00:
             comment: Unreachable
-      Branch First:(Second:($t@2@00)) == end@1@00:
+      Branch First:(Second:($t@0@00)) == end@2@00:
         comment: Reachable
         Join
-          Branch First:(Second:($t@2@00)) != end@1@00:
+          Branch First:(Second:($t@0@00)) != end@2@00:
             comment: Unreachable
-          Branch First:(Second:($t@2@00)) == end@1@00:
+          Branch First:(Second:($t@0@00)) == end@2@00:
             comment: Reachable
-  Branch this@0@00 == end@1@00:
+  Branch this@1@00 == end@2@00:
     comment: Reachable
 
 predicate List
@@ -43,58 +43,6 @@ method insert
   execute unfold acc(lseg(this.head, null), write)
     Branch First:($t@6@01) != Null:
       comment: Reachable
-      Join
-        Branch First:(Second:(Second:($t@6@01))) != Null:
-          comment: Reachable
-          Join
-            Branch First:(Second:(First:(Second:(Second:(Second:($t@6@01)))))) != Null:
-              comment: Reachable
-              Join
-                Branch First:(Second:(First:(Second:(Second:(Second:($t@6@01)))))) != Null:
-                  comment: Reachable
-                Branch First:(Second:(First:(Second:(Second:(Second:($t@6@01)))))) == Null:
-                  comment: Unreachable
-            Branch First:(Second:(First:(Second:(Second:(Second:($t@6@01)))))) == Null:
-              comment: Reachable
-              Join
-                Branch First:(Second:(First:(Second:(Second:(Second:($t@6@01)))))) != Null:
-                  comment: Unreachable
-                Branch First:(Second:(First:(Second:(Second:(Second:($t@6@01)))))) == Null:
-                  comment: Reachable
-          Join
-            Branch First:(Second:(Second:($t@6@01))) != Null:
-              comment: Reachable
-            Branch First:(Second:(Second:($t@6@01))) == Null:
-              comment: Unreachable
-        Branch First:(Second:(Second:($t@6@01))) == Null:
-          comment: Reachable
-          Join
-            Branch First:(Second:(Second:($t@6@01))) != Null:
-              comment: Unreachable
-            Branch First:(Second:(Second:($t@6@01))) == Null:
-              comment: Reachable
-      Branch 1:
-        comment: Reachable
-        Join
-          Branch First:($t@6@01) == Null:
-            comment: Reachable
-          Branch First:($t@6@01) != Null:
-            comment: Reachable
-        Branch !(First:($t@6@01) == Null || elem@4@01 <= First:(Second:($t@6@01))):
-          comment: Reachable
-        Branch First:($t@6@01) == Null || elem@4@01 <= First:(Second:($t@6@01)):
-          comment: Reachable
-      Branch 2:
-        comment: Reachable
-        Join
-          Branch First:($t@6@01) == Null:
-            comment: Reachable
-          Branch First:($t@6@01) != Null:
-            comment: Reachable
-        Branch First:($t@6@01) == Null || elem@4@01 <= First:(Second:($t@6@01)):
-          comment: Reachable
-        Branch !(First:($t@6@01) == Null || elem@4@01 <= First:(Second:($t@6@01))):
-          comment: Reachable
     Branch First:($t@6@01) == Null:
       comment: Reachable
       Branch 1:
