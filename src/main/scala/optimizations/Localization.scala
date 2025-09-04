@@ -16,6 +16,13 @@ object ProofEssence {
   val globalGuardName = "$GlobalGuard"
   val guardVariableName = "$LocalGuardVar"
 
+  /**
+   * Retrieves the list of guard expressions for the given method and branch.
+   *
+   * @param name   the name of the method
+   * @param branch the branch hash identifier
+   * @return       a list of guard strings extracted from the cached unsat core
+   */
   def branchGuards(name: String, branch: String): List[String] = {
     val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${name}_unsatCoreCache.cache")
     val (coreMap, supercore, branchhashes) = cacheMapByName.getOrElseUpdate(name, {
