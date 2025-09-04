@@ -54,12 +54,33 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
       handleProofCoverageLineQuery(inputParts.tail)
     }else if(inputParts.head.equalsIgnoreCase("prune")) {
       handlePruningRequest(inputParts.tail)
-    }else if(inputParts.head.equalsIgnoreCase("benchmark")){
+    }else if(inputParts.head.equalsIgnoreCase("benchmark")) {
       handleBenchmarkQuery()
+    }else if(inputParts.head.equalsIgnoreCase("graphSize")){
+      if(inputParts.tail.isEmpty) {
+        handleGraphSizeQuery(fullGraphInterpreter)
+      }else{
+        memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
+            case meth: Method => meth.body.isDefined && inputParts.tail.contains(meth.name)
+            case func: ast.Function => func.body.isDefined && inputParts.tail.contains(func.name)
+            case _ => false
+          })
+          .foreach(aa => handleGraphSizeQuery(aa))
+      }
     } else {
       println("Invalid input.")
       println(infoString)
     }
+  }
+
+  private def handleGraphSizeQuery(interpreter: AssumptionAnalysisInterpreter): Unit = {
+    val assumptions = interpreter.getNonInternalAssumptionNodesPerSource
+    val assertions = interpreter.getNonInternalAssertionNodesPerSource
+    val nodes = interpreter.getNonInternalAssertionNodes.union(interpreter.getNonInternalAssumptionNodes).groupBy(_.sourceInfo.getTopLevelSource.toString)
+    println(s"#Assumptions = ${assumptions.size}")
+    println(s"#Assertions = ${assertions.size}")
+    println(s"#Nodes = ${nodes.size}")
+    println("Done.")
   }
 
   private def handleProofCoverageQuery(memberNames: Seq[String]): Unit = {
@@ -75,6 +96,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
+          println(s"#uncovered nodes:\n\t${uncoveredSources.size}")
       })
     println("Done.")
   }
@@ -100,6 +122,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         println(s"coverage: $coverage")
         if (!coverage.equals(1.0))
           println(s"uncovered nodes:\n\t${uncoveredSources.mkString("\n\t")}")
+          println(s"#uncovered nodes:\n\t${uncoveredSources.size}")
       })
     println("Done.")
   }
