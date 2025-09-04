@@ -12,6 +12,7 @@ import scala.io.Source
 object ProofEssence {
 
   val globalGuardName = "$GlobalGuard"
+  val guardVariableName = "$LocalGuardVar"
 
   def branchGuards(name: String, branch: String): List[String] = {
     val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${name}_unsatCoreCache.cache")
@@ -26,9 +27,7 @@ object ProofEssence {
       } finally source.close()
     }
     val cores = cacheMap.get(branch) match {
-      case Some(coresStr) =>
-        val pattern = """\(([^)]*)\)""".r
-        pattern.findAllMatchIn(coresStr).map(_.group(1)).toList
+      case Some(coresStr) => coresStr.split(";").toList
       case None => Nil
     }
     println(s"Cores = $cores")
