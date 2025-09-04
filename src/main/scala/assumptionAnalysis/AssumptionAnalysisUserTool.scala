@@ -1,6 +1,6 @@
 package silicon.viper.assumptionAnalysis
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, AssumptionAnalysisNode}
+import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, AssumptionAnalysisNode, AxiomAssumptionNode}
 import viper.silver.ast
 import viper.silver.ast.Method
 
@@ -74,9 +74,10 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
   }
 
   private def handleGraphSizeQuery(interpreter: AssumptionAnalysisInterpreter): Unit = {
-    val assumptions = interpreter.getNonInternalAssumptionNodesPerSource
+    val allAssumptions = interpreter.getNonInternalAssumptionNodes.filter(n => !n.isInstanceOf[AxiomAssumptionNode])
+    val assumptions = allAssumptions.groupBy(_.sourceInfo.getTopLevelSource.toString)
     val assertions = interpreter.getNonInternalAssertionNodesPerSource
-    val nodes = interpreter.getNonInternalAssertionNodes.union(interpreter.getNonInternalAssumptionNodes).groupBy(_.sourceInfo.getTopLevelSource.toString)
+    val nodes = interpreter.getNonInternalAssertionNodes.union(allAssumptions).groupBy(_.sourceInfo.getTopLevelSource.toString)
     println(s"#Assumptions = ${assumptions.size}")
     println(s"#Assertions = ${assertions.size}")
     println(s"#Nodes = ${nodes.size}")
