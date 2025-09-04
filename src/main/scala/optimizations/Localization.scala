@@ -10,13 +10,14 @@ import viper.silicon.verifier.Verifier
 import scala.io.Source
 
 object ProofEssence {
+  private val cacheMapByName = scala.collection.mutable.Map.empty[String, Map[String, String]]
 
   val globalGuardName = "$GlobalGuard"
   val guardVariableName = "$LocalGuardVar"
 
   def branchGuards(name: String, branch: String): List[String] = {
     val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${name}_unsatCoreCache.cache")
-    val cacheMap: Map[String, String] = {
+    val cacheMap = cacheMapByName.getOrElseUpdate(name, {
       val source = Source.fromFile(coreCacheFile)
       try {
         source.getLines().collect {
@@ -25,7 +26,7 @@ object ProofEssence {
             hash -> core
         }.toMap
       } finally source.close()
-    }
+    })
     val cores = cacheMap.get(branch) match {
       case Some(coresStr) => coresStr.split(";").toList
       case None => Nil
