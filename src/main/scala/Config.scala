@@ -454,8 +454,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val suppressProverLog: ScallopOption[Boolean] = opt[Boolean]("suppressProverLog",
+    descr = "Suppress log file creation",
+    default = Some(false),
+    noshort = true
+  )
+
   lazy val outputProverLog: Boolean = {
-    (enableTempDirectory.isSupplied) || rawProverLogFile.isSupplied || rawZ3LogFile.isSupplied
+    ((enableTempDirectory.isSupplied) || rawProverLogFile.isSupplied || rawZ3LogFile.isSupplied) && !suppressProverLog.isSupplied
   }
 
   private val rawZ3Exe = opt[String]("z3Exe",
