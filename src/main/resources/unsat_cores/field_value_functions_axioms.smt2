@@ -23,8 +23,8 @@
                                                                               :qid |qp.$FVF<$FLD$>-eq-inner|
                                                                               )))
                                                          (= vs ws))
-                                                        :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs)
-                                                                  ($SortWrappers.$FVF<$FLD$>To$Snap ws)
+                                                        :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs) ($FVF.has_domain_$FLD$ vs)
+                                                                  ($SortWrappers.$FVF<$FLD$>To$Snap ws) ($FVF.has_domain_$FLD$ ws)
                                                                   )
                                                         :qid |qp.$FVF<$FLD$>-eq-outer|
                                                         ))
@@ -32,10 +32,12 @@
 
 (assert (! (forall ((r $Ref) (pm $FPM)) (!
                                          ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
-                                         :pattern (($FVF.perm_$FLD$ pm r))))
+                                         :pattern (($FVF.perm_$FLD$ pm r))
+                                         :qid |qp.$FVF<$FLD$>-validvar|))
            :named preambleax2$FLD$@$S$<$T$>))
 
 (assert (! (forall ((r $Ref) (f $S$)) (!
                                        (= ($FVF.loc_$FLD$ f r) true)
-                                       :pattern (($FVF.loc_$FLD$ f r))))
+                                       :pattern (($FVF.loc_$FLD$ f r))
+                                       :qid |qp.$FVF<$FLD$>-loc|))
            :named preambleax3$FLD$@$S$<$T$>))

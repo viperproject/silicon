@@ -48,22 +48,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      val proverOptions: Map[String, String] = method.info.getUniqueInfo[ast.AnnotationInfo] match {
-        case Some(ai) if ai.values.contains("proverArgs") =>
-          toMap(ai.values("proverArgs").flatMap(o => {
-            val index = o.indexOf("=")
-            if (index == -1) {
-              reporter report AnnotationWarning(s"Invalid proverArgs annotation ${o} on method ${method.name}. " +
-                s"Required format for each option is optionName=value.")
-              None
-            } else {
-              val (name, value) = (o.take(index), o.drop(index + 1))
-              Some((name, value))
-            }
-          }))
-        case _ =>
-          Map.empty
-      }
+      val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(method, reporter)
       v.decider.setProverOptions(proverOptions)
 
       openSymbExLogger(method)
@@ -85,16 +70,16 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       val s = if (Verifier.config.reportUnsatCore()) {
         sInit.copy(g = g,
-          h = Heap(),
+          h = v.heapSupporter.getEmptyHeap(sInit.program),
           oldHeaps = OldHeaps(),
           recordPcs = true,
           conservedPcs = Stack[Vector[RecordedPathConditions]](),
           methodCfg = body)
       } else {
         sInit.copy(g = g,
-          h = Heap(),
-          oldHeaps = OldHeaps(),
-          methodCfg = body)
+                         h = v.heapSupporter.getEmptyHeap(sInit.program),
+                         oldHeaps = OldHeaps(),
+                         methodCfg = body)
       }
 
       if (Verifier.config.printMethodCFGs()) {
@@ -120,7 +105,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
-                  val s4 = s3.copy(h = Heap())
+                  val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {

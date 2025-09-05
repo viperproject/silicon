@@ -211,6 +211,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val enableSimplifiedUnfolds: ScallopOption[Boolean] = opt[Boolean]("enableSimplifiedUnfolds",
+    descr = (  "Enable an optimization that reuses the results of verifying a predicate to simplify the process "
+             + "of unfolding it (via an unfold statement or an unfolding expression)."),
+    default = Some(false),
+    noshort = true
+  )
+
   val logLevel: ScallopOption[String] = opt[String]("logLevel",
     descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF",
     default = None,
@@ -231,8 +238,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val assertTimeout: ScallopOption[Int] = opt[Int]("assertTimeout",
-    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout). "
-            + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
+    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout). "),
     default = None,
     noshort = true
   )
@@ -243,8 +249,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "check doesn't, at least not directly. However, failing checks might result in "
              + "performance degradation, e.g. when a dead program path is nevertheless explored, "
              + "and indirectly in verification failures due to incompletenesses, e.g. when "
-             + "the held permission amount is too coarsely underapproximated (default: 10). "
-             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
+             + "the held permission amount is too coarsely underapproximated (default: 10). "),
     default = Some(10),
     noshort = true
   )
@@ -257,17 +262,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   private val rawProverSaturationTimeout = opt[Int]("proverSaturationTimeout",
     descr = (  "Timeout (in ms) used for the prover's state saturation calls (default: 100). "
-             + "A timeout of 0 disables all saturation checks."
-             +  s"Note that for the ${Cvc5ProverStdIO.name} prover, state saturation calls can "
-             +  "either be disabled (weights or base timeout of 0) or forced with no timeout "
-             + "(positive weight and base timeout)."),
+             + "A timeout of 0 disables all saturation checks."),
     default = Some(100),
     noshort = true
   )
 
   val pushTimeout: ScallopOption[Int] = opt[Int]("pushTimeout",
-    descr = (  "Timeout (in ms) per push operation in the SMT solver. (default: 0, i.e. no timeout). "
-             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
+    descr = (  "Timeout (in ms) per push operation in the SMT solver. (default: 0, i.e. no timeout). "),
     default = Some(0),
     noshort = true
   )
@@ -320,10 +321,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + s"    after inhale: ${defaultProverSaturationTimeoutWeights.afterInhale}\n"
              + s"    before repeated prover queries: ${defaultProverSaturationTimeoutWeights.beforeRepetition}\n"
              +  "Weights must be non-negative, a weight of 0 disables the corresponding saturation "
-             +  "call and a minimal timeout of 10ms is enforced."
-             +  s"Note that for the ${Cvc5ProverStdIO.name} prover, state saturation calls can "
-             +  "either be disabled (weights or base timeout of 0) or forced with no timeout "
-             + "(positive weight and base timeout)."),
+             +  "call and a minimal timeout of 10ms is enforced."),
     default = Some(defaultProverSaturationTimeoutWeights),
     noshort = true
   )(saturationTimeoutWeightsConverter)
@@ -422,7 +420,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val proverResourcesPerMillisecond: Int = {
     if (rawZ3ResourcesPerMillisecond.isSupplied) rawZ3ResourcesPerMillisecond()
     else rawProverResourcesPerMillisecond()
-  }  
+  }
 
   val rawProverRandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("proverRandomizeSeeds",
     descr = "Set various random seeds of the prover to random values",
@@ -813,7 +811,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val conditionalizePermissions: ScallopOption[Boolean] = opt[Boolean]("conditionalizePermissions",
-    descr = "Potentially reduces the number of symbolic execution paths, by conditionalising " + 
+    descr = "Potentially reduces the number of symbolic execution paths, by conditionalising " +
             "permission expressions. E.g. rewrite \"b ==> acc(x.f, p)\" to \"acc(x.f, b ? p : none)\"." +
             "This is an experimental feature; report problems if you observe any.",
     default = Some(false),

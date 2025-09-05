@@ -24,9 +24,8 @@
                                                                                                          :qid |qp.$FVF<$FLD$>-eq-inner|
                                                                                                          )))
                                                                                     (= vs ws))
-                                                                                   :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs)
-                                                                                             ($SortWrappers.$FVF<$FLD$>To$Snap ws)
-                                                                                             )
+                                                                                   :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs) ($FVF.has_domain_$FLD$ vs)
+                                                                                             ($SortWrappers.$FVF<$FLD$>To$Snap ws) ($FVF.has_domain_$FLD$ ws))
                                                                                    :qid |qp.$FVF<$FLD$>-eq-outer|
                                                                                    ))
                                       :pattern ((preambleax1$FLD$@$S$<$T$> $guardvar))
@@ -35,13 +34,15 @@
 (declare-fun  preambleax2$FLD$@$S$<$T$> (Bool) Bool)
 (assert (forall (($guardvar Bool))  (! (forall ((r $Ref) (pm $FPM)) (!
                                                                     ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
-                                                                    :pattern (($FVF.perm_$FLD$ pm r))))
+                                                                    :pattern (($FVF.perm_$FLD$ pm r))
+                                                                    :qid |qp.$FVF<$FLD$>-validvar|))
                                       :pattern ((preambleax2$FLD$@$S$<$T$> $guardvar))
                                       :pattern (($GlobalGuard $guardvar)))))
 
 (declare-fun  preambleax3$FLD$@$S$<$T$> (Bool) Bool)
 (assert (forall (($guardvar Bool))  (! (forall ((r $Ref) (f $S$)) (!
                                                                   (= ($FVF.loc_$FLD$ f r) true)
-                                                                  :pattern (($FVF.loc_$FLD$ f r))))
+                                                                  :pattern (($FVF.loc_$FLD$ f r))
+                                                                  :qid |qp.$FVF<$FLD$>-loc|))
                                       :pattern ((preambleax3$FLD$@$S$<$T$> $guardvar))
                                       :pattern (($GlobalGuard $guardvar)))))
