@@ -13,7 +13,7 @@ import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
-import viper.silicon.state.IdentifierFactory
+import viper.silicon.state.{IdentifierFactory, Identifier}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
@@ -21,6 +21,7 @@ import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, QuantifierInstantiationsMessage, Reporter}
 import viper.silver.verifier.Model
 import scala.collection.mutable
+import viper.silicon.optimizations.ProofEssence
 
 abstract class ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
@@ -43,6 +44,7 @@ abstract class ProverStdIO(uniqueId: String,
   var lastReasonUnknown : String = _
   var lastModel : String = _
   var lastUnsatCore : mutable.ArrayBuffer[String] = mutable.ArrayBuffer()
+  var proofContext : Seq[String] = Seq(ProofEssence.globalGuardName)
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -183,6 +185,10 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
+  def setProofContext(pctx: Seq[String]): Unit = {
+    proofContext = pctx
+  }
+
   def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
     setTimeout(timeout)
     pushPopScopeDepth += n
@@ -234,13 +240,48 @@ abstract class ProverStdIO(uniqueId: String,
 //      }
 //    })
 
-    assume(termConverter.convert(term))
+    // Guard all quantifiers in the assumption with the same trigger
+    // TODO: make fine-grained (will have to split to multiple assumptions)
+    // TODO: change guard var name?
+
+    
+
+    var found = false
+
+    val newTerm = 
+      if (Verifier.config.reportUnsatCore() || Verifier.config.localizeProof()) {
+        term.transform({
+          case q: Quantification if (!found) =>
+            found = true
+            val guardVar = Var((Identifier(ProofEssence.guardVariableName), sorts.Bool, false))
+            val guardFunName = identifierFactory.peekMeta("assertion")
+            val guardFun = Fun(guardFunName, Seq(sorts.Bool), sorts.Bool)
+            if (Verifier.config.localizeProof())
+              Forall(
+                guardVar,
+                q,
+                Seq(
+                  Trigger(App(Fun(Identifier("$GlobalGuard"), Seq(sorts.Bool), sorts.Bool), guardVar)),
+                  Trigger(App(guardFun, guardVar))
+                )
+              )
+            else q
+        })()
+      } else { term }
+
+    assume(termConverter.convert(newTerm), nameAss=((Verifier.config.reportUnsatCore() || Verifier.config.localizeProof()) && found), createGuard=Verifier.config.localizeProof() && found)
   }
 
-  def assume(term: String): Unit = {
-//    bookkeeper.assumptionCounter += 1
+  def assume(term: String, nameAss: Boolean = false, createGuard: Boolean = false): Unit = {
+    //    bookkeeper.assumptionCounter += 1
 
-    if (Verifier.config.reportUnsatCore()) {
+    if (createGuard) {
+      val name = identifierFactory.peekMeta("assertion")
+      writeLine(s"(declare-fun $name (Bool) Bool)")
+      readSuccess()
+    }
+
+    if (nameAss) {
       writeLine("(assert " + randomlyNamedExpression(term) + ")")
     } else {
       writeLine("(assert " + term + ")")
@@ -249,7 +290,7 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def enableAxioms(axs: List[String]): Unit = {
-    axs.map(ax => assume(s"($ax true)"))
+    axs.map(ax => assume(s"($ax true)", false))
   }
 
   def assert(goal: Term, timeout: Option[Int] = None): Boolean =
@@ -273,11 +314,14 @@ abstract class ProverStdIO(uniqueId: String,
     push()
     setTimeout(timeout)
 
-    if (Verifier.config.reportUnsatCore()) {
-      writeLine("(assert (not " + randomlyNamedExpression(goal) + "))")
-    } else {
-      writeLine("(assert (not " + goal + "))")
+    if (Verifier.config.localizeProof()) {
+      proofContext.foreach(ax => {
+        writeLine(s"(assert ($ax true))")
+        readSuccess()
+      })
     }
+    
+    writeLine("(assert (not " + goal + "))")
     readSuccess()
 
     val startTime = System.currentTimeMillis()
@@ -336,9 +380,9 @@ abstract class ProverStdIO(uniqueId: String,
   protected def retrieveUnsatCore(): Unit = {
     if (Verifier.config.reportUnsatCore()) {
       writeLine("(get-unsat-core)")
-      val result = readLine()
+      val result = readLine().strip()
       comment(result)
-      lastUnsatCore += result
+      lastUnsatCore ++= result.substring(1, result.length() - 1).split(" ")
     }
   }
 
@@ -446,7 +490,7 @@ abstract class ProverStdIO(uniqueId: String,
 
   def namedExpression(a: String, name: String): String = s"(! $a :named $name)"
 
-  def randomlyNamedExpression(a: String): String = namedExpression(a, identifierFactory.fresh("assertion").name)
+  def randomlyNamedExpression(a: String): String = namedExpression(a, identifierFactory.freshMeta("assertion").name)
 
   /* TODO: Handle multi-line output, e.g. multiple error messages. */
 

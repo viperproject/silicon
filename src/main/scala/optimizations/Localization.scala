@@ -10,8 +10,8 @@ import viper.silicon.verifier.Verifier
 import scala.io.Source
 
 object ProofEssence {
-  // methodName -> (branchHash -> core, supercore, set of branch hashes in the supercore)
-  private val cacheMapByName = scala.collection.mutable.Map.empty[String, (Map[String, String], String, Set[String])]
+  // methodName -> (supercore, set of branch hashes in the supercore)
+  private val cacheMapByName = scala.collection.mutable.Map.empty[String, (List[String], Set[String])]
 
   val globalGuardName = "$GlobalGuard"
   val guardVariableName = "$LocalGuardVar"
@@ -25,7 +25,7 @@ object ProofEssence {
    */
   def branchGuards(name: String, branch: String): List[String] = {
     val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${name}_unsatCoreCache.cache")
-    val (coreMap, supercore, branchhashes) = cacheMapByName.getOrElseUpdate(name, {
+    val (supercore: List[String], branches: Set[String]) = cacheMapByName.getOrElseUpdate(name, {
       val source = Source.fromFile(coreCacheFile)
       try {
         val coreMap: Map[String, String] = source.getLines().collect {
@@ -33,15 +33,19 @@ object ProofEssence {
             val Array(hash, core) = line.split(":", 2)
             hash -> core
         }.toMap
-        (coreMap, "", Set(""))
+        val coresSorted = coreMap.toList.sortWith((a, b) => a._2.split(";").length < b._2.split(";").length)
+        val (supercoreSet, branches) = coresSorted.foldLeft[(Set[String], Set[String])]((Set.empty, Set.empty))(
+          (sofar, newcore) => {
+            val coreset = newcore._2.split(";").toSet
+            if (coreset subsetOf sofar._1) sofar
+            else (coreset | sofar._1, sofar._2 + newcore._1)
+          }
+        )
+        (supercoreSet.toList, branches)
       } finally source.close()
-      val supercore = coreMap.values.fold(Set[String].empty)((a, b) => a.split(";").toSet() | b.split(";").toSet())
-      val branchhashes = coreMap.keys.filter(hash => coreMap(hash).split(";").toSet()
     })
-    val cores = coreMap.get(branch) match {
-      case Some(coresStr) => coresStr.split(";").toList
-      case None => Nil
-    }
+    val cores = if (branches contains branch) List(globalGuardName)
+    else supercore
     cores
   }
 }

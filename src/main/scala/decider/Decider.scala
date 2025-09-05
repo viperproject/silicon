@@ -49,8 +49,8 @@ trait Decider {
 
   def pushScope(): Unit
   def popScope(): Unit
-  def guardedPush(axs: List[String]): Unit
-  def guardedPop(): Unit
+  def setProofContext(axs: Seq[String]): Unit
+  def resetProofContext(): Unit
 
   def checkSmoke(isAssert: Boolean = false): Boolean
 
@@ -253,15 +253,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def guardedPush(axs: List[String]): Unit = {
-      _prover.push()
-      guarded = true
-      _prover.enableAxioms(axs)
+    def setProofContext(axs: Seq[String]): Unit = {
+      _prover.setProofContext(axs)
     }
 
-    def guardedPop(): Unit = {
-      _prover.pop()
-      guarded = false
+    def resetProofContext(): Unit = {
+      _prover.setProofContext(Seq(ProofEssence.globalGuardName))
     }
 
     def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit = {
@@ -424,13 +421,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      if (Verifier.config.localizeProof() && !guarded)
-        guardedPush(List(ProofEssence.globalGuardName))
-
       val result = prover.assert(t, timeout)
-
-      if (Verifier.config.localizeProof() && !guarded)
-        guardedPop()
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

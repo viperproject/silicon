@@ -69,6 +69,10 @@ package object utils {
       n
     }
 
+    def peek() = {
+      nextValue
+    }
+
     /* Lifetime */
 
     def start(): Unit = {}

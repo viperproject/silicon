@@ -489,6 +489,9 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
+  def proofContext(): Seq[String] = ???
+  def setProofContext(pctx: Seq[String]): Unit = ???
+
   override def getAllDecls(): Seq[Decl] = allDecls
 
   override def getModel(): ViperModel = {

@@ -173,7 +173,6 @@ class DefaultMainVerifier(config: Config,
       * (top-down should also work, but the default of 'innermost' won't).
       * See also [[viper.silicon.utils.ast.autoTrigger]].
       */
-    println("MY FORK")
     var program: ast.Program =
       originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
@@ -212,12 +211,10 @@ class DefaultMainVerifier(config: Config,
 
     allProvers.comment("/" * 10 + " Static preamble")
     emitStaticPreamble(allProvers)
-    println("before")
-
+    
     val (functionData, predicateData) = analyzeProgramAndEmitPreambleContributions(program, allProvers) // TODO: Add support for cfgs.
 
-    println("after")
-
+    
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
 

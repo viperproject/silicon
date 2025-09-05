@@ -133,16 +133,15 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                      decider.prover.getUnsatCore() // drop unsat core so far
                    }
                    decider.prover.comment("; Checking post-condition")
-                   println("checking post")
                    val pcs = decider.pcs.branchConditions.toString()
-                   println(pcs)
                    val digest = MessageDigest.getInstance("SHA-256")
                    val hashBytes = digest.digest(pcs.getBytes("UTF-8"))
                    val hash = hashBytes.map("%02x".format(_)).mkString
-                   if (Verifier.config.localizeProof()) decider.guardedPush(ProofEssence.branchGuards(method.name, hash))
-                   val ret = consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
+                   if (Verifier.config.localizeProof()) decider.setProofContext(ProofEssence.branchGuards(method.name, hash))
+                   consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
                       {
                         decider.prover.comment("; Done checking post-condition")
+                        if (Verifier.config.localizeProof()) decider.resetProofContext()
                         if (Verifier.config.reportUnsatCore()) {
                           val unsat_core = decider.prover.getUnsatCore().mkString(";")
                           val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}_unsatCoreCache.cache")
@@ -155,8 +154,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                         }
                         Success()
                       })
-                   if (Verifier.config.localizeProof()) decider.guardedPop()
-                   ret
                  }
                  )}) }  )})})
 

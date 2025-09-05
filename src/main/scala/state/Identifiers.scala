@@ -82,6 +82,8 @@ case class SortBasedIdentifier(template: String, sorts: Seq[Sort]) extends Ident
 trait IdentifierFactory {
   def separator: String
   def fresh(name: String): Identifier
+  def freshMeta(name: String): Identifier
+  def peekMeta(name: String): Identifier
 }
 
 class DefaultIdentifierFactory(namespace: String)
@@ -89,6 +91,7 @@ class DefaultIdentifierFactory(namespace: String)
        with StatefulComponent {
 
   private val ids: Counter = new Counter
+  private val metaIds: Counter = new Counter
 
   val separator: String = Identifier.defaultSeparator
 
@@ -96,7 +99,15 @@ class DefaultIdentifierFactory(namespace: String)
     SuffixedIdentifier(name, separator, s"${ids.next()}$separator$namespace")
   }
 
+  def freshMeta(name: String): Identifier = {
+    SuffixedIdentifier(name, separator, s"${metaIds.next()}$separator$namespace")
+  }
+
+  def peekMeta(name: String): Identifier = {
+    SuffixedIdentifier(name, separator, s"${metaIds.peek()}$separator$namespace")
+  }
+
   def start(): Unit = {}
-  def reset(): Unit = { ids.reset() }
+  def reset(): Unit = { ids.reset() ; metaIds.reset() }
   def stop(): Unit = {}
 }

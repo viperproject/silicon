@@ -191,6 +191,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val executeAllBranches: ScallopOption[Boolean] = opt[Boolean]("executeAllBranches", // TODO: remove
+    descr = "Execute all branches (still does branch checks).",
+    default = Some(false),
+    noshort = true
+  )
+
   val recursivePredicateUnfoldings: ScallopOption[Int] = opt[Int]("recursivePredicateUnfoldings",
     descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
              + "other instances of themselves (default: 1)"),

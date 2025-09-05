@@ -71,4 +71,7 @@ trait Prover extends ProverLike with StatefulComponent {
   def getAllDecls(): Seq[Decl]
 
   def getAllEmits(): Seq[String]
+
+  def setProofContext(pctx: Seq[String]): Unit
+
 }

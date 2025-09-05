@@ -1012,7 +1012,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
             v.decider.assume(inv.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
             val conservedPcs =
-              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+              if (s.recordPcs && s.conservedPcs.length > 0) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs
 
             val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
