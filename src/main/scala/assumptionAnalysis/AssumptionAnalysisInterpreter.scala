@@ -63,7 +63,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     nodesToAnalyze.intersect(getNonInternalAssumptionNodes)
       .exists(node => graph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
 
-  private def getNonInternalAssumptionNodesPerSource: Map[String, Set[AssumptionAnalysisNode]] =
+  def getNonInternalAssumptionNodesPerSource: Map[String, Set[AssumptionAnalysisNode]] =
     getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
 
 
@@ -71,6 +71,9 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     (node.isInstanceOf[GeneralAssertionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
       || AssumptionType.postconditionTypes.contains(node.assumptionType)
     )
+
+  def getNonInternalAssertionNodesPerSource: Map[String, Set[AssumptionAnalysisNode]] =
+    getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
 
   def getExplicitAssertionNodes: Set[AssumptionAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
