@@ -62,7 +62,32 @@ def build_table(out_file_path: str, results: dict[tuple[str, str], list[tuple[st
         # f.write(f"{sum(current_test_results)/len(current_test_results):.3f}".center(column_widths[idx+4]))
         f.write("\\\\ \n")
 
+def build_table_transposed(out_file_path: str, results: dict[tuple[str, str], list[tuple[str, float]]]):
+    f = open(out_file_path, mode="w")
+    interference_names = sorted(set([interference_name for (_, interference_name) in results.keys()]))
+    base_test_names = sorted(set([base_name.strip() for (base_name, _) in results.keys()]))
+    base_test_names_striped = [n.replace("dependencyAnalysisTests/precisionTests/", "") for n in base_test_names]
+    column_1_width = max([len(h) for h in interference_names]) + 4
+    column_widths = [len(h + "  ") for h in (base_test_names_striped)]
+    f.write("".ljust(column_1_width) + " &  " + "  &  ".join(base_test_names_striped))
+    f.write("\n")
+
+    for interference in interference_names:
+        f.write(interference.ljust(column_1_width))
+        current_test_results = []
+        for idx, base_test in enumerate(base_test_names):
+            f.write(" & ")
+            if not (base_test, interference) in results.keys():
+                f.write("NaN".center(column_widths[idx]))
+                continue
+            result = results[(base_test, interference)]
+            avg = sum([prec for (_, prec) in result]) / len(result)
+            current_test_results.append(avg)
+            f.write(f"{avg:.3f}".center(column_widths[idx]))
+        f.write("\\\\ \n")
+
 result_file_name = input("file name: ")
 raw_results = read_results_file("silicon\\src\\test\\resources\\dependencyAnalysisTests\\precisionTests\\results\\" + result_file_name)
 
 build_table("silicon\\src\\test\\resources\\dependencyAnalysisTests\\precisionTests\\results\\result_table.out", raw_results)
+build_table_transposed("silicon\\src\\test\\resources\\dependencyAnalysisTests\\precisionTests\\results\\result_table_transposed.out", raw_results)
