@@ -1,0 +1,45 @@
+
+field f: Int
+
+function add(x: Ref, a: Int): Int
+  requires acc(x.f)
+ {
+  x.f + a
+ }
+
+ method add_M(x: Ref, a: Int) returns(res: Int)
+   requires acc(x.f)
+   ensures acc(x.f)
+   ensures res == x.f + a
+  {
+   res := x.f + a
+  }
+
+method client_func(x: Ref, a: Int)
+  requires @dependency("Explicit")(acc(x.f))
+ {
+  var b: Int
+  @irrelevant("Implicit")
+  b := add(x, a) + add(x, a)
+
+  @irrelevant("Implicit")
+  x.f := 0
+
+  @testAssertion("Explicit")
+  exhale acc(x.f)
+}
+
+method client_meth(x: Ref, a: Int)
+   requires @dependency("Explicit")(acc(x.f))
+{
+ var b: Int
+ @dependency("Implicit")
+ b := add_M(x, a)
+
+ @irrelevant("Implicit")
+ x.f := 0
+
+ @testAssertion("Explicit")
+ exhale acc(x.f)
+}
+

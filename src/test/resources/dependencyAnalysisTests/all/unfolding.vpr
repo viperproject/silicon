@@ -1,0 +1,60 @@
+field f: Int
+
+predicate pred(x: Ref)
+{
+  acc(x.f) && x.f > 0
+}
+
+ method foo(x: Ref) returns(res: Int)
+   requires  pred(x)
+   ensures  pred(x)
+   ensures res > 0
+  {
+   unfold  pred(x)
+   res := x.f
+   fold  pred(x)
+  }
+
+
+method client1(x: Ref)
+{
+  var b: Int
+  @dependency("Explicit")
+  inhale acc(x.f)
+  @dependency("Explicit")
+  inhale x.f > 0
+  @dependency("Rewrite")
+  fold pred(x)
+
+  @dependency("Implicit")
+  b := foo(x)
+
+  @irrelevant("Implicit")
+  b := unfolding pred(x) in x.f
+
+  @irrelevant()
+  assert b > 0
+
+  @testAssertion("Explicit")
+  exhale pred(x)
+ }
+
+ method client2(x: Ref)
+ {
+   var b: Int
+   @dependency("Explicit")
+   inhale acc(x.f)
+   @dependency("Explicit")
+   inhale x.f > 0
+   @dependency("Rewrite")
+   fold pred(x)
+
+   @dependency("Implicit")
+   b := foo(x)
+
+   @dependency("Implicit")
+   b := unfolding pred(x) in x.f
+
+   @testAssertion("Explicit")
+   assert b > 0
+  }
