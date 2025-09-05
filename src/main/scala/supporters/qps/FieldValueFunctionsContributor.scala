@@ -83,7 +83,6 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
 
   def generateFunctionDecls: Iterable[PreambleBlock] = {
     val templateFile = s"/${preambleLoc}field_value_functions_declarations.smt2"
-    println(s"INHERE with $templateFile")
 
     collectedFields map (f => {
       val sort = symbolConverter.toSort(f.typ)
