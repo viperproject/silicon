@@ -3,6 +3,7 @@ package viper.silicon.assumptionAnalysis
 import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
 import scala.collection.mutable
@@ -282,7 +283,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
   override def buildFinalGraph(): Option[AssumptionAnalysisGraph] = {
     assumptionGraph.removeLabelNodes()
-    val mergedGraph = buildAndGetMergedGraph()
+    val mergedGraph = if(Verifier.config.enableAssumptionAnalysisDebugging()) assumptionGraph else  buildAndGetMergedGraph()
     mergedGraph.addTransitiveEdges()
     Some(mergedGraph)
   }
