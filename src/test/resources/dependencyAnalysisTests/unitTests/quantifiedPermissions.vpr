@@ -55,7 +55,7 @@ method quantifiedExhalePartially(xs: Seq[Ref]) {
 
   exhale forall x: Ref :: x in xs ==> acc(x.f, 1/2)
 
-  // $PrecisionTest: $READ_WRITE=res $READ_ONLY=xs[1].f,xs[0].f,xs[2].f $INVARIANT=|xs|>0 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f,1/2)
+  // $PrecisionTest: $READ_WRITE=res $READ_ONLY=xs[1].f,xs[0].f,xs[2].f $INVARIANT=|xs|>0 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f,1/4)
 
   @testAssertion("Implicit")
   res := xs[1].f + 1
@@ -113,7 +113,7 @@ method quantifiedPermWrite3(xs: Seq[Ref]) {
   @irrelevant("Implicit")
   xs[0].f := 0
 
-  // $PrecisionTest: $READ_WRITE=xs[0].f $READ_ONLY=xs[1].f,xs[2].f $INVARIANT=xs[1].f>=0 $ACC_INVARIANT=|xs|>1&&acc(xs[0].f,3/4)&&(forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f,1/4))
+  // $PrecisionTest: $READ_WRITE=xs[0].f $READ_ONLY=xs[1].f,xs[2].f $INVARIANT=xs[1].f>=0 $ACC_INVARIANT=|xs|>1&&acc(xs[0].f,1/2)&&(forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f,1/4))
 
   @testAssertion("Explicit")
   assert xs[0] != xs[1] ==> xs[1].f > 0

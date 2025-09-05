@@ -62,6 +62,11 @@ SNIPPET 02_assert_invariant$=${
   assert $INVARIANT && gen_i > 0
 }
 
+SNIPPET 02_2_assert_invariant$=${
+  @irrelevant()
+  assert $INVARIANT
+}
+
 SNIPPET 03_assignment_pure$=${
   @irrelevant("Implicit")
   $RW_INT_PURE_0 := $RO_INT_0 + $RO_INT_1
@@ -70,6 +75,13 @@ SNIPPET 03_assignment_pure$=${
 SNIPPET 04_assignment_field$=${
   @irrelevant("Implicit")
   $RW_INT_FIELD_0 := $RO_INT_0 + $RO_INT_1
+}
+
+SNIPPET 04_2_assignment_field_disjoint_field$=${
+  @irrelevant("Implicit")
+  inhale acc($RO_REF_F_0.gen_f)
+  @irrelevant("Implicit")
+  $RO_REF_F_0.gen_f := $RO_INT_0 + $RO_INT_1
 }
 
 SNIPPET 05_assignment_disjoint_ref$=${
@@ -152,11 +164,8 @@ SNIPPET 10_function_add_pure$=${
 
 
 SNIPPET 11_function_add_impure$=${
-  var gen_ref_0: Ref
   @irrelevant("Implicit")
-  gen_ref_0 := new(f)
-  @irrelevant("Implicit")
-  gen_ref_0.f := gen_add_impure(gen_ref_0, $RO_INT_0)
+  $RW_INT_0 := gen_add_impure($RW_REF_F_0, $RO_INT_0)
 }
 
 SNIPPET 12_method_call_pure$=${
@@ -166,8 +175,7 @@ SNIPPET 12_method_call_pure$=${
 
 SNIPPET 13_method_call_impure$=${
   var gen_ref_0: Ref
-  @irrelevant("Implicit")
-  gen_ref_0 := new(f)
+  gen_ref_0 := new(f) // might be used for non-aliasing proof
   @irrelevant("Implicit")
   incr(gen_ref_0)
 }
@@ -297,6 +305,13 @@ SNIPPET 20_magic_wand$=${
 SNIPPET 21_quasihavoc$=${
   @irrelevant("Implicit")
   quasihavoc $RW_INT_FIELD_0
+}
+
+SNIPPET 21_2_quasihavoc_disjoint_field$=${
+  @irrelevant("Implicit")
+  inhale acc($RO_REF_F_0.gen_f)
+  @irrelevant("Implicit")
+  quasihavoc $RO_REF_F_0.gen_f
 }
 
 SNIPPET 22_quasihavoc_disjoint_ref$=${

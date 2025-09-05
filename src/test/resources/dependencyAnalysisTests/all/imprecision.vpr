@@ -139,35 +139,6 @@ method quasihavoc1(x: Ref, y: Ref)
     assert x.f == 3
 }
 
-// imprecision due to non-uniqueness of unsat core
-// in this example the loop condition and invariant res >= 0 would be enough
-// to prove the invariant res >= 0. However, the SMT solver chooses to prove it
-// via the invariant i>=0
-// interestingly, proving "res >= 0 is preserved by the loop body" has the following unsat core
-// old(res) >= 0, res = old(res) + old(i), i = old(i) - 1, i >= 0
-// the last one comes from the asserting that invariant i >= 0 is preserved!
-// the last two terms could be replaced by old(i) > 0 (the loop condition)
-method loop1(){
-    var i: Int
-    var res: Int
-    @dependency("Implicit")
-    res := 0
-
-    @irrelevant("Implicit")
-    i := 10
-    while(@dependency("PathCondition")(i > 0))
-        invariant @irrelevant("LoopInvariant")(i <= 10)
-        invariant @irrelevant("LoopInvariant")(i >= 0)
-        invariant @dependency("LoopInvariant")(res >= 0)
-    {
-        @dependency("Implicit")
-        res := res + i
-        @irrelevant("Implicit")
-        i := i - 1
-    }
-    @testAssertion("Explicit")
-    assert res >= 0
-}
 
 method inhaleImprecision(){
     var x: Ref
@@ -196,4 +167,21 @@ method packageExhale2(x: Ref)
 
     @testAssertion("Explicit")
     exhale acc(x.f)
+}
+
+method quantifiedFieldAssign(){
+    var a: Int
+    var idx: Int
+    var xs: Seq[Ref]
+
+    @irrelevant("Explicit")
+    inhale |xs| > 2  // imprecise
+    @irrelevant("Implicit")
+    idx := 0  // imprecise
+    inhale forall xi: Ref :: xi in xs ==> acc(xi.f)
+    @irrelevant("Implicit")
+    xs[idx].f := a  // internal dependency
+
+    @testAssertion("Explicit")
+    exhale acc(xs[0].f)
 }

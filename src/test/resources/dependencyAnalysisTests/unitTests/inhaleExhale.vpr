@@ -22,7 +22,7 @@ method exhale1(){
 
     exhale acc(x.f, 1/2)
 
-    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/2)
+    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/4)
 
     @testAssertion("Explicit")
     assert x.f > 0
@@ -38,7 +38,7 @@ method inhale1(){
 
     inhale acc(x.f, 1/2)
 
-    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f)
+    // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/2)
 
     @testAssertion("Explicit")
     assert x.f > 0

@@ -38,7 +38,7 @@ method basicPackage(l: Ref)
     @dependency("Implicit")
     tmp := l.next
 
-    // $PrecisionTest: $READ_WRITE=l.val $ACC_INVARIANT=acc(l.val)&&acc(l.next)
+    // $PrecisionTest: $READ_WRITE=l.val $ACC_INVARIANT=acc(l.val)&&acc(l.next, 1/2)
 
     @dependency("Rewrite")
     package list(tmp) --* list(l)
@@ -131,7 +131,7 @@ method packageExhale(x: Ref)
     @dependency("Implicit")
     package acc(x.f, 1/2) --* acc(x.f)
 
-    // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=acc(x.f,1/2)
+    // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=acc(x.f,1/4)
 
 
     @testAssertion("Explicit")
