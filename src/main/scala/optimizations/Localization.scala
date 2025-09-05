@@ -10,8 +10,8 @@ import viper.silicon.verifier.Verifier
 import scala.io.Source
 
 object ProofEssence {
-  // methodName -> (supercore, set of branch hashes in the supercore)
-  private val cacheMapByName = scala.collection.mutable.Map.empty[String, (List[String], Set[String])]
+  // methodName -> (supercore, set of branch hashes in the supercore, set of all branches found in the file)
+  private val cacheMapByName = scala.collection.mutable.Map.empty[String, (List[String], Set[String], Set[String])]
 
   val globalGuardName = "$GlobalGuard"
   val guardVariableName = "$LocalGuardVar"
@@ -25,28 +25,32 @@ object ProofEssence {
    */
   def branchGuards(name: String, branch: String): List[String] = {
     val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${name}_unsatCoreCache.cache")
-    val (supercore: List[String], branches: Set[String]) = cacheMapByName.getOrElseUpdate(name, {
-      val source = Source.fromFile(coreCacheFile)
-      try {
-        val coreMap: Map[String, String] = source.getLines().collect {
-          case line if line.contains(":") =>
-            val Array(hash, core) = line.split(":", 2)
-            hash -> core
-        }.toMap
-        val coresSorted = coreMap.toList.sortWith((a, b) => a._2.split(";").length < b._2.split(";").length)
-        val (supercoreSet, branches) = coresSorted.foldLeft[(Set[String], Set[String])]((Set.empty, Set.empty))(
-          (sofar, newcore) => {
-            val coreset = newcore._2.split(";").toSet
-            if (coreset subsetOf sofar._1) sofar
-            else (coreset | sofar._1, sofar._2 + newcore._1)
-          }
-        )
-        (supercoreSet.toList, branches)
-      } finally source.close()
-    })
-    val cores = if (branches contains branch) List(globalGuardName)
-    else supercore
-    cores
+    if (!coreCacheFile.exists()) {
+      List(globalGuardName)
+    } else {
+      val (supercore: List[String], branches: Set[String], allbranches: Set[String]) = cacheMapByName.getOrElseUpdate(name, {
+        val source = Source.fromFile(coreCacheFile)
+        try {
+          val coreMap: Map[String, String] = source.getLines().collect {
+            case line if line.contains(":") =>
+              val Array(hash, core) = line.split(":", 2)
+              hash -> core
+          }.toMap
+          val coresSorted = coreMap.toList.sortWith((a, b) => a._2.split(";").length < b._2.split(";").length)
+          val (supercoreSet, branches) = coresSorted.foldLeft[(Set[String], Set[String])]((Set.empty, Set.empty))(
+            (sofar, newcore) => {
+              val coreset = newcore._2.split(";").toSet
+              if (coreset subsetOf sofar._1) sofar
+              else (coreset | sofar._1, sofar._2 + newcore._1)
+            }
+          )
+          (supercoreSet.toList, branches, coreMap.keySet)
+        } finally source.close()
+      })
+      val cores = if ((branches contains branch) || !(allbranches contains branch)) List(globalGuardName)
+      else supercore
+      cores.filter(_.length() > 0)
+    }
   }
 }
 
