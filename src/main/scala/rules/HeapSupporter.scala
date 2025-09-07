@@ -163,7 +163,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
 
 }
 
-class DefaultHeapSupporter extends HeapSupportRules {
+class DefaultHeapSupportRules extends HeapSupportRules {
   def isPossibleTrigger(s: State, fa: ast.FieldAccess): Boolean = {
     s.qpFields.contains(fa.field)
   }
@@ -847,4 +847,4 @@ class DefaultHeapSupporter extends HeapSupportRules {
   }
 }
 
-object defaultHeapSupporter extends DefaultHeapSupporter
+object defaultHeapSupporter extends DefaultHeapSupportRules
