@@ -175,10 +175,13 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
        * nextChunk: current chunk from the sequence of new chunks/of chunks to merge into the
        *           sequence of destination chunks
        */
-
-      findMatchingChunk(accMergedChunks, nextChunk, v) match {
+      val prevSource = v.decider.analysisSourceInfoStack.getForcedSource
+      v.decider.analysisSourceInfoStack.setUniqueForcedSource("state_consolidation")
+      val res = findMatchingChunk(accMergedChunks, nextChunk, v) match {
         case Some(ch) =>
-          mergeChunks(fr1, ch, nextChunk, qvars, v) match {
+          val resMerge = mergeChunks(fr1, ch, nextChunk, qvars, v)
+
+          resMerge match {
             case Some((fr2, newChunk, snapEq)) =>
               (fr2, newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accNewChunks, accSnapEqs + snapEq)
             case None =>
@@ -187,6 +190,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         case None =>
           (fr1, nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
       }
+      v.decider.analysisSourceInfoStack.setForcedSource(prevSource)
+      res
     }
     v.symbExLog.closeScope(sepIdentifier)
     result

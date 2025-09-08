@@ -44,3 +44,25 @@ method aliasing2(x: Ref, y: Ref, n: Int)
   }
 }
 
+method alias1(a: Ref, b: Ref, c: Ref)
+    requires @dependency("Explicit")(acc(a.f))
+    requires  @irrelevant("Explicit")(acc(b.f))
+{
+    var x: Int
+    if (@dependency("PathCondition")(c == a)) {
+        @dependency("Implicit")
+        x := c.f
+    }
+    if(@dependency("PathCondition")(c == b)) {
+        @irrelevant("Implicit")
+        x := c.f
+    }
+
+    @dependency("Explicit")
+    assume a == c
+
+    @testAssertion("Explicit")
+    assert x == a.f
+}
+
+

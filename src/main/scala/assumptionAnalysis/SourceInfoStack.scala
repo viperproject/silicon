@@ -3,6 +3,16 @@ package viper.silicon.assumptionAnalysis
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.NoPosition
 
+import java.util.concurrent.atomic.AtomicInteger
+
+object SourceInfoStackID {
+  private val idCounter: AtomicInteger = new AtomicInteger(0)
+
+  def nextId(): Int = {
+    idCounter.getAndIncrement()
+  }
+}
+
 trait SourceInfoStack {
 
   def getAnalysisSourceInfos: List[AnalysisSourceInfo]
@@ -15,13 +25,15 @@ trait SourceInfoStack {
 
   def popAnalysisSourceInfo(analysisSourceInfo: AnalysisSourceInfo): Unit
 
-  def getForcedSource: _root_.scala.Option[AnalysisSourceInfo]
+  def getForcedSource: Option[AnalysisSourceInfo]
 
-  def setForcedSource(description: _root_.java.lang.String): Unit
+  def setUniqueForcedSource(description: String): Unit
+
+  def setForcedSource(description: String): Unit
 
   def setForcedSource(source: AnalysisSourceInfo): Unit
 
-  def setForcedSource(sourceOpt: _root_.scala.Option[AnalysisSourceInfo]): Unit
+  def setForcedSource(sourceOpt: Option[AnalysisSourceInfo]): Unit
 
   def removeForcedSource(): Unit
 }
@@ -70,6 +82,10 @@ case class AnalysisSourceInfoStack() extends SourceInfoStack {
 
   override def setForcedSource(description: String): Unit = {
     forcedMainSource = Some(StringAnalysisSourceInfo(description, NoPosition))
+  }
+
+  override def setUniqueForcedSource(description: String): Unit = {
+    forcedMainSource = Some(StringAnalysisSourceInfo(description + SourceInfoStackID.nextId(), NoPosition))
   }
 
   override def setForcedSource(source: AnalysisSourceInfo): Unit = {
