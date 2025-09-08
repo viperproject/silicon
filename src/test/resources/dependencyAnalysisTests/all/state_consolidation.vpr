@@ -16,7 +16,6 @@ method stateConsolidation(x: Ref, y: Ref, z: Ref)
   assert a != y  // triggers state consolidation
 }
 
-
 method stateConsolidation2(x: Ref, y: Ref, z: Ref)
   requires @dependency("Explicit")(acc(x.f, 1/2))
   requires @dependency("Explicit")(acc(y.f, 1/2))
@@ -26,8 +25,25 @@ method stateConsolidation2(x: Ref, y: Ref, z: Ref)
   @dependency("Explicit")
   inhale acc(a.f, 1/2)
 
+  @dependency("Explicit")
+  assume a == x  // chunks are merged somewhere
+
   @testAssertion("Explicit")
-  assert perm(a.f) == write
+  assert perm(x.f) == write
+}
+
+
+method stateConsolidation3(x: Ref, y: Ref, z: Ref)
+  requires @dependency("Explicit")(acc(x.f, 1/2))
+  requires @dependency("Explicit")(acc(y.f, 1/2))
+  requires @irrelevant("Explicit")(acc(z.f, 1/2))
+{
+  var a: Ref
+  @dependency("Explicit")
+  inhale acc(x.f, 1/2)
+
+  @testAssertion("Explicit")
+  assert perm(x.f) == write
 }
 
 
