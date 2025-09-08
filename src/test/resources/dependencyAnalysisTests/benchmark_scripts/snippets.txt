@@ -1,8 +1,13 @@
 field gen_f: Int
 
 predicate gen_confuse(i: Int, x: Ref){
+  i >= 0 && acc(x.f)
+}
+
+predicate gen_confuse_genf(i: Int, x: Ref){
   i >= 0 && acc(x.gen_f)
 }
+
 
 predicate gen_confuse_with_impl(i: Int, x: Ref){
   i >= 0 ==> acc(x.f)
@@ -142,6 +147,18 @@ SNIPPET 08_assignment_disjoint_ref_disjoint_field_quantified$=${
   $RW_INT_0 := gen_xs[0].gen_f + gen_xs[1].gen_f 
 }
 
+// fold-unfold with implication
+SNIPPET 09_1_fold_unfold$=${
+  var gen_x: Ref
+  // @irrelevant("Explicit") // TODO ake: aliasing!
+  inhale acc(gen_x.f)
+  @irrelevant("Implicit")
+  $RW_INT_0 := 1
+  @irrelevant("Implicit")
+  fold gen_confuse($RW_INT_0, gen_x)
+  @irrelevant("Implicit")
+  unfold gen_confuse($RW_INT_0, gen_x)
+}
 
 // fold-unfold with implication
 SNIPPET 09_fold_unfold_with_implication$=${
@@ -376,11 +393,11 @@ SNIPPET 25_unrelated_sync_points$=${
   inhale 0 <= gen_n && gen_n < 100
 
   @irrelevant("Rewrite")
-  fold gen_confuse(gen_n, gen_x)
+  fold gen_confuse_genf(gen_n, gen_x)
   @irrelevant("Implicit")
   gen_i := gen_add_positive(gen_i, gen_n)
   @irrelevant("Rewrite")
-  unfold gen_confuse(gen_n, gen_x)
+  unfold gen_confuse_genf(gen_n, gen_x)
 
   while(@irrelevant("PathCondition")(gen_n > 0))
     invariant @irrelevant("Invariant")(acc(gen_x.gen_f))

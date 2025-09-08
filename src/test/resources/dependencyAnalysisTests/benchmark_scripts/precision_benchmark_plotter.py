@@ -69,11 +69,11 @@ def build_table_transposed(out_file_path: str, results: dict[tuple[str, str], li
     base_test_names_striped = [n.replace("dependencyAnalysisTests/precisionTests/", "") for n in base_test_names]
     column_1_width = max([len(h) for h in interference_names]) + 4
     column_widths = [len(h + "  ") for h in (base_test_names_striped)]
-    f.write("".ljust(column_1_width) + " &  " + "  &  ".join(base_test_names_striped))
-    f.write("\n")
+    f.write("".ljust(column_1_width) + " &  " + "  &  ".join(["\\rotatebox{90}{" + b + "}" for b in base_test_names_striped]))
+    f.write("\\\\ \\hline\n")
 
     for interference in interference_names:
-        f.write(interference.ljust(column_1_width))
+        f.write(interference.replace("_", "\\_").ljust(column_1_width))
         current_test_results = []
         for idx, base_test in enumerate(base_test_names):
             f.write(" & ")
@@ -83,7 +83,7 @@ def build_table_transposed(out_file_path: str, results: dict[tuple[str, str], li
             result = results[(base_test, interference)]
             avg = sum([prec for (_, prec) in result]) / len(result)
             current_test_results.append(avg)
-            f.write(f"{avg:.3f}".center(column_widths[idx]))
+            f.write(f"{avg:.2f}".center(column_widths[idx]))
         f.write("\\\\ \n")
 
 result_file_name = input("file name: ")
