@@ -1,0 +1,75 @@
+field f: Int
+
+method gaussianSimple(n: Int) returns (res: Int)
+  requires @dependency("Explicit")(0 <= n)
+  requires @irrelevant("Explicit")(n <= 5)
+  ensures  @testAssertion("Explicit")(res == n * (n + 1) / 2)
+{
+  var i: Int
+  @dependency("Implicit")
+  res := 0
+  @dependency("Implicit")
+  i := 0
+  while(@dependency("PathCondition")(i <= n))
+    invariant @dependency("LoopInvariant")(i <= (n + 1))
+    invariant @irrelevant("Explicit")(n <= 6)
+    invariant @dependency("LoopInvariant")(res == (i - 1) * i / 2))
+  {
+    @dependency("Implicit")
+    res := res + i
+    @dependency("Implicit")
+    i := i + 1
+  }
+}
+
+method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
+  requires @dependency("Explicit")(none < p) && @irrelevant("Explicit")(p < write)
+  requires @dependency("Explicit")(acc(a.f, p))
+  requires @dependency("Explicit")(0 <= a.f)
+  requires @irrelevant("Explicit")(a.f <= 5)
+  ensures @dependency("Explicit")(acc(a.f, p)) // well-formedness requirement!
+  ensures @testAssertion("Explicit")(res == a.f * (a.f + 1) / 2)
+{
+  var i: Int
+  @dependency("Implicit")
+  res := 0
+  @dependency("Implicit")
+  i := 0
+  while(@dependency("PathCondition")(i <= a.f))
+    invariant @dependency("Invariant")(acc(a.f, p))
+    invariant @dependency("Invariant")(0 <= a.f) && @irrelevant("Invariant")(a.f <= 5)
+    invariant @dependency("Invariant")(i <= (a.f + 1))
+    invariant @irrelevant("Invariant")(i <= 6)
+    invariant @dependency("Invariant")(res == (i - 1) * i / 2)
+  {
+    @dependency("Implicit")
+    res := res + i
+    @dependency("Implicit")
+    i := i + 1
+  }
+}
+
+predicate gaussianEq(res: Int, n: Int){
+  res == (n - 1) * n / 2 && n >= 0
+}
+
+method gaussianPred(n: Int) returns (res: Int)
+  requires 0 <= n
+  requires n <= 5
+  ensures gaussianEq(res, n+1)
+{
+  res := 0
+  var i: Int := 0
+  fold gaussianEq(res, i)
+  while(i <= n)
+    invariant i <= (n + 1)
+    invariant i <= 6
+    invariant gaussianEq(res, i)
+  {
+    unfold gaussianEq(res, i)
+    res := res + i
+    i := i + 1
+    fold gaussianEq(res, i)
+  }
+  assert i == n+1
+}

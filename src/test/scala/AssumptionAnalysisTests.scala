@@ -22,13 +22,7 @@ class AssumptionAnalysisTests extends AnyFunSuite with AssumptionAnalysisTestFra
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
     "dependencyAnalysisTests/real-world-examples",
-//    "frontends/gobra",
-//    "symbExLogTests",
-//    "dependencyAnalysisTests/quick"
-//    "dependencyAnalysisTests/fromSilver",
-//    "dependencyAnalysisTests/performanceBenchmark"
-//    "dependencyAnalysisTests/precisionTests/quantifiedPermissions"
-//    "andrea/debug"
+
   )
 
 
