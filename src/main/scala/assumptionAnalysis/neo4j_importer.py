@@ -4,14 +4,13 @@ import os
 from neo4j import Transaction
 import pandas as pd
 
-BASE_PATH = "C:/Users/Andrea/Documents/ETH/FS25/MasterThesis/silicon/graphExports/"
-# BASE_PATH = "C:/Users/Andrea/Documents/ETH/FS25/MasterThesis/gobra/graphExports/"
 URI = "neo4j+ssc://df418be1.databases.neo4j.io"
 AUTH = ("neo4j", os.environ['NEO4J-PW'])
 
 
 ASSUMPTION_NODE_TYPES = """["Inhale", "Assumption", "Infeasible", "Label"]"""
 ASSERTION_NODE_TYPES = """["Exhale", "Assertion", "Check"]"""
+POSTCONDITION_TYPES = """["ExplicitPostcondition", "ImplicitPostcondition"]"""
 
 driver = GraphDatabase.driver(URI, auth=AUTH)
 session = driver.session(database="neo4j")
@@ -142,6 +141,17 @@ def create_direct_edges(tx, label, node_label_postfix, assumption_node_selection
     MERGE (a1)-[n:flows_into]->(c1)
     RETURN a1;
     """)
+    tx.run(f"""
+    MATCH (a:{label})-[r2:flows_into]->(c:{label}),
+    (a1:{label}{node_label_postfix}), (c1:{label}{node_label_postfix})
+    WHERE {assumption_node_selection.replace("$ID", "a")} AND a1.`source info` = a.`source info` AND a1.position = a.position
+    AND a.`node type` IN {ASSERTION_NODE_TYPES} AND a.`assumption type` IN {POSTCONDITION_TYPES}
+    AND  c1.`source info` = c.`source info` AND c1.position = c.position
+    AND c.`node type` IN {ASSUMPTION_NODE_TYPES}
+    AND a1 <> c1
+    MERGE (a1)-[n:flows_into]->(c1)
+    RETURN a1;
+    """)
 
 def create_indirect_edges(tx, label, node_label_postfix, assumption_node_selection):
     print(f"add indirect edges")
@@ -160,20 +170,6 @@ def create_indirect_edges(tx, label, node_label_postfix, assumption_node_selecti
     MERGE (a1)-[n:flows_into]->(c1)
     RETURN a1;
            """)
-    
-    # print("add edges across method calls")
-    # # add edges for joined graphs
-    # tx.run(f"""
-    # MATCH (a:{label})-[r:flows_into]->(c:{label}),
-    # (a1:{label}{node_label_postfix}), (c1:{label}{node_label_postfix})
-    # WHERE a.`node type` IN {ASSERTION_NODE_TYPES}
-    # AND  c.`node type` IN {ASSUMPTION_NODE_TYPES} AND NOT c.`assumption type` IN {internal_assumption_types}
-    # AND a1.`source info` = a.`source info` AND a1.position = a.position
-    # AND c1.`source info` = c.`source info` AND c1.position = c.position
-    # AND a1 <> c1
-    # MERGE (a1)-[n:flows_into]->(c1)
-    # RETURN a1, n, c1;
-    #        """)
 
 def import_graph_view(label, is_overwrite, node_label_postfix, assumption_node_selection):
     if is_overwrite:
@@ -202,8 +198,8 @@ foldername = input("foldername: ")
 node_label = input("node label: ")
 import_low_level_graph(foldername, node_label)
 print("Low-level graph imported successfully")
-# import_graph_with_explicit_nodes_only(node_label)
-# print("Explicit-only Viper graph imported successfully")
+import_graph_with_explicit_nodes_only(node_label)
+print("Explicit-only Viper graph imported successfully")
 import_graph_without_internal_nodes(node_label)
 print("Viper graph imported successfully")
 session.close()

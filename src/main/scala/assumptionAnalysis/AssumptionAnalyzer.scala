@@ -277,7 +277,7 @@ class DefaultAssumptionAnalyzer(member: ast.Member) extends AssumptionAnalyzer {
 
   def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
     val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.Explicit, None))
-    val targetNodes = targetExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.ExplicitPostcondition, None))
+    val targetNodes = targetExps.flatMap(e => addAssertNode(True, AssumptionType.ExplicitPostcondition, ExpAnalysisSourceInfo(e)))
     assumptionGraph.addEdges(sourceNodeIds, targetNodes)
   }
 

@@ -1,0 +1,22 @@
+name,description,query,id,parentId,isFolder
+Queries,,,0,,true
+Non Internal Dependencies,,"match (a:NODE_LABEL {`source info`: ""SOURCE INFO""})<-[r:flows_into*]-(b:NODE_LABEL)
+match (a1:NODE_LABEL_NonInternal)<-[r2:flows_into*]-(b1:NODE_LABEL_NonInternal)
+WHERE a.`source info`=a1.`source info`
+AND   b.`source info`=b1.`source info`
+return a1, r2, b1",1,0,false
+Explicit Dependencies,,"match (a:NODE_LABEL {`source info`: ""SOURCE INFO""})<-[r:flows_into*]-(b:NODE_LABEL)
+match (a1:NODE_LABEL_Explicit)<-[r2:flows_into*]-(b1:NODE_LABEL_Explicit)
+WHERE a.`source info`=a1.`source info`
+AND   b.`source info`=b1.`source info`
+return a1, r2, b1",2,0,false
+Non Internal Dependents,,"match (a:NODE_LABEL {`source info`: ""SOURCE INFO""})-[r:flows_into*]->(b:NODE_LABEL)
+match (a1:NODE_LABEL_NonInternal)-[r2:flows_into*]->(b1:NODE_LABEL_NonInternal)
+WHERE a.`source info`=a1.`source info`
+AND   b.`source info`=b1.`source info`
+return a1, r2, b1",3,0,false
+Explicit Dependents,,"match (a:NODE_LABEL {`source info`: ""SOURCE INFO""})-[r:flows_into*]->(b:NODE_LABEL)
+match (a1:NODE_LABEL_Explicit)-[r2:flows_into*]->(b1:NODE_LABEL_Explicit)
+WHERE a.`source info`=a1.`source info`
+AND   b.`source info`=b1.`source info`
+return a1, r2, b1",4,0,false
