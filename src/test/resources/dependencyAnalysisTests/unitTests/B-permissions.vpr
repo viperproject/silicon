@@ -102,16 +102,4 @@ method permAmount1(x: Ref, p: Perm)
  }
 
 
-method noAlias(a: Ref, b: Ref, c: Ref)
-    requires @dependency("Explicit")(acc(a.f))
-    requires @dependency("Explicit")(acc(b.f, 1/2))
-    requires @irrelevant("Explicit")(acc(c.f, 1/2))
-{
-    // $PrecisionTest: $READ_WRITE=a.f $READ_ONLY=b.f,c.f $ACC_INVARIANT=acc(a.f)&&acc(b.f,1/4)&&acc(c.f,1/4)
-
-    @testAssertion("Explicit")
-    assert a != b
-}
-
-
 

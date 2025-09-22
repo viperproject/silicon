@@ -18,11 +18,15 @@ predicate gen_confuse_gen_field(i: Int, x: Ref){
 }
 
 function gen_add(a: Int, b: Int): Int
+  requires b > 0
+  ensures result > a
 { a + b }
 
 function gen_add_impure(x: Ref, b: Int): Int
   requires acc(x.f)
+  requires b > 0
   ensures result == x.f + b
+  ensures result > x.f
 
 function gen_add_positive(a: Int, b: Int): Int
   requires a >= 0 && b >= 0
@@ -31,22 +35,28 @@ function gen_add_positive(a: Int, b: Int): Int
 
 method incr(a: Ref)
   requires acc(a.f)
+  requires a.f > 0
   ensures acc(a.f)
   ensures a.f == old(a.f) + 1
+  ensures a.f > 1
 {
   a.f := a.f + 1
 }
 
 method incr_gen_f(a: Ref)
   requires acc(a.gen_f)
+  requires a.gen_f > 0
   ensures acc(a.gen_f)
   ensures a.gen_f == old(a.gen_f) + 1
+  ensures a.gen_f > 1
 {
   a.gen_f := a.gen_f + 1
 }
 
 method gen_incr_pure(a: Int) returns (res: Int)
+  requires a > 0
   ensures res == a + 1
+  ensures res > 1
 {
   res := a + 1
 }
@@ -147,7 +157,7 @@ SNIPPET 08_assignment_disjoint_ref_disjoint_field_quantified$=${
   $RW_INT_0 := gen_xs[0].gen_f + gen_xs[1].gen_f 
 }
 
-// fold-unfold with implication
+// fold-unfold
 SNIPPET 09_1_fold_unfold$=${
   var gen_x: Ref
   // @irrelevant("Explicit") // TODO ake: aliasing!
@@ -174,25 +184,35 @@ SNIPPET 09_fold_unfold_with_implication$=${
 // function call
 SNIPPET 10_function_add_pure$=${
   @irrelevant("Implicit")
-  $RW_INT_0 := gen_add($RO_INT_0, $RO_INT_1)
+  $RW_INT_0 := 5
   @irrelevant("Implicit")
-  $RW_INT_1 := gen_add($RW_INT_0, $RO_INT_2)
+  $RW_INT_0 := gen_add($RO_INT_0, $RW_INT_0)
+  @irrelevant("Implicit")
+  $RW_INT_1 := 1
+  @irrelevant("Implicit")
+  $RW_INT_1 := gen_add($RO_INT_1, $RW_INT_1)
 }
 
 
 SNIPPET 11_function_add_impure$=${
   @irrelevant("Implicit")
-  $RW_INT_0 := gen_add_impure($RW_REF_F_0, $RO_INT_0)
+  $RW_INT_0 := 5
+  @irrelevant("Implicit")
+  $RW_INT_0 := gen_add_impure($RW_REF_F_0, $RW_INT_0)
 }
 
 SNIPPET 12_method_call_pure$=${
   @irrelevant("Implicit")
-  $RW_INT_0 := gen_incr_pure($RO_INT_0)
+  $RW_INT_0 := 5
+  @irrelevant("Implicit")
+  $RW_INT_0 := gen_incr_pure($RW_INT_0)
 }
 
 SNIPPET 13_method_call_impure$=${
   var gen_ref_0: Ref
   gen_ref_0 := new(f) // might be used for non-aliasing proof
+  @irrelevant("Explicit")
+  inhale gen_ref_0.f > 2
   @irrelevant("Implicit")
   incr(gen_ref_0)
 }
@@ -270,8 +290,6 @@ SNIPPET 18_while_pure$=${
   @irrelevant("Implicit")
   $RW_INT_PURE_1 := 0
   while(@irrelevant("PathCondition")($RW_INT_PURE_0 > gen_c))
-    invariant $ACC_INVARIANT
-    invariant @irrelevant("LoopInvariant")($GEN_ACC_INVARIANT)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_0 <= gen_start)
     invariant @irrelevant("LoopInvariant")($RW_INT_PURE_1 == (gen_start-$RW_INT_PURE_0)*$RO_INT_PURE_0)
   {
@@ -412,10 +430,16 @@ SNIPPET 25_unrelated_sync_points$=${
   }
 
   @irrelevant("Implicit")
+  gen_i := 4
+  @irrelevant("Implicit")
   gen_j := gen_add(gen_j, gen_i)
 
   @irrelevant("Implicit")
+  gen_x.gen_f := 4
+  @irrelevant("Implicit")
   incr_gen_f(gen_x)
+  @irrelevant("Implicit")
+  gen_xs[2].gen_f := 4
   @irrelevant("Implicit")
   incr_gen_f(gen_xs[2])
   @irrelevant("Rewrite")

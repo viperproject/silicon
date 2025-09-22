@@ -47,3 +47,13 @@ method stateConsolidation3(x: Ref, y: Ref, z: Ref)
 }
 
 
+method noAlias(a: Ref, b: Ref, c: Ref)
+    requires @dependency("Explicit")(acc(a.f))
+    requires @dependency("Explicit")(acc(b.f, 1/2))
+    requires @irrelevant("Explicit")(acc(c.f, 1/2))
+{
+
+    @testAssertion("Explicit")
+    assert a != b
+}
+

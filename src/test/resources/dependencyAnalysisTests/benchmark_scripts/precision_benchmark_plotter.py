@@ -83,7 +83,10 @@ def build_table_transposed(out_file_path: str, results: dict[tuple[str, str], li
             result = results[(base_test, interference)]
             avg = sum([prec for (_, prec) in result]) / len(result)
             current_test_results.append(avg)
-            f.write(f"{avg:.2f}".center(column_widths[idx]))
+            if avg == 1.0:
+                f.write(f"{avg:.2f}".center(column_widths[idx]))
+            else:
+                f.write("\\cellcolor{red!30} " + f"{avg:.2f}".center(column_widths[idx]))
         f.write("\\\\ \n")
 
 result_file_name = input("file name: ")
