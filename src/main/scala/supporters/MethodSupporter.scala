@@ -22,6 +22,7 @@ import viper.silver.reporter.AnnotationWarning
 import viper.silicon.{Map, toMap, Stack}
 import java.security.MessageDigest
 import viper.silicon.optimizations.ProofEssence
+import viper.silver.reporter.BenchmarkingMessage
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -123,12 +124,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                    val hashBytes = digest.digest(pcs.getBytes("UTF-8"))
                    val hash = hashBytes.map("%02x".format(_)).mkString
                    if (Verifier.config.localizeProof()) decider.setProofContext(ProofEssence.branchGuards(method.name, hash))
+                   if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage("post", s"$hash: ${System.currentTimeMillis()}"))
                    //if (Verifier.config.benchmark()) Verifier report
                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
                       {
                         decider.prover.comment("; Done checking post-condition")
                         if (Verifier.config.localizeProof()) decider.resetProofContext()
-                        if (Verifier.config.benchmark()) println("")
+                        if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage("post", s"$hash: ${System.currentTimeMillis()}"))
                         if (Verifier.config.reportUnsatCore()) {
                           val unsat_core = decider.prover.getUnsatCore().mkString(";")
                           val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}_unsatCoreCache.cache")
