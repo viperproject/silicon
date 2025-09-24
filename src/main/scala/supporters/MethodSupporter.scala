@@ -124,12 +124,12 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                    val hashBytes = digest.digest(pcs.getBytes("UTF-8"))
                    val hash = hashBytes.map("%02x".format(_)).mkString
                    if (Verifier.config.localizeProof()) decider.setProofContext(ProofEssence.branchGuards(method.name, hash))
-                   if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage("post", s"$hash: ${System.currentTimeMillis()}"))
+                   if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash ${System.currentTimeMillis()}"))
                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
                       {
                         decider.prover.comment("; Done checking post-condition")
                         if (Verifier.config.localizeProof()) decider.resetProofContext()
-                        if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage("post", s"$hash: ${System.currentTimeMillis()}"))
+                        if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash: ${System.currentTimeMillis()}"))
                         if (Verifier.config.reportUnsatCore()) {
                           val unsat_core = decider.prover.getUnsatCore().mkString(";")
                           val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}_unsatCoreCache.cache")
