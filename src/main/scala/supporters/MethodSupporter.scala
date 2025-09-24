@@ -125,7 +125,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                    val hash = hashBytes.map("%02x".format(_)).mkString
                    if (Verifier.config.localizeProof()) decider.setProofContext(ProofEssence.branchGuards(method.name, hash))
                    if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage("post", s"$hash: ${System.currentTimeMillis()}"))
-                   //if (Verifier.config.benchmark()) Verifier report
                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
                       {
                         decider.prover.comment("; Done checking post-condition")
