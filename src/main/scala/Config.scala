@@ -191,6 +191,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val benchmark: ScallopOption[Boolean] = opt[Boolean]("benchmark",
+    descr = "Benchmark some stuff",
+    default = Some(false),
+    noshort = true
+  )
+
   val executeAllBranches: ScallopOption[Boolean] = opt[Boolean]("executeAllBranches", // TODO: remove
     descr = "Execute all branches (still does branch checks).",
     default = Some(false),

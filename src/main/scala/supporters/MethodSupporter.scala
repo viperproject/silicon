@@ -68,7 +68,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ outs.map(x => (x, decider.fresh(x)))
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
-      val s = if (Verifier.config.reportUnsatCore()) {
+      val s = if (Verifier.config.reportUnsatCore() || Verifier.config.localizeProof() || Verifier.config.benchmark()) {
         sInit.copy(g = g,
           h = v.heapSupporter.getEmptyHeap(sInit.program),
           oldHeaps = OldHeaps(),
@@ -123,10 +123,12 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                    val hashBytes = digest.digest(pcs.getBytes("UTF-8"))
                    val hash = hashBytes.map("%02x".format(_)).mkString
                    if (Verifier.config.localizeProof()) decider.setProofContext(ProofEssence.branchGuards(method.name, hash))
+                   //if (Verifier.config.benchmark()) Verifier report
                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
                       {
                         decider.prover.comment("; Done checking post-condition")
                         if (Verifier.config.localizeProof()) decider.resetProofContext()
+                        if (Verifier.config.benchmark()) println("")
                         if (Verifier.config.reportUnsatCore()) {
                           val unsat_core = decider.prover.getUnsatCore().mkString(";")
                           val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}_unsatCoreCache.cache")
