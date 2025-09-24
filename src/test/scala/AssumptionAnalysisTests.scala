@@ -17,7 +17,7 @@ class AssumptionAnalysisTests extends AnyFunSuite with AssumptionAnalysisTestFra
   val CHECK_PRECISION = false
   val EXECUTE_TEST = true
   val EXECUTE_PERFORMANCE_BENCHMARK = false
-  val ignores: Seq[String] = Seq("example1", "example2", "iterativeTreeDelete", "listAppend_wands")
+  val ignores: Seq[String] = Seq()
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
