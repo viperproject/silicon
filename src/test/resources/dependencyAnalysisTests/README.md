@@ -29,5 +29,7 @@ Executing the benchmark:
       Real dependencies are computed as `#(reported dependencies) - #(reported dependencies annotated as irrelevant)`.
 
 
+The manually crafted examples correspond to programs found in folders `all` and `real-world-examples`.
+
 To analyze the cause of imprecision, `src/test/scala/AssumptionAnalysisTests.scala` with `CHECK_PRECISION=true` can be executed on the program of interest.
 Imprecise results are reported as `Unexpected dependency` and make the test fail.
