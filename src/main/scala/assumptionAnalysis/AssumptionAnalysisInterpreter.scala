@@ -23,8 +23,16 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
 
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] = {
-    val directDependencyIds = nodeIdsToAnalyze flatMap (id => graph.getDirectEdges.getOrElse(id, Set.empty))
-    getNonInternalAssumptionNodes.filter(node => directDependencyIds.contains(node.id))
+    var queue = nodeIdsToAnalyze
+    var result: Set[Int] = Set.empty
+    val internalNodeIds = getNodes.diff(getNonInternalAssumptionNodes).map(_.id)
+    while(queue.nonEmpty){
+      val directDependencyIds = queue flatMap (id => graph.getDirectEdges.getOrElse(id, Set.empty))
+      queue = internalNodeIds.intersect(directDependencyIds).diff(result) // internal assumptions are hidden -> add their direct dependencies instead
+      result = result.union(directDependencyIds)
+    }
+
+    getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
   }
 
   def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
