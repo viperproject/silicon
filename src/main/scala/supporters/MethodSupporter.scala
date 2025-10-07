@@ -127,7 +127,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                    if (Verifier.config.benchmark()) {
                      val stats = decider.prover.statistics()
                      val qis = stats.getOrElse("quant-instantiations", "0")
-                     reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash,qis: $qis"))
+                     reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash|qis: $qis"))
                    }
                    if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash: ${System.currentTimeMillis()}"))
                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
@@ -138,7 +138,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                         if (Verifier.config.benchmark()) {
                           val stats = decider.prover.statistics()
                           val qis = stats.getOrElse("quant-instantiations", "0")
-                          reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash,qis: $qis"))
+                          reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash|qis: $qis"))
                         }
                         if (Verifier.config.reportUnsatCore()) {
                           val unsat_core = decider.prover.getUnsatCore().mkString(";")
