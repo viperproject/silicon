@@ -97,6 +97,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       }
 
       errorsReportedSoFar.set(0)
+      if (Verifier.config.benchmark()) {
+        val stats = decider.prover.statistics()
+        val qis = stats.getOrElse("quant-instantiations", "0")
+        reporter.report(BenchmarkingMessage(s"total_qis_start ${method.name}", s"$qis"))
+      }
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
@@ -158,6 +163,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       v.decider.resetProverOptions()
 
       symbExLog.closeMemberScope()
+      if (Verifier.config.benchmark()) {
+        val stats = decider.prover.statistics()
+        val qis = stats.getOrElse("quant-instantiations", "0")
+        reporter.report(BenchmarkingMessage(s"total_qis_stop ${method.name}", s"$qis"))
+      }
       Seq(result)
     }
 

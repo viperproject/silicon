@@ -22,6 +22,7 @@ import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage,
 import viper.silver.verifier.Model
 import scala.collection.mutable
 import viper.silicon.optimizations.ProofEssence
+import viper.silver.reporter.BenchmarkingMessage
 
 abstract class ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
@@ -302,6 +303,9 @@ abstract class ProverStdIO(uniqueId: String,
     val (result, duration) = Verifier.config.assertionMode() match {
       case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
+    }
+    if (Verifier.config.benchmark()) {
+      reporter.report(BenchmarkingMessage(s"check_time", s"$duration"))
     }
 
     comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")

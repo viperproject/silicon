@@ -28,6 +28,7 @@ import viper.silver.verifier.{DependencyNotFoundError, Model}
 import scala.collection.immutable.HashSet
 import scala.reflect.{ClassTag, classTag}
 import scala.collection.mutable
+import viper.silver.reporter.BenchmarkingMessage
 
 /*
  * Interfaces
@@ -241,7 +242,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //val commentRecord = new CommentRecord("push", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
       pathConditions.pushScope()
+      val startTime = if (Verifier.config.benchmark()) Some(System.currentTimeMillis()) else None
       _prover.push(timeout = Verifier.config.pushTimeout.toOption)
+      if (Verifier.config.benchmark()) {
+        val endTime = System.currentTimeMillis()
+        reporter.report(BenchmarkingMessage(s"push_time", s"${endTime - startTime.get}"))
+      }
       //symbExLog.closeScope(sepIdentifier)
     }
 
