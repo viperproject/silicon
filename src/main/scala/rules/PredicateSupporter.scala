@@ -223,9 +223,15 @@ object predicateSupporter extends PredicateSupportRules {
         producePredicateContents(s3, s3.predicateData(predicate).predContents.get, toReplace, v1, false)((s4, v4) => {
           v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+            val snapArg = if (Verifier.config.maskHeapMode()) {
+              val chunk = s4.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+              chunk.heap
+            } else {
+              snap.get.convert(sorts.Snap)
+            }
             val predicateTrigger =
               App(s4.predicateData(predicate).triggerFunction,
-                snap.get.convert(terms.sorts.Snap) +: tArgs)
+                snapArg +: tArgs)
             val eargs = eArgs.mkString(", ")
             v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }
@@ -250,9 +256,15 @@ object predicateSupporter extends PredicateSupportRules {
         produce(s3, newSf, body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
+            val snapArg = if (Verifier.config.maskHeapMode()) {
+              val chunk = s4.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == predicate).get.asInstanceOf[BasicMaskHeapChunk]
+              chunk.heap
+            } else {
+              snap.get.convert(sorts.Snap)
+            }
             val predicateTrigger =
               App(s4.predicateData(predicate).triggerFunction,
-                snap.get.convert(terms.sorts.Snap) +: tArgs)
+                snapArg +: tArgs)
             val eargs = eArgs.mkString(", ")
             v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
           }

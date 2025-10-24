@@ -47,7 +47,7 @@ trait FunctionRecorderHandler {
 
   def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = freshSymbolsAcrossAllPhases
 
-  def addRecorders(recorders: Seq[FunctionRecorder]): Unit = {
+  def addRecorders(recorders: Seq[FunctionRecorder], additionalFunctionDecls: Seq[FunctionDecl]): Unit = {
     val mergedFunctionRecorder: FunctionRecorder =
       if (recorders.isEmpty)
         NoopFunctionRecorder
@@ -83,8 +83,8 @@ trait FunctionRecorderHandler {
         case App(f: Function, _) => FunctionDecl(f)
         case other => sys.error(s"Unexpected permission map $other of type ${other.getClass.getSimpleName}")
       })
+    freshSymbolsAcrossAllPhases ++= additionalFunctionDecls
   }
-
 }
 
 class FunctionData(val programFunction: ast.Function,
@@ -206,7 +206,8 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] def advancePhase(recorders: Seq[FunctionRecorder]): Unit = {
     assert(0 <= phase && phase <= 1, s"Cannot advance from phase $phase")
 
-    addRecorders(recorders)
+    val additionalDecls = if (phase == 0 && Verifier.config.maskHeapMode()) qpFrameFunctionDecls else Seq()
+    addRecorders(recorders, additionalDecls)
     phase += 1
   }
 

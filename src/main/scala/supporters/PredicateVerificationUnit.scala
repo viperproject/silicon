@@ -145,7 +145,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
       this.predicateData(predicate).predContents = overallResult
       this.predicateData(predicate).params = Some(Seq(snap) ++ argVars.map(_._2._1))
-      this.predicateData(predicate).addRecorders(Seq(funcRecorder))
+      this.predicateData(predicate).addRecorders(Seq(funcRecorder), Seq())
 
       symbExLog.closeMemberScope()
       Seq(result)

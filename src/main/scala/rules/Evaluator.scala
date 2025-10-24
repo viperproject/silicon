@@ -1459,14 +1459,14 @@ object evaluator extends EvaluationRules {
         val chunk = resource match {
           case mw: ast.MagicWand =>
             val mwi = MagicWandIdentifier(mw, sCur.program)
-            maskHeapSupporter.findMaskHeapChunk(sCur.h, mwi)
-          case _ => maskHeapSupporter.findMaskHeapChunk(sCur.h, resource)
+            maskHeapSupporter.findMaskHeapChunkOptionally(sCur.h, mwi)
+          case _ => Some(maskHeapSupporter.findMaskHeapChunk(sCur.h, resource))
         }
-        if (chunk != null) {
+        if (chunk.isDefined) {
           evals(sCur.copy(triggerExp = true), ra.args(sCur.program), _ => pve, v)((_, tArgs, _, _) => {
             val tRcv = if (resource.isInstanceOf[ast.Field]) tArgs.head else toSnapTree(tArgs)
-            val heapAccess = new HeapLookup(chunk.heap, tRcv)
-            val maskAccess = new HeapLookup(chunk.mask, tRcv)
+            val heapAccess = new HeapLookup(chunk.get.heap, tRcv)
+            val maskAccess = new HeapLookup(chunk.get.mask, tRcv)
             triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++ triggers.map(ts => ts ++ Seq(maskAccess))
             Success()
           })
