@@ -18,8 +18,7 @@ import viper.silicon.state.{State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.AnnotationWarning
-import viper.silicon.{Map, toMap}
+import viper.silicon.Map
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 

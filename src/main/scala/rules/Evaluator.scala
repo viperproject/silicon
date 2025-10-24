@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
 import viper.silver.ast
@@ -747,25 +748,40 @@ object evaluator extends EvaluationRules {
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg).setConstrainable(s7.constrainableARPs, false)
 
-                      val predSnapFunc = if (Verifier.config.maskHeapMode()) {
-                        val predSnap = snap.get match {
-                          case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
-                          case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
-                          case _ => HeapLookup(v4.decider.createAlias(SnapToHeap(snap.get, predicate, PredHeapSort), s7a), toSnapTree(tArgs))
-                        }
-                        (_: Sort, _: Verifier) => predSnap
-                      } else toSf(snap.get)
-
-                      produce(s7a, predSnapFunc, body, pve, v4)((s8, v5) => {
-                        val s9 = s8.copy(g = s7.g,
-                                         functionRecorder = s8.functionRecorder.changeDepthBy(-1),
-                                         recordVisited = s3.recordVisited,
-                                         permissionScalingFactor = s6.permissionScalingFactor,
-                                         permissionScalingFactorExp = s6.permissionScalingFactorExp,
-                                         constrainableARPs = s1.constrainableARPs)
-                                   .decCycleCounter(predicate)
-                        val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                        eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})})
+                      if (s7a.predicateData(predicate).predContents.isDefined) {
+                        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s7a.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
+                        predicateSupporter.producePredicateContents(s7a, s7a.predicateData(predicate).predContents.get, toReplace, v4, true)((s8, v5) => {
+                          val s9 = s8.copy(g = s7.g,
+                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                            recordVisited = s3.recordVisited,
+                            permissionScalingFactor = s6.permissionScalingFactor,
+                            permissionScalingFactorExp = s6.permissionScalingFactorExp,
+                            constrainableARPs = s1.constrainableARPs)
+                            .decCycleCounter(predicate)
+                          val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
+                          eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
+                        })
+                      } else {
+                        val predSnapFunc = if (Verifier.config.maskHeapMode()) {
+                          val predSnap = snap.get match {
+                            case FakeMaskMapTerm(masks) => HeapLookup(masks(predicate), toSnapTree(tArgs))
+                            case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
+                            case _ => HeapLookup(v4.decider.createAlias(SnapToHeap(snap.get, predicate, PredHeapSort), s7a), toSnapTree(tArgs))
+                          }
+                          (_: Sort, _: Verifier) => predSnap
+                        } else toSf(snap.get)
+                        produce(s7a, predSnapFunc, body, pve, v4)((s8, v5) => {
+                          val s9 = s8.copy(g = s7.g,
+                                           functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                                           recordVisited = s3.recordVisited,
+                                           permissionScalingFactor = s6.permissionScalingFactor,
+                                           permissionScalingFactorExp = s6.permissionScalingFactorExp,
+                                           constrainableARPs = s1.constrainableARPs)
+                                     .decCycleCounter(predicate)
+                          val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
+                          eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
+                      }
+                    })
                   })(join(eIn.typ, "joined_unfolding", s2.relevantQuantifiedVariables.map(_._1),
                     Option.when(withExp)(s2.relevantQuantifiedVariables.map(_._2.get)), v2))((s12, r12, v7)
                     => {
@@ -776,7 +792,8 @@ object evaluator extends EvaluationRules {
                   createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
-          Q(s, unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
+          val newFuncRec = s.functionRecorder.recordFreshSnapshot(unknownValue.applicable.asInstanceOf[Function])
+          Q(s.copy(functionRecorder = newFuncRec), unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
         }
 
       case ast.Applying(wand, eIn) =>
@@ -1432,7 +1449,7 @@ object evaluator extends EvaluationRules {
     var sCur = s
 
     exps foreach {
-      case ra: ast.ResourceAccess if sCur.isUsedAsTrigger(ra.res(sCur.program)) && !Verifier.config.maskHeapMode() =>
+      case ra: ast.ResourceAccess if s.isUsedAsTrigger(ra.res(s.program)) && !Verifier.config.maskHeapMode() =>
         val (axioms, trigs, _, smDef) = generateResourceTrigger(ra, s, pve, v)
         triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
@@ -1442,20 +1459,19 @@ object evaluator extends EvaluationRules {
         val chunk = resource match {
           case mw: ast.MagicWand =>
             val mwi = MagicWandIdentifier(mw, sCur.program)
-            val (hNew, chunk) = maskHeapSupporter.findOrCreateMaskHeapChunk(sCur.h, mwi, sCur, v)
-            sCur = sCur.copy(h = hNew)
-            chunk
+            maskHeapSupporter.findMaskHeapChunk(sCur.h, mwi)
           case _ => maskHeapSupporter.findMaskHeapChunk(sCur.h, resource)
         }
-
-        evals(sCur.copy(triggerExp = true), ra.args(sCur.program), _ => pve, v)((_, tArgs, _, _) => {
-          val tRcv = if (resource.isInstanceOf[ast.Field]) tArgs.head else toSnapTree(tArgs)
-          val heapAccess = new HeapLookup(chunk.heap, tRcv)
-          val maskAccess = new HeapLookup(chunk.mask, tRcv)
-          triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++ triggers.map(ts => ts ++ Seq(maskAccess))
-          Success()
-        })
-      case e => evalTrigger(sCur.copy(triggerExp = true), Seq(e), pve, v)((_, t, _) => {
+        if (chunk != null) {
+          evals(sCur.copy(triggerExp = true), ra.args(sCur.program), _ => pve, v)((_, tArgs, _, _) => {
+            val tRcv = if (resource.isInstanceOf[ast.Field]) tArgs.head else toSnapTree(tArgs)
+            val heapAccess = new HeapLookup(chunk.heap, tRcv)
+            val maskAccess = new HeapLookup(chunk.mask, tRcv)
+            triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++ triggers.map(ts => ts ++ Seq(maskAccess))
+            Success()
+          })
+        }
+      case e => evalTrigger(s.copy(triggerExp = true), Seq(e), pve, v)((_, t, _) => {
         triggers = triggers.map(ts => ts ++ t)
         Success()
       })

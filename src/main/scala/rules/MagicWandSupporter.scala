@@ -323,6 +323,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
           val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
           val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
           val snapshotTerm = Combine(freshSnapRoot, snapRhs)
+          val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s2, wand, tArgs, snapshotTerm, v2)
+          v2.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
+          v2.decider.assumeDefinition(smValueDef, debugExp)
           val ch = if (Verifier.config.maskHeapMode()) {
             val argTerm = toSnapTree(tArgs)
             val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
@@ -330,13 +334,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
             val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
             newChunk
           } else {
-            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s2, wand, tArgs, snapshotTerm, v2)
-            v2.decider.prover.comment("Definitional axioms for singleton-SM's value")
-            val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-            v2.decider.assumeDefinition(smValueDef, debugExp)
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, formalVarExps, wand, tArgs,
               eArgsNew, FullPerm, Option.when(withExp)(ast.FullPerm()()), sm, s.program)
-            ch
           }
           val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark).definitionsOnly
           (s2, ch, conservedPcs.flatMap(_.conditionalized), Option.when(withExp)(conservedPcs.flatMap(_.conditionalizedExp)), v2)

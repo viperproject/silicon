@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.Logger
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
-import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter}
+import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules}
 import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter

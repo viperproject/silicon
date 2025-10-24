@@ -7,7 +7,6 @@
 package viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Config, Map}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
@@ -16,7 +15,6 @@ import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.sorts.{PredHeapSort, PredMaskSort, WandHeapSort}
 import viper.silicon.state.terms.{Sort, SortDecl, sorts}
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{FieldAccess, Forall}
 
 
 class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String],

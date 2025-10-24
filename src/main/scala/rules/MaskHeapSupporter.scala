@@ -15,7 +15,7 @@ import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort, PredMaskSort, WandHeapSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, SnapToHeap, Sort, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Sort, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, Store, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -519,6 +519,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         formalQVarsExp,
         s.relevantQuantifiedVariables(tArgs).map(_._1),
         Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
         optTrigger.map(_ => tTriggers),
         qid,
         v)
@@ -820,6 +821,7 @@ object maskHeapSupporter extends SymbolicExecutionRules with StatefulComponent w
         formalQVarExps,
         s.relevantQuantifiedVariables(tArgs).map(_._1),
         Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
         optTrigger.map(_ => tTriggers),
         qid,
         v)
