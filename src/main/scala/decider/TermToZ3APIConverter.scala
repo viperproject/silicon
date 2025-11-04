@@ -15,7 +15,7 @@ import com.microsoft.z3.{ArithExpr, BoolExpr, Context, DatatypeSort, IntExpr, Re
 
 import scala.collection.mutable
 
-class TermToZ3APIConverter
+final class TermToZ3APIConverter
     extends TermConverter[Z3Expr, Z3Sort, Unit]
        with StatefulComponent {
 

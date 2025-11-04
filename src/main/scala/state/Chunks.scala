@@ -25,11 +25,11 @@ object ChunkIdentifier {
   }
 }
 
-case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
+final case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
   override def toString = name
 }
 
-case class BasicChunk(resourceID: BaseID,
+final case class BasicChunk(resourceID: BaseID,
                       id: BasicChunkIdentifier,
                       args: Seq[Term],
                       argsExp: Option[Seq[ast.Exp]],
@@ -83,7 +83,7 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
  *       to potentially multiple locations, consider using regular, non-quantified
  *       chunks instead.
  */
-case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
+final case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 fvf: Term,
                                 condition: Term,
                                 conditionExp: Option[ast.Exp],
@@ -139,7 +139,7 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
       singletonRcvr = singletonRcvr.map(_.replace(terms)), hints = hints.map(_.replace(terms)), invs = invs.map(_.substitute(terms)))
 }
 
-case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
+final case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     quantifiedVars: Seq[Var],
                                     quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
                                     psf: Term,
@@ -187,7 +187,7 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
       singletonArgs = singletonArgs.map(_.map(_.replace(terms))), hints = hints.map(_.replace(terms)), invs = invs.map(_.substitute(terms)))
 }
 
-case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
+final case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     quantifiedVars: Seq[Var],
                                     quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
                                     wsf: Term,
@@ -231,7 +231,7 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
       hints = hints.map(_.replace(terms)), invs = invs.map(_.substitute(terms)))
 }
 
-case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand)(override val hashCode: Int) extends ChunkIdentifer {
+final case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand)(override val hashCode: Int) extends ChunkIdentifer {
   override def equals(obj: Any): Boolean = obj match {
     case w: MagicWandIdentifier => this.hashCode == w.hashCode
     case _ => false
@@ -248,7 +248,7 @@ object MagicWandIdentifier {
   }
 }
 
-case class MagicWandChunk(id: MagicWandIdentifier,
+final case class MagicWandChunk(id: MagicWandIdentifier,
                           bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
                           args: Seq[Term],
                           argsExp: Option[Seq[ast.Exp]],

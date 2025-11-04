@@ -30,13 +30,13 @@ object kinds {
 
 sealed abstract class PropertyExpression[K <: Kind]
 
-case class IfThenElse[K <: IteUsableKind]
+final case class IfThenElse[K <: IteUsableKind]
                      (condition: PropertyExpression[kinds.Boolean],
                       thenDo: PropertyExpression[K],
                       otherwise: PropertyExpression[K])
     extends PropertyExpression[K]
 
-case class Check[K <: IteUsableKind]
+final case class Check[K <: IteUsableKind]
                 (condition: PropertyExpression[kinds.Boolean],
                  thenDo: PropertyExpression[K],
                  otherwise: PropertyExpression[K])
@@ -47,48 +47,48 @@ case class Check[K <: IteUsableKind]
   * @param chunkVariables a non-empty sequence of chunk variables without duplicates
   * @param body an expression
   */
-case class ForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean] {
+final case class ForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean] {
   require(chunkVariables.nonEmpty, "Cannot quantify over no variable.")
   require(chunkVariables.distinct.size == chunkVariables.size, "Cannot quantify over non-distinct variables.")
 }
 
-case class Equals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K]) extends PropertyExpression[kinds.Boolean]
+final case class Equals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K]) extends PropertyExpression[kinds.Boolean]
 
-case class GreaterThan(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Boolean]
-case class GreaterThanEquals(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Boolean]
-case class LessThan(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Boolean]
-case class LessThanEquals(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Boolean]
+final case class GreaterThan(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Boolean]
+final case class GreaterThanEquals(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Boolean]
+final case class LessThan(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Boolean]
+final case class LessThanEquals(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Boolean]
 
-case class Not(argument: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean]
-case class And(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean]
-case class Or(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean]
-case class Implies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean]
+final case class Not(argument: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean]
+final case class And(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean]
+final case class Or(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean]
+final case class Implies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean]) extends PropertyExpression[kinds.Boolean]
 
-case class Plus(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Permission]
-case class Minus(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Permission]
-case class Times(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Permission]
-case class Div(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Permission]
+final case class Plus(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Permission]
+final case class Minus(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Permission]
+final case class Times(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Permission]
+final case class Div(left: PropertyExpression[kinds.Permission], right: PropertyExpression[kinds.Permission]) extends PropertyExpression[kinds.Permission]
 
 sealed abstract class BooleanLiteral extends PropertyExpression[kinds.Boolean]
-case class True() extends BooleanLiteral
-case class False() extends BooleanLiteral
+final case class True() extends BooleanLiteral
+final case class False() extends BooleanLiteral
 
-case class PermissionLiteral(numerator: BigInt, denominator: BigInt) extends PropertyExpression[kinds.Permission]
+final case class PermissionLiteral(numerator: BigInt, denominator: BigInt) extends PropertyExpression[kinds.Permission]
 
 sealed abstract class ChunkPlaceholder extends PropertyExpression[kinds.Chunk] {
   def name: String
 }
 
-case class ChunkVariable(name: String) extends ChunkPlaceholder {
+final case class ChunkVariable(name: String) extends ChunkPlaceholder {
   require(name != "this")
 }
 
-case class This() extends ChunkPlaceholder {
+final case class This() extends ChunkPlaceholder {
   val name = "this"
 }
 
-case class ArgumentAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Argument]
-case class PermissionAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Permission]
-case class ValueAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Value]
+final case class ArgumentAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Argument]
+final case class PermissionAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Permission]
+final case class ValueAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Value]
 
-case class Null() extends PropertyExpression[kinds.Argument]
+final case class Null() extends PropertyExpression[kinds.Argument]

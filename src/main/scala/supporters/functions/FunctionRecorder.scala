@@ -52,10 +52,10 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
 
 
 trait ExpContext
-case class LetContext(l: ast.Let) extends ExpContext
-case class QuantifierContext(q: ast.QuantifiedExp) extends ExpContext
+final case class LetContext(l: ast.Let) extends ExpContext
+final case class QuantifierContext(q: ast.QuantifiedExp) extends ExpContext
 
-case class ActualFunctionRecorder(private val _data: Either[FunctionData, (ast.Predicate, Seq[Var])],
+final case class ActualFunctionRecorder(private val _data: Either[FunctionData, (ast.Predicate, Seq[Var])],
                                   private[functions] val locToSnaps: Map[(ast.LocationAccess, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   private[functions] val fappToSnaps: Map[(ast.FuncApp, Seq[ExpContext]), InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
                                   freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet(),

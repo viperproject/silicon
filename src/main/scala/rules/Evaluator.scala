@@ -67,6 +67,7 @@ object evaluator extends EvaluationRules {
 
     evals2(s, es, Nil, pvef, v)(Q)
 
+  @inline
   private def evals2(s: State, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, v: Verifier)
                     (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
                     : VerificationResult = {
@@ -1167,6 +1168,7 @@ object evaluator extends EvaluationRules {
       Q(s4, t, eNew, v1)})
   }
 
+  @inline
   def evalResourceAccess(s: State, resacc: ast.ResourceAccess, pve: PartialVerificationError, v: Verifier)
                         (Q: (State, ChunkIdentifer, Seq[Term], Option[Seq[ast.Exp]], Verifier) => VerificationResult)
                         : VerificationResult = {
@@ -1174,6 +1176,7 @@ object evaluator extends EvaluationRules {
       Q(s1, ChunkIdentifier(resacc.res(s1.program), s1.program), tArgs, eArgsNew, v1))
   }
 
+  @inline
   private def evalBinOp[T <: Term](s: State,
                                    e0: ast.Exp,
                                    e1: ast.Exp,
@@ -1186,6 +1189,7 @@ object evaluator extends EvaluationRules {
     evalBinOp(s, e0, e1, (t0, t1) => termOp((t0, t1)), pve, v)(Q)
   }
 
+  @inline
   private def evalBinOp[T <: Term]
                        (s: State,
                         e0: ast.Exp,
@@ -1201,6 +1205,7 @@ object evaluator extends EvaluationRules {
         Q(s2, termOp(t0, t1), e0New, e1New, v2)))
   }
 
+  @inline
   private def failIfDivByZero(s: State,
                               t: Term,
                               eDivisor: ast.Exp,
@@ -1226,6 +1231,7 @@ object evaluator extends EvaluationRules {
     }
   }
 
+  @inline
   def evalTriggers(s: State,
                    silverTriggers: Seq[ast.Trigger],
                    pve: PartialVerificationError,

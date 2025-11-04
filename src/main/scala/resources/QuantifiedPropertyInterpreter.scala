@@ -14,7 +14,7 @@ import viper.silver.ast
 
 class QuantifiedPropertyInterpreter extends PropertyInterpreter {
 
-  protected case class Info(chunk: QuantifiedChunk, args: Seq[Term], argsExp: Option[Seq[ast.Exp]], perms: Term, permsExp: Option[ast.Exp])
+  protected final case class Info(chunk: QuantifiedChunk, args: Seq[Term], argsExp: Option[Seq[ast.Exp]], perms: Term, permsExp: Option[ast.Exp])
 
   private var argsUsed = false
 

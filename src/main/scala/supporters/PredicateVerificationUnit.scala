@@ -44,9 +44,9 @@ class PredicateData(predicate: ast.Predicate)
 
 trait PredicateContentsTree
 
-case class PredicateBranchNode(cond: Term, condExp: (ast.Exp, Option[ast.Exp]), left: PredicateContentsTree, right: PredicateContentsTree) extends PredicateContentsTree
+final case class PredicateBranchNode(cond: Term, condExp: (ast.Exp, Option[ast.Exp]), left: PredicateContentsTree, right: PredicateContentsTree) extends PredicateContentsTree
 
-case class PredicateLeafNode(heap: Heap, assumptions: InsertionOrderedSet[Term]) extends PredicateContentsTree
+final case class PredicateLeafNode(heap: Heap, assumptions: InsertionOrderedSet[Term]) extends PredicateContentsTree
 
 trait PredicateVerificationUnit
     extends VerifyingPreambleContributor[Sort, Decl, Term, ast.Predicate] {

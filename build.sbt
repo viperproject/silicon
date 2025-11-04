@@ -25,6 +25,9 @@ lazy val silicon = (project in file("."))
     // Remove elidable method calls such as in SymbExLogger during compilation
     // scalacOptions ++= Seq("-Xelide-below", "1000"),
     // scalacOptions ++= Seq("-Ypatmat-exhaust-depth", "640"),
+    scalacOptions ++= Seq("-opt:inline:**"),
+    scalacOptions ++= Seq("-Wopt"),
+    //scalacOptions ++= Seq("-Vinline viper/silicon/rules/evaluator.eval2"),
 
     // External dependencies
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",

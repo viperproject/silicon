@@ -13,7 +13,7 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
 
-class TermToSMTLib2Converter 
+final class TermToSMTLib2Converter
     extends FastPrettyPrinterBase
        with TermConverter[String, String, String]
        with StatefulComponent {
@@ -35,6 +35,7 @@ class TermToSMTLib2Converter
     super.pretty(defaultWidth, doRender(s, true))
   }
 
+  @inline
   protected def render(sort: Sort) = doRender(sort, false)
 
   protected def doRender(sort: Sort, alwaysSanitize: Boolean = false): Cont = sort match {
