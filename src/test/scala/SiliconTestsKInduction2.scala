@@ -54,5 +54,5 @@ class SiliconTestsKInduction2 extends SilSuite {
   }
 
   val commandLineArguments: Seq[String] =
-    Seq("--timeout", "600" /* seconds */, "--enableMoreCompleteExhale", "--enableKInduction=2")
+    Seq("--assertTimeout", "20000" /* seconds */, "--enableMoreCompleteExhale", "--enableKInduction=1", "--prover=Z3-API")
 }

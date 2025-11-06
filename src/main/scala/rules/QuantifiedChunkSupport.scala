@@ -1866,10 +1866,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       // converting to a Z3 term.
       // During function verification, we should not define macros, since they could contain resullt, which is not
       // defined elsewhere.
-      val declareMacro = false // s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
+      val declareMacro = s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
 
       val permsProvided = ch.perm
-      val permsTaken = if (declareMacro) {
+      val permsTaken = if (declareMacro) {  // needed for kinduct
         val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
         val permsTakenArgs = codomainQVars ++ additionalArgs
         val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)

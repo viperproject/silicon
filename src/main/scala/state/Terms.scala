@@ -1066,18 +1066,26 @@ object Ite extends CondFlyweightTermFactory[(Term, Term, Term), Ite] {
     case (False, _, e2) => e2
     case (e0, True, False) => e0
     case (e0, False, True) => Not(e0)
-    case (c, e1, e2) =>
-      val eqs = getEqualities(c)
-
-      if (eqs.nonEmpty) {
-        val eqMap: scala.collection.immutable.Map[Term, Term] = eqs.map(eq => eq.p0 -> eq.p1).toMap
-        val eqFalseMap: scala.collection.immutable.Map[Term, Term] = eqs.flatMap(eq => {
-          Seq(eq -> False, eq.flip() -> False)
-        }).toMap
-        createIfNonExistent(c, replace(e1, eqMap), replace(e2, eqFalseMap))
-      } else {
-        createIfNonExistent(v0)
-      }
+    case (e0, Ite(c, t1, t2), e2) if e0 == c =>
+      Ite(c, t1, e2)  // worth
+    case (e0, e1, Ite(c, t1, t2)) if e0 == c =>
+      Ite(c, e1, t2)  // worth
+//    case (e0, Ite(c, t1, t2), e2) if e0 == Not(c) =>
+//      Ite(c, t2, e2)  // rare
+//    case (e0, e1, Ite(c, t1, t2)) if e0 == Not(c) =>
+//      Ite(c, e1, t1)  // rare
+//    case (c, e1, e2) =>
+//      val eqs = getEqualities(c)
+//
+//      if (false && eqs.nonEmpty) {
+//        val eqMap: scala.collection.immutable.Map[Term, Term] = eqs.map(eq => eq.p0 -> eq.p1).toMap
+//        val eqFalseMap: scala.collection.immutable.Map[Term, Term] = eqs.flatMap(eq => {
+//          Seq(eq -> False, eq.flip() -> False)
+//        }).toMap
+//        createIfNonExistent(c, replace(e1, eqMap), replace(e2, eqFalseMap))  // too expensive
+//      } else {
+//        createIfNonExistent(v0)
+//      }
     case _ => createIfNonExistent(v0)
   }
 

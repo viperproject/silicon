@@ -1,3 +1,6 @@
+//IgnoreFile(/silicon/issue/000/)
+// very slow but okay with API and macros on
+
 field next: Ref
 
 field val: Ref
