@@ -208,6 +208,7 @@ class DefaultMainVerifier(config: Config,
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
 
 
+    val verificationStartTime = AssumptionAnalyzer.startTimeMeasurement()
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
     allProvers.comment("Silicon.version: " + Silicon.version)
     allProvers.comment(s"Input file: ${inputFile.getOrElse("<unknown>")}")
@@ -314,6 +315,8 @@ class DefaultMainVerifier(config: Config,
      ++ predicateVerificationResults
      ++ methodVerificationResults)
 
+    AssumptionAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, AssumptionAnalyzer.timeToVerifyAndCollectDependencies)
+
     if(Verifier.config.enableAssumptionAnalysis()){
       val assumptionAnalysisInterpreters = verificationResults.filter(_.assumptionAnalysisInterpreter.isDefined).map(_.assumptionAnalysisInterpreter.get)
 
@@ -334,6 +337,10 @@ class DefaultMainVerifier(config: Config,
           analysisReporter.joinedAssumptionAnalysisInterpreter = Some(joinedGraphInterpreter)
         case _ =>
       }
+
+      AssumptionAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, AssumptionAnalyzer.timeToVerifyAndBuildFinalGraph)
+
+      AssumptionAnalyzer.printProfilingResults()
 
     }
 
