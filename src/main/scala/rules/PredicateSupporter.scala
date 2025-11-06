@@ -12,7 +12,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{ChunkIdentifer, GeneralChunk, NonQuantifiedChunk}
-import viper.silicon.resources.{FieldID, PredicateID}
+import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
@@ -21,7 +21,6 @@ import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,
@@ -78,7 +77,7 @@ object predicateSupporter extends PredicateSupportRules {
               .scalePermissionFactor(tPerm, ePerm)
     consume(s1, body, true, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
-        val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
+        val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
         val eArgsString = eArgs.mkString(", ")
         v1.decider.assume(predTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))")))
@@ -88,7 +87,7 @@ object predicateSupporter extends PredicateSupportRules {
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
+      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
         Q(s4, v3)
       })
@@ -119,7 +118,7 @@ object predicateSupporter extends PredicateSupportRules {
                 v.decider.assumeDefinition(smValueDef, None)
                 val codQvars = bc.resourceID match {
                   case FieldID => Seq(`?r`)
-                  case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate])
+                  case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate].name)
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
                 quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, s.program)
@@ -202,13 +201,13 @@ object predicateSupporter extends PredicateSupportRules {
     v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
         .setConstrainable(constrainableWildcards, false)
-      if (s3.predicateData(predicate).predContents.isDefined) {
-        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
-        producePredicateContents(s3, s3.predicateData(predicate).predContents.get, toReplace, v1, false)((s4, v4) => {
+      if (s3.predicateData(predicate.name).predContents.isDefined) {
+        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
+        producePredicateContents(s3, s3.predicateData(predicate.name).predContents.get, toReplace, v1, false)((s4, v4) => {
           v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
-              App(s4.predicateData(predicate).triggerFunction,
+              App(s4.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
             v4.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))
@@ -223,7 +222,7 @@ object predicateSupporter extends PredicateSupportRules {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
-              App(s4.predicateData(predicate).triggerFunction,
+              App(s4.predicateData(predicate.name).triggerFunction,
                 snap.get.convert(terms.sorts.Snap) +: tArgs)
             val eargs = eArgs.mkString(", ")
             v2.decider.assume(predicateTrigger, Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eargs))")))

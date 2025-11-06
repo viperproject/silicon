@@ -8,7 +8,6 @@ package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.debugger.DebugExp
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
@@ -25,7 +24,7 @@ import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecor
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
 
-class PredicateData(predicate: ast.Predicate)
+class PredicateData(val predicate: ast.Predicate)
                    /* Note: Holding a reference to a fixed symbol converter (instead of going
                     *       through a verifier) is only safe if the converter is effectively
                     *       independent of the verifiers.
@@ -51,7 +50,7 @@ case class PredicateLeafNode(heap: Heap, assumptions: InsertionOrderedSet[Term])
 trait PredicateVerificationUnit
     extends VerifyingPreambleContributor[Sort, Decl, Term, ast.Predicate] {
 
-  def data: Map[ast.Predicate, PredicateData]
+  def data: Map[String, PredicateData]
 }
 
 trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Verifier =>
@@ -62,16 +61,15 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
   object predicateSupporter extends PredicateVerificationUnit with StatefulComponent {
     import viper.silicon.rules.producer._
 
-    /*private*/ var predicateData: Map[ast.Predicate, PredicateData] = Map.empty
+    /*private*/ var predicateData: Map[String, PredicateData] = Map.empty
 
     def data = predicateData
-    def units = predicateData.keys.toSeq
-
+    def units = predicateData.values.map(_.predicate).toSeq
     /* Preamble contribution */
 
     def analyze(program: Program): Unit = {
       this.predicateData = toMap(
-        program.predicates map (pred => pred -> new PredicateData(pred)(symbolConverter)))
+        program.predicates map (pred => pred.name -> new PredicateData(pred)(symbolConverter)))
     }
 
     /* Predicate supporter generates no sorts */
@@ -141,9 +139,9 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       val overallResult = if (predicate.body.isDefined && !result.isFatal && Verifier.config.enableSimplifiedUnfolds())
         Some(makePredTree(branchResults)) else None
 
-      this.predicateData(predicate).predContents = overallResult
-      this.predicateData(predicate).params = Some(Seq(snap) ++ argVars.map(_._2._1))
-      this.predicateData(predicate).addRecorders(Seq(funcRecorder))
+      this.predicateData(predicate.name).predContents = overallResult
+      this.predicateData(predicate.name).params = Some(Seq(snap) ++ argVars.map(_._2._1))
+      this.predicateData(predicate.name).addRecorders(Seq(funcRecorder))
 
       symbExLog.closeMemberScope()
       Seq(result)

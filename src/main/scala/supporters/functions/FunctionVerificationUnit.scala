@@ -50,7 +50,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     import evaluator._
 
     @unused private var program: ast.Program = _
-    /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
+    /*private*/ var functionData: Map[String, FunctionData] = Map.empty
     private var emittedFunctionAxioms: Vector[Term] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
@@ -66,9 +66,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         symbolConverter, fresh, resolutionFailureMessage, (_, _) => false, reporter)
     }
 
-    var predicateData: Map[ast.Predicate, PredicateData] = _
+    var predicateData: Map[String, PredicateData] = _
 
-    def units = functionData.keys.toSeq
+    def units = functionData.values.map(_.programFunction).toSeq
 
     /* Preamble contribution */
 
@@ -86,15 +86,20 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def analyze(program: ast.Program): Unit = {
       this.program = program
 
-      val heights = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder()).toSeq.sortBy(_._2).reverse
+      val functionOrderInProgram = program.functions.zipWithIndex.map(fi => (fi._1.name, fi._2)).toMap
+      val heightMap = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder()).toSeq
+      // Order functions with the same height by the order in which they are declared in the program.
+      // The order here is relevant because it determines the output of units(), which determines verification order.
+      val heights = heightMap.sortBy(fh => (fh._2, -functionOrderInProgram(fh._1))).reverse
 
       functionData = toMap(
-        heights.map { case (func, height) =>
+        heights.map { case (funcName, height) =>
+          val func = program.findFunction(funcName)
           val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
-                                      identifierFactory, pred => predicateData(pred), Verifier.config,
+                                      identifierFactory, pred => predicateData(pred.name), Verifier.config,
                                       reporter)
-          func -> data})
+          funcName -> data})
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
        *       on each other. Refactor s.t. this delayed assignment is no
@@ -155,7 +160,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       openSymbExLogger(function)
 
-      val data = functionData(function)
+      val data = functionData(function.name)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
@@ -167,7 +172,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     }
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
-      val data = functionData(function)
+      val data = functionData(function.name)
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(Left(data)),
         conservingSnapshotGeneration = true,
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
@@ -212,7 +217,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
-      val data = functionData(function)
+      val data = functionData(function.name)
       val pres = function.pres
       val posts = function.posts
       val argsStore = data.formalArgs map {
@@ -249,7 +254,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
-      val data = functionData(function)
+      val data = functionData(function.name)
       val posts = function.posts
       val body = function.body.get /* NOTE: Only non-abstract functions are expected! */
       val postconditionViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)

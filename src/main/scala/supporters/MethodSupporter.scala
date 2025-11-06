@@ -14,12 +14,11 @@ import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.{State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.AnnotationWarning
-import viper.silicon.{Map, toMap}
+import viper.silicon.Map
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -109,9 +108,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
     def start(): Unit = {}
 
-    def reset(): Unit = {
-      _units = Seq.empty
-    }
+    def reset(): Unit = {}
 
     def stop(): Unit = {}
   }

@@ -719,7 +719,7 @@ object evaluator extends EvaluationRules {
                       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
                         val eArgsString = eArgsNew.mkString(", ")
                         val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($eArgsString))", isInternal_ = true))
-                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp)
+                        v4.decider.assume(App(s.predicateData(predicate.name).triggerFunction, snap.get.convert(terms.sorts.Snap) +: tArgs), debugExp)
                       }
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm, ePermNew)
@@ -727,9 +727,9 @@ object evaluator extends EvaluationRules {
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip argsPairs)
                       val s7a = s7.copy(g = insg).setConstrainable(s7.constrainableARPs, false)
 
-                      if (s7a.predicateData(predicate).predContents.isDefined) {
-                        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s7a.predicateData(predicate).params.get.zip(Seq(snap.get) ++ tArgs))
-                        predicateSupporter.producePredicateContents(s7a, s7a.predicateData(predicate).predContents.get, toReplace, v4, true)((s8, v5) => {
+                      if (s7a.predicateData(predicate.name).predContents.isDefined) {
+                        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s7a.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
+                        predicateSupporter.producePredicateContents(s7a, s7a.predicateData(predicate.name).predContents.get, toReplace, v4, true)((s8, v5) => {
                           val s9 = s8.copy(g = s7.g,
                             functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                             recordVisited = s3.recordVisited,

@@ -30,8 +30,8 @@ final case class State(g: Store = Store(),
                        h: Heap = Heap(),
                        program: ast.Program,
                        currentMember: Option[ast.Member],
-                       predicateData: Map[ast.Predicate, PredicateData],
-                       functionData: Map[ast.Function, FunctionData],
+                       predicateData: Map[String, PredicateData],
+                       functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
 
                        parallelizeBranches: Boolean = false,
@@ -76,8 +76,8 @@ final case class State(g: Store = Store(),
                        pmCache: PmCache = Map.empty,
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
-                       predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
-                       predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
+                       predicateSnapMap: Map[String, terms.Sort] = Map.empty,
+                       predicateFormalVarMap: Map[String, Seq[terms.Var]] = Map.empty,
                        retryLevel: Int = 0,
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
@@ -109,7 +109,7 @@ final case class State(g: Store = Store(),
   def getFormalArgVars(res: ast.Resource, v: Verifier): Seq[Var] = {
     res match {
       case _: ast.Field => Seq(`?r`)
-      case p: ast.Predicate => predicateFormalVarMap(p)
+      case p: ast.Predicate => predicateFormalVarMap(p.name)
       case w: ast.MagicWand =>
         val bodyVars = w.subexpressionsToEvaluate(program)
         bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))

@@ -474,7 +474,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                 val predicate = resource.asInstanceOf[ast.Predicate]
                 val argsString = eArgs.mkString(", ")
                 val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-                v2.decider.assume(App(s2.predicateData(predicate).triggerFunction, snap1 +: tArgs), debugExp)
+                v2.decider.assume(App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp)
               }
               Q(s2.copy(h = h2), v2)
             })
@@ -543,7 +543,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       case f: ast.Field =>
         sf(sorts.FieldValueFunction(v.snapshotSupporter.optimalSnapshotSort(f, s, v), f.name), v)
       case p: ast.Predicate =>
-        sf(sorts.PredicateSnapFunction(s.predicateSnapMap(p), p.name), v)
+        sf(sorts.PredicateSnapFunction(s.predicateSnapMap(p.name), p.name), v)
       case _: ast.MagicWand =>
         sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v)
     }
