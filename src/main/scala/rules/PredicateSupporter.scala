@@ -87,7 +87,7 @@ object predicateSupporter extends PredicateSupportRules {
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
+      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
         Q(s4, v3)
       })
@@ -118,7 +118,7 @@ object predicateSupporter extends PredicateSupportRules {
                 v.decider.assumeDefinition(smValueDef, None)
                 val codQvars = bc.resourceID match {
                   case FieldID => Seq(`?r`)
-                  case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate])
+                  case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate].name)
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
                 quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, s.program)

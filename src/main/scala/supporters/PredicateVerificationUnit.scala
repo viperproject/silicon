@@ -8,7 +8,6 @@ package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.debugger.DebugExp
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent

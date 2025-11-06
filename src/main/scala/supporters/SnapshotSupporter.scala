@@ -36,7 +36,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
 
   def optimalSnapshotSort(r: Resource, s: State, v: Verifier): Sort = r match {
     case f: ast.Field => v.symbolConverter.toSort(f.typ)
-    case p: ast.Predicate if s.predicateSnapMap.contains(p) => s.predicateSnapMap(p)
+    case p: ast.Predicate if s.predicateSnapMap.contains(p.name) => s.predicateSnapMap(p.name)
     case p: ast.Predicate =>
       p.body.map(v.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
         .getOrElse(sorts.Snap)

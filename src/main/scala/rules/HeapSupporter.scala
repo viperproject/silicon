@@ -543,7 +543,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       case f: ast.Field =>
         sf(sorts.FieldValueFunction(v.snapshotSupporter.optimalSnapshotSort(f, s, v), f.name), v)
       case p: ast.Predicate =>
-        sf(sorts.PredicateSnapFunction(s.predicateSnapMap(p), p.name), v)
+        sf(sorts.PredicateSnapFunction(s.predicateSnapMap(p.name), p.name), v)
       case _: ast.MagicWand =>
         sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v)
     }

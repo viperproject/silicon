@@ -983,7 +983,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val codomainVars =
                 resource match {
                   case _: ast.Field => Seq(`?r`)
-                  case p: ast.Predicate => s.predicateFormalVarMap(p)
+                  case p: ast.Predicate => s.predicateFormalVarMap(p.name)
                   case w: ast.MagicWand =>
                     val bodyVars = w.subexpressionsToEvaluate(s.program)
                     bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
@@ -1741,7 +1741,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           sorts.FieldValueFunction(v.symbolConverter.toSort(field.typ), field.name)
         case predicate: ast.Predicate =>
           // TODO: Reconsider use of and general design behind s.predicateSnapMap
-          sorts.PredicateSnapFunction(s.predicateSnapMap(predicate), predicate.name)
+          sorts.PredicateSnapFunction(s.predicateSnapMap(predicate.name), predicate.name)
         case w: ast.MagicWand =>
           sorts.PredicateSnapFunction(sorts.Snap, MagicWandIdentifier(w, s.program).toString)
         case _ =>
