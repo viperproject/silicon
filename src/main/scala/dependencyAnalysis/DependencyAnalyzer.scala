@@ -6,6 +6,7 @@ import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
 
 
@@ -54,6 +55,33 @@ object DependencyAnalyzer {
   val analysisLabelName: String = "$$analysisLabel$$"
   private val assumptionTypeAnnotationKey = "assumptionType"
   private val enableDependencyAnalysisAnnotationKey = "enableDependencyAnalysis"
+  private val timeToJoinGraphs: AtomicLong = new AtomicLong(0)
+  val timeForMemoryOptimizations: AtomicLong = new AtomicLong(0)
+  val timeToAddTransitiveEdges: AtomicLong = new AtomicLong(0)
+  val timeToVerifyAndCollectDependencies: AtomicLong = new AtomicLong(0)
+  val timeToVerifyAndBuildFinalGraph: AtomicLong = new AtomicLong(0)
+
+  def startTimeMeasurement(): Long = {
+    if(!Verifier.config.enableDependencyAnalysisProfiling()) return 0
+    System.nanoTime()
+  }
+
+  def stopTimeMeasurementAndAddToTotal(startTime: Long, total: AtomicLong): Unit = {
+    if(!Verifier.config.enableDependencyAnalysisProfiling()) return
+
+    val endTime = System.nanoTime()
+    total.addAndGet(endTime - startTime)
+  }
+
+  def printProfilingResults(): Unit = {
+    if(!Verifier.config.enableDependencyAnalysisProfiling()) return
+    println(s"Overall runtime = time spent on verification and building the final graph: ${timeToVerifyAndBuildFinalGraph.get() / 1e6}ms")
+    println(s"This runtime can be categorized into the following, fine-grained measurements.")
+    println(s"  Time spent on verification and collecting low-level dependencies: ${timeToVerifyAndCollectDependencies.get() / 1e6}ms")
+    println(s"    Time spent on memory optimizations: ${timeForMemoryOptimizations.get() / 1e6}ms")
+    println(s"    Time spent on adding transitive edges (post-processing only): ${timeToAddTransitiveEdges.get() / 1e6}ms")
+    println(s"  Time spent on joining graphs: ${timeToJoinGraphs.get() / 1e6}ms")
+  }
 
   private def extractAnnotationFromInfo(info: ast.Info, annotationKey: String): Option[Seq[String]] = {
     info.getAllInfos[ast.AnnotationInfo]
@@ -100,6 +128,8 @@ object DependencyAnalyzer {
 
   // TODO ake: implement a lazy join in DependencyGraphInterpreter
   def joinGraphsAndGetInterpreter(name: Option[String], dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
+    val startTime = startTimeMeasurement()
+
     val newGraph = new DependencyGraph
 
     dependencyGraphInterpreters foreach (interpreter => newGraph.addNodes(interpreter.getGraph.getNodes))
@@ -132,7 +162,9 @@ object DependencyAnalyzer {
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource.toString, Seq.empty)))
       .foreach { case (src, targets) => newGraph.addEdges(src, targets)}
 
-    new DependencyGraphInterpreter(name.getOrElse("joined"), newGraph)
+    val newInterpreter = new DependencyGraphInterpreter(name.getOrElse("joined"), newGraph)
+    stopTimeMeasurementAndAddToTotal(startTime, timeToJoinGraphs)
+    newInterpreter
   }
 }
 
@@ -296,6 +328,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     assumptionGraph.removeLabelNodes()
     val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) assumptionGraph else  buildAndGetMergedGraph()
     mergedGraph.addTransitiveEdges()
+    AssumptionAnalyzer.stopTimeMeasurementAndAddToTotal(transitiveEdgesStartTime, AssumptionAnalyzer.timeToAddTransitiveEdges)
     Some(mergedGraph)
   }
 

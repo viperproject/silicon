@@ -860,6 +860,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val dependencyAnalysisPostProcessingMode: ScallopOption[Int] = opt[Int]("dependencyAnalysisPostProcessingMode",
+    descr = "Postprocessing mode: 0=default, 1=disable memory footprint optimizations, 2=disable joining of graphs and all of 1 (does not compute dependencies between methods), 3=disable transitive edges and all of 2 (UNSOUND)",
+    default = Some(0),
+    noshort = false
+  )
+
+  val enableDependencyAnalysisProfiling: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisProfiling",
+    descr = "Measures runtime of different parts of the dependency analysis",
+    default = Some(false),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
