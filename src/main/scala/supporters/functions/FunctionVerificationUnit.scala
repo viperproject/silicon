@@ -22,7 +22,7 @@ import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
-import viper.silicon.supporters.PredicateData
+import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
@@ -155,6 +155,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
+      val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(function, reporter)
+      v.decider.setProverOptions(proverOptions)
+
       openSymbExLogger(function)
 
       val data = functionData(function.name)
@@ -162,13 +165,15 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       decider.prover.declare(ConstDecl(data.formalResult))
 
       val res = Seq(handleFunction(sInit, function))
+
+      v.decider.resetProverOptions()
       symbExLog.closeMemberScope()
       res
     }
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function.name)
-      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data),
+      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(Left(data)),
         conservingSnapshotGeneration = true,
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
@@ -219,7 +224,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (localVar, t) => (localVar, (t, Option.when(evaluator.withExp)(LocalVarWithVersion(simplifyVariableName(t.id.name), localVar.typ)(localVar.pos, localVar.info, localVar.errT))))
       }
       val g = Store(argsStore + (function.result -> (data.formalResult, data.valFormalResultExp)))
-      val s = sInit.copy(g = g, h = Heap(), oldHeaps = OldHeaps())
+      val s = sInit.copy(g = g, h = v.heapSupporter.getEmptyHeap(sInit.program), oldHeaps = OldHeaps())
 
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty

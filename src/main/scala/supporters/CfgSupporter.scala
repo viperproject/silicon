@@ -7,15 +7,15 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
-import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
+import viper.silicon.interfaces._
 import viper.silicon.rules.{executionFlowController, executor}
-import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.{State, Store}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
+import viper.silver.components.StatefulComponent
 
 trait CfgVerificationUnit extends VerificationUnit[SilverCfg]
 
@@ -43,7 +43,7 @@ trait DefaultCfgVerificationUnitProvider extends VerifierComponent { v: Verifier
       val g = Store()
 
       val s = sInit.copy(g = g,
-        h = Heap(),
+        h = v.heapSupporter.getEmptyHeap(sInit.program),
         oldHeaps = OldHeaps(),
         methodCfg = cfg)  // TODO: ???
 

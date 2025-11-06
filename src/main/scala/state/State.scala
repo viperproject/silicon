@@ -17,6 +17,7 @@ import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{And, Ite}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
@@ -89,6 +90,42 @@ final case class State(g: Store = Store(),
     currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
   }
 
+  def isUsedAsTrigger(res: ast.Resource): Boolean = {
+    val identifier = res match {
+      case mw: ast.MagicWand => MagicWandIdentifier(mw, program)
+      case _ => res
+    }
+    heapDependentTriggers.contains(identifier)
+  }
+
+  def isQuantifiedResource(res: ast.Resource): Boolean = {
+    res match {
+      case f: ast.Field => qpFields.contains(f)
+      case p: ast.Predicate => qpPredicates.contains(p)
+      case mw: ast.MagicWand => qpMagicWands.contains(MagicWandIdentifier(mw, program))
+    }
+  }
+
+  def getFormalArgVars(res: ast.Resource, v: Verifier): Seq[Var] = {
+    res match {
+      case _: ast.Field => Seq(`?r`)
+      case p: ast.Predicate => predicateFormalVarMap(p)
+      case w: ast.MagicWand =>
+        val bodyVars = w.subexpressionsToEvaluate(program)
+        bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
+    }
+  }
+
+  def getFormalArgDecls(res: ast.Resource): Seq[ast.LocalVarDecl] = {
+    res match {
+      case _: ast.Field => Seq(ast.LocalVarDecl("r", ast.Ref)())
+      case p: ast.Predicate => p.formalArgs
+      case w: ast.MagicWand =>
+        val bodyVars = w.subexpressionsToEvaluate(program)
+        bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)())
+    }
+  }
+
   val mayAssumeUpperBounds: Boolean = {
     currentMember.isEmpty || !currentMember.get.isInstanceOf[ast.Function] || Verifier.config.respectFunctionPrePermAmounts()
   }
@@ -130,7 +167,7 @@ final case class State(g: Store = Store(),
     State.preserveAfterLocalEvaluation(this, post)
 
   def functionRecorderQuantifiedVariables(): Seq[(Var, Option[ast.AbstractLocalVar])] =
-    functionRecorder.data.fold(Seq.empty[(Var, Option[ast.AbstractLocalVar])])(d => d.arguments.zip(d.argumentExps))
+    functionRecorder.arguments.fold(Seq.empty[(Var, Option[ast.AbstractLocalVar])])(d => d)
 
   def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[(Var, Option[ast.AbstractLocalVar])] = (
        functionRecorderQuantifiedVariables()

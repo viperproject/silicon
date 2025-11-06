@@ -34,6 +34,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
   private var data: FunctionData = _
   private var ignoreAccessPredicates = false
   private var failed = false
+  private var context: Seq[ExpContext] = Seq.empty
 
   var functionData: Map[String, FunctionData] = _
 
@@ -95,6 +96,13 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True
 
       case _: ast.Result => data.formalResult
+      case l@ast.Let(lvd, e, body) =>
+        val bvar = translate(toSort)(lvd.localVar)
+        val tE = translate(toSort)(e)
+        context = context :+ LetContext(l)
+        val tBody = translate(toSort)(body)
+        context = context.init
+        Let(bvar.asInstanceOf[Var], tE, tBody)
 
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {
@@ -114,18 +122,21 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
          * occurrence of 'x@i' is replaced by 'x', for all variables 'x@i' where the prefix
          * 'x' is bound by the surrounding quantifier.
          */
+        context = context :+ QuantifierContext(eQuant)
         val tQuant = super.translate(symbolConverter.toSort)(eQuant).asInstanceOf[Quantification]
         val names = tQuant.vars.map(_.id.name)
 
-        tQuant.transform({ case v: Var =>
+        val res = tQuant.transform({ case v: Var =>
           v.id match {
             case sid: SuffixedIdentifier if names.contains(sid.prefix.name) =>
               Var(SimpleIdentifier(sid.prefix.name), v.sort, false)
             case _ => v
           }
         })()
+        context = context.init
+        res
 
-      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), Option.when(Verifier.config.enableDebugging())(extractPTypeFromExp(loc)))
+      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, context, toSort(loc.typ), Option.when(Verifier.config.enableDebugging())(extractPTypeFromExp(loc)))
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
       case ast.Asserting(_, eIn) => translate(toSort)(eIn)
@@ -143,7 +154,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           case _ => symbolConverter.toFunction(silverFunc)
         }
         val args = eFApp.args map (arg => translate(arg))
-        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
+        val snap = getOrFail(data.fappToSnap, eFApp, context, sorts.Snap, Option.when(Verifier.config.enableDebugging())(PUnknown()))
         val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height
@@ -157,8 +168,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case _ => super.translate(symbolConverter.toSort)(e)
     }
 
-  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, pType: Option[PType]): Term =
-    map.get(key) match {
+  def getOrFail[K <: ast.Positioned](map: Map[(K, Seq[ExpContext]), Term], key: K, ctx: Seq[ExpContext], sort: Sort, pType: Option[PType]): Term =
+    map.get((key, ctx)) match {
       case Some(s) =>
         s.convert(sort)
       case None =>

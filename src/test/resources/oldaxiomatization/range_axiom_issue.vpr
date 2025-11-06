@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method refSeq()
+{
+  var tmp: Seq[Ref]
+  // make sure we don't get errors if we use only seq types other than int
+  // (since there are special range axioms only for int seqs that can lead to errors if int seqs are not defined)
+}
