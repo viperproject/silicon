@@ -93,14 +93,20 @@ object chunkSupporter extends ChunkSupportRules {
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s)
-      //magicWandSupporter.transfer(s, perms, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
-      //        Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
-      ???
+      magicWandSupporter.transfer(s, perms, failure, Seq(), v)(moreCompleteExhaleSupporter.consumeSingleWithLoopStuff(resource, args, ve))((s1, optCh, v1) => {
+              val cHeap = optCh match {
+                case None => Heap()
+                case Some(ch) => Heap(Seq(ch))
+              } // ??? probably wrong
+              Q(s1, h, cHeap, optCh.flatMap(ch => Some(ch match {
+                case bc: BasicChunk => bc.snap
+                case mwc: MagicWandChunk => mwc.snap
+              })), v1)})
     } else {
       executionFlowController.tryOrFail2[(Heap, Heap), Option[Term]](s, v)((s1, v1, QS) =>
         // 2022-05-07 MHS: MoreCompleteExhale isn't yet integrated into function verification, hence the limitation to method verification
         if (s1.moreCompleteExhale) {
-          moreCompleteExhaleSupporter.consumeComplete(s1, h, resource, args, perms, ve, v1)((s2, h2, hConsumed, snap2, v2) => {
+          moreCompleteExhaleSupporter.consumeComplete(s1, h, resource, args, perms, ve, v1, true)((s2, h2, hConsumed, snap2, v2) => {
             QS(s2, (h2, hConsumed), snap2, v2)
           })
         } else {
@@ -220,7 +226,7 @@ object chunkSupporter extends ChunkSupportRules {
                 val perms = s2.loopReadVarStack.head._1 // FractionPermLiteral(Rational(1, 100))
 
                 def fn(s: State, h: Heap, resource: ast.Resource, args: Seq[Term], ve: VerificationError, v: Verifier)(QP: (State, Term, Verifier) => VerificationResult): VerificationResult = {
-                  moreCompleteExhaleSupporter.consumeComplete(s, h, resource, args, perms, ve, v)((s2, h2, hConsumed, snap2, v2) => {
+                  moreCompleteExhaleSupporter.consumeComplete(s, h, resource, args, perms, ve, v, true)((s2, h2, hConsumed, snap2, v2) => {
                     QP(s2, snap2.get, v2)
                   })
                 }

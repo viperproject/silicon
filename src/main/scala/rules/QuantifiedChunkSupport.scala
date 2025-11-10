@@ -1386,7 +1386,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                           lossOfInvOfLoc,
                                           createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s),
                                           formalQVars,
-                                          v)((s2, heap, rPerm, v2) => {
+                                          v)((s2, heap, rPerm, v2, isFinalHeap) => {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
                     heap, ChunkIdentifier(resource, s.program))
@@ -1582,7 +1582,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                     qvarsToInvOfLoc: Map[Var, App], condOfInvOfLoc: Term, argumentsMatch: Term,
                                     imagesOfFormalQVars: Seq[Term], optTrigger: Option[Seq[ast.Trigger]],
                                     tTriggers: Seq[Trigger], qid: String,
-                                    chunkOrderHeuristics: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk])(s: State, h: Heap, tPerm: Term, v: Verifier)
+                                    chunkOrderHeuristics: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk])(s: State, h: Heap, tPerm: Term, v: Verifier, isFinalHeap: Boolean)
                                     : (ConsumptionResult, State, Heap, Heap, Option[QuantifiedBasicChunk]) = {
     val (relevantChunks, otherChunks) =
       quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
@@ -1652,7 +1652,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                     arguments: Seq[Term],
                                     resource: ast.Resource,
                                     chunkOrderHeuristics: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
-                                   )(s: State, h: Heap, rPerm: Term, v: Verifier) : (ConsumptionResult, State, Heap, Heap, Option[QuantifiedBasicChunk]) = {
+                                   )(s: State, h: Heap, rPerm: Term, v: Verifier, isFinalHeap: Boolean) : (ConsumptionResult, State, Heap, Heap, Option[QuantifiedBasicChunk]) = {
     val (relevantChunks, otherChunks) =
       quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, chunkIdentifier)
 
@@ -1733,7 +1733,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
         case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
       }
-      magicWandSupporter.transfer(s, permissions, failure, Seq(), v)((s1, h1, rPerm, v1) => {
+      magicWandSupporter.transfer(s, permissions, failure, Seq(), v)((s1, h1, rPerm, v1, isFinalHeap) => {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
         val (result, s2, remainingChunks, consumedChunks) = quantifiedChunkSupporter.removePermissions(

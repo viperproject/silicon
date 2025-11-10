@@ -192,12 +192,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       args: Seq[Term],
                       perms: Term,
                       ve: VerificationError,
-                      v: Verifier)
+                      v: Verifier,
+                      isFinalHeap: Boolean)
                      (Q: (State, Heap, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
     if (!s.hackIssue387DisablePermissionConsumption)
-      actualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
+      actualConsumeComplete(s, h, resource, args, perms, ve, v, isFinalHeap)(Q)
     else
       ??? // summariseHeapAndAssertReadAccess(s, h, resource, args, ve, v)(Q)
   }
@@ -223,25 +224,54 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       })
   }
 
+  def consumeSingle(resource: ast.Resource, args: Seq[Term], ve: VerificationError)(s: State, h: Heap, perms: Term, v: Verifier, isFinalHeap: Boolean): (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = {
+    doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
+  }
+
+  def consumeSingleWithLoopStuff(resource: ast.Resource, args: Seq[Term], ve: VerificationError)(s: State, h: Heap, perms: Term, v: Verifier, isFinalHeap: Boolean): (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = {
+    if (!isFinalHeap) {
+      doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
+    } else {
+      var res: (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = null
+      actualConsumeComplete(s, h, resource, args, perms, ve, v, isFinalHeap)((s2, h2, cHeap2, optSnap, v2) => {
+        val cChunk = optSnap match {
+          case Some(snap) => resource match {
+            case mw: ast.MagicWand => Some(MagicWandChunk(MagicWandIdentifier(mw, s.program), Map(), args, snap.asInstanceOf[MagicWandSnapshot], perms))
+            case _ => Some(BasicChunk(FieldID, ChunkIdentifier(resource, s.program).asInstanceOf[BasicChunkIdentifier], args, snap, perms))
+          }
+          case None => None
+        }
+        res = (Complete(), s2, h2, cHeap2, cChunk)
+        Success()
+      })
+      if (res != null) {
+        res
+      } else {
+        (Incomplete(perms), s,h, Heap(), None) // Garbage values??
+      }
+    }
+  }
+
   private def actualConsumeComplete(s: State,
                                     h: Heap,
                                     resource: ast.Resource,
                                     args: Seq[Term],
                                     perms: Term,
                                     ve: VerificationError,
-                                    v: Verifier)
+                                    v: Verifier,
+                                    isFinalHeap: Boolean)
                                    (Q: (State, Heap, Heap, Option[Term], Verifier) => VerificationResult)
   : VerificationResult = {
-    if (s.loopPhaseStack.nonEmpty && s.loopPhaseStack.head._1 != LoopPhases.Checking) {
+    if (s.loopPhaseStack.nonEmpty && s.loopPhaseStack.head._1 != LoopPhases.Checking && isFinalHeap) {
       if (s.loopPhaseStack.head._1 == LoopPhases.Transferring) {
         val heaps = Seq(h) ++ s.loopHeapStack
         val failure = createFailure(ve, v, s)
 
-        def consumeSingle(s: State, h: Heap, perms: Term, v: Verifier): (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = {
-          doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
-        }
+        //def consumeSingle(s: State, h: Heap, perms: Term, v: Verifier): (ConsumptionResult, State, Heap, Heap, Option[Chunk]) = {
+        //  doActualConsumeComplete2(s, h, resource, args, perms, ve, v)
+        //}
 
-        magicWandSupporter.consumeFromMultipleHeaps(s, heaps, perms, failure, Seq(), v)(consumeSingle)((s1, hs1, cHeap1, optChunks, v1) => {
+        magicWandSupporter.consumeFromMultipleHeapsKInd(s, heaps, perms, failure, Seq(), v)(consumeSingle(resource, args, ve))((s1, hs1, cHeap1, optChunks, v1) => {
           //val (fr1, newTopHeap) = v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap1, v1)
           //val (fr1, newTopHeap) = (s1.functionRecorder, s1.h + cHeap1)
           val totalConsumedAmount = perms
@@ -258,7 +288,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             Heap()
           else
             Heap(Seq(nonEmptyChunks.head.get.asInstanceOf[NonQuantifiedChunk].withPerm(totalConsumedFromAllButFirst)))
-          val (fr1, newTopHeap2) = if (nonEmptyChunks.isEmpty)
+          val (fr1, newTopHeap2) = if (nonEmptyChunks.isEmpty || totalConsumedFromAllButFirst == NoPerm)
             (s1.functionRecorder, s1.h)
           else
             v1.stateConsolidator(s1).merge(s1.functionRecorder,s1.h, cHeap2, v1)
@@ -279,7 +309,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val identifier = resource match {
           case f: ast.Field => BasicChunkIdentifier(f.name)
           case p: ast.Predicate => BasicChunkIdentifier(p.name)
-          case mw: ast.MagicWand => ??? // MagicWandIdentifier(mw, s.program)
+          case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
         }
         val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
         val currentPermAmount =
@@ -295,8 +325,16 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             .getOrElse(sorts.Snap)
           case _ => sorts.Snap
         }
-        val snap = v.decider.fresh(snapSort)
-        val ch = BasicChunk(FieldID, identifier, args, snap, gain)
+
+        val ch = identifier match {
+          case mwi: MagicWandIdentifier =>
+            val snap = MagicWandSnapshot(v.decider.fresh(sorts.MagicWandSnapFunction))//v.decider.fresh(snapSort)
+            MagicWandChunk(mwi, Map(), args, snap, gain)
+          case bci: BasicChunkIdentifier =>
+            val snap = v.decider.fresh(snapSort)
+            BasicChunk(FieldID, bci, args, snap, gain)
+        }
+
         chunkSupporter.produce(s, h, ch, v)((s2, h2, v2) => {
           val (fr3, s3h) = v2.stateConsolidator(s2).merge(s2.functionRecorder, s2.h, ch, v2)
           doActualConsumeComplete(s2.copy(h = s3h, functionRecorder = fr3), h2, resource, args, perms, ve, v2)(Q)

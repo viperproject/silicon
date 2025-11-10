@@ -146,7 +146,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                failure: Failure,
                                qvars: Seq[Var],
                                v: Verifier)
-                              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Heap, Option[CH]))
+                              (consumeFunction: (State, Heap, Term, Verifier, Boolean) => (ConsumptionResult, State, Heap, Heap, Option[CH]))
                               (Q: (State, Stack[Heap], Heap, Stack[Option[CH]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
@@ -166,8 +166,80 @@ object magicWandSupporter extends SymbolicExecutionRules {
           case (r: Complete, sIn, hps, ch, cchs)  =>
             (r, sIn, heap +: hps, ch, None +: cchs)
           case (Incomplete(permsNeeded), sIn, hps, ch, cchs) =>
+            val sInP = sIn
+            val (success, sOutP, h, cHeap, cch) = consumeFunction(sInP, heap, permsNeeded, v, hps.length == hs.length - 1)
+            val sOut = sOutP
+            val tEq = (cchs.flatten.lastOption, cch) match {
+              /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
+               * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
+               * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
+               */
+              //case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
+              //case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
+              //case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
+              case _ => True
+            }
+            v.decider.assume(tEq)
+
+            /* In the future it might be worth to recheck whether the permissions needed, in the case of
+             * success being an instance of Incomplete, are zero.
+             * For example if an assertion similar to x.f == 0 ==> acc(x.f) has previously been exhaled, Silicon
+             * currently branches and if we learn that x.f != 0 from tEq above one of the branches becomes
+             * infeasible. If a future version of Silicon would introduce conditionals to the permission term
+             * of the corresponding chunk instead of branching we might get something similar to
+             * Incomplete(W - (x.f == 0 ? Z : W)) for success, when using transfer to consume acc(x.f).
+             * After learning x.f != 0 we would then be done, which is not detected by a smoke check.
+             *
+             * Note that when tEq is assumed it should be ensured, that permissions have actually been taken
+             * from heap, i.e. that tEq does not result in already having the required permissions before
+             * consuming from heap.
+             */
+            if (v.decider.checkSmoke()) {
+              (Complete(), sOut, h +: hps, ch + cHeap, cch +: cchs)
+            } else {
+              (success, sOut, h +: hps, ch + cHeap, cch +: cchs)
+            }
+        })
+    result match {
+      case Complete() =>
+        assert(heaps.length == hs.length)
+        assert(consumedChunks.length == hs.length)
+        Q(s1, heaps.reverse, actualConsumedChunks, consumedChunks.reverse, v)
+      case Incomplete(_) =>
+        failure
+    }
+  }
+
+
+  def consumeFromMultipleHeapsKInd[CH <: Chunk]
+                                  (s: State,
+                                   hs: Stack[Heap],
+                                   pLoss: Term,
+                                   failure: Failure,
+                                   qvars: Seq[Var],
+                                   v: Verifier)
+                                  (consumeFunction: (State, Heap, Term, Verifier, Boolean) => (ConsumptionResult, State, Heap, Heap, Option[CH]))
+                                  (Q: (State, Stack[Heap], Heap, Stack[Option[CH]], Verifier) => VerificationResult)
+                                  : VerificationResult = {
+
+    val initialConsumptionResult = ConsumptionResult(pLoss, qvars, v, Verifier.config.checkTimeout())
+    /* TODO: Introduce a dedicated timeout for the permission check performed by ConsumptionResult,
+     *       instead of using checkTimeout. Reason: checkTimeout is intended for checks that are
+     *       optimisations, e.g. detecting if a chunk provided no permissions or if a branch is
+     *       infeasible. The situation is somewhat different here: the check should be time-bounded
+     *       because not all permissions need to come from this stack, but the bound should be
+     *       (significantly) higher to reduce the chances of missing a chunk that can provide
+     *       permissions.
+     */
+    val initial = (initialConsumptionResult, s, Stack.empty[Heap], Heap(), Stack.empty[Option[CH]])
+    val (result, s1, heaps, actualConsumedChunks, consumedChunks) =
+      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Heap, Stack[Option[CH]])](initial)((partialResult, heap) =>
+        partialResult match {
+          case (r: Complete, sIn, hps, ch, cchs) =>
+            (r, sIn, heap +: hps, ch, None +: cchs)
+          case (Incomplete(permsNeeded), sIn, hps, ch, cchs) =>
             val sInP = if (hps.nonEmpty) sIn else sIn.copy(loopReadVarStack = sIn.loopReadVarStack.tail.prepended((sIn.loopReadVarStack.head._1, false)))
-            val (success, sOutP, h, cHeap, cch) = consumeFunction(sInP, heap, permsNeeded, v)
+            val (success, sOutP, h, cHeap, cch) = consumeFunction(sInP, heap, permsNeeded, v, hps.length == hs.length - 1)
             val sOut = sOutP.copy(loopReadVarStack = sIn.loopReadVarStack)
             val tEq = (cchs.flatten.lastOption, cch) match {
               /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
@@ -473,7 +545,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                failure: Failure,
                qvars: Seq[Var],
                v: Verifier)
-              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Heap, Option[CH]))
+              (consumeFunction: (State, Heap, Term, Verifier, Boolean) => (ConsumptionResult, State, Heap, Heap, Option[CH]))
               (Q: (State, Option[CH], Verifier) => VerificationResult)
               : VerificationResult = {
     assert(s.recordPcs)

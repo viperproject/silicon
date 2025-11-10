@@ -98,6 +98,7 @@ class TermToZ3APIConverter
       case sorts.Bool => ctx.mkBoolSort()
       case sorts.Perm => ctx.mkRealSort()
       case sorts.Snap => getSnapSort
+      case sorts.MagicWandSnapFunction => ctx.mkUninterpretedSort("$MWSF")
       case sorts.Ref => ctx.mkUninterpretedSort("$Ref")
       case sorts.Map(keySort, valueSort) => ctx.mkUninterpretedSort("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">")
       case sorts.Seq(elementSort) => {
@@ -138,6 +139,7 @@ class TermToZ3APIConverter
       case sorts.Int => None
       case sorts.Bool => None
       case sorts.Perm => None
+      case sorts.MagicWandSnapFunction => Some(ctx.mkSymbol("$MWSF"))
       case sorts.Snap => Some(ctx.mkSymbol("$Snap"))
       case sorts.Ref => Some(ctx.mkSymbol("$Ref"))
       case sorts.Map(keySort, valueSort) => Some(ctx.mkSymbol("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">"))

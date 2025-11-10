@@ -1,0 +1,281 @@
+field val: Int
+field next: Ref
+
+predicate list(r: Ref) {
+    r != null ==> (acc(r.val) && acc(r.next) && list(r.next))
+}
+
+function len(r: Ref): Int
+    requires list(r)
+{
+    r == null ? 0 : 1 + unfolding list(r) in len(r.next)
+}
+
+method sumIter1(root: Ref) returns (res: Int)
+    requires list(root)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    package list(cur) --* list(root)
+
+    while (cur != null)
+        invariant list(cur)
+        invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        package list(cur) --* list(root) {
+            fold list(tmp)
+            apply list(tmp) --* list(root)
+        }
+    }
+
+    apply list(cur) --* list(root)
+}
+
+method sumIter15(root: Ref) returns (res: Int)
+    requires list(root)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    package list(cur) --* list(root)
+
+    while (cur != null)
+        invariant list(cur)
+        //invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        package list(cur) --* list(root) {
+            fold list(tmp)
+            apply list(tmp) --* list(root)
+        }
+    }
+
+    apply list(cur) --* list(root)
+}
+
+method sumIter16(root: Ref) returns (res: Int)
+    requires list(root)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    package list(cur) --* list(root)
+
+    while (cur != null)
+        //invariant list(cur)
+        invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        package list(cur) --* list(root) {
+            fold list(tmp)
+            apply list(tmp) --* list(root)
+        }
+    }
+
+    apply list(cur) --* list(root)
+}
+
+method sumIter2(root: Ref) returns (res: Int)
+    requires list(root)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    package list(cur) --* list(root)
+
+    while (cur != null)
+        //invariant list(cur)
+        //invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        package list(cur) --* list(root) {
+            fold list(tmp)
+            apply list(tmp) --* list(root)
+        }
+    }
+
+    apply list(cur) --* list(root)
+}
+
+method sumIter3(root: Ref) returns (res: Int)
+    requires list(root)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    package list(cur) --* list(root)
+
+    while (cur != null)
+        //invariant list(cur)
+        //invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        //:: ExpectedOutput(package.failed:insufficient.permission)
+        package list(cur) --* list(root) {
+            fold list(tmp)
+            //apply list(tmp) --* list(root)
+        }
+    }
+
+    apply list(cur) --* list(root)
+}
+
+method sumIter4(root: Ref) returns (res: Int)
+    requires list(root)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    package list(cur) --* list(root)
+
+    while (cur != null)
+        //invariant list(cur)
+        //invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        package list(cur) --* list(root) {
+            //fold list(tmp)
+            //:: ExpectedOutput(apply.failed:insufficient.permission)
+            apply list(tmp) --* list(root)
+        }
+    }
+
+    apply list(cur) --* list(root)
+}
+
+method sumIter5(root: Ref) returns (res: Int)
+    requires list(root)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    //package list(cur) --* list(root)
+
+    while (cur != null)
+        //invariant list(cur)
+        //invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        package list(cur) --* list(root) {
+            fold list(tmp)
+            //:: ExpectedOutput(apply.failed:wand.not.found)
+            apply list(tmp) --* list(root)
+        }
+    }
+
+    apply list(cur) --* list(root)
+}
+
+method sumIter6(root: Ref) returns (res: Int)
+    requires list(root)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    package list(cur) --* list(root)
+
+    while (cur != null)
+        //invariant list(cur)
+        //invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        assert acc(tmp.next)
+        package list(cur) --* list(root) {
+            fold list(tmp)
+            apply list(tmp) --* list(root)
+        }
+        //:: ExpectedOutput(assert.failed:insufficient.permission)
+        assert acc(tmp.next)
+    }
+
+    apply list(cur) --* list(root)
+}
+
+method sumIter7(root: Ref) returns (res: Int)
+    requires list(root)
+    //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+    ensures list(root)
+    //ensures res == old(len(root))
+{
+    var cur: Ref := root
+
+    res := 0
+
+    package list(cur) --* list(root)
+
+    while (cur != null)
+        //invariant list(cur)
+        //invariant list(cur) --* list(root)
+        //invariant res + len(cur) == old(len(root))
+    {
+        unfold list(cur)
+        res := res + 1
+        var tmp: Ref := cur
+        cur := cur.next
+        package list(cur) --* list(root) {
+            fold list(tmp)
+            apply list(tmp) --* list(root)
+        }
+
+    }
+
+    //apply list(cur) --* list(root)
+}
