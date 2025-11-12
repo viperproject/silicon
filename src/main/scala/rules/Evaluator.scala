@@ -250,10 +250,18 @@ object evaluator extends EvaluationRules {
 
       case l@ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
-          val t = v1.decider.appliedFresh("letvar", v1.symbolConverter.toSort(x.typ), s1.relevantQuantifiedVariables.map(_._1))
-          val debugExp = Option.when(withExp)(DebugExp.createInstance("letvar assignment", InsertionOrderedSet(DebugExp.createInstance(ast.EqCmp(x.localVar, e0)(), ast.EqCmp(x.localVar, e0New.get)()))))
-          v1.decider.assumeDefinition(BuiltinEquals(t, t0), debugExp)
-          val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t.applicable.asInstanceOf[Function]).enterLet(l)
+          var newFuncRec = s1.functionRecorder.enterLet(l)
+          if (!s1.isMethodVerification && !t0.isKnownNonTriggering) {
+            // Make sure triggering terms make it to the SMT level; see Silver issue #688.
+            // We only do this in functions and predicates, since in those, let-bindings are basically the only
+            // way to introduce new triggering terms, and are frequently used to call lemma-functions etc.
+            // We want to do this as little as possible though, since the additional SMT-level terms can slow
+            // down verification a lot in some cases (e.g. Prusti produces a lot of let-bindings).
+            val t = v1.decider.appliedFresh("letvar", v1.symbolConverter.toSort(x.typ), s1.relevantQuantifiedVariables.map(_._1))
+            val debugExp = Option.when(withExp)(DebugExp.createInstance("letvar assignment", InsertionOrderedSet(DebugExp.createInstance(ast.EqCmp(x.localVar, e0)(), ast.EqCmp(x.localVar, e0New.get)()))))
+            v1.decider.assumeDefinition(BuiltinEquals(t, t0), debugExp)
+            newFuncRec = newFuncRec.recordFreshSnapshot(t.applicable.asInstanceOf[Function])
+          }
           val possibleTriggersBefore = if (s1.recordPossibleTriggers) s1.possibleTriggers else Map.empty
           eval(s1.copy(g = s1.g + (x.localVar, (t0, e0New)), functionRecorder = newFuncRec), e1, pve, v1)((s2, t2, e1New, v2) => {
             val newPossibleTriggers = if (s2.recordPossibleTriggers) {
