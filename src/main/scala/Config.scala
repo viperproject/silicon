@@ -242,7 +242,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  private val rawProverSaturationTimeout = opt[Int]("proverSaturationTimeout",
+  private val proverSaturationTimeout = opt[Int]("proverSaturationTimeout",
     descr = (  "Timeout (in ms) used for the prover's state saturation calls (default: 100). "
              + "A timeout of 0 disables all saturation checks."),
     default = Some(100),
@@ -254,22 +254,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(0),
     noshort = true
   )
-
-  // DEPRECATED and replaced by proverSaturationTimeout
-  // but continues to work for now for backwards compatibility.
-  private val rawZ3SaturationTimeout = opt[Int]("z3SaturationTimeout",
-    descr = ("Warning: This option is deprecated due to standardization in option naming."
-             + " Please use 'proverSaturationTimeout' instead... "
-             + "Timeout (in ms) used for Z3 state saturation calls (default: 100). A timeout of "
-             + "0 disables all saturation checks."),
-    default = Some(100),
-    noshort = true
-  )
-
-  private lazy val rawCombinedSaturationTimeout: Int = {
-    if (rawZ3SaturationTimeout.isSupplied) rawZ3SaturationTimeout()
-    else rawProverSaturationTimeout()
-  }
 
   /* Attention: Update companion object if number of weights changes! */
   case class ProverSaturationTimeoutWeights(afterPreamble: Float = 1,
@@ -308,30 +292,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )(saturationTimeoutWeightsConverter)
 
-  // DEPRECATED and replaced by proverSaturationTimeoutWeights
-  // but continues to work for now for backwards compatibility.
-  private val rawZ3SaturationTimeoutWeights = opt[ProverSaturationTimeoutWeights]("z3SaturationTimeoutWeights",
-    descr = ("Warning: This option is deprecated due to standardization in option naming."
-             + " Please use 'proverSaturationTimeoutWeights' instead... "
-             + "Weights used to compute the effective timeout for Z3 state saturation calls, "
-             +  "which are made at various points during a symbolic execution. The effective "
-             +  "timeouts for a particular saturation call is computed by multiplying the "
-             +  "corresponding weight with the base timeout for saturation calls. "
-             +  "Defaults to the following weights:\n"
-             + s"    after program preamble: ${defaultProverSaturationTimeoutWeights.afterPreamble}\n"
-             + s"    after inhaling contracts: ${defaultProverSaturationTimeoutWeights.afterContract}\n"
-             + s"    after unfold: ${defaultProverSaturationTimeoutWeights.afterUnfold}\n"
-             + s"    after inhale: ${defaultProverSaturationTimeoutWeights.afterInhale}\n"
-             + s"    before repeated Z3 queries: ${defaultProverSaturationTimeoutWeights.beforeRepetition}\n"
-             +  "Weights must be non-negative, a weight of 0 disables the corresponding saturation "
-             +  "call and a minimal timeout of 10ms is enforced."),
-    default = Some(defaultProverSaturationTimeoutWeights),
-    noshort = true
-  )(saturationTimeoutWeightsConverter)
-
   private lazy val rawCombinedSaturationTimeoutWeights: ProverSaturationTimeoutWeights = {
-    if (rawZ3SaturationTimeoutWeights.isSupplied) rawZ3SaturationTimeoutWeights()
-    else rawProverSaturationTimeoutWeights()
+    rawProverSaturationTimeoutWeights()
   }
 
   /* ATTENTION: Don't access the effective weights before the configuration objects has been
@@ -339,10 +301,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
    */
   object proverSaturationTimeouts {
     private def scale(weight: Float, comment: String): Option[ProverStateSaturationTimeout] = {
-      if (weight == 0 || rawCombinedSaturationTimeout == 0) {
+      if (weight == 0 || proverSaturationTimeout() == 0) {
         None
       } else {
-        Some(ProverStateSaturationTimeout(Math.max(10.0, weight * rawCombinedSaturationTimeout).toInt,
+        Some(ProverStateSaturationTimeout(Math.max(10.0, weight * proverSaturationTimeout()).toInt,
                                       comment))
       }
     }
@@ -363,66 +325,23 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       scale(rawCombinedSaturationTimeoutWeights.beforeRepetition, "before repetition")
   }
 
-  private val rawProverEnableResourceBounds: ScallopOption[Boolean] = opt[Boolean]("proverEnableResourceBounds",
-    descr = "Use prover's resource bounds instead of timeouts",
+  val proverEnableTimeBounds: ScallopOption[Boolean] = opt[Boolean]("proverEnableTimeBounds",
+    descr = "Use timeouts instead of prover's resource bounds",
     default = Some(false),
     noshort = true
   )
 
-  // DEPRECATED and replaced by proverEnableResourceBounds
-  // but continues to work for now for backwards compatibility.
-  private val rawZ3EnableResourceBounds: ScallopOption[Boolean] = opt[Boolean]("z3EnableResourceBounds",
-    descr = ("Warning: This option is deprecated due to standardization in option naming."
-             + " Please use 'proverEnableResourceBounds' instead... "
-             + "Use Z3's resource bounds instead of timeouts"),
-    default = Some(false),
-    noshort = true
-  )
-
-  lazy val proverEnableResourceBounds: Boolean = {
-    rawProverEnableResourceBounds() || rawZ3EnableResourceBounds()
-  }
-
-  private val rawProverResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("proverResourcesPerMillisecond",
+  val proverResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("proverResourcesPerMillisecond",
     descr = "Prover resources per milliseconds. Is used to convert timeouts to resource bounds.",
     default = Some(60000),
     noshort = true,
   )
 
-  // DEPRECATED and replaced by proverResourcesPerMillisecond
-  // but continues to work for now for backwards compatibility.
-  private val rawZ3ResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("z3ResourcesPerMillisecond",
-    descr = ("Warning: This option is deprecated due to standardization in option naming."
-             + " Please use 'proverResourcesPerMillisecond' instead... "
-             + "Z3 resources per milliseconds. Is used to convert timeouts to resource bounds."),
-    default = Some(60000), // Moritz Knüsel empirically determined 1600 in his BSc thesis, but when Malte
-    noshort = true,        // used this value, over 20 tests failed.
-  )
-
-  lazy val proverResourcesPerMillisecond: Int = {
-    if (rawZ3ResourcesPerMillisecond.isSupplied) rawZ3ResourcesPerMillisecond()
-    else rawProverResourcesPerMillisecond()
-  }
-
-  val rawProverRandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("proverRandomizeSeeds",
+  val proverRandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("proverRandomizeSeeds",
     descr = "Set various random seeds of the prover to random values",
     default = Some(false),
     noshort = true
   )
-
-  // DEPRECATED and replaced by proverRandomizedSeeds
-  // but continues to work for now for backwards compatibility.
-  private val rawZ3RandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("z3RandomizeSeeds",
-    descr = ("Warning: This option is deprecated due to standardization in option naming."
-             + " Please use 'proverRandomizeSeeds' instead... "
-             + "Set various Z3 random seeds to random values"),
-    default = Some(false),
-    noshort = true
-  )
-
-  lazy val proverRandomizeSeeds: Boolean = {
-    rawZ3RandomizeSeeds() || rawProverRandomizeSeeds()
-  }
 
   val tempDirectory: ScallopOption[String] = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
@@ -437,7 +356,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   lazy val outputProverLog: Boolean = {
-    enableTempDirectory.isSupplied || rawProverLogFile.isSupplied || rawZ3LogFile.isSupplied
+    enableTempDirectory.isSupplied || rawProverLogFile.isSupplied
   }
 
   private val rawZ3Exe = opt[String]("z3Exe",
@@ -487,18 +406,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
-  // DEPRECATED and replaced by proverLogFile
-  // but continues to work for now for backwards compatibility.
-  private val rawZ3LogFile = opt[ConfigValue[String]]("z3LogFile",
-    descr = (  "Warning: This option is deprecated due to standardization in option naming."
-             + " Please use 'proverLogFile' instead... "
-             + "Log file containing the interaction with the prover, "
-             + s"extension $proverLogFileExtension will be appended. "
-             + s"(default: <tempDirectory>/$defaultRawProverLogFile.$proverLogFileExtension)."),
-    default = Some(DefaultValue(defaultRawProverLogFile)),
-    noshort = true
-  )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
-
   def getProverLogfile(suffix: String = "", rawLogFile: ConfigValue[String]): Path = {
     rawLogFile match {
       case UserValue(logfile) =>
@@ -519,8 +426,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   }
 
   def proverLogFile(suffix: String = ""): Path = {
-    if (rawZ3LogFile.isSupplied) getProverLogfile(suffix, rawZ3LogFile())
-    else getProverLogfile(suffix, rawProverLogFile())
+    getProverLogfile(suffix, rawProverLogFile())
   }
 
   private val rawProverArgs: ScallopOption[String] = opt[String]("proverArgs",
@@ -530,23 +436,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  // DEPRECATED and replaced by proverArgs
-  // but continues to work for now for backwards compatibility.
-  private val rawZ3Args: ScallopOption[String] = opt[String]("z3Args",
-    descr = (  "Warning: This option is deprecated due to standardization in option naming."
-             + " Please use 'proverArgs' instead... "
-             + "Command-line arguments which should be forwarded to Z3. "
-             + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
-    default = None,
-    noshort = true
-  )
-
   lazy val proverArgs: Option[String] = {
-    if (rawZ3Args.isSupplied) rawZ3Args.toOption
-    else rawProverArgs.toOption
+    rawProverArgs.toOption
   }
 
-  private val rawProverConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("proverConfigArgs",
+  val proverConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("proverConfigArgs",
     descr = (  "Configuration options which should be forwarded to the prover. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
              + "excluding the quotation marks. "
@@ -555,27 +449,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )(smtlibOptionsConverter)
 
-  // DEPRECATED and replaced by proverConfigArgs
-  // but continues to work for now for backwards compatibility.
-  private val rawZ3ConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("z3ConfigArgs",
-    descr = (  "Warning: This option is deprecated due to standardization in option naming."
-             + " Please use 'proverConfigArgs' instead... "
-             + "Configuration options which should be forwarded to Z3. "
-             + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
-             + "excluding the quotation marks. "
-             + "The configuration options given here will override those from Silicon's Z3 preamble."),
-    default = Some(Map()),
-    noshort = true
-  )(smtlibOptionsConverter)
-
-  lazy val proverConfigArgs: Map[String, String] = {
-    if (rawZ3ConfigArgs.isSupplied) rawZ3ConfigArgs()
-    else rawProverConfigArgs()
-  }
-
   lazy val proverTimeout: Int =
     None.orElse(
-            proverConfigArgs.collectFirst {
+            proverConfigArgs().collectFirst {
               case (k, v) if k.toLowerCase == "timeout" && v.forall(Character.isDigit) => v.toInt
             })
         .orElse{
@@ -584,19 +460,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
         .getOrElse(0)
 
   lazy val useFlyweight: Boolean = prover() == "Z3-API"
-
-  val maxHeuristicsDepth: ScallopOption[Int] = opt[Int]("maxHeuristicsDepth",
-    descr = "Maximal number of nested heuristics applications (default: 3)",
-    default = Some(3),
-    noshort = true
-  )
-
-  val handlePureConjunctsIndividually: ScallopOption[Boolean] = opt[Boolean]("handlePureConjunctsIndividually",
-    descr = (  "Handle pure conjunction individually."
-             + "Increases precision of error reporting, but may slow down verification."),
-    default = Some(false),
-    noshort = true
-  )
 
   val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
@@ -936,22 +799,5 @@ object Config {
          |""".stripMargin
     }
 
-//    private val converter: ValueConverter[StateConsolidationMode] = new ValueConverter[StateConsolidationMode] {
-//      Try {
-//
-//      }
-//
-//      val pushPopRegex: Regex = """(?i)(pp)""".r
-//      val softConstraintsRegex: Regex = """(?i)(sc)""".r
-//
-//      def parse(s: List[(String, List[String])]): Either[String, Option[AssertionMode]] = s match {
-//        case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
-//        case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
-//        case Nil => Right(None)
-//        case _ => Left(s"unexpected arguments")
-//      }
-//
-//      val argType: ArgType.V = org.rogach.scallop.ArgType.SINGLE
-//    }
   }
 }
