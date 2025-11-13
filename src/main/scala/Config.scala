@@ -333,7 +333,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val proverResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("proverResourcesPerMillisecond",
     descr = "Prover resources per milliseconds. Is used to convert timeouts to resource bounds.",
-    default = Some(60000),
+    default = Some(15000),
     noshort = true,
   )
 
