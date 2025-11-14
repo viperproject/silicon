@@ -331,9 +331,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val proverResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("proverResourcesPerMillisecond",
-    descr = "Prover resources per milliseconds. Is used to convert timeouts to resource bounds.",
-    default = Some(15000),
+  val z3ResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("z3ResourcesPerMillisecond",
+    descr = "Z3 resources per milliseconds. Is used to convert timeouts to resource bounds.",
+    default = Some(10000),
+    noshort = true,
+  )
+
+  val cvc5ResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("cvc5ResourcesPerMillisecond",
+    descr = "CVC5 resources per milliseconds. Is used to convert timeouts to resource bounds.",
+    default = Some(50),
     noshort = true,
   )
 

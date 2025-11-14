@@ -540,7 +540,7 @@ class Z3ProverAPI(uniqueId: String,
       lastTimeout = effectiveTimeout
 
       if (!Verifier.config.proverEnableTimeBounds()) {
-        ctx.updateParamValue("rlimit", (effectiveTimeout * Verifier.config.proverResourcesPerMillisecond()).toString)
+        ctx.updateParamValue("rlimit", (effectiveTimeout * Verifier.config.z3ResourcesPerMillisecond()).toString)
       } else {
         ctx.updateParamValue("timeout", effectiveTimeout.toString)
       }

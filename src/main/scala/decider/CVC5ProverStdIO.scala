@@ -46,7 +46,7 @@ class Cvc5ProverStdIO(uniqueId: String,
       lastTimeout = effectiveTimeout
 
       if (!Verifier.config.proverEnableTimeBounds()) {
-        writeLine(s"(set-option :reproducible-resource-limit ${effectiveTimeout * Verifier.config.proverResourcesPerMillisecond()})")
+        writeLine(s"(set-option :reproducible-resource-limit ${effectiveTimeout * Verifier.config.cvc5ResourcesPerMillisecond()})")
       } else {
         writeLine(s"(set-option :tlimit-per $effectiveTimeout)")
       }
