@@ -112,13 +112,20 @@ object AssumptionAnalyzer {
       newGraph.addEdges( assertionNodes.map(_.id), nodes.map(_.id))
     }
 
-    val types = Set(AssumptionType.Implicit, AssumptionType.Explicit)
-    val relevantAssumptionNodes = newGraph.nodes filter (node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
+    // get all nodes that represent the assumption of a postcondition introduced by a method call or function application
+    // for a fast lookup, these nodes are stored as a map from string to a set of integers. The string represents the assumed postcondition (which is the join condition) and 
+    // the integers correspond to all nodes associated with said postcondition.
+    val types = Set(AssumptionType.ImplicitPostcondAssumption, AssumptionType.ExplicitPostcondAssumption)
+    val relevantAssumptionNodes = newGraph.nodes.filter(node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
+      .groupBy(_.sourceInfo.getFineGrainedSource.toString)
+      .view.mapValues(_.map(_.id))
+      .toMap
+
 
     newGraph.nodes filter (node => AssumptionType.postconditionTypes.contains(node.assumptionType)) foreach { node =>
       val nodeSourceInfoString = node.sourceInfo.getTopLevelSource.toString
-      val assumptionNodesForJoin = relevantAssumptionNodes filter (aNode => aNode.sourceInfo.getFineGrainedSource.toString.equals(nodeSourceInfoString))
-      newGraph.addEdges(node.id, assumptionNodesForJoin map (_.id))
+      val assumptionNodesForJoin = relevantAssumptionNodes.getOrElse(nodeSourceInfoString, Seq.empty)
+      newGraph.addEdges(node.id, assumptionNodesForJoin)
     }
 
     new AssumptionAnalysisInterpreter(name.getOrElse("joined"), newGraph)

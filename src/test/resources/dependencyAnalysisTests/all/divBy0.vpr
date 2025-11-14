@@ -45,13 +45,13 @@ method sumClient(x: Int, y: Int)
   @dependency("Explicit")
   assume x < y
   var n: Int
-  @dependency("Implicit")
+  @dependency("ImplicitPostcondAssumption")
   n := sum(x, y)
 
   // the following stmt reports dependency on n := sum(x, y) because (x < y && n == x + y && n > 100 ==> y != 0)
   // although you could also prove it via (0 <= x && x < y ==> y != 0)
   var n2: Int
-  @dependency("Implicit")
+  @dependency("ImplicitPostcondAssumption")
   n2 := sum(x/y, y)
   @dependency("Implicit")
   n := n + n2

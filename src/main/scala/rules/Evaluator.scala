@@ -861,7 +861,7 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-        val funcAssumptionType = if(func.body.isDefined || !AssumptionAnalyzer.extractEnableAnalysisFromInfo(func.info).getOrElse(true)) AssumptionType.Implicit else AssumptionType.Explicit
+        val funcAssumptionType = if(func.body.isDefined || !AssumptionAnalyzer.extractEnableAnalysisFromInfo(func.info).getOrElse(true)) AssumptionType.ImplicitPostcondAssumption else AssumptionType.ExplicitPostcondAssumption
         val assumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(fapp.info).getOrElse(funcAssumptionType)
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
