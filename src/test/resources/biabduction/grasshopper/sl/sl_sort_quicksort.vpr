@@ -30,7 +30,7 @@ requires x != null
         //invariant list(curr)
         //invariant acc(prev.data) 
         invariant acc(prev.next)
-        invar12iant prev.next == curr
+        invariant prev.next == curr
         //invariant list(prev) --* list(greq)
         {
             var prev_old: Ref := prev

@@ -21,7 +21,7 @@ method filter(x: Ref) returns (res: Ref)
 
         while(curr != null)
         //invariant list(prev) --* list(x)
-        invariant acc(prev.next)
+        //invariant acc(prev.next)
         //invariant acc(prev.data)
         invariant prev.next == curr
         //invariant list(curr)
