@@ -4,22 +4,22 @@
 # Running Silicon with Dependency Analysis
 
 Dependency Analysis is enabled thorough the following configuration options:
-`--enableAssumptionAnalysis --disableInfeasibilityChecks --proverArgs "proof=true unsat-core=true"`
+`--enableDependencyAnalysis --disableInfeasibilityChecks --proverArgs "proof=true unsat-core=true"`
 
 Additionally, to retrieve the results and query the dependency graph, use:
-- `--startAssumptionAnalysisTool` 
+- `--startDependencyAnalysisTool` 
   - Automatically starts the command-line tool once verification terminates.
-- `--assumptionAnalysisExportPath [PATH TO EXPORT FOLDER]`
-  - e.g., `--assumptionAnalysisExportPath "graphExports"`
+- `--dependencyAnalysisExportPath [PATH TO EXPORT FOLDER]`
+  - e.g., `--dependencyAnalysisExportPath "graphExports"`
   - Exports the graph to a folder named after the verified program under the given path (e.g. `graphExports/src_test_resources_andrea_quickTest` for input program `src/test/resources/andrea/quickTest.vpr`)
 
-For debugging dependency analysis results, the option `--enableAssumptionAnalysisDebugging` can be used which disables the merging of nodes.
+For debugging dependency analysis results, the option `--enableDependencyAnalysisDebugging` can be used which disables the merging of nodes.
 As a result, the graph used for query computation and the exported graph contain all low-level details.
 
 
 # Command-Line Tool
 
-Requires `--startAssumptionAnalysisTool`.
+Requires `--startDependencyAnalysisTool`.
 
 Example queries for program `src/test/resources/dependencyAnalysisTests/unitTests/B-permissions.vpr`:
 - `dep 99` 
@@ -46,7 +46,7 @@ Example queries for program `src/test/resources/dependencyAnalysisTests/unitTest
 
 # Neo4j Scripts and Usage
 
-Graphs exported when using `--assumptionAnalysisExportPath [PATH TO EXPORT FOLDER]` can be imported to a [Neo4j database]({https://neo4j.com/) using the `neo4j_importer.py` script.
+Graphs exported when using `--dependencyAnalysisExportPath [PATH TO EXPORT FOLDER]` can be imported to a [Neo4j database]({https://neo4j.com/) using the `neo4j_importer.py` script.
 
 Importing dependency graphs to Neo4j:
 
@@ -58,7 +58,7 @@ Importing dependency graphs to Neo4j:
 
 1. Make sure the instance is up and running.
  
-1. Execute `python src/main/scala/assumptionAnalysis/neo4j_importer.py` and when queried provide the following inputs:
+1. Execute `python src/main/scala/dependencyAnalysis/neo4j_importer.py` and when queried provide the following inputs:
    1. foldername: relative path to the export folder of the dependency graph (e.g. `graphExports/src_test_resources_andrea_quickTest`)
    1. node_label: label to be given to the nodes created in Neo4j
    1. Note that existing nodes with the same label are deleted!

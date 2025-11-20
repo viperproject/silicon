@@ -1,4 +1,4 @@
-package viper.silicon.assumptionAnalysis
+package viper.silicon.dependencyAnalysis
 
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
@@ -12,11 +12,11 @@ object AssumptionType extends Enumeration {
   def internalTypes: Set[AssumptionType] = Set(Internal) // will always be hidden from user
 }
 
-import viper.silicon.assumptionAnalysis.AssumptionType._
+import viper.silicon.dependencyAnalysis.AssumptionType._
 import viper.silicon.decider.Decider
 
 
-case class AnalysisInfo(decider: Decider, assumptionAnalyzer: AssumptionAnalyzer, sourceInfo: AnalysisSourceInfo,
+case class AnalysisInfo(decider: Decider, dependencyAnalyzer: DependencyAnalyzer, sourceInfo: AnalysisSourceInfo,
                         assumptionType: AssumptionType) {
   def withAssumptionType(newAssumptionType: AssumptionType): AnalysisInfo = {
     copy(assumptionType=newAssumptionType)

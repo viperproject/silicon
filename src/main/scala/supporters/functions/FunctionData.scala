@@ -7,8 +7,8 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisSourceInfo, AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, DependencyAnalyzer, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
@@ -79,7 +79,7 @@ class FunctionData(val programFunction: ast.Function,
     else
       Seq.fill(1 + formalArgs.size)(None)
 
-  val isAnalysisEnabled: Boolean = Verifier.config.enableAssumptionAnalysis() && AssumptionAnalyzer.extractEnableAnalysisFromInfo(programFunction.info).getOrElse(true)
+  val isAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && DependencyAnalyzer.extractEnableAnalysisFromInfo(programFunction.info).getOrElse(true)
 
   val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
@@ -216,7 +216,7 @@ class FunctionData(val programFunction: ast.Function,
 
       def wrapBody(body: Term): Term = Let(toMap(bodyBindings), body)
 
-      if(Verifier.config.enableAssumptionAnalysis()){
+      if(Verifier.config.enableDependencyAnalysis()){
         val assumptionType = if(programFunction.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition
         (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), Option.empty[(AnalysisSourceInfo, AssumptionType)]) +:
           programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>

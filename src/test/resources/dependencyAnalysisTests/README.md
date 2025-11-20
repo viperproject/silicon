@@ -6,7 +6,7 @@ The programs for annotated tests can be found in the folders `all`, `unitTests`,
 
 Pruning tests are executed against all annotated tests and additionally the programs in folder `real-world-examples`.
 
-Both are executed using `src/test/scala/AssumptionAnalysisTests.scala`.
+Both are executed using `src/test/scala/DependencyAnalysisTests.scala`.
 
 By default, only expected dependencies are checked (`@dependency` annotations).
 Setting `CHECK_PRECISION=true` additionally checks precision through `@irrelevant` annotations and reports false positives as an error.
@@ -20,7 +20,7 @@ Executing the benchmark:
 1. Generate test programs: `python precisionTests\scripts\precision_test_generator.py`
    1. Generates a number of subfolders in `precisionTests`.
    
-1. Execute precision benchmark using `src/test/scala/AssumptionAnalysisPrecisionBenchmark.scala`.
+1. Execute precision benchmark using `src/test/scala/DependencyAnalysisPrecisionBenchmark.scala`.
    1. Results are written to `precisionTests\results\results_{timestamp}.out`
 
 1. Plot the result: `python precisionTests\scripts\precision_benchmark_plotter.py`
@@ -31,5 +31,5 @@ Executing the benchmark:
 
 The manually crafted examples correspond to programs found in folders `all` and `real-world-examples`.
 
-To analyze the cause of imprecision, `src/test/scala/AssumptionAnalysisTests.scala` with `CHECK_PRECISION=true` can be executed on the program of interest.
+To analyze the cause of imprecision, `src/test/scala/DependencyAnalysisTests.scala` with `CHECK_PRECISION=true` can be executed on the program of interest.
 Imprecise results are reported as `Unexpected dependency` and make the test fail.

@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{DependencyAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
@@ -826,12 +826,12 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            v1.decider.assumptionAnalyzer.disableTransitiveEdges()
+            v1.decider.dependencyAnalyzer.disableTransitiveEdges()
             v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
             v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
-            v1.decider.assumptionAnalyzer.enableTransitiveEdges()
+            v1.decider.dependencyAnalyzer.enableTransitiveEdges()
             if (qantOp == Exists) {
               // For universal quantification, the non-global auxiliary assumptions will contain the information that
               // forall vars :: all function preconditions are fulfilled.
@@ -861,8 +861,8 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-        val funcAssumptionType = if(func.body.isDefined || !AssumptionAnalyzer.extractEnableAnalysisFromInfo(func.info).getOrElse(true)) AssumptionType.ImplicitPostcondAssumption else AssumptionType.ExplicitPostcondAssumption
-        val assumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(fapp.info).getOrElse(funcAssumptionType)
+        val funcAssumptionType = if(func.body.isDefined || !DependencyAnalyzer.extractEnableAnalysisFromInfo(func.info).getOrElse(true)) AssumptionType.ImplicitPostcondAssumption else AssumptionType.ExplicitPostcondAssumption
+        val assumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(fapp.info).getOrElse(funcAssumptionType)
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)

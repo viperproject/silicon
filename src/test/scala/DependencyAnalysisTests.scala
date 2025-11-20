@@ -1,7 +1,7 @@
 package viper.silicon.tests
 
 import org.scalatest.funsuite.AnyFunSuite
-import viper.silicon.assumptionAnalysis._
+import viper.silicon.dependencyAnalysis._
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
 import scala.annotation.unused
 
 
-class AssumptionAnalysisTests extends AnyFunSuite with AssumptionAnalysisTestFramework {
+class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFramework {
 
   val CHECK_PRECISION = false
   val EXECUTE_TEST = true
@@ -58,7 +58,7 @@ class AssumptionAnalysisTests extends AnyFunSuite with AssumptionAnalysisTestFra
         resetFrontend()
         executeTest(dirName + "/", fileName, frontend)
       }catch{
-        case t: Throwable => fail(t.getMessage)
+        case t: Throwable => fail(t.toString)
       }
     }
   }
@@ -75,11 +75,11 @@ class AssumptionAnalysisTests extends AnyFunSuite with AssumptionAnalysisTestFra
       return
     }
 
-    val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
-    val joinedAssumptionAnalysisInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedAssumptionAnalysisInterpreter
+    val dependencyGraphInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember
+    val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter
 
-    AnnotatedTest(program, assumptionAnalysisInterpreters, CHECK_PRECISION).execute()
-    PruningTest(filePrefix + "/" + fileName, program, joinedAssumptionAnalysisInterpreter.get).execute()
+    AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()
+    PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter.get).execute()
   }
 
   def executePerformanceBenchmark(filePrefix: String,
@@ -102,10 +102,10 @@ class AssumptionAnalysisTests extends AnyFunSuite with AssumptionAnalysisTestFra
       return
     }
 
-    val assumptionAnalysisInterpreters = frontend_.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
+    val dependencyGraphInterpreters = frontend_.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember
 
     proofCoverageWriter.println(filePrefix + "/" + fileName)
-    assumptionAnalysisInterpreters foreach (memberInterpreter => {
+    dependencyGraphInterpreters foreach (memberInterpreter => {
       memberInterpreter.getExplicitAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource) foreach {case (source, nodes) =>
           proofCoverageWriter.println(memberInterpreter.getName + " " + source.toString.replace("\n", " ") + " ---> " + memberInterpreter.computeProofCoverage(nodes)._1)}
       proofCoverageWriter.println("overall " + memberInterpreter.getName + " ---> + " + memberInterpreter.computeProofCoverage()._1)

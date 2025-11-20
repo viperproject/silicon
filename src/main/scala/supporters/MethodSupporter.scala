@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, AssumptionAnalyzer, AssumptionType}
+import viper.silicon.dependencyAnalysis.{DependencyGraphInterpreter, DependencyAnalyzer, AssumptionType}
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
@@ -93,7 +93,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
-      val annotatedAssumptionTypeOpt = AssumptionAnalyzer.extractAssumptionTypeFromInfo(method.info)
+      val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(method.info)
       val postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(method.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
 
       errorsReportedSoFar.set(0)
@@ -119,10 +119,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                       Success()))}) }  )})})
 
       if(method.body.isEmpty){
-        v.decider.assumptionAnalyzer.addCustomExpDependency(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts))
+        v.decider.dependencyAnalyzer.addCustomExpDependency(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts))
       }
 
-      result.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(method.name, _, Some(method)))
+      result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, Some(method)))
 
       v.decider.resetProverOptions()
 

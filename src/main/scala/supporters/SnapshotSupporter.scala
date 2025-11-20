@@ -6,8 +6,8 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.assumptionAnalysis.AssumptionType
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
 import viper.silicon.state.{MagicWandIdentifier, State, SymbolConverter}

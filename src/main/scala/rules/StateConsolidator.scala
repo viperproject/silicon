@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config
-import viper.silicon.assumptionAnalysis.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
@@ -101,16 +101,16 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          v.decider.assumptionAnalyzer.disableTransitiveEdges()
-          pathCond.foreach(p => v.decider.assume(v.decider.wrapWithAssumptionAnalysisLabel(p._1, Set(ch)), Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
-          v.decider.assumptionAnalyzer.enableTransitiveEdges()
+          v.decider.dependencyAnalyzer.disableTransitiveEdges()
+          pathCond.foreach(p => v.decider.assume(v.decider.wrapWithDependencyAnalysisLabel(p._1, Set(ch)), Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
+          v.decider.dependencyAnalyzer.enableTransitiveEdges()
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
           val pathCond = interpreter.buildPathConditionsForResource(id, desc.delayedProperties(s.mayAssumeUpperBounds))
-          v.decider.assumptionAnalyzer.disableTransitiveEdges()
+          v.decider.dependencyAnalyzer.disableTransitiveEdges()
           pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Internal))
-          v.decider.assumptionAnalyzer.enableTransitiveEdges()
+          v.decider.dependencyAnalyzer.enableTransitiveEdges()
         }
 
         v.symbExLog.closeScope(sepIdentifier)
@@ -211,8 +211,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {
     val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v)
     result.map({case (fRec, ch, snapEq) =>
-      v.decider.assumptionAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), Set(), ch)
-      (fRec, ch, v.decider.wrapWithAssumptionAnalysisLabel(snapEq, Set(chunk1, chunk2)))})
+      v.decider.dependencyAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), Set(), ch)
+      (fRec, ch, v.decider.wrapWithDependencyAnalysisLabel(snapEq, Set(chunk1, chunk2)))})
   }
 
   private def mergeChunks1(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = (chunk1, chunk2) match {

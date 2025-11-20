@@ -1,11 +1,11 @@
-package viper.silicon.assumptionAnalysis
+package viper.silicon.dependencyAnalysis
 
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
 
-trait AssumptionAnalysisNode {
-  val id: Int = AssumptionAnalysisGraphHelper.nextId()
+trait DependencyAnalysisNode {
+  val id: Int = DependencyGraphHelper.nextId()
   val sourceInfo: AnalysisSourceInfo
   val assumptionType: AssumptionType
   val isClosed: Boolean
@@ -21,10 +21,10 @@ trait AssumptionAnalysisNode {
     toString.hashCode
 }
 
-trait GeneralAssumptionNode extends AssumptionAnalysisNode {
+trait GeneralAssumptionNode extends DependencyAnalysisNode {
   override def getNodeType: String = "Assumption"
 }
-trait GeneralAssertionNode extends AssumptionAnalysisNode {
+trait GeneralAssertionNode extends DependencyAnalysisNode {
   override def getNodeType: String = "Assertion"
 }
 

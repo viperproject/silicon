@@ -1,6 +1,6 @@
 package viper.silicon.tests
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, DependencyAnalysisReporter}
+import viper.silicon.dependencyAnalysis.{DependencyGraphInterpreter, DependencyAnalysisReporter}
 import viper.silver.ast.Program
 import viper.silver.verifier
 import viper.silver.verifier.VerificationResult
@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 
-object AssumptionAnalysisPrecisionBenchmark extends AssumptionAnalysisTestFramework {
+object DependencyAnalysisPrecisionBenchmark extends DependencyAnalysisTestFramework {
   val ignores: Seq[String] = Seq.empty
 
   def main(args: Array[String]): Unit = {
@@ -36,13 +36,13 @@ object AssumptionAnalysisPrecisionBenchmark extends AssumptionAnalysisTestFramew
         println(f"Program $filePrefix/$fileName does not verify. Skip.\n$result")
         return
       }
-      val assumptionAnalysisInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].assumptionAnalysisInterpretersPerMember
-      val fullGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedAssumptionAnalysisInterpreter
+      val dependencyGraphInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember
+      val fullGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter
 
 
       println(s"Precision Benchmark for $filePrefix - $fileName started...")
       writer.println(s"$filePrefix - $fileName")
-      new AnnotatedPrecisionBenchmark(filePrefix + "/" + fileName, program, assumptionAnalysisInterpreters, fullGraphInterpreter.get, writer).execute()
+      new AnnotatedPrecisionBenchmark(filePrefix + "/" + fileName, program, dependencyGraphInterpreters, fullGraphInterpreter.get, writer).execute()
       writer.println()
       writer.flush()
       println(s"Precision Benchmark for $filePrefix - $fileName done.")
@@ -54,9 +54,9 @@ object AssumptionAnalysisPrecisionBenchmark extends AssumptionAnalysisTestFramew
   }
 
   class AnnotatedPrecisionBenchmark(fileName: String, program: Program,
-                                    assumptionAnalysisInterpreters: List[AssumptionAnalysisInterpreter],
-                                    fullGraphInterpreter: AssumptionAnalysisInterpreter,
-                                    writer: PrintWriter) extends AnnotatedTest(program, assumptionAnalysisInterpreters, true) {
+                                    dependencyGraphInterpreters: List[DependencyGraphInterpreter],
+                                    fullGraphInterpreter: DependencyGraphInterpreter,
+                                    writer: PrintWriter) extends AnnotatedTest(program, dependencyGraphInterpreters, true) {
     override def execute(): Unit = {
       if(!verifyTestSoundness()){
         writer.println(s"!!!!!!!!!!!\nFailed to verify soundness of precision test $fileName\n")
@@ -64,18 +64,18 @@ object AssumptionAnalysisPrecisionBenchmark extends AssumptionAnalysisTestFramew
         return
       }
 
-      assumptionAnalysisInterpreters foreach {a =>
+      dependencyGraphInterpreters foreach { a =>
         val prec = computePrecision(a)
         writer.println(s"${a.getMember.map(_.name).getOrElse("unknown")}: $prec")
       }
     }
 
-    protected def computePrecision(assumptionAnalysisInterpreter: AssumptionAnalysisInterpreter): Double = {
-      val assumptionNodes = getTestIrrelevantAssumptionNodes(assumptionAnalysisInterpreter.getNonInternalAssumptionNodes)
+    protected def computePrecision(dependencyGraphInterpreter: DependencyGraphInterpreter): Double = {
+      val assumptionNodes = getTestIrrelevantAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
       val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
-      val assertionNodes = getTestAssertionNodes(assumptionAnalysisInterpreter.getNonInternalAssertionNodes)
+      val assertionNodes = getTestAssertionNodes(dependencyGraphInterpreter.getNonInternalAssertionNodes)
 
-      val dependencies = assumptionAnalysisInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))
+      val dependencies = dependencyGraphInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))
       val dependenciesPerSource = dependencies groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
       val dependencyIds = dependencies.map(_.id)
 

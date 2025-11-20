@@ -7,8 +7,8 @@
 package viper.silicon.rules
 
 import viper.silicon.Map
-import viper.silicon.assumptionAnalysis.AssumptionType
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
@@ -733,7 +733,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              v: Verifier)
                             : (PermMapDefinition, PmCache) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.assumptionAnalyzer.disableTransitiveEdges()
+    v.decider.dependencyAnalyzer.disableTransitiveEdges()
     val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, assumptionType=AssumptionType.Internal)
@@ -746,7 +746,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
     }
     v.decider.analysisSourceInfoStack.removeForcedSource()
-    v.decider.assumptionAnalyzer.enableTransitiveEdges()
+    v.decider.dependencyAnalyzer.enableTransitiveEdges()
     res
   }
 
@@ -775,7 +775,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.assumptionAnalyzer.disableTransitiveEdges()
+    v.decider.dependencyAnalyzer.disableTransitiveEdges()
 
     def emitSnapshotMapDefinition(s: State,
                                   smDef: SnapshotMapDefinition,
@@ -847,7 +847,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     emitSnapshotMapDefinition(s, smDef, v, optQVarsInstantiations)
     v.decider.analysisSourceInfoStack.removeForcedSource()
-    v.decider.assumptionAnalyzer.enableTransitiveEdges()
+    v.decider.dependencyAnalyzer.enableTransitiveEdges()
     (smDef, smCache)
   }
 
@@ -860,7 +860,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           optQVarsInstantiations: Option[Seq[Term]] = None)
                          : (State, SnapshotMapDefinition, PermMapDefinition) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.assumptionAnalyzer.disableTransitiveEdges()
+    v.decider.dependencyAnalyzer.disableTransitiveEdges()
     val (smDef, smCache) =
       summarisingSnapshotMap(
         s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition, optQVarsInstantiations)
@@ -873,7 +873,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val s2 = s1.copy(pmCache = pmCache)
     v.decider.analysisSourceInfoStack.removeForcedSource()
-    v.decider.assumptionAnalyzer.enableTransitiveEdges()
+    v.decider.dependencyAnalyzer.enableTransitiveEdges()
     (s2, smDef, pmDef)
   }
 
@@ -887,7 +887,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           v: Verifier)
   : (State, PermMapDefinition) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.assumptionAnalyzer.disableTransitiveEdges()
+    v.decider.dependencyAnalyzer.disableTransitiveEdges()
     val s1 = s
     val (pmDef, pmCache) =
       quantifiedChunkSupporter.summarisingPermissionMap(
@@ -895,7 +895,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val s2 = s1.copy(pmCache = pmCache)
     v.decider.analysisSourceInfoStack.removeForcedSource()
-    v.decider.assumptionAnalyzer.enableTransitiveEdges()
+    v.decider.dependencyAnalyzer.enableTransitiveEdges()
     (s2, pmDef)
   }
 

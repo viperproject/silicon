@@ -1,4 +1,4 @@
-package viper.silicon.assumptionAnalysis
+package viper.silicon.dependencyAnalysis
 
 import viper.silver.ast
 import viper.silver.ast._
@@ -64,7 +64,7 @@ case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
     }
   }
 
-  override def isAnalysisEnabled: Boolean = AssumptionAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
+  override def isAnalysisEnabled: Boolean = DependencyAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
 }
 
 case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
@@ -80,7 +80,7 @@ case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
     }
   }
 
-  override def isAnalysisEnabled: Boolean = AssumptionAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
+  override def isAnalysisEnabled: Boolean = DependencyAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
 }
 
 case class StringAnalysisSourceInfo(description: String, position: Position) extends AnalysisSourceInfo {

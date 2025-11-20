@@ -830,14 +830,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val enableAssumptionAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableAssumptionAnalysis",
-    descr = "Enable assumption analysis mode",
+  val enableDependencyAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysis",
+    descr = "Enable dependency analysis mode",
     default = Some(false),
     noshort = true
   )
 
-  val enableAssumptionAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableAssumptionAnalysisDebugging",
-    descr = "Enable debugging for assumption analysis mode",
+  val enableDependencyAnalysisDebugging: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisDebugging",
+    descr = "Enable debugging for dependency analysis mode",
     default = Some(false),
     noshort = true
   )
@@ -848,14 +848,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val assumptionAnalysisExportPath: ScallopOption[String] = opt[String]("assumptionAnalysisExportPath",
-    descr = "Path to the directory where the assumption analysis graphs should be exported to",
+  val dependencyAnalysisExportPath: ScallopOption[String] = opt[String]("dependencyAnalysisExportPath",
+    descr = "Path to the directory where the dependency analysis graphs should be exported to",
     default = None,
     noshort = true
   )
 
-  val startAssumptionAnalysisTool: ScallopOption[Boolean] = opt[Boolean]("startAssumptionAnalysisTool",
-    descr = "Starts the assumption analysis command line tool after verification",
+  val startDependencyAnalysisTool: ScallopOption[Boolean] = opt[Boolean]("startDependencyAnalysisTool",
+    descr = "Starts the dependency analysis command line tool after verification",
     default = Some(false),
     noshort = true
   )
@@ -907,34 +907,34 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)
 
-  validateOpt(enableAssumptionAnalysis, parallelizeBranches) {
+  validateOpt(enableDependencyAnalysis, parallelizeBranches) {
     case (Some(false), _) => Right(())
     case (_, Some(false)) => Right(())
     case (Some(true), Some(true)) =>
-      Left(s"Option ${enableAssumptionAnalysis.name} is not supported in combination with ${parallelizeBranches.name}")
+      Left(s"Option ${enableDependencyAnalysis.name} is not supported in combination with ${parallelizeBranches.name}")
     case other =>
       sys.error(s"Unexpected combination: $other")
   }
 
-  validateOpt(rawProverArgs, enableAssumptionAnalysis) {
+  validateOpt(rawProverArgs, enableDependencyAnalysis) {
     case (_, Some(false)) => Right(())
     case (Some(args), Some(true)) if args.contains("proof=true") && args.contains("unsat-core=true") => Right(())
     case (_, _) =>
-      Left(s"Option ${enableAssumptionAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
+      Left(s"Option ${enableDependencyAnalysis.name} requires ${rawProverArgs.name} with \"proof=true unsat-core=true\"")
   }
 
-  validateOpt(assumptionAnalysisExportPath, enableAssumptionAnalysis) {
+  validateOpt(dependencyAnalysisExportPath, enableDependencyAnalysis) {
     case (None, _) => Right(())
     case (Some(_), Some(true)) => Right(())
     case (Some(_), Some(false)) =>
-      Left(s"Option ${assumptionAnalysisExportPath.name} requires option ${enableAssumptionAnalysis.name}")
+      Left(s"Option ${dependencyAnalysisExportPath.name} requires option ${enableDependencyAnalysis.name}")
   }
 
-  validateOpt(startAssumptionAnalysisTool, enableAssumptionAnalysis) {
+  validateOpt(startDependencyAnalysisTool, enableDependencyAnalysis) {
     case (Some(false), _) => Right(())
     case (_, Some(true)) => Right(())
     case (_, _) =>
-      Left(s"Option ${startAssumptionAnalysisTool.name} requires option ${enableAssumptionAnalysis.name}")
+      Left(s"Option ${startDependencyAnalysisTool.name} requires option ${enableDependencyAnalysis.name}")
   }
 
   validateOpt(startDebuggerAutomatically, enableDebugging) {

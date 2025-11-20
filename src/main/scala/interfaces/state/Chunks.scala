@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces.state
 
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType}
+import viper.silicon.dependencyAnalysis.{AnalysisInfo, AssumptionType}
 import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast

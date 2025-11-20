@@ -6,7 +6,7 @@
 
 package viper.silicon.state
 
-import viper.silicon.assumptionAnalysis.AnalysisInfo
+import viper.silicon.dependencyAnalysis.AnalysisInfo
 import viper.silicon.interfaces.state._
 import viper.silicon.resources._
 import viper.silicon.rules.InverseFunctions

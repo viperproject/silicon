@@ -7,8 +7,8 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.Chunk
@@ -34,7 +34,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     * @param returnSnap Whether a snapshot should be returned or not.
     * @param pve The error to report in case the consumption fails.
     * @param v The verifier to use.
-    * @param assumptionType The assumption type used for assumption analysis and proof coverage
+    * @param assumptionType The assumption type used for dependency analysis and proof coverage
     * @param Q The continuation to invoke if the consumption succeeded, with the following
     *          arguments: state (1st argument) and verifier (3rd argument) resulting from the
     *          consumption, and a heap snapshot (2bd argument )representing the values of the
@@ -205,7 +205,7 @@ object consumer extends ConsumptionRules {
      */
 
     if(v.decider.isPathInfeasible()){
-      v.decider.assumptionAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+      v.decider.dependencyAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, assumptionType)
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
 
@@ -593,7 +593,7 @@ object consumer extends ConsumptionRules {
               State.mergeHeap(
                 entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
                 entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
-                AnalysisInfo(v.decider, v.decider.assumptionAnalyzer, StringAnalysisSourceInfo("conditional join", e0.pos), AssumptionType.Implicit)
+                AnalysisInfo(v.decider, v.decider.dependencyAnalyzer, StringAnalysisSourceInfo("conditional join", e0.pos), AssumptionType.Implicit)
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {

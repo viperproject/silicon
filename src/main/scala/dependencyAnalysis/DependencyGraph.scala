@@ -1,11 +1,11 @@
-package viper.silicon.assumptionAnalysis
+package viper.silicon.dependencyAnalysis
 
 import java.io.{File, PrintWriter}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
 
-object AssumptionAnalysisGraphHelper {
+object DependencyGraphHelper {
   private val idCounter: AtomicInteger = new AtomicInteger(0)
 
   def nextId(): Int = {
@@ -13,8 +13,8 @@ object AssumptionAnalysisGraphHelper {
   }
 }
 
-trait ReadOnlyAssumptionAnalysisGraph {
-  def getNodes: Seq[AssumptionAnalysisNode]
+trait ReadOnlyDependencyGraph {
+  def getNodes: Seq[DependencyAnalysisNode]
   def getDirectEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getTransitiveEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getAllEdges: Map[Int, Set[Int]] // target -> direct dependencies
@@ -26,12 +26,12 @@ trait ReadOnlyAssumptionAnalysisGraph {
   def exportGraph(dirName: String): Unit
 }
 
-class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
-  var nodes: mutable.Seq[AssumptionAnalysisNode] = mutable.Seq()
+class DependencyGraph extends ReadOnlyDependencyGraph {
+  var nodes: mutable.Seq[DependencyAnalysisNode] = mutable.Seq()
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
 
-  def getNodes: Seq[AssumptionAnalysisNode] = nodes.toSeq
+  def getNodes: Seq[DependencyAnalysisNode] = nodes.toSeq
   def getDirectEdges: Map[Int, Set[Int]] = edges.toMap
   def getTransitiveEdges: Map[Int, Set[Int]] = transitiveEdges.toMap
   def getAllEdges: Map[Int, Set[Int]] = {
@@ -43,11 +43,11 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
     res.toMap
   }
 
-  def addNode(node: AssumptionAnalysisNode): Unit = {
+  def addNode(node: DependencyAnalysisNode): Unit = {
     nodes = nodes :+ node
   }
 
-  def addNodes(nodes: Iterable[AssumptionAnalysisNode]): Unit = {
+  def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {
     nodes foreach addNode
   }
 
@@ -109,22 +109,22 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
     visited
   }
 
-  private def addTransitiveEdges(sources: Iterable[AssumptionAnalysisNode], target: AssumptionAnalysisNode): Unit = {
+  private def addTransitiveEdges(sources: Iterable[DependencyAnalysisNode], target: DependencyAnalysisNode): Unit = {
     val oldSources = transitiveEdges.getOrElse(target.id, Set.empty)
     val newSources = sources map(_.id) // filter(_ > target.id) does not work due to loop invariants
     if(newSources.nonEmpty) transitiveEdges.update(target.id, oldSources ++ newSources)
   }
 
-  private def addTransitiveEdges(sources: Iterable[AssumptionAnalysisNode], targets: Iterable[AssumptionAnalysisNode]): Unit = {
+  private def addTransitiveEdges(sources: Iterable[DependencyAnalysisNode], targets: Iterable[DependencyAnalysisNode]): Unit = {
     targets foreach (t => addTransitiveEdges(sources, t))
   }
 
-  // TODO ake: maybe move to AssumptionAnalyzer?
-  private def getNodesPerTransitivitySourceInfo: Map[String, Seq[AssumptionAnalysisNode]] = {
+  // TODO ake: maybe move to DependencyAnalyzer?
+  private def getNodesPerTransitivitySourceInfo: Map[String, Seq[DependencyAnalysisNode]] = {
     getNodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges.toString)
   }
 
-  // TODO ake: maybe move to AssumptionAnalyzer?
+  // TODO ake: maybe move to DependencyAnalyzer?
   def addTransitiveEdges(): Unit = {
     val nodesPerSourceInfo = getNodesPerTransitivitySourceInfo
     nodesPerSourceInfo foreach {nodes =>
@@ -137,7 +137,7 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
     }
   }
 
-  private def removeAllEdgesForNode(node: AssumptionAnalysisNode): Unit = {
+  private def removeAllEdgesForNode(node: DependencyAnalysisNode): Unit = {
     val id = node.id
     val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
     val successors = edges.getOrElse(id, Set.empty)
@@ -146,7 +146,7 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
     addEdges(successors, predecessors)
   }
 
-  // TODO ake: maybe move to AssumptionAnalyzer?
+  // TODO ake: maybe move to DependencyAnalyzer?
   def removeLabelNodes(): Unit = {
     nodes filter (_.isInstanceOf[LabelNode]) foreach removeAllEdgesForNode
     nodes = nodes filter (!_.isInstanceOf[LabelNode])
@@ -169,7 +169,7 @@ class AssumptionAnalysisGraph extends ReadOnlyAssumptionAnalysisGraph {
 
   private def exportNodes(fileName: String): Unit = {
     val sep = "#"
-    def getNodeExportString(node: AssumptionAnalysisNode): String = {
+    def getNodeExportString(node: DependencyAnalysisNode): String = {
       val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.getFineGrainedSource.toString)
       parts.map(_.replace("#", "@")).mkString(sep)
     }

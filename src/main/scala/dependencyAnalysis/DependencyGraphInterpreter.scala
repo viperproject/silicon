@@ -1,4 +1,4 @@
-package viper.silicon.assumptionAnalysis
+package viper.silicon.dependencyAnalysis
 
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -9,25 +9,25 @@ import viper.silver.ast.{If, Stmt}
 import java.io.{File, PrintWriter}
 
 
-class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnalysisGraph, member: Option[ast.Member]=None) {
+class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, member: Option[ast.Member]=None) {
 
-  def getGraph: ReadOnlyAssumptionAnalysisGraph = graph
+  def getGraph: ReadOnlyDependencyGraph = dependencyGraph
   def getName: String = name
   def getMember: Option[ast.Member] = member
-  def getNodes: Set[AssumptionAnalysisNode] = graph.getNodes.toSet
+  def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes.toSet
 
-  def getNodesByLine(line: Int): Set[AssumptionAnalysisNode] =
+  def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
 
-  def getNodesByPosition(file: String, line: Int): Set[AssumptionAnalysisNode] =
+  def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
 
-  def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[AssumptionAnalysisNode] = {
+  def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
     var queue = nodeIdsToAnalyze
     var result: Set[Int] = Set.empty
     val internalNodeIds = getNodes.diff(getNonInternalAssumptionNodes).map(_.id)
     while(queue.nonEmpty){
-      val directDependencyIds = queue flatMap (id => graph.getDirectEdges.getOrElse(id, Set.empty))
+      val directDependencyIds = queue flatMap (id => dependencyGraph.getDirectEdges.getOrElse(id, Set.empty))
       queue = internalNodeIds.intersect(directDependencyIds).diff(result) // internal assumptions are hidden -> add their direct dependencies instead
       result = result.union(directDependencyIds)
     }
@@ -35,66 +35,66 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
   }
 
-  def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
-    val allDependencies = graph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
+  def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDependencies = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
     getNonInternalAssumptionNodes.filter(node => allDependencies.contains(node.id))
   }
 
-  def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
-    val allDependencies = graph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
+  def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDependencies = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
     getExplicitAssumptionNodes.filter(node => allDependencies.contains(node.id))
   }
 
-  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
-    val allDependents = graph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
+  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDependents = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
     getNonInternalAssertionNodes.filter(node => allDependents.contains(node.id))
   }
 
-  def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[AssumptionAnalysisNode] = {
-    val allDependents = graph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
+  def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+    val allDependents = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
     getExplicitAssertionNodes.filter(node => allDependents.contains(node.id))
   }
 
-  def filterOutNodesBySourceInfo(nodes: Set[AssumptionAnalysisNode], excludeInfos: Set[AnalysisSourceInfo]): Set[AssumptionAnalysisNode] =
+  def filterOutNodesBySourceInfo(nodes: Set[DependencyAnalysisNode], excludeInfos: Set[AnalysisSourceInfo]): Set[DependencyAnalysisNode] =
     nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.toString.equals(node.sourceInfo.getTopLevelSource.toString)))
 
-  def getNonInternalAssumptionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
+  def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
         || AssumptionType.postconditionTypes.contains(node.assumptionType) // postconditions act as assumptions for callers
     )
 
-  def getExplicitAssumptionNodes: Set[AssumptionAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
+  def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
     AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)
     )
 
-  def hasAnyDependency(nodesToAnalyze: Set[AssumptionAnalysisNode], includeInfeasibilityNodes: Boolean = true): Boolean =
+  def hasAnyDependency(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Boolean =
     nodesToAnalyze.intersect(getNonInternalAssumptionNodes)
-      .exists(node => graph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
+      .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
 
-  def getNonInternalAssumptionNodesPerSource: Map[String, Set[AssumptionAnalysisNode]] =
+  def getNonInternalAssumptionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
     getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
 
 
-  def getNonInternalAssertionNodes: Set[AssumptionAnalysisNode] = getNodes filter (node =>
+  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
     (node.isInstanceOf[GeneralAssertionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
       || AssumptionType.postconditionTypes.contains(node.assumptionType)
     )
 
-  def getNonInternalAssertionNodesPerSource: Map[String, Set[AssumptionAnalysisNode]] =
+  def getNonInternalAssertionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
     getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
 
-  def getExplicitAssertionNodes: Set[AssumptionAnalysisNode] =
+  def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
 
 
   def exportGraph(): Unit = {
-    if(Verifier.config.assumptionAnalysisExportPath.isEmpty) return
-    val directory = new File(Verifier.config.assumptionAnalysisExportPath())
+    if(Verifier.config.dependencyAnalysisExportPath.isEmpty) return
+    val directory = new File(Verifier.config.dependencyAnalysisExportPath())
     directory.mkdir()
-    graph.exportGraph(Verifier.config.assumptionAnalysisExportPath() + "/" + name)
+    dependencyGraph.exportGraph(Verifier.config.dependencyAnalysisExportPath() + "/" + name)
   }
 
-  private def getNodesWithIdenticalSource(nodes: Set[AssumptionAnalysisNode]): Set[AssumptionAnalysisNode] = {
+  private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
     val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource.toString)
     getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource.toString))
   }
@@ -104,9 +104,9 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     computeProofCoverage(explicitAssertionNodes)
   }
 
-  def computeProofCoverage(assertionNodes: Set[AssumptionAnalysisNode]): (Double, Set[String]) = {
+  def computeProofCoverage(assertionNodes: Set[DependencyAnalysisNode]): (Double, Set[String]) = {
     val assertionNodeIds = assertionNodes map (_.id)
-    val dependencies = graph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
+    val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
     val coveredNodes = dependencies ++ assertionNodeIds
     val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource.toString)
     if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Set())
@@ -118,7 +118,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     (proofCoverage, uncoveredSources)
   }
 
-  def getPrunedProgram(crucialNodes: Set[AssumptionAnalysisNode], program: ast.Program): (ast.Program, Double) = {
+  def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
 
     def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[AnalysisSourceInfo]): Boolean = {
       crucialNodesWithExpInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(exp.pos))) // TODO ake: currently we compare only lines not columns!
@@ -201,7 +201,7 @@ class AssumptionAnalysisInterpreter(name: String, graph: ReadOnlyAssumptionAnaly
     (newProgram, removed.toDouble / total.toDouble)
   }
 
-  def pruneProgramAndExport(crucialNodes: Set[AssumptionAnalysisNode], program: ast.Program, exportFileName: String): Unit = {
+  def pruneProgramAndExport(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program, exportFileName: String): Unit = {
     val writer = new PrintWriter(exportFileName)
     val (newProgram, pruningFactor) = getPrunedProgram(crucialNodes, program)
     writer.println("// pruning factor: " + pruningFactor)

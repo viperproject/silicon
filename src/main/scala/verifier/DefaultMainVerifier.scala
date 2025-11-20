@@ -6,10 +6,10 @@
 
 package viper.silicon.verifier
 
-import silicon.viper.assumptionAnalysis.AssumptionAnalysisUserTool
+import viper.silicon.dependencyAnalysis.DependencyAnalysisUserTool
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 import viper.silicon._
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, DependencyAnalysisReporter}
+import viper.silicon.dependencyAnalysis.{DependencyAnalyzer, DependencyAnalysisReporter}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
@@ -230,10 +230,10 @@ class DefaultMainVerifier(config: Config,
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      decider.initAssumptionAnalyzer(function, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
+      decider.initDependencyAnalyzer(function, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
       val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
         .flatMap(extractAllVerificationResults)
-      decider.removeAssumptionAnalyzer()
+      decider.removeDependencyAnalyzer()
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -242,10 +242,10 @@ class DefaultMainVerifier(config: Config,
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      decider.initAssumptionAnalyzer(predicate, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
+      decider.initDependencyAnalyzer(predicate, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
       val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
         .flatMap(extractAllVerificationResults)
-      decider.removeAssumptionAnalyzer()
+      decider.removeDependencyAnalyzer()
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -273,10 +273,10 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          v.decider.initAssumptionAnalyzer(method, allProvers.getPreambleAnalysisNodes ++ v.decider.prover.getPreambleAnalysisNodes)
+          v.decider.initDependencyAnalyzer(method, allProvers.getPreambleAnalysisNodes ++ v.decider.prover.getPreambleAnalysisNodes)
           val results = v.methodSupporter.verify(s, method)
             .flatMap(extractAllVerificationResults)
-          v.decider.removeAssumptionAnalyzer()
+          v.decider.removeDependencyAnalyzer()
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -314,24 +314,24 @@ class DefaultMainVerifier(config: Config,
      ++ predicateVerificationResults
      ++ methodVerificationResults)
 
-    if(Verifier.config.enableAssumptionAnalysis()){
-      val assumptionAnalysisInterpreters = verificationResults.filter(_.assumptionAnalysisInterpreter.isDefined).map(_.assumptionAnalysisInterpreter.get)
+    if(Verifier.config.enableDependencyAnalysis()){
+      val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
 
-      assumptionAnalysisInterpreters foreach (_.exportGraph())
+      dependencyGraphInterpreters foreach (_.exportGraph())
 
-      val joinedGraphInterpreter = AssumptionAnalyzer.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll(".vpr", "")), assumptionAnalysisInterpreters.toSet)
-      if(Verifier.config.assumptionAnalysisExportPath.isDefined)
+      val joinedGraphInterpreter = DependencyAnalyzer.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll(".vpr", "")), dependencyGraphInterpreters.toSet)
+      if(Verifier.config.dependencyAnalysisExportPath.isDefined)
         joinedGraphInterpreter.exportGraph()
 
-      if(Verifier.config.startAssumptionAnalysisTool()){
-        val commandLineTool = new AssumptionAnalysisUserTool(joinedGraphInterpreter, assumptionAnalysisInterpreters, originalProgram)
+      if(Verifier.config.startDependencyAnalysisTool()){
+        val commandLineTool = new DependencyAnalysisUserTool(joinedGraphInterpreter, dependencyGraphInterpreters, originalProgram)
         commandLineTool.run()
       }
 
       reporter match {
         case analysisReporter: DependencyAnalysisReporter =>
-          analysisReporter.assumptionAnalysisInterpretersPerMember = assumptionAnalysisInterpreters
-          analysisReporter.joinedAssumptionAnalysisInterpreter = Some(joinedGraphInterpreter)
+          analysisReporter.dependencyGraphInterpretersPerMember = dependencyGraphInterpreters
+          analysisReporter.joinedDependencyGraphInterpreter = Some(joinedGraphInterpreter)
         case _ =>
       }
 

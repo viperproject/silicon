@@ -6,8 +6,8 @@
 
 package viper.silicon.interfaces.decider
 
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis._
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.config.Version
 import viper.silicon.debugger.DebugAxiom
@@ -27,9 +27,9 @@ object Unknown extends Result
 trait ProverLike {
   protected val debugMode = Verifier.config.enableDebugging()
   var preambleAssumptions: Seq[DebugAxiom] = Seq()
-  protected var preambleAssumptionAnalyzer: AssumptionAnalyzer =
-    if(Verifier.config.enableAssumptionAnalysis()) new DefaultAssumptionAnalyzer(ast.Method("none", Seq(), Seq(), Seq(), Seq(), None)())
-    else new NoAssumptionAnalyzer()
+  protected var preambleDependencyAnalyzer: DependencyAnalyzer =
+    if(Verifier.config.enableDependencyAnalysis()) new DefaultDependencyAnalyzer(ast.Method("none", Seq(), Seq(), Seq(), Seq(), None)())
+    else new NoDependencyAnalyzer()
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
@@ -43,18 +43,18 @@ trait ProverLike {
     if (debugMode)
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
 
-    if(Verifier.config.enableAssumptionAnalysis()){
+    if(Verifier.config.enableDependencyAnalysis()){
       axioms.foreach(axiom => {
         val axiomInfo = axiom._2
-        val id = if(axiomInfo.isDefined) preambleAssumptionAnalyzer.addAxiom(axiom._1, axiomInfo.get._1, axiomInfo.get._2) else None
-        assume(axiom._1, AssumptionAnalyzer.createAxiomLabel(id))
+        val id = if(axiomInfo.isDefined) preambleDependencyAnalyzer.addAxiom(axiom._1, axiomInfo.get._1, axiomInfo.get._2) else None
+        assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
       })
     } else{
       axioms.foreach(t => assume(t._1))
     }
   }
 
-  def getPreambleAnalysisNodes: Iterable[AssumptionAnalysisNode] = preambleAssumptionAnalyzer.getNodes
+  def getPreambleAnalysisNodes: Iterable[DependencyAnalysisNode] = preambleDependencyAnalyzer.getNodes
   def setOption(name: String, value: String): String
   def assume(term: Term): Unit
   def assume(term: Term, label: String): Unit

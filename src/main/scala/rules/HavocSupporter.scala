@@ -8,8 +8,8 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AnalysisInfo, AssumptionType, StmtAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.{AnalysisInfo, AssumptionType, StmtAnalysisSourceInfo}
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}

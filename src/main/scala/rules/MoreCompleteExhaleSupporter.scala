@@ -6,8 +6,8 @@
 
 package viper.silicon.rules
 
-import viper.silicon.assumptionAnalysis.AssumptionType
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
@@ -480,7 +480,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
-        @unused // required in order to ensure a sound assumption analysis
+        @unused // required in order to ensure a sound dependency analysis
         val _ = GeneralChunk.withPerm(ch, permTaken, None, v.decider.getAnalysisInfo(assumptionType), isExhale=true)
         NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Implicit))
       })

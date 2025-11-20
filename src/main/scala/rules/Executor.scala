@@ -7,8 +7,8 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType, ExpAnalysisSourceInfo, StmtAnalysisSourceInfo, TransitivityAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.{DependencyAnalyzer, AssumptionType, ExpAnalysisSourceInfo, StmtAnalysisSourceInfo, TransitivityAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
@@ -279,7 +279,7 @@ object executor extends ExecutionRules {
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
-                        v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
+                        v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke() && !Verifier.config.disableInfeasibilityChecks())
                           Success()
@@ -333,9 +333,9 @@ object executor extends ExecutionRules {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     val sourceInfo = StmtAnalysisSourceInfo(stmt)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
-    if(Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableAssumptionAnalysis() &&
+    if(Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableDependencyAnalysis() &&
       v.decider.pcs.getCurrentInfeasibilityNode.isDefined && !alwaysExecute(stmt)){
-      v.decider.assumptionAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode,
+      v.decider.dependencyAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode,
         v.decider.analysisSourceInfoStack.getFullSourceInfo, AssumptionType.Implicit)
       v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
       Q(s, v)
@@ -367,7 +367,7 @@ object executor extends ExecutionRules {
         v.decider.prover.comment("[exec]")
         v.decider.prover.comment(stmt.toString())
     }
-    val annotatedAssumptionTypeOpt = AssumptionAnalyzer.extractAssumptionTypeFromInfo(stmt.info)
+    val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(stmt.info)
 
     val executed = stmt match {
       case ast.Seqn(stmts, _) =>
@@ -448,7 +448,7 @@ object executor extends ExecutionRules {
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Trigger)
                 }
                 v1.decider.analysisSourceInfoStack.removeForcedSource()
-                v1.decider.assumptionAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v1.decider.analysisSourceInfoStack.getFullSourceInfo)
+                v1.decider.dependencyAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v1.decider.analysisSourceInfoStack.getFullSourceInfo)
                 val s4 = s3.copy(h = h3 + ch)
                 val (debugHeapName, _) = v.getDebugOldLabel(s4, fa.pos)
                 val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
@@ -478,7 +478,7 @@ object executor extends ExecutionRules {
                 val s5 = s4.copy(h = h4)
                 val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
                 val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
-                v4.decider.assumptionAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v4.decider.analysisSourceInfoStack.getFullSourceInfo)
+                v4.decider.dependencyAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v4.decider.analysisSourceInfoStack.getFullSourceInfo)
                 Q(s6, v4)
               })
             })
@@ -521,7 +521,7 @@ object executor extends ExecutionRules {
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if(Verifier.config.enableAssumptionAnalysis() && a.isInstanceOf[ast.FalseLit]) {
+            if(Verifier.config.enableDependencyAnalysis() && a.isInstanceOf[ast.FalseLit]) {
               val (_, node) = v1.decider.checkAndGetInfeasibilityNode(False, Verifier.config.checkTimeout(), AssumptionType.Explicit)
               v1.decider.pcs.setCurrentInfeasibilityNode(node)
             }
@@ -604,8 +604,8 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call)
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
-        val methodAnnotatedAssumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(meth.info) // TODO: make sure the join can still be made?
-        val defaultAssumptionType = if(meth.body.isDefined || !AssumptionAnalyzer.extractEnableAnalysisFromInfo(meth.info).getOrElse(true)) AssumptionType.ImplicitPostcondAssumption else AssumptionType.ExplicitPostcondAssumption
+        val methodAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(meth.info) // TODO: make sure the join can still be made?
+        val defaultAssumptionType = if(meth.body.isDefined || !DependencyAnalyzer.extractEnableAnalysisFromInfo(meth.info).getOrElse(true)) AssumptionType.ImplicitPostcondAssumption else AssumptionType.ExplicitPostcondAssumption
         val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(methodAnnotatedAssumptionType.getOrElse(defaultAssumptionType))
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
@@ -650,7 +650,7 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
-        val predicateAnnotatedAssumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(predicate.info)
+        val predicateAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info)
         val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(predicateAnnotatedAssumptionType.getOrElse(AssumptionType.Rewrite))
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
@@ -668,7 +668,7 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
-        val predicateAnnotatedAssumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(predicate.info)
+        val predicateAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info)
         val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(predicateAnnotatedAssumptionType.getOrElse(AssumptionType.Rewrite))
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
@@ -777,7 +777,7 @@ object executor extends ExecutionRules {
 
    private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, assumptionType: AssumptionType): (Term, Option[ast.Exp]) = {
      rhs match {
-       case _: Var | _: Literal if !Verifier.config.enableAssumptionAnalysis() =>
+       case _: Var | _: Literal if !Verifier.config.enableDependencyAnalysis() =>
          (rhs, rhsExpNew)
 
        case _  =>

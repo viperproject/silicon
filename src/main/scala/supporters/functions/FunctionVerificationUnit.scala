@@ -7,8 +7,8 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.AssumptionType.AssumptionType
-import viper.silicon.assumptionAnalysis._
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
@@ -161,9 +161,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val res = handleFunction(sInit, function)
       symbExLog.closeMemberScope()
 
-      v.decider.assumptionAnalyzer.addFunctionAxiomEdges()
+      v.decider.dependencyAnalyzer.addFunctionAxiomEdges()
 
-      res.assumptionAnalysisInterpreter = v.decider.assumptionAnalyzer.buildFinalGraph().map(new AssumptionAnalysisInterpreter(function.name, _, Some(function)))
+      res.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(function.name, _, Some(function)))
 
       Seq(res)
     }
@@ -189,8 +189,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom
 
           if (function.body.isEmpty) {
-            decider.assumptionAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
-            decider.assumptionAnalyzer.addCustomExpDependency(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts))
+            decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
+            decider.dependencyAnalyzer.addCustomExpDependency(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts))
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -260,17 +260,17 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
-      val annotatedAssumptionTypeOpt = AssumptionAnalyzer.extractAssumptionTypeFromInfo(function.info)
+      val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(function.info)
       val postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(function.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
-      decider.assumptionAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
+      decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            val labelledBcsPre = And(bcsPre map (t => v.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t))))
+            val labelledBcsPre = And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
-            val labelledPcsPre = pcsPre map (t => v.decider.wrapWithAssumptionAnalysisLabel(t, Set.empty, Set(t)))
+            val labelledPcsPre = pcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))
             decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
@@ -293,9 +293,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def emitAndRecordFunctionAxioms(axiom: (Term, Option[(AnalysisSourceInfo, AssumptionType)])*): Unit = {
       val cleanAxiom =
-        if(!Verifier.config.enableAssumptionAnalysis()) axiom
+        if(!Verifier.config.enableDependencyAnalysis()) axiom
         else axiom.map(a => (a._1.transform{
-          case Var(name, _, _) if name.name.startsWith(AssumptionAnalyzer.analysisLabelName) => True
+          case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True
         }(), a._2))
       decider.prover.assumeAxiomsWithAnalysisInfo(InsertionOrderedSet(cleanAxiom), "Function axioms")
 

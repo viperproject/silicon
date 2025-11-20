@@ -1,6 +1,6 @@
-package silicon.viper.assumptionAnalysis
+package viper.silicon.dependencyAnalysis
 
-import viper.silicon.assumptionAnalysis.{AssumptionAnalysisInterpreter, AssumptionAnalysisNode, AxiomAssumptionNode}
+import viper.silicon.dependencyAnalysis.{DependencyGraphInterpreter, DependencyAnalysisNode, AxiomAssumptionNode}
 import viper.silver.ast
 import viper.silver.ast.Method
 
@@ -8,7 +8,7 @@ import java.io.PrintWriter
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
-class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpreter, memberInterpreters: Seq[AssumptionAnalysisInterpreter],
+class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterpreter, memberInterpreters: Seq[DependencyGraphInterpreter],
                                  program: ast.Program) {
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
@@ -20,7 +20,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     "\n\t'q' to quit"
 
   def run(): Unit = {
-    println("Assumption Analysis Tool started.")
+    println("Dependency Analysis Tool started.")
     println(infoString)
     runInternal()
   }
@@ -73,7 +73,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     }
   }
 
-  private def handleGraphSizeQuery(interpreter: AssumptionAnalysisInterpreter): Unit = {
+  private def handleGraphSizeQuery(interpreter: DependencyGraphInterpreter): Unit = {
     val allAssumptions = interpreter.getNonInternalAssumptionNodes.filter(n => !n.isInstanceOf[AxiomAssumptionNode])
     val assumptions = allAssumptions.groupBy(_.sourceInfo.getTopLevelSource.toString)
     val assertions = interpreter.getNonInternalAssertionNodesPerSource
@@ -128,7 +128,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
     println("Done.")
   }
 
-  private def getSourceInfoString(nodes: Set[AssumptionAnalysisNode]) = {
+  private def getSourceInfoString(nodes: Set[DependencyAnalysisNode]) = {
     nodes.groupBy(node => node.sourceInfo.getTopLevelSource.toString).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
   }
 
@@ -148,10 +148,10 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
   private def handleDependencyQuery(inputs: Set[String]): Unit = {
     val queriedNodes = getQueriedNodesFromInput(inputs)
 
-    val (directDependencies, timeDirect) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
-    val (allDependencies, timeAll) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
-    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
-    val (explicitDependencies, timeExplicit) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
+    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
+    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
+    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
+    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -166,9 +166,9 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
 
     val queriedNodes = getQueriedNodesFromInput(inputs).intersect(fullGraphInterpreter.getNonInternalAssumptionNodes)
 
-    val (allDependents, timeAll) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
-    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
-    val (explicitDependents, timeExplicit) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllExplicitDependents(queriedNodes.map(_.id)))
+    val (allDependents, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id)))
+    val (dependentsWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependents(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
+    val (explicitDependents, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllExplicitDependents(queriedNodes.map(_.id)))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
@@ -232,7 +232,7 @@ class AssumptionAnalysisUserTool(fullGraphInterpreter: AssumptionAnalysisInterpr
         var numLowLevelDeps = 0
 
         for (_ <- 0 to N) {
-          val (allDependencies, time) = measureTime[Set[AssumptionAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
+          val (allDependencies, time) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
           allTimes = allTimes :+ time
           numLowLevelDeps = allDependencies.size
           numDeps = allDependencies.groupBy(node => node.sourceInfo.getTopLevelSource.toString).size

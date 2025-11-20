@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.assumptionAnalysis.{ExpAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{ExpAnalysisSourceInfo}
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
@@ -64,7 +64,7 @@ object brancher extends BranchingRules {
          skipPathFeasibilityCheck
       || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
 
-    val thenInfeasibilityNode: Option[Int] = if(Verifier.config.enableAssumptionAnalysis() && !executeThenBranch) {
+    val thenInfeasibilityNode: Option[Int] = if(Verifier.config.enableDependencyAnalysis() && !executeThenBranch) {
       val (_, node) = v.decider.checkAndGetInfeasibilityNode(negatedCondition, Verifier.config.checkTimeout())
       node
     } else None
@@ -75,7 +75,7 @@ object brancher extends BranchingRules {
       || skipPathFeasibilityCheck
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
-    val elseInfeasibilityNode: Option[Int] = if(Verifier.config.enableAssumptionAnalysis() && !executeElseBranch) {
+    val elseInfeasibilityNode: Option[Int] = if(Verifier.config.enableDependencyAnalysis() && !executeElseBranch) {
       val (_, node) = v.decider.checkAndGetInfeasibilityNode(condition, Verifier.config.checkTimeout())
       node
     } else None

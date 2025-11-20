@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.assumptionAnalysis.{AssumptionAnalyzer, AssumptionType}
+import viper.silicon.dependencyAnalysis.{DependencyAnalyzer, AssumptionType}
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
@@ -93,7 +93,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                          oldHeaps = OldHeaps())
       val err = PredicateNotWellformed(predicate)
 
-      val assumptionType = AssumptionAnalyzer.extractAssumptionTypeFromInfo(predicate.info).getOrElse(AssumptionType.Explicit)
+      val assumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info).getOrElse(AssumptionType.Explicit)
 
       val result = predicate.body match {
         case None =>
