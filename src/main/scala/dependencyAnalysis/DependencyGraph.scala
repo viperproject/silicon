@@ -29,7 +29,7 @@ trait ReadOnlyDependencyGraph {
 class DependencyGraph extends ReadOnlyDependencyGraph {
   var nodes: mutable.Seq[DependencyAnalysisNode] = mutable.Seq()
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
-  private val transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
+  private val transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty // TODO ake: can be merged into edges?
 
   def getNodes: Seq[DependencyAnalysisNode] = nodes.toSeq
   def getDirectEdges: Map[Int, Set[Int]] = edges.toMap

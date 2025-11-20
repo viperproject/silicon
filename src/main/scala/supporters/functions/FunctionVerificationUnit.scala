@@ -280,7 +280,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
               decider.analysisSourceInfoStack.setForcedSource(ExpAnalysisSourceInfo(body))
-              decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.Implicit)
+              decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.FunctionBody)
               decider.analysisSourceInfoStack.removeForcedSource()
               consumes(s2, posts, false, postconditionViolated, v, postConditionType)((s3, _, _) => {
                 recorders :+= s3.functionRecorder

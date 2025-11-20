@@ -98,35 +98,37 @@ object DependencyAnalyzer {
 
   def isAxiomLabel(label: String): Boolean = label.startsWith("axiom_")
 
+  // TODO ake: implement a lazy join in DependencyGraphInterpreter
   def joinGraphsAndGetInterpreter(name: Option[String], dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
     val newGraph = new DependencyGraph
 
     dependencyGraphInterpreters foreach (interpreter => newGraph.addNodes(interpreter.getGraph.getNodes))
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
-    // add edges for axioms since they were added to each interpreter
-    // in particular, add edges to assertions that were required to introduce the axiom, e.g. to verify the function body/postcondition
-    val allAssertionNodes = newGraph.getNodes.filter(n => n.isInstanceOf[GeneralAssertionNode])
+
+    // axioms assumed by every method / function should depend on the assertions that justify them
+    // hence, we add edges from function postconditions & bodies to the corresponding axioms
+    val axiomAssertionNodes = newGraph.getNodes
+      .filter(n => (n.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(n.assumptionType))
+      || AssumptionType.FunctionBody.equals(n.assumptionType))
+      .groupBy(_.sourceInfo.getTopLevelSource.toString)
+      .view.mapValues(_.map(_.id))
+      .toMap
     newGraph.getNodes.filter(_.isInstanceOf[AxiomAssumptionNode])
-      .groupBy(n => (n.sourceInfo.toString, n.assumptionType))
-      .map{case (_, nodes) => (nodes.map(_.id), allAssertionNodes.filter(_.sourceInfo.getTopLevelSource.equals(nodes.head.sourceInfo.getTopLevelSource)).map(_.id))}
-      .foreach{case (nodeIds, assertionNodeIds) =>
-        newGraph.addEdges(nodeIds, nodeIds) // TODO ake: is this necessary; maybe nodes could be merged instead?
-        newGraph.addEdges(assertionNodeIds, nodeIds)
+      .groupBy(n => n.sourceInfo.toString)
+      .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo, Seq.empty))}
+      .foreach{case (axiomNodeIds, assertionNodeIds) =>
+        newGraph.addEdges(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
     }
 
-    // get all nodes that represent the assumption of a postcondition introduced by a method call or function application
-    // for a fast lookup, these nodes are stored as a map from string to a set of integers. The string represents the assumed postcondition (which is the join condition) and 
-    // the integers correspond to all nodes associated with said postcondition.
-    val types = Set(AssumptionType.ImplicitPostcondAssumption, AssumptionType.ExplicitPostcondAssumption)
+    // postconditions of methods assumed by every method call should depend on the assertions that justify them
+    // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
     val relevantAssumptionNodes = newGraph.nodes
-      .filter(node => node.isInstanceOf[GeneralAssumptionNode] && types.contains(node.assumptionType))
+      .filter(node => node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
       .groupBy(_.sourceInfo.getFineGrainedSource.toString)
       .view.mapValues(_.map(_.id))
       .toMap
-
-
-    newGraph.nodes.filter(node => AssumptionType.postconditionTypes.contains(node.assumptionType))
+    newGraph.nodes.filter(node => node.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource.toString, Seq.empty)))
       .foreach { case (src, targets) => newGraph.addEdges(src, targets)}
 
