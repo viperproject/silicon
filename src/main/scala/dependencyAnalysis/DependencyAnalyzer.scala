@@ -328,7 +328,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     assumptionGraph.removeLabelNodes()
     val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) assumptionGraph else  buildAndGetMergedGraph()
     mergedGraph.addTransitiveEdges()
-    AssumptionAnalyzer.stopTimeMeasurementAndAddToTotal(transitiveEdgesStartTime, AssumptionAnalyzer.timeToAddTransitiveEdges)
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(transitiveEdgesStartTime, DependencyAnalyzer.timeToAddTransitiveEdges)
     Some(mergedGraph)
   }
 
