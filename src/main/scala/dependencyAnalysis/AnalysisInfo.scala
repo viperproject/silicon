@@ -10,6 +10,7 @@ object AssumptionType extends Enumeration {
   def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition) // used to join graphs via postconditions
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit) ++ postconditionTypes
   def internalTypes: Set[AssumptionType] = Set(Internal) // will always be hidden from user
+  def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
 }
 
 import viper.silicon.dependencyAnalysis.AssumptionType._

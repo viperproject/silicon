@@ -10,11 +10,18 @@ import java.io.{File, PrintWriter}
 
 
 class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, member: Option[ast.Member]=None) {
+  protected var joinCandidateNodes: Seq[DependencyAnalysisNode] = Seq.empty
 
   def getGraph: ReadOnlyDependencyGraph = dependencyGraph
   def getName: String = name
   def getMember: Option[ast.Member] = member
   def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes.toSet
+
+  def getJoinCandidateNodes: Iterable[DependencyAnalysisNode] = joinCandidateNodes
+
+  def initJoinCandidateNodes(): Unit = {
+    joinCandidateNodes = dependencyGraph.getNodes.filter(node => node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
+  }
 
   def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)

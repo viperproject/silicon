@@ -47,8 +47,8 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     nodes = nodes :+ node
   }
 
-  def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {
-    nodes foreach addNode
+  def addNodes(newNodes: Iterable[DependencyAnalysisNode]): Unit = {
+    nodes = nodes ++ newNodes
   }
 
   def addEdges(source: Int, targets: Iterable[Int]): Unit = {
@@ -64,6 +64,10 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
 
   def addEdges(sources: Iterable[Int], targets: Iterable[Int]): Unit = {
     targets foreach (addEdges(sources, _))
+  }
+
+  def addEdgesMap(newEdges: Map[Int, Set[Int]]): Unit = {
+    edges.addAll(newEdges)
   }
 
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean = {

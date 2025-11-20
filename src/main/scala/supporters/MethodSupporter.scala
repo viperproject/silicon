@@ -123,6 +123,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       }
 
       result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, Some(method)))
+      result.dependencyGraphInterpreter.foreach(_.initJoinCandidateNodes())
 
       v.decider.resetProverOptions()
 

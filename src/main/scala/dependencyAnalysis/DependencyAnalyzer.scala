@@ -55,11 +55,11 @@ object DependencyAnalyzer {
   val analysisLabelName: String = "$$analysisLabel$$"
   private val assumptionTypeAnnotationKey = "assumptionType"
   private val enableDependencyAnalysisAnnotationKey = "enableDependencyAnalysis"
-  private val timeToJoinGraphs: AtomicLong = new AtomicLong(0)
-  val timeForMemoryOptimizations: AtomicLong = new AtomicLong(0)
-  val timeToAddTransitiveEdges: AtomicLong = new AtomicLong(0)
   val timeToVerifyAndCollectDependencies: AtomicLong = new AtomicLong(0)
   val timeToVerifyAndBuildFinalGraph: AtomicLong = new AtomicLong(0)
+  val timeToAddNodes: AtomicLong = new AtomicLong(0)
+  val timeToAddEdges: AtomicLong = new AtomicLong(0)
+  val timeToExtractCandidateNodes: AtomicLong = new AtomicLong(0)
 
   def startTimeMeasurement(): Long = {
     if(!Verifier.config.enableDependencyAnalysisProfiling()) return 0
@@ -78,9 +78,9 @@ object DependencyAnalyzer {
     println(s"Overall runtime = time spent on verification and building the final graph: ${timeToVerifyAndBuildFinalGraph.get() / 1e6}ms")
     println(s"This runtime can be categorized into the following, fine-grained measurements.")
     println(s"  Time spent on verification and collecting low-level dependencies: ${timeToVerifyAndCollectDependencies.get() / 1e6}ms")
-    println(s"    Time spent on memory optimizations: ${timeForMemoryOptimizations.get() / 1e6}ms")
-    println(s"    Time spent on adding transitive edges (post-processing only): ${timeToAddTransitiveEdges.get() / 1e6}ms")
-    println(s"  Time spent on joining graphs: ${timeToJoinGraphs.get() / 1e6}ms")
+    println(s"  Time spent on adding nodes: ${timeToAddNodes.get() / 1e6}ms")
+    println(s"  Time spent on adding edges: ${timeToAddEdges.get() / 1e6}ms")
+    println(s"  Time spent on extracting candidate nodes: ${timeToExtractCandidateNodes.get() / 1e6}ms")
   }
 
   private def extractAnnotationFromInfo(info: ast.Info, annotationKey: String): Option[Seq[String]] = {
@@ -128,23 +128,28 @@ object DependencyAnalyzer {
 
   // TODO ake: implement a lazy join in DependencyGraphInterpreter
   def joinGraphsAndGetInterpreter(name: Option[String], dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
-    val startTime = startTimeMeasurement()
 
+    var startTime = startTimeMeasurement()
     val newGraph = new DependencyGraph
 
-    dependencyGraphInterpreters foreach (interpreter => newGraph.addNodes(interpreter.getGraph.getNodes))
+    newGraph.addNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getNodes))
+    stopTimeMeasurementAndAddToTotal(startTime, timeToAddNodes)
+    startTime = startTimeMeasurement()
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
-
+    stopTimeMeasurementAndAddToTotal(startTime, timeToAddEdges)
+    startTime = startTimeMeasurement()
+    val joinCandidateNodes = dependencyGraphInterpreters flatMap(_.getJoinCandidateNodes)
+    stopTimeMeasurementAndAddToTotal(startTime, timeToExtractCandidateNodes)
 
     // axioms assumed by every method / function should depend on the assertions that justify them
     // hence, we add edges from function postconditions & bodies to the corresponding axioms
-    val axiomAssertionNodes = newGraph.getNodes
+    val axiomAssertionNodes = joinCandidateNodes
       .filter(n => (n.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(n.assumptionType))
       || AssumptionType.FunctionBody.equals(n.assumptionType))
       .groupBy(_.sourceInfo.getTopLevelSource.toString)
       .view.mapValues(_.map(_.id))
       .toMap
-    newGraph.getNodes.filter(_.isInstanceOf[AxiomAssumptionNode])
+    joinCandidateNodes.filter(_.isInstanceOf[AxiomAssumptionNode])
       .groupBy(n => n.sourceInfo.toString)
       .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo, Seq.empty))}
       .foreach{case (axiomNodeIds, assertionNodeIds) =>
@@ -153,17 +158,16 @@ object DependencyAnalyzer {
 
     // postconditions of methods assumed by every method call should depend on the assertions that justify them
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
-    val relevantAssumptionNodes = newGraph.nodes
+    val relevantAssumptionNodes = joinCandidateNodes
       .filter(node => node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
       .groupBy(_.sourceInfo.getFineGrainedSource.toString)
       .view.mapValues(_.map(_.id))
       .toMap
-    newGraph.nodes.filter(node => node.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
+    joinCandidateNodes.filter(node => node.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource.toString, Seq.empty)))
       .foreach { case (src, targets) => newGraph.addEdges(src, targets)}
 
     val newInterpreter = new DependencyGraphInterpreter(name.getOrElse("joined"), newGraph)
-    stopTimeMeasurementAndAddToTotal(startTime, timeToJoinGraphs)
     newInterpreter
   }
 }
@@ -328,7 +332,6 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     assumptionGraph.removeLabelNodes()
     val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) assumptionGraph else  buildAndGetMergedGraph()
     mergedGraph.addTransitiveEdges()
-    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(transitiveEdgesStartTime, DependencyAnalyzer.timeToAddTransitiveEdges)
     Some(mergedGraph)
   }
 

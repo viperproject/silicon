@@ -164,6 +164,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       v.decider.dependencyAnalyzer.addFunctionAxiomEdges()
 
       res.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(function.name, _, Some(function)))
+      res.dependencyGraphInterpreter.foreach(_.initJoinCandidateNodes())
 
       Seq(res)
     }
