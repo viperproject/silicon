@@ -11,38 +11,41 @@
 ; The axiom therefore needs to be emitted after the sort wrappers have
 ; been emitted.
 
-(declare-fun  preambleax1$FLD$@$S$<$T$> (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((vs $FVF<$FLD$>) (ws $FVF<$FLD$>)) (!
-                                                                                   (=>
-                                                                                    (and
-                                                                                     (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
-                                                                                     (forall ((x $Ref)) (!
-                                                                                                         (=>
-                                                                                                          (Set_in x ($FVF.domain_$FLD$ vs))
-                                                                                                          (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
-                                                                                                         :pattern (($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x))
-                                                                                                         :qid |qp.$FVF<$FLD$>-eq-inner|
-                                                                                                         )))
-                                                                                    (= vs ws))
-                                                                                   :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs) ($FVF.has_domain_$FLD$ vs)
-                                                                                             ($SortWrappers.$FVF<$FLD$>To$Snap ws) ($FVF.has_domain_$FLD$ ws))
-                                                                                   :qid |qp.$FVF<$FLD$>-eq-outer|
-                                                                                   ))
-                                      :pattern ((preambleax1$FLD$@$S$<$T$> $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun  |preambleax1$FLD$@$S$<$T$>| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((vs $FVF<$FLD$>) (ws $FVF<$FLD$>)) (!
+                                                                                       (=>
+                                                                                        (and
+                                                                                         (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
+                                                                                         (forall ((x $Ref)) (!
+                                                                                                             (=>
+                                                                                                              (Set_in x ($FVF.domain_$FLD$ vs))
+                                                                                                              (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
+                                                                                                             :pattern (($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x))
+                                                                                                             :qid |qp.$FVF<$FLD$>-eq-inner|
+                                                                                                             )))
+                                                                                        (= vs ws))
+                                                                                       :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs) ($FVF.has_domain_$FLD$ vs)
+                                                                                                 ($SortWrappers.$FVF<$FLD$>To$Snap ws) ($FVF.has_domain_$FLD$ ws))
+                                                                                       :qid |qp.$FVF<$FLD$>-eq-outer|
+                                                                                       ))
+                                          :pattern ((preambleax1$FLD$@$S$<$T$> $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax1$FLD$@$S$<$T$>|))
 
-(declare-fun  preambleax2$FLD$@$S$<$T$> (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((r $Ref) (pm $FPM)) (!
-                                                                    ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
-                                                                    :pattern (($FVF.perm_$FLD$ pm r))
-                                                                    :qid |qp.$FVF<$FLD$>-validvar|))
-                                      :pattern ((preambleax2$FLD$@$S$<$T$> $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun  |preambleax2$FLD$@$S$<$T$>| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((r $Ref) (pm $FPM)) (!
+                                                                        ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
+                                                                        :pattern (($FVF.perm_$FLD$ pm r))
+                                                                        :qid |qp.$FVF<$FLD$>-validvar|))
+                                          :pattern ((preambleax2$FLD$@$S$<$T$> $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax2$FLD$@$S$<$T$>|))
 
-(declare-fun  preambleax3$FLD$@$S$<$T$> (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((r $Ref) (f $S$)) (!
-                                                                  (= ($FVF.loc_$FLD$ f r) true)
-                                                                  :pattern (($FVF.loc_$FLD$ f r))
-                                                                  :qid |qp.$FVF<$FLD$>-loc|))
-                                      :pattern ((preambleax3$FLD$@$S$<$T$> $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun  |preambleax3$FLD$@$S$<$T$>| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((r $Ref) (f $S$)) (!
+                                                                      (= ($FVF.loc_$FLD$ f r) true)
+                                                                      :pattern (($FVF.loc_$FLD$ f r))
+                                                                      :qid |qp.$FVF<$FLD$>-loc|))
+                                          :pattern ((preambleax3$FLD$@$S$<$T$> $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax3$FLD$@$S$<$T$>|))

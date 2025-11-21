@@ -10,26 +10,28 @@
 ; The axiom therefore needs to be emitted after the sort wrappers have
 ; been emitted.
 
-(declare-fun preambleax10$PRD$<$S$> (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((vs $PSF<$S$>) (ws $PSF<$S$>)) (!
-                                                                               (=>
-                                                                                (and
-                                                                                 (Set_equal ($PSF.domain_$PRD$ vs) ($PSF.domain_$PRD$ ws))
-                                                                                 (forall ((x $Snap)) (!
-                                                                                                      (=>
-                                                                                                       (Set_in x ($PSF.domain_$FRD$ vs))
-                                                                                                       (= ($PSF.lookup_$PRD$ vs x) ($PSF.lookup_$PRD$ ws x)))
-                                                                                                      :qid |qp.$PSF<$S$>-eq-inner|
-                                                                                                      )))
-                                                                                (= vs ws))
-                                                                               :qid |qp.$PSF<$S$>-eq-outer|
-                                                                               ))
-                                      :pattern ((preambleax10$PRD$<$S$> $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun |preambleax10$PRD$<$S$>| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((vs $PSF<$S$>) (ws $PSF<$S$>)) (!
+                                                                                   (=>
+                                                                                    (and
+                                                                                     (Set_equal ($PSF.domain_$PRD$ vs) ($PSF.domain_$PRD$ ws))
+                                                                                     (forall ((x $Snap)) (!
+                                                                                                          (=>
+                                                                                                           (Set_in x ($PSF.domain_$FRD$ vs))
+                                                                                                           (= ($PSF.lookup_$PRD$ vs x) ($PSF.lookup_$PRD$ ws x)))
+                                                                                                          :qid |qp.$PSF<$S$>-eq-inner|
+                                                                                                          )))
+                                                                                    (= vs ws))
+                                                                                   :qid |qp.$PSF<$S$>-eq-outer|
+                                                                                   ))
+                                          :pattern ((preambleax10$PRD$<$S$> $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax10$PRD$<$S$>|))
 
-(declare-fun preambleax11$PRD$<$S$> (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((s $Snap) (f $S$)) (!
-                                                                   (= ($PSF.loc_$PRD$ f s) true)
-                                                                   ))
-                                      :pattern ((preambleax11$PRD$<$S$> $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun |preambleax11$PRD$<$S$>| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((s $Snap) (f $S$)) (!
+                                                                       (= ($PSF.loc_$PRD$ f s) true)
+                                                                       ))
+                                          :pattern ((preambleax11$PRD$<$S$> $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax11$PRD$<$S$>|))

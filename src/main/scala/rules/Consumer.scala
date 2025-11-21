@@ -19,6 +19,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
+import viper.silicon.optimizations.ProofEssence
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -76,9 +77,18 @@ object consumer extends ConsumptionRules {
              (Q: (State, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consumeR(s, s.h, a.whenExhaling, returnSnap, pve, v)((s1, h1, snap, v1) => {
+    if (Verifier.config.localizeProof()) {
+      v.decider.prover.getUnsatCore() // drop unsat core
+      v.decider.setProofContext(ProofEssence.getExpGuards(a, s)) // set proof context
+    }
+    consumeR(s.copy(consuming=true), s.h, a.whenExhaling, returnSnap, pve, v)((s1, h1, snap, v1) => {
+      if (Verifier.config.localizeProof() && !s.keepLocalization) {
+        v.decider.resetProofContext()
+        ProofEssence.updateExpGuards(a, s, v.decider.prover.getUnsatCore().toSeq)
+      }
       val s2 = s1.copy(h = h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+        partiallyConsumedHeap = s.partiallyConsumedHeap,
+        consuming=s.consuming)
       Q(s2, snap, v1)})
   }
 
@@ -102,9 +112,18 @@ object consumer extends ConsumptionRules {
       allPves ++= pves
     })
 
-    consumeTlcs(s, s.h, allTlcs.result(), returnSnap, allPves.result(), v)((s1, h1, snap1, v1) => {
+    if (Verifier.config.localizeProof()) {
+      v.decider.prover.getUnsatCore() // drop unsat core
+      v.decider.setProofContext(ProofEssence.getExpGuards(as, s)) // set proof context
+    }
+    consumeTlcs(s.copy(consuming=true), s.h, allTlcs.result(), returnSnap, allPves.result(), v)((s1, h1, snap1, v1) => {
+      if (Verifier.config.localizeProof() && !s.keepLocalization) {
+        v.decider.resetProofContext()
+        ProofEssence.updateExpGuards(as, s, v.decider.prover.getUnsatCore().toSeq)
+      }
       val s2 = s1.copy(h = h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+        partiallyConsumedHeap = s.partiallyConsumedHeap,
+        consuming=s.consuming)
       Q(s2, snap1, v1)
     })
   }

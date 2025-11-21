@@ -45,7 +45,8 @@ abstract class ProverStdIO(uniqueId: String,
   var lastReasonUnknown : String = _
   var lastModel : String = _
   var lastUnsatCore : mutable.ArrayBuffer[String] = mutable.ArrayBuffer()
-  var proofContext : Seq[String] = Seq(ProofEssence.globalGuardName)
+  val defaultProofContext = Seq(ProofEssence.globalGuardName)
+  var proofContext : Seq[String] = defaultProofContext
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -250,7 +251,7 @@ abstract class ProverStdIO(uniqueId: String,
     var found = false
 
     val newTerm = 
-      if (Verifier.config.reportUnsatCore() || Verifier.config.localizeProof()) {
+      if (Verifier.config.localizeProof()) {
         term.transform({
           case q: Quantification if (!found) =>
             found = true
@@ -270,7 +271,7 @@ abstract class ProverStdIO(uniqueId: String,
         })()
       } else { term }
 
-    assume(termConverter.convert(newTerm), nameAss=((Verifier.config.reportUnsatCore() || Verifier.config.localizeProof()) && found), createGuard=Verifier.config.localizeProof() && found)
+    assume(termConverter.convert(newTerm), nameAss=(Verifier.config.localizeProof() && found), createGuard=Verifier.config.localizeProof() && found)
   }
 
   def assume(term: String, nameAss: Boolean = false, createGuard: Boolean = false): Unit = {
@@ -320,7 +321,7 @@ abstract class ProverStdIO(uniqueId: String,
 
     if (Verifier.config.localizeProof()) {
       proofContext.foreach(ax => {
-        writeLine(s"(assert ($ax true))")
+        writeLine(s"(assert (|$ax| true))")
         readSuccess()
       })
     }
@@ -330,7 +331,22 @@ abstract class ProverStdIO(uniqueId: String,
 
     val startTime = System.currentTimeMillis()
     writeLine("(check-sat)")
-    val result = readUnsat()
+    var result = readUnsat()
+    // if we are in proof localization mode and we get a verification error
+    // while we have set some guards, we try again by enabling the global guard
+    if (Verifier.config.localizeProof() && !result && proofContext != defaultProofContext) {
+      pop()
+      push()
+      setTimeout(timeout)
+      defaultProofContext.foreach(ax => {
+        writeLine(s"(assert (|$ax| true))")
+        readSuccess()
+      })
+      writeLine("(assert (not " + goal + "))")
+      readSuccess()
+      writeLine("(check-sat)")
+      result = readUnsat()
+    }
     val endTime = System.currentTimeMillis()
 
     if (!result) {
@@ -382,7 +398,7 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   protected def retrieveUnsatCore(): Unit = {
-    if (Verifier.config.reportUnsatCore()) {
+    if (Verifier.config.localizeProof()) {
       writeLine("(get-unsat-core)")
       val result = readLine().strip()
       comment(result)

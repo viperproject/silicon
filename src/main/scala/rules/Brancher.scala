@@ -193,7 +193,8 @@ object brancher extends BranchingRules {
     val res = {
       val thenRes = if (executeThenBranch) {
           v.symbExLog.markReachable(uidBranchPoint)
-          executionFlowController.locally(s, v)((s1, v1) => {
+          val localizationS = if (Verifier.config.localizeProof() && executeElseBranch && s.consuming) s.copy(keepLocalization=true) else s
+          executionFlowController.locally(localizationS, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
 

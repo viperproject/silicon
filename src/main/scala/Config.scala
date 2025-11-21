@@ -179,12 +179,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val reportUnsatCore: ScallopOption[Boolean] = opt[Boolean]("reportUnsatCore",
-    descr = "For every check, retrieve the unsat core if it was proven successfully. Create an unsat core file with unsat cores used per method per branch.",
-    default = Some(false),
-    noshort = true
-  )
-
   val localizeProof: ScallopOption[Boolean] = opt[Boolean]("localizeProof",
     descr = "Use an unsat core file to localize the proof.",
     default = Some(false),

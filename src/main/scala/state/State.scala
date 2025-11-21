@@ -82,7 +82,9 @@ final case class State(g: Store = Store(),
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false,
-                       moreJoins: JoinMode = JoinMode.Off)
+                       moreJoins: JoinMode = JoinMode.Off,
+                       keepLocalization: Boolean = false,
+                       consuming: Boolean = false)
     extends Mergeable[State] {
 
   val isMethodVerification: Boolean = {
@@ -217,7 +219,7 @@ object State {
                  ssCache1, assertReadAccessOnly1,
                  qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-                 moreCompleteExhale, moreJoins) =>
+                 moreCompleteExhale, moreJoins, keepLocalization1, consuming1) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -242,7 +244,7 @@ object State {
                      ssCache2, `assertReadAccessOnly1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2, `moreJoins`) =>
+                     moreCompleteExhale2, `moreJoins`, keepLocalization2, consuming2) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -255,6 +257,8 @@ object State {
 
             val ssCache3 = ssCache1 ++ ssCache2
             val moreCompleteExhale3 = moreCompleteExhale || moreCompleteExhale2
+            val keepLocalization3 = keepLocalization1 || keepLocalization2
+            val consuming3 = consuming1 || consuming2
 
             assert(conservedPcs1.length == conservedPcs2.length)
             val conservedPcs3 = conservedPcs1
@@ -270,7 +274,9 @@ object State {
                     smCache = smCache3,
                     pmCache = pmCache3,
                     moreCompleteExhale = moreCompleteExhale3,
-                    conservedPcs = conservedPcs3)
+                    conservedPcs = conservedPcs3,
+                    keepLocalization = keepLocalization3,
+                    consuming = consuming3)
 
           case _ =>
             val err = new StringBuilder()
@@ -373,7 +379,7 @@ object State {
       ssCache1, assertReadAccessOnly1,
       qpFields1, qpPredicates1, qpMagicWands1, permResources1, smCache1, pmCache1, smDomainNeeded1,
       predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
-      moreCompleteExhale, moreJoins) =>
+      moreCompleteExhale, moreJoins, keepLocalization1, consuming1) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -397,7 +403,7 @@ object State {
           ssCache2, `assertReadAccessOnly1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, `permResources1`, smCache2, pmCache2, smDomainNeeded2,
           `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
-          moreCompleteExhale2, `moreJoins`) =>
+          moreCompleteExhale2, `moreJoins`, keepLocalization2, consuming2) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -405,6 +411,8 @@ object State {
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
 
             val smDomainNeeded3 = smDomainNeeded1 || smDomainNeeded2
+            val keepLocalization3 = keepLocalization1 || keepLocalization2
+            val consuming3 = consuming1 || consuming2
 
             val conditions1 = And(pc1.branchConditions)
             val withExp = Verifier.config.enableDebugging()
@@ -485,7 +493,9 @@ object State {
                              smDomainNeeded = smDomainNeeded3,
                              invariantContexts = invariantContexts3,
                              reserveHeaps = reserveHeaps3,
-                             conservedPcs = conservedPcs3)
+                             conservedPcs = conservedPcs3,
+                             keepLocalization = keepLocalization3,
+                             consuming = consuming3)
 
             s3
 

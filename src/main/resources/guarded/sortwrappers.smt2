@@ -7,23 +7,25 @@
 ;   IntToSnap(x) = IntToSnap(y)
 ; implies that
 
-(declare-fun preambleax12$T$@$S$ (Bool) Bool)                                      ;   x = y.
-(assert (forall (($guardvar Bool))  (! (forall ((x $T$)) (!
-                                                         (= x ($SortWrappers.$SnapTo$S$($SortWrappers.$S$To$Snap x)))
-                                                         :pattern (($SortWrappers.$S$To$Snap x))
-                                                         :qid |$Snap.$SnapTo$S$To$Snap|
-                                                         ))
-                                      :pattern ((preambleax12$T$@$S$ $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun |preambleax12$T$@$S$| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((x $T$)) (!
+                                                             (= x ($SortWrappers.$SnapTo$S$($SortWrappers.$S$To$Snap x)))
+                                                             :pattern (($SortWrappers.$S$To$Snap x))
+                                                             :qid |$Snap.$SnapTo$S$To$Snap|
+                                                             ))
+                                          :pattern ((preambleax12$T$@$S$ $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax12$T$@$S$|))
 
-(declare-fun preambleax13$T$@$S$ (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((x $Snap)) (!
-                                                            (= x ($SortWrappers.$S$To$Snap($SortWrappers.$SnapTo$S$ x)))
-                                                            :pattern (($SortWrappers.$SnapTo$S$ x))
-                                                            :qid |$Snap.$S$To$SnapTo$S$|
-                                                            ))
-                                       :pattern ((preambleax13$T$@$S$ $guardvar))
-                                       :pattern (($GlobalGuard $guardvar)))))
+(declare-fun |preambleax13$T$@$S$| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((x $Snap)) (!
+                                                               (= x ($SortWrappers.$S$To$Snap($SortWrappers.$SnapTo$S$ x)))
+                                                               :pattern (($SortWrappers.$SnapTo$S$ x))
+                                                               :qid |$Snap.$S$To$SnapTo$S$|
+                                                               ))
+                                          :pattern ((preambleax13$T$@$S$ $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax13$T$@$S$|))
 
 ; On several examples, e.g., AVLTree.iterative.sil, Z3 instantiates the sort
 ; wrapper axioms somewhat often. It might be possible to include the wrappers

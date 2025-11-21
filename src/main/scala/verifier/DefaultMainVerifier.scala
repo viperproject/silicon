@@ -78,7 +78,7 @@ class DefaultMainVerifier(config: Config,
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new MagicWandSnapFunctionsContributor(preambleReader)
-  private val preambleLoc = if (config.reportUnsatCore()) "unsat_cores/" else if (config.localizeProof()) "guarded/" else ""
+  private val preambleLoc = if (config.localizeProof()) "guarded/" else ""
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager

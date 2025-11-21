@@ -6,51 +6,67 @@
 
 package viper.silicon.optimizations
 
-import viper.silicon.verifier.Verifier
-import scala.io.Source
+import viper.silicon.state.State
+import viper.silver.ast.Exp
+
+abstract class LocalizationMap {
+  // methodName -> (Hash computed by state and proof obligation -> list of axiom guards)
+  protected val axiomMap = scala.collection.mutable.Map.empty[Int, Seq[String]]
+
+  protected def obligationHash(exps: Seq[Exp], state: State): Int = {
+    val defaultName = "DummyMember"
+      (
+        exps.toString(),
+        state.currentMember.map(_.name).getOrElse(defaultName),
+        exps.map(_.pos)
+      ).hashCode()
+  }
+
+  def getExpGuards(exps: Seq[Exp], state: State): Seq[String] = {
+    axiomMap.getOrElse(
+      obligationHash(exps, state),
+      Seq(ProofEssence.globalGuardName)
+    )
+  }
+
+  def updateExpGuards(exps: Seq[Exp], state: State, axioms: Seq[String]): Unit
+}
+
+class UnionLocalizationMap extends LocalizationMap {
+  def updateExpGuards(exps: Seq[Exp], state: State, axioms: Seq[String]): Unit = {
+    axiomMap.update(obligationHash(exps, state),
+      (axiomMap.getOrElse(
+        obligationHash(exps, state),
+        List()).toSet | axioms.toSet).toList
+    )
+  }
+}
+
 
 object ProofEssence {
-  // methodName -> (supercore, set of branch hashes in the supercore, set of all branches found in the file)
-  private val cacheMapByName = scala.collection.mutable.Map.empty[String, (List[String], Set[String], Set[String])]
 
   val globalGuardName = "$GlobalGuard"
   val guardVariableName = "$LocalGuardVar"
 
-  /**
-   * Retrieves the list of guard expressions for the given method and branch.
-   *
-   * @param name   the name of the method
-   * @param branch the branch hash identifier
-   * @return       a list of guard strings extracted from the cached unsat core
-   */
-  def branchGuards(name: String, branch: String): List[String] = {
-    val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${name}_unsatCoreCache.cache")
-    if (!coreCacheFile.exists()) {
-      List(globalGuardName)
-    } else {
-      val (supercore: List[String], branches: Set[String], allbranches: Set[String]) = cacheMapByName.getOrElseUpdate(name, {
-        val source = Source.fromFile(coreCacheFile)
-        try {
-          val coreMap: Map[String, String] = source.getLines().collect {
-            case line if line.contains(":") =>
-              val Array(hash, core) = line.split(":", 2)
-              hash -> core
-          }.toMap
-          val coresSorted = coreMap.toList.sortWith((a, b) => a._2.split(";").length < b._2.split(";").length)
-          val (supercoreSet, branches) = coresSorted.foldLeft[(Set[String], Set[String])]((Set.empty, Set.empty))(
-            (sofar, newcore) => {
-              val coreset = newcore._2.split(";").toSet
-              if (coreset subsetOf sofar._1) sofar
-              else (coreset | sofar._1, sofar._2 + newcore._1)
-            }
-          )
-          (supercoreSet.toList, branches, coreMap.keySet)
-        } finally source.close()
-      })
-      val cores = if ((branches contains branch) || !(allbranches contains branch)) List(globalGuardName)
-      else supercore
-      cores.filter(_.length() > 0)
-    }
+  private var lmap: LocalizationMap = new UnionLocalizationMap()
+
+  def getExpGuards(exps: Seq[Exp], state: State): Seq[String] = {
+    println(s"getGuards: ${exps}")
+    lmap.getExpGuards(exps, state)
+  }
+
+  def getExpGuards(exp: Exp, state: State): Seq[String] = {
+    println(s"getGuard: ${exp}")
+    lmap.getExpGuards(List(exp), state)
+  }
+
+  def updateExpGuards(exps: Seq[Exp], state: State, axioms: Seq[String]): Unit = {
+    println(s"updateGuards: ${exps}")
+    lmap.updateExpGuards(exps, state, axioms)
+  }
+
+  def updateExpGuards(exp: Exp, state: State, axioms: Seq[String]): Unit = {
+    println(s"updateGuard: ${exp}")
+    lmap.updateExpGuards(List(exp), state, axioms)
   }
 }
-

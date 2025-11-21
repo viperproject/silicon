@@ -31,7 +31,7 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
   private var collectedSorts: InsertionOrderedSet[sorts.FieldValueFunction] = InsertionOrderedSet.empty
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
-  private val preambleLoc = if (config.reportUnsatCore()) "unsat_cores/" else if (config.localizeProof()) "guarded/" else ""
+  private val preambleLoc = if (config.localizeProof()) "guarded/" else ""
 
   /* Lifetime */
 

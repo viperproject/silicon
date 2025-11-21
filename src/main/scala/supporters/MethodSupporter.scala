@@ -14,14 +14,12 @@ import viper.silicon.interfaces._
 import viper.silicon.decider.{Decider, RecordedPathConditions}
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.{State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
-import viper.silver.reporter.AnnotationWarning
-import viper.silicon.{Map, toMap, Stack}
+import viper.silicon.{Map, Stack}
 import java.security.MessageDigest
-import viper.silicon.optimizations.ProofEssence
 import viper.silver.reporter.BenchmarkingMessage
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
@@ -69,7 +67,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ outs.map(x => (x, decider.fresh(x)))
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
-      val s = if (Verifier.config.reportUnsatCore() || Verifier.config.localizeProof() || Verifier.config.benchmark()) {
+      val s = if (Verifier.config.benchmark()) {
         sInit.copy(g = g,
           h = v.heapSupporter.getEmptyHeap(sInit.program),
           oldHeaps = OldHeaps(),
@@ -87,13 +85,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         viper.silicon.common.io.toFile(
           body.toDot,
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
-      }
-
-      if (Verifier.config.reportUnsatCore()) {
-        val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}_unsatCoreCache.cache")
-        val writer = viper.silicon.common.io.PrintWriter(coreCacheFile, append=false)
-        writer.print("")
-        writer.close()
       }
 
       errorsReportedSoFar.set(0)
@@ -120,43 +111,28 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                  exec(s3, body, v3)((s4, v4) => {
-                   if (Verifier.config.reportUnsatCore()) {
-                     decider.prover.getUnsatCore() // drop unsat core so far
-                   }
                    decider.prover.comment("; Checking post-condition")
                    val pcs = decider.pcs.branchConditions.toString()
                    val digest = MessageDigest.getInstance("SHA-256")
                    val hashBytes = digest.digest(pcs.getBytes("UTF-8"))
                    val hash = hashBytes.map("%02x".format(_)).mkString
-                   if (Verifier.config.localizeProof()) decider.setProofContext(ProofEssence.branchGuards(method.name, hash))
                    if (Verifier.config.benchmark()) {
                      val stats = decider.prover.statistics()
                      val qis = stats.getOrElse("quant-instantiations", "0")
                      reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash|qis: $qis"))
                    }
                    if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash: ${System.currentTimeMillis()}"))
-                   consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
-                      {
-                        decider.prover.comment("; Done checking post-condition")
-                        if (Verifier.config.localizeProof()) decider.resetProofContext()
-                        if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash: ${System.currentTimeMillis()}"))
-                        if (Verifier.config.benchmark()) {
-                          val stats = decider.prover.statistics()
-                          val qis = stats.getOrElse("quant-instantiations", "0")
-                          reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash|qis: $qis"))
-                        }
-                        if (Verifier.config.reportUnsatCore()) {
-                          val unsat_core = decider.prover.getUnsatCore().mkString(";")
-                          val coreCacheFile = new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}_unsatCoreCache.cache")
-                          val writer = viper.silicon.common.io.PrintWriter(coreCacheFile, append=true)
-                          try {
-                            writer.println(s"${hash}:${unsat_core}")
-                          } finally {
-                            writer.close()
-                          }
-                        }
-                        Success()
-                      })
+                   consumes(s4, posts, false, postViolated, v4)((_, _, _) => {
+                     println(s4.keepLocalization)
+                     decider.prover.comment("; Done checking post-condition")
+                     if (Verifier.config.benchmark()) reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash: ${System.currentTimeMillis()}"))
+                     if (Verifier.config.benchmark()) {
+                       val stats = decider.prover.statistics()
+                       val qis = stats.getOrElse("quant-instantiations", "0")
+                       reporter.report(BenchmarkingMessage(s"post ${method.name}", s"$hash|qis: $qis"))
+                     }
+                     Success()
+                   })
                  }
                  )}) }  )})})
 

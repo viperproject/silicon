@@ -54,7 +54,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
   private var collectedSorts: InsertionOrderedSet[Sort] = InsertionOrderedSet.empty // TODO: Make Set[sorts.PredicateSnapFunction]
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
-  private val preambleLoc = if (config.reportUnsatCore()) "unsat_cores/" else ""
+  private val preambleLoc = if (config.localizeProof()) "guarded/" else ""
 
   /* Lifetime */
 

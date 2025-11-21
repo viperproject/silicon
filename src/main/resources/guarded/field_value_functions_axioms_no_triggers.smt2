@@ -11,33 +11,36 @@
 ; The axiom therefore needs to be emitted after the sort wrappers have
 ; been emitted.
 
-(declare-fun preambleax4$FLD$@$S$<$T$> (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((vs $FVF<$T$>) (ws $FVF<$T$>)) (!
-                                                                               (=>
-                                                                                (and
-                                                                                 (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
-                                                                                 (forall ((x $Ref)) (!
-                                                                                                     (=>
-                                                                                                      (Set_in x ($FVF.domain_$FLD$ vs))
-                                                                                                      (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
-                                                                                                     :qid |qp.$FVF<$T$>-eq-inner|
-                                                                                                     )))
-                                                                                (= vs ws))
-                                                                               :qid |qp.$FVF<$T$>-eq-outer|
-                                                                               ))
-                                      :pattern ((preambleax4$FLD$@$S$<$T$> $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun |preambleax4$FLD$@$S$<$T$>| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((vs $FVF<$T$>) (ws $FVF<$T$>)) (!
+                                                                                   (=>
+                                                                                    (and
+                                                                                     (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
+                                                                                     (forall ((x $Ref)) (!
+                                                                                                         (=>
+                                                                                                          (Set_in x ($FVF.domain_$FLD$ vs))
+                                                                                                          (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
+                                                                                                         :qid |qp.$FVF<$T$>-eq-inner|
+                                                                                                         )))
+                                                                                    (= vs ws))
+                                                                                   :qid |qp.$FVF<$T$>-eq-outer|
+                                                                                   ))
+                                          :pattern ((preambleax4$FLD$@$S$<$T$> $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax4$FLD$@$S$<$T$>|))
 
-(declare-fun preambleax5$FLD$@$S$<$T$> (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((r $Ref) (pm $FPM)) (!
-                                                                    ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
-                                                                    ))
-                                      :pattern ((preambleax5$FLD$@$S$<$T$> $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun |preambleax5$FLD$@$S$<$T$>| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((r $Ref) (pm $FPM)) (!
+                                                                        ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
+                                                                        ))
+                                          :pattern ((preambleax5$FLD$@$S$<$T$> $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax5$FLD$@$S$<$T$>|))
 
-(declare-fun preambleax6$FLD$@$S$<$T$> (Bool) Bool)
-(assert (forall (($guardvar Bool))  (! (forall ((r $Ref) (f $S$)) (!
-                                                                  (= ($FVF.loc_$FLD$ f r) true)
-                                                                  ))
-                                      :pattern ((preambleax6$FLD$@$S$<$T$> $guardvar))
-                                      :pattern (($GlobalGuard $guardvar)))))
+(declare-fun |preambleax6$FLD$@$S$<$T$>| (Bool) Bool)
+(assert (! (forall (($guardvar Bool))  (! (forall ((r $Ref) (f $S$)) (!
+                                                                      (= ($FVF.loc_$FLD$ f r) true)
+                                                                      ))
+                                          :pattern ((preambleax6$FLD$@$S$<$T$> $guardvar))
+                                          :pattern (($GlobalGuard $guardvar))))
+           :named |preambleax6$FLD$@$S$<$T$>|))
