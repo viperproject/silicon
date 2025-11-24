@@ -316,6 +316,7 @@ class DefaultMainVerifier(config: Config,
      ++ methodVerificationResults)
 
     DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, DependencyAnalyzer.timeToVerifyAndCollectDependencies)
+    val postProcessingStartTime = DependencyAnalyzer.startTimeMeasurement()
 
     if(Verifier.config.enableDependencyAnalysis()){
       val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
@@ -338,11 +339,12 @@ class DefaultMainVerifier(config: Config,
         case _ =>
       }
 
-      DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, DependencyAnalyzer.timeToVerifyAndBuildFinalGraph)
-
-      DependencyAnalyzer.printProfilingResults()
-
     }
+
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, DependencyAnalyzer.timeToVerifyAndBuildFinalGraph)
+
+    DependencyAnalyzer.printProfilingResults()
 
     if (Verifier.config.startDebuggerAutomatically()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)

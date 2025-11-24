@@ -1,6 +1,7 @@
 package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer.{runtimeOverheadPermissionNodes, startTimeMeasurement, stopTimeMeasurementAndAddToTotal, timeForFunctionJoin, timeToProcessUnsatCore}
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
@@ -57,9 +58,15 @@ object DependencyAnalyzer {
   private val enableDependencyAnalysisAnnotationKey = "enableDependencyAnalysis"
   val timeToVerifyAndCollectDependencies: AtomicLong = new AtomicLong(0)
   val timeToVerifyAndBuildFinalGraph: AtomicLong = new AtomicLong(0)
+  val timeOfPostprocessing: AtomicLong = new AtomicLong(0)
   val timeToAddNodes: AtomicLong = new AtomicLong(0)
   val timeToAddEdges: AtomicLong = new AtomicLong(0)
   val timeToExtractCandidateNodes: AtomicLong = new AtomicLong(0)
+  val timeForFunctionJoin: AtomicLong = new AtomicLong(0)
+  val timeForMethodJoin: AtomicLong = new AtomicLong(0)
+  val runtimeOverheadPermissionNodes: AtomicLong = new AtomicLong(0)
+  val timeToExtractUnsatCore: AtomicLong = new AtomicLong(0)
+  val timeToProcessUnsatCore: AtomicLong = new AtomicLong(0)
 
   def startTimeMeasurement(): Long = {
     if(!Verifier.config.enableDependencyAnalysisProfiling()) return 0
@@ -78,9 +85,15 @@ object DependencyAnalyzer {
     println(s"Overall runtime = time spent on verification and building the final graph: ${timeToVerifyAndBuildFinalGraph.get() / 1e6}ms")
     println(s"This runtime can be categorized into the following, fine-grained measurements.")
     println(s"  Time spent on verification and collecting low-level dependencies: ${timeToVerifyAndCollectDependencies.get() / 1e6}ms")
-    println(s"  Time spent on adding nodes: ${timeToAddNodes.get() / 1e6}ms")
-    println(s"  Time spent on adding edges: ${timeToAddEdges.get() / 1e6}ms")
-    println(s"  Time spent on extracting candidate nodes: ${timeToExtractCandidateNodes.get() / 1e6}ms")
+    println(s"    Time spent on adding explicit permission nodes: ${runtimeOverheadPermissionNodes.get() / 1e6}ms")
+    println(s"    Time spent on extracting the unsat core: ${timeToExtractUnsatCore.get() / 1e6}ms")
+    println(s"    Time spent on processing the unsat core: ${timeToProcessUnsatCore.get() / 1e6}ms")
+    println(s"  Postprocessing: ${timeOfPostprocessing.get() / 1e6}ms")
+    println(s"    Time spent on adding nodes: ${timeToAddNodes.get() / 1e6}ms")
+    println(s"    Time spent on adding edges: ${timeToAddEdges.get() / 1e6}ms")
+    println(s"    Time spent on extracting candidate nodes: ${timeToExtractCandidateNodes.get() / 1e6}ms")
+    println(s"    Time spent for joins over function calls: ${timeForFunctionJoin.get() / 1e6}ms")
+    println(s"    Time spent for joins over method calls: ${timeForMethodJoin.get() / 1e6}ms")
   }
 
   private def extractAnnotationFromInfo(info: ast.Info, annotationKey: String): Option[Seq[String]] = {
@@ -128,7 +141,6 @@ object DependencyAnalyzer {
 
   // TODO ake: implement a lazy join in DependencyGraphInterpreter
   def joinGraphsAndGetInterpreter(name: Option[String], dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
-
     var startTime = startTimeMeasurement()
     val newGraph = new DependencyGraph
 
@@ -141,6 +153,7 @@ object DependencyAnalyzer {
     val joinCandidateNodes = dependencyGraphInterpreters flatMap(_.getJoinCandidateNodes)
     stopTimeMeasurementAndAddToTotal(startTime, timeToExtractCandidateNodes)
 
+    startTime = startTimeMeasurement()
     // axioms assumed by every method / function should depend on the assertions that justify them
     // hence, we add edges from function postconditions & bodies to the corresponding axioms
     val axiomAssertionNodes = joinCandidateNodes
@@ -156,6 +169,9 @@ object DependencyAnalyzer {
         newGraph.addEdges(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
     }
 
+    stopTimeMeasurementAndAddToTotal(startTime, timeForFunctionJoin)
+    startTime = startTimeMeasurement()
+
     // postconditions of methods assumed by every method call should depend on the assertions that justify them
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
     val relevantAssumptionNodes = joinCandidateNodes
@@ -166,6 +182,8 @@ object DependencyAnalyzer {
     joinCandidateNodes.filter(node => node.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource.toString, Seq.empty)))
       .foreach { case (src, targets) => newGraph.addEdges(src, targets)}
+
+    stopTimeMeasurementAndAddToTotal(startTime, timeForMethodJoin)
 
     val newInterpreter = new DependencyGraphInterpreter(name.getOrElse("joined"), newGraph)
     newInterpreter
@@ -222,19 +240,23 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo): CH = {
+    val startTime = startTimeMeasurement()
     val chunk = buildChunk(perm)
     val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType)
     addPermissionDependencies(sourceChunks, Set(), chunkNode)
+    stopTimeMeasurementAndAddToTotal(startTime, runtimeOverheadPermissionNodes)
     chunk
   }
 
   override def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
+    val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
     val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, labelNode)
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
     addPermissionDependencies(sourceChunks, Set(), chunkNode)
+    stopTimeMeasurementAndAddToTotal(startTime, runtimeOverheadPermissionNodes)
     chunk
   }
 
@@ -292,6 +314,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
+    val startTime = startTimeMeasurement()
     val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
     val assumptionIds = assumptionLabels.filter(DependencyAnalyzer.isAssumptionLabel).map(DependencyAnalyzer.getIdFromLabel)
     val assertionIdsFromUnsatCore = assumptionLabels.filter(DependencyAnalyzer.isAssertionLabel).map(DependencyAnalyzer.getIdFromLabel)
@@ -300,6 +323,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     assumptionGraph.addEdges(assumptionIds, assertionIds)
     val axiomIds = assumptionLabels.filter(DependencyAnalyzer.isAxiomLabel).map(DependencyAnalyzer.getIdFromLabel)
     assumptionGraph.addEdges(axiomIds, assertionIds)
+    stopTimeMeasurementAndAddToTotal(startTime, timeToProcessUnsatCore)
   }
 
   private def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], newChunkNodeId: Option[Int]): Unit = {
@@ -310,10 +334,12 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], newChunk: Chunk): Unit = {
+    val startTime = startTimeMeasurement()
     val newChunkId = assumptionGraph.nodes
       .filter(c => c.isInstanceOf[PermissionInhaleNode] && c.isInstanceOf[ChunkAnalysisInfo] && newChunk.equals(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.id).toSet
     addPermissionDependencies(sourceChunks, sourceTerms, newChunkId.headOption)
+    stopTimeMeasurementAndAddToTotal(startTime, runtimeOverheadPermissionNodes)
   }
 
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {

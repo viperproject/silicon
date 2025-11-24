@@ -8,6 +8,7 @@ package viper.silicon.decider
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer
 import viper.silicon.interfaces.decider._
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
@@ -307,9 +308,11 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def extractUnsatCore(): String = {
+    val startTime = DependencyAnalyzer.startTimeMeasurement()
     writeLine("(get-unsat-core)")
     val unsatCore = input.readLine()
     comment("unsat core: " + unsatCore)
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(startTime, DependencyAnalyzer.timeToExtractUnsatCore)
     unsatCore
   }
 

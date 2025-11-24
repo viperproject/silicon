@@ -66,10 +66,6 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     targets foreach (addEdges(sources, _))
   }
 
-  def addEdgesMap(newEdges: Map[Int, Set[Int]]): Unit = {
-    edges.addAll(newEdges)
-  }
-
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean = {
     val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty
