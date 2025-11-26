@@ -484,8 +484,8 @@ class DefaultMainVerifier(config: Config,
     sink.comment(s"\n; ${decider.prover.staticPreamble}")
     preambleReader.emitPreamble(decider.prover.staticPreamble, sink, true)
 
-    if (config.proverRandomizeSeeds) {
-      sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
+    if (config.proverRandomizeSeeds()) {
+      sink.comment(s"\n; Randomise seeds [--${config.proverRandomizeSeeds.name}]")
       val options = decider.prover.randomizeSeedsOptions
         .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
@@ -493,11 +493,11 @@ class DefaultMainVerifier(config: Config,
     }
 
     val smt2ConfigOptions =
-      config.proverConfigArgs.map { case (k, v) => s"(set-option :$k $v)" }
+      config.proverConfigArgs().map { case (k, v) => s"(set-option :$k $v)" }
 
     if (smt2ConfigOptions.nonEmpty) {
       // One can pass options to the prover. This allows to check whether they have been received.
-      val msg = s"Additional prover configuration options are '${config.proverConfigArgs}'"
+      val msg = s"Additional prover configuration options are '${config.proverConfigArgs().mkString(", ")}'"
       reporter report ConfigurationConfirmation(msg)
       logger info msg
       preambleReader.emitPreamble(smt2ConfigOptions, sink, true)

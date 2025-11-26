@@ -151,7 +151,7 @@ class Z3ProverAPI(uniqueId: String,
     if (Verifier.config.disableNL.getOrElse(false)) {
       params.add("arith.nl", false)
     }
-    val userProvidedArgs = Verifier.config.proverConfigArgs
+    val userProvidedArgs = Verifier.config.proverConfigArgs()
     prover = ctx.mkSolver()
     val descrs = prover.getParameterDescriptions
     for ((origKey, vl) <- userProvidedArgs) {
@@ -415,7 +415,7 @@ class Z3ProverAPI(uniqueId: String,
       val standardOptionPrefix = Seq("(set-option :auto_config false)", "(set-option :type_check true)") ++
         Z3ProverAPI.allParams.map(bp => s"(set-option :${bp._1} ${bp._2})")
 
-      val customOptionPrefix = Verifier.config.proverConfigArgs.map(a => s"(set-option :${a._1} ${a._2})")
+      val customOptionPrefix = Verifier.config.proverConfigArgs().map(a => s"(set-option :${a._1} ${a._2})")
 
       val merged = (standardOptionPrefix ++ customOptionPrefix ++ emittedPreambleString).mkString("\n")
       val parsed = ctx.parseSMTLIB2String(merged, emittedSortSymbols.toArray, emittedSorts.toArray, emittedFuncSymbols.toArray, emittedFuncs.toArray)
@@ -544,8 +544,8 @@ class Z3ProverAPI(uniqueId: String,
     if (lastTimeout != effectiveTimeout) {
       lastTimeout = effectiveTimeout
 
-      if (Verifier.config.proverEnableResourceBounds) {
-        ctx.updateParamValue("rlimit", (effectiveTimeout * Verifier.config.proverResourcesPerMillisecond).toString)
+      if (!Verifier.config.proverEnableTimeBounds()) {
+        ctx.updateParamValue("rlimit", (effectiveTimeout * Verifier.config.z3ResourcesPerMillisecond()).toString)
       } else {
         ctx.updateParamValue("timeout", effectiveTimeout.toString)
       }

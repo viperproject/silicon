@@ -30,7 +30,7 @@ class Cvc5ProverStdIO(uniqueId: String,
                       identifierFactory: IdentifierFactory,
                       reporter: Reporter)
     extends ProverStdIO(uniqueId, termConverter, identifierFactory, reporter) {
-    
+
   val name: String = Cvc5ProverStdIO.name
   val minVersion: Version = Cvc5ProverStdIO.minVersion
   val maxVersion: Option[Version] = Cvc5ProverStdIO.maxVersion
@@ -40,8 +40,20 @@ class Cvc5ProverStdIO(uniqueId: String,
   val startUpArgs: Seq[String] = Cvc5ProverStdIO.startUpArgs
   val randomizeSeedsOptions: Seq[String] = Cvc5ProverStdIO.randomizeSeedsOptions
 
-  // cvc5 does not support per-check timeouts after instantiation.
-  protected def setTimeout(timeout: Option[Int]): Unit = {}
+  protected def setTimeout(timeout: Option[Int]): Unit = {
+    val effectiveTimeout = timeout.getOrElse(Verifier.config.proverTimeout)
+
+    if (lastTimeout != effectiveTimeout) {
+      lastTimeout = effectiveTimeout
+
+      if (!Verifier.config.proverEnableTimeBounds()) {
+        writeLine(s"(set-option :reproducible-resource-limit ${effectiveTimeout * Verifier.config.cvc5ResourcesPerMillisecond()})")
+      } else {
+        writeLine(s"(set-option :tlimit-per $effectiveTimeout)")
+      }
+      readSuccess()
+    }
+  }
 
   protected def getProverPath: Path = {
     Paths.get(Verifier.config.cvc5Exe)
