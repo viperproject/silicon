@@ -334,7 +334,7 @@ object producer extends ProductionRules {
             })))
 
 
-      case QuantifiedPermissionAssertion(forall, cond, accPred) =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, accPred) =>
         val resource = accPred.res(s.program)
         val resAcc = accPred.loc
         val eArgs = resAcc.args(s.program)
@@ -353,12 +353,15 @@ object producer extends ProductionRules {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v) {
+        val s0 = s.copy(functionRecorder = s.functionRecorder.enterQuantifiedExp(qpa))
+        evalQuantified(s0, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v) {
           case (s1, qvars, qvarExps, Seq(tCond), eCondNew, Some((Seq(tPerm, tArgs@_*), permArgs, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
             val s1a = s1.copy(constrainableARPs = s.constrainableARPs)
             v1.heapSupporter.produceQuantified(s1a, sf, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals,
               auxExps.map(_._1), auxExps.map(_._2), tCond, eCondNew.map(_.head), tArgs, permArgs.map(_.tail), tPerm, permArgs.map(_.head), pve, NegativePermission(ePerm),
-              QPAssertionNotInjective(resAcc), v1)(Q)
+              QPAssertionNotInjective(resAcc), v1)((s2, v2) => {
+              Q(s2.copy(functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa)), v2)
+            })
           case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
         }
 
