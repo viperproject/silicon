@@ -32,7 +32,7 @@ method call2(){
     @dependency("Explicit")
     assume y > 0
 
-    @dependency("ImplicitPostcondAssumption")
+    @dependency("ImplicitPostcondition")
     z := sum(x, y)
 
     // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
@@ -49,12 +49,12 @@ method call3(x: Int, y: Int)
   assume y > 0
 
   var n: Int, n2: Int
-  @dependency("ImplicitPostcondAssumption")
+  @dependency("ImplicitPostcondition")
   n := sum(x, y)
 
   // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=x,y,n $INVARIANT=x>0
 
-  @dependency("ImplicitPostcondAssumption")
+  @dependency("Implicit")
   n2 := sum(x, y)
   @dependency("Implicit")
   n := n + n2
@@ -75,12 +75,12 @@ method call4(x: Int, y: Int, z: Int)
   assume z > 0
 
   var n: Int, n2: Int
-  @dependency("ExplicitPostcondAssumption")
+  @dependency("ExplicitPostcondition")
   n := sumUnverified(x, y)
 
   // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=n,z,x,y $INVARIANT=x>0
 
-  @irrelevant("ExplicitPostcondAssumption")
+  @irrelevant("ExplicitPostcondition")
   n2 := sumUnverified(x, z)
 
   @testAssertion("Explicit")

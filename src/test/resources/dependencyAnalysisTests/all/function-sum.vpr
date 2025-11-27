@@ -20,7 +20,7 @@ method call2(){
     @dependency("Explicit")
     assume y > 0
 
-    @dependency("ImplicitPostcondAssumption")
+    @dependency("ImplicitPostcondition")
     z := sum(x, y)
 
     // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
@@ -36,7 +36,7 @@ method call2Unv(){
     @dependency("Explicit")
     assume y > 0
 
-    @dependency("ExplicitPostcondAssumption")
+    @dependency("ExplicitPostcondition")
     z := sumUnverified(x, y)
 
     // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
