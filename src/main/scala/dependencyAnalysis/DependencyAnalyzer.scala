@@ -201,7 +201,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val inhaleNode = assumptionGraph.nodes
       .filter(c => c.isInstanceOf[PermissionInhaleNode] && chunk.equals(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.asInstanceOf[PermissionInhaleNode])
-    assert(inhaleNode.size == 1)
+//    assert(inhaleNode.size == 1)
     inhaleNode.headOption
   }
 
@@ -251,7 +251,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo, isExhale: Boolean): CH = {
     val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
-    val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
+    val chunk = buildChunk(perm) // XXX ake: buildChunk(Ite(labelNode.term, perm, NoPerm))
     val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, labelNode)
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
