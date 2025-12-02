@@ -344,7 +344,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         return term
 
       val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
-      term // XXX ake: labelNode.map(n => Implies(n.term, term)).getOrElse(term)
+      labelNode.map(n => Implies(n.term, term)).getOrElse(term)
     }
 
     def isPathInfeasible(): Boolean = Verifier.config.disableInfeasibilityChecks() && pcs.getCurrentInfeasibilityNode.isDefined
