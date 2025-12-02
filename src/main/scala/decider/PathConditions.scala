@@ -679,7 +679,8 @@ object PathConditions {
     assumption match {
       case quantification: Quantification => quantification.isGlobal
       case _: IsReadPermVar => true
-      case _: HasDomain => true
+      case hd: HasDomain => hd.isGlobal
+      case hd: HasPredicateDomain => hd.isGlobal
       case _ => false
     }
   }
