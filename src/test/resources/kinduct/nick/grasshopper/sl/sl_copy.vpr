@@ -1,0 +1,34 @@
+import "./sl.vpr"
+
+method copy(x: Ref) returns (res: Ref)
+requires list(x)
+ensures list(x) && list(res)
+{
+    var curr: Ref := x
+    var cp: Ref := null
+    fold list(cp)
+    package list(curr) --* list(x)
+
+    while (curr != null)
+    //invariant list(curr) && list(cp)
+    //invariant list(curr) --* list(x)
+    {
+        var old_curr: Ref := curr
+        var old_cp: Ref := cp
+        
+        cp := new(*)
+        cp.next := old_cp
+
+        unfold list(curr)
+        curr := curr.next
+
+        fold list(cp)
+        package list(curr) --* list(x) {
+            fold list(old_curr)
+            apply list(old_curr) --* list(x)
+        }
+    }
+
+    res := cp
+    apply list(curr) --* list(x)
+}

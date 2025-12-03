@@ -1,0 +1,59 @@
+import "./tree.vpr"
+
+method insert(root: Ref, value: Int) returns (res: Ref)
+requires tree(root)
+ensures tree(res)
+{
+    
+    var curr: Ref := root
+    if(root == null){
+        res := new(left, right, val)
+        res.left := null
+        fold tree(res.left)
+        res.right := null
+        fold tree(res.right)
+        res.val := value
+        fold tree(res)
+    } else {
+
+        package tree(curr) --* tree(root)
+        unfold tree(curr)
+
+        while(curr != null && curr.val != value)
+        //invariant acc(curr.left) && acc(curr.right) && acc(curr.val)
+        //invariant tree(curr.left) && tree(curr.right)
+        //invariant tree(curr) --* tree(root)
+        {
+            var prev: Ref := curr
+            var t: Ref
+            if(curr.val < value){
+                curr := curr.right
+            } else {
+                curr := curr.left
+            }
+            if(curr == null){
+                t := new(left, right, val)
+                t.left := null
+                t.right := null
+                fold tree(t.left)
+                fold tree(t.right)
+                t.val := value
+                fold tree(t)
+                if(prev.val < value){
+                    prev.right := t
+                } else {
+                    prev.left := t
+                }
+                curr := t
+            }
+            unfold tree(curr)
+            package tree(curr) --* tree(root){
+                fold tree(prev)
+                apply tree(prev) --* tree(root)
+            }
+        }
+        fold tree(curr)
+        apply tree(curr) --* tree(root)
+        res := root
+    }
+}

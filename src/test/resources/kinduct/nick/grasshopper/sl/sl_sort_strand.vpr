@@ -1,0 +1,109 @@
+import "sl.vpr"
+
+method merge(a: Ref, b: Ref) returns (res: Ref)
+requires list(a) && list(b)
+ensures list(res)
+
+method pull_strands(lst: Ref) returns (sorted: Ref, rest: Ref)
+requires list(lst) && lst != null
+ensures list(sorted)
+ensures list(rest)
+{
+    
+    unfold list(lst)
+    var curr: Ref := lst.next
+
+    sorted := lst
+    sorted.next := null
+    var curr_sorted: Ref := sorted
+
+    package list(sorted) --* list(sorted)
+
+
+    var done: Bool := false
+    while(curr != null && !done)
+    //invariant list(curr)
+    //invariant acc(curr_sorted.next) && acc(curr_sorted.data)
+    //invariant list(curr_sorted) --* list(sorted)
+    {
+        var prev1: Ref
+        prev1 := curr
+        unfold list(curr)
+        done := curr.data < curr_sorted.data
+
+        if(!done){
+            curr := curr.next
+
+            var prev_sorted: Ref := curr_sorted
+            prev1.next := null
+            curr_sorted.next := prev1
+            curr_sorted := prev1
+            package list(curr_sorted) --* list(sorted){
+                fold list(prev_sorted)
+                apply list(prev_sorted) --* list(sorted)
+            }
+        }
+        
+
+    }
+
+    rest := curr
+    var sorted_mid: Ref := curr_sorted
+
+    if(rest != null){
+        
+        var prev: Ref := rest
+        package list(prev) --* list(rest)
+        unfold list(prev)
+        curr := curr.next
+
+        while(curr != null)
+        //invariant list(prev) --* list(rest)
+        //invariant acc(prev.next)
+        //invariant acc(prev.data)
+        //invariant prev.next == curr
+        //invariant list(curr)
+        //invariant acc(curr_sorted.next) && acc(curr_sorted.data)
+        //invariant list(curr_sorted) --* list(sorted_mid)
+        {
+            unfold list(curr)
+            
+            var cond: Bool := curr.data >= curr_sorted.data
+            if(cond){
+                var old_prev: Ref := prev
+                var old_curr: Ref := curr
+                var old_curr_sorted: Ref := curr_sorted
+
+                curr := curr.next
+                curr_sorted.next := old_curr
+                curr_sorted := old_curr
+                old_curr.next := null
+                prev.next := curr
+
+                package list(curr_sorted) --* list(sorted_mid){
+                    fold list(old_curr_sorted)
+                    apply list(old_curr_sorted) --* list(sorted_mid)
+                }
+            } else {
+                var prev_prev: Ref := prev
+                prev := curr
+                curr := curr.next
+                package list(prev) --* list(rest){
+                    fold list(prev_prev)
+                    apply list(prev_prev) --* list(rest)
+                }
+            }
+        }
+        fold list(prev)
+        apply list(prev) --* list(rest)
+    }
+
+    if(rest == null){
+        fold list(rest)
+    }
+
+    curr_sorted.next := null
+    fold list(curr_sorted.next)
+    fold list(curr_sorted)
+    apply list(curr_sorted) --* list(sorted)
+}

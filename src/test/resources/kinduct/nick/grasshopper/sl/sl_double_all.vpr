@@ -1,0 +1,25 @@
+import "./sl.vpr"
+
+method sls_double_all(lst: Ref) returns (res: Ref)
+requires list(lst)
+ensures list(lst)
+{
+    var x: Ref := lst
+    package list(x) --* list(lst)
+
+    while(x != null)
+    //invariant list(x)
+    //invariant list(x) --* list(lst)
+    {
+        var x_old: Ref := x
+        unfold list(x)
+        x.data := x.data * 2
+        x := x.next
+
+        package list(x) --* list(lst) {
+            fold list(x_old)
+            apply list(x_old) --* list(lst)
+        }
+    }
+    apply list(x) --* list(lst)
+}

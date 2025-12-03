@@ -1,0 +1,51 @@
+import "./tree.vpr"
+
+method destroy(root: Ref)
+requires tree(root)
+{
+        var remaining: Ref := new(elem, tNext)
+        remaining.tNext := null
+        remaining.elem := root
+        fold tList(remaining.tNext)
+        fold tList(remaining)
+
+        while(remaining != null)
+        //invariant tList(remaining)
+        {
+            unfold tList(remaining)
+            var current: Ref := remaining.elem
+
+            
+            var cond: Bool := current != null
+            if(cond){
+
+                unfold tree(current)
+
+                var lNode: Ref := new(elem, tNext)
+                var rNode: Ref := new(elem, tNext)
+                lNode.elem := current.left
+                rNode.elem := current.right
+
+                rNode.tNext := remaining.tNext
+                lNode.tNext := rNode
+                remaining.tNext := lNode
+
+                fold tList(rNode)
+                fold tList(lNode)
+
+            }
+
+            freeT(current)
+            var remaining_prev: Ref := remaining
+            remaining := remaining.tNext
+            freeL(remaining_prev)
+
+        }
+}
+
+method freeT(root: Ref)
+requires root != null ==> acc(root.left) && acc(root.right) && acc(root.val)
+requires root == null ==> tree(root)
+
+method freeL(node: Ref)
+requires acc(node.elem) && acc(node.tNext)

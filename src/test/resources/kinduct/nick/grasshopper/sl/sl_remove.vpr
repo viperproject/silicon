@@ -1,0 +1,44 @@
+import "./sl.vpr"
+
+method remove(x: Ref) returns (res: Ref)
+requires list(x)
+ensures list(res)
+{
+    var curr: Ref
+    var tmp: Ref
+    var nondet: Bool
+
+    if(x == null){
+        res := null
+    } else {
+        curr := x
+
+        package list(curr) --* list(x)
+        unfold list(curr)
+
+        while(nondet && curr.next != null)
+        //invariant acc(curr.next) && acc(curr.data)
+        //invariant list(curr.next)
+        //invariant list(curr) --* list(x)
+        {
+            var old_curr: Ref := curr
+            nondet := havoc()
+            curr := curr.next
+            unfold list(curr)
+            package list(curr) --* list(x) {
+                fold list(old_curr)
+                apply list(old_curr) --* list(x)
+            }
+        }
+        tmp := curr.next
+        if(tmp != null) {
+            unfold list(tmp)
+            curr.next := tmp.next
+        }
+        fold list(curr)
+        apply list(curr) --* list(x)
+        res := x
+    }
+}
+
+method havoc() returns (res: Bool)

@@ -1,0 +1,85 @@
+import "./tree.vpr"
+
+method merge(leftT: Ref, rightT: Ref) returns (res: Ref)
+requires tree(leftT) && tree(rightT)
+ensures tree(res)
+
+method free(root: Ref)
+requires acc(root.left) && acc(root.right) && acc(root.val)
+
+method remove(root: Ref, value: Int) returns (res: Ref)
+  requires tree(root)
+  ensures tree(res)
+{
+    
+    var found: Bool := false
+    if(root == null){
+        res := root
+    } else {
+
+        var curr: Ref := root
+           
+        unfold tree(root)
+        if(root.val == value){
+            res := merge(root.left, root.right)
+            free(root)
+        } else {
+            
+            fold tree(curr)
+            package tree(curr) --* tree(root)
+
+            while(!found)
+            //invariant tree(curr) --* tree(root)
+            //invariant tree(curr)
+            {
+                
+                var prev: Ref := curr
+                unfold tree(curr)
+
+                var cond: Bool := curr.val < value
+                if(cond){
+                    curr := curr.right
+                    
+                    if(curr != null){
+                        unfold tree(curr)
+                        var cond1: Bool := curr.val == value
+                        if(cond1){
+                            found := true
+                            prev.right := merge(curr.left, curr.right)
+                            free(curr)
+                            curr := prev.right
+                        }
+                    } else {
+                        curr := prev
+                        found := true
+                    } 
+                } else {
+                    curr := curr.left
+                    if(curr != null){
+                        unfold tree(curr)
+                        var cond2: Bool := curr.val == value
+                        if(cond2){
+                            found := true
+                            prev.left := merge(curr.left, curr.right)
+                            free(curr)
+                            curr := prev.left
+                        }
+                    } else {
+                        curr := prev
+                        found := true
+                    } 
+                }
+
+                if(!found){
+                    fold tree(curr)
+                }
+                package tree(curr) --* tree(root){
+                        fold tree(prev)
+                        apply tree(prev) --* tree(root)
+                }
+            }
+            apply tree(curr) --* tree(root)
+            res := root
+        }
+    }
+}

@@ -1,0 +1,82 @@
+import "./sl.vpr"
+
+method pairwise_sum(x: Ref, y: Ref) returns (z: Ref)
+requires list(x) && list(y)
+ensures list(x) && list(y) && list(z)
+{
+    var curr_x: Ref := x
+    var curr_y: Ref := y
+    
+    if(x == null || y == null){
+        z := null
+        fold list(z)
+    } else {
+        z := new(*)
+        z.next := null
+
+        
+
+        var curr_z: Ref := z
+        
+        package list(x) --* list(x)
+        package list(y) --* list(y)
+        package list(z) --* list(z)
+        
+
+        while(curr_x != null && curr_y != null)
+            //invariant list(curr_x)
+            //invariant list(curr_x) --* list(x)
+            //invariant list(curr_y)
+            //invariant list(curr_y) --* list(y)
+            //invariant acc(curr_z.next) && acc(curr_z.data)
+            //invariant list(curr_z) --* list(z)
+        {
+            var prev_x: Ref := curr_x
+            var prev_y: Ref := curr_y
+            var prev_z: Ref := curr_z
+
+            unfold list(curr_x)
+            unfold list(curr_y)
+
+            curr_z.data := curr_x.data + curr_y.data
+            curr_x := curr_x.next
+            curr_y := curr_y.next
+            
+            if(curr_x != null && curr_y != null){
+                var next_z: Ref := new(*)
+                next_z.next := null
+                curr_z.next := next_z
+                curr_z := next_z
+
+                package list(curr_z) --* list(z){
+                    fold list(prev_z)
+                    apply list(prev_z) --* list(z)
+                }
+            }
+                
+            
+            package list(curr_x) --* list(x){
+                fold list(prev_x)
+                apply list(prev_x) --* list(x)
+            }
+            
+            package list(curr_y) --* list(y){
+                fold list(prev_y)
+                apply list(prev_y) --* list(y)
+            }
+
+
+            
+        }
+
+        curr_z.next := null
+
+        apply list(curr_x) --* list(x)
+        apply list(curr_y) --* list(y)
+        
+        fold list(curr_z.next)
+        fold list(curr_z)
+        apply list(curr_z) --* list(z)
+    }
+}
+

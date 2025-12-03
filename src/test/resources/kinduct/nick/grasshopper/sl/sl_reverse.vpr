@@ -1,0 +1,22 @@
+import "./sl.vpr"
+
+method reverse(x: Ref) returns (res: Ref)
+requires list(x)
+ensures list(res)
+{
+    res := null
+    fold list(res)
+    var curr: Ref := x 
+    while(curr != null)
+    //invariant list(curr)
+    //invariant list(res)
+    {
+        var tmp: Ref := curr
+        unfold list(curr)
+        curr := curr.next
+        tmp.next := res
+        res := tmp
+        assert res.data == tmp.data
+        fold list(tmp)
+    }
+}

@@ -1,0 +1,14 @@
+field left: Ref
+field right: Ref
+field val: Int
+
+field tNext: Ref
+field elem: Ref
+
+predicate tree(x: Ref){
+    x != null ==> (acc(x.left) && acc(x.right) && acc(x.val) && tree(x.left) && tree(x.right))
+}
+
+predicate tList(x: Ref){
+    x != null ==> (acc(x.tNext) && acc(x.elem) && tList(x.tNext) && tree(x.elem))
+}

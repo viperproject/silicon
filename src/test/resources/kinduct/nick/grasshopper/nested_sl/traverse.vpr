@@ -1,0 +1,46 @@
+import "./nested_def.vpr"
+
+method traverse(x: Ref)
+requires OuterNode(x)
+ensures OuterNode(x)
+{
+    var currO: Ref := x
+    package OuterNode(currO) --* OuterNode(x)
+
+    while(currO != null)
+    invariant OuterNode(currO)
+    invariant OuterNode(currO) --* OuterNode(x)
+    {
+        var currO_old: Ref := currO
+
+        unfold OuterNode(currO)
+        var ic: Ref := currO.down
+
+        var currI: Ref := ic
+
+        package InnerNode(currI) --* InnerNode(ic)
+
+        while(currI != null)
+        //invariant InnerNode(currI)
+        //invariant InnerNode(currI) --* InnerNode(ic)
+        {
+            var currI_old: Ref := currI
+            unfold InnerNode(currI)
+            currI := currI.inext
+            package InnerNode(currI) --* InnerNode(ic){
+                fold InnerNode(currI_old)
+                apply InnerNode(currI_old) --* InnerNode(ic)
+            }
+        }
+        apply InnerNode(currI) --* InnerNode(ic)
+
+        currO := currO.onext
+        
+
+        package OuterNode(currO) --* OuterNode(x) {
+            fold OuterNode(currO_old)
+            apply OuterNode(currO_old) --* OuterNode(x)
+        }
+    } 
+    apply OuterNode(currO) --* OuterNode(x)
+}

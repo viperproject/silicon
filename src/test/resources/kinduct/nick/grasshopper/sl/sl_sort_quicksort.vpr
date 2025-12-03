@@ -1,0 +1,110 @@
+import "sl.vpr"
+
+method split(x: Ref) returns (greq: Ref, pivot: Ref, less: Ref)
+requires list(x)
+requires x != null
+ensures list(greq) && list(less)
+ensures acc(pivot.data) && acc(pivot.next)
+{
+    unfold list(x)
+    pivot := x
+    greq := x.next
+    pivot.next := null
+    
+    less := null
+    fold list(less)
+
+    unfold list(greq)
+
+    var prev: Ref := greq
+    var curr: Ref := greq.next
+    var pivot_val: Int := pivot.data
+
+    if(greq != null && greq.next != null){
+        
+    
+        package list(prev) --* list(greq)
+
+        var done: Bool := false
+        while(curr != null && !done)
+        //invariant list(curr)
+        //invariant acc(prev.data) 
+        //invariant acc(prev.next)
+        //invariant prev.next == curr
+        //invariant list(prev) --* list(greq)
+        {
+            var prev_old: Ref := prev
+            unfold list(curr)
+            done := curr.data < pivot_val
+
+            if(!done){
+                prev := curr
+                curr := curr.next
+            }
+            package list(prev) --* list(greq){
+                fold list(prev_old)
+                apply list(prev_old) --* list(greq)
+            }
+        }
+        var curr_less: Ref := curr
+        if(curr != null){
+            
+            unfold list(curr)
+            less := curr
+            package list(curr_less) --* list(less)
+
+            
+            
+            curr := curr.next
+            prev.next := curr
+            var greq_mid: Ref := prev
+
+            while(curr != null)
+            //invariant list(curr)
+            //invariant acc(prev.data)
+            //invariant acc(prev.next)
+            //invariant prev.next == curr
+            //invariant list(prev) --* list(greq_mid)
+            //invariant acc(curr_less.data) && acc(curr_less.next)
+            //invariant list(curr_less) --* list(less)
+            {
+                unfold list(curr)
+                var cond: Bool := curr.data < pivot_val
+                if(cond){
+                    var prev_less: Ref := curr_less
+                    curr_less.next := curr
+                    curr_less := curr
+                    package list(curr_less) --* list(less){
+                        fold list(prev_less)
+                        apply list(prev_less) --* list(less)
+                    }
+
+                    curr := curr.next
+                    prev.next := curr
+                } else {
+                    var prev_old: Ref := prev
+                    prev := curr
+                    curr := curr.next
+                    package list(prev) --* list(greq){
+                        fold list(prev_old)
+                        apply list(prev_old) --* list(greq)
+                    }
+                }
+            }
+            curr_less.next := null
+            fold list(curr_less.next)
+            fold list(curr_less)
+            apply list(curr_less) --* list(less)
+        }
+
+            fold list(prev)
+            apply list(prev) --* list(greq)
+    }
+}
+
+
+
+method concat(x: Ref, y: Ref) returns (res: Ref)
+requires list(x) && list(y)
+ensures list(res)
+

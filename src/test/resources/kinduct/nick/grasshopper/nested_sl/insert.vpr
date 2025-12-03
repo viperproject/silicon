@@ -1,0 +1,103 @@
+import "./nested_def.vpr"
+
+method insert(x: Ref) returns (res: Ref)
+requires OuterNode(x)
+ensures OuterNode(res)
+{
+    var inn: Ref
+    if(x == null){
+        inn := new(inext)
+        inn.inext := null
+        fold InnerNode(inn.inext)
+        fold InnerNode(inn)
+        res := new(onext, down)
+        res.down := inn
+        res.onext := null
+        fold OuterNode(res.onext)
+        fold OuterNode(res)
+    } else {
+        var nondet: Bool
+        var currO: Ref := x
+        
+        package OuterNode(currO) --* OuterNode(x)
+        unfold OuterNode(currO)
+
+        while(nondet && currO.onext != null)
+        //invariant acc(currO.onext) && acc(currO.down) && InnerNode(currO.down)
+        //invariant OuterNode(currO.onext)
+        //invariant OuterNode(currO) --* OuterNode(x)
+        {
+            nondet := havoc()
+            var currO_old: Ref := currO
+            currO := currO.onext
+            unfold OuterNode(currO)
+
+            package OuterNode(currO) --* OuterNode(x) {
+                fold OuterNode(currO_old)
+                apply OuterNode(currO_old) --* OuterNode(x)
+            }
+        }
+        
+        nondet := havoc()
+
+        // New outer node
+        if(nondet){
+            var currO_old: Ref := currO
+            var newO: Ref := new(*)
+            newO.down := null
+            fold InnerNode(newO.down)
+            newO.onext := currO.onext
+            currO.onext := newO
+            currO := newO
+            package OuterNode(currO) --* OuterNode(x) {
+                fold OuterNode(currO_old)
+                apply OuterNode(currO_old) --* OuterNode(x)
+            }
+        } 
+        
+        // Insert in inner list
+        if(currO.down == null){
+            var i: Ref := new(*)
+            i.inext := null
+            fold InnerNode(i)
+            currO.down := i
+        } else {
+
+            // Go through inner list
+            var ic: Ref := currO.down
+            var currI: Ref := ic
+            package InnerNode(currI) --* InnerNode(ic)
+            unfold InnerNode(currI)
+            nondet := havoc()
+
+            while(nondet && currI.inext != null)
+            //invariant acc(currI.inext)
+            //invariant InnerNode(currI.inext)
+            //invariant InnerNode(currI) --* InnerNode(ic)
+            {
+                nondet := havoc()
+                
+                var currI_old: Ref := currI
+                currI := currI.inext
+                unfold InnerNode(currI)
+                package InnerNode(currI) --* InnerNode(ic){
+                    fold InnerNode(currI_old)
+                    apply InnerNode(currI_old) --* InnerNode(ic)
+                }
+            }
+
+            var i: Ref := new(*)
+            i.inext := currI.inext
+            fold InnerNode(i)
+            currI.inext := i
+            fold InnerNode(currI)
+            apply InnerNode(currI) --* InnerNode(ic)
+        }
+        
+        fold OuterNode(currO)
+        apply OuterNode(currO) --* OuterNode(x)
+        res := x
+        }
+}
+
+method havoc() returns (res: Bool)

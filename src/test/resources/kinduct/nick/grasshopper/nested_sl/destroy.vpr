@@ -1,0 +1,38 @@
+import "./nested_def.vpr"
+
+method destroy(x: Ref)
+requires OuterNode(x)
+{
+    var currO: Ref := x
+
+    while(currO != null)
+        //invariant OuterNode(currO)
+    {
+        var currO_old: Ref := currO
+        unfold OuterNode(currO)
+        var ic: Ref := currO.down
+        var currI: Ref := ic
+        while(currI != null)
+            //invariant InnerNode(currI)
+        {
+            var currI_old: Ref := currI
+            unfold InnerNode(currI)
+            currI := currI.inext
+            freeI(currI_old)
+        }
+        freeN(currI)
+        currO := currO.onext
+        freeO(currO_old)
+    } 
+}
+
+
+
+method freeO(x: Ref)
+requires acc(x.onext) && acc(x.down) 
+
+method freeI(x: Ref)
+requires acc(x.inext)
+
+method freeN(x: Ref)
+requires InnerNode(x) && x == null

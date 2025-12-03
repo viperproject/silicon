@@ -1,0 +1,36 @@
+import "./tree.vpr"
+
+method contains(root: Ref, value: Int) returns (res: Bool)
+requires tree(root)
+ensures tree(root)
+{
+    res := false
+
+    var curr: Ref := root
+    package tree(curr) --* tree(root)
+
+    while(curr != null && !res)
+    //invariant tree(curr) --* tree(root)
+    //invariant tree(curr)
+    {
+        
+        unfold tree(curr)
+        var prev: Ref := curr
+        var cond1: Bool := curr.val == value
+        var cond2: Bool := curr.val > value
+        if(cond1){
+            res := true
+            curr := curr.left
+        } elseif(cond2){
+            curr := curr.left
+        } else {
+            curr := curr.right
+        }
+          
+        package tree(curr) --* tree(root){
+            fold tree(prev)
+            apply tree(prev) --* tree(root)
+        }
+    }
+    apply tree(curr) --* tree(root)
+}

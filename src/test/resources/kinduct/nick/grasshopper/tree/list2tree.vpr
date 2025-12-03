@@ -1,0 +1,30 @@
+import "tree.vpr"
+import "../sl/sl.vpr"
+
+method insert(root: Ref, value: Int) returns (res: Ref)
+requires tree(root)
+ensures tree(res)
+
+method free(l: Ref)
+requires acc(l.next) && acc(l.data)
+
+method list2tree(lst: Ref) returns (res: Ref)
+requires list(lst)
+ensures tree(res)
+{
+    
+    res := null
+    fold tree(res)
+    var curr: Ref := lst
+    
+    while(curr != null)
+    //invariant list(curr)
+    //invariant tree(res)
+    {
+        var curr_old: Ref := curr
+        unfold list(curr)
+        curr := curr.next
+        res := insert(res, curr_old.data)
+        free(curr_old)
+    }
+}

@@ -1,0 +1,19 @@
+import "./sl.vpr"
+
+method dispose(lst: Ref)
+requires list(lst)
+{
+    var curr: Ref := lst
+    
+    while(curr != null)
+        //invariant list(curr)
+    {
+        var curr_old: Ref := curr
+        unfold list(curr)
+        curr := curr.next
+        free(curr_old)
+    }
+}
+
+method free(x: Ref)
+requires acc(x.next) && acc(x.data)

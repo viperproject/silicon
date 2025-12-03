@@ -1,0 +1,57 @@
+import "./sl.vpr"
+
+function length(x: Ref): Int
+requires list(x)
+{
+    x == null ? 0 : unfolding list(x) in 1 + length(x.next)
+}
+
+method split(x: Ref) returns (y: Ref, z: Ref)
+requires list(x)
+ensures list(y) && list(z)
+{
+    var mid: Int
+    mid := length(x) / 2
+
+    var i: Int := 0
+
+    var curr: Ref := x
+    var prev: Ref := x
+
+    package list(curr) --* list(x)
+
+    while (i < mid && curr != null)
+    //invariant list(curr) --* list(x)
+    //invariant list(curr)
+    {
+
+        prev := curr
+        unfold list(curr)
+        curr := curr.next
+
+        i := i + 1
+
+        package list(curr) --* list(x){
+            fold list(prev)
+            apply list(prev) --* list(x)
+        }
+    }
+
+    if(curr != null){
+        var tmp: Ref := curr
+        unfold list(curr)
+        curr := curr.next
+        tmp.next := null
+        fold list(tmp.next)
+        fold list(tmp)
+        apply list(tmp) --* list(x)
+
+        y := x
+        z := curr
+    } else {
+        y := x
+        apply list(curr) --* list(x)
+        z := null
+        fold list(z)
+    }
+}

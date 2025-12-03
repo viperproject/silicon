@@ -1,0 +1,70 @@
+import "./sl.vpr"
+
+function length(x: Ref): Int
+requires list(x)
+{
+    x == null ? 0 : unfolding list(x) in 1 + length(x.next)
+}
+
+
+method merge(a: Ref, b: Ref) returns (res: Ref)
+requires list(a) && list(b)
+ensures list(res)
+{
+    res := null
+    if(a == null){
+        res := b
+    } else { 
+        if(b == null) {
+            res := a
+        } else {
+            var aIt: Ref := a
+            var bIt: Ref := b
+            if (unfolding list(a) in a.data <= unfolding list(b) in b.data) {
+                res := a
+                unfold list(a)
+                aIt := a.next
+                bIt := b
+            } else {
+                res := b
+                //unfold list(b)
+                aIt := a
+                bIt := b.next
+            }
+
+            var last: Ref := res
+            package list(last) --* list(res)
+
+            while (aIt != null || bIt != null)
+            //invariant list(aIt) && list(bIt)
+            //invariant acc(last.next)
+            //invariant acc(last.data)
+            //invariant last.next == aIt || last.next == bIt
+            //invariant list(last) --* list(res)
+            {
+                var old_last: Ref := last
+                
+                unfold list(aIt)
+                unfold list(bIt)
+                var cond: Bool := aIt == null || bIt != null && aIt.data > bIt.data
+                if(cond){
+                    last.next := bIt
+                    last := bIt
+                    bIt := bIt.next
+                    fold list(aIt)
+                } else {
+                    last.next := aIt
+                    last := aIt
+                    aIt := aIt.next
+                    fold list(bIt)
+                }
+                package list(last) --* list(res){
+                    fold list(old_last)
+                    apply list(old_last) --* list(res)
+                }
+            }
+            fold list(last)
+            apply list(last) --* list(res)
+        }
+    }
+}

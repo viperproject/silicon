@@ -1,0 +1,45 @@
+import "./sl.vpr"
+
+method insert(x: Ref, elt: Ref) returns (res: Ref)
+requires list(x)
+requires acc(elt.next) && acc(elt.data)
+ensures list(res)
+{
+    var curr: Ref := x
+    var nondet: Bool
+    
+    if(x == null){
+        elt.next := null
+        fold list(elt.next)
+        fold list(elt)
+        res := elt
+    } else {
+
+        package list(curr) --* list(x)
+        unfold list(curr)
+
+        while(nondet && curr.next != null)
+        //invariant acc(curr.next) && acc(curr.data)
+        //invariant list(curr.next)
+        //invariant list(curr) --* list(x)
+        {
+            var old_curr: Ref := curr
+            nondet := havoc()
+            curr := curr.next
+            unfold list(curr)
+            package list(curr) --* list(x) {
+                fold list(old_curr)
+                apply list(old_curr) --* list(x)
+            }
+        }
+        elt.next := curr.next
+        curr.next := elt
+        fold list(elt)
+        fold list(curr)
+        apply list(curr) --* list(x)
+        res := x
+    }
+}
+
+
+method havoc() returns (res: Bool)

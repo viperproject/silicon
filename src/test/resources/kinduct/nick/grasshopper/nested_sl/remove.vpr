@@ -1,0 +1,105 @@
+import "./nested_def.vpr"
+
+method remove(x: Ref) returns (res: Ref)
+requires OuterNode(x)
+ensures OuterNode(res)
+{
+    var iprev: Ref 
+    if(x != null) {
+        var nondet: Bool
+        var currO: Ref := x
+        
+        package OuterNode(currO) --* OuterNode(x)
+        unfold OuterNode(currO)
+
+        while(nondet && currO.onext != null)
+        //invariant acc(currO.onext) && acc(currO.down) && InnerNode(currO.down)
+        //invariant OuterNode(currO.onext)
+        //invariant OuterNode(currO) --* OuterNode(x)
+        {
+            nondet := havoc()
+            var currO_old: Ref := currO
+            currO := currO.onext
+            unfold OuterNode(currO)
+
+            package OuterNode(currO) --* OuterNode(x) {
+                fold OuterNode(currO_old)
+                apply OuterNode(currO_old) --* OuterNode(x)
+            }
+        }
+        
+        nondet := havoc()
+
+        var prev: Ref := currO
+        currO := currO.onext
+        
+        var cond1: Bool := currO != null
+        if(cond1){
+            unfold OuterNode(currO)
+            var cond2: Bool := currO.down != null
+            if(cond2) {
+                var ic: Ref := currO.down
+                var currI: Ref := ic
+                package InnerNode(currI) --* InnerNode(ic)
+                unfold InnerNode(currI)
+                nondet := havoc()
+
+                while(nondet && currI.inext != null)
+                //invariant acc(currI.inext)
+                //invariant InnerNode(currI.inext)
+                //invariant InnerNode(currI) --* InnerNode(ic)
+                {
+                    nondet := havoc()
+                    
+                    var currI_old: Ref := currI
+                    currI := currI.inext
+                    unfold InnerNode(currI)
+                    package InnerNode(currI) --* InnerNode(ic){
+                        fold InnerNode(currI_old)
+                        apply InnerNode(currI_old) --* InnerNode(ic)
+                    }
+                }
+
+                var cond3: Bool := !nondet && currI.inext == null && currO.down == currI
+                if(cond3) {
+                    currO.down := null
+                    freeI(currI)
+                } else {
+                    iprev := currI
+                    currI := currI.inext
+                    
+                    var cond4: Bool := currI != null
+                    if(cond4){
+                        //unfold InnerNode(currI)
+                        iprev.inext := currI.inext
+                        freeI(currI)
+                        currI := iprev
+                    }
+                    fold InnerNode(iprev)
+                    apply InnerNode(iprev) --* InnerNode(ic)
+                }
+
+                var cond5: Bool := currO.down == null
+                if(cond5) {
+                    prev.onext := currO.onext
+                    freeO(currO)
+                    currO := prev.onext
+                    unfold OuterNode(currO)
+                }
+                
+            }
+            fold OuterNode(currO)
+        }
+        fold OuterNode(prev)
+        apply OuterNode(prev) --* OuterNode(x)
+    }
+    res := x
+}
+
+method havoc() returns (res: Bool)
+
+method freeO(x: Ref)
+requires acc(x.onext) && acc(x.down) 
+
+method freeI(x: Ref)
+requires acc(x.inext)

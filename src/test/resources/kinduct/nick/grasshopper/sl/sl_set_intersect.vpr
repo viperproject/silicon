@@ -1,0 +1,100 @@
+import "sl.vpr"
+
+method free(x: Ref)
+requires acc(x.next) && acc(x.data)
+
+method intersect(lst1: Ref, lst2: Ref) returns (res: Ref)
+requires list(lst1) && list(lst2)
+ensures list(res) && list(lst2)
+{ 
+    res := lst1
+    if(lst1 != null && lst2 != null){
+    
+        var curr_2: Ref := lst2
+        package list(curr_2) --* list(lst2)
+        var done: Bool := false
+        while(res != null && curr_2 != null && !done)
+            //invariant list(curr_2)
+            //invariant list(curr_2) --* list(lst2)
+            //invariant list(res)
+        {
+            
+            var prev_2: Ref := curr_2
+            unfold list(curr_2)
+            unfold list(res)
+
+            done := res.data != curr_2.data
+
+            if(!done){
+                var prev_res: Ref := res
+                res := res.next
+                curr_2 := curr_2.next
+                free(prev_res)
+
+                package list(curr_2) --* list(lst2){
+                    fold list(prev_2)
+                    apply list(prev_2) --* list(lst2)
+                }
+            }
+        }
+        
+        if(res != null && curr_2 != null){
+            
+            var prev_res: Ref := res
+            package list(prev_res) --* list(res)
+            unfold list(res)
+            var curr_res: Ref := res.next
+
+            var mid_2: Ref := curr_2
+            
+            while(curr_res != null && curr_2 != null)
+            //invariant list(curr_2) 
+            //invariant list(curr_2) --* list(lst2)
+            //invariant list(curr_res)
+            //invariant acc(prev_res.data)
+            //invariant acc(prev_res.next)
+            //invariant prev_res.next == curr_res
+            //invariant list(prev_res) --* list(res)
+            {
+                var prev_22: Ref := curr_2
+                var prev_res_old: Ref := prev_res
+                
+                unfold list(curr_2)
+                unfold list(curr_res)
+
+                var cond1: Bool := curr_res.data < curr_2.data
+                var cond2: Bool := curr_res.data > curr_2.data
+                if(cond1){
+                    prev_res.next := curr_res.next
+                    free(curr_res)
+                    curr_res := prev_res.next
+                    fold list(curr_2)
+                } else {
+                    if(cond2){
+                        curr_2 := curr_2.next
+                        package list(curr_2) --* list(mid_2){
+                            fold list(prev_22)
+                            apply list(prev_22) --* list(mid_2)
+                        }
+                        fold list(curr_res)
+                    } else {
+                        curr_res := curr_res.next
+                        prev_res := prev_res.next
+                        curr_2 := curr_2.next
+                        package list(prev_res) --* list(res){
+                            fold list(prev_res_old)
+                            apply list(prev_res_old) --* list(res)
+                        }
+                        package list(curr_2) --* list(mid_2){
+                            fold list(prev_22)
+                            apply list(prev_22) --* list(mid_2)
+                        }
+                    }   
+                } 
+            }
+            fold list(prev_res)
+            apply list(prev_res) --* list(res)
+        }
+        apply list(curr_2) --* list(lst2)
+    }
+}

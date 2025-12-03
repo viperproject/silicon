@@ -1,0 +1,6 @@
+field next: Ref
+field data: Int
+
+predicate list(x: Ref) {
+    x != null ==> (acc(x.next) && acc(x.data) && list(x.next))
+}

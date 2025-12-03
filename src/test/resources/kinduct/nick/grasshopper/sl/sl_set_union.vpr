@@ -1,0 +1,68 @@
+import "sl.vpr"
+
+method free(x: Ref)
+requires acc(x.next) && acc(x.data)
+
+method set_union(lst1: Ref, lst2: Ref) returns (res: Ref)
+requires list(lst1) && list(lst2)
+ensures list(res)
+{
+    if(lst1 == null){
+        res := lst2
+    } else {
+        res := lst1
+        var curr: Ref := res
+        package list(curr) --* list(res)
+
+        unfold list(lst1)
+        var l1: Ref := lst1.next
+        var l2: Ref := lst2
+
+        while(l1 != null && l2 != null)
+        //invariant list(l1) && list(l2)
+        //invariant acc(curr.data) && acc(curr.next)
+        //invariant list(curr) --* list(res)
+        {
+            unfold list(l1)
+            unfold list(l2)
+            var cond1: Bool := l1.data == curr.data
+            var cond2: Bool := l2.data == curr.data
+            if(cond1){
+                var prev: Ref := l1
+                l1 := l1.next
+                free(prev)
+                fold list(l2)
+            } elseif(cond2){
+                var prev: Ref := l2
+                l2 := l2.next
+                free(prev)
+                fold list(l1)
+            } else {
+                var prev: Ref := curr
+                var cond3: Bool := l1.data < l2.data
+                if(cond3){
+                    curr.next := l1
+                    curr := l1
+                    l1 := l1.next
+                    fold list(l2)
+                } else {
+                    curr.next := l2
+                    curr := l2
+                    l2 := l2.next
+                    fold list(l1)
+                }
+                package list(curr) --* list(res){
+                    fold list(prev)
+                    apply list(prev) --* list(res)
+                }
+            }
+        }
+        if(l1 == null){
+            curr.next := l2
+        } else {
+            curr.next := l1
+        }
+        fold list(curr)
+        apply list(curr) --* list(res)
+    }
+}
