@@ -349,7 +349,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
       val s6 = s5.copy(conservedPcs = conservedPcsStack, recordPcs = s.recordPcs)
 
-      recordedBranches :+= (s6, v4.decider.pcs.branchConditions, v4.decider.pcs.branchConditionExps, conservedPcs, ch)
+      val bcs = v4.decider.pcs.branchConditions.flatMap(_.topLevelConjuncts).distinct
+
+      recordedBranches :+= (s6, bcs, v4.decider.pcs.branchConditionExps, conservedPcs, ch)
     }
 
     def createWandChunkAndRecordResults(s4: State,
