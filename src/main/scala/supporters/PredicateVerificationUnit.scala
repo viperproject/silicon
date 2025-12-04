@@ -21,6 +21,25 @@ import viper.silicon.interfaces._
 import viper.silicon.rules.executionFlowController
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
+import viper.silver.verifier.reasons.InternalReason
+
+object PredicateHelper {
+  def upperBound(pred: ast.Predicate): Option[ast.Exp] = {
+    pred.info.getUniqueInfo[ast.AnnotationInfo] match {
+      case Some(annInfo) => annInfo.values.get("bound") match {
+        case Some(Seq(v)) =>
+          try {
+            val intVal = Integer.parseInt(v)
+            Some(ast.IntLit(intVal)())
+          } catch {
+            case _: NumberFormatException => None
+          }
+        case _ => None
+      }
+      case _ => None
+    }
+  }
+}
 
 class PredicateData(predicate: ast.Predicate)
                    /* Note: Holding a reference to a fixed symbol converter (instead of going
@@ -33,6 +52,18 @@ class PredicateData(predicate: ast.Predicate)
 
   val triggerFunction =
     Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
+
+  val upperBoundExp: Option[ast.Exp] = {
+    val ub = PredicateHelper.upperBound(predicate)
+    ub match {
+      case Some(ub) =>
+        require(symbolConvert.toSort(ub.typ) == sorts.Int, s"Permissions $ub must be of sort Int, but found ${symbolConvert.toSort(ub.typ)}")
+
+      case None => ()
+    }
+    ub
+  }
+  var upperBoundTerm: Option[Term] = None
 }
 
 trait PredicateVerificationUnit
@@ -87,10 +118,12 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       openSymbExLogger(predicate)
 
       val ins = predicate.formalArgs.map(_.localVar)
-      val s = sInit.copy(g = Store(ins.map(x => (x, decider.fresh(x)))),
+      val ubVar = ast.LocalVar("limit", ast.Perm)()
+      val s = sInit.copy(g = Store(ins.map(x => (x, decider.fresh(x))) ++ Seq((ubVar, decider.fresh(ubVar)))),
                          h = Heap(),
                          oldHeaps = OldHeaps())
       val err = PredicateNotWellformed(predicate)
+      val ubErr = PredicateNotWellformed(predicate)
 
       val result = predicate.body match {
         case None =>
@@ -100,7 +133,20 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
                   produce(s1, freshSnap, body, err, v)((_, _) =>
-                    Success())})
+                    Success())}) && executionFlowController.locally(s, v)((s1, _) => {
+          PredicateHelper.upperBound(predicate) match {
+            case None =>
+              Success()
+            case Some(ubExp) =>
+              val s3 = s1.scalePermissionFactor(s1.g(ubVar))
+              produce(s3, freshSnap, ast.And(ast.PermGtCmp(ubVar, ubExp)(), body)(), ubErr, v)((s4, _) =>
+                v.decider.assert(terms.False, s4, None) {
+                  case true =>
+                    Success()
+                  case false =>
+                    //Success()
+                    Failure(ubErr.dueTo(InternalReason(predicate, "Incorrect upper bound")))
+                })}})
       }
 
       symbExLog.closeMemberScope()

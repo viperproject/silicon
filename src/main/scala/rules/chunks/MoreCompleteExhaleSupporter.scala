@@ -291,7 +291,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           val (fr1, newTopHeap2) = if (nonEmptyChunks.isEmpty || totalConsumedFromAllButFirst == NoPerm)
             (s1.functionRecorder, s1.h)
           else
-            v1.stateConsolidator(s1).merge(s1.functionRecorder,s1.h, cHeap2, v1)
+            v1.stateConsolidator(s1).merge(s1.functionRecorder, s1, s1.h, cHeap2, v1)
 
           val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1)
           if (nonEmptyChunks.isEmpty){
@@ -336,7 +336,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         }
 
         chunkSupporter.produce(s, h, ch, v)((s2, h2, v2) => {
-          val (fr3, s3h) = v2.stateConsolidator(s2).merge(s2.functionRecorder, s2.h, ch, v2)
+          val (fr3, s3h) = v2.stateConsolidator(s2).merge(s2.functionRecorder, s2, s2.h, ch, v2)
           doActualConsumeComplete(s2.copy(h = s3h, functionRecorder = fr3), h2, resource, args, perms, ve, v2)(Q)
         })
       }
@@ -446,7 +446,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val allChunks = otherChunks ++ newChunks
         // TODO: Since no permissions were gained, I don't see why the PropertyInterpreter would yield any new assumptions.
         //       See if it can be removed here.
-        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v, s)
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
@@ -592,7 +592,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val allChunks = otherChunks ++ newChunks
         // TODO: Since no permissions were gained, I don't see why the PropertyInterpreter would yield any new assumptions.
         //       See if it can be removed here.
-        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v, s)
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))

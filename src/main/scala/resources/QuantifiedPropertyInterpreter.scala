@@ -44,6 +44,12 @@ class QuantifiedPropertyInterpreter extends PropertyInterpreter {
     info.args
   }
 
+  override protected def buildUpperBoundAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
+    sys.error("UpperBoundAccess clauses are not supported in quantified properties.")
+  }
+
+  override protected def buildPrHasUpperBound(chunkPlaceholder: ChunkPlaceholder, info: Info) = buildPathCondition(False(), info)
+
   override protected def buildCheck[K <: IteUsableKind]
                                    (condition: PropertyExpression[kinds.Boolean],
                                     thenDo: PropertyExpression[K],

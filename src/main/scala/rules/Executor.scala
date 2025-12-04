@@ -94,7 +94,7 @@ object executor extends ExecutionRules {
         val sNew = phase match {
           case LoopPhases.Transferring =>
             // just merge back
-            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, s.loopHeapStack.head, v)
+            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.loopHeapStack.head, v)
             val s1 = s.copy(functionRecorder = fr1, h = h1,
               loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
@@ -105,14 +105,14 @@ object executor extends ExecutionRules {
             s1
           case LoopPhases.Checking =>
             // just merge back
-            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, s.loopHeapStack.head, v)
+            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.loopHeapStack.head, v)
             val s1 = s.copy(functionRecorder = fr1, h = h1,
               loopHeapStack = s.loopHeapStack.tail, loopReadVarStack = s.loopReadVarStack.tail, loopPhaseStack = s.loopPhaseStack.tail)
             s1
         }
         sNew
       case cfg.Kind.Out =>
-        val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+        val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
           invariantContexts = s.invariantContexts.tail)
         s1
@@ -478,7 +478,7 @@ object executor extends ExecutionRules {
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
                 if (s3.heapDependentTriggers.contains(field))
                   v3.decider.assume(FieldTrigger(field.name, sm, tRcvr))
-                val (fr4, h4) = v3.stateConsolidator(s3).merge(s3.functionRecorder, h3, ch, v3)
+                val (fr4, h4) = v3.stateConsolidator(s3).merge(s3.functionRecorder, s3, h3, ch, v3)
                 Q(s3.copy(h = h4, functionRecorder = fr4), v3)
               }
             )

@@ -90,5 +90,7 @@ case class This() extends ChunkPlaceholder {
 case class ArgumentAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Argument]
 case class PermissionAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Permission]
 case class ValueAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Value]
+case class UpperBoundAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Permission]
+case class PrHasUpperBound(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Boolean]
 
 case class Null() extends PropertyExpression[kinds.Argument]

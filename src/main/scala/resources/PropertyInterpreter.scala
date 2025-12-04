@@ -6,6 +6,7 @@
 
 package viper.silicon.resources
 
+import viper.silver.ast
 import viper.silicon.state.terms
 import viper.silicon.state.terms.Term
 
@@ -42,6 +43,8 @@ abstract class PropertyInterpreter {
     // Chunk accessors
     case PermissionAccess(cv) => buildPermissionAccess(cv, info)
     case ValueAccess(cv) => buildValueAccess(cv, info)
+    case PrHasUpperBound(cv) => buildPrHasUpperBound(cv, info)
+    case UpperBoundAccess(cv) => buildUpperBoundAccess(cv, info)
 
     // decider / heap interaction
     case Check(condition, thenDo, otherwise) => buildCheck(condition, thenDo, otherwise, info)
@@ -57,6 +60,10 @@ abstract class PropertyInterpreter {
 
   protected def buildPermissionAccess(chunkVariable: ChunkPlaceholder, info: Info): Term
   protected def buildValueAccess(chunkVariable: ChunkPlaceholder, info: Info): Term
+
+  protected def buildUpperBoundAccess(chunkVariable: ChunkPlaceholder, info: Info): Term
+
+  protected def buildPrHasUpperBound(chunkVariable: ChunkPlaceholder, info: Info): Term
 
   /* Assures that if the left-hand side is known to be false without a prover check,
    the right-hand side is not evaluated. */

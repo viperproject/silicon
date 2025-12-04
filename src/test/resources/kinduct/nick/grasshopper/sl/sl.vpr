@@ -1,6 +1,7 @@
 field next: Ref
 field data: Int
 
+@bound("1")
 predicate list(x: Ref) {
     x != null ==> (acc(x.next) && acc(x.data) && list(x.next))
 }

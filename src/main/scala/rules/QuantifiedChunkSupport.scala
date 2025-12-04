@@ -941,7 +941,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               )
               v.decider.assume(pcsForChunk)
             })
-            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, Heap(Seq(ch)), v)
+            val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
             val resourceIdentifier = resource match {
               case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
@@ -1002,9 +1002,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, resource, tArgs, tPerm, sm, s.program)
-    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s.h, Heap(Seq(ch)), v)
+    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
-    val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
+    val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v, s)
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
     v.decider.assume(pcs)
@@ -1194,7 +1194,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   val (fr1, newTopHeap2) = if (nonEmptyChunks.isEmpty)
                     (s1.functionRecorder, s1.h)
                   else
-                    v1.stateConsolidator(s1).merge(s1.functionRecorder, s1.h, cHeap2, v1)
+                    v1.stateConsolidator(s1).merge(s1.functionRecorder, s1, s1.h, cHeap2, v1)
 
                   val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr1, smCache = smCache2)
                   if (nonEmptyChunks.isEmpty) {
@@ -1244,7 +1244,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val forall = ast.Forall(Seq(), Seq(), ast.TrueLit()())() // Just used to get the position for a potentioal warning.
         produce(s2, forall, resource, qvars, formalQVars, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals, tCond, tArgs, freshSnap, permissionToProduce, pve, negativePermissionReason, notInjectiveReason, v)(
           (s3, ch, v3) => {
-            val (fr3, h3) = v3.stateConsolidator(s3).merge(s3.functionRecorder, h, ch, v3)
+            val (fr3, h3) = v3.stateConsolidator(s3).merge(s3.functionRecorder, s3, h, ch, v3)
             doConsume(s3.copy(functionRecorder = fr3), h3, resource, qvars, formalQVars, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals, tCond, tArgs, tPerm, pve, negativePermissionReason, notInjectiveReason, insufficientPermissionReason, v3)(Q)
           }
         )
@@ -1527,7 +1527,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           val (fr2, newTopHeap2) = if (nonEmptyChunks.isEmpty)
             (s1.functionRecorder, s.h)
           else
-            v1.stateConsolidator(s1).merge(s1.functionRecorder, s.h, cHeap2, v1)
+            v1.stateConsolidator(s1).merge(s1.functionRecorder, s, s.h, cHeap2, v1)
 
           val s1p = s1.copy(loopHeapStack = hs1.tail, h = newTopHeap2, functionRecorder = fr2)
           if (nonEmptyChunks.isEmpty) {
@@ -1569,7 +1569,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         }
         val freshSnap = v.decider.fresh(snapSort)
         produceSingleLocation(s2, resource, codomainQVars, arguments, freshSnap, permissionToProduce, trigger, v)((s3, ch, v3) => {
-          val (fr4, h4) = v3.stateConsolidator(s3).merge(s3.functionRecorder, h, ch, v3)
+          val (fr4, h4) = v3.stateConsolidator(s3).merge(s3.functionRecorder, s3, h, ch, v3)
           doConsumeSingleLocation(s3.copy(functionRecorder = fr4), h4, codomainQVars, arguments, resourceAccess, permissions, optChunkOrderHeuristic, pve, v3)(Q)
         })
       }

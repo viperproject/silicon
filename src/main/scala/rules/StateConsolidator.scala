@@ -25,11 +25,15 @@ import viper.silver.ast
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
   def consolidateOptionally(s: State, v: Verifier): State
-  def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
-  def merge(fr: FunctionRecorder, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap)
+  def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap)
 
   protected def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State
   protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
+
+  protected def assumeUpperPermissionBoundForQPPredicates(s: State, v: Verifier): State
+
+  protected def assumeUpperPermissionBoundForQPPredicates(s: State, heaps: Seq[Heap], v: Verifier): State
 }
 
 /** Performs the minimal work necessary for any consolidator: merging two heaps combines the chunk
@@ -41,15 +45,19 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   def consolidate(s: State, @unused v: Verifier): State = s
   def consolidateOptionally(s: State, @unused v: Verifier): State = s
 
-  def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
+  def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
 
-  def merge(fr: FunctionRecorder, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) =
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) =
     (fr, h + ch)
 
   protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s
 
   protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
+
+  protected def assumeUpperPermissionBoundForQPPredicates(s: State, @unused v: Verifier): State = s
+
+  protected def assumeUpperPermissionBoundForQPPredicates(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
 }
 
 /** Default implementation that merges as many known-alias chunks as possible, and deduces various
@@ -92,7 +100,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           fixedPointRound = fixedPointRound + 1
         } while (continue)
 
-        val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
+        val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v, s)
 
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
@@ -112,26 +120,27 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                     reserveHeaps = mergedHeaps.tail)
 
     val s2 = assumeUpperPermissionBoundForQPFields(s1, v)
+    val s3 = assumeUpperPermissionBoundForQPPredicates(s2, v)
 
-    s2
+    s3
   }
 
   def consolidateOptionally(s: State, v: Verifier): State =
     if (s.retrying) consolidate(s, v)
     else s
 
-  def merge(fr: FunctionRecorder, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) = {
-    merge(fr, h, Heap(Seq(ch)), v)
+  def merge(fr: FunctionRecorder, s: State, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) = {
+    merge(fr, s, h, Heap(Seq(ch)), v)
   }
 
-  def merge(fr1: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
+  def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, v)
 
     v.decider.assume(snapEqs)
 
-    val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
+    val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v, s)
     newlyAddedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
@@ -294,6 +303,67 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     }
   }
 
+  protected def assumeUpperPermissionBoundForQPPredicates(s: State, v: Verifier): State =
+    assumeUpperPermissionBoundForQPPredicates(s, s.h +: s.reserveHeaps, v)
+
+  protected def assumeUpperPermissionBoundForQPPredicates(s: State, heaps: Seq[Heap], v: Verifier): State = {
+    heaps.foldLeft(s) { case (si, heap) =>
+      val chunks: Seq[QuantifiedPredicateChunk] =
+        heap.values.collect({ case ch: QuantifiedPredicateChunk => ch }).to(Seq)
+
+      //val receiver = `?r`
+      //val receiverExp = ast.LocalVarDecl(receiver.id.name, ast.Ref)()
+      //val args = Seq(receiver)
+      val chunksPerPredicate: scala.collection.immutable.Map[String, Seq[QuantifiedPredicateChunk]] = chunks.groupBy(_.id.name)
+
+      /* Iterate over all predicates f with an upperbound and effectively assume "forall x :: f(x) perm(f(x)) <= upperBound"
+         for each field. */
+      chunksPerPredicate.foldLeft(si) { case (si, (predicateName, predicateChunks)) =>
+        val predicate = s.program.findPredicate(predicateName)
+        val predicateData = s.predicateData(predicate)
+        val formalVars = s.predicateFormalVarMap(predicate)
+        val formalVarExps = predicate.formalArgs
+        val upperBoundTerm = predicateData.upperBoundTerm
+        val upperBoundExp = predicateData.upperBoundExp
+        if (upperBoundTerm.isDefined) {
+          val (sn, smDef, pmDef) =
+            quantifiedChunkSupporter.heapSummarisingMaps(si, predicate, formalVars, predicateChunks, v)
+
+          if (sn.heapDependentTriggers.exists(r => r.isInstanceOf[ast.Predicate] && r.asInstanceOf[ast.Predicate].name == predicateName)) {
+            val trigger = PredicateTrigger(predicate.name, smDef.sm, formalVars)
+            val currentPermAmount = PredicatePermLookup(predicate.name, pmDef.pm, formalVars)
+            v.decider.prover.comment(s"Assume upper permission bound for predicate ${predicate.name}")
+
+            v.decider.assume(
+              Forall(formalVars, PermAtMost(currentPermAmount, upperBoundTerm.get), Trigger(trigger), "qp-pred-prm-bnd"))
+          } else {
+            /*
+            If we don't use heap-dependent triggers, the trigger f(x) does not work. Instead, we assume the permission
+            bound explicitly for each singleton chunk receiver, and for each chunk, triggering on its inverse functions.
+            That is, we assume
+            forall r: Ref :: {inv(r)} perm(f(x)) <= upperBound
+             */
+            for (chunk <- predicateChunks) {
+              if (chunk.singletonArgs.isDefined) {
+                v.decider.assume(PermAtMost(PredicatePermLookup(predicate.name, pmDef.pm, chunk.singletonArgs.get), upperBoundTerm.get))
+              } else {
+                val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
+                val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
+                val currentPermAmount = PredicatePermLookup(predicate.name, pmDef.pm, chunk.quantifiedVars)
+                v.decider.prover.comment(s"Assume upper permission bound for predicate ${predicate.name}")
+                v.decider.assume(
+                  Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, upperBoundTerm.get), triggers, "qp-pred-prm-bnd"))
+              }
+
+            }
+          }
+          sn
+        } else
+          s
+      }
+    }
+  }
+
   @inline
   private final def partition(h: Heap): (Seq[NonQuantifiedChunk], Seq[Chunk]) = {
     var nonQuantifiedChunks = Seq[NonQuantifiedChunk]()
@@ -355,15 +425,19 @@ class LastRetryFailOnlyStateConsolidator(config: Config) extends LastRetryStateC
   *   - Merging heaps and assuming QP permission bounds is equivalent to [[MinimalStateConsolidator]]
   */
 class MinimalRetryingStateConsolidator(config: Config) extends RetryingStateConsolidator(config) {
-  override def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
+  override def merge(fr: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
     (fr, Heap(h.values ++ newH.values))
 
-  override def merge(fr: FunctionRecorder, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) =
+  override def merge(fr: FunctionRecorder, s: State, h: Heap, ch: Chunk, v: Verifier): (FunctionRecorder, Heap) =
     (fr, h + ch)
 
   override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s
 
   override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
+
+  override protected def assumeUpperPermissionBoundForQPPredicates(s: State, @unused v: Verifier): State = s
+
+  override protected def assumeUpperPermissionBoundForQPPredicates(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
 }
 
 /** A variant of [[DefaultStateConsolidator]] that aims to work best when Silicon is run in

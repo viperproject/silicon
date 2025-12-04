@@ -43,7 +43,31 @@ abstract class BasicDescription extends ResourceDescription {
 }
 
 class PredicateDescription extends BasicDescription {
+  override val instanceProperties = Seq(permAtLeastZero, permAtMostN)
+  override val delayedProperties = Seq(permUpperBoundDiseq, valNeqImpliesLocNeq)
   override def toString = "Predicate"
+
+  def permAtMostN: Property = {
+    val description = "Predicate permissions are at most n"
+    val name = "permAtMostN"
+    val cond = PrHasUpperBound(This())
+    val thenDo = And(cond, LessThanEquals(PermissionAccess(This()), UpperBoundAccess(This())))
+    Property(Or(Not(cond), thenDo), name, description)
+  }
+
+  def permUpperBoundDiseq: Property = {
+    val description = "Permission sum greater than n implies non-equal receivers"
+    val name = "permUpperBoundDiseq"
+    val c1 = ChunkVariable("c1")
+    val c2 = ChunkVariable("c2")
+    val perm1 = PermissionAccess(c1)
+    val perm2 = PermissionAccess(c2)
+    val greaterThan = GreaterThan(Plus(perm1, perm2), UpperBoundAccess(c1))
+    val neq = Not(Equals(ArgumentAccess(c1), ArgumentAccess(c2)))
+    val cond = PrHasUpperBound(c1)
+    val thenDo = And(cond, Check(greaterThan, neq, True()))
+    Property(ForEach(Seq(c1, c2), Or(Not(cond), thenDo)), name, description)
+  }
 }
 
 class FieldDescription extends BasicDescription {

@@ -354,7 +354,19 @@ object producer extends ProductionRules {
                 val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
                 quantifiedChunkSupporter.produceSingleLocation(
                   s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)((s3, _, v3) => {
-                  Q(s3, v3)
+
+                  val predData = s3.predicateData(predicate)
+                  (predData.upperBoundExp, predData.upperBoundTerm) match {
+                    case (Some(ub), None) => eval(s3, ub, pve, v3)((s4a, tUb0, v4a) => {
+                      val tUb = FractionPerm(tUb0, IntLiteral(1))
+                      permissionSupporter.assertNotNegative(s4a, tUb, ub, pve, v4a)((s5, v5) => {
+                        val tmp = s5.predicateData(predicate)
+                        tmp.upperBoundTerm = Some(tUb)
+                        Q(s5.copy(predicateData = s5.predicateData + (predicate -> tmp)), v5)
+                      })
+                    })
+                    case (_, _) => Q(s3, v3)
+                  }
                 })
               } else {
                 val snap1 = snap.convert(sorts.Snap)
@@ -364,8 +376,19 @@ object producer extends ProductionRules {
                     && !Verifier.config.disableFunctionUnfoldTrigger()) {
                     v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
                   }
-                  Q(s3.copy(h = h3), v3)})
-              }})))
+                  val predData = s3.predicateData(predicate)
+                  (predData.upperBoundExp, predData.upperBoundTerm) match {
+                    case (Some(ub), None) => eval(s3.copy(h = h3), ub, pve, v3)((s4a, tUb0, v4a) => {
+                      val tUb = FractionPerm(tUb0, IntLiteral(1))
+                      permissionSupporter.assertNotNegative(s4a, tUb, ub, pve, v4a)((s5, v5) => {
+                        val tmp = s5.predicateData(predicate)
+                        tmp.upperBoundTerm = Some(tUb)
+                        Q(s5.copy(predicateData = s5.predicateData + (predicate -> tmp)), v5)
+                      })
+                    })
+                    case (_, _) => Q(s3.copy(h = h3), v3)
+                  }
+              })}})))
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -469,7 +492,20 @@ object producer extends ProductionRules {
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
               v1
-            )((s2, _, v2) => Q(s2, v2))
+            )((s2, _, v2) => {
+              val predData = s2.predicateData(predicate)
+              (predData.upperBoundExp, predData.upperBoundTerm) match {
+                case (Some(ub), None) => eval(s2, ub, pve, v2)((s4a, tUb0, v4a) => {
+                  val tUb = FractionPerm(tUb0, IntLiteral(1))
+                  permissionSupporter.assertNotNegative(s4a, tUb, ub, pve, v4a)((s5, v5) => {
+                    val tmp = s5.predicateData(predicate)
+                    tmp.upperBoundTerm = Some(tUb)
+                    Q(s5.copy(predicateData = s5.predicateData + (predicate -> tmp)), v5)
+                  })
+                })
+                case (_, _) => Q(s2, v2)
+              }
+            })
           case (s1, _, _, None, v1) => Q(s1, v1)
         }
 

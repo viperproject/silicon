@@ -142,8 +142,8 @@ object chunkSupporter extends ChunkSupportRules {
 
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
 
-    def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap): Unit = {
-      val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
+    def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap, s: State): Unit = {
+      val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v, s)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties))
     }
@@ -157,7 +157,7 @@ object chunkSupporter extends ChunkSupportRules {
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk
-            assumeProperties(newChunk, newHeap)
+            assumeProperties(newChunk, newHeap, s)
           }
           (ConsumptionResult(PermMinus(perms, toTake), Seq(), v, 0), s, newHeap, takenChunk)
         } else {
@@ -166,7 +166,7 @@ object chunkSupporter extends ChunkSupportRules {
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms))
             val takenChunk = ch.withPerm(perms)
             val newHeap = h - ch + newChunk
-            assumeProperties(newChunk, newHeap)
+            assumeProperties(newChunk, newHeap, s)
             (Complete(), s, newHeap, Some(takenChunk))
           } else {
             (Incomplete(perms), s, h, None)
@@ -187,7 +187,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
-    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, h, ch, v)
+    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, h, ch, v)
     Q(s.copy(functionRecorder = fr1), h1, v)
   }
 
