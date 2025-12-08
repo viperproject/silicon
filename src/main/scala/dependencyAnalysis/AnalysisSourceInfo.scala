@@ -8,7 +8,7 @@ object AnalysisSourceInfo {
     p match {
       case NoPosition => "???"
       case filePos: AbstractSourcePosition => filePos.file.getFileName.toString + " @ line " + filePos.line
-      case column: HasLineColumn => "line " + column.line.toString
+      case lineColumn: HasLineColumn => "line " + lineColumn.line.toString
       case VirtualPosition(identifier) => "label " + identifier
     }
   }
@@ -48,6 +48,8 @@ abstract class AnalysisSourceInfo {
 
 case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
   override def getPosition: Position = NoPosition
+
+  override def equals(obj: Any): Boolean = false
 }
 
 case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
@@ -86,6 +88,13 @@ case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
 case class StringAnalysisSourceInfo(description: String, position: Position) extends AnalysisSourceInfo {
   override def toString: String = description.replaceAll("\n", "\t") + " (" + super.toString + ")"
   override def getPosition: Position = position
+
+  override def equals(obj: Any): Boolean =
+    obj match {
+      case info: StringAnalysisSourceInfo =>
+        info.description.equals(this.description) && info.getPosition.equals(this.getPosition)
+      case _ => false
+    }
 }
 
 case class TransitivityAnalysisSourceInfo(actualSource: AnalysisSourceInfo, transitivitySource: AnalysisSourceInfo) extends AnalysisSourceInfo {

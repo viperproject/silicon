@@ -120,8 +120,8 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
   // TODO ake: maybe move to DependencyAnalyzer?
-  private def getNodesPerTransitivitySourceInfo: Map[String, Seq[DependencyAnalysisNode]] = {
-    getNodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges.toString)
+  private def getNodesPerTransitivitySourceInfo: Map[AnalysisSourceInfo, Seq[DependencyAnalysisNode]] = {
+    getNodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges)
   }
 
   // TODO ake: maybe move to DependencyAnalyzer?

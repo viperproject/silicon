@@ -63,7 +63,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def filterOutNodesBySourceInfo(nodes: Set[DependencyAnalysisNode], excludeInfos: Set[AnalysisSourceInfo]): Set[DependencyAnalysisNode] =
-    nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.toString.equals(node.sourceInfo.getTopLevelSource.toString)))
+    nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.equals(node.sourceInfo.getTopLevelSource)))
 
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
@@ -78,8 +78,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     nodesToAnalyze.intersect(getNonInternalAssumptionNodes)
       .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
 
-  def getNonInternalAssumptionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
-    getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
+  def getNonInternalAssumptionNodesPerSource: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] =
+    getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource)
 
 
   def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
@@ -87,8 +87,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       || AssumptionType.postconditionTypes.contains(node.assumptionType)
     )
 
-  def getNonInternalAssertionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
-    getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
+  def getNonInternalAssertionNodesPerSource: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] =
+    getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource)
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
@@ -102,8 +102,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource.toString)
-    getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource.toString))
+    val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource)
+    getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource))
   }
 
   def computeProofCoverage(): (Double, Set[String]) = {
@@ -115,14 +115,14 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val assertionNodeIds = assertionNodes map (_.id)
     val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
     val coveredNodes = dependencies ++ assertionNodeIds
-    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource.toString)
+    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource)
     if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Set())
 
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
       coveredNodes.intersect(nodes map (_.id)).isEmpty
     }).keys.toSet
     val proofCoverage = 1.0 - (uncoveredSources.size.toDouble / nodesPerSourceInfo.size.toDouble)
-    (proofCoverage, uncoveredSources)
+    (proofCoverage, uncoveredSources.map(_.toString))
   }
 
   def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {

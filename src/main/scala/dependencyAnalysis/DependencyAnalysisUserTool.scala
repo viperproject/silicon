@@ -75,9 +75,9 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handleGraphSizeQuery(interpreter: DependencyGraphInterpreter): Unit = {
     val allAssumptions = interpreter.getNonInternalAssumptionNodes.filter(n => !n.isInstanceOf[AxiomAssumptionNode])
-    val assumptions = allAssumptions.groupBy(_.sourceInfo.getTopLevelSource.toString)
+    val assumptions = allAssumptions.groupBy(_.sourceInfo.getTopLevelSource)
     val assertions = interpreter.getNonInternalAssertionNodesPerSource
-    val nodes = interpreter.getNonInternalAssertionNodes.union(allAssumptions).groupBy(_.sourceInfo.getTopLevelSource.toString)
+    val nodes = interpreter.getNonInternalAssertionNodes.union(allAssumptions).groupBy(_.sourceInfo.getTopLevelSource)
     println(s"#Assumptions = ${assumptions.size}")
     println(s"#Assertions = ${assertions.size}")
     println(s"#Nodes = ${nodes.size}")
@@ -129,7 +129,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   private def getSourceInfoString(nodes: Set[DependencyAnalysisNode]) = {
-    nodes.groupBy(node => node.sourceInfo.getTopLevelSource.toString).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
+    nodes.groupBy(node => node.sourceInfo.getTopLevelSource).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
   }
 
   private def getQueriedNodesFromInput(inputs: Set[String])= {
@@ -235,7 +235,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
           val (allDependencies, time) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
           allTimes = allTimes :+ time
           numLowLevelDeps = allDependencies.size
-          numDeps = allDependencies.groupBy(node => node.sourceInfo.getTopLevelSource.toString).size
+          numDeps = allDependencies.groupBy(node => node.sourceInfo.getTopLevelSource).size
         }
 
         writer.println(s"$userInput,$numLowLevelDeps,$numDeps,${allTimes.mkString(",")}")
