@@ -70,7 +70,7 @@ ensures OuterNode(res)
                     
                     var cond4: Bool := currI != null
                     if(cond4){
-                        //unfold InnerNode(currI)
+                        unfold InnerNode(currI)
                         iprev.inext := currI.inext
                         freeI(currI)
                         currI := iprev

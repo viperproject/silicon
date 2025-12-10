@@ -8,8 +8,8 @@ ensures OuterNode(x)
     package OuterNode(currO) --* OuterNode(x)
 
     while(currO != null)
-    invariant OuterNode(currO)
-    invariant OuterNode(currO) --* OuterNode(x)
+    //invariant OuterNode(currO)
+    //invariant OuterNode(currO) --* OuterNode(x)
     {
         var currO_old: Ref := currO
 
