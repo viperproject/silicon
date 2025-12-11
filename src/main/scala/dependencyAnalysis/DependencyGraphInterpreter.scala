@@ -39,7 +39,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       result = result.union(directDependencyIds)
     }
 
-    getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
+    getNonInternalAssumptionNodes.filter(node => result.contains(node.id) && !nodeIdsToAnalyze.contains(node.id))
   }
 
   def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {

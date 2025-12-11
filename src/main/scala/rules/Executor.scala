@@ -540,7 +540,12 @@ object executor extends ExecutionRules {
             QS(s1.copy(h = s.h), v1)
           else
             createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
-        })((_, _) => Success())
+        })((s2, v2) =>
+          if (Verifier.config.disableInfeasibilityChecks())
+            Q(s2, v2)
+          else
+            Success()
+        )
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =

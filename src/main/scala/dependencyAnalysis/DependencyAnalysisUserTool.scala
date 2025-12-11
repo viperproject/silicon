@@ -146,7 +146,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   private def handleDependencyQuery(inputs: Set[String]): Unit = {
-    val queriedNodes = getQueriedNodesFromInput(inputs)
+    val queriedNodes = getQueriedNodesFromInput(inputs).filter(node => node.isInstanceOf[GeneralAssertionNode])
 
     val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
     val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
