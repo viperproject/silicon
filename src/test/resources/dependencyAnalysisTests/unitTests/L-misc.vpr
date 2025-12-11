@@ -1,9 +1,9 @@
 field f: Int
 
 method divBy0(a: Ref, n: Int)
-    requires @dependency("Explicit")(n > 0)
-    requires @dependency("Explicit")(acc(a.f))
-    requires @irrelevant("Explicit")(a.f > 0)
+    requires @dependency("Precondition")(n > 0)
+    requires @dependency("Precondition")(acc(a.f))
+    requires @irrelevant("Precondition")(a.f > 0)
 {
     var res: Int
 

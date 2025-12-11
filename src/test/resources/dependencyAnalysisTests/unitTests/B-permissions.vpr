@@ -1,7 +1,7 @@
 field f: Int
 
 method currentPerm(x: Ref)
-    requires @dependency("Explicit")(acc(x.f, 1/2))
+    requires @dependency("Precondition")(acc(x.f, 1/2))
 {
     // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=acc(x.f,1/4)
 
@@ -73,8 +73,8 @@ method perm5(){
 }
 
 method permAmount1(x: Ref, p: Perm)
-   requires @dependency("Explicit")(p > none)
-   requires @dependency("Explicit")(acc(x.f, p))
+   requires @dependency("Precondition")(p > none)
+   requires @dependency("Precondition")(acc(x.f, p))
  {
    @dependency("Explicit")
    assume p > 1/2
@@ -87,7 +87,7 @@ method permAmount1(x: Ref, p: Perm)
 
  method permAmount2(x: Ref, p: Perm)
    requires p > none
-   requires @dependency("Explicit")(acc(x.f, p))
+   requires @dependency("Precondition")(acc(x.f, p))
  {
    @dependency("Explicit")
    inhale x.f > 0

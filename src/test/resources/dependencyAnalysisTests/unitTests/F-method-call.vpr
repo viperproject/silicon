@@ -98,8 +98,8 @@ method call4(x: Int, y: Int, z: Int)
 }
 
 method absClient1(x: Ref)
-  requires @dependency("Explicit")(acc(x.f))
-  requires @irrelevant("Explicit")(x.f > 0)
+  requires @dependency("Precondition")(acc(x.f))
+  requires @irrelevant("Precondition")(x.f > 0)
 {
   @dependency("ImplicitPostcondition")
   abs(x)

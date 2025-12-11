@@ -14,8 +14,8 @@ function listLength(l:Ref) : Int
 }
 
 method appendList1(this: Ref, e: Int)
-  requires @irrelevant("Explicit")(list(this))
-  requires @irrelevant("Explicit")(0 <= e && e < 100)
+  requires @irrelevant("Precondition")(list(this))
+  requires @irrelevant("Precondition")(0 <= e && e < 100)
   ensures  list(this)
 {
   @irrelevant("Implicit")
@@ -44,8 +44,8 @@ method appendList1(this: Ref, e: Int)
 }
 
 method appendList2(this: Ref, e: Int)
-  requires @dependency("Explicit")(list(this))
-  requires @dependency("Explicit")(0 <= e && e < 100)
+  requires @dependency("Precondition")(list(this))
+  requires @dependency("Precondition")(0 <= e && e < 100)
   ensures  list(this)
 {
   @dependency("Implicit")
@@ -75,8 +75,8 @@ method appendList2(this: Ref, e: Int)
 }
 
 method appendListFull(this: Ref, e: Int)
-  requires @dependency("Explicit")(list(this))
-  requires @dependency("Explicit")(0 <= e && e < 100)
+  requires @dependency("Precondition")(list(this))
+  requires @dependency("Precondition")(0 <= e && e < 100)
   ensures  list(this)
 {
   @dependency("Implicit")

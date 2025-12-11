@@ -231,7 +231,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, AssumptionType.Explicit)((s1, _) => {
+        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, AssumptionType.Precondition)((s1, _) => {
           val relevantPathConditionStack = decider.pcs.after(preMark)
           phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
             relevantPathConditionStack.assumptions, Option.when(evaluator.withExp)(relevantPathConditionStack.assumptionExps))
@@ -272,7 +272,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
             val labelledBcsPre = And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
             val labelledPcsPre = pcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))
-            decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))
+            decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Precondition))
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, bodyNew, _) => {
               val debugExp = if (wExp) {

@@ -6,7 +6,7 @@ predicate tuple(this: Ref) {
 }
 
 method setTuple(this: Ref, l: Int, r: Int)
-  requires @dependency("Explicit")(tuple(this))
+  requires @dependency("Precondition")(tuple(this))
   ensures tuple(this)
 {
   @dependency("Implicit")
@@ -20,7 +20,7 @@ method setTuple(this: Ref, l: Int, r: Int)
 }
 
 method addTuple(this: Ref) returns (sum: Int)
-  requires @dependency("Explicit")(acc(tuple(this), 1/2))
+  requires @dependency("Precondition")(acc(tuple(this), 1/2))
   ensures acc(tuple(this), 1/2)
 {
   @dependency("Implicit")

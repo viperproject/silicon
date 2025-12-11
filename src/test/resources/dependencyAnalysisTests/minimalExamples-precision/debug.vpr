@@ -13,7 +13,7 @@ predicate implPred(a: Int, x: Ref){
 
 
 method unfoldingWithImpl(a: Int, x: Ref)
-  requires @dependency("Explicit")(implPred(a, x))
+  requires @dependency("Precondition")(implPred(a, x))
 {
   var res: Int
   if(@dependency("PathCondition")(a > 5)){

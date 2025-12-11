@@ -2,7 +2,7 @@ field f: Int
 
 method gaussianSimple(n: Int) returns (res: Int)
   requires 0 <= n
-  requires @irrelevant("Explicit")(n <= 5)
+  requires @irrelevant("Precondition")(n <= 5)
 {
   res := 0
   var i: Int := 0
@@ -22,8 +22,8 @@ method gaussianSimple(n: Int) returns (res: Int)
 }
 
 method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
-  requires @dependency("Explicit")(none < p) && p < write
-  requires @dependency("Explicit")(acc(a.f, p))
+  requires @dependency("Precondition")(none < p) && p < write
+  requires @dependency("Precondition")(acc(a.f, p))
   requires 0 <= a.f
   requires a.f <= 5
   ensures acc(a.f, p)

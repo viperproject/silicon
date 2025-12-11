@@ -2,8 +2,8 @@ field f: Int
 field g: Int
 
 method wildcardPerm(x: Ref, y: Ref)
-  requires @dependency("Explicit")(acc(x.f, wildcard))
-  requires @irrelevant("Explicit")(acc(y.f, wildcard))
+  requires @dependency("Precondition")(acc(x.f, wildcard))
+  requires @irrelevant("Precondition")(acc(y.f, wildcard))
   requires x != y
 {
   // $PrecisionTest: $READ_ONLY=x.f,y.f $ACC_INVARIANT=acc(x.f,wildcard)&&acc(y.f,wildcard)
@@ -14,8 +14,8 @@ method wildcardPerm(x: Ref, y: Ref)
 
 
 method wildcardPermDistinctFields(x: Ref, y: Ref)
-  requires @dependency("Explicit")(acc(x.f, wildcard))
-  requires @irrelevant("Explicit")(acc(y.g, wildcard))
+  requires @dependency("Precondition")(acc(x.f, wildcard))
+  requires @irrelevant("Precondition")(acc(y.g, wildcard))
 {
   // $PrecisionTest: $READ_ONLY=x.f,y.g $ACC_INVARIANT=acc(x.f,wildcard)&&acc(y.g,wildcard)
 
@@ -24,8 +24,8 @@ method wildcardPermDistinctFields(x: Ref, y: Ref)
 }
 
 method quantifiedPermWildcard(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
+  requires @dependency("Precondition")(|xs| > 5)
+  requires @irrelevant("Precondition")(|ys| > 3)
 {
   @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))

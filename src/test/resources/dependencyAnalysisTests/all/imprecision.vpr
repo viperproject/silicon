@@ -5,7 +5,7 @@ field g: Int
 // If the branch is not executed, the 2nd inhale is reported as a dependency
 // In reality, the 2nd inhale is all we need for the assertion.
 method nonUniqueUnsatCore(x: Ref)
-    requires @irrelevant("Explicit")(x != null ==> acc(x.f))
+    requires @irrelevant("Precondition")(x != null ==> acc(x.f))
 {
     var a: Int
     if(@irrelevant("PathCondition")(x == null)){
@@ -41,7 +41,7 @@ method unprovableInfeasibility(){
 // If x == null is assumed, only the assignment is reported as a dependency
 // If x != null, the branch is infeasible, but we executed it anyways. The implication and branch condition are reported as dependencies.
 method infeasible2(x: Ref)
-    requires @irrelevant("Explicit")(x != null ==> acc(x.f)) // unexpected dependency
+    requires @irrelevant("Precondition")(x != null ==> acc(x.f)) // unexpected dependency
 {
     if(@irrelevant("PathCondition")(x == null)){ // unexpected dependency
         var a: Int
@@ -75,8 +75,8 @@ method exhaleImprecision(){
 
 // this is precise as opposed to later examples with wildcards
 method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
+  requires @dependency("Precondition")(|xs| > 5)
+  requires @irrelevant("Precondition")(|ys| > 3)
 {
   @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
@@ -90,8 +90,8 @@ method quantifiedPerm2(xs: Seq[Ref], ys: Seq[Ref])
 // issue #01 - imprecision due to wildcards
 // when accessing a qp resource, we check Z < (x in xs? k1:Z) + (y in ys? k2:Z) the unsat core contains dependencies to all qp perm amounts (e.g. wildcard)
 method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
+  requires @dependency("Precondition")(|xs| > 5)
+  requires @irrelevant("Precondition")(|ys| > 3)
 {
   @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> (acc(x.f, wildcard) && x.f > 0))
@@ -105,8 +105,8 @@ method quantifiedPerm3(xs: Seq[Ref], ys: Seq[Ref])
 // issue #01 - imprecision due to perm amounts
 // when accessing a qp resource, we check Z < (x in xs? k1:Z) + (y in ys? k2:Z) the unsat core contains dependencies to all qp perm amounts
 method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
+  requires @dependency("Precondition")(|xs| > 5)
+  requires @irrelevant("Precondition")(|ys| > 3)
 {
   var p1: Perm
   @dependency("Explicit")
@@ -129,9 +129,9 @@ method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
 // havocs all resources of the given fields conditionally on whether it can prove
 // non-aliasing or not (e.g. x.f --> x == y? new snap : old snap)
 method quasihavoc1(x: Ref, y: Ref)
-    requires @dependency("Explicit")(acc(x.f))
-    requires @dependency("Explicit")(x.f == 3)
-    requires @dependency("Explicit")(x != y)
+    requires @dependency("Precondition")(acc(x.f))
+    requires @dependency("Precondition")(x.f == 3)
+    requires @dependency("Precondition")(x != y)
 {
     @irrelevant() // unexpected dependency
     quasihavoc y.f   // does nothing. we have no permission
@@ -156,7 +156,7 @@ method inhaleImprecision(){
 }
 
 method packageExhale2(x: Ref)
-  requires @dependency("Explicit")(acc(x.f))
+  requires @dependency("Precondition")(acc(x.f))
   {
 
     @irrelevant("Rewrite")

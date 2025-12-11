@@ -2,12 +2,12 @@ field f: Int
 
 
 method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
-    requires @dependency("Explicit")(acc(a.f, 1/2))
-    requires @dependency("Explicit")(acc(b.f, 1/2))
-    requires @dependency("Explicit")(c ==> a == b)
-    requires @irrelevant("Explicit")(a.f > 0 && n > 0 && b.f >= 0)
-    requires @irrelevant("Explicit")(a.f < 100)
-    requires @irrelevant("Explicit")(!c ==> a.f < b.f)
+    requires @dependency("Precondition")(acc(a.f, 1/2))
+    requires @dependency("Precondition")(acc(b.f, 1/2))
+    requires @dependency("Precondition")(c ==> a == b)
+    requires @irrelevant("Precondition")(a.f > 0 && n > 0 && b.f >= 0)
+    requires @irrelevant("Precondition")(a.f < 100)
+    requires @irrelevant("Precondition")(!c ==> a.f < b.f)
 {
     if(@dependency("PathCondition")(c)){
         @testAssertion("Implicit")
@@ -16,9 +16,9 @@ method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
 }
 
 method aliasing1(x: Ref, n: Int)
-  requires @dependency("Explicit")(acc(x.f))
-  requires @irrelevant("Explicit")(n > 0)
-  requires @irrelevant("Explicit")(x.f > n)
+  requires @dependency("Precondition")(acc(x.f))
+  requires @irrelevant("Precondition")(n > 0)
+  requires @irrelevant("Precondition")(x.f > n)
 {
   @dependency("Implicit")
   x.f := n + 1
@@ -33,10 +33,10 @@ method aliasing1(x: Ref, n: Int)
 
 
 method aliasing2(x: Ref, y: Ref, n: Int)
-  requires @dependency("Explicit")(acc(x.f, 1/2))
-  requires @dependency("Explicit")(acc(y.f, 1/2))
-  requires @irrelevant("Explicit")(n > 0)
-  requires @irrelevant("Explicit")(x.f > n)
+  requires @dependency("Precondition")(acc(x.f, 1/2))
+  requires @dependency("Precondition")(acc(y.f, 1/2))
+  requires @irrelevant("Precondition")(n > 0)
+  requires @irrelevant("Precondition")(x.f > n)
 {
   if(@dependency("PathCondition")(x == y)){
     @testAssertion("Implicit")
@@ -45,7 +45,7 @@ method aliasing2(x: Ref, y: Ref, n: Int)
 }
 
 method alias1(a: Ref, b: Ref, c: Ref)
-    requires @dependency("Explicit")(acc(a.f))
+    requires @dependency("Precondition")(acc(a.f))
     requires  @irrelevant("Explicit")(acc(b.f))
 {
     var x: Int

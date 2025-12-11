@@ -1,8 +1,8 @@
 field f: Int
 
 method permTest(a: Ref, b: Ref, n: Int)
-    requires @dependency("Explicit")(acc(a.f))
-    requires @irrelevant("Explicit")(acc(b.f)) && @irrelevant("Explicit")(b.f > 0)
+    requires @dependency("Precondition")(acc(a.f))
+    requires @irrelevant("Precondition")(acc(b.f)) && @irrelevant("Explicit")(b.f > 0)
 {
     @dependency("Explicit")
     assume n > 0
@@ -16,8 +16,8 @@ method permTest(a: Ref, b: Ref, n: Int)
 
 
 method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
+  requires @dependency("Precondition")(|xs| > 5)
+  requires @irrelevant("Precondition")(|ys| > 3)
 {
   @dependency("Explicit")
   inhale (forall x: Ref :: x in xs ==> acc(x.f) && x.f > 0)
@@ -38,8 +38,8 @@ method quantifiedPerm4(xs: Seq[Ref], ys: Seq[Ref])
 // - exhale is implicit
 // - lhs and rhs are split such that transitive edges only go from lhs to rhs
 method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
-  requires @irrelevant("Explicit")(|ys| > 3)
+  requires @dependency("Precondition")(|xs| > 5)
+  requires @irrelevant("Precondition")(|ys| > 3)
 {
   @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> acc(x.f)
@@ -60,9 +60,9 @@ method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
 // solution: wrap with analysis labels (see viper.silicon.resources.NonQuantifiedPropertyInterpreter.buildForEach)
 // and disable transitive edges (see viper.silicon.rules.DefaultStateConsolidator.consolidate)
 method noAlias(a: Ref, b: Ref, c: Ref)
-    requires @dependency("Explicit")(acc(a.f))
-    requires @dependency("Explicit")(acc(b.f, 1/2))
-    requires @irrelevant("Explicit")(acc(c.f, 1/2)) // fixed imprecision (state consolidation)
+    requires @dependency("Precondition")(acc(a.f))
+    requires @dependency("Precondition")(acc(b.f, 1/2))
+    requires @irrelevant("Precondition")(acc(c.f, 1/2)) // fixed imprecision (state consolidation)
 {
     @testAssertion("Explicit")
     assert a != b

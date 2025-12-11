@@ -1,8 +1,8 @@
 field f: Int
 
 method implicitUpperBounds(x: Ref, y: Ref)
-  requires @dependency("Explicit")(acc(x.f))
-  requires @dependency("Explicit")(acc(y.f, wildcard))
+  requires @dependency("Precondition")(acc(x.f))
+  requires @dependency("Precondition")(acc(y.f, wildcard))
 {
   var z: Ref
   @irrelevant("Explicit")
@@ -16,9 +16,9 @@ method implicitUpperBounds(x: Ref, y: Ref)
 }
 
 method implicitUpperBounds_quantified(gen_xs: Seq[Ref], y: Ref)
-  requires @dependency("Explicit")(|gen_xs|> 2)
-  requires @dependency("Explicit")(forall gen_xi: Ref :: gen_xi in gen_xs ==> acc(gen_xi.f))
-  requires @dependency("Explicit")(acc(y.f, wildcard))
+  requires @dependency("Precondition")(|gen_xs|> 2)
+  requires @dependency("Precondition")(forall gen_xi: Ref :: gen_xi in gen_xs ==> acc(gen_xi.f))
+  requires @dependency("Precondition")(acc(y.f, wildcard))
 {
   var z: Ref
   @irrelevant("Explicit")
@@ -32,9 +32,9 @@ method implicitUpperBounds_quantified(gen_xs: Seq[Ref], y: Ref)
 }
 
 method implicitUpperBounds_quantified_2(gen_xs: Seq[Ref], y: Ref)
-  requires @dependency("Explicit")(|gen_xs|> 2)
-  requires @dependency("Explicit")(forall gen_xi: Ref :: gen_xi in gen_xs ==> acc(gen_xi.f))
-  requires @dependency("Explicit")(acc(y.f, 1/2))
+  requires @dependency("Precondition")(|gen_xs|> 2)
+  requires @dependency("Precondition")(forall gen_xi: Ref :: gen_xi in gen_xs ==> acc(gen_xi.f))
+  requires @dependency("Precondition")(acc(y.f, 1/2))
 {
   var z: Ref
   @irrelevant("Explicit")

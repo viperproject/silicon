@@ -1,7 +1,7 @@
 field f: Int
 
 method sum(n: Int) returns (res: Int)
-  requires @dependency("Explicit")(0 <= n)
+  requires @dependency("Precondition")(0 <= n)
   ensures  res == n * (n + 1) / 2
 {
   @dependency("Implicit")
@@ -25,8 +25,8 @@ method sum(n: Int) returns (res: Int)
 
 
 method sumPerm1(n: Int, res: Ref)
-  requires @dependency("Explicit")(acc(res.f))
-  requires @dependency("Explicit")(0 <= n)
+  requires @dependency("Precondition")(acc(res.f))
+  requires @dependency("Precondition")(0 <= n)
   ensures acc(res.f)
   ensures  res.f == n * (n + 1) / 2
 {
@@ -51,8 +51,8 @@ method sumPerm1(n: Int, res: Ref)
 }
 
 method sumPerm2(n: Int, res: Ref)
-  requires @dependency("Explicit")(acc(res.f))
-  requires @irrelevant("Explicit")(0 <= n)
+  requires @dependency("Precondition")(acc(res.f))
+  requires @irrelevant("Precondition")(0 <= n)
   ensures acc(res.f)
 {
   @irrelevant("Implicit")

@@ -102,7 +102,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
          * rules in Smans' paper.
          */
         executionFlowController.locally(s, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s2, v2) => {
+          produces(s1, freshSnap, pres, ContractNotWellformed, v1, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Precondition))((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {

@@ -1,7 +1,7 @@
 field f: Int
 
 method exhaleInhale(a: Ref) // inhaleExhale/assignment_field
-    requires @dependency("Explicit")(acc(a.f))
+    requires @dependency("Precondition")(acc(a.f))
 {
     exhale acc(a.f, 1/2)
     inhale acc(a.f, 1/2)

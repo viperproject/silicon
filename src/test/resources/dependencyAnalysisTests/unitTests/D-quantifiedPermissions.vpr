@@ -131,7 +131,7 @@ method quantifiedPermWrite3(xs: Seq[Ref]) {
 }
 
 method quantifiedPermWrite4(xs: Seq[Ref], ys: Seq[Ref])
-  requires @dependency("Explicit")(|xs| > 5)
+  requires @dependency("Precondition")(|xs| > 5)
   requires |ys| > 3
 {
   @dependency("Explicit")
