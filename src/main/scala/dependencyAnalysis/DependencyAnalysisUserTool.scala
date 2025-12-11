@@ -16,6 +16,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     "\n\t'hasDep [line numbers]' to print whether there exists any dependency between any pair of the given lines or" +
     "\n\t'cov [members]' to print proof coverage of given member or" +
     "\n\t'covL member [line numbers]' to print proof coverage of given lines of given member or" +
+    "\n\t'progress' to compute the verification progress of the program or" +
     "\n\t'prune [line numbers]' to prune the program with respect to the given line numbers and export the new program or" +
     "\n\t'q' to quit"
 
@@ -52,6 +53,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       handleProofCoverageQuery(inputParts.tail)
     }else if (inputParts.head.equalsIgnoreCase("covLines") || inputParts.head.equalsIgnoreCase("covL")) {
       handleProofCoverageLineQuery(inputParts.tail)
+    }else if (inputParts.head.equalsIgnoreCase("progress") || inputParts.head.equalsIgnoreCase("prog")) {
+        handleVerificationProgressQuery()
     }else if(inputParts.head.equalsIgnoreCase("prune")) {
       handlePruningRequest(inputParts.tail)
     }else if(inputParts.head.equalsIgnoreCase("benchmark")) {
@@ -128,11 +131,19 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println("Done.")
   }
 
+  private def handleVerificationProgressQuery(): Unit = {
+    println("Computing verification progress...")
+    val ((progress, info), time) = measureTime(fullGraphInterpreter.computeVerificationProgress())
+    println(s"Overall verification progress: $progress")
+    println(s"$info")
+    println(s"Finished in ${time}ms")
+  }
+
   private def getSourceInfoString(nodes: Set[DependencyAnalysisNode]) = {
     nodes.groupBy(node => node.sourceInfo.getTopLevelSource).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
   }
 
-  private def getQueriedNodesFromInput(inputs: Set[String])= {
+  private def getQueriedNodesFromInput(inputs: Set[String]): Set[DependencyAnalysisNode] = {
     inputs flatMap (input => {
       val parts = input.split("@")
       if(parts.size == 2)

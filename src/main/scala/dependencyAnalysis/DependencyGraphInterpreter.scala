@@ -83,8 +83,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
 
   def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
-    (node.isInstanceOf[GeneralAssertionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-      || AssumptionType.postconditionTypes.contains(node.assumptionType)
+    node.isInstanceOf[GeneralAssertionNode] && !AssumptionType.internalTypes.contains(node.assumptionType)
     )
 
   def getNonInternalAssertionNodesPerSource: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] =
@@ -214,5 +213,30 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     writer.println("// pruning factor: " + pruningFactor)
     writer.println(newProgram.toString())
     writer.close()
+  }
+
+  def computeVerificationProgress(): (Double, String)  = {
+    val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource)
+    if(assumptionsPerSource.isEmpty) return (Double.NaN, "Error: no assumptions found")
+
+    val relevantDependencies = getExplicitAssertionNodes // TODO ake: only postconditions?
+      .groupBy(_.sourceInfo.getTopLevelSource)
+      .map(g => getNodesWithIdenticalSource(g._2))
+      .flatMap(nodes => getAllNonInternalDependencies(nodes.map(_.id)))
+
+    val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.Explicit.equals(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource).keys.toSet // TODO ake: other assumption types?
+    val coveredImplicitSources = relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(coveredExplicitSources)
+    val uncoveredExplicitSources = getExplicitAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet)
+    val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources)
+    val relevantAssumptions = assumptionsPerSource.keys.toSet
+    val verificationProgress = (coveredImplicitSources.size.toDouble + 0.5*uncoveredExplicitSources.size.toDouble)/ relevantAssumptions.size.toDouble
+    val info =
+      s"Uncovered Explicit Assumptions:\n\t${uncoveredExplicitSources.mkString("\n\t")}" + "\n" +
+        s"Uncovered Implicit Assumptions:\n\t${uncoveredImplicitSources.mkString("\n\t")}" + "\n" +
+        s"Covered Explicit Assumptions:\n\t${coveredExplicitSources.mkString("\n\t")}" + "\n" +
+        s"Covered Implicit Assumptions:\n\t${coveredImplicitSources.mkString("\n\t")}" + "\n" +
+        s"All Relevant Assumptions:\n\t${relevantAssumptions.mkString("\n\t")}" + "\n" +
+        s"Verification Progress: ${(coveredImplicitSources.size.toDouble + 0.5*uncoveredExplicitSources.size.toDouble)}/${relevantAssumptions.size.toDouble} = $verificationProgress"
+    (verificationProgress, info)
   }
 }
