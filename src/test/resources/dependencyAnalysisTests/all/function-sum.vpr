@@ -36,7 +36,7 @@ method call2Unv(){
     @dependency("Explicit")
     assume y > 0
 
-    @dependency("ExplicitPostcondition")
+    @dependency("ImplicitPostcondition")
     z := sumUnverified(x, y)
 
     // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0

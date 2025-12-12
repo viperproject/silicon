@@ -224,19 +224,21 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       .map(g => getNodesWithIdenticalSource(g._2))
       .flatMap(nodes => getAllNonInternalDependencies(nodes.map(_.id)))
 
-    val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.Explicit.equals(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource).keys.toSet // TODO ake: other assumption types?
+    val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource).keys.toSet // TODO ake: other assumption types?
     val coveredImplicitSources = relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(coveredExplicitSources)
     val uncoveredExplicitSources = getExplicitAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet)
-    val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources)
+    val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources).diff(uncoveredExplicitSources)
     val relevantAssumptions = assumptionsPerSource.keys.toSet
-    val verificationProgress = (coveredImplicitSources.size.toDouble + 0.5*uncoveredExplicitSources.size.toDouble)/ relevantAssumptions.size.toDouble
+
+    val verificationProgress = coveredImplicitSources.size.toDouble / relevantAssumptions.size.toDouble
+
     val info =
-      s"Uncovered Explicit Assumptions:\n\t${uncoveredExplicitSources.mkString("\n\t")}" + "\n" +
-        s"Uncovered Implicit Assumptions:\n\t${uncoveredImplicitSources.mkString("\n\t")}" + "\n" +
-        s"Covered Explicit Assumptions:\n\t${coveredExplicitSources.mkString("\n\t")}" + "\n" +
-        s"Covered Implicit Assumptions:\n\t${coveredImplicitSources.mkString("\n\t")}" + "\n" +
-        s"All Relevant Assumptions:\n\t${relevantAssumptions.mkString("\n\t")}" + "\n" +
-        s"Verification Progress: ${(coveredImplicitSources.size.toDouble + 0.5*uncoveredExplicitSources.size.toDouble)}/${relevantAssumptions.size.toDouble} = $verificationProgress"
+      s"Uncovered Explicit Assumptions:\n\t${uncoveredExplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
+        s"Covered Explicit Assumptions:\n\t${coveredExplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
+        s"Uncovered Implicit Assumptions:\n\t${uncoveredImplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
+        s"Covered Implicit Assumptions:\n\t${coveredImplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
+        s"All Relevant Assumptions:\n\t${relevantAssumptions.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
+        s"Verification Progress: ${coveredImplicitSources.size.toDouble}/${relevantAssumptions.size.toDouble} = $verificationProgress"
     (verificationProgress, info)
   }
 }

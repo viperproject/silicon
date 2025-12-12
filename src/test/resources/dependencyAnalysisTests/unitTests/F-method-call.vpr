@@ -59,12 +59,12 @@ method call3(x: Int, y: Int)
   assume y > 0
 
   var n: Int, n2: Int
-  @dependency("ExplicitPostcondition")
+  @dependency("ImplicitPostcondition")
   n := sumUnverified(x, y)
 
   // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=x,y,n $INVARIANT=x>0
 
-  @dependency("ExplicitPostcondition")
+  @dependency("ImplicitPostcondition")
   n2 := sumUnverified(x, y)
   @dependency("Implicit")
   n := n + n2

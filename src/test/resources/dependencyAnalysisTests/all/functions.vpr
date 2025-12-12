@@ -52,7 +52,7 @@ method predicateClientPostcond(x: Ref)
   x.f := 10
   @dependency("Rewrite")
   fold greater0(x)
-  @dependency("ExplicitPostcondition")
+  @dependency("ImplicitPostcondition")
   a := fooPostcond(x)
 
   @testAssertion("Explicit")
@@ -75,7 +75,7 @@ method callDivPostcond(){
   var x: Int
   @dependency("Explicit")
   assume x > 10
-  @dependency("ExplicitPostcondition")
+  @dependency("ImplicitPostcondition")
   x := div100Postcond(x)
 
   @testAssertion("Explicit")
@@ -90,7 +90,7 @@ function fooInput(a: Int): Int
 method client(a: Int)
 {
   var res: Int
-  @dependency("ExplicitPostcondition")
+  @dependency("ImplicitPostcondition")
   res := fooInput(a)
 
   @testAssertion("Explicit")

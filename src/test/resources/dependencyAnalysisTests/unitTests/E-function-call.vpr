@@ -75,12 +75,12 @@ method call4(x: Int, y: Int, z: Int)
   assume z > 0
 
   var n: Int, n2: Int
-  @dependency("ExplicitPostcondition")
+  @dependency("ImplicitPostcondition")
   n := sumUnverified(x, y)
 
   // $PrecisionTest: $READ_WRITE=n2 $READ_ONLY=n,z,x,y $INVARIANT=x>0
 
-  @irrelevant("ExplicitPostcondition")
+  @irrelevant("ImplicitPostcondition")
   n2 := sumUnverified(x, z)
 
   @testAssertion("Explicit")
