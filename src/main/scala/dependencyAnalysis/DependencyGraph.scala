@@ -1,6 +1,9 @@
 package viper.silicon.dependencyAnalysis
 
-import java.io.{File, PrintWriter}
+import viper.silver.dependencyAnalysis.AbstractReadOnlyDependencyGraph
+
+import java.io.PrintWriter
+import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
@@ -13,7 +16,7 @@ object DependencyGraphHelper {
   }
 }
 
-trait ReadOnlyDependencyGraph {
+trait ReadOnlyDependencyGraph extends AbstractReadOnlyDependencyGraph {
   def getNodes: Seq[DependencyAnalysisNode]
   def getDirectEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getTransitiveEdges: Map[Int, Set[Int]] // target -> direct dependencies
@@ -153,7 +156,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
   def exportGraph(dirName: String): Unit = {
-    val directory = new File(dirName)
+    val directory = Paths.get(dirName).toFile
     directory.mkdir()
     exportNodes(dirName + "/nodes.csv")
     exportEdges(dirName + "/edges.csv")

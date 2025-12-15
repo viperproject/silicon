@@ -6,13 +6,12 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.dependencyAnalysis.DependencyAnalysisUserTool
 import viper.silicon.Config.{ExhaleMode, JoinMode}
 import viper.silicon._
-import viper.silicon.dependencyAnalysis.{DependencyAnalyzer, DependencyAnalysisReporter}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisReporter, DependencyAnalysisUserTool, DependencyAnalyzer}
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -31,6 +30,7 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.components.StatefulComponent
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
+import viper.silver.verifier.errors.DependencyAnalysisFakeError
 import viper.silver.verifier.VerifierWarning
 
 import java.text.SimpleDateFormat
@@ -311,9 +311,9 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
-    val verificationResults = (   functionVerificationResults
-     ++ predicateVerificationResults
-     ++ methodVerificationResults)
+    var verificationResults = (functionVerificationResults
+      ++ predicateVerificationResults
+      ++ methodVerificationResults)
 
     DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, DependencyAnalyzer.timeToVerifyAndCollectDependencies)
     val postProcessingStartTime = DependencyAnalyzer.startTimeMeasurement()
@@ -324,7 +324,7 @@ class DefaultMainVerifier(config: Config,
 
       dependencyGraphInterpreters foreach (_.exportGraph())
 
-      val joinedGraphInterpreter = DependencyAnalyzer.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll(".vpr", "")), dependencyGraphInterpreters.toSet)
+      val joinedGraphInterpreter = DependencyAnalyzer.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")), dependencyGraphInterpreters.toSet)
       if(Verifier.config.dependencyAnalysisExportPath.isDefined)
         joinedGraphInterpreter.exportGraph()
 
@@ -340,6 +340,7 @@ class DefaultMainVerifier(config: Config,
         case _ =>
       }
 
+      verificationResults = Failure(DependencyAnalysisFakeError(joinedGraphInterpreter)) +: verificationResults
     }
 
     DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)

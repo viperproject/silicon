@@ -6,11 +6,13 @@ import viper.silver.ast
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{If, Stmt}
+import viper.silver.dependencyAnalysis.AbstractDependencyGraphInterpreter
 
-import java.io.{File, PrintWriter}
+import java.io.PrintWriter
+import java.nio.file.Paths
 
 
-class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, member: Option[ast.Member]=None) {
+class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
   protected var joinCandidateNodes: Seq[DependencyAnalysisNode] = Seq.empty
 
   def getGraph: ReadOnlyDependencyGraph = dependencyGraph
@@ -96,7 +98,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def exportGraph(): Unit = {
     if(Verifier.config.dependencyAnalysisExportPath.isEmpty) return
-    val directory = new File(Verifier.config.dependencyAnalysisExportPath())
+    val directory = Paths.get(Verifier.config.dependencyAnalysisExportPath()).toFile
     directory.mkdir()
     dependencyGraph.exportGraph(Verifier.config.dependencyAnalysisExportPath() + "/" + name)
   }

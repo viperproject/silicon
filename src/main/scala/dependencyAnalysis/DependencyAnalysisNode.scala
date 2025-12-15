@@ -3,8 +3,9 @@ package viper.silicon.dependencyAnalysis
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
+import viper.silver.dependencyAnalysis.AbstractDependencyAnalysisNode
 
-trait DependencyAnalysisNode {
+trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode{
   val id: Int = DependencyGraphHelper.nextId()
   val sourceInfo: AnalysisSourceInfo
   val assumptionType: AssumptionType

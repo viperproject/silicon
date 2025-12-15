@@ -28,16 +28,19 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   @tailrec
   private def runInternal(): Unit = {
-    val userInput = readLine()
-    if(userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit")){
-      return
+    try {
+      val userInput = readLine()
+      if (userInput.equalsIgnoreCase("q") || userInput.equalsIgnoreCase("quit")) {
+        return
+      }
+      if (userInput.nonEmpty) {
+        handleUserInput(userInput)
+      } else {
+        println(infoString)
+      }
+    }catch {
+      case e: Exception => println(e.getMessage)
     }
-    if(userInput.nonEmpty) {
-      handleUserInput(userInput)
-    }else{
-      println(infoString)
-    }
-
     runInternal()
   }
 
