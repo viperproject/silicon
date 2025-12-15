@@ -114,9 +114,12 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>
+                 val da = v3.decider.dependencyAnalyzer
+                 if(method.body.isEmpty) v3.decider.removeDependencyAnalyzer()
+                  exec(s3, body, v3)((s4, v4) => {
+                    if(method.body.isEmpty) v3.decider.dependencyAnalyzer = da
                     consumes(s4, posts, false, postViolated, v4, postConditionType)((_, _, _) =>
-                      Success()))}) }  )})})
+                      Success())})}) }  )})})
 
       if(method.body.isEmpty){
         v.decider.dependencyAnalyzer.addCustomExpDependency(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts))

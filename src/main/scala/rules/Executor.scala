@@ -610,7 +610,7 @@ object executor extends ExecutionRules {
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
         val methodAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(meth.info) // TODO: make sure the join can still be made?
-        val defaultAssumptionType = AssumptionType.ImplicitPostcondition
+        val defaultAssumptionType = AssumptionType.CallPostcondition
         val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(methodAnnotatedAssumptionType.getOrElse(defaultAssumptionType))
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)

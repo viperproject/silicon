@@ -139,7 +139,6 @@ object DependencyAnalyzer {
 
   def isAxiomLabel(label: String): Boolean = label.startsWith("axiom_")
 
-  // TODO ake: implement a lazy join in DependencyGraphInterpreter
   def joinGraphsAndGetInterpreter(name: Option[String], dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
     var startTime = startTimeMeasurement()
     val newGraph = new DependencyGraph
@@ -363,7 +362,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 
   override def addFunctionAxiomEdges(): Unit = {
     val axiomNodes = getNodes.filter(_.isInstanceOf[AxiomAssumptionNode])
-    val postcondNodes = getNodes.filter(n => n.assumptionType.equals(AssumptionType.ExplicitPostcondition) || n.assumptionType.equals(AssumptionType.ImplicitPostcondition))
+    val postcondNodes = getNodes.filter(n => AssumptionType.postconditionTypes.contains(n.assumptionType))
     axiomNodes foreach {aNode =>
       val pNodes = postcondNodes filter (_.sourceInfo.toString.equals(aNode.sourceInfo.toString)) map (_.id)
       assumptionGraph.addEdges(pNodes, aNode.id)
