@@ -1,6 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.{DependencyGraphInterpreter, DependencyAnalysisNode, AxiomAssumptionNode}
+import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.Method
 
@@ -9,7 +9,7 @@ import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
 class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterpreter, memberInterpreters: Seq[DependencyGraphInterpreter],
-                                 program: ast.Program) {
+                                 program: ast.Program, verificationErrors: List[Failure]) {
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
     "\n\t'downDep [line numbers]' to print all dependents of the given line numbers or" +
@@ -133,7 +133,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handleVerificationProgressQuery(): Unit = {
     println("Computing verification progress...")
-    val ((progress, info), time) = measureTime(fullGraphInterpreter.computeVerificationProgress())
+    val ((progress, info), time) = measureTime(fullGraphInterpreter.computeVerificationProgress(verificationErrors))
     println(s"Overall verification progress: $progress")
     println(s"$info")
     println(s"Finished in ${time}ms")

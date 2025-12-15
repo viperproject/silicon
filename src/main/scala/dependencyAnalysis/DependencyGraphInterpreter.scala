@@ -1,5 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.ViperStrategy
@@ -215,7 +216,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     writer.close()
   }
 
-  def computeVerificationProgress(): (Double, String)  = {
+  def computeVerificationProgress(verificationErrors: List[Failure]=List.empty): (Double, String)  = {
     val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource)
     if(assumptionsPerSource.isEmpty) return (Double.NaN, "Error: no assumptions found")
 
@@ -224,21 +225,24 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       .map(g => getNodesWithIdenticalSource(g._2))
       .flatMap(nodes => getAllNonInternalDependencies(nodes.map(_.id)))
 
+    val implicitPostConds = getNonInternalAssertionNodes.filter(node => AssumptionType.ImplicitPostcondition.equals(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource).keys.toSet
     val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource).keys.toSet // TODO ake: other assumption types?
-    val coveredImplicitSources = relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(coveredExplicitSources)
+    val coveredImplicitSources = relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(coveredExplicitSources).diff(implicitPostConds)
     val uncoveredExplicitSources = getExplicitAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet)
-    val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources).diff(uncoveredExplicitSources)
-    val relevantAssumptions = assumptionsPerSource.keys.toSet
+    val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources).diff(uncoveredExplicitSources).diff(implicitPostConds)
+    val relevantAssumptions = assumptionsPerSource.keys.toSet.diff(implicitPostConds)
 
-    val verificationProgress = coveredImplicitSources.size.toDouble / relevantAssumptions.size.toDouble
+    val verificationProgress = coveredImplicitSources.size.toDouble / (relevantAssumptions.size.toDouble + verificationErrors.size)
 
     val info =
       s"Uncovered Explicit Assumptions:\n\t${uncoveredExplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
         s"Covered Explicit Assumptions:\n\t${coveredExplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
         s"Uncovered Implicit Assumptions:\n\t${uncoveredImplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
         s"Covered Implicit Assumptions:\n\t${coveredImplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
+        s"Implicit Postconditions:\n\t${implicitPostConds.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
         s"All Relevant Assumptions:\n\t${relevantAssumptions.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
-        s"Verification Progress: ${coveredImplicitSources.size.toDouble}/${relevantAssumptions.size.toDouble} = $verificationProgress"
+        s"#Verification Errors: ${verificationErrors.size}" + "\n\n" +
+        s"Verification Progress: ${coveredImplicitSources.size.toDouble}/(${relevantAssumptions.size.toDouble}+${verificationErrors.size}) = $verificationProgress"
     (verificationProgress, info)
   }
 }

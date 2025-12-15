@@ -320,6 +320,7 @@ class DefaultMainVerifier(config: Config,
 
     if(Verifier.config.enableDependencyAnalysis()){
       val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
+      val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
 
       dependencyGraphInterpreters foreach (_.exportGraph())
 
@@ -328,7 +329,7 @@ class DefaultMainVerifier(config: Config,
         joinedGraphInterpreter.exportGraph()
 
       if(Verifier.config.startDependencyAnalysisTool()){
-        val commandLineTool = new DependencyAnalysisUserTool(joinedGraphInterpreter, dependencyGraphInterpreters, originalProgram)
+        val commandLineTool = new DependencyAnalysisUserTool(joinedGraphInterpreter, dependencyGraphInterpreters, originalProgram, verificationErrors)
         commandLineTool.run()
       }
 
