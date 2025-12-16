@@ -46,6 +46,11 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     res.toMap
   }
 
+  // TODO ake: remove
+  def setEdges(newEdges: Map[Int, Set[Int]]): Unit = {
+    newEdges.foreach(e => edges.update(e._1, e._2))
+  }
+
   def addNode(node: DependencyAnalysisNode): Unit = {
     nodes = nodes :+ node
   }
