@@ -142,7 +142,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println(s"Finished in ${time}ms")
   }
 
-  private def getSourceInfoString(nodes: Set[DependencyAnalysisNode]) = {
+  protected def getSourceInfoString(nodes: Set[DependencyAnalysisNode]): String = {
     nodes.groupBy(node => node.sourceInfo.getTopLevelSource.toString).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
   }
 
