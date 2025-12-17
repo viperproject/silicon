@@ -1,0 +1,25 @@
+
+
+method foo(a: Int) returns (res: Int)
+    requires a > 0
+    ensures res > 0
+{
+    res := a + 1
+}
+
+
+method bar(a: Int) returns (res: Int)
+    requires a > 0
+    ensures res > 0
+{
+    res := foo(a+1)
+    assert res >= 0
+
+    var b: Int
+    assume b > 0
+    assume b < 100
+    assert b >= 0
+
+    b := 0
+    b := 1
+}

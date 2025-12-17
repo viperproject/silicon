@@ -1,0 +1,11 @@
+field f: Int
+
+
+method foo(a: Ref)
+    requires acc(a.f)
+    ensures acc(a.f)
+    ensures a.f >= 0
+    if(a.f < 0){
+        a.f := -a.f
+    }
+}

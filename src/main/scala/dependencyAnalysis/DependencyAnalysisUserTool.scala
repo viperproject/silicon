@@ -81,9 +81,9 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handleGraphSizeQuery(interpreter: DependencyGraphInterpreter): Unit = {
     val allAssumptions = interpreter.getNonInternalAssumptionNodes.filter(n => !n.isInstanceOf[AxiomAssumptionNode])
-    val assumptions = allAssumptions.groupBy(_.sourceInfo.getTopLevelSource)
+    val assumptions = allAssumptions.groupBy(_.sourceInfo.getTopLevelSource.toString)
     val assertions = interpreter.getNonInternalAssertionNodesPerSource
-    val nodes = interpreter.getNonInternalAssertionNodes.union(allAssumptions).groupBy(_.sourceInfo.getTopLevelSource)
+    val nodes = interpreter.getNonInternalAssertionNodes.union(allAssumptions).groupBy(_.sourceInfo.getTopLevelSource.toString)
     println(s"#Assumptions = ${assumptions.size}")
     println(s"#Assertions = ${assertions.size}")
     println(s"#Nodes = ${nodes.size}")
@@ -249,7 +249,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
           val (allDependencies, time) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
           allTimes = allTimes :+ time
           numLowLevelDeps = allDependencies.size
-          numDeps = allDependencies.groupBy(node => node.sourceInfo.getTopLevelSource).size
+          numDeps = allDependencies.groupBy(node => node.sourceInfo.getTopLevelSource.toString).size
         }
 
         writer.println(s"$userInput,$numLowLevelDeps,$numDeps,${allTimes.mkString(",")}")

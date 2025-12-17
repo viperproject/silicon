@@ -158,12 +158,12 @@ object DependencyAnalyzer {
     val axiomAssertionNodes = joinCandidateNodes
       .filter(n => (n.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(n.assumptionType))
       || AssumptionType.FunctionBody.equals(n.assumptionType))
-      .groupBy(_.sourceInfo.getTopLevelSource)
+      .groupBy(_.sourceInfo.getTopLevelSource.toString)
       .view.mapValues(_.map(_.id))
       .toMap
     joinCandidateNodes.filter(_.isInstanceOf[AxiomAssumptionNode])
       .groupBy(n => n.sourceInfo)
-      .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo, Seq.empty))}
+      .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo.toString, Seq.empty))}
       .foreach{case (axiomNodeIds, assertionNodeIds) =>
         newGraph.addEdges(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
     }
@@ -175,11 +175,11 @@ object DependencyAnalyzer {
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
     val relevantAssumptionNodes = joinCandidateNodes
       .filter(node => node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
-      .groupBy(_.sourceInfo.getFineGrainedSource)
+      .groupBy(_.sourceInfo.getFineGrainedSource.toString)
       .view.mapValues(_.map(_.id))
       .toMap
     joinCandidateNodes.filter(node => node.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
-      .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
+      .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource.toString, Seq.empty)))
       .foreach { case (src, targets) => newGraph.addEdges(src, targets)}
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForMethodJoin)
@@ -380,7 +380,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     }
 
     val nodesBySource = assumptionGraph.getNodes.filter(!keepNode(_))
-      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges, n.sourceInfo.getTopLevelSource, n.sourceInfo.getFineGrainedSource, n.assumptionType))
+      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges, n.sourceInfo.getTopLevelSource.toString, n.sourceInfo.getFineGrainedSource, n.assumptionType))
 
     nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
       val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])

@@ -1,0 +1,24 @@
+
+
+method foo(a: Int) returns (res: Int)
+    requires a > 0
+    ensures res > 0
+{
+    assume false
+}
+
+
+method bar(a: Int) returns (res: Int)
+    requires a > 0
+{
+    assume a < 100
+    res := what(a+1)
+    assert res >= 0
+    assert res < 100
+    assert res < 100
+}
+
+
+method what(a: Int) returns (res: Int)
+    requires a > 0
+    ensures res > 0

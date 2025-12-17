@@ -66,7 +66,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def filterOutNodesBySourceInfo(nodes: Set[DependencyAnalysisNode], excludeInfos: Set[AnalysisSourceInfo]): Set[DependencyAnalysisNode] =
-    nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.equals(node.sourceInfo.getTopLevelSource)))
+    nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.toString.equals(node.sourceInfo.getTopLevelSource.toString)))
 
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
@@ -81,16 +81,16 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     nodesToAnalyze.intersect(getNonInternalAssumptionNodes)
       .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
 
-  def getNonInternalAssumptionNodesPerSource: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] =
-    getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource)
+  def getNonInternalAssumptionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
+    getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
 
 
   def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
     node.isInstanceOf[GeneralAssertionNode] && !AssumptionType.internalTypes.contains(node.assumptionType)
     )
 
-  def getNonInternalAssertionNodesPerSource: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] =
-    getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource)
+  def getNonInternalAssertionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
+    getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
@@ -104,8 +104,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource)
-    getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource))
+    val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource.toString)
+    getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource.toString))
   }
 
   def computeProofCoverage(): (Double, Set[String]) = {
@@ -117,14 +117,14 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val assertionNodeIds = assertionNodes map (_.id)
     val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
     val coveredNodes = dependencies ++ assertionNodeIds
-    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource)
+    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource.toString)
     if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Set())
 
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
       coveredNodes.intersect(nodes map (_.id)).isEmpty
     }).keys.toSet
     val proofCoverage = 1.0 - (uncoveredSources.size.toDouble / nodesPerSourceInfo.size.toDouble)
-    (proofCoverage, uncoveredSources.map(_.toString))
+    (proofCoverage, uncoveredSources)
   }
 
   def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
@@ -219,30 +219,30 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def computeVerificationProgress(verificationErrors: List[Failure]=List.empty): (Double, String)  = {
-    val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource)
+    val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
     if(assumptionsPerSource.isEmpty) return (Double.NaN, "Error: no assumptions found")
 
     val relevantDependencies = getExplicitAssertionNodes // TODO ake: only postconditions?
-      .groupBy(_.sourceInfo.getTopLevelSource)
+      .groupBy(_.sourceInfo.getTopLevelSource.toString)
       .map(g => getNodesWithIdenticalSource(g._2))
       .flatMap(nodes => getAllNonInternalDependencies(nodes.map(_.id)))
 
-    val implicitPostConds = getNonInternalAssertionNodes.filter(node => AssumptionType.ImplicitPostcondition.equals(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource).keys.toSet
-    val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource).keys.toSet // TODO ake: other assumption types?
-    val coveredImplicitSources = relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(coveredExplicitSources).diff(implicitPostConds)
-    val uncoveredExplicitSources = getExplicitAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet.diff(relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource).keys.toSet)
+    val implicitPostConds = getNonInternalAssertionNodes.filter(node => AssumptionType.ImplicitPostcondition.equals(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet
+    val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet // TODO ake: other assumption types?
+    val coveredImplicitSources = relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet.diff(coveredExplicitSources).diff(implicitPostConds)
+    val uncoveredExplicitSources = getExplicitAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet.diff(relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet)
     val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources).diff(uncoveredExplicitSources).diff(implicitPostConds)
     val relevantAssumptions = assumptionsPerSource.keys.toSet.diff(implicitPostConds)
 
     val verificationProgress = coveredImplicitSources.size.toDouble / (relevantAssumptions.size.toDouble + verificationErrors.size)
 
     val info =
-      s"Uncovered Explicit Assumptions:\n\t${uncoveredExplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
-        s"Covered Explicit Assumptions:\n\t${coveredExplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
-        s"Uncovered Implicit Assumptions:\n\t${uncoveredImplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
-        s"Covered Implicit Assumptions:\n\t${coveredImplicitSources.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
-        s"Implicit Postconditions:\n\t${implicitPostConds.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
-        s"All Relevant Assumptions:\n\t${relevantAssumptions.toSeq.sortBy(_.getLineNumber).mkString("\n\t")}" + "\n" +
+      s"Uncovered Explicit Assumptions:\n\t${uncoveredExplicitSources.mkString("\n\t")}" + "\n" +
+        s"Covered Explicit Assumptions:\n\t${coveredExplicitSources.mkString("\n\t")}" + "\n" +
+        s"Uncovered Implicit Assumptions:\n\t${uncoveredImplicitSources.mkString("\n\t")}" + "\n" +
+        s"Covered Implicit Assumptions:\n\t${coveredImplicitSources.mkString("\n\t")}" + "\n" +
+        s"Implicit Postconditions:\n\t${implicitPostConds.mkString("\n\t")}" + "\n" +
+        s"All Relevant Assumptions:\n\t${relevantAssumptions.mkString("\n\t")}" + "\n" +
         s"#Verification Errors: ${verificationErrors.size}" + "\n\n" +
         s"Verification Progress: ${coveredImplicitSources.size.toDouble}/(${relevantAssumptions.size.toDouble}+${verificationErrors.size}) = $verificationProgress"
     (verificationProgress, info)

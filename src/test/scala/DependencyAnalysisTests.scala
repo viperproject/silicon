@@ -106,8 +106,8 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
     proofCoverageWriter.println(filePrefix + "/" + fileName)
     dependencyGraphInterpreters foreach (memberInterpreter => {
-      memberInterpreter.getExplicitAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource) foreach {case (source, nodes) =>
-          proofCoverageWriter.println(memberInterpreter.getName + " " + source.toString.replace("\n", " ") + " ---> " + memberInterpreter.computeProofCoverage(nodes)._1)}
+      memberInterpreter.getExplicitAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString) foreach {case (source, nodes) =>
+          proofCoverageWriter.println(memberInterpreter.getName + " " + source.replace("\n", " ") + " ---> " + memberInterpreter.computeProofCoverage(nodes)._1)}
       proofCoverageWriter.println("overall " + memberInterpreter.getName + " ---> + " + memberInterpreter.computeProofCoverage()._1)
     })
     proofCoverageWriter.println()
