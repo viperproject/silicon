@@ -143,7 +143,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   private def getSourceInfoString(nodes: Set[DependencyAnalysisNode]) = {
-    nodes.groupBy(node => node.sourceInfo.getTopLevelSource).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
+    nodes.groupBy(node => node.sourceInfo.getTopLevelSource.toString).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
   }
 
   private def getQueriedNodesFromInput(inputs: Set[String]): Set[DependencyAnalysisNode] = {
