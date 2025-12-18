@@ -128,19 +128,19 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
   // TODO ake: maybe move to DependencyAnalyzer?
-  private def getNodesPerTransitivitySourceInfo: Map[AnalysisSourceInfo, Seq[DependencyAnalysisNode]] = {
-    getNodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges)
+  private def getNodesPerTransitivitySourceInfo: Map[String, Seq[DependencyAnalysisNode]] = {
+    getNodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges.toString)
   }
 
   // TODO ake: maybe move to DependencyAnalyzer?
   def addTransitiveEdges(): Unit = {
     val nodesPerSourceInfo = getNodesPerTransitivitySourceInfo
-    nodesPerSourceInfo foreach {nodes =>
-      val asserts = nodes._2.filter(_.isInstanceOf[GeneralAssertionNode])
-      val assumes = nodes._2.filter(n => !n.isClosed && n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
+    nodesPerSourceInfo foreach {case (_, nodes) =>
+      val asserts = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
+      val assumes = nodes.filter(n => !n.isClosed && n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
       addTransitiveEdges(asserts, assumes)
       val checks = asserts.filter(_.isInstanceOf[SimpleCheckNode])
-      val notChecks = nodes._2.filter(n => !n.isClosed && !n.isInstanceOf[SimpleCheckNode])
+      val notChecks = nodes.filter(n => !n.isClosed && !n.isInstanceOf[SimpleCheckNode])
       addTransitiveEdges(checks, notChecks)
     }
   }

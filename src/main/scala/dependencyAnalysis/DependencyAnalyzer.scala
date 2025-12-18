@@ -380,7 +380,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     }
 
     val nodesBySource = assumptionGraph.getNodes.filter(!keepNode(_))
-      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges, n.sourceInfo.getTopLevelSource.toString, n.sourceInfo.getFineGrainedSource, n.assumptionType))
+      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.sourceInfo.getTopLevelSource.toString, n.sourceInfo.getFineGrainedSource.toString, n.assumptionType))
 
     nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
       val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])
