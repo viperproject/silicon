@@ -279,7 +279,7 @@ object executor extends ExecutionRules {
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
-                        v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.LoopInvariant)
+                        v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.Internal)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke() && !Verifier.config.disableInfeasibilityChecks())
                           Success()
