@@ -44,11 +44,26 @@ trait DependencyAnalyzer {
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
   def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit
   def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit
-  def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit
+
+  /**
+   * Adds dependencies between all pairs of sourceExps and targetExps, where sourceExps should be preconditions and
+   * targetExps should be postconditions of an abstract function or method.
+   */
+  def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit
+
+  /**
+   * Adds edges connecting nodes representing function postconditions with the corresponding axiom nodes.
+   */
   def addFunctionAxiomEdges(): Unit
 
-  def  addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Unit = {}
+  /**
+   * Adds an assertion and assumption node with the given analysis source info and dependencies to the current infeasibility node.
+   */
+  def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Unit = {}
 
+  /**
+   * @return the final dependency graph representing all direct and transitive dependencies
+   */
   def buildFinalGraph(): Option[DependencyGraph]
 }
 
@@ -80,6 +95,7 @@ object DependencyAnalyzer {
     total.addAndGet(endTime - startTime)
   }
 
+  // TODO ake: remove all profiling artifacts
   def printProfilingResults(): Unit = {
     if(!Verifier.config.enableDependencyAnalysisProfiling()) return
     println(s"Overall runtime = time spent on verification and building the final graph: ${timeToVerifyAndBuildFinalGraph.get() / 1e6}ms")
@@ -139,6 +155,15 @@ object DependencyAnalyzer {
 
   def isAxiomLabel(label: String): Boolean = label.startsWith("axiom_")
 
+  /**
+   *
+   * @param name Optional name for the result graph.
+   * @param dependencyGraphInterpreters The graphs which should be joined.
+   * @return A dependency graph interpreter operating on a new dependency graph that represents all input graphs and
+   *         dependencies between them.
+   * The new graph is built by adding all existing nodes and edges of all input graphs and joining them via postconditions
+   * of functions and methods.
+   */
   def joinGraphsAndGetInterpreter(name: Option[String], dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
     var startTime = startTimeMeasurement()
     val newGraph = new DependencyGraph
@@ -342,17 +367,25 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {
-    val sourceNodes = assumptionGraph.nodes filter (n => n.isInstanceOf[GeneralAssertionNode] && n.sourceInfo.getSourceForTransitiveEdges.equals(sourceSourceInfo.getSourceForTransitiveEdges))
-    val targetNodes = assumptionGraph.nodes filter (n => n.isInstanceOf[GeneralAssumptionNode] && n.sourceInfo.getSourceForTransitiveEdges.equals(targetSourceInfo.getSourceForTransitiveEdges))
-    assumptionGraph.addEdges(sourceNodes map (_.id), targetNodes map (_.id))
+    // TODO ake: remove this since this is already done in buildFinalGraph()?
+//    val sourceNodes = assumptionGraph.nodes filter (n => n.isInstanceOf[GeneralAssertionNode] && n.sourceInfo.getSourceForTransitiveEdges.equals(sourceSourceInfo.getSourceForTransitiveEdges))
+//    val targetNodes = assumptionGraph.nodes filter (n => n.isInstanceOf[GeneralAssumptionNode] && n.sourceInfo.getSourceForTransitiveEdges.equals(targetSourceInfo.getSourceForTransitiveEdges))
+//    assumptionGraph.addEdges(sourceNodes map (_.id), targetNodes map (_.id))
   }
 
-  def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
-    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.Explicit, None))
+  override def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.Precondition, None))
     val targetNodes = targetExps.flatMap(e => addAssertNode(True, AssumptionType.ExplicitPostcondition, ExpAnalysisSourceInfo(e)))
     assumptionGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
+  /**
+   *
+   * @return the final dependency graph
+   * This operation ensures sound computation of transitive dependencies by adding edges between nodes originating from the same
+   * source code statement.
+   * Further, this operation removes unnecessary details from the graph by, for example, removing label nodes and merging identical nodes.
+   */
   override def buildFinalGraph(): Option[DependencyGraph] = {
     assumptionGraph.removeLabelNodes()
     val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) assumptionGraph else  buildAndGetMergedGraph()
@@ -369,6 +402,13 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     }
   }
 
+  /**
+   * Creates a new graph where nodes that only differ in irrelevant information are merged into one node.
+   * As a result, this operation removes some lower-level details from the graph.
+   * This step can be skipped for debugging purposes by setting the enableDependencyAnalysisDebugging flag. Doing so
+   * has no effect on the dependency results but allows to inspect low-level details while debugging and exporting
+   * the low-level graph containing all details.
+   */
   private def buildAndGetMergedGraph(): DependencyGraph = {
     def keepNode(n: DependencyAnalysisNode): Boolean = n.isClosed || n.isInstanceOf[InfeasibilityNode] || n.isInstanceOf[AxiomAssumptionNode]
 
@@ -408,14 +448,24 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     mergedGraph
   }
 
+  /**
+   * Adds an assertion and assumption node with the given analysis source info and dependencies to the current infeasibility node.
+   * If the infeasibility node is not defined, this operation does nothing.
+   * The resulting assertion node is required to detect dependencies of the source statement/expression on infeasible paths.
+   * The resulting assumption node is required to ensure that unreachable statements/expressions are represented in the graph and
+   * thus taken into account by graph queries, e.g. when determining uncovered statements or computing coverage.
+   */
   override def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Unit = {
     val newAssertionNodeId = addAssertNode(False, assumptionType, analysisSourceInfo)
+    addDependency(infeasNodeId, newAssertionNodeId)
     val newAssumptionNodeId = addAssumption(False, analysisSourceInfo, assumptionType)
     addDependency(infeasNodeId, newAssumptionNodeId)
-    addDependency(infeasNodeId, newAssertionNodeId)
   }
 }
 
+/**
+ * This DependencyAnalyzer implementation is used by default and does nothing.
+ */
 class NoDependencyAnalyzer extends DependencyAnalyzer {
 
   override def getMember: Option[ast.Member] = None
@@ -437,7 +487,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}
   override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], targetChunk: Chunk): Unit = {}
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {}
-  override def addCustomExpDependency(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
+  override def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
   override def addFunctionAxiomEdges(): Unit = {}
 
   override def buildFinalGraph(): Option[DependencyGraph] = None

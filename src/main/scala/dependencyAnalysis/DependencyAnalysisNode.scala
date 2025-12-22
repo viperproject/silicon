@@ -5,16 +5,46 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
 import viper.silver.dependencyAnalysis.AbstractDependencyAnalysisNode
 
-trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode{
+
+trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
+
+  /**
+   * The unique node id, which is also given to the SMT solver such that unsat cores can be mapped back to dependency nodes.
+   */
   val id: Int = DependencyGraphHelper.nextId()
+
+  /**
+   * Stores information about which source code statement / expression created this node.
+   * This information is crucial to lift lower-level graphs to higher-level graphs and to present user-readable
+   * dependency results.
+   */
   val sourceInfo: AnalysisSourceInfo
+
+  /**
+   * The assumption / assertion type of the node which is heavily used in dependency graph queries to filter nodes,
+   * for example, to only present explicit assumptions.
+   */
   val assumptionType: AssumptionType
+
+  /**
+   * A flag that, when set to true, indicates that the node should not receive any additional edges, unless explicitly added.
+   * This is useful to increase precision of the dependency analysis, for example, to ensure that an assumption does not
+   * depend on more assertions than necessary.
+   */
   val isClosed: Boolean
+
+  /**
+   * The assumes or asserted Silicon term. Currently, only used for debugging purposes.
+   */
   val term: Term
   def getTerm: Term = term
 
+  /*
+    Some string representations, mainly used for debugging purposes.
+    The strings represented to users are obtained via sourceInfo.toString and do not contain any low-level information
+    about the node (such as the id or term).
+   */
   override def toString: String = id.toString + " | " + getNodeString + " | " + sourceInfo.toString
-
   def getNodeString: String
   def getNodeType: String
 
@@ -61,6 +91,10 @@ case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSo
   override def getNodeString: String = "exhale " + chunk.toString
 }
 
+/**
+ * Label nodes are internally used nodes, mostly used to improve precision of the dependency analysis.
+ * They are completely hidden from users.
+ */
 case class LabelNode(term: Var) extends GeneralAssumptionNode {
   val sourceInfo: AnalysisSourceInfo = NoAnalysisSourceInfo()
   val assumptionType: AssumptionType = AssumptionType.Internal
@@ -70,6 +104,13 @@ case class LabelNode(term: Var) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + description
 }
 
+/**
+ * Represents the fact that a branch has been found to be infeasible.
+ * Infeasibility nodes should always depend on the proof of false and all subsequent assertions on the infeasible path
+ * should depend on the infeasibility node.
+ * Infeasibility nodes allow to distinguish between dependencies coming from the fact that the assertion is not reachable
+ * on a given path and dependencies used to prove the assertion on feasible paths.
+ */
 case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo) extends GeneralAssumptionNode {
   val term: Term = False
   val assumptionType: AssumptionType = AssumptionType.Implicit

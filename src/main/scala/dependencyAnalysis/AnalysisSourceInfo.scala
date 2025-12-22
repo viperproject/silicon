@@ -29,7 +29,8 @@ abstract class AnalysisSourceInfo {
   def getPosition: Position
 
   /**
-   * @return the analysis source info used for merging nodes
+   * @return the analysis source info used for lifting low-level graphs to higher-level graphs
+   *         and presenting dependency results to the user
    */
   def getTopLevelSource: AnalysisSourceInfo = this
 

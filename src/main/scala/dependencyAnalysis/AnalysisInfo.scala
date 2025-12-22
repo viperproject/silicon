@@ -8,8 +8,9 @@ object AssumptionType extends Enumeration {
 
   def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition)
   def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition, CallPostcondition) // used to join graphs via postconditions
-  def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit) ++ postconditionTypes
+  def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
   def internalTypes: Set[AssumptionType] = Set(Internal) // will always be hidden from user
+  def implicitTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes).diff(internalTypes)
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
 }
 

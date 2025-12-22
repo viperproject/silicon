@@ -122,7 +122,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                       Success())})}) }  )})})
 
       if(method.body.isEmpty){
-        v.decider.dependencyAnalyzer.addCustomExpDependency(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts))
+        v.decider.dependencyAnalyzer.addDependenciesForExplicitPostconditions(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts))
       }
 
       result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, Some(method)))

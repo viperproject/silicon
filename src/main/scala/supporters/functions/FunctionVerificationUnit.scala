@@ -191,7 +191,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
           if (function.body.isEmpty) {
             decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
-            decider.dependencyAnalyzer.addCustomExpDependency(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts))
+            decider.dependencyAnalyzer.addDependenciesForExplicitPostconditions(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts))
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
