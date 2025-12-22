@@ -12,13 +12,14 @@ import java.io.PrintWriter
 import java.nio.file.Paths
 
 
-class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
+class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
   protected var joinCandidateNodes: Seq[DependencyAnalysisNode] = Seq.empty
 
   def getGraph: ReadOnlyDependencyGraph = dependencyGraph
   def getName: String = name
   def getMember: Option[ast.Member] = member
   def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes.toSet
+  def getErrors: List[Failure] = errors
 
   def getJoinCandidateNodes: Iterable[DependencyAnalysisNode] = joinCandidateNodes
 
@@ -218,14 +219,21 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     writer.close()
   }
 
-  def computeVerificationProgress(verificationErrors: List[Failure]=List.empty): (Double, String)  = {
+  def computeVerificationProgress(): (Double, Double, String)  = {
     val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
-    if(assumptionsPerSource.isEmpty) return (Double.NaN, "Error: no assumptions found")
+    if(assumptionsPerSource.isEmpty) return (Double.NaN, Double.NaN, "Error: no assumptions found")
 
-    val relevantDependencies = getExplicitAssertionNodes // TODO ake: only postconditions?
+    val allExplicitAssertions = getExplicitAssertionNodes // TODO ake: only postconditions?
       .groupBy(_.sourceInfo.getTopLevelSource.toString)
-      .map(g => getNodesWithIdenticalSource(g._2))
-      .flatMap(nodes => getAllNonInternalDependencies(nodes.map(_.id)))
+
+    val relevantDependenciesPerAssertion = allExplicitAssertions
+      .view.mapValues(g => getAllNonInternalDependencies(getNodesWithIdenticalSource(g).map(_.id)))
+
+    val assertionsWithoutExplicitAssumptions = relevantDependenciesPerAssertion.filter { case (_, deps) =>
+      !deps.exists(dep => AssumptionType.explicitAssumptionTypes.contains(dep.assumptionType))
+    }.keys
+
+    val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2)
 
     val implicitPostConds = getNonInternalAssertionNodes.filter(node => AssumptionType.ImplicitPostcondition.equals(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet
     val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet // TODO ake: other assumption types?
@@ -234,17 +242,26 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources).diff(uncoveredExplicitSources).diff(implicitPostConds)
     val relevantAssumptions = assumptionsPerSource.keys.toSet.diff(implicitPostConds)
 
-    val verificationProgress = coveredImplicitSources.size.toDouble / (relevantAssumptions.size.toDouble + verificationErrors.size)
+    val verificationProgressAndrea = coveredImplicitSources.size.toDouble / (relevantAssumptions.size.toDouble + errors.size)
 
-    val info =
+    val specQuality  = coveredImplicitSources.size.toDouble / (coveredImplicitSources.size.toDouble + uncoveredImplicitSources.size.toDouble)
+    val proofQuality = (assertionsWithoutExplicitAssumptions.size.toDouble - errors.size.toDouble) / allExplicitAssertions.size.toDouble
+    val verificationProgressPeter = specQuality * proofQuality
+
+    val info = {
+      s"All Assumptions and Statements:\n\t${relevantAssumptions.mkString("\n\t")}" + "\n" +
       s"Uncovered Explicit Assumptions:\n\t${uncoveredExplicitSources.mkString("\n\t")}" + "\n" +
         s"Covered Explicit Assumptions:\n\t${coveredExplicitSources.mkString("\n\t")}" + "\n" +
-        s"Uncovered Implicit Assumptions:\n\t${uncoveredImplicitSources.mkString("\n\t")}" + "\n" +
-        s"Covered Implicit Assumptions:\n\t${coveredImplicitSources.mkString("\n\t")}" + "\n" +
-        s"Implicit Postconditions:\n\t${implicitPostConds.mkString("\n\t")}" + "\n" +
-        s"All Relevant Assumptions:\n\t${relevantAssumptions.mkString("\n\t")}" + "\n" +
-        s"#Verification Errors: ${verificationErrors.size}" + "\n\n" +
-        s"Verification Progress: ${coveredImplicitSources.size.toDouble}/(${relevantAssumptions.size.toDouble}+${verificationErrors.size}) = $verificationProgress"
-    (verificationProgress, info)
+        s"Uncovered Statements:\n\t${uncoveredImplicitSources.mkString("\n\t")}" + "\n" +
+        s"Covered Statements:\n\t${coveredImplicitSources.mkString("\n\t")}" + "\n" +
+        s"Postconditions of methods/functions with bodies:\n\t${implicitPostConds.mkString("\n\t")}" + "\n" +
+        s"Explicit Assertions:\n\t${allExplicitAssertions.keys.mkString("\n\t")}" + "\n\n" +
+        s"Explicit Assertions verified without explicit assumptions:\n\t${assertionsWithoutExplicitAssumptions.mkString("\n\t")}" + "\n\n" +
+        s"#Verification Errors: ${errors.size}" + "\n\n" +
+        s"Verification Progress (Andrea):\n\t${coveredImplicitSources.size}/(${relevantAssumptions.size}+${errors.size}) = $verificationProgressAndrea" + "\n\n" +
+        s"Verification Progress (Peter):\n\t${coveredImplicitSources.size}/(${coveredImplicitSources.size + uncoveredImplicitSources.size}) * " +
+        s"${assertionsWithoutExplicitAssumptions.size - errors.size.toDouble}/${allExplicitAssertions.size} = $verificationProgressPeter" + "\n"
+    }
+    (verificationProgressAndrea, verificationProgressPeter, info)
   }
 }

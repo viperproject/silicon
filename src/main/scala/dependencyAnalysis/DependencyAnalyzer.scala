@@ -209,7 +209,7 @@ object DependencyAnalyzer {
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForMethodJoin)
 
-    val newInterpreter = new DependencyGraphInterpreter(name.getOrElse("joined"), newGraph)
+    val newInterpreter = new DependencyGraphInterpreter(name.getOrElse("joined"), newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
   }
 }

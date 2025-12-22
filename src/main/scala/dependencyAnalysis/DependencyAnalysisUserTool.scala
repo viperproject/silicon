@@ -136,7 +136,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handleVerificationProgressQuery(): Unit = {
     println("Computing verification progress...")
-    val ((progress, info), time) = measureTime(fullGraphInterpreter.computeVerificationProgress(verificationErrors))
+    val ((progress, _, info), time) = measureTime(fullGraphInterpreter.computeVerificationProgress())
     println(s"Overall verification progress: $progress")
     println(s"$info")
     println(s"Finished in ${time}ms")

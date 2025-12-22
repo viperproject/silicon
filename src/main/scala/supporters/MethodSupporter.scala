@@ -125,7 +125,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         v.decider.dependencyAnalyzer.addDependenciesForExplicitPostconditions(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts))
       }
 
-      result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, Some(method)))
+      val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
+
+      result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
       result.dependencyGraphInterpreter.foreach(_.initJoinCandidateNodes())
 
       v.decider.resetProverOptions()
