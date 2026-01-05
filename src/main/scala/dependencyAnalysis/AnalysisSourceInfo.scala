@@ -45,6 +45,8 @@ abstract class AnalysisSourceInfo {
   def getFineGrainedSource: AnalysisSourceInfo = this
 
   def isAnalysisEnabled: Boolean = true
+
+  val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = None
 }
 
 case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
@@ -54,7 +56,7 @@ case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
 }
 
 case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
-  val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = source.info.getUniqueInfo[DependencyAnalysisInfo]
+  override val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = source.info.getUniqueInfo[DependencyAnalysisInfo]
 
   override def toString: String = (if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.info else source.toString).replaceAll("\n", "\t") +
     " (" + super.toString + ")"
@@ -73,7 +75,7 @@ case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
 }
 
 case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
-  val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = source.info.getUniqueInfo[DependencyAnalysisInfo]
+  override val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = source.info.getUniqueInfo[DependencyAnalysisInfo]
 
   override def toString: String = (if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.info else source.toString()).replaceAll("\n", "\t") +
     " (" + super.toString + ")"
