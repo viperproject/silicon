@@ -9,21 +9,21 @@ define Math_clip(a) a < 0 ? 0 : a
 domain $Multiset[E] {
     function Multiset_count(ms: $Multiset[E], x: E): Int
 
-    axiom {
+    axiom MS_count_nonneg {
         forall ms: $Multiset[E], x: E :: { Multiset_count(ms, x) }
             Multiset_count(ms, x) >= 0
     }
 
     function Multiset_card(ms: $Multiset[E]): Int
-    axiom {
+    axiom MS_card_nonneg {
         forall s: $Multiset[E] :: { Multiset_card(s) } 0 <= Multiset_card(s)
     }
 
     function Multiset_empty(): $Multiset[E]
-    axiom {
+    axiom MS_empty_count {
         forall o: E :: { Multiset_count(Multiset_empty(), o) } Multiset_count(Multiset_empty(), o) == 0
     }
-    axiom {
+    axiom MS_card_zero {
         forall s: $Multiset[E] :: { Multiset_card(s) }
             (Multiset_card(s) == 0 <==> s == Multiset_empty()) &&
             (Multiset_card(s) != 0 ==> (exists x: E :: 0 < Multiset_count(s, x)))
@@ -31,66 +31,66 @@ domain $Multiset[E] {
 
     function Multiset_singleton(e: E): $Multiset[E]
 
-    axiom {
+    axiom MS_singleton_count {
         forall r: E, o: E :: { Multiset_count(Multiset_singleton(r), o) }
             (Multiset_count(Multiset_singleton(r), o) == 1 <==> r == o) &&
             (Multiset_count(Multiset_singleton(r), o) == 0 <==> r != o)
     }
-    axiom {
+    axiom MS_singleton_card {
         forall r: E :: { Multiset_singleton(r) } Multiset_card(Multiset_singleton(r)) == 1 && Multiset_count(Multiset_singleton(r), r) == 1
     }
-    axiom {
+    axiom MS_unionone_empty {
         forall r: E :: { Multiset_singleton(r) } Multiset_singleton(r) == Multiset_unionone(Multiset_empty(), r)
     }
 
     function Multiset_unionone(ms: $Multiset[E], t: E): $Multiset[E]
-    axiom {
+    axiom MS_unionone_count {
         forall a: $Multiset[E], x: E, o: E :: { Multiset_count(Multiset_unionone(a, x), o) } { Multiset_unionone(a, x), Multiset_count(a, o) }
             Multiset_count(Multiset_unionone(a, x), o) == (x == o ? Multiset_count(a, o) + 1 : Multiset_count(a, o))
     }
-    axiom {
+    axiom MS_unionone_card {
         forall a: $Multiset[E], x: E :: { Multiset_card(Multiset_unionone(a, x)) } { Multiset_unionone(a, x), Multiset_card(a) }
             Multiset_card(Multiset_unionone(a, x)) == Multiset_card(a) + 1
     }
-    axiom {
+    axiom MS_unionone_positive {
         forall a: $Multiset[E], x: E :: { Multiset_unionone(a, x) }
             Multiset_count(Multiset_unionone(a, x), x) > 0 && Multiset_card(Multiset_unionone(a, x)) > 0
     }
 
     function Multiset_union(ms0: $Multiset[E], ms1: $Multiset[E]): $Multiset[E]
-    axiom {
+    axiom MS_union_count {
         forall a: $Multiset[E], b: $Multiset[E], o: E :: { Multiset_count(Multiset_union(a, b), o) } { Multiset_union(a, b), Multiset_count(a, o), Multiset_count(b, o) }
             Multiset_count(Multiset_union(a, b), o) == Multiset_count(a, o) + Multiset_count(b, o)
     }
-    axiom {
+    axiom MS_union_card {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_card(Multiset_union(a, b)) } { Multiset_card(a), Multiset_union(a, b) } { Multiset_card(b), Multiset_union(a, b) }
             Multiset_card(Multiset_union(a, b)) == Multiset_card(a) + Multiset_card(b)
     }
 
     function Multiset_intersection(ms0: $Multiset[E], ms1: $Multiset[E]): $Multiset[E]
-    axiom {
+    axiom MS_intersect_count {
         forall a: $Multiset[E], b: $Multiset[E], o: E :: { Multiset_count(Multiset_intersection(a, b), o) }
             Multiset_count(Multiset_intersection(a, b), o) == Math_min(Multiset_count(a, o), Multiset_count(b, o))
     }
-    axiom {
+    axiom MS_intersect_absorb1 {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_intersection(Multiset_intersection(a, b), b) }
             Multiset_intersection(Multiset_intersection(a, b), b) == Multiset_intersection(a, b)
     }
-    axiom {
+    axiom MS_intersect_absorb2 {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_intersection(a, Multiset_intersection(a, b)) }
             Multiset_intersection(a, Multiset_intersection(a, b)) == Multiset_intersection(a, b)
     }
 
     function Multiset_difference(ms0: $Multiset[E], ms1: $Multiset[E]): $Multiset[E]
-    axiom {
+    axiom MS_diff_count1 {
         forall a: $Multiset[E], b: $Multiset[E], o: E :: { Multiset_count(Multiset_difference(a, b), o) }
             Multiset_count(Multiset_difference(a, b), o) == Math_clip(Multiset_count(a, o) - Multiset_count(b, o))
     }
-    axiom {
+    axiom MS_diff_count2 {
         forall a: $Multiset[E], b: $Multiset[E], y: E :: { Multiset_difference(a, b), Multiset_count(b, y), Multiset_count(a, y) }
             Multiset_count(a, y) <= Multiset_count(b, y) ==> Multiset_count(Multiset_difference(a, b), y) == 0
     }
-    axiom {
+    axiom MS_diff_card {
         forall a: $Multiset[E], b: $Multiset[E] ::
             { Multiset_card(Multiset_difference(a, b)) }
             Multiset_card(Multiset_difference(a, b)) + Multiset_card(Multiset_difference(b, a)) + 2 * Multiset_card(Multiset_intersection(a, b)) == Multiset_card(Multiset_union(a, b)) &&
@@ -98,7 +98,7 @@ domain $Multiset[E] {
     }
 
     function Multiset_subset(ms0: $Multiset[E], ms1: $Multiset[E]): Bool
-    axiom {
+    axiom MS_subset_def {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_subset(a, b) }
             Multiset_subset(a, b) <==> (forall o: E :: { Multiset_count(a, o) } { Multiset_count(b, o) } Multiset_count(a, o) <= Multiset_count(b, o))
     }
@@ -111,18 +111,18 @@ domain $Multiset[E] {
     }
     */
     function Multiset_skolem_diff(s0: $Multiset[E], s1: $Multiset[E]): E
-    axiom {
+    axiom MS_equal_def {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_equal(a, b) }
             (Multiset_equal(a, b) && a==b) ||
             (!Multiset_equal(a, b) && a != b && Multiset_skolem_diff(a, b) == Multiset_skolem_diff(b, a) && Multiset_count(a, Multiset_skolem_diff(a, b)) != Multiset_count(b, Multiset_skolem_diff(a, b)))
     }
-    axiom {
+    axiom MS_equal_ext {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_equal(a, b) }
             Multiset_equal(a, b) ==> a == b
     }
 
     function Multiset_disjoint(ms0: $Multiset[E], ms1: $Multiset[E]): Bool
-    axiom {
+    axiom MS_disjoint_def {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_disjoint(a, b) }
             Multiset_disjoint(a, b) <==> (forall o: E :: { Multiset_count(a, o) } { Multiset_count(b, o) } Multiset_count(a, o) == 0 || Multiset_count(b, o) == 0)
     }

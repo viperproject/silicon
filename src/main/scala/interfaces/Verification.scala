@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.{DebugAxiom, DebugExp}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting._
-import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Term}
+import viper.silicon.state.terms.{BooleanLiteral, FunctionDecl, IntLiteral, MacroDecl, Term, Var}
 import viper.silicon.state.{State, Store}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -172,11 +172,22 @@ case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chun
 
 case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {
   override val model: Model = {
-    Model(internalStore.values.filter{
-      case (_,v) => nativeModel.entries.contains(v.toString)
-    }.map{
-      case (k, v) => k.name -> nativeModel.entries(v.toString)
-    })
+    val variableValues = internalStore.values.filter {
+      case (_, (v: Var, _)) => nativeModel.entries.contains(v.toString)
+      case _ => false
+    }.map {
+      case (k, (v, _)) => k.name -> nativeModel.entries(v.toString)
+    }
+    val constantValues = internalStore.values.filter {
+      case (_, (_: IntLiteral, _)) => true
+      case (_, (_: BooleanLiteral, _)) => true
+      case _ => false
+    }.map {
+      case (k, (i: IntLiteral, _)) => k.name -> ConstantEntry(i.toString)
+      case (k, (b: BooleanLiteral, _)) => k.name -> ConstantEntry(b.toString)
+    }
+
+    Model(variableValues ++ constantValues)
   }
 
   override def withStore(s: Store): SiliconCounterexample = {

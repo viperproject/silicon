@@ -55,16 +55,9 @@ class MagicWandSnapFunctionsContributor(preambleReader: PreambleReader[String, S
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))
   }
 
-  /** Symbols to add to the preamble of the SMT proof script. */
-  override def symbolsAfterAnalysis: Iterable[String] =
-    extractPreambleLines(collectedFunctionDecls)
-
   /** Add all symbols needed to the preamble using `sink`. */
   override def declareSymbolsAfterAnalysis(sink: ProverLike): Unit =
     emitPreambleLines(sink, collectedFunctionDecls)
-
-  /** Axioms to add to the preamble of the SMT proof script. Currently, there are none. */
-  override def axiomsAfterAnalysis: Iterable[String] = Seq.empty
 
   /** Add all axioms needed to the preamble using `sink`. Currently, there are none. */
   override def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {}

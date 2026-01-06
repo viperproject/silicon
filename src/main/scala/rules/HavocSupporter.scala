@@ -7,18 +7,12 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.Map
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.interfaces.state.{Chunk, NonQuantifiedChunk}
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
-import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.{`?r`, `?s`}
-import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.parser.PUnknown
 import viper.silver.verifier.errors.{HavocallFailed, QuasihavocFailed}
 import viper.silver.verifier.reasons.QuasihavocallNotInjective
 
@@ -49,19 +43,16 @@ object havocSupporter extends SymbolicExecutionRules {
     val lhsExpr = havoc.lhs.getOrElse(ast.TrueLit()(havoc.pos))
 
     eval(s, lhsExpr, pve, v)((s0, lhsTerm, _, v0) => {
-      evals(s0, resourceArgs(s0, havoc.exp), _ => pve, v0)((s1, tRcvrs, _, v1) => {
+      evals(s0, havoc.exp.args(s0.program), _ => pve, v0)((s1, tRcvrs, _, v1) => {
         val resource = havoc.exp.res(s1.program)
 
-        // Call the havoc helper function, which returns a new set of chunks, some of
-        // which may be havocked. Since we are executing a Havoc statement, we wrap
+        // Call the havoc helper function, which returns a new heap, which is
+        // partially havocked. Since we are executing a Havoc statement, we wrap
         // the HavocHelperData inside of a HavocOneData case (as opposed to HavocAllData).
-        val newChunks =
-          if (usesQPChunks(s1, resource))
-            havocQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
-          else
-            havocNonQuantifiedResource(s1, lhsTerm, resource, HavocOneData(tRcvrs), v1)
+        val condInfo = HavocOneData(tRcvrs)
+        val newHeap = v1.heapSupporter.havocResource(s1, lhsTerm, resource, condInfo, v1)
 
-        Q(s1.copy(h = Heap(newChunks)), v1)
+        Q(s1.copy(h = newHeap), v1)
       })
     })
   }
@@ -100,7 +91,7 @@ object havocSupporter extends SymbolicExecutionRules {
       quant = Forall,
       vars  = vars, // The quantified variables
       es1   = Seq(lhsExpr), // The havoc condition. Evaluated and added as a path conditions
-      es2   = resourceArgs(s, eRsc), // The arguments to our resource. Evaluated assuming the condition is true
+      es2   = eRsc.args(s.program), // The arguments to our resource. Evaluated assuming the condition is true
       optTriggers = None, // Triggers: none needed for Havocall
       name  = qid,
       pve   = pve,
@@ -143,6 +134,7 @@ object havocSupporter extends SymbolicExecutionRules {
               codomainQVarExps = codomainQVarsExp,
               additionalInvArgs = Seq(), // There are no additional quantified vars
               additionalInvArgExps = Option.when(withExp)(Seq()),
+              stateQVars = Seq(),
               userProvidedTriggers = None,
               qidPrefix = qid,
               v = v1
@@ -151,165 +143,15 @@ object havocSupporter extends SymbolicExecutionRules {
             v.decider.prover.comment(comment)
             v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
 
-            // Call the havoc helper function, which returns a new set of chunks, some of
-            // which may be havocked. Since we are executing a Havocall statement, we wrap
+            // Call the havoc helper function, which returns a new heap, which is
+            // partially havocked. Since we are executing a Havocall statement, we wrap
             // the HavocHelperData inside of a HavocAllData case.
-            val newChunks =
-              if (usesQPChunks(s1, resource))
-                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
-              else
-                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain), v1)
+            val condInfo = HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain)
+            val newHeap = v1.heapSupporter.havocResource(s1, tCond, resource, condInfo, v1)
 
-            Q(s1.copy(h = Heap(newChunks)), v1)
+            Q(s1.copy(h = newHeap), v1)
         }
       case (s1, _, _, _, _, None, v1) => Q(s1, v1)
-    }
-  }
-
-  /** Havoc a non-quantified resource. This helper function is used by havoc and havocall.
-    * Suppose we want to havoc a resource R(e1, ..., en).
-    * We filter the heap to only consider chunks with R. For each chunk R(vars; s, p), we
-    * replace it with R(vars; s', p) where s' := ite(cond, fresh, s).
-    * `cond` is calculated using `condInfo` by a helper function
-    *
-    * @param s the state
-    * @param lhs the havoc condition
-    * @param resource the type of resource we are havocking
-    * @param condInfo the info needed to calculate the snapshot replace condition
-    * @param v the verifier
-    * @return all the chunks in the resulting heap
-    */
-  private def havocNonQuantifiedResource(s: State,
-                                         lhs: Term,
-                                         resource: ast.Resource,
-                                         condInfo: HavocHelperData,
-                                         v: Verifier)
-                                        : Seq[Chunk] = {
-
-    val id = ChunkIdentifier(resource, s.program)
-    val (relevantChunks, otherChunks) = chunkSupporter.splitHeap[NonQuantifiedChunk](s.h, id)
-
-    val newChunks = relevantChunks.map {
-      case ch: MagicWandChunk =>
-        val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
-        val cond = replacementCond(lhs, ch.args, condInfo)
-        val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
-        ch.withSnap(magicWandSnapshot, None)
-
-      case ch =>
-        val havockedSnap = freshSnap(ch.snap.sort, v)
-        val cond = replacementCond(lhs, ch.args, condInfo)
-        ch.withSnap(Ite(cond, havockedSnap, ch.snap), None)
-    }
-    otherChunks ++ newChunks
-  }
-
-  /** Havoc a quantified resource. This helper function is used by havoc and havocall.
-    * Suppose we want to havoc a resource R(r1, ..., rn).
-    * We filter the heap to only consider chunks with R. For each chunk R(rs; sm, pm), we
-    * replace it with R(rs; sm', pm)
-    * We axiomatize the new snapshot map sm' as follows:
-    *   forall rs :: !cond(rs) ==> sm(rs) == sm'(rs)
-    * the snapshot replacement condition `cond` is calculated by a helper function
-    * This axiomatization provides no information about values which satisfy the snapshot
-    * replacement condition, thus these snapshots are in essence, havocked.
-    *
-    * @param s the state
-    * @param lhs the havoc condition
-    * @param resource the resource type that we will havoc
-    * @param condInfo data used to calculate the snapshot replacement function
-    * @param v the verifier
-    * @return all the chunks in the resulting heap
-    */
-  private def havocQuantifiedResource(s: State,
-                                      lhs: Term,
-                                      resource: ast.Resource,
-                                      condInfo: HavocHelperData,
-                                      v: Verifier)
-                                     : Seq[Chunk] = {
-
-    // Quantified field chunks are of the form R(r; sm, pm).
-    // Conceptually, quantified predicate/wand chunks look like R(r1, ..., rn; sm, pm).
-    // However, they are implemented as R(s; sm, pm). Thus, the snapshot map and permission
-    // map take this aggregated quantifier s as input.
-    // The arguments can be accessed via the snapshot destructors First and Second, e.g.
-    //  r1 = First(s),
-    //  r2 = First(Second(s)),
-    //  ...
-    val aggregateQvar = resource match {
-      case _: ast.Field => `?r`
-      case _ => `?s`
-    }
-
-    // Get the sequence of quantified variables (r1, ..., rn). For fields, this is the same
-    // as aggregateQVar.
-    val (codomainQVars, _) = getCodomainQVars(s, resource, v)
-
-    val cond = replacementCond(lhs, codomainQVars, condInfo)
-
-    // The condition is in terms of (r1, ..., rn). We must write it in terms of s.
-    // Create the map from codomainQVars to expressions on the aggregateQVar, e.g.
-    // r1 -> First(s), r2 -> First(Second(s)), etc.
-    // Use this to rewrite cond in terms of s
-    val codomainToAggregate: Map[Term, Term] =
-      codomainQVars.zip(fromSnapTree(aggregateQvar, codomainQVars)).to(Map)
-    val transformedCond = cond.replace(codomainToAggregate)
-
-    val id = ChunkIdentifier(resource, s.program)
-    val (relevantChunks, otherChunks) = quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](s.h, id)
-
-    val newChunks = relevantChunks.map { ch =>
-
-      // Create a fresh snapshot map that we will axiomatize.
-      // The argument additionalFvfArgs is an empty list because havocall statements cannot
-      // be nested inside of quantifiers, thus it is impossible for us to be in a setting
-      // with additional quantified variables.
-      val newSm = freshSnapshotMap(s, resource, List(), v)
-
-      // axiomatize the snapshot map:
-      //  forall s: Snap :: !cond(s) ==> sm(s) == sm'(s)
-      val lookupNew = ResourceLookup(resource, newSm, Seq(aggregateQvar), s.program)
-      val lookupOld = ResourceLookup(resource, ch.snapshotMap, Seq(aggregateQvar), s.program)
-      val newAxiom = Forall(
-        aggregateQvar,
-        Implies(Not(transformedCond), lookupOld === lookupNew),
-        Seq(Trigger(lookupNew), Trigger(lookupOld)),
-        s"qp.smValDef${v.counter(this).next()}",
-        isGlobal = true,  // TODO: should the quantifier be global? Matches example in summarize_field
-      )
-
-      v.decider.prover.comment("axiomatized snapshot map after havoc")
-      val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
-      v.decider.assume(newAxiom, debugExp)
-
-      ch.withSnapshotMap(newSm)
-    }
-    newChunks ++ otherChunks
-  }
-
-  /** Construct the condition that determines if we should replace a snapshot.
-    * If we have havoc lhs ==> R(e1, ..., en) and we encounter the chunk R(r1, ..., rn; _, _),
-    * then we should replace the snapshot if
-    *   cond := lhs && e1 == r1 && ... && en == rn
-    * If we have havocall vs :: lhs(vs) ==> R(e1(vs), ..., en(vs)), then we assume that
-    * e' is the inverse of the function (vs --> (e1(vs), ..., en(vs))).
-    * If we encounter the chunk R(r1, ..., rn; _, _), then we should replace the snapshot if
-    *   cond := lhs(e'(e1(vs), ..., en(vs)))
-    * @param lhs the havoc condition
-    * @param chunkArgs the arguments to the chunk (r1, ..., rn)
-    * @param condInfo contains enough information to construct the snapshot replacement condition.
-    *                 For havoc statements, it contains the variables (e1, ..., en)
-    *                 For havocall statements, it contains the inverse function e'
-    * @return the snapshot replacement condition
-    */
-  private def replacementCond(lhs: Term, chunkArgs: Seq[Term], condInfo: HavocHelperData): Term = {
-    condInfo match {
-      case HavocOneData(args) =>
-        val eqs = And(chunkArgs.zip(args).map{ case (t1, t2) => t1 === t2 })
-        And(lhs, eqs)
-      case HavocallData(inverseFunctions, codomainQVars, imagesOfCodomain) =>
-        val replaceMap = inverseFunctions.qvarsToInversesOf(chunkArgs)
-        And(lhs.replace(replaceMap), And(imagesOfCodomain.map(_.replace(codomainQVars, chunkArgs))))
     }
   }
 
@@ -321,36 +163,8 @@ object havocSupporter extends SymbolicExecutionRules {
     }
   }
 
-  private def resourceArgs(s: State, resacc: ast.ResourceAccess): Seq[ast.Exp] = {
-    resacc match {
-      case fa: ast.FieldAccess => fa.getArgs
-      case pa: ast.PredicateAccess => pa.args
-      case wand: ast.MagicWand => wand.subexpressionsToEvaluate(s.program)
-    }
-  }
-
   // Get the variables that we must quantify over for each resource type
   private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): (Seq[Var], Option[Seq[ast.LocalVarDecl]]) = {
-      eRsc match {
-        case _: ast.Field => (Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())))
-        case p: ast.Predicate =>
-          val predicate = s.program.findPredicate(p.name)
-          (s.predicateFormalVarMap(s.program.findPredicate(p.name)), Option.when(withExp)(predicate.formalArgs))
-        case w: ast.MagicWand =>
-          val bodyVars = w.subexpressionsToEvaluate(s.program)
-          (bodyVars.indices.toList.map(i =>
-              Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false)),
-            Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
-            )
-    }
-  }
-
-  // Return true if the heap uses quantified versions of these resources
-  private def usesQPChunks(s: State, res: ast.Resource): Boolean = {
-    res match {
-      case f: ast.Field => s.qpFields.contains(f)
-      case p: ast.Predicate => s.qpPredicates.contains(p)
-      case w: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(w, s.program))
-    }
+    (s.getFormalArgVars(eRsc, v), Option.when(withExp)(s.getFormalArgDecls(eRsc)))
   }
 }

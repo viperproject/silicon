@@ -140,7 +140,7 @@ object AbductionFoldBase extends AbductionRule {
                     case (s2, Some(t), v2) =>
                       val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                       // TODO nklose this could branch
-                      predicateSupporter.fold(s1, pred, List(t), None, terms.FullPerm, None, wildcards, pve, v2) { (s3, v3) =>
+                      predicateSupporter.fold(s1, a.loc, List(t), None, terms.FullPerm, None, wildcards, pve, v2) { (s3, v3) =>
                         //consumer.consume(s3, a, pve, v3) { (s4, _, v4) =>
                         val fold = Fold(a)()
                         Q(Some(q.copy(goal = g1, foundStmts = q.foundStmts :+ fold, s = s3, v = v3)))
