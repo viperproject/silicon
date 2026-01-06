@@ -261,6 +261,10 @@ class Var private[terms] (val id: Identifier, val sort: Sort, val isWildcard: Bo
 
   override lazy val toString = id.toString
 
+  if (id.toString == "p@13@16") {
+    println("++")
+  }
+
   def copy(id: Identifier = id, sort: Sort = sort, isWildcard: Boolean = isWildcard) = Var(id, sort, isWildcard)
 }
 
@@ -1163,8 +1167,8 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Conditio
 object BuiltinEquals extends CondFlyweightTermFactory[(Term, Term), BuiltinEquals] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (p0, p1) if p0 == p1 => True // ME: trying stuff out.
-    case (p0, Ite(c, t1, t2)) => Ite(c, BuiltinEquals(p0, t1), BuiltinEquals(p0, t2))
-    case (Ite(c, t1, t2), p0) => Ite(c, BuiltinEquals(t1, p0), BuiltinEquals(t2, p0))
+    //case (p0, Ite(c, t1, t2)) => Ite(c, BuiltinEquals(p0, t1), BuiltinEquals(p0, t2))
+    //case (Ite(c, t1, t2), p0) => Ite(c, BuiltinEquals(t1, p0), BuiltinEquals(t2, p0))
     case (p0: PermLiteral, p1: PermLiteral) =>
       // NOTE: The else-case (False) is only justified because permission literals are stored in a normal form
       // such that two literals are semantically equivalent iff they are syntactically equivalent.
@@ -1377,12 +1381,12 @@ object WildcardSimplifyingPermTimes extends ((Term, Term) => Term) {
     case (v1: Var, v2: Var) if v1.isWildcard && v2.isWildcard => if (v1.id.name.compareTo(v2.id.name) > 0) v1 else v2
     case (v1: Var, pl: PermLiteral) if v1.isWildcard && pl.literal > Rational.zero => v1
     case (pl: PermLiteral, v2: Var) if v2.isWildcard && pl.literal > Rational.zero => v2
-    case (Ite(c, t1, t2), t3) => Ite(c, WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
+    //case (Ite(c, t1, t2), t3) => Ite(c, WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
     case (PermPlus(t1, t2), t3) => PermPlus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
     case (t1, PermPlus(t2, t3)) => PermPlus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
     case (PermMinus(t1, t2), t3) => PermMinus(WildcardSimplifyingPermTimes(t1, t3), WildcardSimplifyingPermTimes(t2, t3))
     case (t1, PermMinus(t2, t3)) => PermMinus(WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
-    case (t1, Ite(c, t2, t3)) => Ite(c, WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
+    //case (t1, Ite(c, t2, t3)) => Ite(c, WildcardSimplifyingPermTimes(t1, t2), WildcardSimplifyingPermTimes(t1, t3))
     case _ => PermTimes(t0, t1)
   }
 }
@@ -1394,12 +1398,12 @@ object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
     case (NoPerm, _) => NoPerm
     case (_, NoPerm) => NoPerm
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
-    case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
+    //case (Ite(c, t1, t2), t3) => Ite(c, PermTimes(t1, t3), PermTimes(t2, t3))
     case (PermPlus(t1, t2), t3) => PermPlus(PermTimes(t1, t3), PermTimes(t2, t3))
     case (t1, PermPlus(t2, t3)) => PermPlus(PermTimes(t1, t2), PermTimes(t1, t3))
     case (PermMinus(t1, t2), t3) => PermMinus(PermTimes(t1, t3), PermTimes(t2, t3))
     case (t1, PermMinus(t2, t3)) => PermMinus(PermTimes(t1, t2), PermTimes(t1, t3))
-    case (t1, Ite(c, t2, t3)) => Ite(c, PermTimes(t1, t2), PermTimes(t1, t3))
+    //case (t1, Ite(c, t2, t3)) => Ite(c, PermTimes(t1, t2), PermTimes(t1, t3))
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -1487,11 +1491,17 @@ object PermPlus extends CondFlyweightTermFactory[(Term, Term), PermPlus] {
     case (FractionPerm(n1, d1), FractionPerm(n2, d2)) if d1 == d2 => FractionPerm(Plus(n1, n2), d1)
     case (PermMinus(t00, t01), t1) if t01 == t1 => t00
     case (t0, PermMinus(t10, t11)) if t11 == t0 => t10
-    case (Ite(c, t1, t2), t3) => Ite(c, PermPlus(t1, t3), PermPlus(t2, t3))
-    case (t1, Ite(c, t2, t3)) => Ite(c, PermPlus(t1, t2), PermPlus(t1, t3))
-    case (PermMin(t0, t1), t2) => PermMin(PermPlus(t0, t2), PermPlus(t1, t2))
-    case (PermMax(t0, t1), t2) => PermMax(PermPlus(t0, t2), PermPlus(t1, t2))
-    case (t0, PermMax(t1, t2)) => PermMax(PermPlus(t0, t1), PermPlus(t0, t2))
+    case (p0: PermLiteral, PermPlus(p1: PermLiteral, t11)) => PermPlus(FractionPermLiteral(p0.literal + p1.literal), t11)
+    case (p0: PermLiteral, PermPlus(t10, p1: PermLiteral)) => PermPlus(FractionPermLiteral(p0.literal + p1.literal), t10)
+    case (PermPlus(p0: PermLiteral, t01), p1: PermLiteral) => PermPlus(FractionPermLiteral(p0.literal + p1.literal), t01)
+    case (PermPlus(t00, p0: PermLiteral), p1: PermLiteral) => PermPlus(FractionPermLiteral(p0.literal + p1.literal), t00)
+    case (t0, PermMinus(NoPerm, t1)) => PermMinus(t0, t1)
+    case (PermMinus(NoPerm, t0), t1) => PermMinus(t1, t0)
+    //case (Ite(c, t1, t2), t3) => Ite(c, PermPlus(t1, t3), PermPlus(t2, t3))
+    //case (t1, Ite(c, t2, t3)) => Ite(c, PermPlus(t1, t2), PermPlus(t1, t3))
+    //case (PermMin(t0, t1), t2) => PermMin(PermPlus(t0, t2), PermPlus(t1, t2))
+    //case (PermMax(t0, t1), t2) => PermMax(PermPlus(t0, t2), PermPlus(t1, t2))
+    //case (t0, PermMax(t1, t2)) => PermMax(PermPlus(t0, t1), PermPlus(t0, t2))
 
     case (_, _) => createIfNonExistent(v0)
   }
@@ -1526,12 +1536,16 @@ object PermMinus extends CondFlyweightTermFactory[(Term, Term), PermMinus] {
     case (PermMinus(t0, t1), t2) => PermMinus(t0, PermPlus(t1, t2))
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
-    case (Ite(c, t1, t2), t3) => Ite(c, PermMinus(t1, t3), PermMinus(t2, t3))
-    case (t1, Ite(c, t2, t3)) => Ite(c, PermMinus(t1, t2), PermMinus(t1, t3))
-    case (PermMin(p0, p1), p2) => PermMin(PermMinus(p0, p2), PermMinus(p1, p2))
-    case (t0, PermMin(t1, t2)) => PermMax(PermMinus(t0, t1), PermMinus(t0, t2))
-    case (PermMax(p0, p1), p2) => PermMax(PermMinus(p0, p2), PermMinus(p1, p2))
-    case (t0, PermMax(t1, t2)) => PermMin(PermMinus(t0, t1), PermMinus(t0, t2))
+    case (p0: PermLiteral, PermPlus(p1: PermLiteral, t2)) => PermMinus(FractionPermLiteral(p0.literal - p1.literal), t2)
+    case (p0: PermLiteral, PermPlus(t1, p1: PermLiteral)) => PermMinus(FractionPermLiteral(p0.literal - p1.literal), t1)
+    case (PermPlus(p0: PermLiteral, t1), p1: PermLiteral) => PermPlus(FractionPermLiteral(p0.literal - p1.literal), t1)
+    case (PermPlus(t0, p0: PermLiteral), p1: PermLiteral) => PermPlus(FractionPermLiteral(p0.literal - p1.literal), t0)
+    //case (Ite(c, t1, t2), t3) => Ite(c, PermMinus(t1, t3), PermMinus(t2, t3))
+    //case (t1, Ite(c, t2, t3)) => Ite(c, PermMinus(t1, t2), PermMinus(t1, t3))
+    //case (PermMin(p0, p1), p2) => PermMin(PermMinus(p0, p2), PermMinus(p1, p2))
+    //case (t0, PermMin(t1, t2)) => PermMax(PermMinus(t0, t1), PermMinus(t0, t2))
+    //case (PermMax(p0, p1), p2) => PermMax(PermMinus(p0, p2), PermMinus(p1, p2))
+    //case (t0, PermMax(t1, t2)) => PermMin(PermMinus(t0, t1), PermMinus(t0, t2))
 
     case (_, _) => createIfNonExistent(v0)
   }
@@ -1601,10 +1615,10 @@ object PermMin extends CondFlyweightTermFactory[(Term, Term), PermMin] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (t0, t1) if t0 == t1 => t0
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal > p1.literal) p1 else p0
-    case (t0, Ite(tCond, tIf, tElse)) =>
-      Ite(tCond, PermMin(t0, tIf), PermMin(t0, tElse))
-    case (Ite(tCond, tIf, tElse), t0) =>
-      Ite(tCond, PermMin(tIf, t0), PermMin(tElse, t0))
+    //case (t0, Ite(tCond, tIf, tElse)) =>
+    //  Ite(tCond, PermMin(t0, tIf), PermMin(t0, tElse))
+    //case (Ite(tCond, tIf, tElse), t0) =>
+    //  Ite(tCond, PermMin(tIf, t0), PermMin(tElse, t0))
     case _ => createIfNonExistent(v0)
   }
 
@@ -1625,10 +1639,10 @@ object PermMax extends CondFlyweightTermFactory[(Term, Term), PermMax] {
   override def apply(v0: (Term, Term)) = v0 match {
     case (t0, t1) if t0 == t1 => t0
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal < p1.literal) p1 else p0
-    case (t0, Ite(tCond, tIf, tElse)) =>
-      Ite(tCond, PermMax(t0, tIf), PermMax(t0, tElse))
-    case (Ite(tCond, tIf, tElse), t0) =>
-      Ite(tCond, PermMax(tIf, t0), PermMax(tElse, t0))
+    //case (t0, Ite(tCond, tIf, tElse)) =>
+    //  Ite(tCond, PermMax(t0, tIf), PermMax(t0, tElse))
+    //case (Ite(tCond, tIf, tElse), t0) =>
+    //  Ite(tCond, PermMax(tIf, t0), PermMax(tElse, t0))
     case _ => createIfNonExistent(v0)
   }
 
