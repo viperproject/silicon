@@ -81,7 +81,7 @@ trait DependencyAnalysisTestFramework {
   case class PruningTest(fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter) {
 
     def execute(): Unit = {
-      val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.sourceInfo.getTopLevelSource.toString.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
+      val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
       var id: Int = 0
       // TODO ake: safer would be to work with position string instead of line numbers
       fullGraphInterpreter.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber) foreach {line =>

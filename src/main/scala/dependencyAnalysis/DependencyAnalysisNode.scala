@@ -3,6 +3,7 @@ package viper.silicon.dependencyAnalysis
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
+import viper.silver.ast.Position
 import viper.silver.dependencyAnalysis.AbstractDependencyAnalysisNode
 
 
@@ -38,6 +39,9 @@ trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
    */
   val term: Term
   def getTerm: Term = term
+
+  def getUserLevelRepresentation: String = sourceInfo.getTopLevelSource.toString
+  def getSourceCodePosition: Position = sourceInfo.getTopLevelSource.getPosition
 
   /*
     Some string representations, mainly used for debugging purposes.

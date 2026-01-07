@@ -67,7 +67,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def filterOutNodesBySourceInfo(nodes: Set[DependencyAnalysisNode], excludeInfos: Set[AnalysisSourceInfo]): Set[DependencyAnalysisNode] =
-    nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.toString.equals(node.sourceInfo.getTopLevelSource.toString)))
+    nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.toString.equals(node.getUserLevelRepresentation)))
 
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
@@ -83,7 +83,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
 
   def getNonInternalAssumptionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
-    getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
+    getNonInternalAssumptionNodes.groupBy(_.getUserLevelRepresentation)
 
 
   def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
@@ -91,7 +91,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     )
 
   def getNonInternalAssertionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
-    getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
+    getNonInternalAssertionNodes.groupBy(_.getUserLevelRepresentation)
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
@@ -105,8 +105,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource.toString)
-    getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource.toString))
+    val sourceInfos = nodes map (_.getUserLevelRepresentation)
+    getNodes filter (node => sourceInfos.contains(node.getUserLevelRepresentation))
   }
 
   def computeProofCoverage(): (Double, Set[String]) = {
@@ -118,7 +118,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val assertionNodeIds = assertionNodes map (_.id)
     val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
     val coveredNodes = dependencies ++ assertionNodeIds
-    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.sourceInfo.getTopLevelSource.toString)
+    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.getUserLevelRepresentation)
     if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Set())
 
     val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
@@ -220,25 +220,25 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def computeVerificationProgress(): (Double, Double, String)  = {
-    val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString)
+    val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.getUserLevelRepresentation)
     if(assumptionsPerSource.isEmpty) return (Double.NaN, Double.NaN, "Error: no assumptions found")
 
-    val allExplicitAssertions = getExplicitAssertionNodes // TODO ake: only postconditions?
-      .groupBy(_.sourceInfo.getTopLevelSource.toString)
+    val allExplicitAssertions = getExplicitAssertionNodes.filterNot(_.assumptionType.equals(AssumptionType.ExplicitPostcondition)) // TODO ake: only postconditions?
+      .groupBy(_.getUserLevelRepresentation)
 
     val relevantDependenciesPerAssertion = allExplicitAssertions
       .view.mapValues(g => getAllNonInternalDependencies(getNodesWithIdenticalSource(g).map(_.id)))
 
-    val assertionsWithoutExplicitAssumptions = relevantDependenciesPerAssertion.filter { case (_, deps) =>
+    val assertionsWithoutExplicitAssumptions = relevantDependenciesPerAssertion.filter { case (node, deps) =>
       !deps.exists(dep => AssumptionType.explicitAssumptionTypes.contains(dep.assumptionType))
     }.keys
 
     val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2)
 
-    val implicitPostConds = getNonInternalAssertionNodes.filter(node => AssumptionType.ImplicitPostcondition.equals(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet
-    val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet // TODO ake: other assumption types?
-    val coveredImplicitSources = relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet.diff(coveredExplicitSources).diff(implicitPostConds)
-    val uncoveredExplicitSources = getExplicitAssumptionNodes.groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet.diff(relevantDependencies.groupBy(_.sourceInfo.getTopLevelSource.toString).keys.toSet)
+    val implicitPostConds = getNonInternalAssertionNodes.filter(node => AssumptionType.ImplicitPostcondition.equals(node.assumptionType)).groupBy(_.getUserLevelRepresentation).keys.toSet
+    val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).groupBy(_.getUserLevelRepresentation).keys.toSet // TODO ake: other assumption types?
+    val coveredImplicitSources = relevantDependencies.groupBy(_.getUserLevelRepresentation).keys.toSet.diff(coveredExplicitSources).diff(implicitPostConds)
+    val uncoveredExplicitSources = getExplicitAssumptionNodes.groupBy(_.getUserLevelRepresentation).keys.toSet.diff(relevantDependencies.groupBy(_.getUserLevelRepresentation).keys.toSet)
     val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources).diff(uncoveredExplicitSources).diff(implicitPostConds)
     val relevantAssumptions = assumptionsPerSource.keys.toSet.diff(implicitPostConds)
 
