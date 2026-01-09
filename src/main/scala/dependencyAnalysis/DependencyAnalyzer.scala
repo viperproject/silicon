@@ -1,7 +1,7 @@
 package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.DependencyAnalyzer.{runtimeOverheadPermissionNodes, startTimeMeasurement, stopTimeMeasurementAndAddToTotal, timeForFunctionJoin, timeToProcessUnsatCore}
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer.{runtimeOverheadPermissionNodes, startTimeMeasurement, stopTimeMeasurementAndAddToTotal, timeToProcessUnsatCore}
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
@@ -164,7 +164,7 @@ object DependencyAnalyzer {
    * The new graph is built by adding all existing nodes and edges of all input graphs and joining them via postconditions
    * of functions and methods.
    */
-  def joinGraphsAndGetInterpreter(name: Option[String], dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
+  def joinGraphsAndGetInterpreter(name: String, dependencyGraphInterpreters: Iterable[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
     var startTime = startTimeMeasurement()
     val newGraph = new DependencyGraph
 
@@ -209,7 +209,7 @@ object DependencyAnalyzer {
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForMethodJoin)
 
-    val newInterpreter = new DependencyGraphInterpreter(name.getOrElse("joined"), newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
+    val newInterpreter = new DependencyGraphInterpreter(name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
   }
 }

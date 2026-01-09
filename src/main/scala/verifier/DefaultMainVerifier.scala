@@ -11,7 +11,7 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisReporter, DependencyAnalysisUserTool, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -30,7 +30,6 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.components.StatefulComponent
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
-import viper.silver.verifier.errors.DependencyAnalysisFakeError
 import viper.silver.verifier.VerifierWarning
 
 import java.text.SimpleDateFormat
@@ -94,6 +93,8 @@ class DefaultMainVerifier(config: Config,
     _verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
+
+  var dependencyAnalysisResult: Option[DependencyAnalysisResult] = None
 
   /* Lifetime */
 
@@ -311,39 +312,12 @@ class DefaultMainVerifier(config: Config,
     }
     reporter report VerificationTerminationMessage()
 
-    var verificationResults = (functionVerificationResults
+    val verificationResults = (functionVerificationResults
       ++ predicateVerificationResults
       ++ methodVerificationResults)
 
     DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, DependencyAnalyzer.timeToVerifyAndCollectDependencies)
-    val postProcessingStartTime = DependencyAnalyzer.startTimeMeasurement()
-
-    if(Verifier.config.enableDependencyAnalysis()){
-      val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
-      val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
-
-      dependencyGraphInterpreters foreach (_.exportGraph())
-
-      val joinedGraphInterpreter = DependencyAnalyzer.joinGraphsAndGetInterpreter(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")), dependencyGraphInterpreters.toSet)
-      if(Verifier.config.dependencyAnalysisExportPath.isDefined)
-        joinedGraphInterpreter.exportGraph()
-
-      if(Verifier.config.startDependencyAnalysisTool()){
-        val commandLineTool = new DependencyAnalysisUserTool(joinedGraphInterpreter, dependencyGraphInterpreters, originalProgram, verificationErrors)
-        commandLineTool.run()
-      }
-
-      reporter match {
-        case analysisReporter: DependencyAnalysisReporter =>
-          analysisReporter.dependencyGraphInterpretersPerMember = dependencyGraphInterpreters
-          analysisReporter.joinedDependencyGraphInterpreter = Some(joinedGraphInterpreter)
-        case _ =>
-      }
-
-      verificationResults = Failure(DependencyAnalysisFakeError(joinedGraphInterpreter)) +: verificationResults
-    }
-
-    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)
+    runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
     DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, DependencyAnalyzer.timeToVerifyAndBuildFinalGraph)
 
     DependencyAnalyzer.printProfilingResults()
@@ -677,4 +651,36 @@ class DefaultMainVerifier(config: Config,
     */
   private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
     res :: res.previous.toList
+
+
+  def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {
+    if(!Verifier.config.enableDependencyAnalysis()) return
+
+    val postProcessingStartTime = DependencyAnalyzer.startTimeMeasurement()
+
+    val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
+    val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
+
+    val result = DependencyAnalysisResult(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined"), program, dependencyGraphInterpreters)
+    dependencyAnalysisResult = Some(result)
+
+    if (Verifier.config.dependencyAnalysisExportPath.isDefined) {
+      result.dependencyGraphInterpreters foreach (_.exportGraph())
+      result.getFullDependencyGraphInterpreter.exportGraph()
+    }
+
+    if (Verifier.config.startDependencyAnalysisTool()) {
+      val commandLineTool = new DependencyAnalysisUserTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+      commandLineTool.run()
+    }
+
+    reporter match {
+      case analysisReporter: DependencyAnalysisReporter =>
+        analysisReporter.dependencyGraphInterpretersPerMember = dependencyGraphInterpreters
+        analysisReporter.joinedDependencyGraphInterpreter = Some(result.getFullDependencyGraphInterpreter)
+      case _ =>
+    }
+
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)
+  }
 }

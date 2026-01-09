@@ -23,8 +23,9 @@ import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
+import viper.silver.dependencyAnalysis.AbstractDependencyAnalysisResult
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.utility.{FileProgramSubmitter}
+import viper.silver.utility.FileProgramSubmitter
 
 import scala.util.chaining._
 
@@ -314,6 +315,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       logger.setLevel(Level.toLevel(loggerLevelString))
     }
   }
+
+  override def getDependencyAnalysisResult: Option[AbstractDependencyAnalysisResult] = verifier.dependencyAnalysisResult
 }
 
 class SiliconFrontend(override val reporter: Reporter,
