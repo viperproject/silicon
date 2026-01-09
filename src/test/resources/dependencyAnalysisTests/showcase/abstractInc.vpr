@@ -1,0 +1,27 @@
+field f: Int
+
+method inc(x: Ref) returns (res:Int)
+    requires acc(x.f, 1/2)
+    ensures  acc(x.f, 1/2)
+    ensures res == x.f + 1
+    ensures res > 0
+
+method client1()
+{
+    var res: Int
+    var x: Ref := new(f)
+
+    res := inc(x)
+
+    assert res > 0
+}
+
+method client2()
+{
+    var res: Int
+    var x: Ref := new(f)
+
+    res := inc(x)
+
+    assert res == x.f + 1
+}
