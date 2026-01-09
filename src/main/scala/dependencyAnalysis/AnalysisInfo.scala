@@ -2,7 +2,7 @@ package viper.silicon.dependencyAnalysis
 
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
-  val Explicit, LoopInvariant, PathCondition, Rewrite, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, CallPostcondition, FunctionBody, Precondition = Value
+  val Explicit, LoopInvariant, PathCondition, Rewrite, Implicit /* TODO ake: rename to Stmt? */, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, CallPostcondition, FunctionBody, Precondition = Value
 
   def fromString(s: String): Option[Value] = values.find(_.toString == s)
 
@@ -12,6 +12,8 @@ object AssumptionType extends Enumeration {
   def internalTypes: Set[AssumptionType] = Set(Internal) // will always be hidden from user
   def implicitTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes).diff(internalTypes)
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
+  def verificationAnnotationTypes: Set[AssumptionType] = Set(LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, Precondition, Explicit)
+  def sourceCodeStatementTypes: Set[AssumptionType] = Set(PathCondition, Implicit, CallPostcondition, FunctionBody)
 }
 
 import viper.silicon.dependencyAnalysis.AssumptionType._

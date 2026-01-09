@@ -223,45 +223,69 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.getUserLevelRepresentation)
     if(assumptionsPerSource.isEmpty) return (Double.NaN, Double.NaN, "Error: no assumptions found")
 
-    val allExplicitAssertions = getExplicitAssertionNodes.filterNot(_.assumptionType.equals(AssumptionType.ExplicitPostcondition)) // TODO ake: only postconditions?
-      .groupBy(_.getUserLevelRepresentation)
+    val allAssertions = getNonInternalAssertionNodes.groupBy(_.getUserLevelRepresentation)
 
-    val relevantDependenciesPerAssertion = allExplicitAssertions
+    val relevantDependenciesPerAssertion = allAssertions
       .view.mapValues(g => getAllNonInternalDependencies(getNodesWithIdenticalSource(g).map(_.id)))
 
-    val assertionsWithoutExplicitAssumptions = relevantDependenciesPerAssertion.filter { case (node, deps) =>
+    // TODO ake: make sure to handle failing assertions properly!
+    val nonTrivialAssertionsGroupedPerAssertion = relevantDependenciesPerAssertion.filter{case (_, assumptions) => assumptions.nonEmpty}
+
+    val assertionsWithoutExplicitAssumptions = nonTrivialAssertionsGroupedPerAssertion.filter { case (_, deps) =>
       !deps.exists(dep => AssumptionType.explicitAssumptionTypes.contains(dep.assumptionType))
     }.keys
 
+
     val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2)
 
-    val implicitPostConds = getNonInternalAssertionNodes.filter(node => AssumptionType.ImplicitPostcondition.equals(node.assumptionType)).groupBy(_.getUserLevelRepresentation).keys.toSet
-    val coveredExplicitSources = relevantDependencies.filter(node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).groupBy(_.getUserLevelRepresentation).keys.toSet // TODO ake: other assumption types?
-    val coveredImplicitSources = relevantDependencies.groupBy(_.getUserLevelRepresentation).keys.toSet.diff(coveredExplicitSources).diff(implicitPostConds)
-    val uncoveredExplicitSources = getExplicitAssumptionNodes.groupBy(_.getUserLevelRepresentation).keys.toSet.diff(relevantDependencies.groupBy(_.getUserLevelRepresentation).keys.toSet)
-    val uncoveredImplicitSources = assumptionsPerSource.keys.toSet.diff(coveredImplicitSources).diff(coveredExplicitSources).diff(uncoveredExplicitSources).diff(implicitPostConds)
-    val relevantAssumptions = assumptionsPerSource.keys.toSet.diff(implicitPostConds)
+    def filterAndGroup(nodes: Iterable[DependencyAnalysisNode], filterCondition: DependencyAnalysisNode => Boolean) = {
+      nodes.filter(filterCondition).groupBy(_.getUserLevelRepresentation).keys.toSet
+    }
 
-    val verificationProgressAndrea = coveredImplicitSources.size.toDouble / (relevantAssumptions.size.toDouble + errors.size)
+    val coveredExplicitSources = filterAndGroup(relevantDependencies, node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType))
+    val coveredVerificationAnnotations = filterAndGroup(relevantDependencies, node => AssumptionType.verificationAnnotationTypes.contains(node.assumptionType)).diff(coveredExplicitSources)
+    val coveredSourceCodeStmts = filterAndGroup(relevantDependencies, _ => true).diff(coveredExplicitSources).diff(coveredVerificationAnnotations)
 
-    val specQuality  = coveredImplicitSources.size.toDouble / (coveredImplicitSources.size.toDouble + uncoveredImplicitSources.size.toDouble)
-    val proofQuality = (assertionsWithoutExplicitAssumptions.size.toDouble - errors.size.toDouble) / allExplicitAssertions.size.toDouble
-    val verificationProgressPeter = specQuality * proofQuality
+    def getUncoveredNodesAndGroup(nodes: Iterable[DependencyAnalysisNode]) = {
+      nodes.groupBy(_.getUserLevelRepresentation).keys.toSet.diff(relevantDependencies.groupBy(_.getUserLevelRepresentation).keys.toSet)
+    }
+
+    val uncoveredExplicitSources = getUncoveredNodesAndGroup(getExplicitAssumptionNodes)
+    val uncoveredVerificationAnnotations = getUncoveredNodesAndGroup(getNonInternalAssumptionNodes.filter(node => AssumptionType.verificationAnnotationTypes.contains(node.assumptionType))).diff(uncoveredExplicitSources)
+    val uncoveredSourceCodeStmts = getUncoveredNodesAndGroup(getNonInternalAssumptionNodes).diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
+
+    // Peter's metric
+    val specQuality  = coveredSourceCodeStmts.size.toDouble / (coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble)
+    val proofQualityPeter = (assertionsWithoutExplicitAssumptions.size.toDouble - errors.size.toDouble) / nonTrivialAssertionsGroupedPerAssertion.size.toDouble
+    val verificationProgressPeter = specQuality * proofQualityPeter
+
+    // Lea's metric
+    val proofQualityNumerator = nonTrivialAssertionsGroupedPerAssertion.map{case (_, assumptions) => filterAndGroup(assumptions, node => !AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).size.toDouble / assumptions.groupBy(_.getUserLevelRepresentation).keys.size.toDouble}.sum
+    val proofQualityLea =  proofQualityNumerator / nonTrivialAssertionsGroupedPerAssertion.keys.size.toDouble
+    val verificationProgressLea = specQuality * proofQualityLea
 
     val info = {
-      s"All Assumptions and Statements:\n\t${relevantAssumptions.mkString("\n\t")}" + "\n" +
-      s"Uncovered Explicit Assumptions:\n\t${uncoveredExplicitSources.mkString("\n\t")}" + "\n" +
-        s"Covered Explicit Assumptions:\n\t${coveredExplicitSources.mkString("\n\t")}" + "\n" +
-        s"Uncovered Statements:\n\t${uncoveredImplicitSources.mkString("\n\t")}" + "\n" +
-        s"Covered Statements:\n\t${coveredImplicitSources.mkString("\n\t")}" + "\n" +
-        s"Postconditions of methods/functions with bodies:\n\t${implicitPostConds.mkString("\n\t")}" + "\n" +
-        s"Explicit Assertions:\n\t${allExplicitAssertions.keys.mkString("\n\t")}" + "\n\n" +
-        s"Explicit Assertions verified without explicit assumptions:\n\t${assertionsWithoutExplicitAssumptions.mkString("\n\t")}" + "\n\n" +
+      s"Covered\n" +
+        s"\tExplicit Assumptions:\n\t\t${coveredExplicitSources.mkString("\n\t\t")}" + "\n" +
+        s"\tVerification Annotations:\n\t\t${coveredVerificationAnnotations.mkString("\n\t\t")}" + "\n" +
+        s"\tSource Code:\n\t\t${coveredSourceCodeStmts.mkString("\n\t\t")}" + "\n" +
+        "\n" +
+      s"Uncovered\n" +
+        s"\tExplicit Assumptions:\n\t\t${uncoveredExplicitSources.mkString("\n\t\t")}" + "\n" +
+        s"\tVerification Annotations:\n\t\t${uncoveredVerificationAnnotations.mkString("\n\t\t")}" + "\n" +
+        s"\tSource Code:\n\t\t${uncoveredSourceCodeStmts.mkString("\n\t\t")}" + "\n" +
+        "\n" +
+      s"Fully verified assertions:\n\t${assertionsWithoutExplicitAssumptions.mkString("\n\t")}" + "\n\n" +
+        s"Assertions depending on explicit assumptions:\n\t${nonTrivialAssertionsGroupedPerAssertion.keySet.diff(assertionsWithoutExplicitAssumptions.toSet).mkString("\n\t")}" + "\n\n" +
+        s"Failing assertions:\n\tTODO" + "\n\n" + // TODO ake
+        "\n" +
         s"#Verification Errors: ${errors.size}" + "\n\n" +
-        s"Verification Progress (Andrea):\n\t${coveredImplicitSources.size}/(${relevantAssumptions.size}+${errors.size}) = $verificationProgressAndrea" + "\n\n" +
-        s"Verification Progress (Peter):\n\t${coveredImplicitSources.size}/(${coveredImplicitSources.size + uncoveredImplicitSources.size}) * " +
-        s"${assertionsWithoutExplicitAssumptions.size - errors.size.toDouble}/${allExplicitAssertions.size} = $verificationProgressPeter" + "\n"
+      "\n" +
+      s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/(${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size}) * " +
+      s"${assertionsWithoutExplicitAssumptions.size - errors.size.toDouble}/${nonTrivialAssertionsGroupedPerAssertion.size} = $verificationProgressPeter" + "\n" +
+      s"Verification Progress (Lea):\n\t${coveredSourceCodeStmts.size}/(${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size}) * " +
+        s"$proofQualityNumerator/${nonTrivialAssertionsGroupedPerAssertion.keys.size} = $verificationProgressLea" + "\n"
     }
-    (verificationProgressAndrea, verificationProgressPeter, info)
+    (verificationProgressPeter, verificationProgressLea, info)
   }
 }
