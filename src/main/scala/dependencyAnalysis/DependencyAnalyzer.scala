@@ -12,7 +12,7 @@ import scala.collection.mutable
 
 
 trait DependencyAnalyzer {
-  protected val assumptionGraph: DependencyGraph = new DependencyGraph()
+  protected val dependencyGraph: DependencyGraph = new DependencyGraph()
   protected var isClosed_ = false
 
   def disableTransitiveEdges(): Unit = {
@@ -219,10 +219,10 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 
   override def getMember: Option[ast.Member] = Some(member)
 
-  override def getNodes: Iterable[DependencyAnalysisNode] = assumptionGraph.nodes
+  override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.nodes
 
   override def getChunkInhaleNode(chunk: Chunk): Option[PermissionInhaleNode] = {
-    val inhaleNode = assumptionGraph.nodes
+    val inhaleNode = dependencyGraph.nodes
       .filter(c => c.isInstanceOf[PermissionInhaleNode] && chunk.equals(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.asInstanceOf[PermissionInhaleNode])
     assert(inhaleNode.size == 1)
@@ -230,24 +230,24 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   private def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int] = {
-    assumptionGraph.nodes
+    dependencyGraph.nodes
       .filter(c => c.isInstanceOf[PermissionInhaleNode] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.id).toSet
   }
 
   private def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = {
-    assumptionGraph.nodes
+    dependencyGraph.nodes
       .filter(t => terms.contains(t.getTerm))
       .map(_.id).toSet
   }
 
 
   override def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {
-    assumptionGraph.addNodes(nodes)
+    dependencyGraph.addNodes(nodes)
   }
 
   override def addNode(node: DependencyAnalysisNode): Unit = {
-    assumptionGraph.addNode(node)
+    dependencyGraph.addNode(node)
   }
 
   // adding assumption nodes
@@ -300,7 +300,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def createLabelNode(label: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = {
     val labelNode = LabelNode(label)
     addNode(labelNode)
-    assumptionGraph.addEdges(getChunkNodeIds(sourceChunks.toSet) ++ getNodeIdsByTerm(sourceTerms.toSet), labelNode.id)
+    dependencyGraph.addEdges(getChunkNodeIds(sourceChunks.toSet) ++ getNodeIdsByTerm(sourceTerms.toSet), labelNode.id)
     Some(labelNode)
   }
 
@@ -334,7 +334,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   // adding dependencies
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {
     if(source.isDefined && dest.isDefined)
-      assumptionGraph.addEdges(source.get, Set(dest.get))
+      dependencyGraph.addEdges(source.get, Set(dest.get))
   }
 
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
@@ -344,9 +344,9 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val assertionIdsFromUnsatCore = assumptionLabels.filter(DependencyAnalyzer.isAssertionLabel).map(DependencyAnalyzer.getIdFromLabel)
     val assertionIdFromLabel = DependencyAnalyzer.getIdFromLabel(assertionLabel)
     val assertionIds = assertionIdFromLabel +: assertionIdsFromUnsatCore
-    assumptionGraph.addEdges(assumptionIds, assertionIds)
+    dependencyGraph.addEdges(assumptionIds, assertionIds)
     val axiomIds = assumptionLabels.filter(DependencyAnalyzer.isAxiomLabel).map(DependencyAnalyzer.getIdFromLabel)
-    assumptionGraph.addEdges(axiomIds, assertionIds)
+    dependencyGraph.addEdges(axiomIds, assertionIds)
     stopTimeMeasurementAndAddToTotal(startTime, timeToProcessUnsatCore)
   }
 
@@ -354,12 +354,12 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     if(newChunkNodeId.isEmpty) return
 
     val sourceNodeIds = getChunkNodeIds(sourceChunks).filter(id => id != newChunkNodeId.get) ++ getNodeIdsByTerm(sourceTerms)
-    assumptionGraph.addEdges(sourceNodeIds, newChunkNodeId.get)
+    dependencyGraph.addEdges(sourceNodeIds, newChunkNodeId.get)
   }
 
   override def addPermissionDependencies(sourceChunks: Set[Chunk], sourceTerms: Set[Term], newChunk: Chunk): Unit = {
     val startTime = startTimeMeasurement()
-    val newChunkId = assumptionGraph.nodes
+    val newChunkId = dependencyGraph.nodes
       .filter(c => c.isInstanceOf[PermissionInhaleNode] && c.isInstanceOf[ChunkAnalysisInfo] && newChunk.equals(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
       .map(_.id).toSet
     addPermissionDependencies(sourceChunks, sourceTerms, newChunkId.headOption)
@@ -376,7 +376,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
     val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.Precondition, None))
     val targetNodes = targetExps.flatMap(e => addAssertNode(True, AssumptionType.ExplicitPostcondition, ExpAnalysisSourceInfo(e)))
-    assumptionGraph.addEdges(sourceNodeIds, targetNodes)
+    dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
   /**
@@ -387,8 +387,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    * Further, this operation removes unnecessary details from the graph by, for example, removing label nodes and merging identical nodes.
    */
   override def buildFinalGraph(): Option[DependencyGraph] = {
-    assumptionGraph.removeLabelNodes()
-    val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) assumptionGraph else  buildAndGetMergedGraph()
+    dependencyGraph.removeLabelNodes()
+    val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph else  buildAndGetMergedGraph()
     mergedGraph.addTransitiveEdges()
     Some(mergedGraph)
   }
@@ -398,7 +398,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val postcondNodes = getNodes.filter(n => AssumptionType.postconditionTypes.contains(n.assumptionType))
     axiomNodes foreach {aNode =>
       val pNodes = postcondNodes filter (_.sourceInfo.toString.equals(aNode.sourceInfo.toString)) map (_.id)
-      assumptionGraph.addEdges(pNodes, aNode.id)
+      dependencyGraph.addEdges(pNodes, aNode.id)
     }
   }
 
@@ -414,12 +414,12 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 
     val mergedGraph = new DependencyGraph
     val nodeMap = mutable.HashMap[Int, Int]()
-    assumptionGraph.getNodes.filter(keepNode).foreach { n =>
+    dependencyGraph.getNodes.filter(keepNode).foreach { n =>
       nodeMap.put(n.id, n.id)
       mergedGraph.addNode(n)
     }
 
-    val nodesBySource = assumptionGraph.getNodes.filter(!keepNode(_))
+    val nodesBySource = dependencyGraph.getNodes.filter(!keepNode(_))
       .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.sourceInfo, n.sourceInfo.getFineGrainedSource.toString, n.assumptionType))
 
     nodesBySource foreach { case ((_, sourceInfo, _, assumptionType), nodes) =>
@@ -440,7 +440,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       }
     }
 
-    assumptionGraph.getAllEdges foreach { case (target, deps) =>
+    dependencyGraph.getAllEdges foreach { case (target, deps) =>
       val newTarget = nodeMap.getOrElse(target, target)
       mergedGraph.addEdges(deps.map(d => nodeMap.getOrElse(d, d)), newTarget)
     }
