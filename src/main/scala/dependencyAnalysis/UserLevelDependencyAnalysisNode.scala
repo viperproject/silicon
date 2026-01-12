@@ -8,8 +8,8 @@ import viper.silver.ast.Position
 object UserLevelDependencyAnalysisNode {
 
   def from(dependencyNodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
-    val res = dependencyNodes.groupBy(_.sourceInfo.getTopLevelSource).map { case (topLevelSource, nodes) =>
-      UserLevelDependencyAnalysisNode(topLevelSource, nodes.toSet)
+    val res = dependencyNodes.groupBy(_.sourceInfo.getTopLevelSource.toString).map { case (_, nodes) =>
+      UserLevelDependencyAnalysisNode(nodes.head.sourceInfo.getTopLevelSource, nodes.toSet) // TODO ake
     }.toSet
     res
   }
