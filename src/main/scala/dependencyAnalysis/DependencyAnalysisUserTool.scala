@@ -18,6 +18,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     "\n\t'cov [members]' to print proof coverage of given member or" +
     "\n\t'covL member [line numbers]' to print proof coverage of given lines of given member or" +
     "\n\t'progress' to compute the verification progress of the program or" +
+    "\n\t'guide' to compute verification guidance or" +
     "\n\t'prune [line numbers]' to prune the program with respect to the given line numbers and export the new program or" +
     "\n\t'q' to quit"
 
@@ -59,6 +60,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       handleProofCoverageLineQuery(inputParts.tail)
     }else if (inputParts.head.equalsIgnoreCase("progress") || inputParts.head.equalsIgnoreCase("prog")) {
         handleVerificationProgressQuery()
+    }else if (inputParts.head.equalsIgnoreCase("guidance") || inputParts.head.equalsIgnoreCase("guide")) {
+      handleVerificationGuidanceQuery()
     }else if(inputParts.head.equalsIgnoreCase("prune")) {
       handlePruningRequest(inputParts.tail)
     }else if(inputParts.head.equalsIgnoreCase("benchmark")) {
@@ -259,6 +262,15 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     }
 
     writer.close()
+  }
 
+  def handleVerificationGuidanceQuery(): Unit = {
+    val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking()
+    println(s"Assumptions and the number of dependencies:\n\t${assumptionRanking.mkString("\n\t")}\n")
+    val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])
+      .map(mInterpreter => (mInterpreter.getMember.get.name, mInterpreter.computeUncoveredStatements()))
+      .toList.sortBy(_._2).reverse
+    println(s"Members and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}")
+    println(s"Errors:\n${verificationErrors.mkString("\n\t")}")
   }
 }

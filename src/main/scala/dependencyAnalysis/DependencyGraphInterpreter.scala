@@ -274,13 +274,15 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     (verificationProgressPeter, verificationProgressLea, info)
   }
 
-  def provideVerificationGuidance() = {
-
-
-    // return (String, Int) = Assumption, #deps
-    // return (String, Int) = function/method, #uncovered stmts
-    // return (String, Int) = failing assertions, #dependents
+  /* returns an ordered list of (Assumption, #dependents) */
+  def computeAssumptionRanking(): List[(String, Int)] = {
+    toUserLevelNodes(getExplicitAssumptionNodes).map(node => (node.toString, getAllNonInternalDependents(node.lowerLevelNodes.map(_.id)).size))
+      .toList.sortBy(_._2).reverse
   }
 
-
+  def computeUncoveredStatements(): Int = {
+    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractSourceCodeNodes(toUserLevelNodes(getNonInternalAssumptionNodes))
+    val coveredSourceCodeStmts = toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(getNonInternalAssertionNodes).map(_.id)))
+    allSourceCodeStmts.diff(coveredSourceCodeStmts).size
+  }
 }

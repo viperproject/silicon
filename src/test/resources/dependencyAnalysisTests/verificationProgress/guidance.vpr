@@ -1,0 +1,142 @@
+
+field f: Int
+
+method add(a: Int, b: Int) returns (res: Int)
+    ensures res == a + b
+    ensures res > 0
+{
+    assume a > 0 && b > 0
+    res := a + b
+}
+
+method client()
+{
+    var a: Int, b: Int, c: Int
+    c := 0
+    b := 10
+    c := add(a, b)
+
+    assert c > 0
+}
+
+method gaussianSimple(n: Int) returns (res: Int)
+  requires n <= 5
+  ensures res == n * (n + 1) / 2
+{
+  assume n > 0
+  res := 0
+  var i: Int := 0
+  while(i <= n)
+    invariant i <= (n + 1)
+    invariant i <= 6
+    invariant res == (i - 1) * i / 2
+  {
+    res := res + i
+    i := i + 1
+  }
+  i := 0
+}
+
+method inc(x: Ref) returns (res:Int)
+    requires acc(x.f, 1/2)
+    ensures  acc(x.f, 1/2)
+    ensures res == x.f + 1
+    ensures res > 0
+
+method client1()
+{
+    var res: Int
+    var x: Ref := new(f)
+
+    res := inc(x)
+
+    assert res > 0
+}
+
+method client2()
+{
+    var res: Int
+    var x: Ref := new(f)
+
+    res := inc(x)
+
+    assert res == x.f + 1
+}
+
+method branches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume a > 0
+  assume b > 4
+
+  assume c ==> a < 100
+
+  if(c){
+    n := a + 1
+  }else{
+    n := b + 1
+  }
+
+  assert n > 1
+}
+
+method branches2(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume a > 0
+  assume a < 100
+  assume a < b
+  assume b < 50
+
+  var x: Int
+  if(a >= n){
+    x := a + b
+  }else{
+    x := n + 1
+    assert x > 1
+  }
+}
+
+method branches3(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume b > 0
+
+  var x: Int
+  if(a >= n){
+    x := a + b
+  }else{
+    x := n + 1
+  }
+
+  assert x > n
+}
+
+
+method nestedBranches1(a: Int, b: Int)
+{
+  var n:Int, c: Bool
+
+  assume a > 0
+  assume a < 100
+  assume b > 0
+  assume b < 50
+  assume c ==> a > 5
+
+  if(c){
+    if(a > b){
+      n := a - b
+    }else{
+      n := a + b
+    }
+    n := n - 1
+  }else{
+    n := a + b
+  }
+
+  assert n <= a + b
+  assert c ==> n < a + b
+}

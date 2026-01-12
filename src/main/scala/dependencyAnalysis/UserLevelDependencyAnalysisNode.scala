@@ -26,6 +26,10 @@ object UserLevelDependencyAnalysisNode {
     extractByAssumptionType(nodes, AssumptionType.verificationAnnotationTypes)
   }
 
+  def extractSourceCodeNodes(nodes: Set[UserLevelDependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
+    nodes.diff(extractExplicitAssumptionNodes(nodes)).diff(extractVerificationAnnotationNodes(nodes))
+  }
+
   def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], assumptionTypes: Set[AssumptionType]): Set[UserLevelDependencyAnalysisNode] = {
     nodes.filter(node => assumptionTypes.intersect(node.assumptionTypes).nonEmpty)
   }
