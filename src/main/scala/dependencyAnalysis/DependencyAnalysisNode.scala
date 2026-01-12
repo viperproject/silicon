@@ -61,6 +61,10 @@ trait GeneralAssumptionNode extends DependencyAnalysisNode {
 }
 trait GeneralAssertionNode extends DependencyAnalysisNode {
   override def getNodeType: String = "Assertion"
+
+  val hasFailed: Boolean
+
+  def getAssertFailedNode(): GeneralAssertionNode
 }
 
 trait ChunkAnalysisInfo {
@@ -76,13 +80,17 @@ case class AxiomAssumptionNode(term: Term, description: Option[String], sourceIn
   override def getNodeString: String = "assume axiom " + term.toString + description.map(" (" + _ + ")").getOrElse("")
 }
 
-case class SimpleAssertionNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
+case class SimpleAssertionNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean, hasFailed: Boolean = false) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + term.toString
+
+  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, assumptionType, sourceInfo, isClosed, hasFailed=true)
 }
 
-case class SimpleCheckNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean) extends GeneralAssertionNode {
+case class SimpleCheckNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean, hasFailed: Boolean = false) extends GeneralAssertionNode {
   override def getNodeString: String = "check " + term
   override def getNodeType: String = "Check"
+
+  override def getAssertFailedNode(): GeneralAssertionNode = SimpleCheckNode(term, assumptionType, sourceInfo, isClosed, hasFailed=true)
 }
 
 case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, labelNode: LabelNode) extends GeneralAssumptionNode with ChunkAnalysisInfo {
@@ -90,9 +98,11 @@ case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSo
   override def getNodeType: String = "Inhale"
 }
 
-case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssertionNode with ChunkAnalysisInfo {
+case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, hasFailed: Boolean = false) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.toString
+
+  override def getAssertFailedNode(): GeneralAssertionNode = PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, isClosed, hasFailed=true)
 }
 
 /**

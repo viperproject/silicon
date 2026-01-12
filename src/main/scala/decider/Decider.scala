@@ -476,22 +476,21 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(isAssert: Boolean = false, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean = {
-      val (label, checkNodeId) = if(Verifier.config.enableDependencyAnalysis()){
-        val nodeId = dependencyAnalyzer.addAssertFalseNode(!isAssert, assumptionType, analysisSourceInfoStack.getFullSourceInfo) // TODO ake: add node only if it can be verified
-        (DependencyAnalyzer.createAssertionLabel(nodeId), nodeId)
-      }else{ ("", None) }
+      val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, assumptionType, analysisSourceInfoStack.getFullSourceInfo, !isAssert)
+      val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
       val result = isPathInfeasible() || prover.check(timeout, label) == Unsat
-      if(result) {
-        if(pcs.getCurrentInfeasibilityNode.isDefined){
-          dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNodeId)
-        }else {
-          dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
-          val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo)
-          dependencyAnalyzer.addDependency(checkNodeId, infeasibleNodeId)
-          pcs.setCurrentInfeasibilityNode(checkNodeId)
-        }
+
+      if(isPathInfeasible()){
+        checkNode foreach dependencyAnalyzer.addNode
+        dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
+      }else if(result){
+        checkNode foreach dependencyAnalyzer.addNode
+        dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+        val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo)
+        dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
+        pcs.setCurrentInfeasibilityNode(checkNode.map(_.id))
       }
       result
     }
@@ -538,7 +537,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val result = asserted || proverAssert(t, timeout, DependencyAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
-      if(result) assertNode foreach dependencyAnalyzer.addNode
+      if(result){
+        assertNode foreach dependencyAnalyzer.addNode
+      }else if(!isCheck){ // TODO ake: only for asserts?
+        assertNode foreach {node => dependencyAnalyzer.addNode(node.getAssertFailedNode())}
+      }
 
       symbExLog.closeScope(sepIdentifier)
       (result, assertNode)
@@ -558,12 +561,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val result = isPathInfeasible() || prover.assert(t, timeout, label)
 
-      if(result)
-        if(pcs.getCurrentInfeasibilityNode.isDefined) { // TODO ake: should be checked before calling prover.assert
-          dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(DependencyAnalyzer.getIdFromLabel(label)))
-        }else{
-          dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
-        }
+      if(isPathInfeasible()) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(DependencyAnalyzer.getIdFromLabel(label)))
+      if(result) dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

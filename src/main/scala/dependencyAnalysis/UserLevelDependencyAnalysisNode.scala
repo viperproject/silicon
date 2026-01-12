@@ -60,6 +60,8 @@ case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, lowerLeve
   lazy val assumptionTerm: Term = And(lowLevelAssumptionNodes.map(_.getTerm))
   lazy val assertionTerm: Term = And(lowLevelAssertionNodes.map(_.getTerm))
 
+  lazy val hasFailures: Boolean = lowerLevelNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).exists(_.hasFailed)
+
 
   override def toString: String = source.toString
 

@@ -90,6 +90,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
 
+  def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
+    getNonInternalAssertionNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).filter(_.hasFailed)
 
   def exportGraph(): Unit = {
     if(Verifier.config.dependencyAnalysisExportPath.isEmpty) return
@@ -218,35 +220,45 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
 
     val relevantDependenciesPerAssertion = allAssertions
-      .map(ass => (ass, getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id)))).filter{case (_, assumptions) => assumptions.nonEmpty}.toMap
+      .map(ass => (ass, getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id)))).toMap
+      .filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures} // filter out trivial assertions like `assert true`
+
+    // TODO ake: what to do with partially verified assertions? Currently, we take them into account for spec quality but
+    // consider the assertion to not be verified at all for proof quality.
 
     val relevantDependencies = toUserLevelNodes(relevantDependenciesPerAssertion.flatMap(_._2))
 
+    // covered
     val coveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(relevantDependencies)
     val coveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(relevantDependencies).diff(coveredExplicitSources)
     val coveredSourceCodeStmts = relevantDependencies.diff(coveredExplicitSources).diff(coveredVerificationAnnotations)
 
+    // uncovered
     val uncoveredNodes = toUserLevelNodes(getNonInternalAssumptionNodes).diff(relevantDependencies)
     val uncoveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(uncoveredNodes)
     val uncoveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(uncoveredNodes).diff(uncoveredExplicitSources)
     val uncoveredSourceCodeStmts = uncoveredNodes.diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
 
+    // assertions
+    val assertionsWithFailures = relevantDependenciesPerAssertion.keySet.filter(_.hasFailures)
+    val assertionsWithExplicitDeps = relevantDependenciesPerAssertion.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.contains(d.assumptionType))).keySet.diff(assertionsWithFailures)
+    val fullyVerifiedAssertions = relevantDependenciesPerAssertion.keySet.diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
+
     // Peter's metric
-    // TODO ake: make sure to handle failing assertions properly!
-    val assertionsWithoutExplicitAssumptions = relevantDependenciesPerAssertion.filter { case (_, deps) =>
-      !deps.exists(dep => AssumptionType.explicitAssumptionTypes.contains(dep.assumptionType))
-    }.keys
     val specQuality  = coveredSourceCodeStmts.size.toDouble / (coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble)
-    val proofQualityPeter = (assertionsWithoutExplicitAssumptions.size.toDouble - errors.size.toDouble) / relevantDependenciesPerAssertion.size.toDouble
+    val proofQualityPeter = fullyVerifiedAssertions.size.toDouble / relevantDependenciesPerAssertion.keySet.size.toDouble
     val verificationProgressPeter = specQuality * proofQualityPeter
 
     // Lea's metric
-    val proofQualityNumerator = relevantDependenciesPerAssertion.map { case (_, assumptions) =>
-      val userLevelAssumptions = toUserLevelNodes(assumptions)
-      UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(userLevelAssumptions).size.toDouble / userLevelAssumptions.size.toDouble
-      // TODO ake: take failing assertions into account!
-      }.sum
-    val proofQualityLea =  proofQualityNumerator / relevantDependenciesPerAssertion.keys.size.toDouble
+    val proofQualityPerAssertion = relevantDependenciesPerAssertion.map { case (assertion, assumptions) =>
+      if(assertion.hasFailures) 0.0
+      else{
+        val userLevelAssumptions = toUserLevelNodes(assumptions)
+        UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(userLevelAssumptions).size.toDouble / userLevelAssumptions.size.toDouble
+      }
+    }
+
+    val proofQualityLea =  proofQualityPerAssertion.sum / relevantDependenciesPerAssertion.keys.size.toDouble
     val verificationProgressLea = specQuality * proofQualityLea
 
     val info = {
@@ -260,16 +272,16 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
         s"\tVerification Annotations:\n\t\t${UserLevelDependencyAnalysisNode.mkString(uncoveredVerificationAnnotations, "\n\t\t")}" + "\n" +
         s"\tSource Code:\n\t\t${UserLevelDependencyAnalysisNode.mkString(uncoveredSourceCodeStmts, "\n\t\t")}" + "\n" +
         "\n" +
-      s"Fully verified assertions:\n\t${assertionsWithoutExplicitAssumptions.mkString("\n\t")}" + "\n\n" +
-        s"Assertions depending on explicit assumptions:\n\t${relevantDependenciesPerAssertion.keySet.diff(assertionsWithoutExplicitAssumptions.toSet).mkString("\n\t")}" + "\n\n" +
-        s"Failing assertions:\n\tTODO" + "\n\n" + // TODO ake
+      s"Fully verified assertions:\n\t${UserLevelDependencyAnalysisNode.mkString(fullyVerifiedAssertions, "\n\t")}" + "\n\n" +
+        s"Assertions depending on explicit assumptions:\n\t${UserLevelDependencyAnalysisNode.mkString(assertionsWithExplicitDeps, "\n\t")}" + "\n\n" +
+        s"Failing assertions:\n\t${UserLevelDependencyAnalysisNode.mkString(assertionsWithFailures, "\n\t")}\n\n" +
         "\n" +
         s"#Verification Errors: ${errors.size}" + "\n\n" +
       "\n" +
-      s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/(${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size}) * " +
-      s"${assertionsWithoutExplicitAssumptions.size - errors.size.toDouble}/${relevantDependenciesPerAssertion.size} = $verificationProgressPeter" + "\n" +
-      s"Verification Progress (Lea):\n\t${coveredSourceCodeStmts.size}/(${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size}) * " +
-        s"$proofQualityNumerator/${relevantDependenciesPerAssertion.keys.size} = $verificationProgressLea" + "\n"
+      s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
+      s"${fullyVerifiedAssertions.size}/${relevantDependenciesPerAssertion.keySet.size} = $verificationProgressPeter" + "\n" +
+      s"Verification Progress (Lea):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
+        s"${proofQualityPerAssertion.sum}/${relevantDependenciesPerAssertion.keys.size} = $verificationProgressLea" + "\n"
     }
     (verificationProgressPeter, verificationProgressLea, info)
   }
@@ -277,6 +289,12 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   /* returns an ordered list of (Assumption, #dependents) */
   def computeAssumptionRanking(): List[(String, Int)] = {
     toUserLevelNodes(getExplicitAssumptionNodes).map(node => (node.toString, getAllNonInternalDependents(node.lowerLevelNodes.map(_.id)).size))
+      .toList.sortBy(_._2).reverse
+  }
+
+  def computeFailureRanking(): List[(String, Int)] = {
+    toUserLevelNodes(getNodesWithIdenticalSource(getAssertionNodesWithFailures.map(_.asInstanceOf[DependencyAnalysisNode])))
+      .map(node => (node.toString, getAllNonInternalDependents(node.lowerLevelNodes.map(_.id)).size))
       .toList.sortBy(_._2).reverse
   }
 
