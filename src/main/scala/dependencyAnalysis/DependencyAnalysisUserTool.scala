@@ -1,5 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
+import dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.Method
@@ -81,9 +82,9 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handleGraphSizeQuery(interpreter: DependencyGraphInterpreter): Unit = {
     val allAssumptions = interpreter.getNonInternalAssumptionNodes.filter(n => !n.isInstanceOf[AxiomAssumptionNode])
-    val assumptions = allAssumptions.groupBy(_.getUserLevelRepresentation)
-    val assertions = interpreter.getNonInternalAssertionNodesPerSource
-    val nodes = interpreter.getNonInternalAssertionNodes.union(allAssumptions).groupBy(_.getUserLevelRepresentation)
+    val assumptions = UserLevelDependencyAnalysisNode.from(allAssumptions)
+    val assertions = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes)
+    val nodes = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes.union(allAssumptions))
     println(s"#Assumptions = ${assumptions.size}")
     println(s"#Assertions = ${assertions.size}")
     println(s"#Nodes = ${nodes.size}")
@@ -143,7 +144,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   protected def getSourceInfoString(nodes: Set[DependencyAnalysisNode]): String = {
-    nodes.groupBy(node => node.getUserLevelRepresentation).map{case (_, nodes) => nodes.head.sourceInfo.getTopLevelSource}.toList.sortBy(_.getLineNumber).mkString("\n\t")
+    UserLevelDependencyAnalysisNode.mkUserLevelString(nodes, "\n\t")
   }
 
   private def getQueriedNodesFromInput(inputs: Set[String]): Set[DependencyAnalysisNode] = {
@@ -249,7 +250,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
           val (allDependencies, time) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
           allTimes = allTimes :+ time
           numLowLevelDeps = allDependencies.size
-          numDeps = allDependencies.groupBy(node => node.getUserLevelRepresentation).size
+          numDeps = UserLevelDependencyAnalysisNode.from(allDependencies).size
         }
 
         writer.println(s"$userInput,$numLowLevelDeps,$numDeps,${allTimes.mkString(",")}")

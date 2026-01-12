@@ -200,11 +200,11 @@ object DependencyAnalyzer {
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
     val relevantAssumptionNodes = joinCandidateNodes
       .filter(node => node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
-      .groupBy(_.sourceInfo.getFineGrainedSource.toString)
+      .groupBy(_.sourceInfo.getFineGrainedSource)
       .view.mapValues(_.map(_.id))
       .toMap
     joinCandidateNodes.filter(node => node.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
-      .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.getUserLevelRepresentation, Seq.empty)))
+      .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
       .foreach { case (src, targets) => newGraph.addEdges(src, targets)}
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForMethodJoin)
@@ -420,29 +420,29 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     }
 
     val nodesBySource = assumptionGraph.getNodes.filter(!keepNode(_))
-      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.getUserLevelRepresentation, n.sourceInfo.getFineGrainedSource.toString, n.assumptionType))
+      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.sourceInfo, n.sourceInfo.getFineGrainedSource.toString, n.assumptionType))
 
-    nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
+    nodesBySource foreach { case ((_, sourceInfo, _, assumptionType), nodes) =>
       val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])
       if (assumptionNodes.nonEmpty) {
-        val newNode = SimpleAssumptionNode(True, None, assumptionNodes.head.sourceInfo, assumptionType, isClosed = false)
+        val newNode = SimpleAssumptionNode(True, None, sourceInfo, assumptionType, isClosed = false)
         assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addNode(newNode)
       }
     }
 
-    nodesBySource foreach { case ((_, _, _, assumptionType), nodes) =>
+    nodesBySource foreach { case ((_, sourceInfo, _, assumptionType), nodes) =>
       val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
       if (assertionNodes.nonEmpty) {
-        val newNode = SimpleAssertionNode(True, assumptionType, assertionNodes.head.sourceInfo, isClosed = false)
+        val newNode = SimpleAssertionNode(True, assumptionType, sourceInfo, isClosed = false)
         assertionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addNode(newNode)
       }
     }
 
     assumptionGraph.getAllEdges foreach { case (target, deps) =>
-      val newTarget = nodeMap(target)
-      mergedGraph.addEdges(deps.map(nodeMap(_)), newTarget)
+      val newTarget = nodeMap.getOrElse(target, target)
+      mergedGraph.addEdges(deps.map(d => nodeMap.getOrElse(d, d)), newTarget)
     }
 
     mergedGraph

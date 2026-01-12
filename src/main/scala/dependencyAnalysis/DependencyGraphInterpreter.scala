@@ -1,5 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
+import dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -26,7 +27,9 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def initJoinCandidateNodes(): Unit = {
     joinCandidateNodes = dependencyGraph.getNodes.filter(node => node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
   }
-
+  
+  def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
+  
   def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
 
@@ -66,9 +69,6 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     getExplicitAssertionNodes.filter(node => allDependents.contains(node.id))
   }
 
-  def filterOutNodesBySourceInfo(nodes: Set[DependencyAnalysisNode], excludeInfos: Set[AnalysisSourceInfo]): Set[DependencyAnalysisNode] =
-    nodes filterNot (node => excludeInfos.exists(i => i.getTopLevelSource.toString.equals(node.getUserLevelRepresentation)))
-
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
       (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
         || AssumptionType.postconditionTypes.contains(node.assumptionType) // postconditions act as assumptions for callers
@@ -81,17 +81,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def hasAnyDependency(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Boolean =
     nodesToAnalyze.intersect(getNonInternalAssumptionNodes)
       .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
-
-  def getNonInternalAssumptionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
-    getNonInternalAssumptionNodes.groupBy(_.getUserLevelRepresentation)
-
-
+  
+  
   def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
     node.isInstanceOf[GeneralAssertionNode] && !AssumptionType.internalTypes.contains(node.assumptionType)
     )
-
-  def getNonInternalAssertionNodesPerSource: Map[String, Set[DependencyAnalysisNode]] =
-    getNonInternalAssertionNodes.groupBy(_.getUserLevelRepresentation)
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
@@ -105,8 +99,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val sourceInfos = nodes map (_.getUserLevelRepresentation)
-    getNodes filter (node => sourceInfos.contains(node.getUserLevelRepresentation))
+    val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource)
+    getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource))
   }
 
   def computeProofCoverage(): (Double, Set[String]) = {
@@ -118,14 +112,15 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val assertionNodeIds = assertionNodes map (_.id)
     val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
     val coveredNodes = dependencies ++ assertionNodeIds
-    val nodesPerSourceInfo = getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]).groupBy(_.getUserLevelRepresentation)
-    if(nodesPerSourceInfo.isEmpty) return (Double.NaN, Set())
 
-    val uncoveredSources = (nodesPerSourceInfo filter { case (_, nodes) =>
-      coveredNodes.intersect(nodes map (_.id)).isEmpty
-    }).keys.toSet
-    val proofCoverage = 1.0 - (uncoveredSources.size.toDouble / nodesPerSourceInfo.size.toDouble)
-    (proofCoverage, uncoveredSources)
+    val userLevelNodes = toUserLevelNodes(getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]))
+    if(userLevelNodes.isEmpty) return (Double.NaN, Set())
+
+    val uncoveredUserLevelNodes = userLevelNodes filter (node =>
+      coveredNodes.intersect(node.lowerLevelNodes.map(_.id)).isEmpty
+      )
+    val proofCoverage = 1.0 - (uncoveredUserLevelNodes.size.toDouble / userLevelNodes.size.toDouble)
+    (proofCoverage, uncoveredUserLevelNodes.map(_.toString))
   }
 
   def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
@@ -220,72 +215,72 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def computeVerificationProgress(): (Double, Double, String)  = {
-    val assumptionsPerSource = getNonInternalAssumptionNodes.groupBy(_.getUserLevelRepresentation)
-    if(assumptionsPerSource.isEmpty) return (Double.NaN, Double.NaN, "Error: no assumptions found")
-
-    val allAssertions = getNonInternalAssertionNodes.groupBy(_.getUserLevelRepresentation)
+    val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
 
     val relevantDependenciesPerAssertion = allAssertions
-      .view.mapValues(g => getAllNonInternalDependencies(getNodesWithIdenticalSource(g).map(_.id)))
+      .map(ass => (ass, getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id)))).filter{case (_, assumptions) => assumptions.nonEmpty}.toMap
 
-    // TODO ake: make sure to handle failing assertions properly!
-    val nonTrivialAssertionsGroupedPerAssertion = relevantDependenciesPerAssertion.filter{case (_, assumptions) => assumptions.nonEmpty}
+    val relevantDependencies = toUserLevelNodes(relevantDependenciesPerAssertion.flatMap(_._2))
 
-    val assertionsWithoutExplicitAssumptions = nonTrivialAssertionsGroupedPerAssertion.filter { case (_, deps) =>
-      !deps.exists(dep => AssumptionType.explicitAssumptionTypes.contains(dep.assumptionType))
-    }.keys
+    val coveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(relevantDependencies)
+    val coveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(relevantDependencies).diff(coveredExplicitSources)
+    val coveredSourceCodeStmts = relevantDependencies.diff(coveredExplicitSources).diff(coveredVerificationAnnotations)
 
-
-    val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2)
-
-    def filterAndGroup(nodes: Iterable[DependencyAnalysisNode], filterCondition: DependencyAnalysisNode => Boolean) = {
-      nodes.filter(filterCondition).groupBy(_.getUserLevelRepresentation).keys.toSet
-    }
-
-    val coveredExplicitSources = filterAndGroup(relevantDependencies, node => AssumptionType.explicitAssumptionTypes.contains(node.assumptionType))
-    val coveredVerificationAnnotations = filterAndGroup(relevantDependencies, node => AssumptionType.verificationAnnotationTypes.contains(node.assumptionType)).diff(coveredExplicitSources)
-    val coveredSourceCodeStmts = filterAndGroup(relevantDependencies, _ => true).diff(coveredExplicitSources).diff(coveredVerificationAnnotations)
-
-    def getUncoveredNodesAndGroup(nodes: Iterable[DependencyAnalysisNode]) = {
-      nodes.groupBy(_.getUserLevelRepresentation).keys.toSet.diff(relevantDependencies.groupBy(_.getUserLevelRepresentation).keys.toSet)
-    }
-
-    val uncoveredExplicitSources = getUncoveredNodesAndGroup(getExplicitAssumptionNodes)
-    val uncoveredVerificationAnnotations = getUncoveredNodesAndGroup(getNonInternalAssumptionNodes.filter(node => AssumptionType.verificationAnnotationTypes.contains(node.assumptionType))).diff(uncoveredExplicitSources)
-    val uncoveredSourceCodeStmts = getUncoveredNodesAndGroup(getNonInternalAssumptionNodes).diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
+    val uncoveredNodes = toUserLevelNodes(getNonInternalAssumptionNodes).diff(relevantDependencies)
+    val uncoveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(uncoveredNodes)
+    val uncoveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(uncoveredNodes).diff(uncoveredExplicitSources)
+    val uncoveredSourceCodeStmts = uncoveredNodes.diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
 
     // Peter's metric
+    // TODO ake: make sure to handle failing assertions properly!
+    val assertionsWithoutExplicitAssumptions = relevantDependenciesPerAssertion.filter { case (_, deps) =>
+      !deps.exists(dep => AssumptionType.explicitAssumptionTypes.contains(dep.assumptionType))
+    }.keys
     val specQuality  = coveredSourceCodeStmts.size.toDouble / (coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble)
-    val proofQualityPeter = (assertionsWithoutExplicitAssumptions.size.toDouble - errors.size.toDouble) / nonTrivialAssertionsGroupedPerAssertion.size.toDouble
+    val proofQualityPeter = (assertionsWithoutExplicitAssumptions.size.toDouble - errors.size.toDouble) / relevantDependenciesPerAssertion.size.toDouble
     val verificationProgressPeter = specQuality * proofQualityPeter
 
     // Lea's metric
-    val proofQualityNumerator = nonTrivialAssertionsGroupedPerAssertion.map{case (_, assumptions) => filterAndGroup(assumptions, node => !AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)).size.toDouble / assumptions.groupBy(_.getUserLevelRepresentation).keys.size.toDouble}.sum
-    val proofQualityLea =  proofQualityNumerator / nonTrivialAssertionsGroupedPerAssertion.keys.size.toDouble
+    val proofQualityNumerator = relevantDependenciesPerAssertion.map { case (_, assumptions) =>
+      val userLevelAssumptions = toUserLevelNodes(assumptions)
+      UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(userLevelAssumptions).size.toDouble / userLevelAssumptions.size.toDouble
+      // TODO ake: take failing assertions into account!
+      }.sum
+    val proofQualityLea =  proofQualityNumerator / relevantDependenciesPerAssertion.keys.size.toDouble
     val verificationProgressLea = specQuality * proofQualityLea
 
     val info = {
       s"Covered\n" +
-        s"\tExplicit Assumptions:\n\t\t${coveredExplicitSources.mkString("\n\t\t")}" + "\n" +
-        s"\tVerification Annotations:\n\t\t${coveredVerificationAnnotations.mkString("\n\t\t")}" + "\n" +
-        s"\tSource Code:\n\t\t${coveredSourceCodeStmts.mkString("\n\t\t")}" + "\n" +
+        s"\tExplicit Assumptions:\n\t\t${UserLevelDependencyAnalysisNode.mkString(coveredExplicitSources, "\n\t\t")}" + "\n" +
+        s"\tVerification Annotations:\n\t\t${UserLevelDependencyAnalysisNode.mkString(coveredVerificationAnnotations, "\n\t\t")}" + "\n" +
+        s"\tSource Code:\n\t\t${UserLevelDependencyAnalysisNode.mkString(coveredSourceCodeStmts, "\n\t\t")}" + "\n" +
         "\n" +
       s"Uncovered\n" +
-        s"\tExplicit Assumptions:\n\t\t${uncoveredExplicitSources.mkString("\n\t\t")}" + "\n" +
-        s"\tVerification Annotations:\n\t\t${uncoveredVerificationAnnotations.mkString("\n\t\t")}" + "\n" +
-        s"\tSource Code:\n\t\t${uncoveredSourceCodeStmts.mkString("\n\t\t")}" + "\n" +
+        s"\tExplicit Assumptions:\n\t\t${UserLevelDependencyAnalysisNode.mkString(uncoveredExplicitSources, "\n\t\t")}" + "\n" +
+        s"\tVerification Annotations:\n\t\t${UserLevelDependencyAnalysisNode.mkString(uncoveredVerificationAnnotations, "\n\t\t")}" + "\n" +
+        s"\tSource Code:\n\t\t${UserLevelDependencyAnalysisNode.mkString(uncoveredSourceCodeStmts, "\n\t\t")}" + "\n" +
         "\n" +
       s"Fully verified assertions:\n\t${assertionsWithoutExplicitAssumptions.mkString("\n\t")}" + "\n\n" +
-        s"Assertions depending on explicit assumptions:\n\t${nonTrivialAssertionsGroupedPerAssertion.keySet.diff(assertionsWithoutExplicitAssumptions.toSet).mkString("\n\t")}" + "\n\n" +
+        s"Assertions depending on explicit assumptions:\n\t${relevantDependenciesPerAssertion.keySet.diff(assertionsWithoutExplicitAssumptions.toSet).mkString("\n\t")}" + "\n\n" +
         s"Failing assertions:\n\tTODO" + "\n\n" + // TODO ake
         "\n" +
         s"#Verification Errors: ${errors.size}" + "\n\n" +
       "\n" +
       s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/(${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size}) * " +
-      s"${assertionsWithoutExplicitAssumptions.size - errors.size.toDouble}/${nonTrivialAssertionsGroupedPerAssertion.size} = $verificationProgressPeter" + "\n" +
+      s"${assertionsWithoutExplicitAssumptions.size - errors.size.toDouble}/${relevantDependenciesPerAssertion.size} = $verificationProgressPeter" + "\n" +
       s"Verification Progress (Lea):\n\t${coveredSourceCodeStmts.size}/(${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size}) * " +
-        s"$proofQualityNumerator/${nonTrivialAssertionsGroupedPerAssertion.keys.size} = $verificationProgressLea" + "\n"
+        s"$proofQualityNumerator/${relevantDependenciesPerAssertion.keys.size} = $verificationProgressLea" + "\n"
     }
     (verificationProgressPeter, verificationProgressLea, info)
   }
+
+  def provideVerificationGuidance() = {
+
+
+    // return (String, Int) = Assumption, #deps
+    // return (String, Int) = function/method, #uncovered stmts
+    // return (String, Int) = failing assertions, #dependents
+  }
+
+
 }

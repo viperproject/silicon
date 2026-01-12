@@ -1,5 +1,6 @@
 package viper.silicon.tests
 
+import dependencyAnalysis.UserLevelDependencyAnalysisNode
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
 import viper.silver.ast._
@@ -106,8 +107,8 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
 
     proofCoverageWriter.println(filePrefix + "/" + fileName)
     dependencyGraphInterpreters foreach (memberInterpreter => {
-      memberInterpreter.getExplicitAssertionNodes.groupBy(_.getUserLevelRepresentation) foreach {case (source, nodes) =>
-          proofCoverageWriter.println(memberInterpreter.getName + " " + source.replace("\n", " ") + " ---> " + memberInterpreter.computeProofCoverage(nodes)._1)}
+      UserLevelDependencyAnalysisNode.from(memberInterpreter.getExplicitAssertionNodes) foreach {node =>
+          proofCoverageWriter.println(memberInterpreter.getName + " " + node.source.toString.replace("\n", " ") + " ---> " + memberInterpreter.computeProofCoverage(node.lowerLevelNodes)._1)}
       proofCoverageWriter.println("overall " + memberInterpreter.getName + " ---> + " + memberInterpreter.computeProofCoverage()._1)
     })
     proofCoverageWriter.println()

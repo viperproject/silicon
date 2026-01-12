@@ -47,6 +47,14 @@ abstract class AnalysisSourceInfo {
   def isAnalysisEnabled: Boolean = true
 
   val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = None
+
+  override def equals(obj: Any): Boolean = obj match {
+    case other: AnalysisSourceInfo => this.getPosition.equals(other.getPosition) && this.toString.equals(other.toString)
+    case _ => false
+  }
+
+  override def hashCode(): Int =
+    (this.toString + this.getPosition.toString).hashCode
 }
 
 case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
