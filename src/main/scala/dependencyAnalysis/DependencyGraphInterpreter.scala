@@ -246,17 +246,18 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val uncoveredSourceCodeStmts = uncoveredNodes.diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
 
     // assertions
-    val assertionsWithFailures = relevantDependenciesPerAssertion.keySet.filter(_.hasFailures)
-    val assertionsWithExplicitDeps = relevantDependenciesPerAssertion.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.contains(d.assumptionType))).keySet.diff(assertionsWithFailures)
-    val fullyVerifiedAssertions = relevantDependenciesPerAssertion.keySet.diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
+    val relevantAssertions = relevantDependenciesPerAssertion // TODO ake: maybe .filter(_._1.lowLevelAssertionNodes.exists(n => !n.isInstanceOf[SimpleCheckNode]))
+    val assertionsWithFailures = relevantAssertions.keySet.filter(_.hasFailures)
+    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.contains(d.assumptionType))).keySet.diff(assertionsWithFailures)
+    val fullyVerifiedAssertions = relevantAssertions.keySet.diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
 
     // Peter's metric
     val specQuality  = coveredSourceCodeStmts.size.toDouble / (coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble)
-    val proofQualityPeter = fullyVerifiedAssertions.size.toDouble / relevantDependenciesPerAssertion.keySet.size.toDouble
+    val proofQualityPeter = fullyVerifiedAssertions.size.toDouble / relevantAssertions.keySet.size.toDouble
     val verificationProgressPeter = specQuality * proofQualityPeter
 
     // Lea's metric
-    val proofQualityPerAssertion = relevantDependenciesPerAssertion.map { case (assertion, assumptions) =>
+    val proofQualityPerAssertion = relevantAssertions.map { case (assertion, assumptions) =>
       if(assertion.hasFailures) 0.0
       else{
         val userLevelAssumptions = toUserLevelNodes(assumptions)
@@ -264,7 +265,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       }
     }
 
-    val proofQualityLea =  proofQualityPerAssertion.sum / relevantDependenciesPerAssertion.keys.size.toDouble
+    val proofQualityLea =  proofQualityPerAssertion.sum / relevantAssertions.keys.size.toDouble
     val verificationProgressLea = specQuality * proofQualityLea
 
     val info = {
@@ -285,9 +286,9 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
         s"#Verification Errors: ${errors.size}" + "\n\n" +
       "\n" +
       s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
-      s"${fullyVerifiedAssertions.size}/${relevantDependenciesPerAssertion.keySet.size} = $verificationProgressPeter" + "\n" +
+      s"${fullyVerifiedAssertions.size}/${relevantAssertions.keySet.size} = $verificationProgressPeter" + "\n" +
       s"Verification Progress (Lea):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
-        s"${proofQualityPerAssertion.sum}/${relevantDependenciesPerAssertion.keys.size} = $verificationProgressLea" + "\n"
+        s"${proofQualityPerAssertion.sum}/${relevantAssertions.keys.size} = $verificationProgressLea" + "\n"
     }
     (verificationProgressPeter, verificationProgressLea, info)
   }

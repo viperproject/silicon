@@ -274,6 +274,6 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println(s"Members and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
 
     val errorRanking = fullGraphInterpreter.computeFailureRanking()
-    println(s"Errors:\n\t${errorRanking.mkString("\n\t")}\n")
+    println(s"Errors and the number of dependents:\n\t${errorRanking.mkString("\n\t")}\n")
   }
 }
