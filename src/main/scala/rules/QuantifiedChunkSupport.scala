@@ -1443,8 +1443,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   } else {
                     Q(s2, h3, None, v)
                   }
-                case (Incomplete(_, _), s2, _) =>
-                  createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
+                case (Incomplete(_, _), s2, _) => {
+                  val failure = createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")
+                  if (Verifier.config.enableDependencyAnalysisFailureHandling) {
+                    v.decider.handleVerificationFailure(assumptionType)
+                    failure combine Q(s2, s2.h, None, v)
+                  } else {
+                    failure
+                  }
+                }
+              }
             }
           case false =>
             createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")}
@@ -1574,11 +1582,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           } else {
             Q(s1, h1, None, v)
           }
-        case (Incomplete(_, _), _, _) =>
-          resourceAccess match {
+        case (Incomplete(_, _), s1, _) =>
+          val failure = resourceAccess match {
             case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s, "single QP consume")
             case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
             case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
+          }
+          if(Verifier.config.enableDependencyAnalysisFailureHandling){
+            v.decider.handleVerificationFailure(assumptionType)
+            failure combine Q(s1, s1.h, None, v)
+          }else{
+            failure
           }
       }
     }

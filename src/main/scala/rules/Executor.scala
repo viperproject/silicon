@@ -333,8 +333,11 @@ object executor extends ExecutionRules {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     val sourceInfo = StmtAnalysisSourceInfo(stmt)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
-    if(Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableDependencyAnalysis() &&
-      v.decider.pcs.getCurrentInfeasibilityNode.isDefined && !alwaysExecute(stmt)){
+    if(false /* TODO ake: Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableDependencyAnalysis() &&
+      v.decider.pcs.getCurrentInfeasibilityNode.isDefined && !alwaysExecute(stmt)*/){
+      // TODO ake: this might be used as a performance optimization but then we would need to figure out
+      // which statements enforce some kind of proof obligations and which do not. Currently, all statements
+      // are considered to enforce some proof obligation.
       v.decider.dependencyAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode,
         v.decider.analysisSourceInfoStack.getFullSourceInfo, AssumptionType.Implicit)
       v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
@@ -454,7 +457,14 @@ object executor extends ExecutionRules {
                 val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
                 Q(s5, v2)
               case (Incomplete(_, _), s3, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
+                val failure = createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")
+                if(Verifier.config.enableDependencyAnalysisFailureHandling){
+                  v2.decider.handleVerificationFailure(AssumptionType.Implicit)
+                  failure combine Q(s3, v2)
+                }else{
+                  failure
+                }
+            }}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)

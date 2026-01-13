@@ -151,7 +151,13 @@ object chunkSupporter extends ChunkSupportRules {
               else
                 Success() // TODO: Mark branch as dead?
             case _ =>
-              createFailure(ve, v1, s1, "consuming chunk", true)
+              val failure = createFailure(ve, v1, s1, "consuming chunk", true)
+              if(Verifier.config.enableDependencyAnalysisFailureHandling){
+                v1.decider.handleVerificationFailure(assumptionType)
+                failure combine QS(s1, s1.h, None, v1)
+              }else{
+                failure
+              }
           }
         }
       )(Q)
@@ -275,7 +281,13 @@ object chunkSupporter extends ChunkSupportRules {
           Success() // TODO: Mark branch as dead?
         }
       case _ =>
-        createFailure(ve, v, s, "looking up chunk", true)
+        val failure = createFailure(ve, v, s, "looking up chunk", true)
+        if(Verifier.config.enableDependencyAnalysisFailureHandling){
+          v.decider.handleVerificationFailure(assumptionType)
+          failure combine Q(s, False /* FIXME ake */, v)
+        }else{
+          failure
+        }
     }
   }
 

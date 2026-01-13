@@ -76,6 +76,7 @@ trait Decider {
 
   def check(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean
   def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): (Boolean, Option[Int])
+  def handleVerificationFailure(assertionType: AssumptionType): Unit
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
@@ -512,6 +513,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       (success, infeasibilityNodeId)
     }
 
+    /* Verification failures are represented by an "assert failed" node and an "assume false" node which is used as a dependency for the remainder of the path */
+    def handleVerificationFailure(assertionType: AssumptionType): Unit = {
+      if(!Verifier.config.enableDependencyAnalysis()) return
+
+      val assertFailedNodeId = dependencyAnalyzer.addAssertFailedNode(analysisSourceInfoStack.getFullSourceInfo, assertionType)
+
+      val assumeFalseNodeId = dependencyAnalyzer.addInfeasibilityNode(isCheck = false, analysisSourceInfoStack.getFullSourceInfo, AssumptionType.Explicit)
+      assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(assumeFalseNodeId))))
+
+      dependencyAnalyzer.addDependency(assertFailedNodeId, assumeFalseNodeId)
+      if(pathConditions.getCurrentInfeasibilityNode.isEmpty) pathConditions.setCurrentInfeasibilityNode(assumeFalseNodeId)
+    }
+
     def assert(t: Term, assumptionType: AssumptionType=AssumptionType.Implicit, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q:  Boolean => VerificationResult): VerificationResult = {
       val (success, _) = deciderAssert(t, assumptionType, timeout)
 
@@ -562,7 +576,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = isPathInfeasible() || prover.assert(t, timeout, label)
 
       if(isPathInfeasible()) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(DependencyAnalyzer.getIdFromLabel(label)))
-      if(result) dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
+      else if(result) dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))

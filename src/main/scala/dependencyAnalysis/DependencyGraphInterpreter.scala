@@ -219,10 +219,16 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def computeVerificationProgress(): (Double, Double, String)  = {
     val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
 
+    println(s"#assertions: ${allAssertions.size}")
+
+    val startTime = System.nanoTime()
+    // TODO ake: this is suuuper slow. Can we reuse previously computed results? Caching?
     val relevantDependenciesPerAssertion = allAssertions
       .map(ass => (ass, getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id)))).toMap
       .filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures} // filter out trivial assertions like `assert true`
 
+    val endTime = System.nanoTime()
+    println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
     // TODO ake: what to do with partially verified assertions? Currently, we take them into account for spec quality but
     // consider the assertion to not be verified at all for proof quality.
 

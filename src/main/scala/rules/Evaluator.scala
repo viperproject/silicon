@@ -240,7 +240,13 @@ object evaluator extends EvaluationRules {
                 val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
                 v1.decider.assert(toAssert) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
+                    val failure = createFailure(pve dueTo InsufficientPermission(fa), v1, s1, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
+                    if(Verifier.config.enableDependencyAnalysisFailureHandling){
+                      v1.decider.handleVerificationFailure(AssumptionType.Implicit)
+                      failure combine  Q(s, Lookup(fa.field.name, fvfDef.sm, tRcvr), newFa, v1)
+                    }else{
+                      failure
+                    }
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -270,7 +276,13 @@ object evaluator extends EvaluationRules {
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
+                    val failure = createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
+                    if(Verifier.config.enableDependencyAnalysisFailureHandling){
+                      v1.decider.handleVerificationFailure(AssumptionType.Implicit)
+                      failure combine  Q(s, Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr), newFa, v1)
+                    }else{
+                      failure
+                    }
                   case true =>
                     val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
                     val fr2 =
@@ -302,7 +314,13 @@ object evaluator extends EvaluationRules {
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
+                    val failure = createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
+                    if(Verifier.config.enableDependencyAnalysisFailureHandling){
+                      v1.decider.handleVerificationFailure(AssumptionType.Implicit)
+                      failure combine  Q(s, Lookup(fa.field.name, smDef1.sm, tRcvr), newFa, v1)
+                    }else{
+                      failure
+                    }
                   case true =>
                     val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                     val fr2 =
