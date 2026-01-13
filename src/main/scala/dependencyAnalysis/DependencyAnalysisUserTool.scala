@@ -177,6 +177,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println(s"\nAll Dependencies (${timeAll}ms):\n\t${getSourceInfoString(allDependencies)}")
     println(s"\nDependencies without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(allDependenciesWithoutInfeasibility)}")
     println(s"\nExplicit Dependencies (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependencies)}")
+
+    if(queriedNodes.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
     println("Done.")
   }
 
@@ -265,12 +267,12 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   def handleVerificationGuidanceQuery(): Unit = {
-    val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking()
+    val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking().filter(_._2 > 0)
     println(s"Assumptions and the number of dependencies:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
     val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])
       .map(mInterpreter => (mInterpreter.getMember.get.name, mInterpreter.computeUncoveredStatements()))
-      .toList.sortBy(_._2).reverse
+      .toList.filter(_._2 > 0).sortBy(_._2).reverse
     println(s"Members and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
 
     val errorRanking = fullGraphInterpreter.computeFailureRanking()

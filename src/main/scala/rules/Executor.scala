@@ -546,10 +546,14 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
+          val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
           if (v1.decider.checkSmoke(isAssert=true, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit)))
             QS(s1.copy(h = s.h), v1)
-          else
-            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
+          else if (Verifier.config.enableDependencyAnalysisFailureHandling) {
+            v1.decider.handleVerificationFailure(AssumptionType.Explicit)
+            failure combine QS(s1.copy(h = s.h), v1)
+          } else
+            failure
         })((s2, v2) =>
           if (Verifier.config.disableInfeasibilityChecks())
             Q(s2, v2)
