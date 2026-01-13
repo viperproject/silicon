@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.Config.InferenceMode.OnError
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces._
 import viper.silicon.state.State
@@ -15,6 +16,8 @@ import viper.silver.ast
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithTransformers
 import viper.silver.verifier.{AbductionQuestionTransformer, Counterexample, CounterexampleTransformer, VerificationError}
+import viper.silicon.biabduction.BiAbductionSolver.{resolveAbductionResults, solveAbductionForError}
+import viper.silver.ast.Method
 
 trait SymbolicExecutionRules {
   lazy val withExp = Verifier.config.enableDebugging()
@@ -97,16 +100,31 @@ trait SymbolicExecutionRules {
     } else Seq()
 
 
-
     if (Verifier.config.enableDebugging()){
       val assumptions = v.decider.pcs.assumptionExps
       res.failureContexts = Seq(SiliconDebuggingFailureContext(v.decider.pcs.branchConditions, v.decider.pcs.branchConditionExps.map(bce => bce._1 -> bce._2.get),
         counterexample, reasonUnknown, Some(s), Some(v), v.decider.prover.getAllEmits(), v.decider.prover.preambleAssumptions,
-        v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get))
+        v.decider.macroDecls, v.decider.functionDecls, assumptions, failedAssert, failedAssertExp.get), SiliconAbductionFailureContext(abTrafo, None))
     } else {
-      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown), SiliconAbductionFailureContext(abTrafo))
+      res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown), SiliconAbductionFailureContext(abTrafo, None))
     }
-    
-    Failure(res, v.reportFurtherErrors())
+
+    val finalRes = if (Verifier.config.inferenceMode() == OnError) {
+      solveAbductionForError(s, v, res, stateAllowed = true, Some(ve.offendingNode)) {
+        case None => Failure(res, v.reportFurtherErrors())
+        case Some(abdRes) =>
+          // TODO this is kinda unnecessary, we build the updated method body for no reason
+          resolveAbductionResults(s.currentMember.get.asInstanceOf[Method], Success(Some(abdRes))) match {
+            case Some((_, infRes)) =>
+              res.failureContexts = Seq(res.failureContexts.head, SiliconAbductionFailureContext(None, Some(infRes)))
+              Failure(res, v.reportFurtherErrors())
+            case _ => Failure(res, v.reportFurtherErrors())
+          }
+      }
+    } else {
+      Failure(res, v.reportFurtherErrors())
+    }
+
+    finalRes.asInstanceOf[Failure]
   }
 }

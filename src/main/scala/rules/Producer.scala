@@ -105,7 +105,7 @@ object producer extends ProductionRules {
               withAbduction: Boolean = false)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
-
+    
     if(!withAbduction){
     produceR(s, sf, a.whenInhaling, pve, v)(Q)
     } else {
@@ -115,7 +115,7 @@ object producer extends ProductionRules {
         Q
       } {
         f =>
-          BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed = true, Some(a)) { (s2, v2) =>
+          BiAbductionSolver.solveAbductionForFailure(s, v, f, stateAllowed = true, Some(a)) { (s2, v2) =>
             produce(s2, sf, a, pve, v2, withAbduction)(Q)
           }
       }

@@ -62,7 +62,7 @@ object LoopInvariantSolver {
                 (_, _) => Success()
               } {
                 f =>
-                  val abd = BiAbductionSolver.solveAbductionForError(s2a, v2a, f, stateAllowed = false, Some(loopCon)) { (_, _) =>
+                  val abd = BiAbductionSolver.solveAbductionForFailure(s2a, v2a, f, stateAllowed = false, Some(loopCon)) { (_, _) =>
                     Success()
                   }
                   abd match {

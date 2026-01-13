@@ -390,7 +390,7 @@ object executor extends ExecutionRules {
           Q(s2, v2)
       } {
         f =>
-        BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(location))((s3, v3) =>
+        BiAbductionSolver.solveAbductionForFailure(s, v, f, stateAllowed, Some(location))((s3, v3) =>
           checkInvariants(s3, v3, invs, location, stateAllowed)(Q))
       }
     }
@@ -418,13 +418,9 @@ object executor extends ExecutionRules {
     } {
       f =>
         val loc = if (abdLoc.isDefined) abdLoc else Some(stmt)
-        BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed = abdStateAllowed, loc)((s3, v3) => {
+        BiAbductionSolver.solveAbductionForFailure(s, v, f, stateAllowed = abdStateAllowed, loc)((s3, v3) => {
           v3.symbExLog.closeScope(sepIdentifier)
-          //if (v3.decider.checkSmoke()) {
-          //  f
-          //} else {
             exec(s3, stmt, v3, abdLoc)(Q)
-          //}
         }
         )
     }

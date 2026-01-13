@@ -95,6 +95,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
+  private val inferenceModeConverter: ValueConverter[InferenceMode] = new ValueConverter[InferenceMode] {
+    def parse(s: List[(String, List[String])]): Either[String, Option[InferenceMode]] = s match {
+      case Seq((_, Seq("0") | Seq("off"))) => Right(Some(InferenceMode.Off))
+      case Seq((_, Seq("1") | Seq("onError"))) => Right(Some(InferenceMode.OnError))
+      case Seq((_, Seq("2") | Seq("full"))) => Right(Some(InferenceMode.Full))
+      case Seq() => Right(None)
+      case _ => Left(s"unexpected arguments, expected one of: 0/off, 1/onError, 2/full")
+    }
+
+    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
+  }
+
   private val saturationTimeoutWeightsConverter: ValueConverter[ProverSaturationTimeoutWeights] = new ValueConverter[ProverSaturationTimeoutWeights] {
     def parse(s: List[(String, List[String])]): Either[String, Option[ProverSaturationTimeoutWeights]] = s match {
       case Seq((_, Seq(rawString))) =>
@@ -822,6 +834,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val inferenceMode: ScallopOption[InferenceMode] = opt[InferenceMode]("inferenceMode",
+    descr = "Inference mode. Options are 0/off (no inference, default), " +
+            "1/onError (inference at error locations only), 2/full (full method inference).",
+    default = Some(InferenceMode.Full), // TODO Change back to Off
+    noshort = true
+  )(inferenceModeConverter)
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
@@ -904,6 +923,13 @@ object Config {
     case object Greedy extends ExhaleMode
     case object MoreComplete extends ExhaleMode
     case object MoreCompleteOnDemand extends ExhaleMode
+  }
+
+  sealed trait InferenceMode
+  object InferenceMode {
+    case object Off extends InferenceMode
+    case object OnError extends InferenceMode
+    case object Full extends InferenceMode
   }
 
   object JoinMode extends Enumeration {

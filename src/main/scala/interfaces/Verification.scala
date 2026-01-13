@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces
 
-import viper.silicon.biabduction.BiAbductionResult
+import viper.silicon.biabduction.{BiAbductionResult, InferenceResult}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.{DebugAxiom, DebugExp}
 import viper.silicon.interfaces.state.Chunk
@@ -66,7 +66,7 @@ sealed abstract class VerificationResult {
   }
 }
 
-sealed abstract class FatalResult extends VerificationResult {
+sealed abstract class FatalResult  extends VerificationResult {
   val isFatal = true
 
   def &&(other: => VerificationResult): VerificationResult = this
@@ -103,6 +103,7 @@ case class Failure/*[ST <: Store[ST],
   extends FatalResult {
 
   override lazy val toString: String = message.readableMessage
+  
 }
 
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
@@ -137,7 +138,7 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
   override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
 }
 
-case class SiliconAbductionFailureContext(trafo: Option[AbductionQuestionTransformer]) extends FailureContext {
+case class SiliconAbductionFailureContext(trafo: Option[AbductionQuestionTransformer], fix: Option[Seq[InferenceResult]]) extends FailureContext {
   def counterExample: Option[Counterexample] = None
 }
 

@@ -106,7 +106,7 @@ object evaluator extends EvaluationRules {
       Q
     } {
       f =>
-        BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed = true, Some(e)) { (s2, v2) =>
+        BiAbductionSolver.solveAbductionForFailure(s, v, f, stateAllowed = true, Some(e)) { (s2, v2) =>
           evalWithAbduction(s2, e, pve, v2)(Q)
         }
     }

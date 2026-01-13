@@ -7,10 +7,9 @@
 package viper.silicon.supporters
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.state.terms.{Sort, SortDecl, sorts}
-import viper.silver.ast
 import viper.silver.ast.Program
 
 /**
