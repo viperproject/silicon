@@ -333,11 +333,8 @@ object executor extends ExecutionRules {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     val sourceInfo = StmtAnalysisSourceInfo(stmt)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
-    if(false /* TODO ake: Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableDependencyAnalysis() &&
-      v.decider.pcs.getCurrentInfeasibilityNode.isDefined && !alwaysExecute(stmt)*/){
-      // TODO ake: this might be used as a performance optimization but then we would need to figure out
-      // which statements enforce some kind of proof obligations and which do not. Currently, all statements
-      // are considered to enforce some proof obligation.
+    if(Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableDependencyAnalysis() &&
+      v.decider.pcs.getCurrentInfeasibilityNode.isDefined && !alwaysExecute(stmt)){
       v.decider.dependencyAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode,
         v.decider.analysisSourceInfoStack.getFullSourceInfo, AssumptionType.Implicit)
       v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
@@ -460,14 +457,7 @@ object executor extends ExecutionRules {
                 val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
                 Q(s5, v2)
               case (Incomplete(_, _), s3, _) =>
-                val failure = createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")
-                if(Verifier.config.enableDependencyAnalysisFailureHandling){
-                  v2.decider.handleVerificationFailure(AssumptionType.Implicit)
-                  failure combine Q(s3, v2)
-                }else{
-                  failure
-                }
-            }}))
+                createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
@@ -549,14 +539,10 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
-          if (v1.decider.checkSmoke(isAssert=true, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Explicit)))
+          if (v1.decider.checkSmoke(isAssert=true, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit)))
             QS(s1.copy(h = s.h), v1)
-          else if (Verifier.config.enableDependencyAnalysisFailureHandling) {
-            v1.decider.handleVerificationFailure(AssumptionType.Explicit)
-            failure combine QS(s1.copy(h = s.h), v1)
-          } else
-            failure
+          else
+            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
         })((s2, v2) =>
           if (Verifier.config.disableInfeasibilityChecks())
             Q(s2, v2)

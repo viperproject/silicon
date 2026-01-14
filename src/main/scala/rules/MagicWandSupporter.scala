@@ -403,7 +403,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
         // The proof script should transform the current state such that we can consume the wand's RHS.
         val prevSourceInfo = v2.decider.analysisSourceInfoStack.getAnalysisSourceInfos
         v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(List.empty)
-        val result = executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
+        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
           v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(prevSourceInfo)
           // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
@@ -415,8 +415,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, dependencyType.assumptionType)
           })
         })
-        v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(prevSourceInfo)
-        result
       })
     })
 
