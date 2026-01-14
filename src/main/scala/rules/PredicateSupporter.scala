@@ -6,10 +6,9 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.AssumptionType
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyType}
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
@@ -30,7 +29,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
            v: Verifier,
-           assumptionType: AssumptionType = AssumptionType.Rewrite)
+           dependencyType: DependencyType = DependencyType.Rewrite)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult
 
@@ -44,7 +43,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
              pve: PartialVerificationError,
              v: Verifier,
              pa: ast.PredicateAccess,
-             assumptionType: AssumptionType = AssumptionType.Rewrite)
+             dependencyType: DependencyType = DependencyType.Rewrite)
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult
 }
@@ -62,7 +61,7 @@ object predicateSupporter extends PredicateSupportRules {
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
            v: Verifier,
-           assumptionType: AssumptionType = AssumptionType.Rewrite)
+           dependencyType: DependencyType = DependencyType.Rewrite)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
@@ -75,7 +74,7 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v)((s1a, snap, v1) => {
+    consume(s1, body, true, pve, v, dependencyType.assertionType)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
@@ -90,10 +89,10 @@ object predicateSupporter extends PredicateSupportRules {
           quantifiedChunkSupporter.singletonSnapshotMap(s2, predicate, tArgs, predSnap, v1)
         v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
         val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-SM's value", true))
-        v1.decider.assumeDefinition(smValueDef, debugExp, assumptionType)
+        v1.decider.assumeDefinition(smValueDef, debugExp, dependencyType.assumptionType)
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program, v1, assumptionType, isExhale=false)
+            formalArgs, Option.when(withExp)(predicate.formalArgs), predicate, tArgs, eArgs, tPerm, ePerm, sm, s.program, v1, dependencyType.assumptionType, isExhale=false)
         val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
         val smCache = if (s2.heapDependentTriggers.contains(predicate)) {
@@ -118,7 +117,7 @@ object predicateSupporter extends PredicateSupportRules {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm, v1.decider.getAnalysisInfo(assumptionType))
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, eArgs, snap.get.convert(sorts.Snap), None, tPerm, ePerm, v1.decider.getAnalysisInfo(dependencyType.assumptionType))
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor,
@@ -139,7 +138,7 @@ object predicateSupporter extends PredicateSupportRules {
              pve: PartialVerificationError,
              v: Verifier,
              pa: ast.PredicateAccess,
-             assumptionType: AssumptionType = AssumptionType.Rewrite)
+             dependencyType: DependencyType = DependencyType.Rewrite)
             (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
@@ -165,11 +164,12 @@ object predicateSupporter extends PredicateSupportRules {
         true,
         None,
         pve,
-        v
+        v,
+        assumptionType=dependencyType.assumptionType
       )((s2, h2, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap.get), body, pve, v1, assumptionType)((s4, v2) => {
+        produce(s3, toSf(snap.get), body, pve, v1, dependencyType.assertionType)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
@@ -186,10 +186,10 @@ object predicateSupporter extends PredicateSupportRules {
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description)((s2, h1, snap, v1) => {
+      chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description, dependencyType.assertionType)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap.get), body, pve, v1, assumptionType)((s4, v2) => {
+        produce(s3, toSf(snap.get), body, pve, v1, dependencyType.assertionType)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =

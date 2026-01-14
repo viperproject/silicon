@@ -7,11 +7,11 @@
 package viper.silicon.rules
 
 import viper.silicon._
-import viper.silicon.dependencyAnalysis.AssumptionType
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyType}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
@@ -239,7 +239,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   proofScript: ast.Seqn,
                   pve: PartialVerificationError,
                   v: Verifier,
-                  assumptionType: AssumptionType = AssumptionType.Rewrite)
+                  dependencyType: DependencyType = DependencyType.Rewrite)
                  (Q: (State, Chunk, Verifier) => VerificationResult)
                  : VerificationResult = {
 
@@ -409,10 +409,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
-            wand.right, true, pve, proofScriptVerifier
+            wand.right, true, pve, proofScriptVerifier, dependencyType.assertionType
           )((s3, snapRhs, v3) => {
             analysisLabels = v.decider.pcs.after(prePackageMark).analysisLabels
-            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, assumptionType)
+            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, dependencyType.assumptionType)
           })
         })
         v2.decider.analysisSourceInfoStack.setAnalysisSourceInfo(prevSourceInfo)
@@ -425,7 +425,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
       val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
-      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v, assumptionType)
+      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v, dependencyType.assumptionType)
     }
 
     // some of the analysis labels, introduced while verifying the package statement, might be needed later on -> reassume them
@@ -472,13 +472,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
                 wand: ast.MagicWand,
                 pve: PartialVerificationError,
                 v: Verifier,
-                assumptionType: AssumptionType = AssumptionType.Rewrite)
+                dependencyType: DependencyType = DependencyType.Rewrite)
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
-    consume(s, wand, true, pve, v)((s1, snapWand, v1) => {
+    consume(s, wand, true, pve, v, dependencyType.assertionType)((s1, snapWand, v1) => {
       // Consume the wand's LHS "A".
-      consume(s1, wand.left, true, pve, v1)((s2, snapLhs, v2) => {
+      consume(s1, wand.left, true, pve, v1, dependencyType.assertionType)((s2, snapLhs, v2) => {
         /* It is assumed that snap and MagicWandSnapshot.abstractLhs are structurally the same.
          * Equating the two snapshots is sound iff a wand is applied only once.
          * The old solution in this case did use this assumption:
@@ -495,13 +495,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
           case SortWrapper(snapshot: MagicWandSnapshot, _) => snapshot.applyToMWSF(snapLhs.get)
           // Fallback solution for quantified magic wands
           case predicateLookup: PredicateLookup =>
-            v2.decider.assume(snapLhs.get === First(snapWand.get), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", isInternal_ = true)), assumptionType)
+            v2.decider.assume(snapLhs.get === First(snapWand.get), Option.when(withExp)(DebugExp.createInstance("Magic wand snapshot", isInternal_ = true)), dependencyType.assumptionType)
             Second(predicateLookup)
           case _ => snapWand.get
         }
 
         // Produce the wand's RHS.
-        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2, assumptionType)((s4, v3) => {
+        produce(s3.copy(conservingSnapshotGeneration = true), toSf(magicWandSnapshotLookup), wand.right, pve, v2, dependencyType.assumptionType)((s4, v3) => {
           // Recreate old state without the magic wand, and the state with the oldHeap called lhs.
           val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
 

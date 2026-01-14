@@ -1,25 +1,63 @@
+field f: Int
 
-
-method foo(a: Int) returns (res: Int)
-    requires a > 0
-    ensures res > 0
+method foo(a: Int, x: Ref) returns (res: Int)
+    ensures res >= 0
 {
-    res := a + 1
+    if(a < 0){
+        res := x.f
+    }else{
+        res := a
+    }
 }
 
-
-method bar(a: Int) returns (res: Int)
-    requires a > 0
-    ensures res > 0
+method aTest()
+    ensures false
 {
-    res := foo(a+1)
-    assert res >= 0
+    assert false
+}
 
-    var b: Int
-    assume b > 0
-    assume b < 100
-    assert b >= 0
+method bar()
+{
+    var a: Int
+    assert a > 0
 
-    b := 0
-    b := 1
+    assert a >= 0
+
+    a := 0
+
+    assert a == 0
+}
+
+method permTest(x: Ref)
+    requires acc(x.f)
+{
+    x.f := 0
+}
+
+predicate p(a: Int, x: Ref){
+    acc(x.f, 1/2) && a == x.f
+}
+
+method pTest(x: Ref, a: Int)
+    requires p(a, x)
+    requires a == 0
+{
+    unfold p(a, x)
+
+    assert a == x.f
+
+    assert a > 0
+
+    var i: Int
+    i := 0
+    assert i == 0
+}
+
+method unreachTest(a: Int, x: Ref)
+    requires a > 0
+{
+    if(a < 0){
+        x.f := a
+        assert false
+    }
 }

@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{DependencyAnalyzer, AssumptionType, ExpAnalysisSourceInfo, StmtAnalysisSourceInfo, TransitivityAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyType, ExpAnalysisSourceInfo, StmtAnalysisSourceInfo, TransitivityAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
@@ -271,7 +271,7 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
+                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, AssumptionType.LoopInvariant)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -305,7 +305,7 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
+            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, AssumptionType.LoopInvariant)((_, _, _) =>
               Success())
         }
     }
@@ -370,7 +370,10 @@ object executor extends ExecutionRules {
         v.decider.prover.comment("[exec]")
         v.decider.prover.comment(stmt.toString())
     }
-    val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(stmt.info)
+
+    val annotatedDependencyTypeOpt = DependencyAnalyzer.extractDependencyTypeFromInfo(stmt.info)
+    val annotatedAssumptionTypeOpt = annotatedDependencyTypeOpt.map(_.assumptionType)
+    val annotatedAssertionTypeOpt = annotatedDependencyTypeOpt.map(_.assertionType)
 
     val executed = stmt match {
       case ast.Seqn(stmts, _) =>
@@ -476,7 +479,7 @@ object executor extends ExecutionRules {
             val description = s"consume ${ass.pos}: $ass"
             val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, ExpAnalysisSourceInfo(fa))
             v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Implicit))((s3, h3, _, v3) => {
               v2.decider.analysisSourceInfoStack.removeForcedSource()
               val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
               val id = BasicChunkIdentifier(field.name)
@@ -540,14 +543,14 @@ object executor extends ExecutionRules {
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, v1) =>
+        consume(s, a, false, pve, v, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
           val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
-          if (v1.decider.checkSmoke(isAssert=true, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit)))
+          if (v1.decider.checkSmoke(isAssert=true, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Explicit)))
             QS(s1.copy(h = s.h), v1)
           else if (Verifier.config.enableDependencyAnalysisFailureHandling) {
             v1.decider.handleVerificationFailure(AssumptionType.Explicit)
@@ -563,7 +566,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, false, AssertFailed(assert), v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((_, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Explicit))((_, _, _) =>
             Success())
 
         r combine Q(s, v)
@@ -579,11 +582,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s2, _, v1) => {
+          consume(s, a, false, pve, v, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Explicit))((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, v1) => {
+          consume(s, a, false, pve, v, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Explicit))((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -646,7 +649,7 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
-          consumes(s2, meth.pres, false, _ => pvePre, v1)((s3, _, v2) => {
+          consumes(s2, meth.pres, false, _ => pvePre, v1, assumptionType=annotatedAssertionTypeOpt.getOrElse(AssumptionType.Implicit))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
@@ -669,14 +672,14 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
-        val predicateAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info)
-        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(predicateAnnotatedAssumptionType.getOrElse(AssumptionType.Rewrite))
+        val predicateAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info).map(DependencyType.make)
+        val finalDependencyType = annotatedDependencyTypeOpt.getOrElse(predicateAnnotatedAssumptionType.getOrElse(DependencyType.Rewrite))
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, finalAssumptionType)((s4, v4) => {
+              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, finalDependencyType)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }
@@ -687,8 +690,8 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
-        val predicateAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info)
-        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(predicateAnnotatedAssumptionType.getOrElse(AssumptionType.Rewrite))
+        val predicateAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info).map(DependencyType.make)
+        val finalDependencyType = annotatedDependencyTypeOpt.getOrElse(predicateAnnotatedAssumptionType.getOrElse(DependencyType.Rewrite))
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
@@ -710,7 +713,7 @@ object executor extends ExecutionRules {
 
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, finalAssumptionType)(
+              predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, finalDependencyType)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   Q(s4, v4)
@@ -720,7 +723,7 @@ object executor extends ExecutionRules {
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Rewrite))((s1, chWand, v1) => {
+          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v, annotatedDependencyTypeOpt.getOrElse(DependencyType.Rewrite))((s1, chWand, v1) => {
 
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
@@ -764,7 +767,7 @@ object executor extends ExecutionRules {
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        magicWandSupporter.applyWand(s, e, pve, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Rewrite))(Q)
+        magicWandSupporter.applyWand(s, e, pve, v, annotatedDependencyTypeOpt.getOrElse(DependencyType.Rewrite))(Q)
 
       case havoc: ast.Quasihavoc =>
         havocSupporter.execHavoc(havoc, v, s, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Explicit))(Q)
