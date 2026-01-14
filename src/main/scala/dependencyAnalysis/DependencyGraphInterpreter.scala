@@ -281,9 +281,9 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
         s"#Verification Errors: ${errors.size}" + "\n\n" +
       "\n" +
       s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
-      s"${fullyVerifiedAssertions.size}/${relevantAssertions.keySet.size} = $verificationProgressPeter" + "\n" +
+      s"${fullyVerifiedAssertions.size}/${relevantAssertions.keySet.size} = ${"%.2f".format(verificationProgressPeter)}" + "\n" +
       s"Verification Progress (Lea):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
-        s"${proofQualityPerAssertion.sum}/${relevantAssertions.keys.size} = $verificationProgressLea" + "\n"
+        f"${"%.2f".format(proofQualityPerAssertion.sum)}/${relevantAssertions.keys.size} = ${"%.2f".format(verificationProgressLea)}" + "\n"
     }
     (verificationProgressPeter, verificationProgressLea, info)
   }
