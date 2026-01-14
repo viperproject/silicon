@@ -139,7 +139,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   private def handleVerificationProgressQuery(): Unit = {
-    println("Computing verification progress...")
+    if(verificationErrors.nonEmpty) println(s"Fix verification failures first!")
+
     val ((progress, _, info), time) = measureTime(fullGraphInterpreter.computeVerificationProgress())
     println(s"Overall verification progress: $progress")
     println(s"$info")
@@ -267,6 +268,11 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   def handleVerificationGuidanceQuery(): Unit = {
+    if(verificationErrors.nonEmpty) {
+      println(s"Fix verification failures first!")
+      return
+    }
+
     val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking().filter(_._2 > 0)
     println(s"Assumptions and the number of dependencies:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
@@ -274,8 +280,5 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       .map(mInterpreter => (mInterpreter.getMember.get.name, mInterpreter.computeUncoveredStatements()))
       .toList.filter(_._2 > 0).sortBy(_._2).reverse
     println(s"Members and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
-
-    val errorRanking = fullGraphInterpreter.computeFailureRanking()
-    println(s"Errors and the number of dependents:\n\t${errorRanking.mkString("\n\t")}\n")
   }
 }

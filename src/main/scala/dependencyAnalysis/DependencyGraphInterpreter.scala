@@ -229,8 +229,6 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     val endTime = System.nanoTime()
     println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
-    // TODO ake: what to do with partially verified assertions? Currently, we take them into account for spec quality but
-    // consider the assertion to not be verified at all for proof quality.
 
     val relevantDependencies = toUserLevelNodes(relevantDependenciesPerAssertion.flatMap(_._2))
 
@@ -296,12 +294,6 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   /* returns an ordered list of (Assumption, #dependents) */
   def computeAssumptionRanking(): List[(String, Int)] = {
     toUserLevelNodes(getExplicitAssumptionNodes).map(node => (node.toString, getAllNonInternalDependents(node.lowerLevelNodes.map(_.id)).size))
-      .toList.sortBy(_._2).reverse
-  }
-
-  def computeFailureRanking(): List[(String, Int)] = {
-    toUserLevelNodes(getNodesWithIdenticalSource(getAssertionNodesWithFailures.map(_.asInstanceOf[DependencyAnalysisNode])))
-      .map(node => (node.toString, getAllNonInternalDependents(node.lowerLevelNodes.map(_.id)).size))
       .toList.sortBy(_._2).reverse
   }
 
