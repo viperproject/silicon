@@ -216,7 +216,7 @@ class FunctionData(val programFunction: ast.Function,
 
       def wrapBody(body: Term): Term = Let(toMap(bodyBindings), body)
 
-      if(Verifier.config.enableDependencyAnalysis()){
+      if(isAnalysisEnabled){
         val assumptionType = if(programFunction.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition
         (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), Option.empty[(AnalysisSourceInfo, AssumptionType)]) +:
           programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>
