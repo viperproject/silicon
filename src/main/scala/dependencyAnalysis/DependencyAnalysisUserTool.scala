@@ -142,7 +142,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     if(verificationErrors.nonEmpty) println(s"Fix verification failures first!")
 
     val ((progress, _, info), time) = measureTime(fullGraphInterpreter.computeVerificationProgress())
-    println(s"Overall verification progress: $progress")
+//    println(s"Overall verification progress: $progress")
     println(s"$info")
     println(s"Finished in ${time}ms")
   }

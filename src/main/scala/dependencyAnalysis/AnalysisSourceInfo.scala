@@ -17,6 +17,8 @@ object AnalysisSourceInfo {
 abstract class AnalysisSourceInfo {
   override def toString: String = getPositionString
 
+  def getDescription: String
+
   def getLineNumber: Option[Int] = getPosition match {
     case column: HasLineColumn => Some(column.line)
     case _ => None
@@ -60,14 +62,15 @@ abstract class AnalysisSourceInfo {
 case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
   override def getPosition: Position = NoPosition
 
+  override def getDescription: String = ""
+
   override def equals(obj: Any): Boolean = false
 }
 
 case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
   override val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = source.info.getUniqueInfo[DependencyAnalysisInfo]
 
-  override def toString: String = (if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.info else source.toString).replaceAll("\n", "\t") +
-    " (" + super.toString + ")"
+  override def toString: String = getDescription + " (" + super.toString + ")"
 
   override def getPosition: Position = if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.pos else source.pos
 
@@ -80,13 +83,14 @@ case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
   }
 
   override def isAnalysisEnabled: Boolean = DependencyAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
+
+  override def getDescription: String = (if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.info else source.toString).replaceAll("\n", "\t")
 }
 
 case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
   override val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = source.info.getUniqueInfo[DependencyAnalysisInfo]
 
-  override def toString: String = (if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.info else source.toString()).replaceAll("\n", "\t") +
-    " (" + super.toString + ")"
+  override def toString: String = getDescription + " (" + super.toString + ")"
   override def getPosition: Position = if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.pos else source.pos
 
   override def equals(obj: Any): Boolean = {
@@ -98,10 +102,12 @@ case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
   }
 
   override def isAnalysisEnabled: Boolean = DependencyAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
+
+  override def getDescription: String = (if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.info else source.toString()).replaceAll("\n", "\t")
 }
 
 case class StringAnalysisSourceInfo(description: String, position: Position) extends AnalysisSourceInfo {
-  override def toString: String = description.replaceAll("\n", "\t") + " (" + super.toString + ")"
+  override def toString: String = getDescription + " (" + getPositionString + ")"
   override def getPosition: Position = position
 
   override def equals(obj: Any): Boolean =
@@ -110,6 +116,8 @@ case class StringAnalysisSourceInfo(description: String, position: Position) ext
         info.description.equals(this.description) && info.getPosition.equals(this.getPosition)
       case _ => false
     }
+
+  override def getDescription: String = description.replaceAll("\n", "\t")
 }
 
 case class TransitivityAnalysisSourceInfo(actualSource: AnalysisSourceInfo, transitivitySource: AnalysisSourceInfo) extends AnalysisSourceInfo {
@@ -123,6 +131,8 @@ case class TransitivityAnalysisSourceInfo(actualSource: AnalysisSourceInfo, tran
   override def getTopLevelSource: AnalysisSourceInfo = actualSource.getTopLevelSource
   override def getFineGrainedSource: AnalysisSourceInfo = actualSource.getFineGrainedSource
   override def isAnalysisEnabled: Boolean = actualSource.isAnalysisEnabled
+
+  override def getDescription: String = actualSource.getDescription
 }
 
 case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, fineGrainedSource: AnalysisSourceInfo) extends AnalysisSourceInfo {
@@ -135,4 +145,6 @@ case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, 
   override def getFineGrainedSource: AnalysisSourceInfo = fineGrainedSource.getFineGrainedSource
 
   override def isAnalysisEnabled: Boolean = coarseGrainedSource.isAnalysisEnabled && fineGrainedSource.isAnalysisEnabled
+
+  override def getDescription: String = coarseGrainedSource.getDescription
 }

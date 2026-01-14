@@ -1,6 +1,6 @@
 package dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisNode, GeneralAssertionNode, GeneralAssumptionNode}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisNode, GeneralAssertionNode, GeneralAssumptionNode, StringAnalysisSourceInfo}
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.state.terms.{And, Term}
 import viper.silver.ast.Position
@@ -8,8 +8,10 @@ import viper.silver.ast.Position
 object UserLevelDependencyAnalysisNode {
 
   def from(dependencyNodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
-    val res = dependencyNodes.groupBy(_.sourceInfo.getTopLevelSource.toString).map { case (_, nodes) =>
-      UserLevelDependencyAnalysisNode(nodes.head.sourceInfo.getTopLevelSource, nodes.toSet) // TODO ake
+    val res = dependencyNodes
+      .map(n => (StringAnalysisSourceInfo(n.sourceInfo.getDescription, n.sourceInfo.getPosition), n))
+      .groupBy(_._1).map { case (key, nodes) =>
+      UserLevelDependencyAnalysisNode(key, nodes.map(_._2).toSet)
     }.toSet
     res
   }
