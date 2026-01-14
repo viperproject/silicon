@@ -224,13 +224,13 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val startTime = System.nanoTime()
     // TODO ake: this is suuuper slow. Can we reuse previously computed results? Caching?
     val relevantDependenciesPerAssertion = allAssertions
-      .map(ass => (ass, getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id)))).toMap
+      .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id))).diff(Set(ass)))).toMap
       .filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures} // filter out trivial assertions like `assert true`
 
     val endTime = System.nanoTime()
     println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
 
-    val relevantDependencies = toUserLevelNodes(relevantDependenciesPerAssertion.flatMap(_._2))
+    val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2).toSet
 
     // covered
     val coveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(relevantDependencies)
@@ -245,8 +245,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     // assertions
     val relevantAssertions = relevantDependenciesPerAssertion // TODO ake: maybe .filter(_._1.lowLevelAssertionNodes.exists(n => !n.isInstanceOf[SimpleCheckNode]))
-    val assertionsWithFailures = relevantAssertions.keySet.filter(_.hasFailures)
-    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.contains(d.assumptionType))).keySet.diff(assertionsWithFailures)
+    val assertionsWithFailures = relevantAssertions.keySet.filter(_.hasFailures) // should be empty to get a reasonable progress metric
+    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.diff(assertionsWithFailures)
     val fullyVerifiedAssertions = relevantAssertions.keySet.diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
 
     // Peter's metric
@@ -257,10 +257,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     // Lea's metric
     val proofQualityPerAssertion = relevantAssertions.map { case (assertion, assumptions) =>
       if(assertion.hasFailures) 0.0
-      else{
-        val userLevelAssumptions = toUserLevelNodes(assumptions)
-        UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(userLevelAssumptions).size.toDouble / userLevelAssumptions.size.toDouble
-      }
+      else UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions).size.toDouble / assumptions.size.toDouble
     }
 
     val proofQualityLea =  proofQualityPerAssertion.sum / relevantAssertions.keys.size.toDouble
