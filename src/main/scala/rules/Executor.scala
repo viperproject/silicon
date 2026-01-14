@@ -333,7 +333,7 @@ object executor extends ExecutionRules {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     val sourceInfo = StmtAnalysisSourceInfo(stmt)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
-    if(Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableDependencyAnalysis() &&
+    if(false /* TODO ake */ || Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableDependencyAnalysis() &&
       v.decider.pcs.getCurrentInfeasibilityNode.isDefined && !alwaysExecute(stmt)){
       v.decider.dependencyAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode,
         v.decider.analysisSourceInfoStack.getFullSourceInfo, AssumptionType.Implicit)
