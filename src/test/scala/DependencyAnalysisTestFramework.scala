@@ -16,6 +16,7 @@ trait DependencyAnalysisTestFramework {
   val irrelevantKeyword = "irrelevant"
   val dependencyKeyword = "dependency"
   val testAssertionKeyword = "testAssertion"
+  val EXPORT_PRUNED_PROGRAMS = false
 
   val ignores: Seq[String]
   var baseCommandLineArguments: Seq[String] = Seq("--timeout", "300" /* seconds */)
@@ -98,7 +99,7 @@ trait DependencyAnalysisTestFramework {
       val crucialNodes = relevantNodes ++ dependencies
       val (newProgram, pruningFactor) = fullGraphInterpreter.getPrunedProgram(crucialNodes, program)
       val result = frontend.verifier.verify(newProgram)
-      exportPrunedProgram(exportFileName, newProgram, pruningFactor, result)
+      if(EXPORT_PRUNED_PROGRAMS) exportPrunedProgram(exportFileName, newProgram, pruningFactor, result)
       assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program ${newProgram.toString()}")
     }
 

@@ -18,6 +18,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   val CHECK_PRECISION = false
   val EXECUTE_TEST = true
   val EXECUTE_PERFORMANCE_BENCHMARK = false
+  override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
