@@ -47,6 +47,17 @@ object UserLevelDependencyAnalysisNode {
   def mkUserLevelString(nodes: Set[DependencyAnalysisNode], sep: String = "\n"): String = {
     mkString(from(nodes), sep)
   }
+
+  implicit class SetNodeOps(private val left: Set[UserLevelDependencyAnalysisNode]) extends AnyVal {
+    def diffBySource(right: Set[UserLevelDependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
+      val sources = right.map(_.groupingCondition)
+      left.filterNot(n => sources.contains(n.groupingCondition))
+    }
+
+    def getSourceSet(): Set[AnalysisSourceInfo] = {
+      left.map(_.source)
+    }
+  }
 }
 
 case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, lowerLevelNodes: Set[DependencyAnalysisNode]) {
@@ -67,10 +78,7 @@ case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, lowerLeve
 
   override def toString: String = source.toString
 
-  override def hashCode(): Int = source.hashCode()
+  def groupingCondition: (String, Position) = (source.toString, position)
 
-  override def equals(obj: Any): Boolean = obj match {
-    case node: UserLevelDependencyAnalysisNode => this.source.getTopLevelSource.equals(node.source.getTopLevelSource)
-    case _ => false
-  }
+
 }

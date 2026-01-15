@@ -224,7 +224,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val startTime = System.nanoTime()
     // TODO ake: this is suuuper slow. Can we reuse previously computed results? Caching?
     val relevantDependenciesPerAssertion = allAssertions
-      .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id))).diff(Set(ass)))).toMap
+      .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id))).diffBySource(Set(ass)))).toMap
       .filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures} // filter out trivial assertions like `assert true`
 
     val endTime = System.nanoTime()
@@ -233,21 +233,21 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2).toSet
 
     // covered
-    val coveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(relevantDependencies)
-    val coveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(relevantDependencies).diff(coveredExplicitSources)
-    val coveredSourceCodeStmts = relevantDependencies.diff(coveredExplicitSources).diff(coveredVerificationAnnotations)
+    val coveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(relevantDependencies).getSourceSet()
+    val coveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(relevantDependencies).getSourceSet().diff(coveredExplicitSources)
+    val coveredSourceCodeStmts = relevantDependencies.getSourceSet().diff(coveredExplicitSources).diff(coveredVerificationAnnotations)
 
     // uncovered
-    val uncoveredNodes = toUserLevelNodes(getNonInternalAssumptionNodes).diff(relevantDependencies)
-    val uncoveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(uncoveredNodes)
-    val uncoveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(uncoveredNodes).diff(uncoveredExplicitSources)
-    val uncoveredSourceCodeStmts = uncoveredNodes.diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
+    val uncoveredNodes = toUserLevelNodes(getNonInternalAssumptionNodes).diffBySource(relevantDependencies)
+    val uncoveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(uncoveredNodes).getSourceSet()
+    val uncoveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(uncoveredNodes).getSourceSet().diff(uncoveredExplicitSources)
+    val uncoveredSourceCodeStmts = uncoveredNodes.getSourceSet().diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
 
     // assertions
     val relevantAssertions = relevantDependenciesPerAssertion // TODO ake: maybe .filter(_._1.lowLevelAssertionNodes.exists(n => !n.isInstanceOf[SimpleCheckNode]))
-    val assertionsWithFailures = relevantAssertions.keySet.filter(_.hasFailures) // should be empty to get a reasonable progress metric
-    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.diff(assertionsWithFailures)
-    val fullyVerifiedAssertions = relevantAssertions.keySet.diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
+    val assertionsWithFailures = relevantAssertions.keySet.filter(_.hasFailures).getSourceSet() // should be empty to get a reasonable progress metric
+    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.getSourceSet().diff(assertionsWithFailures)
+    val fullyVerifiedAssertions = relevantAssertions.keySet.getSourceSet().diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
 
     // Peter's metric
     val specQuality  = coveredSourceCodeStmts.size.toDouble / (coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble)
@@ -263,20 +263,25 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val proofQualityLea =  proofQualityPerAssertion.sum / relevantAssertions.keys.size.toDouble
     val verificationProgressLea = specQuality * proofQualityLea
 
+
+    def getString(nodes: Set[AnalysisSourceInfo]): String = {
+      nodes.toList.sortBy(_.getLineNumber).mkString(("\n\t\t"))
+    }
+
     val info = {
       s"Covered\n" +
-        s"\tExplicit Assumptions:\n\t\t${UserLevelDependencyAnalysisNode.mkString(coveredExplicitSources, "\n\t\t")}" + "\n" +
-        s"\tVerification Annotations:\n\t\t${UserLevelDependencyAnalysisNode.mkString(coveredVerificationAnnotations, "\n\t\t")}" + "\n" +
-        s"\tSource Code:\n\t\t${UserLevelDependencyAnalysisNode.mkString(coveredSourceCodeStmts, "\n\t\t")}" + "\n" +
+        s"\tExplicit Assumptions:\n\t\t${getString(coveredExplicitSources)}" + "\n" +
+        s"\tVerification Annotations:\n\t\t${getString(coveredVerificationAnnotations)}" + "\n" +
+        s"\tSource Code:\n\t\t${getString(coveredSourceCodeStmts)}" + "\n" +
         "\n" +
       s"Uncovered\n" +
-        s"\tExplicit Assumptions:\n\t\t${UserLevelDependencyAnalysisNode.mkString(uncoveredExplicitSources, "\n\t\t")}" + "\n" +
-        s"\tVerification Annotations:\n\t\t${UserLevelDependencyAnalysisNode.mkString(uncoveredVerificationAnnotations, "\n\t\t")}" + "\n" +
-        s"\tSource Code:\n\t\t${UserLevelDependencyAnalysisNode.mkString(uncoveredSourceCodeStmts, "\n\t\t")}" + "\n" +
+        s"\tExplicit Assumptions:\n\t\t${getString(uncoveredExplicitSources)}" + "\n" +
+        s"\tVerification Annotations:\n\t\t${getString(uncoveredVerificationAnnotations)}" + "\n" +
+        s"\tSource Code:\n\t\t${getString(uncoveredSourceCodeStmts)}" + "\n" +
         "\n" +
-      s"Fully verified assertions:\n\t${UserLevelDependencyAnalysisNode.mkString(fullyVerifiedAssertions, "\n\t")}" + "\n\n" +
-        s"Assertions depending on explicit assumptions:\n\t${UserLevelDependencyAnalysisNode.mkString(assertionsWithExplicitDeps, "\n\t")}" + "\n\n" +
-        s"Failing assertions:\n\t${UserLevelDependencyAnalysisNode.mkString(assertionsWithFailures, "\n\t")}\n\n" +
+      s"Fully verified assertions:\n\t\t${getString(fullyVerifiedAssertions)}" + "\n\n" +
+        s"Assertions depending on explicit assumptions:\n\t\t${getString(assertionsWithExplicitDeps)}" + "\n\n" +
+        s"Failing assertions:\n\t\t${getString(assertionsWithFailures)}\n\n" +
         "\n" +
         s"#Verification Errors: ${errors.size}" + "\n\n" +
       "\n" +
@@ -295,8 +300,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def computeUncoveredStatements(): Int = {
-    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractSourceCodeNodes(toUserLevelNodes(getNonInternalAssumptionNodes))
-    val coveredSourceCodeStmts = toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(getNonInternalAssertionNodes).map(_.id)))
+    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractSourceCodeNodes(toUserLevelNodes(getNonInternalAssumptionNodes)).getSourceSet()
+    val coveredSourceCodeStmts = toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(getNonInternalAssertionNodes).map(_.id))).getSourceSet()
     allSourceCodeStmts.diff(coveredSourceCodeStmts).size
   }
 }
