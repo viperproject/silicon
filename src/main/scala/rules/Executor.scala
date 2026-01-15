@@ -612,9 +612,8 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call)
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
-        val methodAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(meth.info) // TODO: make sure the join can still be made?
-        val defaultAssumptionType = AssumptionType.CallPostcondition
-        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(methodAnnotatedAssumptionType.getOrElse(defaultAssumptionType))
+        // TODO: make sure the join can still be made!
+        val finalAssumptionType = annotatedAssumptionTypeOpt.getOrElse(AssumptionType.CallPostcondition)
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)
@@ -642,7 +641,7 @@ object executor extends ExecutionRules {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, finalAssumptionType)((s5, v3) => {
+            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, AssumptionType.CallPostcondition)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
