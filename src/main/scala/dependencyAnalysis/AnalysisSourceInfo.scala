@@ -12,6 +12,21 @@ object AnalysisSourceInfo {
       case VirtualPosition(identifier) => "label " + identifier
     }
   }
+
+  def createAnalysisSourceInfo(exp: ast.Exp): AnalysisSourceInfo = {
+    val depInfo = exp.info.getUniqueInfo[FrontendDependencyAnalysisInfo]
+    if(depInfo.isDefined) depInfo.get.createAnalysisSourceInfo()
+    else ExpAnalysisSourceInfo(exp, exp.pos)
+  }
+
+  def createAnalysisSourceInfo(stmt: ast.Stmt): AnalysisSourceInfo = {
+    val depInfo = stmt.info.getUniqueInfo[FrontendDependencyAnalysisInfo]
+    if(depInfo.isDefined) depInfo.get.createAnalysisSourceInfo()
+    else StmtAnalysisSourceInfo(stmt, stmt.pos)
+  }
+
+  def createAnalysisSourceInfo(description: String, pos: Position): AnalysisSourceInfo = StringAnalysisSourceInfo(description, pos)
+
 }
 
 abstract class AnalysisSourceInfo {
@@ -47,16 +62,6 @@ abstract class AnalysisSourceInfo {
   def getFineGrainedSource: AnalysisSourceInfo = this
 
   def isAnalysisEnabled: Boolean = true
-
-  val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = None
-
-  override def equals(obj: Any): Boolean = obj match {
-    case other: AnalysisSourceInfo => this.getPosition.equals(other.getPosition) && this.toString.equals(other.toString)
-    case _ => false
-  }
-
-  override def hashCode(): Int =
-    (this.toString + this.getPosition.toString).hashCode
 }
 
 case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
@@ -67,55 +72,30 @@ case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
   override def equals(obj: Any): Boolean = false
 }
 
-case class ExpAnalysisSourceInfo(source: ast.Exp) extends AnalysisSourceInfo {
-  override val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = source.info.getUniqueInfo[DependencyAnalysisInfo]
+case class ExpAnalysisSourceInfo(source: ast.Exp, pos: Position) extends AnalysisSourceInfo {
 
   override def toString: String = getDescription + " (" + super.toString + ")"
 
-  override def getPosition: Position = if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.pos else source.pos
-
-  override def equals(obj: Any): Boolean = {
-    obj match {
-      case info: ExpAnalysisSourceInfo =>
-        info.source.equals(this.source) && info.getPosition.equals(this.getPosition)
-      case _ => false
-    }
-  }
+  override def getPosition: Position = pos
 
   override def isAnalysisEnabled: Boolean = DependencyAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
 
-  override def getDescription: String = (if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.info else source.toString).replaceAll("\n", "\t")
+  override def getDescription: String = source.toString.replaceAll("\n", "\t")
 }
 
-case class StmtAnalysisSourceInfo(source: ast.Stmt) extends AnalysisSourceInfo {
-  override val dependencyAnalysisInfo: Option[DependencyAnalysisInfo] = source.info.getUniqueInfo[DependencyAnalysisInfo]
+case class StmtAnalysisSourceInfo(source: ast.Stmt, pos: Position) extends AnalysisSourceInfo {
 
   override def toString: String = getDescription + " (" + super.toString + ")"
-  override def getPosition: Position = if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.pos else source.pos
-
-  override def equals(obj: Any): Boolean = {
-    obj match {
-      case info: StmtAnalysisSourceInfo =>
-        info.source.equals(this.source) && info.getPosition.equals(this.getPosition)
-      case _ => false
-    }
-  }
+  override def getPosition: Position = pos
 
   override def isAnalysisEnabled: Boolean = DependencyAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
 
-  override def getDescription: String = (if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.info else source.toString()).replaceAll("\n", "\t")
+  override def getDescription: String = source.toString().replaceAll("\n", "\t")
 }
 
 case class StringAnalysisSourceInfo(description: String, position: Position) extends AnalysisSourceInfo {
   override def toString: String = getDescription + " (" + getPositionString + ")"
   override def getPosition: Position = position
-
-  override def equals(obj: Any): Boolean =
-    obj match {
-      case info: StringAnalysisSourceInfo =>
-        info.description.equals(this.description) && info.getPosition.equals(this.getPosition)
-      case _ => false
-    }
 
   override def getDescription: String = description.replaceAll("\n", "\t")
 }
@@ -124,8 +104,6 @@ case class TransitivityAnalysisSourceInfo(actualSource: AnalysisSourceInfo, tran
 
   override def getPosition: Position = actualSource.getPosition
   override def toString: String = getTopLevelSource.toString
-
-  override def equals(obj: Any): Boolean = actualSource.equals(obj)
 
   override def getSourceForTransitiveEdges: AnalysisSourceInfo = transitivitySource.getTopLevelSource
   override def getTopLevelSource: AnalysisSourceInfo = actualSource.getTopLevelSource
@@ -138,8 +116,6 @@ case class TransitivityAnalysisSourceInfo(actualSource: AnalysisSourceInfo, tran
 case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, fineGrainedSource: AnalysisSourceInfo) extends AnalysisSourceInfo {
   override def toString: String = getTopLevelSource.toString
   override def getPosition: Position = coarseGrainedSource.getPosition
-
-  override def equals(obj: Any): Boolean = coarseGrainedSource.equals(obj)
 
   override def getTopLevelSource: AnalysisSourceInfo = coarseGrainedSource.getTopLevelSource
   override def getFineGrainedSource: AnalysisSourceInfo = fineGrainedSource.getFineGrainedSource

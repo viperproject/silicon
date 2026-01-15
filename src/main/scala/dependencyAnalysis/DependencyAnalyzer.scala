@@ -126,7 +126,7 @@ object DependencyAnalyzer {
 
   def extractDependencyTypeFromInfo(info: ast.Info): Option[DependencyType] = {
     val annotation = extractAnnotationFromInfo(info, assumptionTypeAnnotationKey)
-    val dependencyAnalysisInfo = info.getUniqueInfo[DependencyAnalysisInfo]
+    val dependencyAnalysisInfo = info.getUniqueInfo[FrontendDependencyAnalysisInfo]
     if(annotation.isDefined && annotation.get.nonEmpty) AssumptionType.fromString(annotation.get.head).map(DependencyType.make)
     else if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.dependencyType
     else None
@@ -192,12 +192,12 @@ object DependencyAnalyzer {
     val axiomAssertionNodes = joinCandidateNodes
       .filter(n => (n.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(n.assumptionType))
       || AssumptionType.FunctionBody.equals(n.assumptionType))
-      .groupBy(_.getUserLevelRepresentation)
+      .groupBy(_.sourceInfo.getTopLevelSource)
       .view.mapValues(_.map(_.id))
       .toMap
     joinCandidateNodes.filter(_.isInstanceOf[AxiomAssumptionNode])
       .groupBy(n => n.sourceInfo)
-      .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo.toString, Seq.empty))}
+      .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo.getTopLevelSource, Seq.empty))}
       .foreach{case (axiomNodeIds, assertionNodeIds) =>
         newGraph.addEdges(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
     }
@@ -383,8 +383,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
-    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, ExpAnalysisSourceInfo(e), AssumptionType.Precondition, None))
-    val targetNodes = targetExps.flatMap(e => addAssertNode(True, AssumptionType.ExplicitPostcondition, ExpAnalysisSourceInfo(e)))
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, AnalysisSourceInfo.createAnalysisSourceInfo(e), AssumptionType.Precondition, None))
+    val targetNodes = targetExps.flatMap(e => addAssertNode(True, AssumptionType.ExplicitPostcondition, AnalysisSourceInfo.createAnalysisSourceInfo(e)))
     dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
@@ -428,10 +428,9 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       mergedGraph.addNode(n)
     }
 
-    val nodesBySource = dependencyGraph.getNodes.filter(!keepNode(_))
-      .groupBy(n => (n.sourceInfo.getSourceForTransitiveEdges.toString, n.sourceInfo, n.sourceInfo.getFineGrainedSource.toString, n.assumptionType))
+    val nodesBySource = dependencyGraph.getNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType))
 
-    nodesBySource foreach { case ((_, sourceInfo, _, assumptionType), nodes) =>
+    nodesBySource foreach { case ((sourceInfo, assumptionType), nodes) =>
       val assumptionNodes = nodes.filter(_.isInstanceOf[GeneralAssumptionNode])
       if (assumptionNodes.nonEmpty) {
         val newNode = SimpleAssumptionNode(True, None, sourceInfo, assumptionType, isClosed = false)
@@ -440,7 +439,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       }
     }
 
-    nodesBySource foreach { case ((_, sourceInfo, _, assumptionType), nodes) =>
+    nodesBySource foreach { case ((sourceInfo, assumptionType), nodes) =>
       val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode])
       if (assertionNodes.nonEmpty) {
         val newNode = SimpleAssertionNode(True, assumptionType, sourceInfo, isClosed = false, hasFailed=assertionNodes.exists(_.hasFailed))

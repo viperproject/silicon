@@ -283,7 +283,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
-              decider.analysisSourceInfoStack.setForcedSource(ExpAnalysisSourceInfo(body))
+              decider.analysisSourceInfoStack.setForcedSource(AnalysisSourceInfo.createAnalysisSourceInfo(body))
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.FunctionBody)
               decider.analysisSourceInfoStack.removeForcedSource()
               consumes(s2, posts, false, postconditionViolated, v, postConditionType)((s3, _, _) => {

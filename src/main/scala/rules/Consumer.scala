@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisInfo, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{AnalysisInfo, AnalysisSourceInfo, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.Chunk
@@ -183,7 +183,7 @@ object consumer extends ConsumptionRules {
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
-      val sourceInfo = ExpAnalysisSourceInfo(a)
+      val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(a)
       v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
 
       consumeTlc(s1, h0, a, returnSnap, pve, v1, assumptionType)((s2, h2, snap2, v2) => {

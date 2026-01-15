@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.dependencyAnalysis.{DependencyAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, ExpAnalysisSourceInfo}
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
@@ -154,7 +154,7 @@ object producer extends ProductionRules {
       val a = as.head.whenInhaling
       val pve = pves.head
 
-      val sourceInfo = ExpAnalysisSourceInfo(a)
+      val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(a)
       v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v, assumptionType)((s1, v1) => {

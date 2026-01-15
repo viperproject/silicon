@@ -221,7 +221,7 @@ class FunctionData(val programFunction: ast.Function,
         (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), Option.empty[(AnalysisSourceInfo, AssumptionType)]) +:
           programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>
             val terms = expressionTranslator.translatePostcondition(program, Seq(p), this)
-            (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True), Some((ExpAnalysisSourceInfo(p), assumptionType)))
+            (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True), Some((AnalysisSourceInfo.createAnalysisSourceInfo(p), assumptionType)))
           })
       }else{
         val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
@@ -297,7 +297,7 @@ class FunctionData(val programFunction: ast.Function,
       val allTriggers = (
            Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
-      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((ExpAnalysisSourceInfo(programFunction.body.get), AssumptionType.Implicit)))
+      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), AssumptionType.Implicit)))
     })
   }
 

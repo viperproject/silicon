@@ -106,7 +106,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
         val enableAnalysis = DependencyAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
-        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), Option.when(enableAnalysis)((ExpAnalysisSourceInfo(axiom.exp), AssumptionType.Explicit))))
+        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), Option.when(enableAnalysis)((AnalysisSourceInfo.createAnalysisSourceInfo(axiom.exp), AssumptionType.Explicit))))
       })
     })
   }

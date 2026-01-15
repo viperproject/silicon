@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyType, ExpAnalysisSourceInfo, StmtAnalysisSourceInfo, TransitivityAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType, ExpAnalysisSourceInfo, StmtAnalysisSourceInfo, TransitivityAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
@@ -331,7 +331,7 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    val sourceInfo = StmtAnalysisSourceInfo(stmt)
+    val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(stmt)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
     if(false /* TODO ake */ || Verifier.config.disableInfeasibilityChecks() && Verifier.config.enableDependencyAnalysis() &&
       v.decider.pcs.getCurrentInfeasibilityNode.isDefined && !alwaysExecute(stmt)){
@@ -419,7 +419,7 @@ object executor extends ExecutionRules {
               s2
             }
             v2.decider.clearModel()
-            val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, ExpAnalysisSourceInfo(fa))
+            val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(fa))
             v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
             val result = quantifiedChunkSupporter.removePermissions(
               s2p,
@@ -467,7 +467,7 @@ object executor extends ExecutionRules {
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, ExpAnalysisSourceInfo(fa))
+            val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(fa))
             v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
             chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Implicit))((s3, h3, _, v3) => {
               v2.decider.analysisSourceInfoStack.removeForcedSource()

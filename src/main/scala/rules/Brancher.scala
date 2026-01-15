@@ -6,7 +6,8 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.{ExpAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, ExpAnalysisSourceInfo}
+
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
@@ -57,7 +58,7 @@ object brancher extends BranchingRules {
           && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
-    val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
+    val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
@@ -159,7 +160,7 @@ object brancher extends BranchingRules {
           v0.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
+            val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
             v1.decider.pcs.setCurrentInfeasibilityNode(elseInfeasibilityNode)
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
@@ -214,7 +215,7 @@ object brancher extends BranchingRules {
           v.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-            val sourceInfo = ExpAnalysisSourceInfo(conditionExp._1)
+            val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
             v1.decider.pcs.setCurrentInfeasibilityNode(thenInfeasibilityNode)
             v1.decider.setCurrentBranchCondition(condition, conditionExp)
