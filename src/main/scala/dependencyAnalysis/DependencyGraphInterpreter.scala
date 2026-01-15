@@ -216,16 +216,16 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def computeVerificationProgress(): (Double, Double, String)  = {
     val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
 
-    println(s"#assertions: ${allAssertions.size}")
+//    println(s"#assertions: ${allAssertions.size}")
 
-    val startTime = System.nanoTime()
+//    val startTime = System.nanoTime()
     // TODO ake: this is suuuper slow. Can we reuse previously computed results? Caching?
     val relevantDependenciesPerAssertion = allAssertions
       .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id))).diffBySource(Set(ass)))).toMap
       .filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures} // filter out trivial assertions like `assert true`
 
-    val endTime = System.nanoTime()
-    println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
+//    val endTime = System.nanoTime()
+//    println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
 
     val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2).filter(_.assumptionTypes.nonEmpty).toSet
 
