@@ -11,10 +11,8 @@ object AssumptionType extends Enumeration {
   def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition, CallPostcondition) // used to join graphs via postconditions
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
   def internalTypes: Set[AssumptionType] = Set(Internal) // will always be hidden from user
-  def implicitTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes).diff(internalTypes)
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
   def verificationAnnotationTypes: Set[AssumptionType] = Set(LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, Precondition, Explicit)
-  def sourceCodeStatementTypes: Set[AssumptionType] = Set(PathCondition, Implicit, CallPostcondition, FunctionBody)
 }
 
 import viper.silicon.dependencyAnalysis.AssumptionType._
@@ -24,7 +22,7 @@ object DependencyType {
 
   val Implicit: DependencyType = DependencyType(AssumptionType.Implicit, AssumptionType.Implicit)
   val Explicit: DependencyType = DependencyType(AssumptionType.Explicit, AssumptionType.Explicit)
-  val ExplicitAssertion: DependencyType = DependencyType(AssumptionType.Implicit, AssumptionType.Explicit)
+  val ExplicitAssertion: DependencyType = DependencyType(AssumptionType.Internal, AssumptionType.Explicit)
   val ExplicitAssumption: DependencyType = DependencyType(AssumptionType.Explicit, AssumptionType.Implicit)
   val PathCondition: DependencyType = DependencyType(AssumptionType.PathCondition, AssumptionType.Implicit)
   val Invariant: DependencyType = DependencyType(AssumptionType.LoopInvariant, AssumptionType.LoopInvariant)

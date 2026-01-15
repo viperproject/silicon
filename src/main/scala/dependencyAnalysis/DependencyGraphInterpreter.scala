@@ -14,7 +14,6 @@ import java.nio.file.Paths
 
 
 class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
-  protected var joinCandidateNodes: Seq[DependencyAnalysisNode] = Seq.empty
 
   def getGraph: ReadOnlyDependencyGraph = dependencyGraph
   def getName: String = name
@@ -24,11 +23,9 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def getJoinCandidateNodes: Iterable[DependencyAnalysisNode] = joinCandidateNodes
 
-  def initJoinCandidateNodes(): Unit = {
-    joinCandidateNodes = dependencyGraph.getNodes.filter(node => node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
-  }
+  protected lazy val joinCandidateNodes: Seq[DependencyAnalysisNode] = dependencyGraph.getNodes.filter(node => node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
   
-  def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
+  private def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
   
   def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
@@ -230,7 +227,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val endTime = System.nanoTime()
     println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
 
-    val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2).toSet
+    val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2).filter(_.assumptionTypes.nonEmpty).toSet
 
     // covered
     val coveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(relevantDependencies).getSourceSet()

@@ -109,7 +109,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val s4 = s3.copy(h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, annotatedAssumptionTypeOpt.getOrElse(postConditionType))((_, _) => {
+                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, postConditionType)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
@@ -128,7 +128,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
 
       result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
-      result.dependencyGraphInterpreter.foreach(_.initJoinCandidateNodes())
 
       v.decider.resetProverOptions()
 
