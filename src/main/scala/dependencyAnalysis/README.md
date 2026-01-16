@@ -42,6 +42,10 @@ Example queries for program `src/test/resources/dependencyAnalysisTests/unitTest
 - `prune 66 71` 
   - Exports the program pruned with respect to lines 66 and 71.
   - exportFileName: path and file name for the pruned program (e.g. `prunedPrograms/test.vpr`
+- `progress`
+  - Prints the verification progress of the program
+- `guide`
+  - Prints verification guidance
 
 
 # Neo4j Scripts and Usage
