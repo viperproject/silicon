@@ -274,11 +274,11 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     }
 
     val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking().filter(_._2 > 0)
-    println(s"Assumptions and the number of dependencies:\n\t${assumptionRanking.mkString("\n\t")}\n")
+    println(s"Assumptions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
     val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])
       .map(mInterpreter => (mInterpreter.getMember.get.name, mInterpreter.computeUncoveredStatements()))
       .toList.filter(_._2 > 0).sortBy(_._2).reverse
-    println(s"Members and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
+    println(s"Methods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
   }
 }
