@@ -212,7 +212,7 @@ object DependencyAnalyzer {
       .groupBy(_.sourceInfo.getFineGrainedSource)
       .view.mapValues(_.map(_.id))
       .toMap
-    joinCandidateNodes.filter(node => node.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
+    joinCandidateNodes.filter(node => AssumptionType.postconditionTypes.contains(node.assumptionType))
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
       .foreach { case (src, targets) => newGraph.addEdges(src, targets)}
 
