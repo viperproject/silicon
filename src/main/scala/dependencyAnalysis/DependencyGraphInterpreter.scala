@@ -246,9 +246,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.getSourceSet().diff(assertionsWithFailures)
     val fullyVerifiedAssertions = relevantAssertions.keySet.getSourceSet().diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
 
+    val numRelevantAssertions = relevantAssertions.keySet.size.toDouble
+
     // Peter's metric
     val specQuality  = coveredSourceCodeStmts.size.toDouble / (coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble)
-    val proofQualityPeter = fullyVerifiedAssertions.size.toDouble / relevantAssertions.keySet.size.toDouble
+    val proofQualityPeter = if(numRelevantAssertions > 0) fullyVerifiedAssertions.size.toDouble / numRelevantAssertions else 1.0
     val verificationProgressPeter = specQuality * proofQualityPeter
 
     // Lea's metric
@@ -257,7 +259,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       else UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions).size.toDouble / assumptions.size.toDouble
     }
 
-    val proofQualityLea =  proofQualityPerAssertion.sum / relevantAssertions.keys.size.toDouble
+    val proofQualityLea =  if(numRelevantAssertions > 0) proofQualityPerAssertion.sum / numRelevantAssertions else 1.0
     val verificationProgressLea = specQuality * proofQualityLea
 
 

@@ -3,6 +3,7 @@ package viper.silicon.tests
 import viper.silicon.dependencyAnalysis.DependencyAnalysisReporter
 import viper.silver.ast.Program
 import viper.silver.frontend.SilFrontend
+import viper.silver.verifier
 import viper.silver.verifier.VerificationResult
 
 import java.io.PrintWriter
@@ -15,7 +16,8 @@ object VerificationProgressRunner extends DependencyAnalysisTestFramework {
   val ignores: Seq[String] = Seq.empty
   val pathToTests: String = "src/test/resources/"
   val testDirectories: Seq[String] = Seq(
-    "dependencyAnalysisTests/verificationProgress/incrRand"
+    "dependencyAnalysisTests/verificationProgress/incrRand",
+    "dependencyAnalysisTests/verificationProgress/perms"
   )
 
   def main(args: Array[String]): Unit = {
@@ -27,8 +29,9 @@ object VerificationProgressRunner extends DependencyAnalysisTestFramework {
 
     val directoryStream = Files.newDirectoryStream(Paths.get(pathToTests, dirName))
     val dirContent = directoryStream.toList
-    writer.println("File name,Progress (Peter),Progress (Lea)")
-    println("File name,Progress (Peter),Progress (Lea)")
+    writer.println("File name\tProgress (Peter)\tProgress (Lea)\tverification successful?")
+    println(s"\n$dirName")
+    println("File name\tProgress (Peter)\tProgress (Lea)\tverification successful?")
 
     for (filePath: Path <- dirContent.sorted
          if Files.isReadable(filePath)) {
@@ -50,13 +53,15 @@ object VerificationProgressRunner extends DependencyAnalysisTestFramework {
                       writer: PrintWriter): Unit = {
 
     val program: Program = tests.loadProgram(filePrefix, fileName, frontend)
-    val _: VerificationResult = frontend.verifier.verify(program)
+    val result: VerificationResult = frontend.verifier.verify(program)
+
+    val hasFailures = result.isInstanceOf[verifier.Failure]
 
     val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter
 
     val (progressPeter, progressLea, _) = joinedDependencyGraphInterpreter.get.computeVerificationProgress()
 
-    writer.println(s"$fileName,\t$progressPeter,\t$progressLea")
-    println(s"$fileName,\t$progressPeter,\t$progressLea")
+    writer.println(f"$fileName\t$progressPeter%.3f\t$progressLea%.3f\t${!hasFailures}")
+    println(f"$fileName\t$progressPeter%.3f\t$progressLea%.3f\t${!hasFailures}")
   }
 }

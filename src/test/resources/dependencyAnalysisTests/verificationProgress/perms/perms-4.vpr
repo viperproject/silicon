@@ -1,0 +1,21 @@
+field f: Int
+
+
+method store(x: Ref, a: Int)
+    requires acc(x.f)
+    ensures acc(x.f)
+    ensures x.f == a
+{
+    x.f := a
+}
+
+
+method client()
+{
+    var x: Ref
+    x := new(f)
+
+    store(x, 0)
+
+    x.f := x.f + 1
+}

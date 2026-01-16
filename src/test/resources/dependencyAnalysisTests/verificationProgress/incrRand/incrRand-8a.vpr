@@ -1,4 +1,3 @@
-// Verification Progress: 1.0 (A), 1.0 (P)
 
 method rand() returns (res: Int)
     ensures res > 0

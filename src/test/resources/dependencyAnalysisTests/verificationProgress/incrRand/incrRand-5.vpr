@@ -2,7 +2,7 @@
 method rand() returns (res: Int)
     ensures res > 0
 {
-    res := 10
+    assume res > 0
 }
 
 
@@ -10,15 +10,7 @@ method incrRand(a: Int) returns (res: Int)
     requires a >= 0
     ensures res > a
     ensures res > 0
-    ensures res >= 0
-    ensures res >= a
-    ensures res >= a-1
 {
     var r: Int := rand()
     res := a + r
-
-    var x: Int
-    x := 1
-    x := 0
-    assert x >= 0
 }
