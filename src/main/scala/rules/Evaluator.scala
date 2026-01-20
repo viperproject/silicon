@@ -1251,7 +1251,7 @@ object evaluator extends EvaluationRules {
        *         incompletenesses because the corresponding quantifiers will not be triggered.
        */
 
-      Q(s1, tTriggersSets map Trigger, v1)})
+      Q(s1, tTriggersSets.filter(_.nonEmpty) map Trigger, v1)})
   }
 
   /** Evaluates the given list of trigger sets `eTriggerSets` (expressions) and passes the result
@@ -1370,7 +1370,7 @@ object evaluator extends EvaluationRules {
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringVerification(Seq(
             VerifierWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
-        Q(s, cachedTriggerTerms, v)
+        Q(s, Seq(), v)
     }
   }
 
