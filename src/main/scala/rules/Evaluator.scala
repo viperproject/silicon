@@ -23,7 +23,7 @@ import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, TrueLit, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, TrueLit, WeightedQuantifier, WildcardPerm}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
 import viper.silver.verifier.errors.{ErrorWrapperWithTransformers, PreconditionInAppFalse}
@@ -272,7 +272,7 @@ object evaluator extends EvaluationRules {
                 val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
                 v1.decider.assert(toAssert) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
+                    createFailure(pve dueTo InsufficientPermission(fa, Some(WildcardPerm()(fa.pos, fa.info, fa.errT))), v1, s1, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -302,7 +302,7 @@ object evaluator extends EvaluationRules {
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1, permCheck, permCheckExp)
+                    createFailure(pve dueTo InsufficientPermission(fa, Some(WildcardPerm()(fa.pos, fa.info, fa.errT))), v1, s1, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, relevantChunks.head.fvf, tRcvr)
                     val fr2 =
@@ -334,7 +334,7 @@ object evaluator extends EvaluationRules {
                   }
                 v1.decider.assert(permCheck) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s2, permCheck, permCheckExp)
+                    createFailure(pve dueTo InsufficientPermission(fa, Some(WildcardPerm()(fa.pos, fa.info, fa.errT))), v1, s2, permCheck, permCheckExp)
                   case true =>
                     val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                     val fr2 =
@@ -348,7 +348,7 @@ object evaluator extends EvaluationRules {
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, eArgs, v1) => {
-          val ve = pve dueTo InsufficientPermission(fa)
+          val ve = pve dueTo InsufficientPermission(fa, Some(WildcardPerm()(fa.pos, fa.info, fa.errT)))
           val resource = fa.res(s.program)
           chunkSupporter.lookup(s1, s1.h, resource, tArgs, eArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)

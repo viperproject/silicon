@@ -178,7 +178,7 @@ object predicateSupporter extends PredicateSupportRules {
             v2)})
       })
     } else {
-      val ve = pve dueTo InsufficientPermission(pa)
+      val ve = pve dueTo InsufficientPermission(pa, Some(ePerm.getOrElse(ast.FullPerm()(pa.pos, pa.info, pa.errT))))
       val description = s"consume ${pa.pos}: $pa"
       chunkSupporter.consume(s1, s1.h, predicate, tArgs, eArgs, s1.permissionScalingFactor, s1.permissionScalingFactorExp, true, ve, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)

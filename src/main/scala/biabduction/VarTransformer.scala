@@ -1,17 +1,23 @@
 package viper.silicon.biabduction
 
+import org.checkerframework.checker.units.qual.m
 import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.state.terms.{BuiltinEquals, Null, Term, Var}
 import viper.silicon.state._
+import viper.silicon.state.terms.sorts.Perm
 import viper.silicon.utils.ast.{BigAnd, BigOr}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.{AbstractLocalVar, Exp, Field, FieldAccess, FieldAccessPredicate, FractionalPerm, LocationAccess, PermExp, PredicateAccessPredicate}
 
 import scala.annotation.tailrec
+import scala.collection.immutable.TreeSeqMap
 
-case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])], targetHeap: Heap, newFieldChunks: Map[BasicChunk, ast.LocationAccess] = Map(), otherVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])] = Map()) {
+case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
+                          targetHeap: Heap, newFieldChunks: Map[BasicChunk, ast.LocationAccess] = Map(),
+                          otherVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])] = Map()) {
 
   //val pve: PartialVerificationError = Internal()
 
@@ -28,7 +34,9 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case c: BasicChunk if c.resourceID == PredicateID => c.args
     }.flatten
       ++ prefVars.values.map(_._1) ++ otherVars.values.map(_._1)
-      ++ v.decider.pcs.branchConditions.collect { case t => t.subterms.collect { case tVar: Var => tVar } }.flatten).toSeq.distinct
+      ++ v.decider.pcs.branchConditions.collect { case t => t.subterms.collect { case tVar: Var => tVar } }.flatten
+    ).toSeq.distinct
+
 
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
     //val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
@@ -58,7 +66,95 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
     }
   }
 
+  def permsTo(lv: ast.LocalVar): Option[ast.Exp] = {
+    lv.typ match {
+      case ast.Perm =>
+        val lvTerm = s.g(lv)
+        v.decider.pcs.assumptions.collectFirst {
+          case terms.Equals(t1, t2) if t1 == lvTerm => transformTerm(t2)
+          case terms.Equals(t1, t2) if t2 == lvTerm => transformTerm(t1)
+        }.flatten
+      case _ => None
+    }
+  }
+
+  def permExpToTerm(permExp: Exp, v: Verifier): Option[Term] = {
+
+    def binPermOp(e1: ast.Exp, e2: ast.Exp, op: (terms.Term, terms.Term) => terms.Term): Option[terms.Term] = {
+      Some(op(
+        permExpToTerm(e1, v).getOrElse(terms.FullPerm),
+        permExpToTerm(e2, v).getOrElse(terms.FullPerm)
+      ))
+    }
+
+    permExp match {
+      case ast.IntLit(n) =>
+        Some(terms.IntLiteral(n))
+      case ast.FullPerm() =>
+        Some(terms.FullPerm)
+      case ast.NoPerm() =>
+        Some(terms.NoPerm)
+      case ast.WildcardPerm() =>
+        Some(terms.Var((v.identifierFactory.fresh("abductionWildcard"), terms.sorts.Perm, true)))
+      case ast.FractionalPerm(ast.IntLit(e1), ast.IntLit(e2)) =>
+        Some(terms.FractionPerm((terms.IntLiteral(e1), terms.IntLiteral(e2))))
+      case ast.PermMul(e1, e2) =>
+        binPermOp(e1, e2, terms.PermTimes(_, _))
+      case ast.PermSub(e1, e2) =>
+        binPermOp(e1, e2, terms.PermMinus(_, _))
+      case ast.PermAdd(e1, e2) =>
+        binPermOp(e1, e2, terms.PermPlus(_, _))
+      case ast.PermDiv(e1, e2) =>
+        binPermOp(e1, e2, terms.PermPermDiv(_, _))
+      case ast.PermPermDiv(e1, e2) =>
+        binPermOp(e1, e2, terms.PermPermDiv(_, _))
+      case _ => None
+    }
+  }
+
+  // This function assumes that prefVars are the Vars in the precondition(s) and
+  // targetHeap is the heap in the precondition(s)
+  // prefVars: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])]
+  /*def mergePreconditions(oldPres: Seq[Exp], newPres: Seq[Exp]): Seq[Exp] = {
+
+    def resolveAlias(rcv: Exp): Option[Exp] =
+      rcv match {
+        case v: AbstractLocalVar =>
+          prefVars
+            .get(v)
+            .flatMap { case (t, _) => matches.get(t) }
+        case _ => None
+      }
+
+    val fapInNewPres: Set[(Exp, Field)] = newPres.collect {
+        case FieldAccessPredicate(FieldAccess(rcv, field), _)  => (rcv, field)
+      }.toSet
+
+    val filteredOldPres =
+      oldPres.filterNot {
+        case FieldAccessPredicate(FieldAccess(rcvB, fieldB), _) =>
+          resolveAlias(rcvB)
+            .exists { aliasedRcv =>
+              fapInNewPres.contains((aliasedRcv, fieldB))
+            }
+        case e =>
+          false
+      }
+
+
+
+    val merged: Seq[Exp] = newPres ++ filteredOldPres
+    merged
+  }*/
+
   def transformTerm(t: Term): Option[ast.Exp] = {
+
+    def binPermOp(t1: terms.Term, t2: terms.Term, op: (ast.Exp, ast.Exp) => ast.Exp): Option[ast.Exp] = {
+      Some(op(
+        transformTerm(t1).getOrElse(ast.FullPerm()()),
+        transformTerm(t2).getOrElse(ast.FullPerm()())
+      ))
+    }
 
     t match {
       case t if matches.contains(t) => matches.get(t)
@@ -69,6 +165,14 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       }
       case terms.FractionPermLiteral(r) => Some(ast.FractionalPerm(ast.IntLit(r.numerator)(), ast.IntLit(r.denominator)())())
       case terms.FullPerm => Some(ast.FullPerm()())
+      case terms.NoPerm => Some(ast.NoPerm()())
+      case terms.PermTimes(t1, t2) => binPermOp(t1, t2, ast.PermMul(_, _)())
+      // Div is just TIMES 1 / n
+      // case terms.PermDiv(t1, t2) => binPermOp(t1, t2, ast.PermDiv(_, _)())
+      case terms.PermPermDiv(t1, t2) => binPermOp(t1, t2, ast.PermPermDiv(_, _)())
+      case terms.FractionPerm(t1, t2) => binPermOp(t1, t2, ast.PermDiv(_, _)())
+      case terms.PermMinus(t1, t2) => binPermOp(t1, t2, ast.PermSub(_, _)())
+      case terms.PermPlus(t1, t2) => binPermOp(t1, t2, ast.PermAdd(_, _)())
       case terms.Null => Some(ast.NullLit()())
       case terms.Not(t1) => transformTerm(t1).flatMap(e1 => Some(ast.Not(e1)()))
       case terms.Not(BuiltinEquals(t1, t2)) => (transformTerm(t1), transformTerm(t2)) match {
@@ -223,6 +327,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           }
         }
       }
+      println(s"Transformed $e in $res")
       Some(res)
     } catch {
       case _: NoSuchElementException => if (strict) None else Some(e)

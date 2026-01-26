@@ -41,7 +41,16 @@ object AbstractionFold extends AbstractionRule {
 
             executionFlowController.tryOrElse0(q.s, q.v) {
               (s1, v1, T) =>
-                val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), Some(FullPerm()()))())()
+                val accP = VarTransformer(q.s, q.v, q.s.g.values, q.s.h).transformChunk(chunk) match {
+                  case Some(FieldAccessPredicate(loc, p)) => (loc, p)
+                  case Some(PredicateAccessPredicate(loc, p)) => (loc, p)
+                }
+                val pField = pred.body.get.collect {
+                  case fap: FieldAccessPredicate if fap.loc == accP._1
+                    => fap.permExp.getOrElse(FullPerm()())
+                }.head
+                val permToFold = PermPermDiv(accP._2.getOrElse(FullPerm()()), pField)()
+                val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), Some(permToFold))())()
                 executor.exec(s1, fold, v1, None, abdStateAllowed = false)((s1a, v1a) =>
                   T(s1a, v1a)
                 )

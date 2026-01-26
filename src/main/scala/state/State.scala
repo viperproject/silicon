@@ -38,6 +38,9 @@ final case class State(g: Store = Store(),
                        doAbduction: Boolean = false,
                        abductionResults: Seq[BiAbductionResult] = Seq(),
 
+                      // Needed for tracking in fractional abduction
+                       abdPermScalingFactorExp: ast.Exp = ast.FullPerm()(),
+
                        recordVisited: Boolean = false,
                        visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
 
@@ -126,6 +129,10 @@ final case class State(g: Store = Store(),
     copy(permissionScalingFactor = terms.PermTimes(p, permissionScalingFactor),
       permissionScalingFactorExp = permissionScalingFactorExp.map(psf => ast.PermMul(exp.get, psf)(exp.get.pos, exp.get.info, exp.get.errT)))
 
+  def scalePermissionFactorAbd(exp: ast.Exp) =
+    copy(
+      abdPermScalingFactorExp = ast.PermMul(exp, abdPermScalingFactorExp)())
+
   def merge(other: State): State =
     State.merge(this, other)
 
@@ -169,6 +176,7 @@ object State {
                  parallelizeBranches1,
                  doAbduction1,
                  abductionResults1,
+                 abdPermScalingFactorExp1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
                  constrainableARPs1,
@@ -196,6 +204,7 @@ object State {
                      `parallelizeBranches1`,
                       `doAbduction1`,
                       `abductionResults1`,
+                      `abdPermScalingFactorExp1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
                      constrainableARPs2,
@@ -329,6 +338,7 @@ object State {
       parallelizeBranches1,
       doAbduction1,
       abductionResults1,
+      abdPermScalingFactorExp1,
       recordVisited1, visited1,
       methodCfg1, invariantContexts1,
       constrainableARPs1,
@@ -355,6 +365,7 @@ object State {
           `parallelizeBranches1`,
           `doAbduction1`,
           `abductionResults1`,
+          `abdPermScalingFactorExp1`,
           `recordVisited1`, `visited1`,
           `methodCfg1`, invariantContexts2,
           constrainableARPs2,

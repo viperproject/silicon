@@ -243,6 +243,7 @@ object consumer extends ConsumptionRules {
        *       and producer. Try to unify the code.
        */
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
+        println(s"EVALUATING QP $acc")
         val field = acc.loc.field
         val qid = BasicChunkIdentifier(acc.loc.field.name)
         val optTrigger =
@@ -276,12 +277,13 @@ object consumer extends ConsumptionRules {
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
-              insufficientPermissionReason = InsufficientPermission(acc.loc),
+              insufficientPermissionReason = InsufficientPermission(acc.loc, Some(acc.permExp.getOrElse(ast.FullPerm()(acc.pos, acc.info, acc.errT)))),
               v1)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
           case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
+        println(s"EVALUATING QP $acc")
         val predicate = s.program.findPredicate(acc.loc.predicateName)
         /* TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
          *       and need to be instantiated in several places. Hence, they need to be known,
@@ -322,7 +324,7 @@ object consumer extends ConsumptionRules {
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
-              insufficientPermissionReason = InsufficientPermission(acc.loc),
+              insufficientPermissionReason = InsufficientPermission(acc.loc, Some(acc.permExp.getOrElse(ast.FullPerm()(acc.pos, acc.info, acc.errT)))),
               v1)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
           case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
@@ -471,7 +473,7 @@ object consumer extends ConsumptionRules {
               else
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val lossExp = permNew.map(p => ast.PermMul(p, s3.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
-              val ve = pve dueTo InsufficientPermission(locacc)
+              val ve = pve dueTo InsufficientPermission(locacc, Some(perm))
               val description = s"consume ${a.pos}: $a"
               chunkSupporter.consume(s3, h, resource, tArgs, eArgs, loss, lossExp, returnSnap, ve, v3, description)((s4, h1, snap1, v4) => {
                 val s5 = s4.copy(partiallyConsumedHeap = Some(h1),

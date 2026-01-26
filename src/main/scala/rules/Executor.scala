@@ -531,7 +531,7 @@ object executor extends ExecutionRules {
                 val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
                 Q(s5, v2)
               case (Incomplete(_, _), s3, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
+                createFailure(pve dueTo InsufficientPermission(fa, Some(ast.FullPerm()(fa.pos, fa.info, fa.errT))), v2, s3, "sufficient permission")}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
@@ -539,7 +539,7 @@ object executor extends ExecutionRules {
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
             val resource = fa.res(s.program)
-            val ve = pve dueTo InsufficientPermission(fa)
+            val ve = pve dueTo InsufficientPermission(fa, Some(ast.FullPerm()(fa.pos, fa.info, fa.errT)))
             val description = s"consume ${ass.pos}: $ass"
             chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description)((s3, h3, _, v3) => {
               val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3)

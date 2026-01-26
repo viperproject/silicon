@@ -1430,7 +1430,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     if (s.exhaleExt) {
       val failure = resourceAccess match {
-        case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s, "single QP consume inside package")
+
+        case locAcc: ast.LocationAccess =>
+          println(s"ERROR AT $locAcc")
+          createFailure(pve dueTo InsufficientPermission(locAcc, Some(permissionsExp.getOrElse(ast.FullPerm()(locAcc.pos, locAcc.info, locAcc.errT)))), v, s, "single QP consume inside package")
         case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume inside package")
         case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
       }
@@ -1522,7 +1525,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
         case (Incomplete(_, _), _, _) =>
           resourceAccess match {
-            case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s, "single QP consume")
+            case locAcc: ast.LocationAccess =>
+              println(s"ERROR AT $locAcc")
+              createFailure(pve dueTo InsufficientPermission(locAcc, Some(permissionsExp.getOrElse(ast.FullPerm()(locAcc.pos, locAcc.info, locAcc.errT)))), v, s, "single QP consume")
             case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
             case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
           }

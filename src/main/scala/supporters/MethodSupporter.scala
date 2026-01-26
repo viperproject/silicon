@@ -126,6 +126,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               }
               val ex = executionFlowController.locally(s2a, v2)((s3, v3) => {
                 exec(s3, body, v3) { (s4, v4) => {
+
                   if(sInit.doAbduction) {
                     val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
                     val vars = s4.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
@@ -141,6 +142,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                 }
                 }
               })
+              //println("ex", ex)
               wfc && ex
             }
           }{
@@ -148,7 +150,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
               BiAbductionSolver.solveAbductionForError(s1, v1, f, stateAllowed = true, None)((_,  _) => {
                 Success()
               }) match {
-                case _: FatalResult => f
+                case _: FatalResult =>
+                  f
                 case nf: NonFatalResult =>
                   val reses = abductionUtils.getAbductionSuccesses(nf)
                   // We can't abduce statement for preconditions
@@ -171,12 +174,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
         result match {
           case suc: NonFatalResult if method.body.isDefined =>
             val abdFails = abductionUtils.getAbductionFailures(suc)
-
             val mFail = abdFails.foldLeft(method) { case (m1, fail) => fail.addToMethod(m1) }
             val mAbd = resolveAbductionResults(mFail, suc)
             val mInv = mAbd.flatMap(m2 => resolveLoopInvResults(m2, suc))
             val mFrame = mInv.flatMap(someM => resolveFramingResults(someM, suc))
-
 
             mFrame match {
               case None => Seq(Failure(Internal(reason = InternalReason(DummyNode, "Resolving Biabduction results failed"))))
