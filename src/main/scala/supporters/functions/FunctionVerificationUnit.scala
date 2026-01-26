@@ -170,7 +170,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      val res = Seq(handleFunction(sInit, function))
+      var res = handleFunction(sInit, function)
 
       v.decider.resetProverOptions()
       symbExLog.closeMemberScope()

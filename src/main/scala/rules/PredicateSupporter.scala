@@ -92,8 +92,8 @@ object predicateSupporter extends PredicateSupportRules {
                         permissionScalingFactor = s.permissionScalingFactor,
                         permissionScalingFactorExp = s.permissionScalingFactorExp).setConstrainable(constrainableWildcards, false)
 
-      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1, dependencyType.assumptionType)((s3, v3) => {
-        val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3, dependencyType.assumptionType)
+      v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1, dependencyType)((s3, v3) => {
+        val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
         Q(s4, v3)
       })
     })
@@ -105,8 +105,8 @@ object predicateSupporter extends PredicateSupportRules {
     tree match {
       case PredicateLeafNode(h, assumptions) =>
         val debugExp = Option.when(withExp)(DebugExp.createInstance("Assumption from unfolded predicate body"))
-        v.decider.assume(assumptions.map(a => (a.replace(toReplace), debugExp)).toSeq)
-        val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk].permScale(s.permissionScalingFactor, s.permissionScalingFactorExp))
+        assumptions.foreach(a => v.decider.assume(a.replace(toReplace), debugExp, AssumptionType.Implicit)) // TODO ake
+        val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk].permScale(s.permissionScalingFactor, s.permissionScalingFactorExp)) // TODO ake
 
         val quantifiedResourceIdentifiers: Set[ChunkIdentifer] = s.qpPredicates.map(p => BasicChunkIdentifier(p.name)) ++ s.qpFields.map(f => BasicChunkIdentifier(f.name)) ++ s.qpMagicWands
 
@@ -120,21 +120,21 @@ object predicateSupporter extends PredicateSupportRules {
                   case _ => s.program.findPredicate(bc.id.name)
                 }
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, bc.args, bc.snap, v)
-                v.decider.assumeDefinition(smValueDef, None)
+                v.decider.assumeDefinition(smValueDef, None, AssumptionType.Internal)
                 val codQvars = bc.resourceID match {
                   case FieldID => Seq(`?r`)
                   case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate].name)
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, s.program)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, s.program, v, AssumptionType.Rewrite, isExhale=false) // TODO ake
               case mwc: MagicWandChunk =>
                 val wand = mwc.id.ghostFreeWand
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
                 val codQvars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, wand, mwc.args, mwc.snap, v)
-                v.decider.assumeDefinition(smValueDef, None)
+                v.decider.assumeDefinition(smValueDef, None, AssumptionType.Internal)
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, s.program)
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, s.program, v, AssumptionType.Rewrite, isExhale=false) // TODO ake
             }
           } else {
             c

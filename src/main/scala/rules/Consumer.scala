@@ -270,7 +270,7 @@ object consumer extends ConsumptionRules {
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val lossExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
               val s3 = v2.heapSupporter.triggerResourceIfNeeded(s2, accPred.loc, tArgs, eArgsNew, v2)
-              v2.heapSupporter.consumeSingle(s3, h, accPred.loc, tArgs, eArgsNew, loss, lossExp, returnSnap, pve, v2)((s4, h4, snap, v4) => {
+              v2.heapSupporter.consumeSingle(s3, h, accPred.loc, tArgs, eArgsNew, loss, lossExp, returnSnap, pve, v2, assumptionType)((s4, h4, snap, v4) => {
                 val s5 = s4.copy(constrainableARPs = s.constrainableARPs,
                                  partiallyConsumedHeap = Some(h4))
                 Q(s5, h4, snap, v4)

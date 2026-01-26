@@ -32,12 +32,6 @@ case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
 }
 
 object BasicChunk {
-  private def apply(resourceID: BaseID, id: BasicChunkIdentifier,
-            args: Seq[Term], argsExp: Option[Seq[ast.Exp]],
-            snap: Term, snapExp: Option[ast.Exp],
-            perm: Term, permExp: Option[ast.Exp]): BasicChunk = {
-    new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, perm, permExp)
-  }
 
   def apply(resourceID: BaseID, id: BasicChunkIdentifier,
             args: Seq[Term], argsExp: Option[Seq[ast.Exp]],
@@ -111,18 +105,6 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
 }
 
 object QuantifiedFieldChunk {
-  private def apply(id: BasicChunkIdentifier,
-            fvf: Term,
-            condition: Term,
-            conditionExp: Option[ast.Exp],
-            permValue: Term,
-            permValueExp: Option[ast.Exp],
-            invs: Option[InverseFunctions],
-            singletonRcvr: Option[Term],
-            singletonRcvrExp: Option[ast.Exp],
-            hints: Seq[Term]): QuantifiedFieldChunk = {
-    new QuantifiedFieldChunk(id, fvf, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
-  }
 
   def apply(id: BasicChunkIdentifier,
             fvf: Term,
@@ -204,21 +186,6 @@ case class QuantifiedFieldChunk private(id: BasicChunkIdentifier,
 }
 
 object QuantifiedPredicateChunk {
-  private def apply(id: BasicChunkIdentifier,
-            quantifiedVars: Seq[Var],
-            quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
-            psf: Term,
-            condition: Term,
-            conditionExp: Option[ast.Exp],
-            permValue: Term,
-            permValueExp: Option[ast.Exp],
-            invs: Option[InverseFunctions],
-            singletonArgs: Option[Seq[Term]],
-            singletonArgExps: Option[Seq[ast.Exp]],
-            hints: Seq[Term]): QuantifiedPredicateChunk = {
-    new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, psf, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
-  }
-
 
   def apply(id: BasicChunkIdentifier,
              quantifiedVars: Seq[Var],
@@ -290,18 +257,6 @@ case class QuantifiedPredicateChunk private(id: BasicChunkIdentifier,
 }
 
 object QuantifiedMagicWandChunk {
-  private def apply(id: MagicWandIdentifier,
-            quantifiedVars: Seq[Var],
-            quantifiedVarExps: Option[Seq[ast.LocalVarDecl]],
-            wsf: Term,
-            perm: Term,
-            permExp: Option[ast.Exp],
-            invs: Option[InverseFunctions],
-            singletonArgs: Option[Seq[Term]],
-            singletonArgExps: Option[Seq[ast.Exp]],
-            hints: Seq[Term]): QuantifiedMagicWandChunk = {
-    new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, perm, permExp, invs, singletonArgs, singletonArgExps, hints)
-  }
 
   def apply(id: MagicWandIdentifier,
             quantifiedVars: Seq[Var],
@@ -383,15 +338,6 @@ object MagicWandIdentifier {
 }
 
 object MagicWandChunk {
-  private def apply(id: MagicWandIdentifier,
-            bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
-            args: Seq[Term],
-            argsExp: Option[Seq[ast.Exp]],
-            snap: MagicWandSnapshot,
-            perm: Term,
-            permExp: Option[ast.Exp]): MagicWandChunk = {
-    new MagicWandChunk(id, bindings, args, argsExp, snap, perm, permExp)
-  }
 
   def apply(id: MagicWandIdentifier,
             bindings: Map[ast.AbstractLocalVar, (Term, Option[ast.Exp])],
