@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon
+import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
 import viper.silicon.dependencyAnalysis.AssumptionType
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
@@ -37,7 +39,7 @@ import scala.reflect.ClassTag
 case class InverseFunctions(condition: Term,
                             invertibles: Seq[Term],
                             invertibleExps: Option[Seq[ast.Exp]],
-                            additionalArguments: Vector[Var],
+                            additionalArguments: Vector[Term],
                             axiomInversesOfInvertibles: Quantification,
                             axiomInvertiblesOfInverses: Quantification,
                             qvarExps: Option[Seq[ast.LocalVarDecl]],
@@ -81,6 +83,14 @@ case class InverseFunctions(condition: Term,
          |$linePrefix  axiomInvertiblesOfInverses
          |$linePrefix    ${axiomInvertiblesOfInverses.stringRepresentationWithTriggers}
        """.stripMargin
+
+  def substitute(terms: silicon.Map[Term, Term]) = copy(
+    condition = condition.replace(terms),
+    invertibles = invertibles.map(_.replace(terms)),
+    additionalArguments = additionalArguments.map(_.replace(terms)),
+    axiomInversesOfInvertibles = axiomInversesOfInvertibles.replace(terms).asInstanceOf[Quantification],
+    axiomInvertiblesOfInverses = axiomInvertiblesOfInverses.replace(terms).asInstanceOf[Quantification]
+  )
 }
 
 case class SnapshotMapDefinition(resource: ast.Resource,
@@ -142,6 +152,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * @param additionalInvArgs Additional arguments on which `inv` depends (typically
     *                          quantified variables bound by some surrounding scope).
     *                          Currently omitted from the axioms shown above.
+    * @param stateQVars Quantified variables in the current state that the inverse functions may depend on.
     * @return The generated partial inverse functions and corresponding definitional axioms, and
     *         the images of the given codomain variables (returned separately, since nothing else
     *         in the returned InverseFunctions object references or contains the codomain
@@ -156,6 +167,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                codomainQVarExps: Option[Seq[ast.LocalVarDecl]],
                                additionalInvArgs: Seq[Var],
                                additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                               stateQVars: Seq[Var],
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
@@ -196,6 +208,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * @param permissions Permission amount per resource.
     * @param sm The snapshot map that is to be stored in the new chunk.
     * @param additionalInvArgs See the homonymous parameter of [[getFreshInverseFunctions()]].
+    * @param stateQVars See the homonymous parameter of [[getFreshInverseFunctions()]].
     * @param v A verifier.
     * @return A tuple of
     *           1. the newly created quantified chunk
@@ -216,6 +229,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             sm: Term,
                             additionalInvArgs: Seq[Var],
                             additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                            stateQVars: Seq[Var],
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
                             v: Verifier,
@@ -239,6 +253,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
    *
    * @param fr The functionRecorder to use when new snapshot maps are generated.
    * @param field The name of the field.
+   * @param fqvars Arguments of the current function if we are currently verifying one, i.e., functionRecorderQVars.
    * @param t1 The first chunk's snapshot map.
    * @param t2 The second chunk's snapshot map.
    * @param p1 The first chunk's permission amount, should be constrained by the domain.
@@ -246,13 +261,14 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
    * @param v The verifier to use.
    * @return A tuple (fr, sm, def) of functionRecorder, a snapshot map sm and a term def constraining sm.
    */
-  def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
+  def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, fqvars: Seq[Var],t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
 
   /** Merge the snapshots of two quantified heap chunks that denote the same predicate
    *
    * @param fr The functionRecorder to use when new snapshot maps are generated.
    * @param predicate The name of the predicate.
    * @param qVars The variables over which p1 and p2 are defined
+   * @param fqvars Arguments of the current function if we are currently verifying one, i.e., functionRecorderQVars.
    * @param t1 The first chunk's snapshot map.
    * @param t2 The second chunk's snapshot map.
    * @param p1 The first chunk's permission amount, should be constrained by the domain.
@@ -260,7 +276,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
    * @param v The verifier to use.
    * @return A tuple (fr, sm, def) of functionRecorder, a snapshot map sm and a term def constraining sm.
    */
-  def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
+  def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], fqvars: Seq[Var],
+                                   t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term)
 }
 
 object quantifiedChunkSupporter extends QuantifiedChunkSupport {
@@ -327,6 +344,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             sm: Term,
                             additionalInvArgs: Seq[Var],
                             additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                            stateQVars: Seq[Var],
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
                             v: Verifier,
@@ -346,6 +364,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         codomainQVarExps,
         additionalInvArgs,
         additionalInvArgExps,
+        stateQVars,
         userProvidedTriggers,
         qidPrefix,
         v)
@@ -505,138 +524,65 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         resource: ast.Resource,
                         optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
                         v: Verifier)
-                       : (Term, Seq[Quantification], Option[Quantification]) = {
-
-    // TODO: Reconsider all pattern matches (in this file) on the resource
-    resource match {
-      case field: ast.Field =>
-        assert(codomainQVars.length == 1)
-        summarise_field(s, relevantChunks, codomainQVars.head, field, optSmDomainDefinitionCondition, v)
-      case _: ast.Predicate | _: ast.MagicWand =>
-        summarise_predicate_or_wand(s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
-    }
-  }
-
-  // TODO: Methods summarise_fields and summarise_predicate_or_wand are very similar, and the resulting
-  //       code duplication should be avoided. Currently, however, the crucial difference is that the
-  //       summarisation axioms for fields quantify over the receiver, whereas the axioms for predicates
-  //       and fields quantify over the n-tuple of arguments (currently encoded as a snapshot tree) as
-  //       a single value, which is then decomposed in the axiom body (via a snapshot's first/second
-  //       deconstructors). This currently impedes proper code unification.
-
-  private def summarise_field(s: State,
-                              relevantChunks: Seq[QuantifiedBasicChunk],
-                              codomainQVar: Var, /* r */
-                              field: ast.Field,
-                              optSmDomainDefinitionCondition: Option[Term], /* c(r) */
-                              v: Verifier)
-                             : (Term, Seq[Quantification], Option[Quantification]) = {
-    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
-
-    val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1)
-    val sm = freshSnapshotMap(s, field, additionalFvfArgs, v)
-
-    val smDomainDefinitionCondition = optSmDomainDefinitionCondition.getOrElse(True)
-    val codomainQVarsInDomainOfSummarisingSm = SetIn(codomainQVar, Domain(field.name, sm))
-
-    val valueDefinitions =
-      relevantChunks map (chunk => {
-        val lookupSummary = Lookup(field.name, sm, codomainQVar)
-        val lookupChunk = Lookup(field.name, chunk.snapshotMap, codomainQVar)
-
-        val effectiveCondition =
-          And(
-            smDomainDefinitionCondition, /* Alternatively: codomainQVarsInDomainOfSummarisingSm */
-            IsPositive(chunk.perm))
-
-        Forall(
-          codomainQVar,
-          Implies(effectiveCondition, BuiltinEquals(lookupSummary, lookupChunk)),
-          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
-          s"qp.fvfValDef${v.counter(this).next()}",
-          isGlobal = relevantQvars.isEmpty)
-      })
-
-    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(field)){
-      val resourceTriggerDefinition =
-        Forall(
-          codomainQVar,
-          And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
-          Trigger(Lookup(field.name, sm, codomainQVar)),
-          s"qp.fvfResTrgDef${v.counter(this).next()}",
-          isGlobal = relevantQvars.isEmpty)
-      valueDefinitions :+ resourceTriggerDefinition
-    } else {
-      valueDefinitions
-    }
-
-
-    val optDomainDefinition =
-      optSmDomainDefinitionCondition.map(condition =>
-        Forall(
-          codomainQVar,
-          Iff(
-            codomainQVarsInDomainOfSummarisingSm,
-            condition),
-          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(codomainQVarsInDomainOfSummarisingSm)),
-          s"qp.fvfDomDef${v.counter(this).next()}",
-          isGlobal = true))
-
-    (sm, resourceAndValueDefinitions, optDomainDefinition)
-  }
-
-  private def summarise_predicate_or_wand(s: State,
-                                          relevantChunks: Seq[QuantifiedBasicChunk],
-                                          codomainQVars: Seq[Var], /* rs := r_1, ..., r_m. May be empty. */
-                                          resource: ast.Resource, /* Predicate or wand */
-                                          optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
-                                          v: Verifier)
-                                         : (Term, Seq[Quantification], Option[Quantification]) = {
-
-    assert(resource.isInstanceOf[ast.Predicate] || resource.isInstanceOf[ast.MagicWand],
-           s"Expected resource to be a predicate or a wand, but got $resource (${resource.getClass.getSimpleName})")
+                       : (Term, Seq[Quantification], Seq[Term]) = {
 
     // TODO: Consider if axioms can be simplified in case codomainQVars is empty
 
-
-    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar => relevantChunks.map(_.snapshotMap).exists(sm => sm.contains(qvar)))
-
-    val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1)
+    val snapshotMaps = relevantChunks.map(_.snapshotMap)
+    val relevantQvars = s.quantifiedVariables.map(_._1).filter(qvar =>
+      snapshotMaps.exists(sm => sm.contains(qvar)) || optSmDomainDefinitionCondition.exists(_.contains(qvar)))
+    val additionalFvfArgs = s.functionRecorderQuantifiedVariables().map(_._1) ++ relevantQvars
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
 
-    val qvar = v.decider.fresh("s", sorts.Snap, Option.when(withExp)(PUnknown())) /* Quantified snapshot s */
+    val (qvar, smDomainDefinitionCondition, permIsPositive) = resource match {
+      case _: ast.Field =>
+        (codomainQVars.head, optSmDomainDefinitionCondition, (ch: QuantifiedBasicChunk) => IsPositive(ch.perm))
+      case _ =>
+        val qvar = v.decider.fresh("s", sorts.Snap, Option.when(withExp)(PUnknown())) /* Quantified snapshot s */
 
-    // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
-    // including necessary sort wrapper applications
-    val snapToCodomainTermsSubstitution: Map[Term, Term] =
-      codomainQVars.zip(fromSnapTree(qvar, codomainQVars)).to(Map)
+        // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
+        // including necessary sort wrapper applications
+        val snapToCodomainTermsSubstitution: Map[Term, Term] =
+        codomainQVars.zip(fromSnapTree(qvar, codomainQVars)).to(Map)
 
-    // Rewrite c(r_1, r_2, ...) to c(first(s), second(s), ...)
-    val transformedOptSmDomainDefinitionCondition =
-      optSmDomainDefinitionCondition.map(_.replace(snapToCodomainTermsSubstitution))
+        // Rewrite c(r_1, r_2, ...) to c(first(s), second(s), ...)
+        val transformedOptSmDomainDefinitionCondition =
+          optSmDomainDefinitionCondition.map(_.replace(snapToCodomainTermsSubstitution))
 
-    val qvarInDomainOfSummarisingSm = resource match {
-      case predicate: ast.Predicate =>
-        SetIn(qvar, PredicateDomain(predicate.name, sm))
-      case wand: ast.MagicWand =>
-        SetIn(qvar, PredicateDomain(MagicWandIdentifier(wand, s.program).toString, sm))
+        (qvar, transformedOptSmDomainDefinitionCondition, (ch: QuantifiedBasicChunk) => IsPositive(ch.perm).replace(snapToCodomainTermsSubstitution))
     }
+
+    val (domainTerm, hasDomain) = resource match {
+      case field: ast.Field =>
+        (Domain(field.name, sm), HasDomain(field.name, sm, relevantQvars.isEmpty))
+      case predicate: ast.Predicate =>
+        (PredicateDomain(predicate.name, sm), HasPredicateDomain(predicate.name, sm, relevantQvars.isEmpty))
+      case wand: ast.MagicWand =>
+        val mwi = MagicWandIdentifier(wand, s.program).toString
+        (PredicateDomain(mwi, sm), HasPredicateDomain(mwi, sm, relevantQvars.isEmpty))
+    }
+
+    val qvarInDomainOfSummarisingSm = SetIn(qvar, domainTerm)
 
     val valueDefinitions =
       relevantChunks map (chunk => {
         val lookupSummary = ResourceLookup(resource, sm, Seq(qvar), s.program)
         val lookupChunk = ResourceLookup(resource, chunk.snapshotMap, Seq(qvar), s.program)
 
-        // This is justified even for vacuous predicates (e.g. with body "true") and wands because
-        // qvar is the tuple of predicate arguments, and thus unrelated to the actual body
-        val snapshotNotUnit =
-          if (codomainQVars.nonEmpty) qvar !== Unit
-          else qvar === Unit // TODO: Consider if axioms can be simplified in case codomainQVars is empty
+        val snapshotNotUnit = resource match {
+          case _: ast.Field => True
+          case _ =>
+            // This is justified even for vacuous predicates (e.g. with body "true") and wands because
+            // qvar is the tuple of predicate arguments, and thus unrelated to the actual body
+            if (codomainQVars.nonEmpty) qvar !== Unit
+            else qvar === Unit
+        }
+
 
         val effectiveCondition =
           And(
-            transformedOptSmDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
-            IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
+            smDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
+            permIsPositive(chunk))
 
         Forall(
           qvar,
@@ -646,11 +592,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = relevantQvars.isEmpty)
       })
 
-    val resourceIdentifier = resource match {
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-      case r => r
-    }
-    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+    val resourceAndValueDefinitions = if (s.isUsedAsTrigger(resource)) {
       val resourceTriggerDefinition =
         Forall(
           qvar,
@@ -664,15 +606,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     val optDomainDefinition =
-      transformedOptSmDomainDefinitionCondition.map(condition =>
-        Forall(
-          qvar,
-          Iff(
-            qvarInDomainOfSummarisingSm,
-            condition),
-          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(qvarInDomainOfSummarisingSm)),
-          s"qp.psmDomDef${v.counter(this).next()}",
-          isGlobal = true
+      smDomainDefinitionCondition.toSeq.flatMap(condition =>
+        Seq(
+          Forall(
+            qvar,
+            Iff(
+              qvarInDomainOfSummarisingSm,
+              condition),
+            if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(qvarInDomainOfSummarisingSm)),
+            s"qp.psmDomDef${v.counter(this).next()}",
+            isGlobal = relevantQvars.isEmpty
+          ),
+          hasDomain
         ))
 
     (sm, resourceAndValueDefinitions, optDomainDefinition)
@@ -698,11 +643,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s"qp.resPrmSumDef${v.counter(this).next()}",
         isGlobal = true)
 
-    val resourceIdentifier = resource match {
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-      case r => r
-    }
-    val resourceAndValueDefinitions = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+    val resourceAndValueDefinitions = if (s.isUsedAsTrigger(resource)){
       val resourceTriggerFunction = ResourceTriggerFunction(resource, smDef.sm, codomainQVars, s.program)
 
       // TODO: Quantify over snapshot if resource is predicate.
@@ -726,12 +667,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   }
 
   def summarisingPermissionMap(s: State,
-                             resource: ast.Resource,
-                             formalQVars: Seq[Var],
-                             relevantChunks: Seq[QuantifiedBasicChunk],
-                             smDef: SnapshotMapDefinition,
-                             v: Verifier)
-                            : (PermMapDefinition, PmCache) = {
+                               resource: ast.Resource,
+                               formalQVars: Seq[Var],
+                               relevantChunks: Seq[QuantifiedBasicChunk],
+                               smDef: SnapshotMapDefinition,
+                               v: Verifier)
+                              : (PermMapDefinition, PmCache) = {
     v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
     v.decider.dependencyAnalyzer.disableTransitiveEdges()
     val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
@@ -871,7 +812,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       quantifiedChunkSupporter.summarisingPermissionMap(
         s1, resource, codomainQVars, relevantChunks, smDef, v)
 
-    val s2 = s1.copy(pmCache = pmCache)
+    val s2 = s1.copy(pmCache = pmCache, functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef).recordPermMap(pmDef))
     v.decider.analysisSourceInfoStack.removeForcedSource()
     v.decider.dependencyAnalyzer.enableTransitiveEdges()
     (s2, smDef, pmDef)
@@ -954,6 +895,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         sm                   = tSnap,
         additionalInvArgs    = s.relevantQuantifiedVariables(tArgs).map(_._1),
         additionalInvArgExps = Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        stateQVars           = s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
         userProvidedTriggers = optTrigger.map(_ => tTriggers),
         qidPrefix            = qid,
         v                    = v,
@@ -1041,9 +983,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           }
         val comment = "Check receiver injectivity"
         v.decider.prover.comment(comment)
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
-          Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), assumptionType)
-        v.decider.assert(receiverInjectivityCheck) {
+        val completeReceiverInjectivityCheck = Implies(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
+          receiverInjectivityCheck)
+        v.decider.assert(completeReceiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
@@ -1080,16 +1022,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             })
             val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
-            val resourceIdentifier = resource match {
-              case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-              case r => r
-            }
-            val smCache1 = if (s.heapDependentTriggers.contains(resourceIdentifier)){
+            val (smCache1, fr2) = if (s.isUsedAsTrigger(resource)){
               // TODO: Why not formalQVars? Used as codomainVars, see above.
               val codomainVars =
                 resource match {
                   case _: ast.Field => Seq(`?r`)
-                  case p: ast.Predicate => s.predicateFormalVarMap(p)
+                  case p: ast.Predicate => s.predicateFormalVarMap(p.name)
                   case w: ast.MagicWand =>
                     val bodyVars = w.subexpressionsToEvaluate(s.program)
                     bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
@@ -1104,19 +1042,22 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
               val condOfInv = tCond.replace(qvarsToInv)
               v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars))),
-                Option.when(withExp)(DebugExp.createInstance("Inverse Trigger", isInternal_ = true)), AssumptionType.Trigger)
-              smCache1
+                Option.when(withExp)(DebugExp.createInstance("Inverse Trigger", true)), AssumptionType.Trigger)
+              val newFuncRec = fr1.recordFvfAndDomain(smDef1)
+              (smCache1, newFuncRec)
             } else {
-              s.smCache
+              (s.smCache, fr1)
             }
             val s1 =
               s.copy(h = h1,
-                     functionRecorder = fr1.recordFieldInv(inv),
+                     functionRecorder = fr2.recordFieldInv(inv),
                      conservedPcs = conservedPcs,
                      smCache = smCache1)
             Q(s1, v)
-          case false =>
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")}
+          case false => {
+            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
+          }
+        }
       case false =>
         createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)}
   }
@@ -1131,12 +1072,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             tPerm: Term,
                             ePerm: Option[ast.Exp],
                             resourceTriggerFactory: Term => Term, /* Trigger with some snapshot */
+                            mergeAndTrigger: Boolean,
                             v: Verifier,
                             assumptionType: AssumptionType)
                            (Q: (State, Verifier) => VerificationResult)
                            : VerificationResult = {
 
     val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
+    val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val comment = "Definitional axioms for singleton-SM's value"
     v.decider.prover.comment(comment)
     val definitionalAxiomMark = v.decider.setPathConditionMark()
@@ -1144,36 +1087,37 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
-    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program, v, assumptionType, isExhale=false)
-    val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
+    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, formalQVarsExp, resource, tArgs, eArgs, tPerm, ePerm, sm, s.program, assumptionType, isExhale=false)
 
-    val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
-    val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
-    val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
-    pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), assumptionType))
+    val s1 = if (mergeAndTrigger) {
+      val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
-    val resourceIdentifier = resource match {
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-      case r => r
-    }
-    val smCache1 = if (s.heapDependentTriggers.contains(resourceIdentifier)){
-      val (relevantChunks, _) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
-      val (smDef1, smCache1) =
-        quantifiedChunkSupporter.summarisingSnapshotMap(
-          s, resource, formalQVars, relevantChunks, v)
-      v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(withExp)(DebugExp.createInstance("Resource Trigger", isInternal_ = true)), AssumptionType.Trigger)
-      smCache1
+      val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
+      val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
+      val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
+      pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), assumptionType))
+
+      val smCache1 = if (s.isUsedAsTrigger(resource)) {
+        val (relevantChunks, _) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id)
+        val (smDef1, smCache1) =
+          quantifiedChunkSupporter.summarisingSnapshotMap(
+            s, resource, formalQVars, relevantChunks, v)
+        v.decider.assume(resourceTriggerFactory(smDef1.sm), Option.when(withExp)(DebugExp.createInstance("Resource Trigger", true)), AssumptionType.Trigger)
+        smCache1
+      } else {
+        s.smCache
+      }
+
+      s.copy(h = h1,
+        conservedPcs = conservedPcs,
+        functionRecorder = fr1.recordFvfAndDomain(smDef2),
+        smCache = smCache1)
     } else {
-      s.smCache
+      s.copy(h = s.h + ch,
+             functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2),
+             conservedPcs = conservedPcs)
     }
-
-
-    val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
-    val s1 = s.copy(h = h1,
-                    conservedPcs = conservedPcs,
-                    functionRecorder = fr1.recordFvfAndDomain(smDef2),
-                    smCache = smCache1)
     Q(s1, v)
   }
 
@@ -1216,8 +1160,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         eArgs,
         formalQVars,
         formalQVarsExp,
-        s.relevantQuantifiedVariables(tArgs).map(_._1),
+        s.relevantQuantifiedVariables(tArgs ++ Seq(tCond)).map(_._1),
         Option.when(withExp)(s.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+        s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
         optTrigger.map(_ => tTriggers),
         qid,
         v)
@@ -1275,11 +1220,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
             h, ChunkIdentifier(resource, s.program))
-        val resourceIdentifier = resource match {
-          case wand: ast.MagicWand => MagicWandIdentifier(wand, s.program)
-          case r => r
-        }
-        val (newCond, smCache1, smDef1) = if (s.heapDependentTriggers.contains(resourceIdentifier)) {
+
+        val (newCond, smCache1, smDef1) = if (s.isUsedAsTrigger(resource)) {
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
               s, resource, formalQVars, relevantChunks, v)
@@ -1299,8 +1241,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             qidPrefix = qid,
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), assumptionType)
-        v.decider.assert(receiverInjectivityCheck, assumptionType) {
+        val completeReceiverInjectivityCheck = Implies(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), receiverInjectivityCheck)
+        v.decider.assert(completeReceiverInjectivityCheck, assumptionType) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
@@ -1317,7 +1259,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               Option.when(withExp)(DebugExp.createInstance("Inverse Function Axioms", isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
             v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance("Inverse function axiom", isInternal_ = true)), enforceAssumption = false, assumptionType=assumptionType)
 
-            if (s.heapDependentTriggers.contains(resourceIdentifier)){
+            if (s.isUsedAsTrigger(resource)){
               v.decider.assume(
                 Seq(Forall(
                   formalQVars,
@@ -1381,6 +1323,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   smDef2.sm,
                   s3.relevantQuantifiedVariables(tArgs).map(_._1),
                   Option.when(withExp)(s3.relevantQuantifiedVariables(tArgs).map(_._2.get)),
+                  s.quantifiedVariables.map(_._1).filter(qvar => (tArgs ++ Seq(tCond)).exists(_.contains(qvar))),
                   optTrigger.map(_ => tTriggers),
                   qid,
                   v2,
@@ -1433,8 +1376,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                       else None
                     val (smDef2, smCache2) = quantifiedChunkSupporter.summarisingSnapshotMap(
                       s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
-                    val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
+                    var fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
                       .recordFieldInv(inverseFunctions)
+                    fr3 = smDef1 match {
+                      case None => fr3
+                      case Some(smDef) => fr3.recordFvfAndDomain(smDef)
+                    }
                     val s3 = s2.copy(functionRecorder = fr3,
                       partiallyConsumedHeap = Some(h3),
                       constrainableARPs = s.constrainableARPs,
@@ -1853,7 +1800,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           sorts.FieldValueFunction(v.symbolConverter.toSort(field.typ), field.name)
         case predicate: ast.Predicate =>
           // TODO: Reconsider use of and general design behind s.predicateSnapMap
-          sorts.PredicateSnapFunction(s.predicateSnapMap(predicate), predicate.name)
+          sorts.PredicateSnapFunction(s.predicateSnapMap(predicate.name), predicate.name)
         case w: ast.MagicWand =>
           sorts.PredicateSnapFunction(sorts.Snap, MagicWandIdentifier(w, s.program).toString)
         case _ =>
@@ -1941,6 +1888,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                codomainQVarExps: Option[Seq[ast.LocalVarDecl]],
                                additionalInvArgs: Seq[Var],
                                additionalInvArgExps: Option[Seq[ast.AbstractLocalVar]],
+                               stateQVars: Seq[Var],
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
@@ -2011,7 +1959,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             axInvsOfFctsBody,
             if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else And(invertibles) :: axInvsOfFctsBody :: Nil,
             s"$qidPrefix-invOfFct",
-            isGlobal = true,
+            isGlobal = stateQVars.isEmpty,
             v.axiomRewriter)
         case Some(triggers) =>
           /* User-provided triggers; create quantifier directly */
@@ -2044,7 +1992,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         axFctsOfInvsBody,
         axFctsOfInvsTriggers,
         s"$qidPrefix-fctOfInv",
-        isGlobal = true,
+        isGlobal = stateQVars.isEmpty,
         v.axiomRewriter)
 
     val res = InverseFunctions(
@@ -2073,11 +2021,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
-        Left(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
+        val qvarsAndInverses = qfc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qfc.invs.get.additionalArguments.toSeq ++ qfc.quantifiedVars)))
+        val invertiblesReplaced = qfc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+        Left(invertiblesReplaced, qfc.quantifiedVars, qfc.condition)
       case qfc: QuantifiedFieldChunk if qfc.singletonArguments.isDefined =>
         Right(qfc.singletonArguments.get, qfc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
-        Left(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
+        val qvarsAndInverses = qpc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qpc.invs.get.additionalArguments.toSeq ++ qpc.quantifiedVars)))
+        val invertiblesReplaced = qpc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+        Left(invertiblesReplaced, qpc.quantifiedVars, qpc.condition)
       case qpc: QuantifiedPredicateChunk if qpc.singletonArguments.isDefined =>
         Right(qpc.singletonArguments.get, qpc.condition)
       case _ => return None
@@ -2121,9 +2073,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     relevantChunks.find { ch =>
       val chunkInfo = ch match {
         case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
-          Some(qfc.invs.get.invertibles, qfc.quantifiedVars, qfc.condition)
+          val qvarsAndInverses = qfc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qfc.invs.get.additionalArguments.toSeq ++ qfc.quantifiedVars)))
+          val invertiblesReplaced = qfc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+          Some(invertiblesReplaced, qfc.quantifiedVars, qfc.condition)
         case qpc: QuantifiedPredicateChunk if qpc.invs.isDefined =>
-          Some(qpc.invs.get.invertibles, qpc.quantifiedVars, qpc.condition)
+          val qvarsAndInverses = qpc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qpc.invs.get.additionalArguments.toSeq ++ qpc.quantifiedVars)))
+          val invertiblesReplaced = qpc.invs.get.invertibles.map(_.replace(qvarsAndInverses))
+          Some(invertiblesReplaced, qpc.quantifiedVars, qpc.condition)
         case _ => None
       }
       chunkInfo match {
@@ -2150,7 +2106,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   }
 
   // Based on StateConsolidator#combineSnapshots
-  override def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
+  override def combineFieldSnapshotMaps(fr: FunctionRecorder, field: String, fqvars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
     val lookupT1 = Lookup(field, t1, `?r`)
     val lookupT2 = Lookup(field, t2, `?r`)
     val (fr2, sm, smDef, triggers) = (IsPositive(p1), IsPositive(p2)) match {
@@ -2164,17 +2120,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          * we have to introduce a fresh snapshot. Note that it is not sound
          * to use t1 or t2 and constrain it.
          */
-        val t3 = v.decider.fresh(t1.sort, Option.when(withExp)(PUnknown()))
+        val t3 = v.decider.appliedFresh("ms", t1.sort, fqvars)
         val lookupT3 = Lookup(field, t3, `?r`)
-        (fr.recordConstrainedVar(t3, And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))), t3,
-          And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2)), Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3)))
+        val constraint = And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))
+        val triggers = Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3))
+        (fr.recordPathSymbol(t3.applicable.asInstanceOf[Function]).recordConstraint(Forall(`?r`, constraint, triggers)), t3, constraint, triggers)
     }
 
     (fr2, sm, Forall(`?r`, smDef, triggers))
   }
 
   // Based on StateConsolidator#combineSnapshots
-  override def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
+  override def combinePredicateSnapshotMaps(fr: FunctionRecorder, predicate: String, qVars: Seq[Var], fqvars: Seq[Var], t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
     val lookupT1 = PredicateLookup(predicate, t1, qVars)
     val lookupT2 = PredicateLookup(predicate, t2, qVars)
     val (fr2, sm, smDef, triggers) = (IsPositive(p1), IsPositive(p2)) match {
@@ -2188,10 +2145,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          * we have to introduce a fresh snapshot. Note that it is not sound
          * to use t1 or t2 and constrain it.
          */
-        val t3 = v.decider.fresh(t1.sort, Option.when(withExp)(PUnknown()))
+        val t3 = v.decider.appliedFresh("ms", t1.sort, fqvars)
         val lookupT3 = PredicateLookup(predicate, t3, qVars)
-        (fr.recordConstrainedVar(t3, And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))), t3,
-          And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2)), Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3)))
+        val constraint = And(Implies(b1, lookupT3 === lookupT1), Implies(b2, lookupT3 === lookupT2))
+        val triggers = Seq(Trigger(lookupT1), Trigger(lookupT2), Trigger(lookupT3))
+        (fr.recordPathSymbol(t3.applicable.asInstanceOf[Function]).recordConstraint(Forall(qVars, constraint, triggers)), t3, constraint, triggers)
     }
 
     (fr2, sm, Forall(qVars, smDef, triggers))

@@ -7,19 +7,18 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.dependencyAnalysis.{DependencyGraphInterpreter, DependencyAnalyzer, AssumptionType}
+import viper.silicon.Map
 import viper.silicon.decider.Decider
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyGraphInterpreter}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.{State, Store}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.{Map, toMap}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silver.reporter.AnnotationWarning
 import viper.silver.verifier.errors._
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
@@ -47,22 +46,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      val proverOptions: Map[String, String] = method.info.getUniqueInfo[ast.AnnotationInfo] match {
-        case Some(ai) if ai.values.contains("proverArgs") =>
-          toMap(ai.values("proverArgs").flatMap(o => {
-            val index = o.indexOf("=")
-            if (index == -1) {
-              reporter report AnnotationWarning(s"Invalid proverArgs annotation ${o} on method ${method.name}. " +
-                s"Required format for each option is optionName=value.")
-              None
-            } else {
-              val (name, value) = (o.take(index), o.drop(index + 1))
-              Some((name, value))
-            }
-          }))
-        case _ =>
-          Map.empty
-      }
+      val proverOptions: Map[String, String] = AnnotationSupporter.getProverConfigArgs(method, reporter)
       v.decider.setProverOptions(proverOptions)
 
       openSymbExLogger(method)
@@ -83,7 +67,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
       val s = sInit.copy(g = g,
-                         h = Heap(),
+                         h = v.heapSupporter.getEmptyHeap(sInit.program),
                          oldHeaps = OldHeaps(),
                          methodCfg = body)
 
@@ -106,7 +90,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
-                  val s4 = s3.copy(h = Heap())
+                  val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3, postConditionType)((_, _) => {
@@ -139,9 +123,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
     def start(): Unit = {}
 
-    def reset(): Unit = {
-      _units = Seq.empty
-    }
+    def reset(): Unit = {}
 
     def stop(): Unit = {}
   }

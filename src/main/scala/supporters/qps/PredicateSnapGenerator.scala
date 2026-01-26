@@ -17,22 +17,22 @@ import viper.silicon.supporters.SnapshotSupporter
 class PredicateSnapGenerator(symbolConverter: SymbolConverter, snapshotSupporter: SnapshotSupporter)
     extends StatefulComponent {
 
-  var snapMap: Map[Predicate, terms.Sort] = Map()
-  var formalVarMap: Map[Predicate, Seq[terms.Var]] = Map()
+  var snapMap: Map[String, terms.Sort] = Map()
+  var formalVarMap: Map[String, Seq[terms.Var]] = Map()
 
   def setup(program:Program): Unit =
     program visit {
       case ast.PredicateAccess(_, predname) =>
         val predicate = program.findPredicate(predname)
-        val sort = predicate -> predicate.body.map(snapshotSupporter.optimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap)
+        val sort = predname -> predicate.body.map(snapshotSupporter.optimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap)
         val formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ), false))
-        formalVarMap += predicate -> formalArgs
+        formalVarMap += predname -> formalArgs
         snapMap += sort
     }
 
   def getSnap(predicate:Predicate): (terms.Sort, Boolean) =
-    if (snapMap.contains(predicate)) {
-      (snapMap(predicate), true)
+    if (snapMap.contains(predicate.name)) {
+      (snapMap(predicate.name), true)
     } else {
       (sorts.Snap, false)
     }

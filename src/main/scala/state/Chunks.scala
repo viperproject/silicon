@@ -6,6 +6,8 @@
 
 package viper.silicon.state
 
+import viper.silicon
+import viper.silver.ast
 import viper.silicon.dependencyAnalysis.AnalysisInfo
 import viper.silicon.interfaces.state._
 import viper.silicon.resources._
@@ -71,12 +73,19 @@ case class BasicChunk private (resourceID: BaseID,
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
   override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
+
+  override def permScale(newPerm: Term, newPermExp: Option[ast.Exp]) =
+    withPerm(PermTimes(perm, newPerm), permExp.map(pe => ast.PermMul(pe, newPermExp.get)()))
   override protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): BasicChunk = new BasicChunk(resourceID, id, args, argsExp, snap, snapExp, newPerm, newPermExp)
   override protected def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]): BasicChunk = new BasicChunk(resourceID, id, args, argsExp, newSnap, newSnapExp, perm, permExp)
 
   override lazy val toString = resourceID match {
     case FieldID => s"${args.head}.$id -> $snap # $perm"
     case PredicateID => s"$id($snap; ${args.mkString(",")}) # $perm"
+  }
+
+  override def substitute(terms: silicon.Map[Term, Term]) = {
+    copy(args = args.map(_.replace(terms)), snap = snap.replace(terms), perm = perm.replace(terms))
   }
 }
 
@@ -181,10 +190,17 @@ case class QuantifiedFieldChunk private(id: BasicChunkIdentifier,
     withPerm(PermMinus(permValue, newPerm), newPermExp.map(npe => ast.PermSub(permValueExp.get, npe)()))
   override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(permValue, newPerm), newPermExp.map(npe => ast.PermAdd(permValueExp.get, npe)()))
+
+  override def permScale(newPerm: Term, newPermExp: Option[ast.Exp]) =
+    withPerm(PermTimes(perm, newPerm), permExp.map(pe => ast.PermMul(pe, newPermExp.get)()))
   override protected def withSnapshotMap(newFvf: Term) =
     new QuantifiedFieldChunk(id, newFvf, condition, conditionExp, permValue, permValueExp, invs, singletonRcvr, singletonRcvrExp, hints)
 
   override lazy val toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$id -> $fvf # $perm"
+
+  override def substitute(terms: silicon.Map[Term, Term]): Chunk =
+    copy(fvf = fvf.replace(terms), condition = condition.replace(terms), permValue = permValue.replace(terms),
+      singletonRcvr = singletonRcvr.map(_.replace(terms)), hints = hints.map(_.replace(terms)), invs = invs.map(_.substitute(terms)))
 }
 
 object QuantifiedPredicateChunk {
@@ -260,10 +276,17 @@ case class QuantifiedPredicateChunk private(id: BasicChunkIdentifier,
     withPerm(PermMinus(permValue, newPerm), newPermExp.map(npe => ast.PermSub(permValueExp.get, npe)()))
   override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(permValue, newPerm), newPermExp.map(npe => ast.PermAdd(permValueExp.get, npe)()))
+
+  override def permScale(newPerm: Term, newPermExp: Option[ast.Exp]) =
+    withPerm(PermTimes(perm, newPerm), permExp.map(pe => ast.PermMul(pe, newPermExp.get)()))
   override protected def withSnapshotMap(newPsf: Term) =
     new QuantifiedPredicateChunk(id, quantifiedVars, quantifiedVarExps, newPsf, condition, conditionExp, permValue, permValueExp, invs, singletonArgs, singletonArgExps, hints)
 
   override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm"
+
+  override def substitute(terms: silicon.Map[Term, Term]): Chunk =
+    copy(psf = psf.replace(terms), condition = condition.replace(terms), permValue = permValue.replace(terms),
+      singletonArgs = singletonArgs.map(_.map(_.replace(terms))), hints = hints.map(_.replace(terms)), invs = invs.map(_.substitute(terms)))
 }
 
 object QuantifiedMagicWandChunk {
@@ -327,12 +350,19 @@ case class QuantifiedMagicWandChunk private(id: MagicWandIdentifier,
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
   override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
+
+  override def permScale(newPerm: Term, newPermExp: Option[ast.Exp]) =
+    withPerm(PermTimes(perm, newPerm), permExp.map(pe => ast.PermMul(pe, newPermExp.get)()))
   override protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) =
     new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, wsf, newPerm, newPermExp, invs, singletonArgs, singletonArgExps, hints)
   override protected def withSnapshotMap(newWsf: Term) =
     new QuantifiedMagicWandChunk(id, quantifiedVars, quantifiedVarExps, newWsf, perm, permExp, invs, singletonArgs, singletonArgExps, hints)
 
   override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $wsf # $perm"
+
+  override def substitute(terms: silicon.Map[Term, Term]): Chunk =
+    copy(wsf = wsf.replace(terms), perm = perm.replace(terms), singletonArgs = singletonArgs.map(_.map(_.replace(terms))),
+      hints = hints.map(_.replace(terms)), invs = invs.map(_.substitute(terms)))
 }
 
 case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand)(override val hashCode: Int) extends ChunkIdentifer {
@@ -397,6 +427,9 @@ case class MagicWandChunk private(id: MagicWandIdentifier,
     withPerm(PermMinus(perm, newPerm), newPermExp.map(npe => ast.PermSub(permExp.get, npe)()))
   override protected def permPlus(newPerm: Term, newPermExp: Option[ast.Exp]) =
     withPerm(PermPlus(perm, newPerm), newPermExp.map(npe => ast.PermAdd(permExp.get, npe)()))
+
+  override def permScale(newPerm: Term, newPermExp: Option[ast.Exp]) =
+    withPerm(PermTimes(perm, newPerm), permExp.map(pe => ast.PermMul(pe, newPermExp.get)()))
   override protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]) = new MagicWandChunk(id, bindings, args, argsExp, snap, newPerm, newPermExp)
 
   override protected def withSnap(newSnap: Term, newSnapExp: Option[ast.Exp]) = {
@@ -413,5 +446,9 @@ case class MagicWandChunk private(id: MagicWandIdentifier,
       case other => other.toString
     }
     s"wand@$pos[$snap; ${args.mkString(", ")}]"
+  }
+
+  override def substitute(terms: silicon.Map[Term, Term]) = {
+    copy(args = args.map(_.replace(terms)), snap = snap.replace(terms).asInstanceOf[MagicWandSnapshot], perm = perm.replace(terms))
   }
 }

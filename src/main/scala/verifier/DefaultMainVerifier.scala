@@ -21,6 +21,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
+import viper.silicon.supporters.{AnnotationSupporter, DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast
@@ -332,8 +333,8 @@ class DefaultMainVerifier(config: Config,
 
     private def createInitialState(member: ast.Member,
                                  program: ast.Program,
-                                 functionData: Map[ast.Function, FunctionData],
-                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
+                                 functionData: Map[String, FunctionData],
+                                 predicateData: Map[String, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
@@ -342,40 +343,15 @@ class DefaultMainVerifier(config: Config,
       case r => r
     }
 
-    val mce = member.info.getUniqueInfo[ast.AnnotationInfo] match {
-      case Some(ai) if ai.values.contains("exhaleMode") =>
-        ai.values("exhaleMode") match {
-          case Seq("0") | Seq("greedy") | Seq("2") | Seq("mceOnDemand") =>
-            if (Verifier.config.counterexample.isSupplied)
-              reporter report AnnotationWarning(s"Member ${member.name} has exhaleMode annotation that may interfere with counterexample generation.")
-            false
-          case Seq("1") | Seq("mce") | Seq("moreCompleteExhale") => true
-          case v =>
-            reporter report AnnotationWarning(s"Member ${member.name} has invalid exhaleMode annotation value $v. Annotation will be ignored.")
-            Verifier.config.exhaleMode == ExhaleMode.MoreComplete
-        }
-      case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
+    val mce = AnnotationSupporter.getExhaleMode(member, reporter) match {
+      case Some(ExhaleMode.MoreComplete) => true
+      case Some(ExhaleMode.Greedy) | Some(ExhaleMode.MoreCompleteOnDemand) =>
+        if (Verifier.config.counterexample.isSupplied)
+          reporter report AnnotationWarning(s"Member ${member.name} has exhaleMode annotation that may interfere with counterexample generation.")
+        false
+      case None => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
-    val moreJoinsAnnotated = member.info.getUniqueInfo[ast.AnnotationInfo] match {
-      case Some(ai) if ai.values.contains("moreJoins") =>
-        ai.values("moreJoins") match {
-          case Seq() | Seq("all") => Some(JoinMode.All)
-          case Seq("off") => Some(JoinMode.Off)
-          case Seq("impure") => Some(JoinMode.Impure)
-          case Seq(vl) =>
-            try {
-              Some(JoinMode(vl.toInt))
-            } catch {
-              case _: NumberFormatException =>
-                reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $vl. Annotation will be ignored.")
-                None
-            }
-          case v =>
-            reporter report AnnotationWarning(s"Member ${member.name} has invalid moreJoins annotation value $v. Annotation will be ignored.")
-            None
-        }
-      case _ => None
-    }
+    val moreJoinsAnnotated = AnnotationSupporter.getJoinMode(member, reporter)
     val moreJoins = if (member.isInstanceOf[ast.Method]) {
       moreJoinsAnnotated.getOrElse(Verifier.config.moreJoins.getOrElse(JoinMode.Off))
     } else {
@@ -430,8 +406,8 @@ class DefaultMainVerifier(config: Config,
 
   private def createInitialState(@unused cfg: SilverCfg,
                                  program: ast.Program,
-                                 functionData: Map[ast.Function, FunctionData],
-                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
+                                 functionData: Map[String, FunctionData],
+                                 predicateData: Map[String, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.

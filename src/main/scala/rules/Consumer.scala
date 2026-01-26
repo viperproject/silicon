@@ -15,7 +15,6 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -256,74 +255,62 @@ object consumer extends ConsumptionRules {
               Q(s3, h1, t1, v3)
             })))
 
-      /* TODO: Initial handling of QPs is identical/very similar in consumer
-       *       and producer. Try to unify the code.
-       */
-      case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
-        val field = acc.loc.field
-        val qid = BasicChunkIdentifier(acc.loc.field.name)
+      case accPred: ast.AccessPredicate =>
+        val eArgs = accPred.loc.args(s.program)
+        val resource = accPred.res(s.program)
+        val ePerm = accPred.perm
+
+        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+          eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) =>
+            permissionSupporter.assertNotNegative(s1a, tPerm, ePerm, ePermNew, pve, v1a)((s2, v2) => {
+              val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
+                (resource.isInstanceOf[ast.Location] && s2.permLocations.contains(resource.asInstanceOf[ast.Location])))
+                PermTimes(tPerm, s2.permissionScalingFactor)
+              else
+                WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
+              val lossExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
+              val s3 = v2.heapSupporter.triggerResourceIfNeeded(s2, accPred.loc, tArgs, eArgsNew, v2)
+              v2.heapSupporter.consumeSingle(s3, h, accPred.loc, tArgs, eArgsNew, loss, lossExp, returnSnap, pve, v2)((s4, h4, snap, v4) => {
+                val s5 = s4.copy(constrainableARPs = s.constrainableARPs,
+                                 partiallyConsumedHeap = Some(h4))
+                Q(s5, h4, snap, v4)
+              })
+            })))
+
+      case qpa@QuantifiedPermissionAssertion(forall, cond, accPred) =>
+        val resAcc = accPred.loc
+        val eArgs = resAcc.args(s.program)
+        val ePerm = accPred.perm
+        val (qid, insuffReason) =
+          accPred match {
+            case ast.FieldAccessPredicate(fa@ast.FieldAccess(_, fld), _) =>
+              val insuffReason = InsufficientPermission(fa)
+              (fld.name, insuffReason)
+            case ast.PredicateAccessPredicate(pa@ast.PredicateAccess(_, predName), _) =>
+              val insuffReason = InsufficientPermission(pa)
+              (predName, insuffReason)
+            case w: ast.MagicWand =>
+              val insuffReason = MagicWandChunkNotFound(w)
+              (MagicWandIdentifier(w, s.program).toString, insuffReason)
+          }
+        val resource = resAcc.res(s.program)
+        val tFormalArgs = s.getFormalArgVars(resource, v)
+        val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-
-        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
-          case (s1, qvars, qvarExps, Seq(tCond), condNew, Some((Seq(tPerm, tRcvr), permRcvrOpt, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
-            quantifiedChunkSupporter.consume(
+        val s0 = s.copy(functionRecorder = s.functionRecorder.enterQuantifiedExp(qpa))
+        evalQuantified(s0, Forall, forall.variables, Seq(cond), ePerm +: eArgs, optTrigger, qid, pve, v) {
+          case (s1, qvars, qvarExps, Seq(tCond), condNew, Some((Seq(tPerm, tArgs@_*), permArgsNew, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
+            v1.heapSupporter.consumeQuantified(
               s = s1,
               h = h,
-              resource = field,
+              resource = resource,
               qvars = qvars,
               qvarExps = qvarExps,
-              formalQVars = Seq(`?r`),
-              formalQVarsExp = Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
-              qid = qid.name,
-              optTrigger = optTrigger,
-              tTriggers = tTriggers,
-              auxGlobals = auxGlobals,
-              auxNonGlobals = auxNonGlobals,
-              auxGlobalsExp = auxExps.map(_._1),
-              auxNonGlobalsExp = auxExps.map(_._2),
-              tCond = tCond,
-              eCond = condNew.map(_.head),
-              tArgs = Seq(tRcvr),
-              eArgs = permRcvrOpt.map(permRcvr => Seq(permRcvr(1))),
-              tPerm = tPerm,
-              ePerm = permRcvrOpt.map(_(0)),
-              returnSnap = returnSnap,
-              pve = pve,
-              negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = QPAssertionNotInjective(acc.loc),
-              insufficientPermissionReason = InsufficientPermission(acc.loc),
-              v1,
-              assumptionType)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
-        }
-
-      case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
-        val predicate = s.program.findPredicate(acc.loc.predicateName)
-        /* TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
-         *       and need to be instantiated in several places. Hence, they need to be known,
-         *       which is more complicated if fresh identifiers are used.
-         *       At least two options:
-         *         1. Choose fresh identifiers each time; remember/restore, e.g. by storing these variables in chunks
-         *         2. Choose fresh identifiers once; store in and take from state (or from object Verifier)
-         */
-        val formalVars = s.predicateFormalVarMap(predicate)
-        val qid = BasicChunkIdentifier(acc.loc.predicateName)
-        val optTrigger =
-          if (forall.triggers.isEmpty) None
-          else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
-          case (s1, qvars, qvarExps, Seq(tCond), condNew, Some((Seq(tPerm, tArgs @ _*), permArgsNew, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
-            quantifiedChunkSupporter.consume(
-              s = s1,
-              h = h,
-              resource = predicate,
-              qvars = qvars,
-              qvarExps = qvarExps,
-              formalQVars = formalVars,
-              formalQVarsExp = Option.when(withExp)(predicate.formalArgs),
-              qid = qid.name,
+              tFormalArgs = tFormalArgs,
+              eFormalArgs = eFormalArgs,
+              qid = qid,
               optTrigger = optTrigger,
               tTriggers = tTriggers,
               auxGlobals = auxGlobals,
@@ -338,219 +325,24 @@ object consumer extends ConsumptionRules {
               ePerm = permArgsNew.map(_.head),
               returnSnap = returnSnap,
               pve = pve,
-              negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = QPAssertionNotInjective(acc.loc),
-              insufficientPermissionReason = InsufficientPermission(acc.loc),
+              negativePermissionReason = NegativePermission(ePerm),
+              notInjectiveReason = QPAssertionNotInjective(resAcc),
+              insufficientPermissionReason = insuffReason,
               v1,
-              assumptionType)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
+              assumptionType)((s2, h2, snap, v2) => {
+              val s3 = s2.copy(constrainableARPs = s.constrainableARPs, functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa))
+              Q(s3, h2, snap, v2)
+            })
           case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
-
-      case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-        val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
-        val qid = MagicWandIdentifier(wand, s.program).toString
-        val optTrigger =
-          if (forall.triggers.isEmpty) None
-          else Some(forall.triggers)
-        val ePerm = ast.FullPerm()()
-        val tPerm = FullPerm
-        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, qvarExps, Seq(tCond), condNew, Some((tArgs, bodyVarsNew, tTriggers, (auxGlobals, auxNonGlobals), auxExps)), v1) =>
-            quantifiedChunkSupporter.consume(
-              s = s1,
-              h = h,
-              resource = wand,
-              qvars = qvars,
-              qvarExps = qvarExps,
-              formalQVars = formalVars,
-              formalQVarsExp = formalVarExps,
-              qid = qid,
-              optTrigger = optTrigger,
-              tTriggers = tTriggers,
-              auxGlobals = auxGlobals,
-              auxNonGlobals = auxNonGlobals,
-              auxGlobalsExp = auxExps.map(_._1),
-              auxNonGlobalsExp = auxExps.map(_._2),
-              tCond = tCond,
-              eCond = condNew.map(_.head),
-              tArgs = tArgs,
-              eArgs = bodyVarsNew,
-              tPerm = tPerm,
-              ePerm = Option.when(withExp)(ePerm),
-              returnSnap = returnSnap,
-              pve = pve,
-              negativePermissionReason = NegativePermission(ePerm),
-              notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
-              insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
-              v1,
-              assumptionType)((s2, h2, snap, v2) => Q(s2.copy(constrainableARPs = s.constrainableARPs), h2, snap, v2))
-          case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), h, if (returnSnap) Some(Unit) else None, v1)
-        }
-
-      case accPred@ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
-              if s.qpFields.contains(field) =>
-
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
-            val s2p = if (s2.heapDependentTriggers.contains(field)){
-              val (relevantChunks, _) =
-                quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
-                  s2, field, Seq(`?r`), relevantChunks, v2)
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: ${eRcvrNew.get.toString}.${field.name}"))
-              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp, AssumptionType.Trigger)
-              //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
-              s2.copy(smCache = smCache1)
-            } else {
-              s2
-            }
-            val loss = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(field))
-              PermTimes(tPerm, s2.permissionScalingFactor)
-            else
-              WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
-            val lossExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(ePerm.pos, ePerm.info, ePerm.errT))
-            quantifiedChunkSupporter.consumeSingleLocation(
-              s2p,
-              h,
-              Seq(`?r`),
-              Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(accPred.pos, accPred.info, accPred.errT))),
-              Seq(tRcvr),
-              eRcvrNew.map(Seq(_)),
-              loc,
-              loss,
-              lossExp,
-              returnSnap,
-              None,
-              pve,
-              v2,
-              assumptionType
-            )((s3, h3, snap, v3) => {
-              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                               partiallyConsumedHeap = Some(h3))
-              Q(s4, h3, snap, v3)})}))
-
-      case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
-              if s.qpPredicates.contains(s.program.findPredicate(predname)) =>
-
-        val predicate = s.program.findPredicate(predname)
-        val formalVars = s.predicateFormalVarMap(predicate)
-
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
-            val s2p = if (s2.heapDependentTriggers.contains(predicate)){
-              val (relevantChunks, _) =
-                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
-                  s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}(${eArgsNew.mkString(", ")}))", isInternal_ = true))
-              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp, AssumptionType.Trigger)
-              s2.copy(smCache = smCache1)
-            } else {
-              s2
-            }
-
-            val loss = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(loc.loc(s2.program)))
-              PermTimes(tPerm, s2.permissionScalingFactor)
-            else
-              WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
-            val lossExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(ePerm.pos, ePerm.info, ePerm.errT))
-            quantifiedChunkSupporter.consumeSingleLocation(
-              s2p,
-              h,
-              formalVars,
-              Option.when(withExp)(predicate.formalArgs),
-              tArgs,
-              eArgsNew,
-              loc,
-              loss,
-              lossExp,
-              returnSnap,
-              None,
-              pve,
-              v2,
-              assumptionType
-            )((s3, h3, snap, v3) => {
-              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                               partiallyConsumedHeap = Some(h3))
-              Q(s4, h3, snap, v3)})}))
 
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
           val s2 = s1.copy(g = s1.g + g1)
           consumeR(s2, h, body, returnSnap, pve, v1, assumptionType)(Q)})
 
-      case ast.AccessPredicate(locacc: ast.LocationAccess, perm) =>
-        eval(s, perm, pve, v)((s1, tPerm, permNew, v1) =>
-          evalLocationAccess(s1, locacc, pve, v1)((s2, _, tArgs, eArgs, v2) =>
-            permissionSupporter.assertNotNegative(s2, tPerm, perm, permNew, pve, v2)((s3, v3) => {
-              val resource = locacc.res(s.program)
-              val loss = if (!Verifier.config.unsafeWildcardOptimization() || s2.permLocations.contains(locacc.loc(s2.program)))
-                PermTimes(tPerm, s2.permissionScalingFactor)
-              else
-                WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
-              val lossExp = permNew.map(p => ast.PermMul(p, s3.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
-              val ve = pve dueTo InsufficientPermission(locacc)
-              val description = s"consume ${a.pos}: $a"
-              chunkSupporter.consume(s3, h, resource, tArgs, eArgs, loss, lossExp, returnSnap, ve, v3, description, assumptionType)((s4, h1, snap1, v4) => {
-                val s5 = s4.copy(partiallyConsumedHeap = Some(h1),
-                                 constrainableARPs = s.constrainableARPs)
-                Q(s5, h1, snap1, v4)})})))
-
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s, "valid AST")
-
-      /* Handle wands */
-      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
-        val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
-        val formalVarExps = Option.when(withExp)(bodyVars.indices.toList.map(i => ast.LocalVarDecl(s"x$i", bodyVars(i).typ)()))
-        evals(s, bodyVars, _ => pve, v)((s1, tArgs, bodyVarsNew, v1) => {
-          val s1p = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program))){
-            val (relevantChunks, _) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, s.program))
-            val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(
-                s1, wand, formalVars, relevantChunks, v1)
-            val argsString = bodyVarsNew.mkString(", ")
-            val predName = MagicWandIdentifier(wand, s.program).toString
-            val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger($predName($argsString))", isInternal_ = true))
-            v1.decider.assume(PredicateTrigger(predName, smDef1.sm, tArgs), debugExp, AssumptionType.Trigger)
-            s1.copy(smCache = smCache1)
-          } else {
-            s1
-          }
-          val loss = s1.permissionScalingFactor
-          val lossExp = s1.permissionScalingFactorExp
-          quantifiedChunkSupporter.consumeSingleLocation(
-            s1p,
-            h,
-            formalVars,
-            formalVarExps,
-            tArgs,
-            Option.when(withExp)(bodyVars),
-            wand,
-            loss,
-            lossExp,
-            returnSnap,
-            None,
-            pve,
-            v1,
-            assumptionType
-          )((s3, h3, snap, v3) => {
-            val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                             partiallyConsumedHeap = Some(h3))
-            Q(s4, h3, snap, v3)})})
-
-      case wand: ast.MagicWand =>
-        magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, eArgs, v1) => {
-          val ve = pve dueTo MagicWandChunkNotFound(wand)
-          val description = s"consume wand $wand"
-          chunkSupporter.consume(s1, h, wand, tArgs, eArgs, FullPerm, Option.when(withExp)(ast.FullPerm()(wand.pos, wand.info, wand.errT)), returnSnap, ve, v1, description, assumptionType)(Q)
-        })
 
       case _ =>
         evalAndAssert(s, a, returnSnap, pve, v, assumptionType)((s1, t, v1) => {

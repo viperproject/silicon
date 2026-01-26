@@ -2198,6 +2198,19 @@ object Domain extends CondFlyweightTermFactory[(String, Term), Domain] {
   override def actualCreate(args: (String, Term)): Domain = new Domain(args._1, args._2)
 }
 
+/** Marks FVFs that have a defined domain (i.e. for which some information is available about Domain(field, fvf)).
+  * Only for these FVFs is it useful to trigger the extensionality axiom.  */
+class HasDomain(val field: String, val fvf: Term, val isGlobal: Boolean) extends Term with ConditionalFlyweight[(String, Term, Boolean), HasDomain] {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+
+  val sort = sorts.Bool
+  override val equalityDefiningMembers: (String, Term, Boolean) = (field, fvf, isGlobal)
+}
+
+object HasDomain extends CondFlyweightTermFactory[(String, Term, Boolean), HasDomain] {
+  override def actualCreate(args: (String, Term, Boolean)): HasDomain = new HasDomain(args._1, args._2, args._3)
+}
+
 class FieldTrigger(val field: String, val fvf: Term, val at: Term) extends Term with ConditionalFlyweight[(String, Term, Term), FieldTrigger] {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
@@ -2243,6 +2256,17 @@ class PredicateDomain(val predname: String, val psf: Term) extends SetTerm /*wit
 
 object PredicateDomain extends CondFlyweightTermFactory[(String, Term), PredicateDomain] {
   override def actualCreate(args: (String, Term)): PredicateDomain = new PredicateDomain(args._1, args._2)
+}
+
+/** Like HasDomain, but for predicate snap functions; see comment above. */
+class HasPredicateDomain(val predname: String, val psf: Term, val isGlobal: Boolean) extends Term with ConditionalFlyweight[(String, Term, Boolean), HasPredicateDomain] {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+  val sort = sorts.Bool
+  override val equalityDefiningMembers: (String, Term, Boolean) = (predname, psf, isGlobal)
+}
+
+object HasPredicateDomain extends CondFlyweightTermFactory[(String, Term, Boolean), HasPredicateDomain] {
+  override def actualCreate(args: (String, Term, Boolean)): HasPredicateDomain = new HasPredicateDomain(args._1, args._2, args._3)
 }
 
 class PredicateTrigger(val predname: String, val psf: Term, val args: Seq[Term]) extends Term with ConditionalFlyweight[(String, Term, Seq[Term]), PredicateTrigger] {

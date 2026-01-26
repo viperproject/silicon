@@ -7,6 +7,7 @@
 package viper.silicon.interfaces.state
 
 import viper.silicon.dependencyAnalysis.{AnalysisInfo, AssumptionType}
+import viper.silicon
 import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
@@ -16,6 +17,8 @@ import scala.annotation.unused
 trait Chunk {
   val perm: Term
   val permExp: Option[ast.Exp]
+
+  def substitute(terms: silicon.Map[Term, Term]): Chunk
 }
 
 trait ChunkIdentifer
@@ -28,6 +31,10 @@ trait GeneralChunk extends Chunk {
   protected def permMinus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
   protected def permPlus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
   protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): GeneralChunk
+
+  def permScale(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
+
+  val permExp: Option[ast.Exp]
 }
 
 object GeneralChunk {

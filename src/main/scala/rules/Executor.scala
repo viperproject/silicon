@@ -7,6 +7,14 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
+
+import scala.annotation.unused
+import viper.silver.cfg.silver.SilverCfg
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
+import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
+import viper.silver.verifier.errors._
+import viper.silver.verifier.reasons._
+import viper.silver.{ast, cfg}
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType, ExpAnalysisSourceInfo, StmtAnalysisSourceInfo, TransitivityAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -15,10 +23,8 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
-import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
@@ -249,7 +255,7 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => {
               val xNew = v.decider.fresh(x)
               map.updated(x, xNew)}))
-            val sBody = s.copy(g = gBody, h = Heap())
+            val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -257,7 +263,7 @@ object executor extends ExecutionRules {
             val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
                                             .distinct
 
-            type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
+            type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl], Seq[MacroDecl])
             var phase1data: Vector[PhaseData] = Vector.empty
 
             (executionFlowController.locally(sBody, v)((s0, v0) => {
@@ -266,7 +272,8 @@ object executor extends ExecutionRules {
                 produces(s0, freshSnap, invs, ContractNotWellformed, v0, AssumptionType.LoopInvariant)((s1, v1) => {
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
-                                              v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */)
+                                              v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */,
+                                              v1.decider.freshMacros    /* [BRANCH-PARALLELISATION] */)
                   Success()
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
@@ -275,10 +282,11 @@ object executor extends ExecutionRules {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
-                    case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
+                    case (intermediateResult, (s1, pcs, ff1, fm1)) => /* [BRANCH-PARALLELISATION] ff1, m1 */
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
+                        v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.Internal)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke() && !Verifier.config.disableInfeasibilityChecks())
@@ -396,97 +404,15 @@ object executor extends ExecutionRules {
        *       and benchmark possible performance effects.
        */
 
-      /* Assignment for a field that contains quantified chunks */
-      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
-              if s.qpFields.contains(field) =>
-
+      case ass @ ast.FieldAssign(ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
-          eval(s1, rhs, pve, v1)((s2, tRhs, _, v2) => {
-            val (relevantChunks, otherChunks) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
-            val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-            val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v2)
-            val s2p = if (s2.heapDependentTriggers.contains(field)){
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
-                  s2, field, Seq(`?r`), relevantChunks, v1)
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(s"Field Trigger: (${eRcvrNew.toString()}).${field.name}"))
-              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr), debugExp, AssumptionType.Trigger)
-              s2.copy(smCache = smCache1)
-            } else {
-              s2
-            }
-            v2.decider.clearModel()
-            val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(fa))
-            v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-            val result = quantifiedChunkSupporter.removePermissions(
-              s2p,
-              relevantChunks,
-              Seq(`?r`),
-              Option.when(withExp)(Seq(ast.LocalVarDecl(`?r`.id.name, ast.Ref)())),
-              `?r` === tRcvr,
-              eRcvrNew.map(r => ast.EqCmp(ast.LocalVar(`?r`.id.name, ast.Ref)(), r)()),
-              Some(Seq(tRcvr)),
-              field,
-              FullPerm,
-              Option.when(withExp)(ast.FullPerm()()),
-              chunkOrderHeuristics,
-              v2
-            )
-            v2.decider.analysisSourceInfoStack.removeForcedSource()
-            result match {
-              case (Complete(), s3, remainingChunks) =>
-                val h3 = Heap(remainingChunks ++ otherChunks)
-                val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
-                v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-                val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-                v1.decider.assumeDefinition(smValueDef, debugExp, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
-                v1.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-                  field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v1, AssumptionType.Internal, isExhale=false)
-                if (s3.heapDependentTriggers.contains(field)) {
-                  val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
-                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, AssumptionType.Trigger)
-                }
-                v1.decider.analysisSourceInfoStack.removeForcedSource()
-                v1.decider.dependencyAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v1.decider.analysisSourceInfoStack.getFullSourceInfo)
-                val s4 = s3.copy(h = h3 + ch)
-                val (debugHeapName, _) = v.getDebugOldLabel(s4, fa.pos)
-                val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
-                Q(s5, v2)
-              case (Incomplete(_, _), s3, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3, "sufficient permission")}}))
-
-      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
-        assert(!s.exhaleExt)
-        val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) =>
-          eval(s1, rhs, pve, v1)((s2, tRhs, rhsNew, v2) => {
-            val resource = fa.res(s.program)
-            val ve = pve dueTo InsufficientPermission(fa)
-            val description = s"consume ${ass.pos}: $ass"
-            val lhsSourceInfo = TransitivityAnalysisSourceInfo(v2.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(fa))
-            v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v2, description, annotatedAssertionTypeOpt.getOrElse(AssumptionType.Implicit))((s3, h3, _, v3) => {
-              v2.decider.analysisSourceInfoStack.removeForcedSource()
-              val (tSnap, _) = ssaifyRhs(tRhs, rhs, rhsNew, field.name, field.typ, v3, s3, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
-              val id = BasicChunkIdentifier(field.name)
-              v2.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-              val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tSnap, rhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)),
-                v3.decider.getAnalysisInfo(AssumptionType.Internal))
-              v2.decider.analysisSourceInfoStack.removeForcedSource()
-              chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
-                val s5 = s4.copy(h = h4)
-                val (debugHeapName, _) = v4.getDebugOldLabel(s5, fa.pos)
-                val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
-                v4.decider.dependencyAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v4.decider.analysisSourceInfoStack.getFullSourceInfo)
-                Q(s6, v4)
-              })
-            })
+        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) => {
+          eval(s1, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
+            val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2)
+            v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)(Q)
           })
-        )
+        })
 
       case stmt@ast.NewStmt(x, fields) =>
         val (tRcvr, eRcvrNew) = v.decider.fresh(x)
@@ -494,28 +420,32 @@ object executor extends ExecutionRules {
         val debugExpSubst = Option.when(withExp)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
         val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, stmt.pos)
         v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst, AssumptionType.Implicit)
-        val newChunks = fields map (field => {
-          val p = FullPerm
-          val pExp = Option.when(withExp)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))
-          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ), Option.when(withExp)(extractPTypeFromExp(x)))
-          val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, field)(), debugLabel)(stmt.pos, stmt.info, stmt.errT))
-          if (s.qpFields.contains(field)) {
-            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
-            v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-            val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-            v.decider.assumeDefinition(smValueDef, debugExp, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(stmt.pos, stmt.info, stmt.errT))),
-              field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), p, pExp, sm, s.program, v, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit), isExhale=false)
+
+        val eRcvr = Option.when(withExp)(Seq(x))
+        val p = FullPerm
+        val pExp = Option.when(withExp)(ast.FullPerm()(stmt.pos, stmt.info, stmt.errT))
+
+        def addFieldPerms(s: State, flds: Seq[ast.Field], v: Verifier)
+                         (QB: (State, Verifier) => VerificationResult): VerificationResult = {
+          if (flds.isEmpty) {
+            QB(s, v)
           } else {
-            BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), Option.when(withExp)(Seq(x)), snap, snapExp, p, pExp, v.decider.getAnalysisInfo(annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit)))
+            val fld = flds.head
+            val snap = v.decider.fresh(fld.name, v.symbolConverter.toSort(fld.typ), Option.when(withExp)(extractPTypeFromExp(x)))
+            val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, fld)(), debugLabel)(stmt.pos, stmt.info, stmt.errT))
+            v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, snapExp, p, pExp, NullPartialVerificationError, false, v)((s1, v1) => {
+              addFieldPerms(s1, flds.tail, v1)(QB)
+            })
           }
-        })
+        }
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
-        val s1 = s.copy(g = s.g + (x, (tRcvr, eRcvrNew)), h = s.h + Heap(newChunks))
-        val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
-        v.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Implicit))
-        Q(s2, v)
+        addFieldPerms(s, fields, v)((s0, v0) => {
+          val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
+          val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
+          v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
+          Q(s2, v0)
+        })
 
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit if !Verifier.config.disableInfeasibilityChecks() =>
@@ -664,7 +594,7 @@ object executor extends ExecutionRules {
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, finalDependencyType)((s4, v4) => {
+              predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, finalDependencyType)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }
@@ -680,25 +610,11 @@ object executor extends ExecutionRules {
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
+            val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2)
 
-            val smCache1 = if (s2.qpPredicates.contains(predicate) && s2.heapDependentTriggers.contains(predicate)) {
-              val (relevantChunks, _) =
-                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s2.h, BasicChunkIdentifier(predicateName))
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
-                  s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-              val eArgsStr = eArgsNew.mkString(", ")
-              val debugExp = Option.when(withExp)(DebugExp.createInstance(Some(s"PredicateTrigger(${predicate.name}($eArgsStr))"), Some(pa),
-                Some(ast.PredicateAccess(eArgsNew.get, predicateName)(pa.pos, pa.info, pa.errT)), None, isInternal_ = true, InsertionOrderedSet.empty))
-              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs), debugExp, AssumptionType.Trigger)
-              smCache1
-            } else {
-              s2.smCache
-            }
-
-            permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2a, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, finalDependencyType)(
+              predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, finalDependencyType)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   Q(s4, v4)
@@ -714,7 +630,7 @@ object executor extends ExecutionRules {
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 =
               if (s.exhaleExt) {
-                s1.copy(h = Heap(),
+                s1.copy(h = v1.heapSupporter.getEmptyHeap(s1.program),
                         exhaleExt = true,
                         /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
                          * by the packageWand method. hUsed is normally used during transferring
@@ -732,22 +648,13 @@ object executor extends ExecutionRules {
               }
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
-            val smCache3 = chWand match {
-              case ch: QuantifiedMagicWandChunk if s2.heapDependentTriggers.contains(MagicWandIdentifier(wand, s2.program)) =>
-                val (relevantChunks, _) =
-                  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
-                val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ), false))
-                val (smDef, smCache) =
-                  quantifiedChunkSupporter.summarisingSnapshotMap(
-                    s2, wand, formalVars, relevantChunks, v1)
-                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get),
-                  Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${ch.id.toString}(${ch.singletonArgExps.get}))", isInternal_ = true)), AssumptionType.Trigger)
-                smCache
-              case _ => s2.smCache
+            val s3 = chWand match {
+              case ch: QuantifiedMagicWandChunk =>
+                v1.heapSupporter.triggerResourceIfNeeded(s2, wand, ch.singletonArgs.get, ch.singletonArgExps, v1)
+              case _ => s2
             }
 
-            continuation(s2.copy(smCache = smCache3, isInPackage = s.isInPackage), v1)
+            continuation(s3.copy(isInPackage = s.isInPackage), v1)
           })
 
       case apply @ ast.Apply(e) =>

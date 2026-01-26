@@ -6,35 +6,35 @@ domain $Seq[E] {
 
     function Seq_length(s: $Seq[E]): Int
 
-    axiom {
+    axiom Seq_length_nonneg {
         forall s: $Seq[E] :: {Seq_length(s)} 0 <= Seq_length(s)
     }
 
     function Seq_empty(): $Seq[E]
-    axiom {
+    axiom Seq_empty_length {
         Seq_length((Seq_empty(): $Seq[E])) == 0
     }
-    axiom {
+    axiom Seq_length_zero {
         forall s: $Seq[E] :: {Seq_length(s)} Seq_length(s) == 0 ==> s == Seq_empty()
     }
 
     function Seq_singleton(e: E): $Seq[E]
-    axiom {
+    axiom Seq_singleton_length {
         forall e: E :: {Seq_singleton(e)} Seq_length(Seq_singleton(e)) == 1
     }
 
     function Seq_append(s1: $Seq[E], s2: $Seq[E]): $Seq[E]
-    axiom {
+    axiom Seq_append_length {
         forall s0: $Seq[E], s1: $Seq[E] :: { Seq_length(Seq_append(s0, s1)) }
             s0 != Seq_empty() && s1 != Seq_empty() ==>
                 Seq_length(Seq_append(s0, s1)) == Seq_length(s0) + Seq_length(s1)
     }
-    axiom {
+    axiom Seq_append_empty{
         forall s0: $Seq[E], s1: $Seq[E] :: { Seq_append(s0, s1) } (s0 == Seq_empty() ==> Seq_append(s0, s1) == s1) && (s1 == Seq_empty() ==> Seq_append(s0, s1) == s0)
     }
 
     function Seq_index(s: $Seq[E], i: Int): E
-    axiom {
+    axiom Seq_singleton_index {
         forall e: E :: { Seq_singleton(e) } Seq_index(Seq_singleton(e), 0) == e
     }
 
@@ -42,35 +42,35 @@ domain $Seq[E] {
     // Start index-append-update
 
     function Seq_add(i0: Int, i1: Int): Int
-    axiom {
+    axiom Seq_add_def {
         forall i: Int, j: Int :: { Seq_add(i, j) } Seq_add(i, j) == i + j
     }
     function Seq_sub(i0: Int, i1: Int): Int
-    axiom {
+    axiom Seq_sub_def {
         forall i: Int, j: Int :: { Seq_sub(i, j) } Seq_sub(i, j) == i - j
     }
 
-    axiom {
+    axiom Seq_append_index1 {
         forall s0: $Seq[E], s1: $Seq[E], n: Int :: { Seq_index(Seq_append(s0, s1), n) } { Seq_index(s0, n), Seq_append(s0, s1) }
             s0 != Seq_empty() && s1 != Seq_empty() && 0 <= n && n < Seq_length(s0) ==> Seq_index(Seq_append(s0, s1), n) == Seq_index(s0, n)
     }
-    axiom {
+    axiom Seq_append_index2 {
         forall s0: $Seq[E], s1: $Seq[E], n: Int :: { Seq_index(Seq_append(s0, s1), n) }
             s0 != Seq_empty() && s1 != Seq_empty() && Seq_length(s0) <= n && n < Seq_length(Seq_append(s0, s1)) ==> Seq_add(Seq_sub(n, Seq_length(s0)), Seq_length(s0)) == n &&
             Seq_index(Seq_append(s0, s1), n) == Seq_index(s1, Seq_sub(n, Seq_length(s0)))
     }
-    axiom {
+    axiom Seq_append_index3 {
         forall s0: $Seq[E], s1: $Seq[E], m: Int :: { Seq_index(s1, m), Seq_append(s0, s1) }
             s0 != Seq_empty() && s1 != Seq_empty() && 0 <= m && m < Seq_length(s1) ==> Seq_sub(Seq_add(m, Seq_length(s0)), Seq_length(s0)) == m
             && Seq_index(Seq_append(s0, s1), Seq_add(m, Seq_length(s0))) == Seq_index(s1, m)
     }
 
     function Seq_update(s: $Seq[E], i: Int, e: E): $Seq[E]
-    axiom {
+    axiom Seq_update_length {
         forall s: $Seq[E], i: Int, v: E :: { Seq_length(Seq_update(s, i, v)) } { Seq_length(s), Seq_update(s, i, v) }
             0 <= i && i < Seq_length(s) ==> Seq_length(Seq_update(s, i, v)) == Seq_length(s)
     }
-    axiom {
+    axiom Seq_update_index {
         forall s: $Seq[E], i: Int, v: E, n: Int :: { Seq_index(Seq_update(s, i, v), n) } { Seq_index(s, n), Seq_update(s, i, v) }
             0 <= n && n < Seq_length(s) ==>
                 (i == n ==> Seq_index(Seq_update(s, i, v), n) == v) &&
@@ -82,7 +82,7 @@ domain $Seq[E] {
     // start take/drop
 
     function Seq_take(s: $Seq[E], howMany: Int): $Seq[E]
-    axiom {
+    axiom Seq_take_length {
         forall s: $Seq[E], n: Int :: { Seq_length(Seq_take(s, n)) } { Seq_take(s, n), Seq_length(s) }
             (0 <= n ==>
                 (n <= Seq_length(s) ==> Seq_length(Seq_take(s, n)) == n) &&
@@ -90,14 +90,14 @@ domain $Seq[E] {
             ) &&
             (n < 0 ==> Seq_length(Seq_take(s, n)) == 0)
     }
-    axiom {
+    axiom Seq_take_index {
         forall s: $Seq[E], n: Int, j: Int :: { Seq_index(Seq_take(s, n), j) } { Seq_index(s, j), Seq_take(s, n) }
             0 <= j && j < n && j < Seq_length(s) ==>
                 Seq_index(Seq_take(s, n), j) == Seq_index(s, j)
     }
 
     function Seq_drop(s: $Seq[E], howMany: Int): $Seq[E]
-    axiom {
+    axiom Seq_drop_length {
         forall s: $Seq[E], n: Int :: { Seq_length(Seq_drop(s, n)) } { Seq_length(s), Seq_drop(s, n) }
             (0 <= n ==>
                 (n <= Seq_length(s) ==> Seq_length(Seq_drop(s, n)) == Seq_length(s) - n) &&
@@ -105,50 +105,50 @@ domain $Seq[E] {
             &&
             (n < 0 ==> Seq_length(Seq_drop(s, n)) == Seq_length(s))
     }
-    axiom {
+    axiom Seq_drop_index1 {
         forall s: $Seq[E], n: Int, j: Int :: { Seq_index(Seq_drop(s, n), j) }
             0 < n && 0 <= j && j < Seq_length(s) - n ==>
                 Seq_sub(Seq_add(j, n), n) == j && Seq_index(Seq_drop(s, n), j) == Seq_index(s, Seq_add(j, n))
     }
-    axiom {
+    axiom Seq_drop_index2 {
         forall s: $Seq[E], n: Int, i: Int :: { Seq_drop(s, n), Seq_index(s, i) }
             0 < n && n <= i && i < Seq_length(s) ==>
             Seq_add(Seq_sub(i, n), n) == i && Seq_index(Seq_drop(s, n), Seq_sub(i, n)) == Seq_index(s, i)
     }
-    axiom {
+    axiom Seq_append_take1 {
         forall s: $Seq[E], t: $Seq[E], n: Int ::
         { Seq_take(Seq_append(s, t), n) }
         0 < n && n <= Seq_length(s) ==> Seq_take(Seq_append(s, t), n) == Seq_take(s, n)
     }
-    axiom {
+    axiom Seq_append_take2 {
         forall s: $Seq[E], t: $Seq[E], n: Int ::
         { Seq_take(Seq_append(s, t), n) }
         n > 0 && n > Seq_length(s) && n < Seq_length(Seq_append(s, t)) ==> Seq_add(Seq_sub(n, Seq_length(s)), Seq_length(s)) == n && Seq_take(Seq_append(s, t), n) == Seq_append(s, Seq_take(t, Seq_sub(n, Seq_length(s))))
     }
-    axiom {
+    axiom Seq_append_drop1 {
         forall s: $Seq[E], t: $Seq[E], n: Int ::
         { Seq_drop(Seq_append(s, t), n) }
         0 < n && n <= Seq_length(s) ==> Seq_drop(Seq_append(s,t), n) == Seq_append(Seq_drop(s, n), t)
     }
-    axiom {
+    axiom Seq_append_drop2 {
         forall s: $Seq[E], t: $Seq[E], n: Int ::
         { Seq_drop(Seq_append(s,t), n) }
         n > 0 && n > Seq_length(s) ==> Seq_add(Seq_sub(n, Seq_length(s)), Seq_length(s)) == n && Seq_drop(Seq_append(s, t), n) == Seq_drop(t, Seq_sub(n, Seq_length(s)))
     }
     // Note: the following (especially the third) are actually needed to cut matching loops that can otherwise be introduced by the axioms above (which introduce new append terms)
-    axiom {
+    axiom Seq_take_zero {
         forall s: $Seq[E], n: Int :: { Seq_take(s, n) }
         n <= 0 ==> Seq_take(s, n) == Seq_empty()
     }
-    axiom {
+    axiom Seq_drop_zero {
         forall s: $Seq[E], n: Int :: { Seq_drop(s, n) }
         n <= 0 ==> Seq_drop(s, n) == s
     }
-    axiom {
+    axiom Seq_take_all {
         forall s: $Seq[E], n: Int :: { Seq_take(s, n) }
         n >= Seq_length(s) ==> Seq_take(s, n) == s
     }
-    axiom {
+    axiom Seq_drop_all {
         forall s: $Seq[E], n: Int :: { Seq_drop(s, n) }
         n >= Seq_length(s) ==> Seq_drop(s, n) == Seq_empty()
     }
@@ -160,16 +160,16 @@ domain $Seq[E] {
     function Seq_contains(s: $Seq[E], e: E): Bool
     function Seq_contains_trigger(s: $Seq[E], e: E): Bool  // usages of Contains inside quantifier triggers are replaced with this
     function Seq_skolem(s: $Seq[E], e: E): Int
-    axiom {
+    axiom Seq_contains1 {
         forall s: $Seq[E], x: E :: { Seq_contains(s, x) }
           Seq_contains(s, x) ==>
             (0 <= Seq_skolem(s, x) && Seq_skolem(s, x) < Seq_length(s) && Seq_index(s, Seq_skolem(s, x)) == x)
     }
-    axiom {
+    axiom Seq_contains2 {
         forall s: $Seq[E], x: E, i: Int :: { Seq_contains(s, x), Seq_index(s, i) }
         (0 <= i && i < Seq_length(s) && Seq_index(s, i) == x ==> Seq_contains(s, x))
     }
-    axiom {
+    axiom Seq_contains_trigger {
         forall s: $Seq[E], i: Int :: { Seq_index(s, i) }
         (0 <= i && i < Seq_length(s) ==> Seq_contains_trigger(s, Seq_index(s, i)))
     }
@@ -180,14 +180,14 @@ domain $Seq[E] {
 
     function Seq_skolem_diff(s0: $Seq[E], s1: $Seq[E]): Int
 
-    axiom {
+    axiom Seq_equal_def {
         forall s0: $Seq[E], s1: $Seq[E] :: { Seq_equal(s0, s1) }
         (s0 == s1 && Seq_equal(s0, s1)) ||
         (s0 != s1 && !Seq_equal(s0, s1) && Seq_length(s0) != Seq_length(s1)) ||
         (s0 != s1 && !Seq_equal(s0, s1) && Seq_length(s0) == Seq_length(s1) && Seq_skolem_diff(s0, s1) == Seq_skolem_diff(s1, s0) && 0 <= Seq_skolem_diff(s0, s1) && Seq_skolem_diff(s0, s1) < Seq_length(s0) &&
             Seq_index(s0, Seq_skolem_diff(s0, s1)) != Seq_index(s1, Seq_skolem_diff(s0, s1)))
     }
-    axiom {
+    axiom Seq_equal_ext {
         forall a: $Seq[E], b: $Seq[E] :: { Seq_equal(a, b) }
         Seq_equal(a, b) ==> a == b
     }
@@ -195,19 +195,19 @@ domain $Seq[E] {
     // end equals
 
     // start extras
-    axiom {
+    axiom Seq_singleton_contains {
         forall x: E, y: E :: { Seq_contains(Seq_singleton(x), y) }
         Seq_contains(Seq_singleton(x), y) <==> (x == y)
     }
     function Seq_range(min: Int, max: Int): $Seq[Int]
-    axiom ranged_seq_length {
+    axiom Seq_range_length {
         forall min: Int, max: Int :: { Seq_length(Seq_range(min, max)) }
             (min < max ==> Seq_length(Seq_range(min, max)) == max-min) && (max <= min ==> Seq_length(Seq_range(min, max)) == 0)
     }
-    axiom ranged_seq_index {
+    axiom Seq_range_index {
         forall min: Int, max: Int, j: Int :: { Seq_index(Seq_range(min, max), j) } 0 <= j && j < (max - min) ==> Seq_index(Seq_range(min, max), j) == min + j
     }
-    axiom ranged_seq_contains {
+    axiom Seq_range_contains {
         forall min: Int, max: Int, v: Int :: { Seq_contains(Seq_range(min, max), v) }
             Seq_contains(Seq_range(min, max), v) <==> min <= v && v < max
     }

@@ -265,7 +265,7 @@ object chunkSupporter extends ChunkSupportRules {
     val id = ChunkIdentifier(resource, s.program)
     val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
     findRes match {
-      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout(), assumptionType) =>
+      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.assertTimeout.getOrElse(0), assumptionType) =>
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(isAssert=true, assumptionType) =>
         if (s.isInPackage || Verifier.config.disableInfeasibilityChecks()) {
