@@ -37,7 +37,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     *          consumed partial heap.
     * @return The result of the continuation.
     */
-  def consume(s: State, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, dependencyType: DependencyType=DependencyType.Implicit)
+  def consume(s: State, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, dependencyType: DependencyType)
              (Q: (State, Option[Term], Verifier) => VerificationResult)
              : VerificationResult
 
@@ -62,7 +62,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
                returnSnap: Boolean,
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               dependencyType: DependencyType=DependencyType.Implicit)
+               dependencyType: DependencyType)
               (Q: (State, Option[Term], Verifier) => VerificationResult)
               : VerificationResult
 }
@@ -76,7 +76,7 @@ object consumer extends ConsumptionRules {
    */
 
   /** @inheritdoc */
-  def consume(s: State, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, dependencyType: DependencyType=DependencyType.Implicit)
+  def consume(s: State, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, dependencyType: DependencyType)
              (Q: (State, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -92,7 +92,7 @@ object consumer extends ConsumptionRules {
                returnSnap: Boolean,
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               dependencyType: DependencyType=DependencyType.Implicit)
+               dependencyType: DependencyType)
               (Q: (State, Option[Term], Verifier) => VerificationResult)
               : VerificationResult = {
 
@@ -145,7 +145,7 @@ object consumer extends ConsumptionRules {
     }
   }
 
-  private def consumeR(s: State, h: Heap, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, dependencyType: DependencyType=DependencyType.Implicit)
+  private def consumeR(s: State, h: Heap, a: ast.Exp, returnSnap: Boolean, pve: PartialVerificationError, v: Verifier, dependencyType: DependencyType)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                       : VerificationResult = {
 
@@ -201,7 +201,7 @@ object consumer extends ConsumptionRules {
      */
 
     if(v.decider.isPathInfeasible()){
-      v.decider.dependencyAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, dependencyType.assertionType)
+      v.decider.dependencyAnalyzer.addInfeasibilityDepToStmt(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, dependencyType)
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
 

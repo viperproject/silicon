@@ -1147,7 +1147,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
               v: Verifier,
-              dependencyType: DependencyType=DependencyType.Implicit)
+              dependencyType: DependencyType)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -1412,7 +1412,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
                             v: Verifier,
-                            dependencyType: DependencyType=DependencyType.Implicit)
+                            dependencyType: DependencyType)
                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
 
@@ -1538,7 +1538,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            perms: Term,
                            permsExp: Option[ast.Exp],
                            v: Verifier,
-                          assumptionType: AssumptionType=AssumptionType.Implicit)
+                           assertionType: AssumptionType=AssumptionType.Implicit)
                           : ConsumptionResult = {
 
     var permsAvailable: Term = NoPerm
@@ -1555,7 +1555,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     // final check
     val result =
-      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), assumptionType) /* This check is a must-check, i.e. an assert */ )
+      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), assertionType) /* This check is a must-check, i.e. an assert */ )
         Complete()
       else
         Incomplete(PermMinus(permsAvailable, perms), permsAvailableExp.map(pa => ast.PermSub(pa, permsExp.get)()))
@@ -1579,7 +1579,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         permsExp: Option[ast.Exp], // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
                         v: Verifier,
-                        dependencyType: DependencyType=DependencyType.Implicit)
+                        dependencyType: DependencyType)
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
 
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)

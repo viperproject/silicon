@@ -25,12 +25,12 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
   // we can directly merge JoinDataEntries to obtain new States,
   // and the join data entries themselves provide information about the path conditions to State.merge.
   def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
-    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider, v.decider.dependencyAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
+    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider, v.decider.dependencyAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal))
     v.stateConsolidator(s).consolidate(res, v)
   }
 
   def pathConditionAwareMergeWithoutConsolidation(other: JoinDataEntry[D], v: Verifier): State = {
-    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider, v.decider.dependencyAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Implicit))
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions, AnalysisInfo(v.decider, v.decider.dependencyAnalyzer, StringAnalysisSourceInfo("merge", NoPosition), AssumptionType.Internal))
   }
 }
 

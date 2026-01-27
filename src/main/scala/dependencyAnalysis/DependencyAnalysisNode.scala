@@ -132,9 +132,8 @@ case class LabelNode(term: Var) extends GeneralAssumptionNode {
  * Infeasibility nodes allow to distinguish between dependencies coming from the fact that the assertion is not reachable
  * on a given path and dependencies used to prove the assertion on feasible paths.
  */
-case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo) extends GeneralAssumptionNode {
+case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType) extends GeneralAssumptionNode {
   val term: Term = False
-  val assumptionType: AssumptionType = AssumptionType.Implicit // TODO ake: assumption type?
   val isClosed: Boolean = true
   val description: String = "False"
 

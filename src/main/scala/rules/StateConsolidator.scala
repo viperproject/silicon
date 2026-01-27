@@ -7,9 +7,9 @@
 package viper.silicon.rules
 
 import viper.silicon.Config
-import viper.silicon.dependencyAnalysis.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
+import viper.silicon.dependencyAnalysis.AssumptionType
 import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}

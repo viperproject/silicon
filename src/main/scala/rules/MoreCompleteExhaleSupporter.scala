@@ -199,7 +199,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                      argsExp: Option[Seq[ast.Exp]],
                      ve: VerificationError,
                      v: Verifier,
-                     assumptionType: AssumptionType=AssumptionType.Implicit)
+                     assumptionType: AssumptionType)
                     (Q: (State, Term, Verifier) => VerificationResult)
                     : VerificationResult = {
 
@@ -238,7 +238,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       returnSnap: Boolean,
                       ve: VerificationError,
                       v: Verifier,
-                      dependencyType: DependencyType=DependencyType.Implicit)
+                      dependencyType: DependencyType)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 

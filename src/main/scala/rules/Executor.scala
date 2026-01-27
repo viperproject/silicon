@@ -542,9 +542,6 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call)
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
-        // TODO: make sure the join can still be made!
-        val finalAssumptionType = getAssumptionType(AssumptionType.MethodCall)
-
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
@@ -571,7 +568,7 @@ object executor extends ExecutionRules {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, AssumptionType.MethodCall)((s5, v3) => { // TODO ake: assumptionType
+            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, getAssumptionType(AssumptionType.MethodCall))((s5, v3) => { // TODO ake: make sure the join is always made!
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)

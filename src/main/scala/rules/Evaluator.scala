@@ -576,8 +576,7 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-        val funcAssumptionType = AssumptionType.MethodCall
-        val assumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(fapp.info).getOrElse(funcAssumptionType)
+        val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(fapp.info).getOrElse(DependencyType.MethodCall)
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
@@ -593,7 +592,7 @@ object evaluator extends EvaluationRules {
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1, assumptionType=assumptionType)((s2, v2, QB) => {
+          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1, assumptionType=dependencyType.assumptionType)((s2, v2, QB) => {
             val pres = func.pres.map(_.transform {
               /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
                * for Carbon issue #210, fail if the subsequent code that strips out triggers from
@@ -651,13 +650,13 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            consumes(s3, pres, true, _ => pvePre, v2)((s4, snap, v3) => {
+            consumes(s3, pres, true, _ => pvePre, v2, DependencyType.Implicit)((s4, snap, v3) => { // TODO ake: why does DependencyType.MethodCall not work?
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
-              v3.decider.assume(preFApp, preExp, assumptionType=assumptionType)
+              v3.decider.assume(preFApp, preExp, assumptionType=dependencyType.assumptionType)
               val funcAnn = func.info.getUniqueInfo[AnnotationInfo]
               val tFApp = funcAnn match {
                 case Some(a) if a.values.contains("opaque") =>
@@ -713,7 +712,7 @@ object evaluator extends EvaluationRules {
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(s4, acc, true, pve, v3)((s5, snap, v4) => {
+                    consume(s4, acc, true, pve, v3, DependencyAnalyzer.extractDependencyTypeFromInfo(acc.info).getOrElse(DependencyType.Internal))((s5, snap, v4) => {
                       val fr6 =
                         s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap.get)
                                            .changeDepthBy(+1)
@@ -750,7 +749,7 @@ object evaluator extends EvaluationRules {
                           eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
-                        produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
+                        produce(s7a, toSf(snap.get), body, pve, v4, DependencyAnalyzer.extractAssumptionTypeFromInfo(e.info).getOrElse(AssumptionType.Internal))((s8, v5) => {
                           val s9 = s8.copy(g = s7.g,
                                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                            recordVisited = s3.recordVisited,
@@ -785,7 +784,7 @@ object evaluator extends EvaluationRules {
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
-        consume(s, eAss, false, pve, v)((s2, _, v2) => {
+        consume(s, eAss, false, pve, v, DependencyAnalyzer.extractDependencyTypeFromInfo(eAss.info).getOrElse(DependencyType.ExplicitAssertion))((s2, _, v2) => {
           val s3 = s2.copy(g = s.g, h = s.h)
           eval(s3, eIn, pve, v2)(Q)
         })
@@ -1423,7 +1422,7 @@ object evaluator extends EvaluationRules {
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
         sJoined = sJoined.copy(functionRecorder = sJoined.functionRecorder.recordPathSymbol(joinSymbol))
 
-        joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew, AssumptionType.Implicit)}
+        joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew, AssumptionType.Internal)}
 
         (sJoined, (joinTerm, joinExp))
     }

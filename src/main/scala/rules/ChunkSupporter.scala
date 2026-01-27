@@ -35,7 +35,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               ve: VerificationError,
               v: Verifier,
               description: String,
-              dependencyType: DependencyType=DependencyType.Implicit)
+              dependencyType: DependencyType)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult
 
@@ -50,7 +50,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier,
-             assumptionType: AssumptionType=AssumptionType.Implicit)
+             assumptionType: AssumptionType)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult
 
@@ -80,7 +80,7 @@ object chunkSupporter extends ChunkSupportRules {
               ve: VerificationError,
               v: Verifier,
               description: String,
-              dependencyType: DependencyType=DependencyType.Implicit)
+              dependencyType: DependencyType)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
@@ -238,7 +238,7 @@ object chunkSupporter extends ChunkSupportRules {
              argsExp: Option[Seq[ast.Exp]],
              ve: VerificationError,
              v: Verifier,
-             assumptionType: AssumptionType=AssumptionType.Implicit)
+             assumptionType: AssumptionType)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
 
@@ -258,7 +258,7 @@ object chunkSupporter extends ChunkSupportRules {
                            argsExp: Option[Seq[ast.Exp]],
                            ve: VerificationError,
                            v: Verifier,
-                           assumptionType: AssumptionType=AssumptionType.Implicit)
+                           assumptionType: AssumptionType)
                           (Q: (State, Term, Verifier) => VerificationResult)
                           : VerificationResult = {
 

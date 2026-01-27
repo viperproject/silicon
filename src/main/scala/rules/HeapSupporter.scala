@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType, TransitivityAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType, TransitivityAnalysisSourceInfo}
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
@@ -210,7 +210,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         FullPerm,
         Option.when(withExp)(ast.FullPerm()()),
         chunkOrderHeuristics,
-        v
+        v,
+        dependencyType
       )
       v.decider.analysisSourceInfoStack.removeForcedSource()
       result match {
@@ -416,7 +417,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       }
     } else {
       val resource = fa.res(s.program)
-      chunkSupporter.lookup(s, s.h, resource, Seq(tRcvr), Option.when(withExp)(Seq(eRcvr.get)), ve, v)((s2, h2, tSnap, v2) => {
+      chunkSupporter.lookup(s, s.h, resource, Seq(tRcvr), Option.when(withExp)(Seq(eRcvr.get)), ve, v, DependencyAnalyzer.extractDependencyTypeFromInfo(fa.info).map(_.assertionType).getOrElse(AssumptionType.Implicit))((s2, h2, tSnap, v2) => {
         val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
         val s3 = s2.copy(h = h2, functionRecorder = fr)
         Q(s3, tSnap, v)

@@ -66,10 +66,10 @@ object brancher extends BranchingRules {
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), assumptionType))
 
     val thenInfeasibilityNode: Option[Int] = if(Verifier.config.enableDependencyAnalysis() && !executeThenBranch) {
-      val (_, node) = v.decider.checkAndGetInfeasibilityNode(negatedCondition, Verifier.config.checkTimeout())
+      val (_, node) = v.decider.checkAndGetInfeasibilityNode(negatedCondition, Verifier.config.checkTimeout(), assumptionType)
       node
     } else None
 
@@ -77,10 +77,10 @@ object brancher extends BranchingRules {
     val executeElseBranch = (
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout()))
+      || !v.decider.check(condition, Verifier.config.checkTimeout(), assumptionType))
 
     val elseInfeasibilityNode: Option[Int] = if(Verifier.config.enableDependencyAnalysis() && !executeElseBranch) {
-      val (_, node) = v.decider.checkAndGetInfeasibilityNode(condition, Verifier.config.checkTimeout())
+      val (_, node) = v.decider.checkAndGetInfeasibilityNode(condition, Verifier.config.checkTimeout(), assumptionType)
       node
     } else None
     v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)

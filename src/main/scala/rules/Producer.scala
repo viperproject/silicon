@@ -41,7 +41,7 @@ trait ProductionRules extends SymbolicExecutionRules {
               a: ast.Exp,
               pve: PartialVerificationError,
               v: Verifier,
-              assumptionType: AssumptionType = AssumptionType.Implicit)
+              assumptionType: AssumptionType)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -66,7 +66,7 @@ trait ProductionRules extends SymbolicExecutionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               assumptionType: AssumptionType = AssumptionType.Implicit)
+               assumptionType: AssumptionType)
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult
 }
@@ -106,7 +106,7 @@ object producer extends ProductionRules {
               a: ast.Exp,
               pve: PartialVerificationError,
               v: Verifier,
-              assumptionType: AssumptionType = AssumptionType.Implicit)
+              assumptionType: AssumptionType)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult =
 
@@ -118,7 +118,7 @@ object producer extends ProductionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier,
-               assumptionType: AssumptionType = AssumptionType.Implicit)
+               assumptionType: AssumptionType)
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult = {
 

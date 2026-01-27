@@ -75,7 +75,7 @@ trait Decider {
   def assumeLabel(term: Term, assumptionLabel: String): Unit
 
   def check(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean
-  def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): (Boolean, Option[Int])
+  def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType): (Boolean, Option[Int])
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
@@ -485,7 +485,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }else if(result){
         checkNode foreach dependencyAnalyzer.addNode
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
-        val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo)
+        val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
         pcs.setCurrentInfeasibilityNode(checkNode.map(_.id))
       }
@@ -496,14 +496,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       deciderAssert(t, assumptionType, Some(timeout), isCheck=true)._1
     }
 
-    def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): (Boolean, Option[Int]) = {
+    def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType): (Boolean, Option[Int]) = {
       var infeasibilityNodeId: Option[Int] = pcs.getCurrentInfeasibilityNode
       if(infeasibilityNodeId.isDefined){
         return (true, infeasibilityNodeId)
       }
       val (success, checkNode) = deciderAssert(t, assumptionType, Some(timeout), isCheck=true)
       if(success){
-        infeasibilityNodeId = dependencyAnalyzer.addInfeasibilityNode(isCheck = true, analysisSourceInfoStack.getFullSourceInfo)
+        infeasibilityNodeId = dependencyAnalyzer.addInfeasibilityNode(isCheck = true, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibilityNodeId)
       }
       (success, infeasibilityNodeId)

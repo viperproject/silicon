@@ -38,7 +38,7 @@ trait DependencyAnalyzer {
 
   def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
   def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int]
-  def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int]
+  def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def addDependency(source: Option[Int], dest: Option[Int]): Unit
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
@@ -59,7 +59,7 @@ trait DependencyAnalyzer {
   /**
    * Adds an assertion and assumption node with the given analysis source info and dependencies to the current infeasibility node.
    */
-  def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Unit = {}
+  def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): Unit = {}
 
   /**
    * @return the final dependency graph representing all direct and transitive dependencies
@@ -119,9 +119,7 @@ object DependencyAnalyzer {
   }
 
   def extractAssumptionTypeFromInfo(info: ast.Info): Option[AssumptionType] = {
-    val annotation = extractAnnotationFromInfo(info, assumptionTypeAnnotationKey)
-    if(annotation.isDefined && annotation.get.nonEmpty) AssumptionType.fromString(annotation.get.head)
-    else None
+    extractDependencyTypeFromInfo(info).map(_.assumptionType)
   }
 
   def extractDependencyTypeFromInfo(info: ast.Info): Option[DependencyType] = {
@@ -333,8 +331,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     node.map(_.id)
   }
 
-  override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val node = InfeasibilityNode(sourceInfo)
+  override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = {
+    val node = InfeasibilityNode(sourceInfo, assumptionType)
     addNode(node)
     Some(node.id)
   }
@@ -463,10 +461,10 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    * The resulting assumption node is required to ensure that unreachable statements/expressions are represented in the graph and
    * thus taken into account by graph queries, e.g. when determining uncovered statements or computing coverage.
    */
-  override def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Unit = {
-    val newAssertionNodeId = addAssertNode(False, assumptionType, analysisSourceInfo)
+  override def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): Unit = {
+    val newAssertionNodeId = addAssertNode(False, dependencyType.assertionType, analysisSourceInfo)
     addDependency(infeasNodeId, newAssertionNodeId)
-    val newAssumptionNodeId = addAssumption(False, analysisSourceInfo, assumptionType)
+    val newAssumptionNodeId = addAssumption(False, analysisSourceInfo, dependencyType.assumptionType)
     addDependency(infeasNodeId, newAssumptionNodeId)
   }
 }
@@ -489,7 +487,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
 
   override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
   override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = None
-  override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo): Option[Int] = None
+  override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
 
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {}
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}
