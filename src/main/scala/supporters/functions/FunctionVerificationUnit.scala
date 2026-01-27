@@ -286,7 +286,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             val labelledBcsPre = And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
-            decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
+            decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))), annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Precondition))
             val labelledPcsPre = pcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))
             decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Precondition))
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
@@ -299,7 +299,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               decider.analysisSourceInfoStack.setForcedSource(AnalysisSourceInfo.createAnalysisSourceInfo(body))
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.FunctionBody)
               decider.analysisSourceInfoStack.removeForcedSource()
-              consumes(s2, posts, false, postconditionViolated, v, postConditionType)((s3, _, _) => {
+              consumes(s2, posts, false, postconditionViolated, v, DependencyType.make(postConditionType))((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 

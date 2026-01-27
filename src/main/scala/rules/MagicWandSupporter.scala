@@ -185,7 +185,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
               case _ => True
             }
-            v.decider.assume(tEq, Option.when(withExp)(DebugExp.createInstance("Snapshots", isInternal_ = true)), AssumptionType.Explicit)
+            v.decider.assume(tEq, Option.when(withExp)(DebugExp.createInstance("Snapshots", isInternal_ = true)), AssumptionType.Internal)
 
             /* In the future it might be worth to recheck whether the permissions needed, in the case of
              * success being an instance of Incomplete, are zero.
@@ -242,6 +242,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   dependencyType: DependencyType = DependencyType.Rewrite)
                  (Q: (State, Chunk, Verifier) => VerificationResult)
                  : VerificationResult = {
+
+    val prevAnalysisStack = v.decider.analysisSourceInfoStack.getAnalysisSourceInfos
 
     val s = if (state.exhaleExt) state else
       state.copy(reserveHeaps = v.heapSupporter.getEmptyHeap(state.program) :: state.h :: Nil)
@@ -371,7 +373,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
       // Produce the wand's LHS.
-      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, AssumptionType.Implicit)((sLhs, v2) => {
+      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, dependencyType.assumptionType)((sLhs, v2) => {
         val proofScriptCfg = proofScript.toCfg()
         val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program)
 
@@ -410,7 +412,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
           consume(
             proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
-            wand.right, true, pve, proofScriptVerifier, dependencyType.assertionType
+            wand.right, true, pve, proofScriptVerifier, dependencyType
           )((s3, snapRhs, v3) => {
             analysisLabels = v.decider.pcs.after(prePackageMark).analysisLabels
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps), freshSnapRoot, snapRhs.get, v3, dependencyType.assumptionType)
@@ -431,7 +433,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
     // some of the analysis labels, introduced while verifying the package statement, might be needed later on -> reassume them
     analysisLabels foreach (l => v.decider.assume(v.decider.wrapWithDependencyAnalysisLabel(l, Set.empty, Set(l)), None, AssumptionType.Internal))
 
-    val currentAnalysisSourceInfos = v.decider.analysisSourceInfoStack.getAnalysisSourceInfos
     recordedBranches.foldLeft(tempResult)((prevRes, recordedState) => {
       prevRes && {
         val (state, branchConditions, branchConditionsExp, conservedPcs, magicWandChunk) = recordedState
@@ -442,11 +443,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // We execute the continuation Q in a new scope with all branch conditions and all conserved path conditions.
         executionFlowController.locally(s1, v)((s2, v1) => {
-          v1.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
+          v1.decider.analysisSourceInfoStack.setAnalysisSourceInfo(prevAnalysisStack)
           val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._1))
           val expNew = Option.when(withExp)(viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2.get)))
           // Set the branch conditions
-          v1.decider.setCurrentBranchCondition(And(branchConditions map (t => v1.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))), (exp, expNew))
+          v1.decider.setCurrentBranchCondition(And(branchConditions map (t => v1.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))), (exp, expNew), dependencyType.assumptionType)
 
           // Recreate all path conditions in the Z3 proof script that we recorded for that branch
           v1.decider.assume(conservedPcs._1 map (t => v1.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), conservedPcs._2, AssumptionType.Internal)
@@ -476,9 +477,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
     // Consume the magic wand instance "A --* B".
-    consume(s, wand, true, pve, v, dependencyType.assertionType)((s1, snapWand, v1) => {
+    consume(s, wand, true, pve, v, dependencyType)((s1, snapWand, v1) => {
       // Consume the wand's LHS "A".
-      consume(s1, wand.left, true, pve, v1, dependencyType.assertionType)((s2, snapLhs, v2) => {
+      consume(s1, wand.left, true, pve, v1, dependencyType)((s2, snapLhs, v2) => {
         /* It is assumed that snap and MagicWandSnapshot.abstractLhs are structurally the same.
          * Equating the two snapshots is sound iff a wand is applied only once.
          * The old solution in this case did use this assumption:

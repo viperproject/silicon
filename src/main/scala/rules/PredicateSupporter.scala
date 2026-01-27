@@ -80,7 +80,7 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm, ePerm)
-    consume(s1, body, true, pve, v, dependencyType.assertionType)((s1a, snap, v1) => {
+    consume(s1, body, true, pve, v, dependencyType)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate.name).triggerFunction,
           snap.get.convert(terms.sorts.Snap) +: tArgs)
@@ -99,13 +99,13 @@ object predicateSupporter extends PredicateSupportRules {
     })
   }
 
-  def producePredicateContents(s: State, tree: PredicateContentsTree, toReplace: silicon.Map[Term, Term], v: Verifier, isUnfolding: Boolean = false)
+  def producePredicateContents(s: State, tree: PredicateContentsTree, toReplace: silicon.Map[Term, Term], v: Verifier, dependencyType: DependencyType, isUnfolding: Boolean = false)
                               (Q: (State, Verifier) => VerificationResult)
             : VerificationResult = {
     tree match {
       case PredicateLeafNode(h, assumptions) =>
         val debugExp = Option.when(withExp)(DebugExp.createInstance("Assumption from unfolded predicate body"))
-        assumptions.foreach(a => v.decider.assume(a.replace(toReplace), debugExp, AssumptionType.Implicit)) // TODO ake
+        assumptions.foreach(a => v.decider.assume(a.replace(toReplace), debugExp, dependencyType.assumptionType))
         val substChunks = h.values.map(_.substitute(toReplace).asInstanceOf[GeneralChunk].permScale(s.permissionScalingFactor, s.permissionScalingFactorExp)) // TODO ake
 
         val quantifiedResourceIdentifiers: Set[ChunkIdentifer] = s.qpPredicates.map(p => BasicChunkIdentifier(p.name)) ++ s.qpFields.map(f => BasicChunkIdentifier(f.name)) ++ s.qpMagicWands
@@ -120,21 +120,21 @@ object predicateSupporter extends PredicateSupportRules {
                   case _ => s.program.findPredicate(bc.id.name)
                 }
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, bc.args, bc.snap, v)
-                v.decider.assumeDefinition(smValueDef, None, AssumptionType.Internal)
+                v.decider.assumeDefinition(smValueDef, None, dependencyType.assumptionType)
                 val codQvars = bc.resourceID match {
                   case FieldID => Seq(`?r`)
                   case _ => s.predicateFormalVarMap(resource.asInstanceOf[ast.Predicate].name)
                 }
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, s.program, v, AssumptionType.Rewrite, isExhale=false) // TODO ake
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, resource, bc.args, None, bc.perm, None, sm, s.program, v, dependencyType.assumptionType, isExhale=false)
               case mwc: MagicWandChunk =>
                 val wand = mwc.id.ghostFreeWand
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)
                 val codQvars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ), false))
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, wand, mwc.args, mwc.snap, v)
-                v.decider.assumeDefinition(smValueDef, None, AssumptionType.Internal)
+                v.decider.assumeDefinition(smValueDef, None, dependencyType.assumptionType)
                 newFr = newFr.recordFvfAndDomain(SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq()))
-                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, s.program, v, AssumptionType.Rewrite, isExhale=false) // TODO ake
+                quantifiedChunkSupporter.createSingletonQuantifiedChunk(codQvars, None, wand, mwc.args, None, mwc.perm, None, sm, s.program, v, dependencyType.assumptionType, isExhale=false)
             }
           } else {
             c
@@ -150,12 +150,12 @@ object predicateSupporter extends PredicateSupportRules {
 
         if (!isUnfolding && s.moreJoins.id >= JoinMode.Impure.id) {
           joiner.join[scala.Null, scala.Null](s, v, resetState = false)((s1, v1, QB) => {
-            brancher.branch(s1, substCond, condExp, v1)(
+            brancher.branch(s1, substCond, condExp, v1, dependencyType.assumptionType)(
               (s2, v2) => {
-                producePredicateContents(s2, left, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
+                producePredicateContents(s2, left, toReplace, v2, dependencyType, isUnfolding)((s3, v3) => QB(s3, null, v3))
               },
               (s2, v2) => {
-                producePredicateContents(s2, right, toReplace, v2, isUnfolding)((s3, v3) => QB(s3, null, v3))
+                producePredicateContents(s2, right, toReplace, v2, dependencyType, isUnfolding)((s3, v3) => QB(s3, null, v3))
               }
             )
           }) (entries => {
@@ -170,12 +170,12 @@ object predicateSupporter extends PredicateSupportRules {
             (s2, null)
           }) ((sp, _, vp) => Q(sp, vp))
         } else {
-          brancher.branch(s, substCond, condExp, v)(
+          brancher.branch(s, substCond, condExp, v, dependencyType.assumptionType)(
             (s1, v1) => {
-              producePredicateContents(s1, left, toReplace, v1, isUnfolding)(Q)
+              producePredicateContents(s1, left, toReplace, v1, dependencyType, isUnfolding)(Q)
             },
             (s2, v2) => {
-              producePredicateContents(s2, right, toReplace, v2, isUnfolding)(Q)
+              producePredicateContents(s2, right, toReplace, v2, dependencyType, isUnfolding)(Q)
             }
           )
         }
@@ -204,12 +204,12 @@ object predicateSupporter extends PredicateSupportRules {
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm, ePerm)
 
-    v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v, dependencyType.assertionType)((s2, h2, snap, v1) => {
+    v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v, dependencyType)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
         .setConstrainable(constrainableWildcards, false)
       if (s3.predicateData(predicate.name).predContents.isDefined) {
         val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
-        producePredicateContents(s3, s3.predicateData(predicate.name).predContents.get, toReplace, v1, false)((s4, v4) => {
+        producePredicateContents(s3, s3.predicateData(predicate.name).predContents.get, toReplace, v1, dependencyType, false)((s4, v4) => {
           v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =

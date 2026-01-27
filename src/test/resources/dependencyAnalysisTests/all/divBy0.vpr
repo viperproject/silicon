@@ -29,7 +29,7 @@ method basic()
     assume y > 0
     @dependency("Explicit")
     assume y < x
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x := x/y
     @testAssertion("Explicit")
     assert x >= 1
@@ -45,15 +45,15 @@ method sumClient(x: Int, y: Int)
   @dependency("Explicit")
   assume x < y
   var n: Int
-  @dependency("CallPostcondition")
+  @dependency("MethodCall")
   n := sum(x, y)
 
   // the following stmt reports dependency on n := sum(x, y) because (x < y && n == x + y && n > 100 ==> y != 0)
   // although you could also prove it via (0 <= x && x < y ==> y != 0)
   var n2: Int
-  @dependency("CallPostcondition")
+  @dependency("MethodCall")
   n2 := sum(x/y, y)
-  @dependency("Implicit")
+  @dependency("SourceCode")
   n := n + n2
 
   @testAssertion("Explicit")

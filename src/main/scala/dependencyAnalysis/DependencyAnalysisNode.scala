@@ -127,7 +127,7 @@ case class LabelNode(term: Var) extends GeneralAssumptionNode {
  */
 case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo) extends GeneralAssumptionNode {
   val term: Term = False
-  val assumptionType: AssumptionType = AssumptionType.Implicit
+  val assumptionType: AssumptionType = AssumptionType.Implicit // TODO ake: assumption type?
   val isClosed: Boolean = true
   val description: String = "False"
 

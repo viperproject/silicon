@@ -28,7 +28,7 @@ method quasihavoc3(x: Ref)
 {
     @irrelevant()
     quasihavoc x.f
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x.f := 3
     @testAssertion("Explicit")
     assert x.f == 3

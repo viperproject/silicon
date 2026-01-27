@@ -4,10 +4,10 @@ method branch1(){
     var x: Int, y: Int
 
     if(@dependency("PathCondition")(x > 0)){
-        @dependency("Implicit")
+        @dependency("SourceCode")
         y := x + 1
     }else{
-        @dependency("Implicit")
+        @dependency("SourceCode")
         y := -x + 1
 
         // $PrecisionTest: $READ_WRITE=x $READ_ONLY=y $INVARIANT=y>-1
@@ -40,10 +40,10 @@ method branch3(){
     // $PrecisionTest: $READ_WRITE=y $READ_ONLY=x
 
     if(@dependency("PathCondition")(x > 10)){
-        @dependency("Implicit")
+        @dependency("SourceCode")
         y := x + 1
     }else{
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         y := 10
         @irrelevant("Explicit")
         assume y > 0
@@ -57,11 +57,11 @@ method branch4(){
     var x: Int, y: Int
 
     if(@dependency("PathCondition")(x > 0)){
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         y := x + 1
         // $PrecisionTest: $READ_WRITE=y $READ_ONLY=x $INVARIANT=x>0
     }else{
-        @dependency("Implicit")
+        @dependency("SourceCode")
         y := 10 - x
         @testAssertion("Explicit")
         assert y > 0
@@ -76,7 +76,7 @@ method branch5(){
     // $PrecisionTest: $READ_ONLY=x,y $INVARIANT=y>0
 
     if(@irrelevant("PathCondition")(x > 0)){
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         y := x + 1
     }else{
         @testAssertion("Explicit")

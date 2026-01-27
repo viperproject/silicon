@@ -32,10 +32,10 @@ method basicPackage(l: Ref)
   requires @dependency("Precondition")(list(l))
   ensures list(l)
   {
-    @dependency("Implicit")
+    @dependency("Rewrite")
     unfold list(l)
     var tmp : Ref
-    @dependency("Implicit")
+    @dependency("SourceCode")
     tmp := l.next
 
     // $PrecisionTest: $READ_WRITE=l.val $ACC_INVARIANT=acc(l.val)&&acc(l.next, 1/2)
@@ -65,11 +65,11 @@ method advancedPackage(a: Int, b: Int)
     @dependency("Rewrite")
     package (greater0(a) && greater0(b)) --* greater0(a + b)
     {
-      @dependency("Implicit")
+      @dependency("Rewrite")
       unfold greater0(a)
-      @dependency("Implicit")
+      @dependency("Rewrite")
       unfold greater0(b)
-      @dependency("Implicit")
+      @dependency("Rewrite")
       fold greater0(a + b)
     }
 
@@ -108,7 +108,7 @@ method packagePrecision(l: Ref)
     @dependency("Rewrite")
     unfold list(l)
     var tmp : Ref
-    @dependency("Implicit")
+    @dependency("SourceCode")
     tmp := l.next
 
     // $PrecisionTest: $READ_WRITE=l.val $ACC_INVARIANT=acc(l.val)
@@ -128,7 +128,7 @@ method packageExhale(x: Ref)
   requires @dependency("Precondition")(acc(x.f))
   {
 
-    @dependency("Implicit")
+    @dependency("Rewrite")
     package acc(x.f, 1/2) --* acc(x.f)
 
     // $PrecisionTest: $READ_ONLY=x.f $ACC_INVARIANT=acc(x.f,1/4)

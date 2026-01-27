@@ -18,7 +18,7 @@ method appendList1(this: Ref, e: Int)
   requires @irrelevant("Precondition")(0 <= e && e < 100)
   ensures  list(this)
 {
-  @irrelevant("Implicit")
+  @irrelevant("Rewrite")
   unfold list(this)
   @irrelevant("Explicit")
   assume 0 <= this.elem && this.elem < 100
@@ -26,13 +26,13 @@ method appendList1(this: Ref, e: Int)
   if (@irrelevant("PathCondition")(this.next == null)) {
     var n: Ref
 
-    @dependency("Implicit")
+    @dependency("SourceCode")
     n := new(elem, next)
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     n.elem := e
-    @dependency("Implicit")
+    @dependency("SourceCode")
     n.next := null
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     this.next := n
     @testAssertion("Implicit")
     fold list(n)
@@ -48,7 +48,7 @@ method appendList2(this: Ref, e: Int)
   requires @dependency("Precondition")(0 <= e && e < 100)
   ensures  list(this)
 {
-  @dependency("Implicit")
+  @dependency("Rewrite")
   unfold list(this)
   @irrelevant("Explicit")
   assume 0 <= this.elem && this.elem < 100
@@ -56,15 +56,15 @@ method appendList2(this: Ref, e: Int)
   if (@dependency("PathCondition")(this.next == null)) {
     var n: Ref
 
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     n := new(elem, next)
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     n.elem := e
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     n.next := null
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     this.next := n
-    @irrelevant("Implicit")
+    @irrelevant("Rewrite")
     fold list(n)
   } else {
     @testAssertion("Implicit")
@@ -79,7 +79,7 @@ method appendListFull(this: Ref, e: Int)
   requires @dependency("Precondition")(0 <= e && e < 100)
   ensures  list(this)
 {
-  @dependency("Implicit")
+  @dependency("Rewrite")
   unfold list(this)
   @irrelevant("Explicit")
   assume 0 <= this.elem && this.elem < 100
@@ -87,18 +87,18 @@ method appendListFull(this: Ref, e: Int)
   if (@dependency("PathCondition")(this.next == null)) {
     var n: Ref
 
-    @dependency("Implicit")
+    @dependency("SourceCode")
     n := new(elem, next)
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     n.elem := e
-    @dependency("Implicit")
+    @dependency("SourceCode")
     n.next := null
-    @dependency("Implicit")
+    @dependency("SourceCode")
     this.next := n
-    @dependency("Implicit")
+    @dependency("Rewrite")
     fold list(n)
   } else {
-    @dependency("Implicit")
+    @dependency("MethodCall")
     appendListFull(this.next, e)
   }
 

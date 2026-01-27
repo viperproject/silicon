@@ -58,7 +58,7 @@ method domain3()
   inhale access(a) 
 
   var i: Int
-  @dependency("Implicit")
+  @dependency("SourceCode")
   i := 0
   while (@dependency("PathCondition")(i < len(a)))
     invariant @dependency("LoopInvariant")(access(a))
@@ -68,7 +68,7 @@ method domain3()
     // $PrecisionTest: $READ_ONLY=i $READ_WRITE=slot(a;i).val $INVARIANT=-1<i&&i<len(a) $ACC_INVARIANT=access(a)
     @testAssertion("Implicit")
     slot(a,i).val := -i
-    @dependency("Implicit")
+    @dependency("SourceCode")
     i := i + 1
   }
 }

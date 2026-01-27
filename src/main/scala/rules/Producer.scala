@@ -240,7 +240,7 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
+            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1, assumptionType)(
               (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a0, pve, v2, assumptionType)((s3, v3) => {
                 v3.symbExLog.closeScope(uidImplies)
                 QB(s3, null, v3)
@@ -271,7 +271,7 @@ object producer extends ProductionRules {
         val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-          branch(s1, t0, (e0, e0New), v1)(
+          branch(s1, t0, (e0, e0New), v1, assumptionType)(
             (s2, v2) => produceR(s2, sf, a0, pve, v2, assumptionType)((s3, v3) => {
               v3.symbExLog.closeScope(uidImplies)
               Q(s3, v3)
@@ -293,7 +293,7 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1)(
+            branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1, assumptionType)(
               (s2, v2) => produceR(s2.copy(parallelizeBranches = s1.parallelizeBranches), sf, a1, pve, v2, assumptionType)((s3, v3) => {
                 v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
@@ -319,7 +319,7 @@ object producer extends ProductionRules {
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-          branch(s1, t0, (e0, e0New), v1)(
+          branch(s1, t0, (e0, e0New), v1, assumptionType)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2, assumptionType)((s3, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)

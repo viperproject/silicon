@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyGraphInterpreter}
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
@@ -102,7 +102,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                  if(method.body.isEmpty) v3.decider.removeDependencyAnalyzer()
                   exec(s3, body, v3)((s4, v4) => {
                     if(method.body.isEmpty) v3.decider.dependencyAnalyzer = da
-                    consumes(s4, posts, false, postViolated, v4, postConditionType)((_, _, _) =>
+                    consumes(s4, posts, false, postViolated, v4, DependencyType.make(postConditionType))((_, _, _) =>
                       Success())})}) }  )})})
 
       if(method.body.isEmpty){

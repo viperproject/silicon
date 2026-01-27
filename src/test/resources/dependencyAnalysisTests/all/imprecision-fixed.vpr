@@ -6,9 +6,9 @@ method permTest(a: Ref, b: Ref, n: Int)
 {
     @dependency("Explicit")
     assume n > 0
-    @irrelevant("Implicit") // fixed imprecision (field assign)
+    @irrelevant("SourceCode") // fixed imprecision (field assign)
     a.f := b.f + 2
-    @dependency("Implicit")
+    @dependency("SourceCode")
     a.f := n
     @testAssertion("Explicit")
     assert a.f >= 0
@@ -46,7 +46,7 @@ method quantifiedPerm5(xs: Seq[Ref], ys: Seq[Ref])
   @irrelevant("Explicit")
   inhale forall y: Ref :: y in ys ==> acc(y.f)
 
-  @irrelevant("Implicit") // fixed imprecision (field assign with qp)
+  @irrelevant("SourceCode") // fixed imprecision (field assign with qp)
   xs[0].f := ys[0].f + 2
   @testAssertion("Implicit")
   xs[0].f := 2
@@ -79,7 +79,7 @@ method fieldAccessPrecision(){
 
     @irrelevant("Explicit")
     inhale acc(y.f)
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     y.f := y.f + 1
 
     @testAssertion("Explicit")
@@ -97,7 +97,7 @@ method fieldAccessPrecision2(){
 
     @irrelevant("Explicit")
     inhale acc(y.f)
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     x.f := y.f + 1
 
     @testAssertion("Explicit")

@@ -33,11 +33,11 @@ method predicateClient(x: Ref)
     requires acc(x.f)
 {
   var a: Int
-  @dependency("Implicit")
+  @dependency("SourceCode")
   x.f := 10
   @dependency("Rewrite")
   fold greater0(x)
-  @dependency("CallPostcondition")
+  @dependency("MethodCall")
   a := foo(x)
 
   @testAssertion("Explicit")
@@ -48,11 +48,11 @@ method predicateClientPostcond(x: Ref)
     requires acc(x.f)
 {
   var a: Int
-  @dependency("Implicit")
+  @dependency("SourceCode")
   x.f := 10
   @dependency("Rewrite")
   fold greater0(x)
-  @dependency("CallPostcondition")
+  @dependency("MethodCall")
   a := fooPostcond(x)
 
   @testAssertion("Explicit")
@@ -64,7 +64,7 @@ method callDiv(){
   var x: Int
   @dependency("Explicit")
   assume x > 10
-  @dependency("CallPostcondition")
+  @dependency("MethodCall")
   x := div100(x)
 
   @testAssertion("Explicit")
@@ -75,7 +75,7 @@ method callDivPostcond(){
   var x: Int
   @dependency("Explicit")
   assume x > 10
-  @dependency("CallPostcondition")
+  @dependency("MethodCall")
   x := div100Postcond(x)
 
   @testAssertion("Explicit")
@@ -90,7 +90,7 @@ function fooInput(a: Int): Int
 method client(a: Int)
 {
   var res: Int
-  @dependency("CallPostcondition")
+  @dependency("MethodCall")
   res := fooInput(a)
 
   @testAssertion("Explicit")

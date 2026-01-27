@@ -11,9 +11,9 @@ method gaussianSimple(n: Int) returns (res: Int)
     invariant @irrelevant("LoopInvariant")(i <= 6)
     invariant @dependency("LoopInvariant")(res == (i - 1) * i / 2)
   {
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := res + i
-    @dependency("Implicit")
+    @dependency("SourceCode")
     i := i + 1
   }
 
@@ -37,9 +37,9 @@ method gaussianPerm(a: Ref, p: Perm) returns (res: Int)
     invariant i <= 6
     invariant @dependency("LoopInvariant")(res == (i - 1) * i / 2)
   {
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := res + i
-    @dependency("Implicit")
+    @dependency("SourceCode")
     i := i + 1
   }
 
@@ -57,22 +57,22 @@ method gaussianPred(n: Int) returns (res: Int)
 {
   res := 0
   var i: Int
-  @dependency("Implicit")
+  @dependency("SourceCode")
   i := 0
-  @dependency("Implicit")
+  @dependency("Rewrite")
   fold gaussianEq(res, i)
   while(i <= n)
     invariant i <= (n + 1)
     invariant i <= 6
     invariant @dependency("LoopInvariant")(gaussianEq(res, i))
   {
-    @dependency("Implicit")
+    @dependency("Rewrite")
     unfold gaussianEq(res, i)
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := res + i
-    @dependency("Implicit")
+    @dependency("SourceCode")
     i := i + 1
-    @dependency("Implicit")
+    @dependency("Rewrite")
     fold gaussianEq(res, i)
   }
   assert i == n+1

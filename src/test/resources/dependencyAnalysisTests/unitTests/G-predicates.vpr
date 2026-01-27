@@ -12,7 +12,7 @@ method foldP(n: Int)
     requires @dependency("Precondition")(n > 10)
 {
     var x: Int 
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x := 1
 
     // $PrecisionTest: $READ_ONLY=n,x $INVARIANT=n>0
@@ -25,11 +25,11 @@ method unfoldP(n: Int)
   requires @dependency("Precondition")(greater0(n))
 {
     var x: Int
-    @dependency("Implicit") 
+    @dependency("SourceCode")
     x := 1
-    @dependency("Implicit")
+    @dependency("Rewrite")
     unfold greater0(n)
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x := n + x
 
     // $PrecisionTest: $READ_ONLY=x,n $INVARIANT=x>n
@@ -42,9 +42,9 @@ method unfoldFoldP(a: Int, b: Int)
     requires @dependency("Precondition")(greater0(a)) && @dependency("Precondition")(greater5(b))
     ensures greater5(a + b)
 {
-    @dependency("Implicit")
+    @dependency("Rewrite")
     unfold greater0(a)
-    @dependency("Implicit")
+    @dependency("Rewrite")
     unfold greater5(b)
 
     // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=b>0
@@ -57,7 +57,7 @@ method callWithPredicate(a: Int, b: Int)
     requires @dependency("Precondition")(greater0(a)) && @dependency("Precondition")(greater5(b))
     ensures greater5(a + b)
 {
-    @dependency("Implicit")
+    @dependency("MethodCall")
     unfoldFoldP(a, b)
 
     // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=(unfolding$_$greater5(a+b)$_$in$_$a+b>0) $ACC_INVARIANT=greater5(a+b)
@@ -74,9 +74,9 @@ method unfoldPrecision(a: Int, b: Int)
     
     // $PrecisionTest: $READ_ONLY=a,b $INVARIANT=(unfolding$_$greater0(a)$_$in$_$a>0) $ACC_INVARIANT=greater0(a)
 
-    @irrelevant("Implicit")
+    @irrelevant("Rewrite")
     unfold greater0(a)
-    @dependency("Implicit")
+    @dependency("Rewrite")
     unfold greater5(b)
 
     @testAssertion("Implicit")
@@ -113,7 +113,7 @@ method unfoldWithImpl(a: Int, x: Ref)
   @dependency("Rewrite")
   unfold implPred(a, x)
   if(@dependency("PathCondition")(a > 5)){
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     x.f := a
 
     // $PrecisionTest: $READ_ONLY=a $READ_WRITE=x.f $INVARIANT=a>=0 $ACC_INVARIANT=acc(x.f)
@@ -133,7 +133,7 @@ method unfoldingWithImpl(a: Int, x: Ref)
     @testAssertion("Implicit")
     res := unfolding implPred(a, x) in x.f
   }else{
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     res := a
   }
 }

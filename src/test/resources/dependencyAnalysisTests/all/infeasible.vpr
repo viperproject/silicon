@@ -41,7 +41,7 @@ method infeasibleBranchNoPerm(a: Int, b: Ref)
 {
     var res: Int
     if(@dependency("PathCondition")(a < 0)){
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         res := b.f + 1
         @testAssertion("Explicit")
         assert false

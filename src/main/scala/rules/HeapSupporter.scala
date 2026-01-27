@@ -80,7 +80,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                     returnSnap: Boolean,
                     pve: PartialVerificationError,
                     v: Verifier,
-                    assumptionType: AssumptionType)
+                    dependencyType: DependencyType)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult
 
   def consumeQuantified(s: State,
@@ -109,7 +109,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                         notInjectiveReason: => ErrorReason,
                         insufficientPermissionReason: => ErrorReason,
                         v: Verifier,
-                        assumptionType: AssumptionType)
+                        dependencyType: DependencyType)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult
 
   def produceSingle(s: State,
@@ -240,7 +240,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val description = s"consume ${ass.pos}: $ass"
       val lhsSourceInfo = TransitivityAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))
       v.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
-      chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, dependencyType.assumptionType)((s3, h3, _, v3) => {
+      chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, dependencyType)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
         val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), v3.decider.getAnalysisInfo(AssumptionType.Internal))
         v.decider.analysisSourceInfoStack.removeForcedSource()
@@ -515,7 +515,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     returnSnap: Boolean,
                     pve: PartialVerificationError,
                     v: Verifier,
-                    assumptionType: AssumptionType)
+                    dependencyType: DependencyType)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     val resource = resAcc.res(s.program)
     val useQPs = s.isQuantifiedResource(resource)
@@ -523,14 +523,14 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val tFormalArgs = s.getFormalArgVars(resource, v)
       val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
       quantifiedChunkSupporter.consumeSingleLocation(
-        s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v, assumptionType)(Q)
+        s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v, dependencyType)(Q)
     } else {
       val ve = resAcc match {
         case l: ast.LocationAccess => pve dueTo InsufficientPermission(l)
         case w: ast.MagicWand => pve dueTo MagicWandChunkNotFound(w)
       }
       val description = s"consume ${resAcc.pos}: $resAcc"
-      chunkSupporter.consume(s, h, resource, tArgs, eArgs, tPerm, ePerm, returnSnap, ve, v, description, assumptionType)(Q)
+      chunkSupporter.consume(s, h, resource, tArgs, eArgs, tPerm, ePerm, returnSnap, ve, v, description, dependencyType)(Q)
     }
   }
 
@@ -626,7 +626,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         notInjectiveReason: => ErrorReason,
                         insufficientPermissionReason: => ErrorReason,
                         v: Verifier,
-                        assumptionType: AssumptionType)
+                        dependencyType: DependencyType)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     quantifiedChunkSupporter.consume(
       s,
@@ -655,7 +655,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       notInjectiveReason,
       insufficientPermissionReason,
       v,
-      assumptionType
+      dependencyType
     )(Q)
   }
 

@@ -312,7 +312,7 @@ class FunctionData(val programFunction: ast.Function,
       val allTriggers = (
            Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
-      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), AssumptionType.Implicit)))
+      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), AssumptionType.SourceCode)))
     })
   }
 
@@ -321,7 +321,7 @@ class FunctionData(val programFunction: ast.Function,
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
       (Forall(arguments, body, Seq(Trigger(functionApplication))),
-        Option.when(isAnalysisEnabled)((StringAnalysisSourceInfo("bodyPreconditionPropagationAxiom", programFunction.pos), AssumptionType.Implicit)))
+        Option.when(isAnalysisEnabled)((StringAnalysisSourceInfo("bodyPreconditionPropagationAxiom", programFunction.pos), AssumptionType.SourceCode)))
     }) else None
     bodyPreconditions.toSeq
   }

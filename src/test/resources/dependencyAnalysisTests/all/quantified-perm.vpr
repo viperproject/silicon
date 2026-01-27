@@ -15,9 +15,9 @@ method quantifiedWritePerm(nodes: Set[Ref], x: Ref)
 {
   var y : Ref
   if(@dependency("PathCondition")(x.second != null)) {
-    @dependency("Implicit")
+    @dependency("SourceCode")
     y := x.second // permissions covered by preconditions
-    @dependency("Implicit")
+    @dependency("SourceCode")
     y.second := y
     @testAssertion("Explicit")
     assert x.second.second == x.second
@@ -33,10 +33,10 @@ method quantifiedSum(nodes: Set[Ref], x: Ref)
   requires @dependency("Precondition")(x in nodes)
 {
   var a: Int
-  @dependency("Implicit")
+  @dependency("SourceCode")
   a := x.f
   if(@dependency("PathCondition")(x.first != null)) {
-    @dependency("Implicit")
+    @dependency("SourceCode")
     a := a + x.first.f
   }
   @testAssertion("Explicit")

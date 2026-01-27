@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.AssumptionType
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyType}
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
@@ -35,7 +35,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               ve: VerificationError,
               v: Verifier,
               description: String,
-              assumptionType: AssumptionType=AssumptionType.Implicit)
+              dependencyType: DependencyType=DependencyType.Implicit)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult
 
@@ -80,11 +80,11 @@ object chunkSupporter extends ChunkSupportRules {
               ve: VerificationError,
               v: Verifier,
               description: String,
-              assumptionType: AssumptionType=AssumptionType.Implicit)
+              dependencyType: DependencyType=DependencyType.Implicit)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, assumptionType)((s2, h2, optSnap, v2) =>
+    consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, dependencyType)((s2, h2, optSnap, v2) =>
       optSnap match {
         case Some(snap) =>
           Q(s2, h2, Some(snap.convert(sorts.Snap)), v2)
@@ -113,14 +113,14 @@ object chunkSupporter extends ChunkSupportRules {
                        returnSnap: Boolean,
                        ve: VerificationError,
                        v: Verifier,
-                       assumptionType: AssumptionType)
+                       dependencyType: DependencyType)
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                       : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s, "chunk consume in package")
-      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _, assumptionType))((s1, optCh, v1) =>
+      magicWandSupporter.transfer(s, perms, permsExp, failure, Seq(), v)(consumeGreedy(_, _, id, args, _, _, _, dependencyType))((s1, optCh, v1) =>
         if (returnSnap){
           Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1)
         } else {
@@ -129,11 +129,11 @@ object chunkSupporter extends ChunkSupportRules {
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
         if (s1.moreCompleteExhale) {
-          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1, assumptionType)((s2, h2, snap2, v2) => {
+          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v1, dependencyType)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
         } else {
-          consumeGreedy(s1, s1.h, id, args, perms, permsExp, v1, assumptionType) match {
+          consumeGreedy(s1, s1.h, id, args, perms, permsExp, v1, dependencyType) match {
             case (Complete(), s2, h2, optCh2) =>
               val snap = optCh2 match {
                 case Some(ch) if returnSnap =>
@@ -145,7 +145,7 @@ object chunkSupporter extends ChunkSupportRules {
                 case _ => None
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
-            case (_, s2, h2, _) if v1.decider.checkSmoke(isAssert=true, assumptionType) =>
+            case (_, s2, h2, _) if v1.decider.checkSmoke(isAssert=true, dependencyType.assertionType) =>
               if(Verifier.config.disableInfeasibilityChecks())
                 QS(s2.copy(h = s.h), h2, None, v1)
               else
@@ -165,7 +165,7 @@ object chunkSupporter extends ChunkSupportRules {
                             perms: Term,
                             permsExp: Option[ast.Exp],
                             v: Verifier,
-                            assumptionType: AssumptionType)
+                            dependencyType: DependencyType)
                            : (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk]) = {
 
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
@@ -174,13 +174,13 @@ object chunkSupporter extends ChunkSupportRules {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties(s.mayAssumeUpperBounds))
-      pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.PathCondition))
+      pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), dependencyType.assumptionType))
     }
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
       case Some(ch) =>
         if (s.assertReadAccessOnly) {
-          if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0), assumptionType)) {
+          if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0), dependencyType.assertionType)) {
             (Complete(), s, h, Some(ch))
           } else {
             (Incomplete(perms, permsExp), s, h, None)
@@ -189,8 +189,8 @@ object chunkSupporter extends ChunkSupportRules {
           val toTake = PermMin(ch.perm, perms)
           val toTakeExp = permsExp.map(pe => buildMinExp(Seq(ch.permExp.get, pe), ast.Perm))
           val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, toTakeExp.get)(pe.pos, pe.info, pe.errT))
-          val newChunk = NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, toTake), newPermExp, v.decider.getAnalysisInfo(AssumptionType.Implicit))
-          val takenChunk = Some(NonQuantifiedChunk.withPerm(ch, toTake, toTakeExp, v.decider.getAnalysisInfo(assumptionType), isExhale=true))
+          val newChunk = NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, toTake), newPermExp, v.decider.getAnalysisInfo(dependencyType.assumptionType))
+          val takenChunk = Some(NonQuantifiedChunk.withPerm(ch, toTake, toTakeExp, v.decider.getAnalysisInfo(dependencyType.assertionType), isExhale=true))
           var newHeap = h - ch
           if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout(), AssumptionType.Internal)) {
             newHeap = newHeap + newChunk
@@ -199,12 +199,12 @@ object chunkSupporter extends ChunkSupportRules {
           val remainingExp = permsExp.map(pe => ast.PermSub(pe, toTakeExp.get)(pe.pos, pe.info, pe.errT))
           (ConsumptionResult(PermMinus(perms, toTake), remainingExp, Seq(), v, 0), s, newHeap, takenChunk)
         } else {
-          if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout(), assumptionType)) {
+          if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout(), dependencyType.assertionType)) {
             val constraintExp = permsExp.map(pe => ast.PermLtCmp(pe, ch.permExp.get)(pe.pos, pe.info, pe.errT))
-            v.decider.assume(PermLess(perms, ch.perm), Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Implicit)
+            v.decider.assume(PermLess(perms, ch.perm), Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), dependencyType.assumptionType)
             val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, pe)(pe.pos, pe.info, pe.errT))
-            val newChunk = NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, perms), newPermExp, v.decider.getAnalysisInfo(AssumptionType.Implicit))
-            val takenChunk = NonQuantifiedChunk.withPerm(ch, perms, permsExp, v.decider.getAnalysisInfo(assumptionType), isExhale=true)
+            val newChunk = NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, perms), newPermExp, v.decider.getAnalysisInfo(dependencyType.assumptionType))
+            val takenChunk = NonQuantifiedChunk.withPerm(ch, perms, permsExp, v.decider.getAnalysisInfo(dependencyType.assertionType), isExhale=true)
             val newHeap = h - ch + newChunk
             assumeProperties(newChunk, newHeap)
             (Complete(), s, newHeap, Some(takenChunk))
@@ -213,7 +213,7 @@ object chunkSupporter extends ChunkSupportRules {
           }
         }
       case None =>
-        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm, Verifier.config.checkTimeout(), assumptionType)) {
+        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm, Verifier.config.checkTimeout(), dependencyType.assertionType)) {
           (Complete(), s, h, None)
         } else {
           (Incomplete(perms, permsExp), s, h, None)

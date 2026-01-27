@@ -116,7 +116,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
       var branchResults: Seq[(Seq[Term], Seq[(ast.Exp, Option[ast.Exp])], Heap, InsertionOrderedSet[Term])] = Seq()
 
-      val assumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info).getOrElse(AssumptionType.Explicit)
+      val assumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info).getOrElse(AssumptionType.Rewrite)
 
       val result = predicate.body match {
         case None =>

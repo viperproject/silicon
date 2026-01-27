@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.AssumptionType
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyType}
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
@@ -24,6 +24,7 @@ import viper.silver.ast
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 
+import scala.annotation.unused
 import scala.collection.mutable.ListBuffer
 
 object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
@@ -237,14 +238,14 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       returnSnap: Boolean,
                       ve: VerificationError,
                       v: Verifier,
-                      assumptionType: AssumptionType=AssumptionType.Implicit)
+                      dependencyType: DependencyType=DependencyType.Implicit)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
     if (!s.assertReadAccessOnly)
-      actualConsumeComplete(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, assumptionType)(Q)
+      actualConsumeComplete(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, dependencyType)(Q)
     else
-      summariseHeapAndAssertReadAccess(s, h, resource, perms, args, argsExp, returnSnap, ve, v, assumptionType)(Q)
+      summariseHeapAndAssertReadAccess(s, h, resource, perms, args, argsExp, returnSnap, ve, v, dependencyType.assertionType)(Q)
   }
 
   private def summariseHeapAndAssertReadAccess(s: State,
@@ -256,7 +257,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                returnSnap: Boolean,
                                                ve: VerificationError,
                                                v: Verifier,
-                                               assumptionType: AssumptionType)
+                                               assertionType: AssumptionType)
                                               (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                               : VerificationResult = {
 
@@ -265,7 +266,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (returnSnap) {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
-        v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum)), assumptionType) {
+        v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum)), assertionType) {
           case true =>
             Q(s1, h, Some(snap), v1)
           case false =>
@@ -273,7 +274,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         })
     } else {
       val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
-      v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum)), assumptionType) {
+      v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum)), assertionType) {
         case true =>
           Q(s1, h, None, v)
         case false =>
@@ -292,7 +293,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     returnSnap: Boolean,
                                     ve: VerificationError,
                                     v: Verifier,
-                                    assumptionType: AssumptionType)
+                                    dependencyType: DependencyType)
                                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                    : VerificationResult = {
 
@@ -306,13 +307,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      v.decider.assert(perms === NoPerm, assumptionType) {
+      v.decider.assert(perms === NoPerm, dependencyType.assertionType) {
         case true => Q(s, h, None, v)
         case false => createFailure(ve, v, s, perms === NoPerm, permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT)))
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, assumptionType)((s1, updatedChunks, optSnap, v2) => {
+        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, dependencyType)((s1, updatedChunks, optSnap, v2) => {
           Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)
         })
       } else {
@@ -365,16 +366,16 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
             pSumExp = eqExp.map(eq => ast.PermAdd(pSumExp.get, ast.CondExp(eq, ch.permExp.get, ast.NoPerm()())(eq.pos, eq.info, eq.errT))())
 
-            val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Implicit)).asInstanceOf[NonQuantifiedChunk]
-            val _ = GeneralChunk.withPerm(ch, pTaken, None, v.decider.getAnalysisInfo(assumptionType), isExhale=true)
+            val newChunk = GeneralChunk.withPerm(ch, PermMinus(ch.perm, pTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(dependencyType.assumptionType)).asInstanceOf[NonQuantifiedChunk]
+            val _ = GeneralChunk.withPerm(ch, pTaken, None, v.decider.getAnalysisInfo(dependencyType.assertionType), isExhale=true)
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), AssumptionType.Implicit)) {
+            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(), AssumptionType.Internal)) {
               newChunks.append(newChunk)
             }
 
-            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout(), AssumptionType.Implicit)
+            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout(), dependencyType.assumptionType)
           } else {
             newChunks.append(ch)
           }
@@ -387,7 +388,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), AssumptionType.Implicit))
+          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2)), dependencyType.assumptionType))
         }
         val newHeap = Heap(allChunks)
 
@@ -397,7 +398,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         if (returnSnap) {
           summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
-            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(), AssumptionType.Implicit)) {
+            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(), AssumptionType.Internal)) {
               snap
             } else {
               Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
@@ -405,7 +406,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s1, newHeap, condSnap, v1)
           } else {
-            v1.decider.assert(pNeeded === NoPerm, assumptionType) {
+            v1.decider.assert(pNeeded === NoPerm, dependencyType.assertionType) {
               case true =>
                 Q(s1, newHeap, condSnap, v1)
               case false =>
@@ -417,7 +418,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s0, newHeap, None, v)
           } else {
-            v.decider.assert(pNeeded === NoPerm, assumptionType) {
+            v.decider.assert(pNeeded === NoPerm, dependencyType.assertionType) {
               case true =>
                 Q(s0, newHeap, None, v)
               case false =>
@@ -439,7 +440,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                  returnSnap: Boolean,
                                                  ve: VerificationError,
                                                  v: Verifier,
-                                                 assumptionType: AssumptionType)
+                                                 dependencyType: DependencyType)
                                                 (Q: (State, ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
                                                 : VerificationResult = {
 
@@ -476,13 +477,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             ast.Implies(ast.Not(eqExp.get)(), ast.EqCmp(permTakenExp.get, ast.NoPerm()())())(pe.pos, pe.info, pe.errT))))
 
 
-        v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Implicit)
+        v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), dependencyType.assumptionType)
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
         @unused // required in order to ensure a sound dependency analysis
-        val _ = GeneralChunk.withPerm(ch, permTaken, None, v.decider.getAnalysisInfo(assumptionType), isExhale=true)
-        NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(AssumptionType.Implicit))
+        val _ = GeneralChunk.withPerm(ch, permTaken, None, v.decider.getAnalysisInfo(dependencyType.assertionType), isExhale=true)
+        NonQuantifiedChunk.withPerm(ch, PermMinus(ch.perm, permTaken), permsExp.map(pe => ast.PermSub(ch.permExp.get, permTakenExp.get)(pe.pos, pe.info, pe.errT)), v.decider.getAnalysisInfo(dependencyType.assumptionType))
       })
 
     val totalTakenBounds =
@@ -494,16 +495,16 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val constraintExp = permsExp.map(pe => ast.Implies(ast.NeCmp(totalPermSumExp.get, ast.NoPerm()())(),
       ast.And(ast.PermLeCmp(ast.NoPerm()(), totalPermTakenExp.get)(), ast.PermLeCmp(totalPermTakenExp.get, totalPermSumExp.get)())(pe.pos, pe.info, pe.errT))())
 
-    v.decider.assume(totalTakenBounds, constraintExp, constraintExp, AssumptionType.Implicit)
+    v.decider.assume(totalTakenBounds, constraintExp, constraintExp, dependencyType.assumptionType)
 
     newFr = newFr.recordConstraint(totalTakenBounds)
 
     val s1 = s.copy(functionRecorder = newFr)
 
-    v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm), assumptionType) {
+    v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm), dependencyType.assertionType) {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
-        v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), AssumptionType.Implicit)
+        v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)), dependencyType.assumptionType)
         if (returnSnap) {
           summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, v1) =>
             Q(s2, updatedChunks, Some(snap), v1))
@@ -547,7 +548,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       relevantChunks foreach (chunk => {
         val instantiatedPermSum = permissionSum.replace(freeReceiver, chunk.args.head)
         val exp = permissionSumExp.map(pse => ast.PermLeCmp(replaceVarsInExp(pse, Seq(freeReceiverExp.name), Seq(chunk.argsExp.get.head)), ast.FullPerm()())())
-        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm), exp, exp, AssumptionType.Implicit)
+        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm), exp, exp, AssumptionType.Internal)
       })
     }
   }

@@ -54,7 +54,7 @@ trait Decider {
 
   def checkSmoke(isAssert: Boolean = false, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean
 
-  def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
+  def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), assumptionType: AssumptionType): Unit
   def setPathConditionMark(): Mark
 
   def finishDebugSubExp(description : String): Unit
@@ -114,7 +114,6 @@ trait Decider {
   var analysisSourceInfoStack: AnalysisSourceInfoStack
   def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit
   def removeDependencyAnalyzer(): Unit
-  def getAnalysisInfo: AnalysisInfo
   def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo
 }
 
@@ -163,8 +162,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       dependencyAnalyzer = new NoDependencyAnalyzer
       analysisSourceInfoStack = AnalysisSourceInfoStack()
     }
-
-    def getAnalysisInfo: AnalysisInfo = getAnalysisInfo(AssumptionType.Implicit)
 
     def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, dependencyAnalyzer, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
     
@@ -287,9 +284,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit = {
+    def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), assumptionType: AssumptionType): Unit = {
       pathConditions.setCurrentBranchCondition(t, te)
-      assume(t, Option.when(te._2.isDefined)(te._1), te._2, AssumptionType.PathCondition)
+      assume(t, Option.when(te._2.isDefined)(te._1), te._2, assumptionType)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()

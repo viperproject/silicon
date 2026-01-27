@@ -7,7 +7,7 @@ method quantifiedPerm1(xs: Seq[Ref]) {
   inhale xs[0] != xs[1]
 
   var i: Int
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   i := 0
 
   // $PrecisionTest: $READ_WRITE=xs[i].f,xs[1].f $INVARIANT=|xs|>0 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f)
@@ -47,7 +47,7 @@ method quantifiedExhalePartiallyTest(xs: Seq[Ref]) {
   inhale xs[0] != xs[4]
 
   var i: Int
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   i := 0
   // $PrecisionTest: $READ_WRITE=xs[i].f,xs[4].f $INVARIANT=|xs|>0 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f)
 
@@ -63,7 +63,7 @@ method quantifiedExhalePartially(xs: Seq[Ref]) {
   exhale forall x: Ref :: x in xs ==> acc(x.f, 1/2)
 
   var i: Int
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   i := 1
 
   // $PrecisionTest: $READ_WRITE=res $READ_ONLY=xs[i].f,xs[0].f,xs[2].f $INVARIANT=|xs|>0 $ACC_INVARIANT=forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f,1/4)
@@ -104,7 +104,7 @@ method quantifiedPermWrite2(xs: Seq[Ref]) {
   @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  @dependency("Implicit")
+  @dependency("SourceCode")
   xs[0].f := 0
 
   inhale xs[0] != xs[2]
@@ -121,7 +121,7 @@ method quantifiedPermWrite3(xs: Seq[Ref]) {
   @dependency("Explicit")
   inhale forall x: Ref :: x in xs ==> (acc(x.f) && x.f > 0)
 
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   xs[0].f := 0
 
   // $PrecisionTest: $READ_WRITE=xs[0].f $READ_ONLY=xs[1].f,xs[2].f $INVARIANT=xs[1].f>=0 $ACC_INVARIANT=|xs|>1&&acc(xs[0].f,1/2)&&(forall$_$x:Ref::x$_$in$_$xs$_$==>$_$acc(x.f,1/4))

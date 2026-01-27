@@ -20,11 +20,11 @@ method aliasing1(x: Ref, n: Int)
   requires @irrelevant("Precondition")(n > 0)
   requires @irrelevant("Precondition")(x.f > n)
 {
-  @dependency("Implicit")
+  @dependency("SourceCode")
   x.f := n + 1
 
   var y: Ref
-  @dependency("Implicit")
+  @dependency("SourceCode")
   y := x
 
   @testAssertion("Explicit")
@@ -50,11 +50,11 @@ method alias1(a: Ref, b: Ref, c: Ref)
 {
     var x: Int
     if (@dependency("PathCondition")(c == a)) {
-        @dependency("Implicit")
+        @dependency("SourceCode")
         x := c.f
     }
     if(@dependency("PathCondition")(c == b)) {
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         x := c.f
     }
 

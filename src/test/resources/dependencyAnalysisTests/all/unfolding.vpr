@@ -26,10 +26,10 @@ method client1(x: Ref)
   @dependency("Rewrite")
   fold pred(x)
 
-  @dependency("Implicit")
+  @dependency("MethodCall")
   b := foo(x)
 
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   b := unfolding pred(x) in x.f
 
   @irrelevant()
@@ -49,10 +49,10 @@ method client1(x: Ref)
    @dependency("Rewrite")
    fold pred(x)
 
-   @dependency("Implicit")
+   @dependency("SourceCode")
    b := foo(x)
 
-   @dependency("Implicit")
+   @dependency("SourceCode")
    b := unfolding pred(x) in x.f
 
    @testAssertion("Explicit")

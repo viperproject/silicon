@@ -11,7 +11,7 @@ method currentPerm(x: Ref)
 
 method perm1(){
     var x: Ref
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x := new(f)
 
     // $PrecisionTest: $READ_WRITE=x.f $ACC_INVARIANT=acc(x.f)
@@ -50,7 +50,7 @@ method perm4(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x.f := x.f + 1
 
     // $PrecisionTest: $READ_ONLY=x.f $INVARIANT=x.f>0 $ACC_INVARIANT=acc(x.f,1/4)
@@ -63,7 +63,7 @@ method perm5(){
     var x: Ref
     @dependency("Explicit")
     inhale acc(x.f)
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     x.f := x.f + 1
 
     // $PrecisionTest: $READ_WRITE=x.f $ACC_INVARIANT=acc(x.f)

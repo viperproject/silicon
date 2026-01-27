@@ -9,11 +9,11 @@ method setTuple(this: Ref, l: Int, r: Int)
   requires @dependency("Precondition")(tuple(this))
   ensures tuple(this)
 {
-  @dependency("Implicit")
+  @dependency("Rewrite")
   unfold tuple(this)
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   this.left := l
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   this.right := r
   @testAssertion("Implicit")
   fold tuple(this)
@@ -23,9 +23,9 @@ method addTuple(this: Ref) returns (sum: Int)
   requires @dependency("Precondition")(acc(tuple(this), 1/2))
   ensures acc(tuple(this), 1/2)
 {
-  @dependency("Implicit")
+  @dependency("Rewrite")
   unfold acc(tuple(this), 1/2)
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   sum := this.left + this.right
   @testAssertion("Implicit")
   fold acc(tuple(this), 1/2)

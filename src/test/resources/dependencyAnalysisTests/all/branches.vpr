@@ -15,10 +15,10 @@ method branches1(a: Int, b: Int)
   assume c ==> a > 5
 
   if(@irrelevant("PathCondition")(c)){
-    @dependency("Implicit")
+    @dependency("SourceCode")
     n := a + 1
   }else{
-    @dependency("Implicit")
+    @dependency("SourceCode")
     n := b + 1
   }
 
@@ -41,10 +41,10 @@ method branches2(a: Int, b: Int)
 
   var x: Int
   if(@dependency("PathCondition")(a >= n)){
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     x := a + b
   }else{
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x := n + 1
     @testAssertion("Explicit")
     assert x > 1
@@ -60,10 +60,10 @@ method branches3(a: Int, b: Int)
 
   var x: Int
   if(@dependency("PathCondition")(a >= n)){
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x := a + b
   }else{
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x := n + 1
   }
 
@@ -89,16 +89,16 @@ method nestedBranches1(a: Int, b: Int)
 
   if(@irrelevant("PathCondition")(c)){
     if(@irrelevant("PathCondition")(a > b)){
-      @dependency("Implicit")
+      @dependency("SourceCode")
       n := a - b
     }else{
-      @dependency("Implicit")
+      @dependency("SourceCode")
       n := a + b
     }
-    @dependency("Implicit")
+    @dependency("SourceCode")
     n := n - 1
   }else{
-    @dependency("Implicit")
+    @dependency("SourceCode")
     n := a + b
   }
 

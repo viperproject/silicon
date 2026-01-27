@@ -46,7 +46,7 @@ method infeasible2(x: Ref)
     if(@irrelevant("PathCondition")(x == null)){ // unexpected dependency
         var a: Int
 
-        @dependency("Implicit")
+        @dependency("SourceCode")
         a := 0
 
         @testAssertion("Explicit")
@@ -63,7 +63,7 @@ method exhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    @dependency("Implicit")
+    @dependency("SourceCode")
     x.f := x.f + 1
 
     @irrelevant("Implicit") // unexpected dependency
@@ -148,7 +148,7 @@ method inhaleImprecision(){
     @dependency("Explicit")
     inhale x.f > 0
 
-    @irrelevant("Implicit")
+    @irrelevant("Explicit")
     inhale acc(x.f, 1/2)
 
     @testAssertion("Explicit")
@@ -176,10 +176,10 @@ method quantifiedFieldAssign(){
 
     @irrelevant("Explicit")
     inhale |xs| > 2  // imprecise
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     idx := 0  // imprecise
     inhale forall xi: Ref :: xi in xs ==> acc(xi.f)
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     xs[idx].f := a  // internal dependency
 
     @testAssertion("Explicit")

@@ -3,18 +3,18 @@ field f:Int
 method loop1(){
     var i: Int
     var res: Int
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := 0
-    // @irrelevant("Implicit")
+    // @irrelevant("SourceCode")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
         invariant @irrelevant("LoopInvariant")(i >= 0)
         invariant @dependency("LoopInvariant")(res >= 0)
     {
-        @dependency("Implicit")
+        @dependency("SourceCode")
         res := res + i
-        // @irrelevant("Implicit")
+        // @irrelevant("SourceCode")
         i := i - 1
     }
 
@@ -27,19 +27,19 @@ method loop1(){
 method loop2(){
     var i: Int
     var res: Int
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     res := 0
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
         invariant @irrelevant("LoopInvariant")(i >= 0)
         invariant @irrelevant("LoopInvariant")(res >= 0)
     {
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         res := res + i
         // $PrecisionTest: $READ_ONLY=res,i $INVARIANT=i<20
-        @dependency("Implicit")
+        @dependency("SourceCode")
         i := i - 1
         @testAssertion("Explicit")
         assert i >= 0
@@ -49,19 +49,19 @@ method loop2(){
 method loop3(){
     var i: Int
     var res: Int
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := 0
     // $PrecisionTest: $READ_ONLY=res $READ_WRITE=i $INVARIANT=res<10
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
         invariant @irrelevant("LoopInvariant")(i >= 0)
         invariant @dependency("LoopInvariant")(res >= 0)
     {
-        @dependency("Implicit")
+        @dependency("SourceCode")
         res := res + i
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         i := i - 1
         @testAssertion("Explicit")
         assert res > 0
@@ -74,18 +74,18 @@ method loop4(){
 
     // $PrecisionTest: $READ_WRITE=i,res
 
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := 0
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     i := 10
     while(@irrelevant("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
         invariant @irrelevant("LoopInvariant")(i >= 0)
         invariant @dependency("LoopInvariant")(res >= 0)
     {
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         res := res - 1
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         i := i - 1
         @dependency("Explicit")
         assume res > 0

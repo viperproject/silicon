@@ -11,6 +11,7 @@ import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, ExpAnalysisSourceIn
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
@@ -27,6 +28,7 @@ trait BranchingRules extends SymbolicExecutionRules {
              condition: Term,
              conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
+             assumptionType: AssumptionType,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
              fFalse: (State, Verifier) => VerificationResult)
@@ -38,6 +40,7 @@ object brancher extends BranchingRules {
              condition: Term,
              conditionExp: (ast.Exp, Option[ast.Exp]),
              v: Verifier,
+             assumptionType: AssumptionType,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
@@ -163,7 +166,7 @@ object brancher extends BranchingRules {
             val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
             v1.decider.pcs.setCurrentInfeasibilityNode(elseInfeasibilityNode)
-            v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew))
+            v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), assumptionType)
             v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
@@ -218,7 +221,7 @@ object brancher extends BranchingRules {
             val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
             v1.decider.pcs.setCurrentInfeasibilityNode(thenInfeasibilityNode)
-            v1.decider.setCurrentBranchCondition(condition, conditionExp)
+            v1.decider.setCurrentBranchCondition(condition, conditionExp, assumptionType)
             v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)

@@ -4,18 +4,18 @@ method sum(n: Int) returns (res: Int)
   requires @dependency("Precondition")(0 <= n)
   ensures  res == n * (n + 1) / 2
 {
-  @dependency("Implicit")
+  @dependency("SourceCode")
   res := 0
   var i: Int
-  @dependency("Implicit")
+  @dependency("SourceCode")
   i := 0;
   while(@dependency("PathCondition")(i <= n))
     invariant @dependency("LoopInvariant")(i <= (n + 1))
     invariant @dependency("LoopInvariant")(res == (i - 1) * i / 2)
   {
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := res + i
-    @dependency("Implicit")
+    @dependency("SourceCode")
     i := i + 1
   }
 
@@ -30,19 +30,19 @@ method sumPerm1(n: Int, res: Ref)
   ensures acc(res.f)
   ensures  res.f == n * (n + 1) / 2
 {
-  @dependency("Implicit")
+  @dependency("SourceCode")
   res.f := 0
   var i: Int
-  @dependency("Implicit")
+  @dependency("SourceCode")
   i := 0
   while(@dependency("PathCondition")(i <= n))
     invariant @dependency("LoopInvariant")(acc(res.f))
     invariant @dependency("LoopInvariant")(i <= (n + 1))
     invariant @dependency("LoopInvariant")(res.f == (i - 1) * i / 2)
   {
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res.f := res.f + i
-    @dependency("Implicit")
+    @dependency("SourceCode")
     i := i + 1
   }
 
@@ -55,19 +55,19 @@ method sumPerm2(n: Int, res: Ref)
   requires @irrelevant("Precondition")(0 <= n)
   ensures acc(res.f)
 {
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   res.f := 0
   var i: Int
-  @irrelevant("Implicit")
+  @irrelevant("SourceCode")
   i := 0;
   while(@irrelevant("PathCondition")(i <= n))
     invariant @dependency("LoopInvariant")(acc(res.f))
     invariant @irrelevant("LoopInvariant")(i <= (n + 1))
     invariant @irrelevant("LoopInvariant")(res.f == (i - 1) * i / 2)
   {
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     res.f := res.f + i
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     i := i + 1
   }
 

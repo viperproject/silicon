@@ -10,19 +10,19 @@
 method loop1(){
     var i: Int
     var res: Int
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := 0
 
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @irrelevant("LoopInvariant")(i <= 10)
         invariant @irrelevant("LoopInvariant")(i >= 0)
         invariant @dependency("LoopInvariant")(res >= 0)
     {
-        @dependency("Implicit")
+        @dependency("SourceCode")
         res := res + i
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         i := i - 1
     }
     @testAssertion("Explicit")
@@ -32,19 +32,19 @@ method loop1(){
 method loop1_reordered(){
     var i: Int
     var res: Int
-    @dependency("Implicit")
+    @dependency("SourceCode")
     res := 0
 
-    @irrelevant("Implicit")
+    @irrelevant("SourceCode")
     i := 10
     while(@dependency("PathCondition")(i > 0))
         invariant @dependency("LoopInvariant")(res >= 0)
         invariant @irrelevant("LoopInvariant")(i <= 10)
         invariant @irrelevant("LoopInvariant")(i >= 0)
     {
-        @dependency("Implicit")
+        @dependency("SourceCode")
         res := res + i
-        @irrelevant("Implicit")
+        @irrelevant("SourceCode")
         i := i - 1
     }
     @testAssertion("Explicit")
