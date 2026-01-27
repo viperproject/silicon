@@ -52,8 +52,15 @@ trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
   def getNodeString: String
   def getNodeType: String
 
+  // TODO ake: remove workaround
   override def hashCode(): Int =
-    toString.hashCode
+    id.hashCode()
+
+  // TODO ake: remove workaround
+  override def equals(obj: Any): Boolean = obj match {
+    case node: DependencyAnalysisNode => node.id == this.id
+    case _ => false
+  }
 }
 
 trait GeneralAssumptionNode extends DependencyAnalysisNode {
