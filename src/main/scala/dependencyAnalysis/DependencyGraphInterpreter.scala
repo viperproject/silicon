@@ -229,19 +229,21 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2).filter(_.assumptionTypes.nonEmpty).toSet
 
+    val explicitAssertions = toUserLevelNodes(getExplicitAssertionNodes).getSourceSet()
+
     // covered
     val coveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(relevantDependencies).getSourceSet()
     val coveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(relevantDependencies).getSourceSet().diff(coveredExplicitSources)
-    val coveredSourceCodeStmts = relevantDependencies.getSourceSet().diff(coveredExplicitSources).diff(coveredVerificationAnnotations)
+    val coveredSourceCodeStmts = relevantDependencies.getSourceSet().diff(coveredExplicitSources).diff(coveredVerificationAnnotations).diff(explicitAssertions)
 
     // uncovered
     val uncoveredNodes = toUserLevelNodes(getNonInternalAssumptionNodes).diffBySource(relevantDependencies)
     val uncoveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(uncoveredNodes).getSourceSet()
-    val uncoveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(uncoveredNodes).getSourceSet().diff(uncoveredExplicitSources)
+    val uncoveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(uncoveredNodes).getSourceSet().diff(uncoveredExplicitSources) ++ explicitAssertions
     val uncoveredSourceCodeStmts = uncoveredNodes.getSourceSet().diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
 
     // assertions
-    val relevantAssertions = relevantDependenciesPerAssertion // TODO ake: maybe .filter(_._1.lowLevelAssertionNodes.exists(n => !n.isInstanceOf[SimpleCheckNode]))
+    val relevantAssertions = relevantDependenciesPerAssertion
     val assertionsWithFailures = relevantAssertions.keySet.filter(_.hasFailures).getSourceSet() // should be empty to get a reasonable progress metric
     val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.getSourceSet().diff(assertionsWithFailures)
     val fullyVerifiedAssertions = relevantAssertions.keySet.getSourceSet().diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
@@ -264,7 +266,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
 
     def getString(nodes: Set[AnalysisSourceInfo]): String = {
-      nodes.toList.sortBy(_.getLineNumber).mkString(("\n\t\t"))
+      nodes.toList.sortBy(_.getLineNumber).mkString("\n\t\t")
     }
 
     val info = {
