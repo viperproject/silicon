@@ -8,7 +8,7 @@ package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, DependencyAnalyzer, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, PermMapDefinition, SnapshotMapDefinition, functionSupporter}
@@ -23,7 +23,7 @@ import viper.silver.ast
 import viper.silver.ast.LocalVarWithVersion
 import viper.silver.ast.utility.Functions
 import viper.silver.parser.PUnknown
-import viper.silver.reporter.Reporter
+import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 import scala.annotation.unused
 
@@ -189,20 +189,20 @@ class FunctionData(val programFunction: ast.Function,
     // This should not happen, but currently can, due to bugs in the function axiomatisation code.
     // Fixing these bugs with the current way functions are axiomatised will be very difficult,
     // but they should be resolved with Mauro's current work on heap snapshots.
-    // Once his changes are merged in, the commented warnings below should be turned into errors.
+    // Once his changes are merged in, the warnings below should be turned into errors.
     nested.filter(term => {
       val freeVars = term.freeVariables -- arguments
       val unknownVars = freeVars.filterNot(v => freshSymbols.contains(v.id))
 
-    //if (unknownVars.nonEmpty) {
-    //  val messageText = (
-    //      s"Found unexpected free variables $unknownVars "
-    //    + s"in term $term during axiomatisation of function "
-    //    + s"${programFunction.name}")
-    //
-    //  reporter report InternalWarningMessage(messageText)
-    //  logger warn messageText
-    //}
+      if (unknownVars.nonEmpty) {
+        val messageText = (
+            s"Found unexpected free variables $unknownVars "
+          + s"in term $term during axiomatisation of function "
+          + s"${programFunction.name}")
+
+        reporter report InternalWarningMessage(messageText)
+        logger warn messageText
+      }
 
       unknownVars.isEmpty
     })
