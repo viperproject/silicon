@@ -173,12 +173,17 @@ class FunctionData(val programFunction: ast.Function,
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = {
     val freshSymbols: Set[Identifier] = freshSymbolsAcrossAllPhases.map(_.id)
 
-    val nested = (
+    val nestedTmp = (
          freshFieldInvs.flatMap(_.definitionalAxioms)
       ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
       ++ freshPermMaps.flatMap (pmDef => pmDef.valueDefinitions)
       ++ freshConstrainedVars.map(_._2)
       ++ freshConstraints)
+
+    val nested = if(!Verifier.config.enableDependencyAnalysis()) nestedTmp
+      else nestedTmp.map(_.transform{
+        case Var(name, _, _) if name.name.startsWith(DependencyAnalyzer.analysisLabelName) => True // replace dependency analysis labels by True to avoid errors
+      }())
 
     // Filter out nested definitions that contain free variables.
     // This should not happen, but currently can, due to bugs in the function axiomatisation code.
