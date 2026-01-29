@@ -222,7 +222,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     // TODO ake: this is suuuper slow. Can we reuse previously computed results? Caching?
     val relevantDependenciesPerAssertion = allAssertions
       .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id))).diffBySource(Set(ass)))).toMap
-      .filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures} // filter out trivial assertions like `assert true`
+      .filter{case (_, assumptions) => assumptions.nonEmpty} // filter out trivial assertions like `assert true`
 
 //    val endTime = System.nanoTime()
 //    println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
@@ -244,9 +244,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     // assertions
     val relevantAssertions = relevantDependenciesPerAssertion
-    val assertionsWithFailures = relevantAssertions.keySet.filter(_.hasFailures).getSourceSet() // should be empty to get a reasonable progress metric
-    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.getSourceSet().diff(assertionsWithFailures)
-    val fullyVerifiedAssertions = relevantAssertions.keySet.getSourceSet().diff(assertionsWithFailures).diff(assertionsWithExplicitDeps)
+    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.getSourceSet()
+    val fullyVerifiedAssertions = relevantAssertions.keySet.getSourceSet().diff(assertionsWithExplicitDeps)
 
     val numRelevantAssertions = relevantAssertions.keySet.size.toDouble
 
@@ -256,9 +255,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val verificationProgressPeter = specQuality * proofQualityPeter
 
     // Lea's metric
-    val proofQualityPerAssertion = relevantAssertions.map { case (assertion, assumptions) =>
-      if(assertion.hasFailures) 0.0
-      else UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions).size.toDouble / assumptions.size.toDouble
+    val proofQualityPerAssertion = relevantAssertions.map { case (_, assumptions) =>
+      UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions).size.toDouble / assumptions.size.toDouble
     }
 
     val proofQualityLea =  if(numRelevantAssertions > 0) proofQualityPerAssertion.sum / numRelevantAssertions else 1.0
@@ -282,7 +280,6 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
         "\n" +
       s"Fully verified assertions:\n\t\t${getString(fullyVerifiedAssertions)}" + "\n\n" +
         s"Assertions depending on explicit assumptions:\n\t\t${getString(assertionsWithExplicitDeps)}" + "\n\n" +
-        s"Failing assertions:\n\t\t${getString(assertionsWithFailures)}\n\n" +
         "\n" +
         s"#Verification Errors: ${errors.size}" + "\n\n" +
       "\n" +
