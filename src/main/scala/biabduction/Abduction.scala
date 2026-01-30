@@ -111,28 +111,7 @@ trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
     }
   }
 
-  // Who doesn't love CPS???
-  /*def permsToSeq(remaining: Seq[AccessPredicate], built: Seq[AccessPredicate], q: AbductionQuestion)
-                (Q: Seq[AccessPredicate] => VerificationResult): VerificationResult = remaining match {
-    case Nil =>
-      Q(built)
-
-    case acc +: tail =>
-      acc.loc match {
-        case la: LocationAccess =>
-          permsTo(la, q.s, q.v, q.lostAccesses) { pHOpt =>
-            val pG = acc.perm
-            val frac: Exp = pHOpt match {
-              case Some(pH) => abductionUtils.clampSubPerm(pG, pH)
-              case None => pG
-            }
-
-            permsToSeq(tail, built :+ abductionUtils.accWithPerm(acc, frac), q)(Q)
-          }
-      }
-  }*/
-
-  def findMinPerm(loc: LocationAccess, s: State, v: Verifier, lostAccesses: Map[Exp, Term])
+  /*def findMinPerm(loc: LocationAccess, s: State, v: Verifier, lostAccesses: Map[Exp, Term])
                  (Q: Option[Exp] => VerificationResult) = {
     permsTo(loc, s, v, lostAccesses) {
       p =>
@@ -140,7 +119,7 @@ trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
         val zero = FractionalPerm(IntLit(0)(), IntLit(1)())()
         Q(Some(PermDiv(PermSub(FullPerm()(), p.getOrElse(zero))(), two)()))
     }
-  }
+  }*/
 
   def concretizeAccs(accs: Seq[AccessPredicate], q: AbductionQuestion)
                     (Q: Seq[AccessPredicate] => VerificationResult): VerificationResult = {
@@ -150,17 +129,19 @@ trait AbductionRule extends BiAbductionRule[AbductionQuestion] {
         case Nil =>
           Q(accumulated.reverse)
 
-        case (fap@FieldAccessPredicate(loc, Some(WildcardPerm()))) :: tail =>
-          findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
+        case (fap@FieldAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
+          go(tail, abductionUtils.accWithPerm(fap, Some(FractionalPerm(IntLit(1)(), IntLit(365)())())) :: accumulated)
+          /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
             val perm = permOpt.getOrElse(FullPerm()())
             go(tail, abductionUtils.accWithPerm(fap, Some(perm)) :: accumulated)
-          }
+          }*/
 
-        case (pap@PredicateAccessPredicate(loc, Some(WildcardPerm()))) :: tail =>
-          findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
+        case (pap@PredicateAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
+          go(tail, abductionUtils.accWithPerm(pap, Some(FractionalPerm(IntLit(1)(), IntLit(365)())())) :: accumulated)
+          /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
             val perm = permOpt.getOrElse(FullPerm()())
             go(tail, abductionUtils.accWithPerm(pap, Some(perm)) :: accumulated)
-          }
+          }*/
 
         case acc :: tail =>
           go(tail, acc :: accumulated)
@@ -631,7 +612,11 @@ object AbductionMissing extends AbductionRule {
             val newOldHeaps = s1.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks.keys)) }
             val s2 = s1.copy(oldHeaps = newOldHeaps)
 
-            val newState = newChunks.map { case (c, loc) => (locs(loc), Some(c)) }
+            val newState =
+              newChunks.flatMap {
+                case (c, loc) =>
+                  locs.get(loc).map(l => (l, Some(c)))
+              }
             Q(Some(q.copy(s = s2, v = v1, goal = g1, foundState = q.foundState ++ newState)))
           }
         }
