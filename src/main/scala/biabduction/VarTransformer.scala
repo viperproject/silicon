@@ -339,7 +339,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           }
         }
       }
-      println(s"Transformed $e in $res")
+      // println(s"Transformed $e in $res")
       Some(res)
     } catch {
       case _: NoSuchElementException => if (strict) None else Some(e)

@@ -47,7 +47,7 @@ object AbstractionFold extends AbstractionRule {
               (s1, v1, T) =>
                 // Here we need to do a bit of magic to check for the permissions that any given
                 // predicate would give us on the field
-                val (accLoc, accPerm) = q.varTran.transformChunk(chunk) match {
+                /*val (accLoc, accPerm) = q.varTran.transformChunk(chunk) match {
                   case Some(FieldAccessPredicate(loc, p)) => (loc, p)
                   case Some(PredicateAccessPredicate(loc, p)) => (loc, p)
                 }
@@ -61,11 +61,11 @@ object AbstractionFold extends AbstractionRule {
                     case PredicateAccess(_, name) => pap.loc.predicateName == name
                     case _ => false
                   }) => pap.permExp.getOrElse(FullPerm()())
-                }.getOrElse(throw new NoSuchElementException("No matching permission found"))
-                val permToFold = accPerm match {
+                }.getOrElse(throw new NoSuchElementException("No matching permission found"))*/
+                val permToFold = /*accPerm match {
                   case Some(WildcardPerm()) => WildcardPerm()()
                   case _ => PermPermDiv(accPerm.getOrElse(FullPerm()()), pField)()
-                }
+                }*/ FullPerm()()
                 val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), Some(permToFold))())()
                 executor.exec(s1, fold, v1, None, abdStateAllowed = false)((s1a, v1a) =>
                   T(s1a, v1a)
