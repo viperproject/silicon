@@ -66,18 +66,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
     }
   }
 
-  def permsTo(lv: ast.LocalVar): Option[ast.Exp] = {
-    lv.typ match {
-      case ast.Perm =>
-        val lvTerm = s.g(lv)
-        v.decider.pcs.assumptions.collectFirst {
-          case terms.Equals(t1, t2) if t1 == lvTerm => transformTerm(t2)
-          case terms.Equals(t1, t2) if t2 == lvTerm => transformTerm(t1)
-        }.flatten
-      case _ => None
-    }
-  }
-
   def permExpToTerm(permExp: Exp, v: Verifier): Option[Term] = {
 
     def binPermOp(e1: ast.Exp, e2: ast.Exp, op: (terms.Term, terms.Term) => terms.Term): Option[terms.Term] = {
@@ -95,7 +83,9 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case ast.NoPerm() =>
         Some(terms.NoPerm)
       case ast.WildcardPerm() =>
-        Some(terms.Var((v.identifierFactory.fresh("abductionWildcard"), terms.sorts.Perm, true)))
+        val arp = v.decider.freshARP("abductionWC")
+        v.decider.assume(arp._2, None, None)
+        Some(arp._1)
       case ast.FractionalPerm(ast.IntLit(e1), ast.IntLit(e2)) =>
         Some(terms.FractionPerm((terms.IntLiteral(e1), terms.IntLiteral(e2))))
       case ast.PermMul(e1, e2) =>
@@ -105,7 +95,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case ast.PermAdd(e1, e2) =>
         binPermOp(e1, e2, terms.PermPlus(_, _))
       case ast.PermDiv(e1, e2) =>
-        binPermOp(e1, e2, terms.PermPermDiv(_, _))
+        binPermOp(e1, e2, terms.PermIntDiv(_, _))
       case ast.PermPermDiv(e1, e2) =>
         binPermOp(e1, e2, terms.PermPermDiv(_, _))
       case _ => None
@@ -148,12 +138,25 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
   }*/
 
   def transformTerm(t: Term): Option[ast.Exp] = {
-
-    def binPermOp(t1: terms.Term, t2: terms.Term, op: (ast.Exp, ast.Exp) => ast.Exp): Option[ast.Exp] = {
+    /*def binPermOp(t1: terms.Term, t2: terms.Term, op: (ast.Exp, ast.Exp) => ast.Exp): Option[ast.Exp] = {
       Some(op(
         transformTerm(t1).getOrElse(ast.FullPerm()()),
         transformTerm(t2).getOrElse(ast.FullPerm()())
       ))
+    }*/
+
+    def binPermOp(t1: terms.Term, t2: terms.Term, identity: ast.Exp, op: (ast.Exp, ast.Exp) => ast.Exp): Option[ast.Exp] = {
+      val exp1 = transformTerm(t1).getOrElse(ast.FullPerm()())
+      val exp2 = transformTerm(t2).getOrElse(ast.FullPerm()())
+
+      (exp1, exp2) match {
+        case (ast.WildcardPerm(), _) =>
+          Some(ast.WildcardPerm()())
+        case (_, ast.WildcardPerm()) =>
+          Some(ast.WildcardPerm()())
+        case _ =>
+          Some(op(exp1, exp2))
+      }
     }
 
     t match {
@@ -163,16 +166,24 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           Some(ast.EqCmp(e1, e2)())
         case _ => None
       }
+      case v@terms.Var(_) if v.isWildcard => Some(ast.WildcardPerm()())
+      // FIXME: This is probably wrong
+      case terms.PermMin(t1, t2) =>
+        val e1 = transformTerm(t1).getOrElse(ast.FullPerm()())
+        val e2 = transformTerm(t2).getOrElse(ast.FullPerm()())
+        val minP = abductionUtils.permMin(e1, e2)
+        Some(ast.FractionalPerm(ast.IntLit(minP.numerator)(), ast.IntLit(minP.denominator)())())
+
       case terms.FractionPermLiteral(r) => Some(ast.FractionalPerm(ast.IntLit(r.numerator)(), ast.IntLit(r.denominator)())())
       case terms.FullPerm => Some(ast.FullPerm()())
       case terms.NoPerm => Some(ast.NoPerm()())
-      case terms.PermTimes(t1, t2) => binPermOp(t1, t2, ast.PermMul(_, _)())
+      case terms.PermTimes(t1, t2) => binPermOp(t1, t2, ast.FullPerm()(), ast.PermMul(_, _)())
       // Div is just TIMES 1 / n
       // case terms.PermDiv(t1, t2) => binPermOp(t1, t2, ast.PermDiv(_, _)())
-      case terms.PermPermDiv(t1, t2) => binPermOp(t1, t2, ast.PermPermDiv(_, _)())
-      case terms.FractionPerm(t1, t2) => binPermOp(t1, t2, ast.PermDiv(_, _)())
-      case terms.PermMinus(t1, t2) => binPermOp(t1, t2, ast.PermSub(_, _)())
-      case terms.PermPlus(t1, t2) => binPermOp(t1, t2, ast.PermAdd(_, _)())
+      case terms.PermPermDiv(t1, t2) => binPermOp(t1, t2, ast.FullPerm()(), ast.PermPermDiv(_, _)())
+      case terms.FractionPerm(t1, t2) => binPermOp(t1, t2, ast.FullPerm()(), ast.PermDiv(_, _)())
+      case terms.PermMinus(t1, t2) => binPermOp(t1, t2, ast.NoPerm()(), ast.PermSub(_, _)())
+      case terms.PermPlus(t1, t2) => binPermOp(t1, t2, ast.NoPerm()(), ast.PermAdd(_, _)())
       case terms.Null => Some(ast.NullLit()())
       case terms.Not(t1) => transformTerm(t1).flatMap(e1 => Some(ast.Not(e1)()))
       case terms.Not(BuiltinEquals(t1, t2)) => (transformTerm(t1), transformTerm(t2)) match {
@@ -288,7 +299,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           ast.MagicWand(leftE, rightE)()
         
         case ast.FieldAccessPredicate(fa, perm) =>
-          
           // We do not want to transform the entire field access, this would resolve the snap!
           val newRcv = transformExp(fa.rcv).get
           ast.FieldAccessPredicate(ast.FieldAccess(newRcv, fa.field)(), perm)()

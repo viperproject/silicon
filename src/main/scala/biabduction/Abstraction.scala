@@ -8,6 +8,8 @@ import viper.silicon.state._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 
+import scala.collection.mutable
+
 object AbstractionApplier extends RuleApplier[AbstractionQuestion] {
   override val rules: Seq[AbstractionRule] = Seq(AbstractionFold, AbstractionPackage, AbstractionJoin, AbstractionApply)
 }
@@ -21,6 +23,8 @@ case class AbstractionQuestion(s: State, v: Verifier) {
 trait AbstractionRule extends BiAbductionRule[AbstractionQuestion]
 
 object AbstractionFold extends AbstractionRule {
+
+  private val wildcardPredicates: mutable.Set[Predicate] = mutable.Set.empty[Predicate]
   
   // TODO we assume each field only appears in at most one predicate
   private def getFieldPredicate(bc: BasicChunk, q: AbstractionQuestion): Option[Predicate] = {
@@ -41,15 +45,27 @@ object AbstractionFold extends AbstractionRule {
 
             executionFlowController.tryOrElse0(q.s, q.v) {
               (s1, v1, T) =>
-                val accP = VarTransformer(q.s, q.v, q.s.g.values, q.s.h).transformChunk(chunk) match {
+                // Here we need to do a bit of magic to check for the permissions that any given
+                // predicate would give us on the field
+                val (accLoc, accPerm) = q.varTran.transformChunk(chunk) match {
                   case Some(FieldAccessPredicate(loc, p)) => (loc, p)
                   case Some(PredicateAccessPredicate(loc, p)) => (loc, p)
                 }
-                val pField = pred.body.get.collect {
-                  case fap: FieldAccessPredicate if fap.loc == accP._1
-                    => fap.permExp.getOrElse(FullPerm()())
-                }.head
-                val permToFold = PermPermDiv(accP._2.getOrElse(FullPerm()()), pField)()
+                val pField = pred.body.get.collectFirst {
+                  case fap: FieldAccessPredicate if (accLoc match {
+                    case FieldAccess(_, field) => fap.loc.field == field
+                    case _ => false
+                  }) => fap.permExp.getOrElse(FullPerm()())
+
+                  case pap: PredicateAccessPredicate if (accLoc match {
+                    case PredicateAccess(_, name) => pap.loc.predicateName == name
+                    case _ => false
+                  }) => pap.permExp.getOrElse(FullPerm()())
+                }.getOrElse(throw new NoSuchElementException("No matching permission found"))
+                val permToFold = accPerm match {
+                  case Some(WildcardPerm()) => WildcardPerm()()
+                  case _ => PermPermDiv(accPerm.getOrElse(FullPerm()()), pField)()
+                }
                 val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), Some(permToFold))())()
                 executor.exec(s1, fold, v1, None, abdStateAllowed = false)((s1a, v1a) =>
                   T(s1a, v1a)
@@ -65,7 +81,14 @@ object AbstractionFold extends AbstractionRule {
   }
 
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
-    val candChunks = q.s.h.values.collect { case bc: BasicChunk => (bc, getFieldPredicate(bc, q)) }.collect { case (c, Some(pred)) => (c, pred) }.toSeq
+    //val candChunks = q.s.h.values.collect { case bc: BasicChunk => (bc, getFieldPredicate(bc, q)) }.collect { case (c, Some(pred)) => (c, pred) }.toSeq
+    val candChunks = q.s.h.values
+      .collect { case bc: BasicChunk => (bc, getFieldPredicate(bc, q)) }
+      .collect { case (c, Some(pred)) if !wildcardPredicates.contains(pred) =>
+        wildcardPredicates.add(pred)
+        (c, pred)
+      }
+      .toSeq
     checkChunks(candChunks, q)(Q)
   }
 }

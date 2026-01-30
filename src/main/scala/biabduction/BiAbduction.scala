@@ -208,12 +208,16 @@ object BiAbductionSolver {
       println(s"f $f Reason ${f.message.reason}")
       val reason = f.message.reason match {
         case reason: InsufficientPermission =>
+          val perm = f.message.offendingNode match {
+            case _: Fold => Some(PermMul(s.abdPermScalingFactorExp, reason.permExp.getOrElse(FullPerm()()))())
+            case _ => reason.permExp
+          }
           // TODO: We need scaling only if we're inside a fold
           val acc = reason.offendingNode match {
             case n: FieldAccess =>
-              FieldAccessPredicate(n, Some(PermMul(s.abdPermScalingFactorExp, reason.permExp.getOrElse(FullPerm()()))()))()
+              FieldAccessPredicate(n, perm)()
             case n: PredicateAccess =>
-              PredicateAccessPredicate(n, Some(PermMul(s.abdPermScalingFactorExp, reason.permExp.getOrElse(FullPerm()()))()))()
+              PredicateAccessPredicate(n, perm)()
           }
           Some(acc)
         case reason: MagicWandChunkNotFound =>
@@ -288,7 +292,7 @@ object BiAbductionSolver {
       executionFlowController.locallyWithResult[Seq[Exp]](s1, v1) { (s1a, v1a, T) =>
         BiAbductionSolver.solveAbstraction(s1a, v1a) { (s2, framedPosts, v2) =>
           val newPosts = framedPosts.map { e => tra.transformExp(e) }.collect { case Some(e) => e }
-          T(newPosts)
+          T(abductionUtils.sortExps(newPosts))
         }
       } {
         // We consumed all the posts and did not find any new ones. So create a fresh Framing Success with the bcs
@@ -401,8 +405,7 @@ object BiAbductionSolver {
           case whileStmt: While if whileStmt.cond == e && whileStmt.cond.pos == e.pos => Seqn(abdRes.stmts :+ whileStmt, Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
         }
       }
-      val newPres = abductionUtils.normalizePreconditions(abductionUtils.sortExps(m.pres ++ pres.get),
-        VarTransformer(s, v, s.g.values, s.h))
+      val newPres = abductionUtils.sortExps(abductionUtils.normalizePreconditions(m.pres ++ pres.get, VarTransformer(s, v, s.g.values, s.h)))
       Some(m.copy(pres = newPres, body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
     }
   }
@@ -794,8 +797,9 @@ object abductionUtils {
     case PermAdd(e1, e2) => asRational(e1) + asRational(e2)
     case PermDiv(e1, e2) => asRational(e1) / asRational(e2)
     case PermPermDiv(e1, e2) => asRational(e1) / asRational(e2)
-    case _ =>
-      throw new IllegalStateException("Impossible by invariant")
+    case WildcardPerm() => Rational(0, 1)
+    case e =>
+      throw new IllegalStateException(s"Impossible by invariant: $p")
   }
 
   def asPerm(r: Rational): Exp = {
@@ -829,6 +833,7 @@ object abductionUtils {
       case lc: AbstractLocalVar if pred.formalArgs.head.localVar == lc => a.loc.args.head
     }.collect {
       case fap: FieldAccessPredicate => fap.permExp match {
+        case None                    => fap.loc -> Rational(1, 1)
         case Some(_: FullPerm)       => fap.loc -> Rational(1, 1)
         case Some(_: NoPerm)         => fap.loc -> Rational(0, 1)
         case Some(FractionalPerm(IntLit(a), IntLit(b))) => fap.loc -> Rational(a, b)

@@ -381,21 +381,30 @@ object AbductionUnfold extends AbductionRule {
             val varTrans = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
             val pH = varTrans.transformTerm(predChunk.perm)
             val pGExp = varTrans.transformTerm(pG)
+            // if we are here, it means that there are no permissions to the goal on the heap
+            // (otherwise the base rule would have applied)
+            // this means that to check of many permissions to the (goal) field there are in
+            // the predicate body, we can unfold it and check, then discard the vUnfolded state
             executor.exec(q.s, Unfold(PredicateAccessPredicate(pred, pH)())(), q.v, q.trigger, q.stateAllowed) {
               (sUnfolded, vUnfolded) =>
               permsTo(goal, sUnfolded, vUnfolded, q.lostAccesses) { pField =>
-                val pTemp = abductionUtils.asRational(pGExp.getOrElse(FullPerm()())) /
-                  (abductionUtils.asRational(pH.getOrElse(FullPerm()())) * abductionUtils.asRational(pField.getOrElse(FullPerm()())))
-                val p = varTrans.permExpToTerm(abductionUtils.asPerm(abductionUtils.permMin(
-                  abductionUtils.asPerm(pTemp),
-                  pH.getOrElse(FullPerm()()))), q.v).getOrElse(terms.FullPerm)
+                val p: terms.Term = pGExp match {
+                  case Some(_: WildcardPerm) =>
+                    predChunk.perm
+                  case _ =>
+                    val pTemp = abductionUtils.asRational(pGExp.getOrElse(FullPerm()())) /
+                      (abductionUtils.asRational(pH.getOrElse(FullPerm()())) * abductionUtils.asRational(pField.getOrElse(FullPerm()())))
+                    varTrans.permExpToTerm(abductionUtils.asPerm(abductionUtils.permMin(
+                      abductionUtils.asPerm(pTemp),
+                      pH.getOrElse(FullPerm()()))), q.v).getOrElse(terms.FullPerm)
+                }
                 val tryUnfold = predicateSupporter.unfold(q.s, pred.loc(q.s.program), predChunk.args.toList, None, p, None, wildcards, pve, q.v, pred) {
                   (s1, v1) =>
                     checkChunk(goal, s1, v1, q.lostAccesses) {
                       case None =>
                         failedBranches = failedBranches :+ v1.decider.pcs.branchConditions
                         Failure(pve dueTo DummyReason)
-                      case Some(_) =>
+                      case Some(chunk) =>
                         // TODO: Here, check that we have ENOUGH permissions
                         succBranches = succBranches :+ v1.decider.pcs.branchConditions
                         Success()
