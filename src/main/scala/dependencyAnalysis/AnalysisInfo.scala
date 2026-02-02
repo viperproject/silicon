@@ -8,12 +8,13 @@ object AssumptionType extends Enumeration {
   def fromString(s: String): Option[Value] = values.find(_.toString == s)
 
   def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition, DomainAxiom)
-  def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition, MethodCall) // used to join graphs via postconditions
+  def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition) // used to join graphs via postconditions
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger) // will always be hidden from user
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
   def verificationAnnotationTypes: Set[AssumptionType] = Set(LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, Precondition, Explicit)
   def sourceCodeTypes: Set[AssumptionType] = Set(SourceCode, PathCondition, MethodCall, FunctionBody, Implicit)
+  def methodCallTypes: Set[AssumptionType] = Set(MethodCall) // used to join graphs via postconditions
 }
 
 import viper.silicon.dependencyAnalysis.AssumptionType._

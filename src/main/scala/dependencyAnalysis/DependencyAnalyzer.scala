@@ -197,7 +197,7 @@ object DependencyAnalyzer {
       .groupBy(n => n.sourceInfo)
       .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo.getTopLevelSource, Seq.empty))}
       .foreach{case (axiomNodeIds, assertionNodeIds) =>
-        newGraph.addEdges(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
+        newGraph.addEdgesConnectingMethods(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
     }
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForFunctionJoin)
@@ -206,13 +206,13 @@ object DependencyAnalyzer {
     // postconditions of methods assumed by every method call should depend on the assertions that justify them
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
     val relevantAssumptionNodes = joinCandidateNodes
-      .filter(node => node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.postconditionTypes.contains(node.assumptionType))
+      .filter(node => node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.methodCallTypes.contains(node.assumptionType))
       .groupBy(_.sourceInfo.getFineGrainedSource)
       .view.mapValues(_.map(_.id))
       .toMap
     joinCandidateNodes.filter(node => AssumptionType.postconditionTypes.contains(node.assumptionType))
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
-      .foreach { case (src, targets) => newGraph.addEdges(src, targets)}
+      .foreach { case (src, targets) => newGraph.addEdgesConnectingMethods(src, targets)}
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForMethodJoin)
 

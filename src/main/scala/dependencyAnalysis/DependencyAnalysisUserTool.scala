@@ -60,6 +60,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       handleProofCoverageLineQuery(inputParts.tail)
     }else if (inputParts.head.equalsIgnoreCase("progress") || inputParts.head.equalsIgnoreCase("prog")) {
         handleVerificationProgressQuery()
+    }else if (inputParts.head.equalsIgnoreCase("progressDebug")) {
+      handleVerificationProgressDEBUGQuery()
     }else if (inputParts.head.equalsIgnoreCase("guidance") || inputParts.head.equalsIgnoreCase("guide")) {
       handleVerificationGuidanceQuery()
     }else if(inputParts.head.equalsIgnoreCase("prune")) {
@@ -141,10 +143,30 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   private def handleVerificationProgressQuery(): Unit = {
     if(verificationErrors.nonEmpty) println(s"Fix verification failures first!")
 
-    val ((progress, _, info), time) = measureTime(fullGraphInterpreter.computeVerificationProgress())
+    val ((optProgressPeter, optProgressLea, optInfo), optTime) = measureTime(fullGraphInterpreter.computeVerificationProgressOptimized())
+    //    println(s"Overall verification progress: $progress")
+    println(s"$optInfo")
+    println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
+    println(s"Finished in ${optTime}ms")
+  }
+
+  private def handleVerificationProgressDEBUGQuery(): Unit = {
+    if(verificationErrors.nonEmpty) println(s"Fix verification failures first!")
+
+    println("\nNaive implementation")
+    val ((naiveProgressPeter, naiveProgressLea, naiveInfo), naiveTime) = measureTime(fullGraphInterpreter.computeVerificationProgressNaive())
 //    println(s"Overall verification progress: $progress")
-    println(s"$info")
-    println(s"Finished in ${time}ms")
+    println(s"$naiveInfo")
+    println(s"Peter: $naiveProgressPeter; Lea: $naiveProgressLea")
+    println(s"Finished in ${naiveTime}ms")
+
+    println("\nOptimized implementation")
+    val ((optProgressPeter, optProgressLea, optInfo), optTime) = measureTime(fullGraphInterpreter.computeVerificationProgressOptimized())
+    //    println(s"Overall verification progress: $progress")
+    println(s"$optInfo")
+    println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
+    println(s"Finished in ${optTime}ms")
+    if(Math.abs(naiveProgressPeter - optProgressPeter) > 1e4 || Math.abs(naiveProgressLea - naiveProgressLea) > 1e4) println("Progress is not equal!")
   }
 
   protected def getSourceInfoString(nodes: Set[DependencyAnalysisNode]): String = {

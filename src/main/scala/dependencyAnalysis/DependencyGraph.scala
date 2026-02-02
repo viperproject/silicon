@@ -20,10 +20,11 @@ trait ReadOnlyDependencyGraph extends AbstractReadOnlyDependencyGraph {
   def getNodes: Seq[DependencyAnalysisNode]
   def getDirectEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getTransitiveEdges: Map[Int, Set[Int]] // target -> direct dependencies
+  def getEdgesConnectingMethods: Map[Int, Set[Int]]
   def getAllEdges: Map[Int, Set[Int]] // target -> direct dependencies
 
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean
-  def getAllDependencies(sources: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int]
+  def getAllDependencies(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeIntraMethodEdges: Boolean=true): Set[Int]
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int]
 
   def exportGraph(dirName: String): Unit
@@ -33,17 +34,30 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   var nodes: mutable.Seq[DependencyAnalysisNode] = mutable.Seq()
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty // TODO ake: can be merged into edges?
+  private val edgesConnectingMethods: mutable.Map[Int, Set[Int]] = mutable.Map.empty // keep this, it's relevant for computing verification progress
 
   def getNodes: Seq[DependencyAnalysisNode] = nodes.toSeq
   def getDirectEdges: Map[Int, Set[Int]] = edges.toMap
   def getTransitiveEdges: Map[Int, Set[Int]] = transitiveEdges.toMap
-  def getAllEdges: Map[Int, Set[Int]] = {
+  def getEdgesConnectingMethods: Map[Int, Set[Int]] = edgesConnectingMethods.toMap
+
+  def getIntraMethodEdges: Map[Int, Set[Int]] = {
     val keys = edges.keySet ++ transitiveEdges.keySet
-    val res = mutable.Map[Int, Set[Int]]()
+    val intraMethodEdges = mutable.Map[Int, Set[Int]]()
     keys foreach {key =>
-      res.update(key, edges.getOrElse(key, Set()) ++ transitiveEdges.getOrElse(key, Set()))
+      intraMethodEdges.update(key, edges.getOrElse(key, Set()) ++ transitiveEdges.getOrElse(key, Set()))
     }
-    res.toMap
+    intraMethodEdges.toMap
+  }
+
+  def getAllEdges: Map[Int, Set[Int]] = {
+    val intraMethodEdges = getIntraMethodEdges
+    val keys = intraMethodEdges.keySet ++ edgesConnectingMethods.keySet
+    val allEdges = mutable.Map[Int, Set[Int]]()
+    keys foreach {key =>
+      allEdges.update(key, intraMethodEdges.getOrElse(key, Set()) ++ edgesConnectingMethods.getOrElse(key, Set()))
+    }
+    allEdges.toMap
   }
 
   // TODO ake: remove
@@ -74,6 +88,21 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     targets foreach (addEdges(sources, _))
   }
 
+  def addEdgesConnectingMethods(sources: Iterable[Int], target: Int): Unit = {
+    val oldSources = edgesConnectingMethods.getOrElse(target, Set.empty)
+    val newSources = sources.filter(_ != target)
+    if(newSources.nonEmpty)
+      edgesConnectingMethods.update(target, oldSources ++ newSources)
+  }
+
+  def addEdgesConnectingMethods(sources: Iterable[Int], targets: Iterable[Int]): Unit = {
+    targets foreach (addEdgesConnectingMethods(sources, _))
+  }
+
+  def addEdgesConnectingMethods(source: Int, targets: Iterable[Int]): Unit = {
+    addEdgesConnectingMethods(Set(source), targets)
+  }
+
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean = {
     val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty
@@ -90,11 +119,11 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     false
   }
 
-  def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int] = {
+  def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeEdgesConnectingMethods: Boolean=true): Set[Int] = {
     val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty
     var queue: List[Int] = targets.toList
-    val allEdges = getAllEdges
+    val allEdges = if(includeEdgesConnectingMethods) getAllEdges else getIntraMethodEdges
     while(queue.nonEmpty){
       val curr = queue.head
       val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)

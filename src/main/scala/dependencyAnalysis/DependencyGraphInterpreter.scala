@@ -11,6 +11,7 @@ import viper.silver.dependencyAnalysis.AbstractDependencyGraphInterpreter
 
 import java.io.PrintWriter
 import java.nio.file.Paths
+import scala.collection.mutable
 
 
 class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
@@ -23,7 +24,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def getJoinCandidateNodes: Iterable[DependencyAnalysisNode] = joinCandidateNodes
 
-  protected lazy val joinCandidateNodes: Seq[DependencyAnalysisNode] = dependencyGraph.getNodes.filter(node => node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
+  protected lazy val joinCandidateNodes: Seq[DependencyAnalysisNode] = dependencyGraph.getNodes.filter(node => node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType) || AssumptionType.methodCallTypes.contains(node.assumptionType))
   
   private def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
   
@@ -214,6 +215,71 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def computeVerificationProgress(): (Double, Double, String)  = {
+    computeVerificationProgressNaive()
+  }
+
+  private def computeSpecQuality(): Double = {
+    val assertionNodeIds = getNonInternalAssertionNodes map (_.id)
+    val coveredNodes = toUserLevelNodes(getAllNonInternalDependencies(assertionNodeIds)).getSourceSet()
+
+    val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
+    val allSourceCodeNodes = toUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).getSourceSet()
+
+    val coveredSourceCodeNodes = coveredNodes.intersect(allSourceCodeNodes)
+    println(s"Covered:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
+    println(s"Uncovered:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
+    println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
+    coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
+  }
+
+  val deps: DAMemo[AnalysisSourceInfo, Set[UserLevelDependencyAnalysisNode]] = DAMemo {assertionNode =>
+    val allNonInternalAssertions = getNodes.filter(_.sourceInfo.getTopLevelSource.equals(assertionNode))
+    val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeIntraMethodEdges=false)
+
+    val intraMethodDependencies = toUserLevelNodes(getNonInternalAssumptionNodes.filter(node => intraMethodDependencyIds.contains(node.id) && !node.sourceInfo.getTopLevelSource.equals(assertionNode)))
+
+    val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethods.getOrElse(n, Set.empty))
+    val postconditionNodes = getNodes.filter(n => postconditionNodeIds.contains(n.id))
+
+    val transDeps = postconditionNodes.map(_.sourceInfo.getTopLevelSource).diff(Set(assertionNode)) flatMap deps
+    intraMethodDependencies ++ transDeps ++ toUserLevelNodes(postconditionNodes)
+  }
+
+  private def computeAssertionQuality(assertionNode: AnalysisSourceInfo): Double = {
+    val allDependencies = deps(assertionNode)
+    val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).getSourceSet()
+    val allDeps = allDependencies.getSourceSet()
+    (allDeps.size - explicitDeps.size).toDouble / allDeps.size.toDouble
+  }
+
+  def computeVerificationProgressOptimized(): (Double, Double, String)  = {
+    val specQuality = computeSpecQuality()
+
+    val allAssertions = getNonInternalAssertionNodes.map(_.sourceInfo.getTopLevelSource)
+    val assertionQualitiesTmp = allAssertions map (assertion => (computeAssertionQuality(assertion), assertion))
+    val assertionQualities = assertionQualitiesTmp filterNot (_._1.isNaN)
+    val numAssertions = assertionQualities.size
+    val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
+    val numFullyVerifiedAssertions = fullyVerifiedAssertions.size
+
+    val proofQualityPeter = numFullyVerifiedAssertions.toDouble / numAssertions.toDouble
+
+    val assertionQualitiesSum = assertionQualities.map(_._1).sum
+    val proofQualityLea = assertionQualitiesSum / numAssertions.toDouble
+
+    val info = {
+      s"Assertions with dependencies on explicit assumptions: ${assertionQualities.diff(fullyVerifiedAssertions).map(_._2).toList.sortBy(_.getLineNumber).mkString("\n\t")}" +
+      s"Assertions with perfect proof quality: ${fullyVerifiedAssertions.map(_._2).toList.sortBy(_.getLineNumber).mkString("\n\t")}" +
+      s"specQuality = $specQuality\n" +
+      s"proof quality (Peter): $numFullyVerifiedAssertions / $numAssertions = $proofQualityPeter\n" +
+      s"proof quality (Lea): $assertionQualitiesSum / $numAssertions = $proofQualityLea\n"
+    }
+
+    (specQuality * proofQualityPeter, specQuality * proofQualityLea, info)
+  }
+
+
+  def computeVerificationProgressNaive(): (Double, Double, String)  = {
     val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
 
 //    println(s"#assertions: ${allAssertions.size}")
@@ -303,3 +369,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     allSourceCodeStmts.diff(coveredSourceCodeStmts).size
   }
 }
+
+case class DAMemo[A,B](f: A => B) extends (A => B) {
+  private val cache = mutable.Map.empty[A, B]
+  def apply(x: A) = cache getOrElseUpdate (x, f(x))
+}
+
+
+

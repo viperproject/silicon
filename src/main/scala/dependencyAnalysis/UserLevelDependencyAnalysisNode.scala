@@ -55,7 +55,7 @@ object UserLevelDependencyAnalysisNode {
     }
 
     def getSourceSet(): Set[AnalysisSourceInfo] = {
-      left.map(_.source)
+      left.map(_.source.getTopLevelSource)
     }
   }
 }
