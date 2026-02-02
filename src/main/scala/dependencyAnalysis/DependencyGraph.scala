@@ -18,6 +18,8 @@ object DependencyGraphHelper {
 
 trait ReadOnlyDependencyGraph extends AbstractReadOnlyDependencyGraph {
   def getNodes: Seq[DependencyAnalysisNode]
+  def getAssumptionNodes: Seq[GeneralAssumptionNode]
+  def getAssertionNodes: Seq[GeneralAssertionNode]
   def getDirectEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getTransitiveEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getEdgesConnectingMethods: Map[Int, Set[Int]]
@@ -31,12 +33,15 @@ trait ReadOnlyDependencyGraph extends AbstractReadOnlyDependencyGraph {
 }
 
 class DependencyGraph extends ReadOnlyDependencyGraph {
-  var nodes: mutable.Seq[DependencyAnalysisNode] = mutable.Seq()
+  private var assumptionNodes: mutable.Seq[GeneralAssumptionNode] = mutable.Seq()
+  private var assertionNodes: mutable.Seq[GeneralAssertionNode] = mutable.Seq()
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty // TODO ake: can be merged into edges?
   private val edgesConnectingMethods: mutable.Map[Int, Set[Int]] = mutable.Map.empty // keep this, it's relevant for computing verification progress
 
-  def getNodes: Seq[DependencyAnalysisNode] = nodes.toSeq
+  def getNodes: Seq[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
+  def getAssumptionNodes: Seq[GeneralAssumptionNode] = assumptionNodes.toSeq
+  def getAssertionNodes: Seq[GeneralAssertionNode] = assertionNodes.toSeq
   def getDirectEdges: Map[Int, Set[Int]] = edges.toMap
   def getTransitiveEdges: Map[Int, Set[Int]] = transitiveEdges.toMap
   def getEdgesConnectingMethods: Map[Int, Set[Int]] = edgesConnectingMethods.toMap
@@ -65,12 +70,28 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     newEdges.foreach(e => edges.update(e._1, e._2))
   }
 
-  def addNode(node: DependencyAnalysisNode): Unit = {
-    nodes = nodes :+ node
+  def addAssumptionNode(node: GeneralAssumptionNode): Unit = {
+    assumptionNodes = assumptionNodes :+ node
   }
 
-  def addNodes(newNodes: Iterable[DependencyAnalysisNode]): Unit = {
-    nodes = nodes ++ newNodes
+  def addAssumptionNodes(newNodes: Iterable[GeneralAssumptionNode]): Unit = {
+    assumptionNodes = assumptionNodes ++ newNodes
+  }
+
+  def addNode(node: DependencyAnalysisNode): Unit = {
+    node match {
+      case node: GeneralAssertionNode => addAssertionNode(node)
+      case node: GeneralAssumptionNode => addAssumptionNode(node)
+      case _ => assert(false)
+    }
+  }
+
+  def addAssertionNode(node: GeneralAssertionNode): Unit = {
+    assertionNodes = assertionNodes :+ node
+  }
+
+  def addAssertionNodes(newNodes: Iterable[GeneralAssertionNode]): Unit = {
+    assertionNodes = assertionNodes ++ newNodes
   }
 
   def addEdges(source: Int, targets: Iterable[Int]): Unit = {
@@ -104,7 +125,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
   def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean = {
-    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty
     var queue: List[Int] = targets.toList
     val allEdges = getAllEdges
@@ -120,7 +141,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
   def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeEdgesConnectingMethods: Boolean=true): Set[Int] = {
-    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty
     var queue: List[Int] = targets.toList
     val allEdges = if(includeEdgesConnectingMethods) getAllEdges else getIntraMethodEdges
@@ -134,7 +155,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean): Set[Int] = {
-    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
+    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
     var visited: Set[Int] = Set.empty
     var queue: Set[Int] = sources
     val allEdges = getAllEdges
@@ -185,8 +206,8 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
 
   // TODO ake: maybe move to DependencyAnalyzer?
   def removeLabelNodes(): Unit = {
-    nodes filter (_.isInstanceOf[LabelNode]) foreach removeAllEdgesForNode
-    nodes = nodes filter (!_.isInstanceOf[LabelNode])
+    assumptionNodes filter (_.isInstanceOf[LabelNode]) foreach removeAllEdgesForNode
+    assumptionNodes = assumptionNodes filter (!_.isInstanceOf[LabelNode])
   }
 
   def exportGraph(dirName: String): Unit = {
@@ -213,7 +234,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     val writer = new PrintWriter(fileName)
     val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source")
     writer.println(headerParts.mkString(sep))
-    nodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
+    getNodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
     writer.close()
   }
 }

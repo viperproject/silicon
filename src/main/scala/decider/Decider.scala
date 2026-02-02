@@ -480,10 +480,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = isPathInfeasible() || prover.check(timeout, label) == Unsat
 
       if(isPathInfeasible()){
-        checkNode foreach dependencyAnalyzer.addNode
+        checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
       }else if(result){
-        checkNode foreach dependencyAnalyzer.addNode
+        checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
         val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
@@ -535,9 +535,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = asserted || proverAssert(t, timeout, DependencyAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
       if(result){
-        assertNode foreach dependencyAnalyzer.addNode
+        assertNode foreach dependencyAnalyzer.addAssertionNode
       }else if(!isCheck){ // TODO ake: only for asserts?
-        assertNode foreach {node => dependencyAnalyzer.addNode(node.getAssertFailedNode())}
+        assertNode foreach {node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode())}
       }
 
       symbExLog.closeScope(sepIdentifier)

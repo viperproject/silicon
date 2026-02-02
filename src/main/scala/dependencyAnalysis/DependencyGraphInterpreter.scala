@@ -20,6 +20,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def getName: String = name
   def getMember: Option[ast.Member] = member
   def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes.toSet
+  def getAssumptionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssumptionNodes.toSet
+  def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
   def getErrors: List[Failure] = errors
 
   def getJoinCandidateNodes: Iterable[DependencyAnalysisNode] = joinCandidateNodes
@@ -37,7 +39,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
     var queue = nodeIdsToAnalyze
     var result: Set[Int] = Set.empty
-    val internalNodeIds = getNodes.diff(getNonInternalAssumptionNodes).map(_.id)
+    val internalNodeIds = getAssumptionNodes.diff(getNonInternalAssumptionNodes).map(_.id)
     while(queue.nonEmpty){
       val directDependencyIds = queue flatMap (id => dependencyGraph.getDirectEdges.getOrElse(id, Set.empty))
       queue = internalNodeIds.intersect(directDependencyIds).diff(result) // internal assumptions are hidden -> add their direct dependencies instead
@@ -233,7 +235,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   val deps: DAMemo[AnalysisSourceInfo, Set[UserLevelDependencyAnalysisNode]] = DAMemo {assertionNode =>
-    val allNonInternalAssertions = getNodes.filter(_.sourceInfo.getTopLevelSource.equals(assertionNode))
+    val allNonInternalAssertions = getAssertionNodes.filter(_.sourceInfo.getTopLevelSource.equals(assertionNode))
     val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeIntraMethodEdges=false)
 
     val intraMethodDependencies = toUserLevelNodes(getNonInternalAssumptionNodes.filter(node => intraMethodDependencyIds.contains(node.id) && !node.sourceInfo.getTopLevelSource.equals(assertionNode)))

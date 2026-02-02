@@ -89,7 +89,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     val allAssumptions = interpreter.getNonInternalAssumptionNodes.filter(n => !n.isInstanceOf[AxiomAssumptionNode])
     val assumptions = UserLevelDependencyAnalysisNode.from(allAssumptions)
     val assertions = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes)
-    val nodes = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes.union(allAssumptions))
+    val nodes = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes.asInstanceOf[Set[DependencyAnalysisNode]].union(allAssumptions.asInstanceOf[Set[DependencyAnalysisNode]]))
     println(s"#Assumptions = ${assumptions.size}")
     println(s"#Assertions = ${assertions.size}")
     println(s"#Nodes = ${nodes.size}")
