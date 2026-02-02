@@ -143,7 +143,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   private def handleVerificationProgressQuery(): Unit = {
     if(verificationErrors.nonEmpty) println(s"Fix verification failures first!")
 
-    val ((optProgressPeter, optProgressLea, optInfo), optTime) = measureTime(fullGraphInterpreter.computeVerificationProgressOptimized())
+    val ((optProgressPeter, optProgressLea, optInfo), optTime) = measureTime(fullGraphInterpreter.computeVerificationProgress())
     //    println(s"Overall verification progress: $progress")
     println(s"$optInfo")
     println(s"Peter: $optProgressPeter; Lea: $optProgressLea")

@@ -217,7 +217,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def computeVerificationProgress(): (Double, Double, String)  = {
-    computeVerificationProgressNaive()
+    computeVerificationProgressOptimized()
   }
 
   private def computeSpecQuality(): Double = {
