@@ -166,7 +166,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println(s"$optInfo")
     println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
     println(s"Finished in ${optTime}ms")
-    if(Math.abs(naiveProgressPeter - optProgressPeter) > 1e4 || Math.abs(naiveProgressLea - naiveProgressLea) > 1e4) println("Progress is not equal!")
+    if(Math.abs(naiveProgressPeter - optProgressPeter) > 1e-4 || Math.abs(naiveProgressLea - naiveProgressLea) > 1e-4) println("Progress is not equal!")
   }
 
   protected def getSourceInfoString(nodes: Set[DependencyAnalysisNode]): String = {

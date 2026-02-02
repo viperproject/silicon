@@ -10,6 +10,7 @@ import viper.silver.ast.{If, Stmt}
 import viper.silver.dependencyAnalysis.AbstractDependencyGraphInterpreter
 
 import java.io.PrintWriter
+import java.lang.Double.isNaN
 import java.nio.file.Paths
 import scala.collection.mutable
 
@@ -220,14 +221,12 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     computeVerificationProgressOptimized()
   }
 
-  private def computeSpecQuality(): Double = {
-    val assertionNodeIds = getNonInternalAssertionNodes map (_.id)
-    val coveredNodes = toUserLevelNodes(getAllNonInternalDependencies(assertionNodeIds)).getSourceSet()
+  private def computeSpecQuality(coveredNodes: Set[UserLevelDependencyAnalysisNode]): Double = {
 
     val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
     val allSourceCodeNodes = toUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).getSourceSet()
 
-    val coveredSourceCodeNodes = coveredNodes.intersect(allSourceCodeNodes)
+    val coveredSourceCodeNodes = coveredNodes.getSourceSet().intersect(allSourceCodeNodes)
     println(s"Covered:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
     println(s"Uncovered:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
     println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
@@ -247,31 +246,32 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     intraMethodDependencies ++ transDeps ++ toUserLevelNodes(postconditionNodes)
   }
 
-  private def computeAssertionQuality(assertionNode: AnalysisSourceInfo): Double = {
-    val allDependencies = deps(assertionNode)
+  private def computeAssertionQuality(allDependencies: Set[UserLevelDependencyAnalysisNode]): Double = {
     val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).getSourceSet()
     val allDeps = allDependencies.getSourceSet()
     (allDeps.size - explicitDeps.size).toDouble / allDeps.size.toDouble
   }
 
   def computeVerificationProgressOptimized(): (Double, Double, String)  = {
-    val specQuality = computeSpecQuality()
 
-    val allAssertions = getNonInternalAssertionNodes.map(_.sourceInfo.getTopLevelSource)
-    val assertionQualitiesTmp = allAssertions map (assertion => (computeAssertionQuality(assertion), assertion))
-    val assertionQualities = assertionQualitiesTmp filterNot (_._1.isNaN)
+    val allAssertions = getNonInternalAssertionNodes.map(_.sourceInfo.getTopLevelSource).toList
+    val assertionDeps = allAssertions map deps
+
+    val specQuality = computeSpecQuality(assertionDeps.flatten.toSet)
+
+    val assertionQualities = assertionDeps map computeAssertionQuality filterNot isNaN
     val numAssertions = assertionQualities.size
-    val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
+    val fullyVerifiedAssertions = assertionQualities.filter(_ == 1.0)
     val numFullyVerifiedAssertions = fullyVerifiedAssertions.size
 
     val proofQualityPeter = numFullyVerifiedAssertions.toDouble / numAssertions.toDouble
 
-    val assertionQualitiesSum = assertionQualities.map(_._1).sum
+    val assertionQualitiesSum = assertionQualities.sum
     val proofQualityLea = assertionQualitiesSum / numAssertions.toDouble
 
     val info = {
-      s"Assertions with dependencies on explicit assumptions: ${assertionQualities.diff(fullyVerifiedAssertions).map(_._2).toList.sortBy(_.getLineNumber).mkString("\n\t")}" +
-      s"Assertions with perfect proof quality: ${fullyVerifiedAssertions.map(_._2).toList.sortBy(_.getLineNumber).mkString("\n\t")}" +
+//      s"Assertions with dependencies on explicit assumptions: ${assertionQualities.diff(fullyVerifiedAssertions).map(_._3).toList.sortBy(_.getLineNumber).mkString("\n\t")}" +
+//      s"Assertions with perfect proof quality: ${fullyVerifiedAssertions.map(_._3).toList.sortBy(_.getLineNumber).mkString("\n\t")}" +
       s"specQuality = $specQuality\n" +
       s"proof quality (Peter): $numFullyVerifiedAssertions / $numAssertions = $proofQualityPeter\n" +
       s"proof quality (Lea): $assertionQualitiesSum / $numAssertions = $proofQualityLea\n"
