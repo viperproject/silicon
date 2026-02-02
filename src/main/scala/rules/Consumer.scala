@@ -180,7 +180,7 @@ object consumer extends ConsumptionRules {
 
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
       val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(a)
-      v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
+      v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(a, dependencyType))
 
       consumeTlc(s1, h0, a, returnSnap, pve, v1, dependencyType)((s2, h2, snap2, v2) => {
         v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
@@ -356,7 +356,7 @@ object consumer extends ConsumptionRules {
                                             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                             : VerificationResult = {
     eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-      joiner.join[(Heap, Option[Term]), (Heap, Option[Term])](s1, v1, resetState = false)((s1, v1, QB) => {
+      joiner.join[(Heap, Option[Term]), (Heap, Option[Term])](s1, v1, dependencyType.assumptionType, resetState = false)((s1, v1, QB) => {
         branch(s1.copy(parallelizeBranches = false), t0, (e0, e0New), v1, dependencyType.assumptionType)(
           (s2, v2) =>
             consumeR(s2.copy(parallelizeBranches = s1.parallelizeBranches), h, a1, returnSnap, pve, v2, dependencyType)((s3, h1, t1, v3) => {

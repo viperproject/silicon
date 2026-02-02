@@ -197,7 +197,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v)
       v.decider.clearModel()
       val lhsSourceInfo = TransitivityAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))
-      v.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
+      v.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo,v.decider.analysisSourceInfoStack.getDependencyType) // splitting lhs and rhs to make permission flow analysis more precise
       val result = quantifiedChunkSupporter.removePermissions(
         s2,
         relevantChunks,
@@ -221,7 +221,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
           val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
           v.decider.assumeDefinition(smValueDef, debugExp, dependencyType.assumptionType)
-          v.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
+          v.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType) // splitting lhs and rhs to make permission flow analysis more precise
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
             field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v, AssumptionType.Internal, isExhale=false)
           if (s3.heapDependentTriggers.contains(field)) {
@@ -240,7 +240,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
     } else {
       val description = s"consume ${ass.pos}: $ass"
       val lhsSourceInfo = TransitivityAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))
-      v.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo) // splitting lhs and rhs to make permission flow analysis more precise
+      v.decider.analysisSourceInfoStack.setForcedSource(lhsSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType) // splitting lhs and rhs to make permission flow analysis more precise
       chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, dependencyType)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
         val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), v3.decider.getAnalysisInfo(AssumptionType.Internal))
@@ -417,7 +417,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       }
     } else {
       val resource = fa.res(s.program)
-      chunkSupporter.lookup(s, s.h, resource, Seq(tRcvr), Option.when(withExp)(Seq(eRcvr.get)), ve, v, DependencyAnalyzer.extractDependencyTypeFromInfo(fa.info).map(_.assertionType).getOrElse(AssumptionType.Implicit))((s2, h2, tSnap, v2) => {
+      chunkSupporter.lookup(s, s.h, resource, Seq(tRcvr), Option.when(withExp)(Seq(eRcvr.get)), ve, v, v.decider.analysisSourceInfoStack.getAssumptionType)((s2, h2, tSnap, v2) => {
         val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
         val s3 = s2.copy(h = h2, functionRecorder = fr)
         Q(s3, tSnap, v)

@@ -7,7 +7,7 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType.{AssumptionType, ExplicitPostcondition, ImplicitPostcondition}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
@@ -245,6 +245,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
+      val postconditionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(function.info)
+        .getOrElse(if(function.body.isDefined) ImplicitPostcondition else ExplicitPostcondition)
+
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
         produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, AssumptionType.Precondition)((s1, _) => {
@@ -254,7 +257,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
-          produces(s1, freshSnap, posts, ContractNotWellformed, v, AssumptionType.ExplicitPostcondition)((s2, _) => {
+          produces(s1, freshSnap, posts, ContractNotWellformed, v, postconditionType)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 
@@ -296,7 +299,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
-              decider.analysisSourceInfoStack.setForcedSource(AnalysisSourceInfo.createAnalysisSourceInfo(body))
+              decider.analysisSourceInfoStack.setForcedSource(AnalysisSourceInfo.createAnalysisSourceInfo(body), DependencyType.get(body, DependencyType.make(AssumptionType.FunctionBody)))
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.FunctionBody)
               decider.analysisSourceInfoStack.removeForcedSource()
               consumes(s2, posts, false, postconditionViolated, v, DependencyType.make(postConditionType))((s3, _, _) => {

@@ -52,7 +52,9 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(isAssert: Boolean = false, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean
+  def checkSmoke(assumptionType: AssumptionType): Boolean
+  def checkSmoke(assumptionType: AssumptionType, isAssert: Boolean): Boolean
+  def checkSmoke(isAssert: Boolean = false): Boolean
 
   def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), assumptionType: AssumptionType): Unit
   def setPathConditionMark(): Mark
@@ -74,14 +76,17 @@ trait Decider {
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean, assumptionType: AssumptionType): Unit
   def assumeLabel(term: Term, assumptionLabel: String): Unit
 
-  def check(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean
+  def check(t: Term, timeout: Int): Boolean
+  def check(t: Term, timeout: Int, assumptionType: AssumptionType): Boolean
   def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType): (Boolean, Option[Int])
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, assumptionType: AssumptionType=AssumptionType.Implicit, timeout: Option[Int] = None)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, assumptionType: AssumptionType)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, assumptionType: AssumptionType, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -472,7 +477,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(isAssert: Boolean = false, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean = {
+    def checkSmoke(assumptionType: AssumptionType): Boolean = checkSmoke(assumptionType, isAssert = false)
+
+    def checkSmoke(isAssert: Boolean=false): Boolean = checkSmoke(analysisSourceInfoStack.getAssertionType, isAssert)
+
+    def checkSmoke(assumptionType: AssumptionType, isAssert: Boolean): Boolean = {
       val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, assumptionType, analysisSourceInfoStack.getFullSourceInfo, !isAssert)
       val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
 
@@ -492,7 +501,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       result
     }
 
-    def check(t: Term, timeout: Int, assumptionType: AssumptionType=AssumptionType.Implicit): Boolean = {
+    def check(t: Term, timeout: Int): Boolean = check(t, timeout, analysisSourceInfoStack.getAssertionType)
+
+    def check(t: Term, timeout: Int, assumptionType: AssumptionType): Boolean = {
       deciderAssert(t, assumptionType, Some(timeout), isCheck=true)._1
     }
 
@@ -509,7 +520,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       (success, infeasibilityNodeId)
     }
 
-    def assert(t: Term, assumptionType: AssumptionType=AssumptionType.Implicit, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q:  Boolean => VerificationResult): VerificationResult = {
+    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, analysisSourceInfoStack.getAssertionType, timeout)(Q)
+
+    def assert(t: Term, assumptionType: AssumptionType)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, assumptionType,  timeout=Verifier.config.assertTimeout.toOption)(Q)
+
+    def assert(t: Term, assumptionType: AssumptionType, timeout: Option[Int])(Q:  Boolean => VerificationResult): VerificationResult = {
       val (success, _) = deciderAssert(t, assumptionType, timeout)
 
       // If the SMT query was not successful, store it (possibly "overwriting"

@@ -36,7 +36,7 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
 
 trait JoiningRules extends SymbolicExecutionRules {
 
-  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true, assumptionType: AssumptionType = AssumptionType.Implicit)
+  def join[D, JD](s: State, v: Verifier, assumptionType: AssumptionType, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -44,7 +44,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 }
 
 object joiner extends JoiningRules {
-  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true, assumptionType: AssumptionType = AssumptionType.Implicit)
+  def join[D, JD](s: State, v: Verifier, assumptionType: AssumptionType, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D,  Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)

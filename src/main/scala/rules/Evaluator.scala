@@ -89,7 +89,7 @@ object evaluator extends EvaluationRules {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
     val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(e)
-    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
+    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(e))
     eval3(s, e, pve, v)((s1, t, eNew, v1) => {
       v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
       v1.symbExLog.closeScope(sepIdentifier)
@@ -188,7 +188,7 @@ object evaluator extends EvaluationRules {
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints, eVar) = v.decider.freshARP()
         val constraintExp = Option.when(withExp)(DebugExp.createInstance(s"${eVar.get.toString} > none", true))
-        v.decider.assumeDefinition(tConstraints, constraintExp, AssumptionType.Internal)
+        v.decider.assumeDefinition(tConstraints, constraintExp, v.decider.analysisSourceInfoStack.getAssumptionType)
         /* TODO: Only record wildcards in State.constrainableARPs that are used in exhale
          *       position. Currently, wildcards used in inhale position (only) may not be removed
          *       from State.constrainableARPs (potentially inefficient, but should be sound).
@@ -258,7 +258,7 @@ object evaluator extends EvaluationRules {
         eval(s, e0, pve, v)((s1, t0, e0New, v1) => {
           val t = v1.decider.appliedFresh("letvar", v1.symbolConverter.toSort(x.typ), s1.relevantQuantifiedVariables.map(_._1))
           val debugExp = Option.when(withExp)(DebugExp.createInstance("letvar assignment", InsertionOrderedSet(DebugExp.createInstance(ast.EqCmp(x.localVar, e0)(), ast.EqCmp(x.localVar, e0New.get)()))))
-          v1.decider.assumeDefinition(BuiltinEquals(t, t0), debugExp, AssumptionType.Internal)
+          v1.decider.assumeDefinition(BuiltinEquals(t, t0), debugExp, v1.decider.analysisSourceInfoStack.getAssumptionType)
           val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t.applicable.asInstanceOf[Function]).enterLet(l)
           val possibleTriggersBefore = if (s1.recordPossibleTriggers) s1.possibleTriggers else Map.empty
           eval(s1.copy(g = s1.g + (x.localVar, (t0, e0New)), functionRecorder = newFuncRec), e1, pve, v1)((s2, t2, e1New, v2) => {
@@ -309,7 +309,7 @@ object evaluator extends EvaluationRules {
         val condExpRecord = new CondExpRecord(condExp, s, v.decider.pcs, "CondExp")
         val uidCondExp = v.symbExLog.openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, e0New, v1) =>
-          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1)((s2, v2, QB) =>
+          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1, v1.decider.analysisSourceInfoStack.getAssumptionType)((s2, v2, QB) =>
             brancher.branch(s2.copy(parallelizeBranches = false), t0, (e0, e0New), v2, AssumptionType.Internal)(
               (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e1, pve, v3)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)),
               (s3, v3) => eval(s3.copy(parallelizeBranches = s2.parallelizeBranches), e2, pve, v3)((s4, t4, e4, v4) => QB(s4, (t4, e4), v4)))
@@ -558,7 +558,7 @@ object evaluator extends EvaluationRules {
                 val exp = ast.Forall(eQuant.variables, eTriggers, body)(sourceQuant.pos, sourceQuant.info, sourceQuant.errT)
                 DebugExp.createInstance(exp, expNew)
               })
-              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name, quantWeight), debugExp, AssumptionType.Internal)
+              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name, quantWeight), debugExp, v1.decider.analysisSourceInfoStack.getAssumptionType)
             }
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name, quantWeight)
@@ -567,7 +567,7 @@ object evaluator extends EvaluationRules {
             Q(s2, tQuant, eQuantNew, v1)
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
-            if (v1.decider.checkSmoke(true)) {
+            if (v1.decider.checkSmoke(isAssert = true)) {
               Unreachable()
             } else {
               createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
@@ -576,7 +576,7 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-        val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(fapp.info).getOrElse(DependencyType.MethodCall)
+        val dependencyType = v.decider.analysisSourceInfoStack.getDependencyType
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
@@ -650,7 +650,7 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            consumes(s3, pres, true, _ => pvePre, v2, DependencyType.Implicit)((s4, snap, v3) => { // TODO ake: why does DependencyType.MethodCall not work?
+            consumes(s3, pres, true, _ => pvePre, v2, v2.decider.analysisSourceInfoStack.getDependencyType)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
@@ -700,7 +700,7 @@ object evaluator extends EvaluationRules {
             eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) =>
               v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
-                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
+                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2, v2.decider.analysisSourceInfoStack.getAssumptionType)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
                                .copy(recordVisited = true)
                       /* [2014-12-10 Malte] The commented code should replace the code following
@@ -749,7 +749,7 @@ object evaluator extends EvaluationRules {
                           eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
-                        produce(s7a, toSf(snap.get), body, pve, v4, DependencyAnalyzer.extractAssumptionTypeFromInfo(e.info).getOrElse(AssumptionType.Internal))((s8, v5) => {
+                        produce(s7a, toSf(snap.get), body, pve, v4, v4.decider.analysisSourceInfoStack.getAssumptionType)((s8, v5) => {
                           val s9 = s8.copy(g = s7.g,
                                            functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                            recordVisited = s3.recordVisited,
@@ -776,7 +776,7 @@ object evaluator extends EvaluationRules {
         }
 
       case ast.Applying(wand, eIn) =>
-        joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v)((s1, v1, QB) =>
+        joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v, v.decider.analysisSourceInfoStack.getAssumptionType)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) => QB(s3, (t, eInNew), v3))
         }))(join(eIn.typ, "joined_applying", s.relevantQuantifiedVariables.map(_._1),
@@ -895,7 +895,7 @@ object evaluator extends EvaluationRules {
             val exp = ast.EqCmp(ast.SeqLength(seq)(), ast.IntLit(es.size)())(seq.pos, seq.info, seq.errT)
             DebugExp.createInstance(exp, expNew)
           })
-          v1.decider.assume(SeqLength(tSeq) === IntLiteral(es.size), debugExp, AssumptionType.Internal)
+          v1.decider.assume(SeqLength(tSeq) === IntLiteral(es.size), debugExp, v1.decider.analysisSourceInfoStack.getAssumptionType)
           Q(s1, tSeq, esNew.map(en => ast.ExplicitSeq(en)(e.pos, e.info, e.errT)), v1)})
 
       /* Sets and multisets */
@@ -1079,7 +1079,7 @@ object evaluator extends EvaluationRules {
         // check succeeds, then the continuation for evals(es2) is never invoked). This caused issue #842.
         // In this case, we return None.
         val expPair = (viper.silicon.utils.ast.BigAnd(es1), es1New.map(viper.silicon.utils.ast.BigAnd(_)))
-        v2.decider.setCurrentBranchCondition(bc, expPair, AssumptionType.Internal)
+        v2.decider.setCurrentBranchCondition(bc, expPair, v2.decider.analysisSourceInfoStack.getAssumptionType)
         var es2AndTriggerTerms: Option[(Seq[Term], Option[Seq[ast.Exp]], Seq[Trigger], (Seq[Term], Seq[Quantification]), Option[(InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])], Map[ast.Exp, Term])] = None
         var finalState = s3
         val es2AndTriggerResult = evals(s3, es2, _ => pve, v2)((s4, ts2, es2New, v3) => {
@@ -1116,7 +1116,7 @@ object evaluator extends EvaluationRules {
                          (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v)((s1, v1, QB) =>
+    joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v, v.decider.analysisSourceInfoStack.getAssumptionType)((s1, v1, QB) =>
       brancher.branch(s1.copy(parallelizeBranches = false), tLhs, eLhs, v1, AssumptionType.Internal, fromShortCircuitingAnd = fromShortCircuitingAnd)(
         (s2, v2) => eval(s2.copy(parallelizeBranches = s1.parallelizeBranches), eRhs, pve, v2)((s2, tRhs, eRhsNew, v2) => QB(s2, (tRhs, eRhsNew), v2)),
         (s2, v2) => QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (True, Option.when(withExp)(ast.TrueLit()())), v2))
@@ -1514,7 +1514,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, e0New, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           val expPair = if (constructor == Or) (exps.head, e0New) else (ast.Not(exps.head)(), e0New.map(ast.Not(_)()))
-          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1)((s2, v2, QB) =>
+          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1, v1.decider.analysisSourceInfoStack.getAssumptionType)((s2, v2, QB) =>
             brancher.branch(s2.copy(parallelizeBranches = false), if (constructor == Or) t0 else Not(t0), expPair, v2, AssumptionType.Internal, fromShortCircuitingAnd = true)(
               (s3, v3) => QB(s3.copy(parallelizeBranches = s2.parallelizeBranches), (t0, e0New), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3.copy(parallelizeBranches = s2.parallelizeBranches), exps.tail, pve, v3)((s2, t2, e2, v2) => QB(s2, (t2, e2), v2)))

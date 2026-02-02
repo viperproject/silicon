@@ -6,12 +6,10 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, ExpAnalysisSourceInfo}
-
-import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
@@ -21,6 +19,7 @@ import viper.silver.ast
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
+import java.util.concurrent._
 import scala.collection.immutable.HashSet
 
 trait BranchingRules extends SymbolicExecutionRules {
@@ -62,7 +61,7 @@ object brancher extends BranchingRules {
     )
 
     val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
-    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
+    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(conditionExp._1, DependencyType.PathCondition))
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
@@ -164,7 +163,7 @@ object brancher extends BranchingRules {
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
-            v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
+            v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(conditionExp._1, DependencyType.PathCondition))
             v1.decider.pcs.setCurrentInfeasibilityNode(elseInfeasibilityNode)
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), assumptionType)
             v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
@@ -219,7 +218,7 @@ object brancher extends BranchingRules {
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
-            v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
+            v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(conditionExp._1, DependencyType.PathCondition))
             v1.decider.pcs.setCurrentInfeasibilityNode(thenInfeasibilityNode)
             v1.decider.setCurrentBranchCondition(condition, conditionExp, assumptionType)
             v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)

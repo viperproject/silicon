@@ -13,12 +13,13 @@ object AssumptionType extends Enumeration {
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger) // will always be hidden from user
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
   def verificationAnnotationTypes: Set[AssumptionType] = Set(LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, Precondition, Explicit)
-  def sourceCodeTypes: Set[AssumptionType] = Set(SourceCode, PathCondition, MethodCall, FunctionBody, Implicit)
+  def sourceCodeTypes: Set[AssumptionType] = Set(SourceCode, PathCondition, MethodCall, FunctionBody)
   def methodCallTypes: Set[AssumptionType] = Set(MethodCall) // used to join graphs via postconditions
 }
 
 import viper.silicon.dependencyAnalysis.AssumptionType._
 import viper.silicon.decider.Decider
+import viper.silver.ast
 
 object DependencyType {
 
@@ -35,6 +36,25 @@ object DependencyType {
   val MethodCall: DependencyType = DependencyType(AssumptionType.MethodCall, AssumptionType.MethodCall)
 
   def make(singleType: AssumptionType): DependencyType = DependencyType(singleType, singleType)
+
+  def get(stmt: ast.Stmt): DependencyType = {
+    val annotatedDependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(stmt.info)
+    if(annotatedDependencyType.isDefined) return annotatedDependencyType.get
+
+    stmt match {
+      case _: ast.MethodCall => MethodCall
+      case  _: ast.NewStmt | _: ast.AbstractAssign => SourceCode
+      case _: ast.Exhale | _: ast.Assert => ExplicitAssertion
+      case _: ast.Inhale | _: ast.Assume => ExplicitAssumption
+      case _: ast.Fold | _: ast.Unfold | _: ast.Package | _: ast.Apply => Rewrite
+      case _: ast.Quasihavoc | _: ast.Quasihavocall => Implicit
+      case _ => Implicit /* TODO: should not happen */
+    }
+  }
+
+  def get(exp: ast.Exp, dependencyType: DependencyType): DependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(exp.info).getOrElse(dependencyType)
+
+  def get(exp: ast.Exp): DependencyType = get(exp, Implicit)
 
 }
 

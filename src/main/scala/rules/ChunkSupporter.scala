@@ -145,7 +145,7 @@ object chunkSupporter extends ChunkSupportRules {
                 case _ => None
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
-            case (_, s2, h2, _) if v1.decider.checkSmoke(isAssert=true, dependencyType.assertionType) =>
+            case (_, s2, h2, _) if v1.decider.checkSmoke(dependencyType.assertionType, isAssert = true) =>
               if(Verifier.config.disableInfeasibilityChecks())
                 QS(s2.copy(h = s.h), h2, None, v1)
               else
@@ -267,7 +267,7 @@ object chunkSupporter extends ChunkSupportRules {
     findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.assertTimeout.getOrElse(0), assumptionType) =>
         Q(s, ch.snap, v)
-      case _ if v.decider.checkSmoke(isAssert=true, assumptionType) =>
+      case _ if v.decider.checkSmoke(assumptionType, isAssert = true) =>
         if (s.isInPackage || Verifier.config.disableInfeasibilityChecks()) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           Q(s, snap, v)

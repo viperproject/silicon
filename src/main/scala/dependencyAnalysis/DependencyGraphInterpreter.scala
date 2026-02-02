@@ -237,41 +237,41 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val allNonInternalAssertions = getAssertionNodes.filter(_.sourceInfo.getTopLevelSource.equals(assertionNode))
     val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeIntraMethodEdges=false)
 
-    val intraMethodDependencies = toUserLevelNodes(getNonInternalAssumptionNodes.filter(node => intraMethodDependencyIds.contains(node.id) && !node.sourceInfo.getTopLevelSource.equals(assertionNode)))
+    val intraMethodDependencies = getNonInternalAssumptionNodes.filter(node => intraMethodDependencyIds.contains(node.id) && !node.sourceInfo.getTopLevelSource.equals(assertionNode))
 
     val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethods.getOrElse(n, Set.empty))
     val postconditionNodes = getNodes.filter(n => postconditionNodeIds.contains(n.id))
 
     val transDeps = postconditionNodes.map(_.sourceInfo.getTopLevelSource).diff(Set(assertionNode)) flatMap deps
-    intraMethodDependencies ++ transDeps ++ toUserLevelNodes(postconditionNodes)
+    toUserLevelNodes(transDeps.flatMap(_.lowerLevelNodes) ++ intraMethodDependencies ++ postconditionNodes)
   }
 
   private def computeAssertionQuality(allDependencies: Set[UserLevelDependencyAnalysisNode]): Double = {
     val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).getSourceSet()
-    val allDeps = allDependencies.getSourceSet()
-    (allDeps.size - explicitDeps.size).toDouble / allDeps.size.toDouble
+    val numDepsTotal = allDependencies.getSourceSet().size
+    (numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble
   }
 
   def computeVerificationProgressOptimized(): (Double, Double, String)  = {
 
     val allAssertions = getNonInternalAssertionNodes.map(_.sourceInfo.getTopLevelSource).toList
-    val assertionDeps = allAssertions map deps
+    val assertionDeps = allAssertions map (ass => (deps(ass), ass))
 
-    val specQuality = computeSpecQuality(assertionDeps.flatten.toSet)
+    val specQuality = computeSpecQuality(assertionDeps.flatMap(_._1).toSet)
 
-    val assertionQualities = assertionDeps map computeAssertionQuality filterNot isNaN
+    val assertionQualities = assertionDeps map (ass => (computeAssertionQuality(ass._1), ass._2)) filterNot (n => isNaN(n._1))
     val numAssertions = assertionQualities.size
-    val fullyVerifiedAssertions = assertionQualities.filter(_ == 1.0)
+    val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
     val numFullyVerifiedAssertions = fullyVerifiedAssertions.size
 
     val proofQualityPeter = numFullyVerifiedAssertions.toDouble / numAssertions.toDouble
 
-    val assertionQualitiesSum = assertionQualities.sum
+    val assertionQualitiesSum = assertionQualities.map(_._1).sum
     val proofQualityLea = assertionQualitiesSum / numAssertions.toDouble
 
     val info = {
-//      s"Assertions with dependencies on explicit assumptions: ${assertionQualities.diff(fullyVerifiedAssertions).map(_._3).toList.sortBy(_.getLineNumber).mkString("\n\t")}" +
-//      s"Assertions with perfect proof quality: ${fullyVerifiedAssertions.map(_._3).toList.sortBy(_.getLineNumber).mkString("\n\t")}" +
+      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(_._2.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
+      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(_.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
       s"specQuality = $specQuality\n" +
       s"proof quality (Peter): $numFullyVerifiedAssertions / $numAssertions = $proofQualityPeter\n" +
       s"proof quality (Lea): $assertionQualitiesSum / $numAssertions = $proofQualityLea\n"
@@ -289,7 +289,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 //    val startTime = System.nanoTime()
     // TODO ake: this is suuuper slow. Can we reuse previously computed results? Caching?
     val relevantDependenciesPerAssertion = allAssertions
-      .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(ass.lowerLevelNodes).map(_.id))).diffBySource(Set(ass)))).toMap
+      .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
       .filter{case (_, assumptions) => assumptions.nonEmpty} // filter out trivial assertions like `assert true`
 
 //    val endTime = System.nanoTime()
@@ -323,11 +323,12 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val verificationProgressPeter = specQuality * proofQualityPeter
 
     // Lea's metric
-    val proofQualityPerAssertion = relevantAssertions.map { case (_, assumptions) =>
-      UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions).size.toDouble / assumptions.size.toDouble
+    val proofQualityPerAssertion = relevantAssertions.toList.map { case (assertion, assumptions) =>
+      val nonExplicitDeps = UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions)
+      (nonExplicitDeps.size.toDouble / assumptions.size.toDouble, assertion)
     }
 
-    val proofQualityLea =  if(numRelevantAssertions > 0) proofQualityPerAssertion.sum / numRelevantAssertions else 1.0
+    val proofQualityLea =  if(numRelevantAssertions > 0) proofQualityPerAssertion.map(_._1).sum / numRelevantAssertions else 1.0
     val verificationProgressLea = specQuality * proofQualityLea
 
 
@@ -349,12 +350,12 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       s"Fully verified assertions:\n\t\t${getString(fullyVerifiedAssertions)}" + "\n\n" +
         s"Assertions depending on explicit assumptions:\n\t\t${getString(assertionsWithExplicitDeps)}" + "\n\n" +
         "\n" +
-        s"#Verification Errors: ${errors.size}" + "\n\n" +
+        s"Assertion Qualities:\n\t\t${proofQualityPerAssertion.filterNot(_._1 == 1.0).sortBy(_._2.source.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
       "\n" +
       s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
       s"${fullyVerifiedAssertions.size}/${relevantAssertions.keySet.size} = ${"%.2f".format(verificationProgressPeter)}" + "\n" +
       s"Verification Progress (Lea):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
-        f"${"%.2f".format(proofQualityPerAssertion.sum)}/${relevantAssertions.keys.size} = ${"%.2f".format(verificationProgressLea)}" + "\n"
+        f"${"%.2f".format(proofQualityPerAssertion.map(_._1).sum)}/${relevantAssertions.keys.size} = ${"%.2f".format(verificationProgressLea)}" + "\n"
     }
     (verificationProgressPeter, verificationProgressLea, info)
   }

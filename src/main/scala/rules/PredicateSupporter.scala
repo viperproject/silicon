@@ -149,7 +149,7 @@ object predicateSupporter extends PredicateSupportRules {
         val substCond = cond.replace(toReplace)
 
         if (!isUnfolding && s.moreJoins.id >= JoinMode.Impure.id) {
-          joiner.join[scala.Null, scala.Null](s, v, resetState = false)((s1, v1, QB) => {
+          joiner.join[scala.Null, scala.Null](s, v, dependencyType.assumptionType, resetState = false)((s1, v1, QB) => {
             brancher.branch(s1, substCond, condExp, v1, dependencyType.assumptionType)(
               (s2, v2) => {
                 producePredicateContents(s2, left, toReplace, v2, dependencyType, isUnfolding)((s3, v3) => QB(s3, null, v3))

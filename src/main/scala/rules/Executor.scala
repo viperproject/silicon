@@ -152,12 +152,12 @@ object executor extends ExecutionRules {
           case _ => false
         })
 
-        val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(cedge1.condition.info)
+        val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(cedge1.condition.info).getOrElse(DependencyType.PathCondition)
 
         eval(s, cedge1.condition, pvef(cedge1.condition), v)((s1, t0, condNew, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
-          joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
-            brancher.branch(s2, t0, (cedge1.condition, condNew), v2, dependencyType.map(_.assumptionType).getOrElse(AssumptionType.PathCondition))(
+          joiner.join[scala.Null, scala.Null](s1, v1, dependencyType.assumptionType, resetState = false)((s2, v2, QB) => {
+            brancher.branch(s2, t0, (cedge1.condition, condNew), v2, dependencyType.assumptionType)(
               // Follow only until join point.
               (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
               (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
@@ -293,7 +293,7 @@ object executor extends ExecutionRules {
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.Internal)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                        if (v2.decider.checkSmoke() && !Verifier.config.disableInfeasibilityChecks())
+                        if (!Verifier.config.disableInfeasibilityChecks() && v2.decider.checkSmoke())
                           Success()
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
@@ -344,7 +344,7 @@ object executor extends ExecutionRules {
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(stmt)
-    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo)
+    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(stmt))
     exec2(s, stmt, v)((s1, v1) => {
       v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
       v1.symbExLog.closeScope(sepIdentifier)
@@ -469,7 +469,7 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          if (v1.decider.checkSmoke(isAssert=true, getAssertionType(AssumptionType.Explicit)))
+          if (v1.decider.checkSmoke(getAssertionType(AssumptionType.Explicit), isAssert = true))
             QS(s1.copy(h = s.h), v1)
           else
             createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))

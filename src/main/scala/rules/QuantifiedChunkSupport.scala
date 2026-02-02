@@ -1538,7 +1538,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            perms: Term,
                            permsExp: Option[ast.Exp],
                            v: Verifier,
-                           assertionType: AssumptionType=AssumptionType.Implicit)
+                           assertionType: AssumptionType)
                           : ConsumptionResult = {
 
     var permsAvailable: Term = NoPerm

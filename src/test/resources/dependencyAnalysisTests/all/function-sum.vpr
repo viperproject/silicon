@@ -20,7 +20,7 @@ method call2(){
     @dependency("Explicit")
     assume y > 0
 
-    @dependency("MethodCall")
+    @dependency("SourceCode")
     z := sum(x, y)
 
     // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
@@ -36,7 +36,7 @@ method call2Unv(){
     @dependency("Explicit")
     assume y > 0
 
-    @dependency("MethodCall")
+    @dependency("SourceCode")
     z := sumUnverified(x, y)
 
     // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
