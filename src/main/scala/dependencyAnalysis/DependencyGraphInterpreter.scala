@@ -1,6 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
-import dependencyAnalysis.UserLevelDependencyAnalysisNode
+import dependencyAnalysis.{CompactUserLevelDependencyAnalysisNode, UserLevelDependencyAnalysisNode}
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -20,6 +20,10 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def getGraph: ReadOnlyDependencyGraph = dependencyGraph
   def getName: String = name
   def getMember: Option[ast.Member] = member
+
+  lazy val nodesMap: Map[Int, DependencyAnalysisNode] = getNodes.map(node => (node.id, node)).toMap
+  lazy val nonInternalAssumptionNodesMap: Map[Int, DependencyAnalysisNode] = getNonInternalAssumptionNodes(getNodes).map(node => (node.id, node)).toMap
+  lazy val assertionNodesMap: Map[Int, DependencyAnalysisNode] = getAssertionNodes.map(node => (node.id, node)).toMap
   def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes.toSet
   def getAssumptionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssumptionNodes.toSet
   def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
@@ -52,7 +56,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
     val allDependencies = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes).diff(nodeIdsToAnalyze)
-    getNonInternalAssumptionNodes.filter(node => allDependencies.contains(node.id))
+    allDependencies flatMap nonInternalAssumptionNodesMap.get
   }
 
   def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
@@ -70,9 +74,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     getExplicitAssertionNodes.filter(node => allDependents.contains(node.id))
   }
 
-  def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
-      (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-        || AssumptionType.postconditionTypes.contains(node.assumptionType) // postconditions act as assumptions for callers
+  def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
+
+  def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
+    (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
+      || AssumptionType.postconditionTypes.contains(node.assumptionType) // postconditions act as assumptions for callers
     )
 
   def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
@@ -84,9 +90,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
   
   
-  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getNodes filter (node =>
-    node.isInstanceOf[GeneralAssertionNode] && !AssumptionType.internalTypes.contains(node.assumptionType)
-    )
+  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node => !AssumptionType.internalTypes.contains(node.assumptionType))
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
@@ -221,40 +225,96 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     computeVerificationProgressOptimized()
   }
 
-  private def computeSpecQuality(coveredNodes: Set[UserLevelDependencyAnalysisNode]): Double = {
+  private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode]): Double = {
 
     val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
-    val allSourceCodeNodes = toUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).getSourceSet()
+    val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source.getTopLevelSource)
 
-    val coveredSourceCodeNodes = coveredNodes.getSourceSet().intersect(allSourceCodeNodes)
-    println(s"Covered:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
-    println(s"Uncovered:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
+    val coveredSourceCodeNodes = coveredNodes.map(_.source.getTopLevelSource).intersect(allSourceCodeNodes)
+//    println(s"Covered:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
+//    println(s"Uncovered:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
     println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
     coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
   }
 
-  val deps: DAMemo[AnalysisSourceInfo, Set[UserLevelDependencyAnalysisNode]] = DAMemo {assertionNode =>
-    val allNonInternalAssertions = getAssertionNodes.filter(_.sourceInfo.getTopLevelSource.equals(assertionNode))
+  var perMethodDependencyRuntime: Long = 0L
+  var depsToPostcondRuntime: Long = 0L
+  var aggregationOfSummaryNodesRuntime: Long = 0L
+  var filteringNodesRuntime: Long = 0L
+
+  private lazy val sourceToAssertionNodes: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource)
+
+  val deps: DAMemo[AnalysisSourceInfo, Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { assertionNode =>
+    val startFilteringNodes0 = System.nanoTime()
+    val allNonInternalAssertions = sourceToAssertionNodes.getOrElse(assertionNode, Set.empty)
+    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes0)
+    val startPerMethodDeps = System.nanoTime()
     val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeIntraMethodEdges=false)
+    perMethodDependencyRuntime = perMethodDependencyRuntime + (System.nanoTime() - startPerMethodDeps)
 
-    val intraMethodDependencies = getNonInternalAssumptionNodes.filter(node => intraMethodDependencyIds.contains(node.id) && !node.sourceInfo.getTopLevelSource.equals(assertionNode))
+    val startFilteringNodes1 = System.nanoTime()
+    val intraMethodDependencies = intraMethodDependencyIds.flatMap(nonInternalAssumptionNodesMap.get).filter(!_.sourceInfo.getTopLevelSource.equals(assertionNode))
+    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes1)
 
+    val startDepsToPostcond = System.nanoTime()
     val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethods.getOrElse(n, Set.empty))
-    val postconditionNodes = getNodes.filter(n => postconditionNodeIds.contains(n.id))
+    depsToPostcondRuntime = depsToPostcondRuntime + (System.nanoTime() - startDepsToPostcond)
+    val startFilteringNodes2 = System.nanoTime()
+    val postconditionNodes = postconditionNodeIds flatMap nodesMap.get
+    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes2)
+
 
     val transDeps = postconditionNodes.map(_.sourceInfo.getTopLevelSource).diff(Set(assertionNode)) flatMap deps
-    toUserLevelNodes(transDeps.flatMap(_.lowerLevelNodes) ++ intraMethodDependencies ++ postconditionNodes)
+
+    val startAggregation = System.nanoTime()
+    val res = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ postconditionNodes) ++ transDeps)
+    aggregationOfSummaryNodesRuntime = aggregationOfSummaryNodesRuntime + (System.nanoTime() - startAggregation)
+    res
   }
 
-  private def computeAssertionQuality(allDependencies: Set[UserLevelDependencyAnalysisNode]): Double = {
-    val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).getSourceSet()
-    val numDepsTotal = allDependencies.getSourceSet().size
+  private def reduceCompactUserLevelNodes(inputNodes: Set[CompactUserLevelDependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
+
+    val resultMap: mutable.Map[AnalysisSourceInfo, CompactUserLevelDependencyAnalysisNode] = mutable.Map()
+
+    for (node <- inputNodes) {
+      val existingNode = resultMap.get(node.source)
+
+      val newNode = existingNode match {
+        case Some(existing) =>
+          CompactUserLevelDependencyAnalysisNode(
+            source = node.source,
+            assumptionTypes = existing.assumptionTypes ++ node.assumptionTypes,
+            assertionTypes = existing.assertionTypes ++ node.assertionTypes,
+            hasFailures = existing.hasFailures || node.hasFailures
+          )
+        case None => node
+      }
+
+      resultMap.update(node.source, newNode)
+    }
+
+    resultMap.values.toSet
+  }
+
+  private def toCompactUserLevelNodes(lowLevelNodes: Set[DependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
+    lowLevelNodes.groupBy(_.sourceInfo.getTopLevelSource).map{case (source, nodes) =>
+      val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
+      CompactUserLevelDependencyAnalysisNode(source,
+        nodes.filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.assumptionType),
+        assertionNodes.map(_.assumptionType),
+        assertionNodes.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)
+      )}.toSet
+  }
+
+  private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode]): Double = {
+    val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).map(_.source)
+    val numDepsTotal = allDependencies.map(_.source).size
     (numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble
   }
 
   def computeVerificationProgressOptimized(): (Double, Double, String)  = {
 
-    val allAssertions = getNonInternalAssertionNodes.map(_.sourceInfo.getTopLevelSource).toList
+    val allAssertions = sourceToAssertionNodes.keySet.toList
     val assertionDeps = allAssertions map (ass => (deps(ass), ass))
 
     val specQuality = computeSpecQuality(assertionDeps.flatMap(_._1).toSet)
@@ -270,12 +330,17 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val proofQualityLea = assertionQualitiesSum / numAssertions.toDouble
 
     val info = {
-      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(_._2.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
-      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(_.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
+//      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(_._2.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
+//      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(_.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
       s"specQuality = $specQuality\n" +
       s"proof quality (Peter): $numFullyVerifiedAssertions / $numAssertions = $proofQualityPeter\n" +
       s"proof quality (Lea): $assertionQualitiesSum / $numAssertions = $proofQualityLea\n"
     }
+
+    println(s"Runtimes:\n\tperMethodDependencyRuntime: ${perMethodDependencyRuntime/1e6}ms\n\t" +
+    s"depsToPostcondRuntime: ${depsToPostcondRuntime/1e6}ms\n\t" +
+    s"aggregationOfSummaryNodesRuntime: ${aggregationOfSummaryNodesRuntime/1e6}ms\n\t" +
+    s"filteringNodesRuntime: ${filteringNodesRuntime/1e6}ms\n\t")
 
     (specQuality * proofQualityPeter, specQuality * proofQualityLea, info)
   }

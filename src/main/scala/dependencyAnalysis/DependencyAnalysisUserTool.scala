@@ -86,13 +86,18 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   private def handleGraphSizeQuery(interpreter: DependencyGraphInterpreter): Unit = {
-    val allAssumptions = interpreter.getNonInternalAssumptionNodes.filter(n => !n.isInstanceOf[AxiomAssumptionNode])
+    val allAssumptions = interpreter.getNonInternalAssumptionNodes
     val assumptions = UserLevelDependencyAnalysisNode.from(allAssumptions)
-    val assertions = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes)
-    val nodes = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes.asInstanceOf[Set[DependencyAnalysisNode]].union(allAssumptions.asInstanceOf[Set[DependencyAnalysisNode]]))
+    val allAssertions = interpreter.getNonInternalAssertionNodes
+    val assertions = UserLevelDependencyAnalysisNode.from(allAssertions)
+    val nodes = UserLevelDependencyAnalysisNode.from(allAssertions.union(allAssumptions))
     println(s"#Assumptions = ${assumptions.size}")
     println(s"#Assertions = ${assertions.size}")
     println(s"#Nodes = ${nodes.size}")
+    println(s"#low-level Assumptions (non-internal) = ${allAssumptions.size}")
+    println(s"#low-level Assumptions (all) = ${interpreter.getAssumptionNodes.size}")
+    println(s"#low-level Assertions (non-internal) = ${allAssertions.size}")
+    println(s"#low-level Assertions (all) = ${interpreter.getAssertionNodes.size}")
     println("Done.")
   }
 

@@ -21,7 +21,6 @@ trait ReadOnlyDependencyGraph extends AbstractReadOnlyDependencyGraph {
   def getAssumptionNodes: Seq[GeneralAssumptionNode]
   def getAssertionNodes: Seq[GeneralAssertionNode]
   def getDirectEdges: Map[Int, Set[Int]] // target -> direct dependencies
-  def getTransitiveEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getEdgesConnectingMethods: Map[Int, Set[Int]]
   def getAllEdges: Map[Int, Set[Int]] // target -> direct dependencies
 
@@ -36,21 +35,19 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   private var assumptionNodes: mutable.Seq[GeneralAssumptionNode] = mutable.Seq()
   private var assertionNodes: mutable.Seq[GeneralAssertionNode] = mutable.Seq()
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
-  private val transitiveEdges: mutable.Map[Int, Set[Int]] = mutable.Map.empty // TODO ake: can be merged into edges?
   private val edgesConnectingMethods: mutable.Map[Int, Set[Int]] = mutable.Map.empty // keep this, it's relevant for computing verification progress
 
   def getNodes: Seq[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
   def getAssumptionNodes: Seq[GeneralAssumptionNode] = assumptionNodes.toSeq
   def getAssertionNodes: Seq[GeneralAssertionNode] = assertionNodes.toSeq
   def getDirectEdges: Map[Int, Set[Int]] = edges.toMap
-  def getTransitiveEdges: Map[Int, Set[Int]] = transitiveEdges.toMap
   def getEdgesConnectingMethods: Map[Int, Set[Int]] = edgesConnectingMethods.toMap
 
   def getIntraMethodEdges: Map[Int, Set[Int]] = {
-    val keys = edges.keySet ++ transitiveEdges.keySet
+    val keys = edges.keySet
     val intraMethodEdges = mutable.Map[Int, Set[Int]]()
     keys foreach {key =>
-      intraMethodEdges.update(key, edges.getOrElse(key, Set()) ++ transitiveEdges.getOrElse(key, Set()))
+      intraMethodEdges.update(key, edges.getOrElse(key, Set()))
     }
     intraMethodEdges.toMap
   }
@@ -168,9 +165,9 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
   private def addTransitiveEdges(sources: Iterable[DependencyAnalysisNode], target: DependencyAnalysisNode): Unit = {
-    val oldSources = transitiveEdges.getOrElse(target.id, Set.empty)
+    val oldSources = edges.getOrElse(target.id, Set.empty)
     val newSources = sources map(_.id) // filter(_ > target.id) does not work due to loop invariants
-    if(newSources.nonEmpty) transitiveEdges.update(target.id, oldSources ++ newSources)
+    if(newSources.nonEmpty) edges.update(target.id, oldSources ++ newSources)
   }
 
   private def addTransitiveEdges(sources: Iterable[DependencyAnalysisNode], targets: Iterable[DependencyAnalysisNode]): Unit = {
@@ -200,14 +197,22 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
     val successors = edges.getOrElse(id, Set.empty)
     edges.remove(id)
-    predecessors foreach (pid => edges.update(pid, edges.getOrElse(pid, Set.empty).filter(_ != id)))
-    addEdges(successors, predecessors)
+    predecessors foreach (pid => edges.update(pid, edges.getOrElse(pid, Set.empty).filter(_ != id) ++ successors))
   }
 
   // TODO ake: maybe move to DependencyAnalyzer?
   def removeLabelNodes(): Unit = {
-    assumptionNodes filter (_.isInstanceOf[LabelNode]) foreach removeAllEdgesForNode
-    assumptionNodes = assumptionNodes filter (!_.isInstanceOf[LabelNode])
+    def filterCriteria(n: DependencyAnalysisNode) = n.isInstanceOf[LabelNode]
+
+    assumptionNodes filter filterCriteria foreach removeAllEdgesForNode
+    assumptionNodes = assumptionNodes filterNot filterCriteria
+  }
+
+  def removeInternalNodes(): Unit = {
+    def filterCriteria(n: DependencyAnalysisNode) = AssumptionType.internalTypes.contains(n.assumptionType)
+
+    assumptionNodes filter filterCriteria foreach removeAllEdgesForNode
+    assumptionNodes = assumptionNodes filterNot filterCriteria
   }
 
   def exportGraph(dirName: String): Unit = {
@@ -221,7 +226,6 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     val writer = new PrintWriter(fileName)
     writer.println("source,target,label")
     edges foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",direct")))
-    transitiveEdges foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",transitive")))
     writer.close()
   }
 

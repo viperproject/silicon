@@ -398,6 +398,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     dependencyGraph.removeLabelNodes()
     val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph else  buildAndGetMergedGraph()
     mergedGraph.addTransitiveEdges()
+    if(!Verifier.config.enableDependencyAnalysisDebugging()) mergedGraph.removeInternalNodes()
     Some(mergedGraph)
   }
 

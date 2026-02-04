@@ -82,3 +82,7 @@ case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, lowerLeve
 
 
 }
+
+case class CompactUserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, assumptionTypes: Set[AssumptionType], assertionTypes: Set[AssumptionType], hasFailures: Boolean) {
+  def position: Position = source.getPosition
+}
