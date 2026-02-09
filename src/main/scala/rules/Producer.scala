@@ -16,6 +16,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.utility.Expressions
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
@@ -210,6 +211,15 @@ object producer extends ProductionRules {
                                 assumptionType: AssumptionType)
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
+
+    if(v.decider.isPathInfeasible()){
+      if(!Expressions.isKnownWellDefined(a, Some(s.program))){
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      }
+      v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType)
+
+      return Q(s, v)
+    }
 
     val sepIdentifier = v.symbExLog.openScope(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v, assumptionType)((s1, v1) => {

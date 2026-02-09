@@ -7,19 +7,11 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-
-import scala.annotation.unused
-import viper.silver.cfg.silver.SilverCfg
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
-import viper.silver.verifier.errors._
-import viper.silver.verifier.reasons._
-import viper.silver.{ast, cfg}
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType, ExpAnalysisSourceInfo, StmtAnalysisSourceInfo, TransitivityAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -28,12 +20,13 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.utility.Statements
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
+import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
 import viper.silver.{ast, cfg}
 
 import scala.annotation.unused
@@ -100,7 +93,7 @@ object executor extends ExecutionRules {
 
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
-      case cfg.Kind.Out =>
+      case cfg.Kind.Out if !v.decider.isPathInfeasible() =>
         val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
           invariantContexts = s.invariantContexts.tail)
@@ -130,7 +123,7 @@ object executor extends ExecutionRules {
       case (Seq(), _) => Q(s, v)
       case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
       case (Seq(edge1, edge2), Some(newJoinPoint)) if
-          s.moreJoins.id >= JoinMode.All.id &&
+        (s.moreJoins.id >= JoinMode.All.id &&
           // Can't directly match type because of type erasure ...
           edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
           edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
@@ -138,8 +131,10 @@ object executor extends ExecutionRules {
           // this is the case if the source is a statement block,
           // as opposed to a loop head block.
           edge1.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] &&
-          edge2.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] =>
+          edge2.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]]) ||
+          v.decider.isPathInfeasible() =>
 
+        val isPathInfeasibleBefore = v.decider.isPathInfeasible()
         assert(edge1.source == edge2.source)
 
         val cedge1 = edge1.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
@@ -166,6 +161,8 @@ object executor extends ExecutionRules {
             val s2 = entries match {
               case Seq(entry) => // One branch is dead
                 entry.s
+              case Seq(entry1, _) if isPathInfeasibleBefore => // no need to merge since path is dead anyway
+                entry1.s
               case Seq(entry1, entry2) => // Both branches are alive
                 entry1.pathConditionAwareMerge(entry2, v1)
               case _ =>
@@ -333,12 +330,6 @@ object executor extends ExecutionRules {
     else
       Q(s, v)
 
-  // TODO ake: skipping some statements (even in infeasible paths) resulted in variable not found errors
-  private def alwaysExecute(stmt: ast.Stmt): Boolean = stmt match {
-    case ast.NewStmt(_, _) | ast.LocalVarDeclStmt(_) | ast.Label(_, _) => true
-    case _ => false
-  }
-
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
@@ -355,6 +346,16 @@ object executor extends ExecutionRules {
   def exec2(state: State, stmt: ast.Stmt, v: Verifier)
            (continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
+
+    if(v.decider.isPathInfeasible()){
+      if(Statements.hasProofObligations(stmt, state.program)){
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      }
+      if(Statements.introducesSmtAssumptions(stmt)){
+        v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      }
+      return continuation(state, v)
+    }
 
     val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {

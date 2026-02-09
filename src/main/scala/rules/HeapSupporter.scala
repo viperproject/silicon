@@ -10,16 +10,16 @@ import viper.silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType, TransitivityAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType, TransitivityAnalysisSourceInfo}
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
 import viper.silicon.rules.quantifiedChunkSupporter.freshSnapshotMap
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, ChunkIdentifier, Heap, MagicWandChunk, MagicWandIdentifier, QuantifiedBasicChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State, Store}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.{`?r`, `?s`}
+import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.utils.freshSnap
@@ -187,6 +187,12 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       dependencyType: DependencyType)
                      (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
+    if(v.decider.isPathInfeasible()){
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      v.decider.dependencyAnalyzer.addAssumption(False, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType)
+      return Q(s, v)
+    }
+
     val field = ass.lhs.field
     val ve = pve dueTo InsufficientPermission(ass.lhs)
     if (s.qpFields.contains(field)) {
@@ -265,6 +271,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       v: Verifier)
                      (Q: (State, Term, Verifier) => VerificationResult): VerificationResult =
     {
+      if(v.decider.isPathInfeasible()){
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+        return Q(s, NoPerm, v)
+      }
+
       val res = resAcc.res(s.program)
       /* It is assumed that, for a given field/predicate/wand identifier (res)
        * either only quantified or only non-quantified chunks are used.
@@ -327,6 +338,14 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       v: Verifier)
                      (Q: (State, Term, Verifier) => VerificationResult)
   : VerificationResult = {
+    if(v.decider.isPathInfeasible()){
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+
+      val sort = v.symbolConverter.toSort(fa.field.typ)
+      val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
+      return Q(s, newVar, v)
+    }
+
     if (s.qpFields.contains(fa.field)) {
       val (relevantChunks, _) =
         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(fa.field.name))
@@ -518,6 +537,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     v: Verifier,
                     dependencyType: DependencyType)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
+    if(v.decider.isPathInfeasible()){
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      return Q(s, h, Some(Unit), v)
+    }
+
     val resource = resAcc.res(s.program)
     val useQPs = s.isQuantifiedResource(resource)
     if (useQPs) {
@@ -629,6 +653,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         v: Verifier,
                         dependencyType: DependencyType)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
+    if(v.decider.isPathInfeasible()){
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      return Q(s, h, Some(Unit), v)
+    }
+
     quantifiedChunkSupporter.consume(
       s,
       h,

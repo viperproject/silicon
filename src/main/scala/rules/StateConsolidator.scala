@@ -58,6 +58,8 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   */
 class DefaultStateConsolidator(protected val config: Config) extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
+    if(v.decider.isPathInfeasible()) return s
+
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
     val prevForcedSource = v.decider.analysisSourceInfoStack.getForcedSource
@@ -135,6 +137,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   }
 
   def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
+    if(v.decider.isPathInfeasible()) return (fr1, h)
+
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, s.functionRecorderQuantifiedVariables().map(_._1), v)

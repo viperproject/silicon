@@ -83,6 +83,10 @@ object chunkSupporter extends ChunkSupportRules {
               dependencyType: DependencyType)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
+    if(v.decider.isPathInfeasible()){
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      return Q(s, h, Option.when(returnSnap)(Unit), v)
+    }
 
     consume2(s, h, resource, args, argsExp, perms, permsExp, returnSnap, ve, v, dependencyType)((s2, h2, optSnap, v2) =>
       optSnap match {
@@ -241,6 +245,10 @@ object chunkSupporter extends ChunkSupportRules {
              assumptionType: AssumptionType)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
+    if(v.decider.isPathInfeasible()){
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      return Q(s, h, Unit, v)
+    }
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =

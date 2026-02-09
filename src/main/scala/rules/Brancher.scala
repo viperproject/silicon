@@ -16,6 +16,7 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.utility.Expressions
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
@@ -44,6 +45,15 @@ object brancher extends BranchingRules {
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
             : VerificationResult = {
+
+    if(v.decider.isPathInfeasible()){
+      if(!Expressions.isKnownWellDefined(conditionExp._1, Some(s.program))){
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      }
+      v.decider.dependencyAnalyzer.addAssumption(condition, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType)
+
+      return fThen(s, v).combine(fElse(s, v))
+    }
 
     val negatedCondition = Not(condition)
     val negatedConditionExp = ast.Not(conditionExp._1)(pos = conditionExp._1.pos, info = conditionExp._1.info, ast.NoTrafos)

@@ -7,11 +7,10 @@
 package viper.silicon.rules
 
 import viper.silicon
-import viper.silicon.debugger.DebugExp
 import viper.silicon.Config.JoinMode
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.ChunkIdentifer
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
@@ -24,7 +23,7 @@ import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, TrueLit, WeightedQuantifier}
+import viper.silver.ast.utility.Expressions
 import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, WeightedQuantifier}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
@@ -99,6 +98,15 @@ object evaluator extends EvaluationRules {
   def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
            (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
            : VerificationResult = {
+
+    if(v.decider.isPathInfeasible()){
+      if(!Expressions.isKnownWellDefined(e, Some(s.program))){
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      }
+      val sort = v.symbolConverter.toSort(e.typ)
+      val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
+      return Q(s, newVar, None, v)
+    }
 
 
     /* For debugging only */

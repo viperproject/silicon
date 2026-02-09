@@ -60,7 +60,7 @@ trait DependencyAnalyzer {
   /**
    * Adds an assertion and assumption node with the given analysis source info and dependencies to the current infeasibility node.
    */
-  def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): Unit = {}
+  def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): Unit = {}
 
   /**
    * @return the final dependency graph representing all direct and transitive dependencies
@@ -459,18 +459,14 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   /**
-   * Adds an assertion and assumption node with the given analysis source info and dependencies to the current infeasibility node.
-   * If the infeasibility node is not defined, this operation does nothing.
+   * Adds an assertion node with the given analysis source info and dependencies to the current infeasibility node.
    * The resulting assertion node is required to detect dependencies of the source statement/expression on infeasible paths.
-   * The resulting assumption node is required to ensure that unreachable statements/expressions are represented in the graph and
-   * thus taken into account by graph queries, e.g. when determining uncovered statements or computing coverage.
    */
-  override def addInfeasibilityDepToStmt(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): Unit = {
+  override def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): Unit = {
     val newAssertionNodeId = addAssertNode(False, dependencyType.assertionType, analysisSourceInfo)
     addDependency(infeasNodeId, newAssertionNodeId)
-    val newAssumptionNodeId = addAssumption(False, analysisSourceInfo, dependencyType.assumptionType)
-    addDependency(infeasNodeId, newAssumptionNodeId)
   }
+
 }
 
 /**
