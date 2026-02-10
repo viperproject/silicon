@@ -497,7 +497,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
         val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
-        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
+//        THIS IS UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
+//        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
         pcs.setCurrentInfeasibilityNode(checkNode.map(_.id))
       }
