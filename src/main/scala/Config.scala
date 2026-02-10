@@ -438,7 +438,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   private val rawProverArgs: ScallopOption[String] = opt[String]("proverArgs",
     descr = (  "Command-line arguments which should be forwarded to the prover. "
              + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
-    default = None,
+    default = Some("proof=true unsat-core=true"),
     noshort = true
   )
 
@@ -699,7 +699,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableDependencyAnalysis: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysis",
     descr = "Enable dependency analysis mode",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
@@ -711,7 +711,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableInfeasibilityChecks: ScallopOption[Boolean] = opt[Boolean]("disableInfeasibilityChecks",
     descr = "Disable infeasibility checks. As a consequence all paths will be explored to the end. (Potentially) huge performance overhead!",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
