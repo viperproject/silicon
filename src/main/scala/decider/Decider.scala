@@ -290,6 +290,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), assumptionType: AssumptionType): Unit = {
+      if(isPathInfeasible()) return
+
       pathConditions.setCurrentBranchCondition(t, te)
       assume(t, Option.when(te._2.isDefined)(te._1), te._2, assumptionType)
     }
@@ -495,6 +497,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
         val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
         pcs.setCurrentInfeasibilityNode(checkNode.map(_.id))
       }

@@ -174,8 +174,8 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(conditionExp._1, DependencyType.PathCondition))
-            v1.decider.pcs.setCurrentInfeasibilityNode(elseInfeasibilityNode)
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), assumptionType)
+            v1.decider.pcs.setCurrentInfeasibilityNode(elseInfeasibilityNode)
             v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
@@ -229,8 +229,8 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
             val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(conditionExp._1, DependencyType.PathCondition))
-            v1.decider.pcs.setCurrentInfeasibilityNode(thenInfeasibilityNode)
             v1.decider.setCurrentBranchCondition(condition, conditionExp, assumptionType)
+            v1.decider.pcs.setCurrentInfeasibilityNode(thenInfeasibilityNode)
             v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)

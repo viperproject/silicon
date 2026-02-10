@@ -288,6 +288,7 @@ object executor extends ExecutionRules {
                       intermediateResult combine executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
+                        v2.decider.pcs.setCurrentInfeasibilityNode(pcs.infeasibilityNodeId)
                         v2.decider.assume(pcs.assumptions map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))), Some(pcs.assumptionExps), "Loop invariant", enforceAssumption=false, assumptionType=AssumptionType.Internal)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (!Verifier.config.disableInfeasibilityChecks() && v2.decider.checkSmoke())
@@ -352,7 +353,7 @@ object executor extends ExecutionRules {
         v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
       }
       if(Statements.introducesSmtAssumptions(stmt)){
-        v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+        v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType)
       }
       return continuation(state, v)
     }

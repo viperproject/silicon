@@ -1,0 +1,14 @@
+field f: Int
+
+
+method client(b: Bool, x: Ref)
+    requires b ==> acc(x.f)
+{
+
+    while(b)
+        invariant b ==> acc(x.f)
+    {
+        exhale acc(x.f)
+        inhale acc(x.f)
+    }
+}
