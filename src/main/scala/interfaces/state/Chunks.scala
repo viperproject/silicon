@@ -18,7 +18,7 @@ trait Chunk {
   val perm: Term
   val permExp: Option[ast.Exp]
 
-  def substitute(terms: silicon.Map[Term, Term]): Chunk
+  protected def substitute(terms: silicon.Map[Term, Term]): Chunk
 }
 
 trait ChunkIdentifer
@@ -32,7 +32,9 @@ trait GeneralChunk extends Chunk {
   protected def permPlus(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
   protected def withPerm(newPerm: Term, newPermExp: Option[ast.Exp]): GeneralChunk
 
-  def permScale(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
+  protected def permScale(perm: Term, permExp: Option[ast.Exp]): GeneralChunk
+
+  protected def substitute(terms: silicon.Map[Term, Term]): GeneralChunk
 
   val permExp: Option[ast.Exp]
 }
@@ -65,6 +67,19 @@ object GeneralChunk {
     analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), {finalPerm =>
       chunk.withPerm(finalPerm, newPermExp)},
       newPerm, analysisInfo, isExhale, createLabel=true)
+  }
+
+  def permScale(chunk: GeneralChunk, newPerm: Term, newPermExp: Option[ast.Exp], analysisInfo: AnalysisInfo, isExhale: Boolean=false): GeneralChunk = {
+    analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), {finalPerm =>
+      chunk.permScale(finalPerm, newPermExp)},
+      newPerm, analysisInfo, isExhale, createLabel=true)
+  }
+
+  def substitute(chunk: GeneralChunk, terms: silicon.Map[Term, Term], analysisInfo: AnalysisInfo, isExhale: Boolean=false): GeneralChunk = {
+    val newChunk = chunk.substitute(terms)
+    analysisInfo.decider.registerDerivedChunk[GeneralChunk](Set(chunk), {finalPerm =>
+      newChunk.withPerm(finalPerm, newChunk.permExp)},
+      newChunk.perm, analysisInfo, isExhale, createLabel=true)
   }
 }
 

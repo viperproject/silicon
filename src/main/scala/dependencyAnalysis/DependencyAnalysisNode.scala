@@ -74,9 +74,10 @@ trait GeneralAssertionNode extends DependencyAnalysisNode {
   def getAssertFailedNode(): GeneralAssertionNode
 }
 
+// this is not strictly needed anymore but storing the chunk and label node is useful for debugging purposes
 trait ChunkAnalysisInfo {
   val chunk: Chunk
-  def getChunk: Chunk = chunk
+  val labelNode: LabelNode
 }
 
 case class SimpleAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean) extends GeneralAssumptionNode {
@@ -105,11 +106,11 @@ case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSo
   override def getNodeType: String = "Inhale"
 }
 
-case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, hasFailed: Boolean = false) extends GeneralAssertionNode with ChunkAnalysisInfo {
+case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, labelNode: LabelNode, hasFailed: Boolean = false) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.toString
 
-  override def getAssertFailedNode(): GeneralAssertionNode = PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, isClosed, hasFailed=true)
+  override def getAssertFailedNode(): GeneralAssertionNode = PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, isClosed, labelNode, hasFailed=true)
 }
 
 /**

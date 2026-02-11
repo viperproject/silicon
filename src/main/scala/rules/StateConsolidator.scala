@@ -215,7 +215,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier): Option[(FunctionRecorder, Chunk, Term)] = {
     val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v)
     result.map({case (fRec, ch, snapEq) =>
-      v.decider.dependencyAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), Set(), ch)
+//      v.decider.dependencyAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), Set(), ch)
       (fRec, ch, v.decider.wrapWithDependencyAnalysisLabel(snapEq, Set(chunk1, chunk2)))})
   }
 

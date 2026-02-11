@@ -320,11 +320,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if(!Verifier.config.enableDependencyAnalysis())
         return buildChunk(perm)
 
+      val labelNodeOpt = getOrCreateAnalysisLabelNode() // if(createLabel) getOrCreateAnalysisLabelNode() else getOrCreateAnalysisLabelNode(sourceChunks)
+
       if(isExhale)
-        dependencyAnalyzer.registerExhaleChunk(sourceChunks, buildChunk, perm, analysisInfo)
+        dependencyAnalyzer.registerExhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo)
       else {
-        val labelNodeOpt = if(createLabel) getOrCreateAnalysisLabelNode() else getOrCreateAnalysisLabelNode(sourceChunks)
-        dependencyAnalyzer.registerInhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo, createLabel)
+        dependencyAnalyzer.registerInhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo)
       }
     }
 
@@ -332,10 +333,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if(!Verifier.config.enableDependencyAnalysis())
         return None
 
-      if(sourceChunks.size == 1 && sourceTerms.isEmpty){
-        val chunkInhaleNode = dependencyAnalyzer.getChunkInhaleNode(sourceChunks.head)
-        return chunkInhaleNode.map(_.labelNode)
-      }
+//      if(sourceChunks.size == 1 && sourceTerms.isEmpty){
+//        val chunkInhaleNode = dependencyAnalyzer.getChunkNode(sourceChunks.head)
+//        return chunkInhaleNode.map(_.labelNode)
+//      }
       val (label, _) = fresh(ast.LocalVar(DependencyAnalyzer.analysisLabelName, ast.Bool)())
       val labelNode = dependencyAnalyzer.createLabelNode(label, sourceChunks, sourceTerms)
       val smtLabel = DependencyAnalyzer.createAssumptionLabel(labelNode.map(_.id))
