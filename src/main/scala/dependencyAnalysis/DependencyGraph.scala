@@ -225,7 +225,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   private def exportEdges(fileName: String): Unit = {
     val writer = new PrintWriter(fileName)
     writer.println("source,target,label")
-    edges foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",direct")))
+    getAllEdges foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",direct")))
     writer.close()
   }
 
