@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyType}
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyType, ExpAnalysisSourceInfo}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
@@ -373,7 +373,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
 
       // Produce the wand's LHS.
+      val prevForcedSource = v.decider.analysisSourceInfoStack.getForcedSource
+      v.decider.analysisSourceInfoStack.setForcedSource(ExpAnalysisSourceInfo(wand.left, wand.left.pos), dependencyType)
       produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1, dependencyType.assumptionType)((sLhs, v2) => {
+        v.decider.analysisSourceInfoStack.setForcedSource(prevForcedSource)
         val proofScriptCfg = proofScript.toCfg()
         val emptyHeap = v2.heapSupporter.getEmptyHeap(sLhs.program)
 
