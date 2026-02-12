@@ -68,12 +68,12 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
-          val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(ce.condition.info)
-          eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, condNew, v1) =>
+          val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(ce.condition.info).getOrElse(DependencyType.PathCondition)
+          eval(s1, ce.condition, IfFailed(ce.condition), v, Some(dependencyType))((s2, tCond, condNew, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
-            brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1, dependencyType.map(_.assumptionType).getOrElse(AssumptionType.PathCondition))(
+            brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1, dependencyType.assumptionType)(
               (s3, v3) =>
                 exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
                   v4.symbExLog.closeScope(sepIdentifier)
@@ -149,7 +149,7 @@ object executor extends ExecutionRules {
 
         val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(cedge1.condition.info).getOrElse(DependencyType.PathCondition)
 
-        eval(s, cedge1.condition, pvef(cedge1.condition), v)((s1, t0, condNew, v1) =>
+        eval(s, cedge1.condition, pvef(cedge1.condition), v, Some(dependencyType))((s1, t0, condNew, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, dependencyType.assumptionType, resetState = false)((s2, v2, QB) => {
             brancher.branch(s2, t0, (cedge1.condition, condNew), v2, dependencyType.assumptionType)(
@@ -183,9 +183,9 @@ object executor extends ExecutionRules {
         if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)() =>
         val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-        val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(thenEdge.condition.info)
-        val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, eCondNew, v1) =>
-          brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1, dependencyType.map(_.assumptionType).getOrElse(AssumptionType.PathCondition))(
+        val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(thenEdge.condition.info).getOrElse(DependencyType.PathCondition)
+        val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v, Some(dependencyType))((s2, tCond, eCondNew, v1) =>
+          brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1, dependencyType.assumptionType)(
             (s3, v3) => {
               follow(s3, thenEdge, v3, joinPoint)(Q)
             },
@@ -301,7 +301,7 @@ object executor extends ExecutionRules {
                                 case (result, _) if !result.continueVerification => result
                                 case (intermediateResult, eCond) =>
                                   intermediateResult combine executionFlowController.locally(s4, v3)((s5, v4) => {
-                                    eval(s5, eCond, WhileFailed(eCond), v4)((_, _, _, _) =>
+                                    eval(s5, eCond, WhileFailed(eCond), v4, Some(DependencyAnalyzer.extractDependencyTypeFromInfo(eCond.info).getOrElse(DependencyType.PathCondition)))((_, _, _, _) =>
                                       Success())
                                   })
                               }

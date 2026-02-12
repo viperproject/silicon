@@ -3,17 +3,17 @@ package viper.silicon.dependencyAnalysis
 
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
-  val Explicit, LoopInvariant, PathCondition, Rewrite, SourceCode, DomainAxiom, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, MethodCall, FunctionBody, Precondition = Value
+  val Explicit, LoopInvariant, PathCondition, Rewrite, SourceCode, DomainAxiom, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, MethodCall, FunctionBody, Precondition, Unknown = Value
 
   def fromString(s: String): Option[Value] = values.find(_.toString == s)
 
-  def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition, DomainAxiom)
+  def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition)
   def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition) // used to join graphs via postconditions
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger) // will always be hidden from user
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
-  def verificationAnnotationTypes: Set[AssumptionType] = Set(LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, Precondition, Explicit)
-  def sourceCodeTypes: Set[AssumptionType] = Set(SourceCode, PathCondition, MethodCall, FunctionBody)
+  def verificationAnnotationTypes: Set[AssumptionType] = Set(LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, Precondition, Explicit, DomainAxiom)
+  def sourceCodeTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes ++ explicitAssertionTypes ++ verificationAnnotationTypes ++ internalTypes)
   def methodCallTypes: Set[AssumptionType] = Set(MethodCall) // used to join graphs via postconditions
 }
 
@@ -47,14 +47,12 @@ object DependencyType {
       case _: ast.Exhale | _: ast.Assert => ExplicitAssertion
       case _: ast.Inhale | _: ast.Assume => ExplicitAssumption
       case _: ast.Fold | _: ast.Unfold | _: ast.Package | _: ast.Apply => Rewrite
-      case _: ast.Quasihavoc | _: ast.Quasihavocall => Implicit
-      case _ => Implicit /* TODO: should not happen */
+      case _: ast.Quasihavoc | _: ast.Quasihavocall => DependencyType.Implicit
+      case _ => DependencyType.make(Unknown) /* TODO: should not happen */
     }
   }
 
   def get(exp: ast.Exp, dependencyType: DependencyType): DependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(exp.info).getOrElse(dependencyType)
-
-  def get(exp: ast.Exp): DependencyType = get(exp, Implicit)
 
 }
 

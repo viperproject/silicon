@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, DependencyAnalyzer, DependencyType}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
@@ -47,11 +47,13 @@ object brancher extends BranchingRules {
             : VerificationResult = {
 
     if(v.decider.isPathInfeasible()){
+      val analysisSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
+      v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(analysisSourceInfo, DependencyAnalyzer.extractDependencyTypeFromInfo(conditionExp._1.info).getOrElse(DependencyType.PathCondition))
       if(!Expressions.isKnownWellDefined(conditionExp._1, Some(s.program))){
         v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
       }
       v.decider.dependencyAnalyzer.addAssumption(condition, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType)
-
+      v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(analysisSourceInfo)
       return fThen(s, v).combine(fElse(s, v))
     }
 

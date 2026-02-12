@@ -111,9 +111,12 @@ case class AnalysisSourceInfoStack() extends SourceInfoStack {
 
   override def getAssertionType: AssumptionType = getDependencyType.assertionType
 
-  override def getDependencyType: DependencyType = forcedMainSource match {
-    case Some(value) => value._2
-    case None => sourceInfos.lastOption.map(_._2).getOrElse(DependencyType.Implicit)
+  override def getDependencyType: DependencyType = {
+    if(!Verifier.config.enableDependencyAnalysis()) return DependencyType.make(AssumptionType.Unknown)
+    forcedMainSource match {
+      case Some(value) => value._2
+      case None => sourceInfos.lastOption.map(_._2).getOrElse(DependencyType.make(AssumptionType.Unknown))
+    }
   }
 
 }

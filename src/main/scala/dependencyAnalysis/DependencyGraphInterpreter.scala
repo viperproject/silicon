@@ -231,8 +231,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source.getTopLevelSource)
 
     val coveredSourceCodeNodes = coveredNodes.map(_.source.getTopLevelSource).intersect(allSourceCodeNodes)
-//    println(s"Covered:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
-//    println(s"Uncovered:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
+//    println(s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
+//    println(s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
     println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
     coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
   }
@@ -319,7 +319,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     val specQuality = computeSpecQuality(assertionDeps.flatMap(_._1).toSet)
 
-    val assertionQualities = assertionDeps map (ass => (computeAssertionQuality(ass._1), ass._2)) filterNot (n => isNaN(n._1))
+    val assertionQualities = assertionDeps filterNot (_._1.isEmpty) map (ass => (computeAssertionQuality(ass._1), ass._2)) filterNot (n => isNaN(n._1))
     val numAssertions = assertionQualities.size
     val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
     val numFullyVerifiedAssertions = fullyVerifiedAssertions.size

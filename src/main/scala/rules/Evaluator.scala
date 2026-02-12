@@ -42,7 +42,7 @@ trait EvaluationRules extends SymbolicExecutionRules {
            (Q: (State, List[Term], Option[List[ast.Exp]], Verifier) => VerificationResult)
            : VerificationResult
 
-  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, dependencyType: Option[DependencyType]=None)
           (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
           : VerificationResult
 
@@ -82,13 +82,13 @@ object evaluator extends EvaluationRules {
 
   /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   @inline
-  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, dependencyType: Option[DependencyType]=None)
           (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
           : VerificationResult = {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
     val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(e)
-    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(e))
+    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, dependencyType.getOrElse(v.decider.analysisSourceInfoStack.getDependencyType))
     eval3(s, e, pve, v)((s1, t, eNew, v1) => {
       v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
       v1.symbExLog.closeScope(sepIdentifier)
