@@ -1,9 +1,8 @@
 package viper.silicon.biabduction
 
 import viper.silicon.interfaces._
-import viper.silicon.rules.producer.produces
 import viper.silicon.rules.{evaluator, executionFlowController, executor, producer}
-import viper.silicon.state.terms.{False, Term, True}
+import viper.silicon.state.terms.Term
 import viper.silicon.state.{Heap, State}
 import viper.silicon.utils.ast.BigAnd
 import viper.silicon.utils.freshSnap
@@ -12,7 +11,7 @@ import viper.silver.ast._
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
 import viper.silver.cfg.{ConditionalEdge, Edge, LoopHeadBlock}
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.{ContractNotWellformed, Internal}
+import viper.silver.verifier.errors.Internal
 
 // Many things are either in relation to the current loop iteration (which we call relative) or the total state/the state
 // before the loop (which we call absolute).

@@ -48,7 +48,7 @@ object AbstractionFold extends AbstractionRule {
             } {
               (s2, v2) => Q(Some(q.copy(s = s2, v = v2)))
             } {
-              f =>
+              _ =>
                 checkChunks(rest, q)(Q)
             }
         }

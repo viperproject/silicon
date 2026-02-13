@@ -213,6 +213,7 @@ object AbductionFold extends AbductionRule {
   }
 }
 
+// TODO nklose: this is wrong if we only succeed on some branches. We need to branch and fail on some branches accordingly.
 object AbductionUnfold extends AbductionRule {
 
   private def checkPredicates(pres: Seq[PredicateAccess], q: AbductionQuestion, goal: FieldAccess)(Q: Option[(PredicateAccess, BasicChunk, Seq[Exp])] => VerificationResult): VerificationResult = {
@@ -237,6 +238,7 @@ object AbductionUnfold extends AbductionRule {
                     Success()
                 }
             }
+
             tryUnfold match {
               case _: NonFatalResult => Q(Some(pred, predChunk, Seq()))
               case _: FatalResult =>

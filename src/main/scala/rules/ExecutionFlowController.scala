@@ -12,7 +12,6 @@ import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.state.State
 import viper.silicon.supporters.AnnotationSupporter
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
 
 trait ExecutionFlowRules extends SymbolicExecutionRules {
   def locallyWithResult[R](s: State, v: Verifier)

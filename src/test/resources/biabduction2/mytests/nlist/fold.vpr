@@ -12,16 +12,16 @@ method test(x: Ref)
 {
 }
 */
-/*
+
 method test(x: Ref)
-    //requires acc(x.next)
-    //requires list(x.next)
+    requires acc(x.next)
+    requires list(x.next)
 {
     assert list(x)
 }
-*/
 
 
+/*
 method test(x: Ref, y: Ref)
 //requires acc(x.next) && acc(x.next.next)
 //requires list(y)
@@ -29,7 +29,7 @@ method test(x: Ref, y: Ref)
 {
     x.next.next := y
     assert list(x)
-}
+}*/
 
 
 /*

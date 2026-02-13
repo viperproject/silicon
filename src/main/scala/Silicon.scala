@@ -6,27 +6,26 @@
 
 package viper.silicon
 
-import java.text.SimpleDateFormat
-import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
-import scala.collection.immutable.ArraySeq
-import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-import viper.silver.ast
-import viper.silver.frontend.{DefaultStates, MinimalViperFrontendAPI, SilFrontend, ViperFrontendAPI}
-import viper.silver.reporter._
-import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.verifier.DefaultMainVerifier
-import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
+import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
+import viper.silver.frontend.{DefaultStates, MinimalViperFrontendAPI, SilFrontend, ViperFrontendAPI}
 import viper.silver.logger.ViperStdOutLogger
+import viper.silver.reporter._
 import viper.silver.utility.FileProgramSubmitter
+import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 
-import scala.util.chaining._
+import java.text.SimpleDateFormat
+import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
+import scala.collection.immutable.ArraySeq
+import scala.util.{Left, Right}
 
 object Silicon {
   val name = BuildInfo.projectName

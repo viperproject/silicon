@@ -9,18 +9,16 @@ package viper.silicon.verifier
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import viper.silicon.Config.StateConsolidationMode
-import viper.silver.components.StatefulComponent
-import viper.silicon.{utils, _}
 import viper.silicon.decider.{DefaultDeciderProvider, TermToSMTLib2Converter}
 import viper.silicon.logger.{MemberSymbExLogger, NoopMemberSymbExLog}
+import viper.silicon.reporting.DefaultStateFormatter
+import viper.silicon.rules._
 import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
-import viper.silicon.reporting.DefaultStateFormatter
-import viper.silicon.rules.{DefaultStateConsolidator, LastRetryFailOnlyStateConsolidator, LastRetryStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingFailOnlyStateConsolidator, RetryingStateConsolidator, StateConsolidationRules}
 import viper.silicon.utils.Counter
-import viper.silver.ast
-import viper.silver.reporter.AnnotationWarning
+import viper.silicon.{utils, _}
+import viper.silver.components.StatefulComponent
 
 import scala.collection.mutable
 

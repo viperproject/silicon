@@ -8,7 +8,6 @@ package viper.silicon.state
 
 import viper.silicon.Config.JoinMode
 import viper.silicon.Config.JoinMode.JoinMode
-import viper.silicon.biabduction.BiAbductionResult
 import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable

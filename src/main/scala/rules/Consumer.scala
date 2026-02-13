@@ -7,7 +7,6 @@
 package viper.silicon.rules
 
 import viper.silicon.Config.JoinMode
-import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._

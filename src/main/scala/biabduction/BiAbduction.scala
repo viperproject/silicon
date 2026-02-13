@@ -352,7 +352,7 @@ object BiAbductionSolver {
         case Some(t: Stmt) if t == abductionUtils.dummyEndStmt =>
           val newBody = addToInnerBody(body, finalStmt)
           val infPos = LineColumnPosition(m.pos.asInstanceOf[SourcePosition].end.get.line, m.pos.asInstanceOf[SourcePosition].end.get.column)
-          val infRes = finalStmt.map(stmt => InferenceResult(infPos, infPos, stmt.toString() + "\n"))
+          val infRes = finalStmt.map(stmt => "  " + InferenceResult(infPos, infPos, stmt.toString() + "\n"))
           (newBody, infRes)
 
         case Some(t: Stmt) if abductionUtils.isEndOfLoopStmt(t) =>
@@ -362,7 +362,7 @@ object BiAbductionSolver {
           val newBody = body.transform { case stmt if stmt == loop => newLoop }
 
           val infPos = LineColumnPosition(loop.pos.asInstanceOf[SourcePosition].end.get.line, loop.pos.asInstanceOf[SourcePosition].end.get.column)
-          val infRes = finalStmt.map(stmt => InferenceResult(infPos, infPos, stmt.toString() + "\n"))
+          val infRes = finalStmt.map(stmt => "  " + InferenceResult(infPos, infPos, stmt.toString() + "\n"))
           (newBody, infRes)
 
         case Some(t: Stmt) =>
@@ -370,12 +370,12 @@ object BiAbductionSolver {
             case stmt: Stmt if stmt == t && stmt.pos == t.pos =>
               Seqn(finalStmt :+ t, Seq())(t.pos, t.info, t.errT)
           }
-          val infPos = LineColumnPosition(t.pos.asInstanceOf[SourcePosition].start.line, t.pos.asInstanceOf[SourcePosition].start.column)
-          val infRes = finalStmt.map(stmt => InferenceResult(infPos, infPos, stmt.toString() + "\n"))
+          val col = t.pos.asInstanceOf[SourcePosition].start.column
+          val infPos = LineColumnPosition(t.pos.asInstanceOf[SourcePosition].start.line, col)
+          val infRes = finalStmt.map(stmt => InferenceResult(infPos, infPos, stmt.toString() + "\n" + " ".repeat(col)))
           (newBody, infRes)
 
         case Some(e: Exp) =>
-
           val t = body.collectFirst {
             case ifStmt: If if ifStmt.cond == e && ifStmt.cond.pos == e.pos => ifStmt
             case whileStmt: While if whileStmt.cond == e && whileStmt.cond.pos == e.pos => whileStmt
@@ -383,8 +383,9 @@ object BiAbductionSolver {
           val newBody = body.transform {
             case t1: Stmt if t==t1 => Seqn(abdRes.stmts :+ t1, Seq())(t1.pos, t1.info, t1.errT)
           }
-          val infPos = LineColumnPosition(t.pos.asInstanceOf[SourcePosition].start.line, t.pos.asInstanceOf[SourcePosition].start.column)
-          val infRes = abdRes.stmts.map(stmt => InferenceResult(infPos, infPos, stmt.toString() + "\n"))
+          val col = t.pos.asInstanceOf[SourcePosition].start.column
+          val infPos = LineColumnPosition(t.pos.asInstanceOf[SourcePosition].start.line, col)
+          val infRes = abdRes.stmts.map(stmt => InferenceResult(infPos, infPos, stmt.toString() + "\n" + " ".repeat(col)))
           (newBody, infRes)
       }
 
