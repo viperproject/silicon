@@ -48,6 +48,7 @@ trait SourceInfoStack {
 case class AnalysisSourceInfoStack() extends SourceInfoStack {
   private var sourceInfos: List[(AnalysisSourceInfo, DependencyType)] = List.empty
   private var forcedMainSource: Option[(AnalysisSourceInfo, DependencyType)] = None
+  var isJoinRelevantAssumption: Boolean = false
 
   override def getAnalysisSourceInfos: List[(AnalysisSourceInfo, DependencyType)] = sourceInfos
 

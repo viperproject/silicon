@@ -31,7 +31,7 @@ trait DependencyAnalyzer {
   def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit
   def addAssertionNode(node: GeneralAssertionNode): Unit
   def addAssumptionNode(node: GeneralAssumptionNode): Unit
-  def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int]
+  def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isJoinNode: Boolean, description: Option[String] = None): Option[Int]
   def addAxiom(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int]
   def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNode: Option[LabelNode], analysisInfo: AnalysisInfo): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo): CH = buildChunk(perm)
@@ -208,7 +208,7 @@ object DependencyAnalyzer {
     // postconditions of methods assumed by every method call should depend on the assertions that justify them
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
     val relevantAssumptionNodes = joinCandidateNodes
-      .filter(node => node.isInstanceOf[GeneralAssumptionNode] && AssumptionType.methodCallTypes.contains(node.assumptionType))
+      .filter(node => node.isInstanceOf[GeneralAssumptionNode] && node.asInstanceOf[GeneralAssumptionNode].isJoinNode)
       .groupBy(_.sourceInfo.getFineGrainedSource)
       .view.mapValues(_.map(_.id))
       .toMap
@@ -262,8 +262,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def addAssertionNode(node: GeneralAssertionNode): Unit = dependencyGraph.addAssertionNode(node)
 
   // adding assumption nodes
-  override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_)
+  override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isJoinNode: Boolean, description: Option[String]): Option[Int] = {
+    val node = SimpleAssumptionNode(assumption, description, analysisSourceInfo, assumptionType, isClosed_, isJoinNode)
     addAssumptionNode(node)
     Some(node.id)
   }
@@ -290,7 +290,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
-    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, labelNode)
+    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, labelNode, isJoinNode=analysisInfo.isJoinNode)
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
 //    addPermissionDependencies(sourceChunks, Set(), chunkNode) TODO ake: can be removed
@@ -298,8 +298,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     chunk
   }
 
-  private def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, labelNode: LabelNode): Option[Int] = {
-    val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, labelNode)
+  private def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, labelNode: LabelNode, isJoinNode: Boolean): Option[Int] = {
+    val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, labelNode, isJoinNode)
     addAssumptionNode(node)
     Some(node.id)
   }
@@ -388,7 +388,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
-    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, AnalysisSourceInfo.createAnalysisSourceInfo(e), AssumptionType.Precondition, None))
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, AnalysisSourceInfo.createAnalysisSourceInfo(e), AssumptionType.Precondition, isJoinNode=false, None))
     val targetNodes = targetExps.flatMap(e => addAssertNode(True, AssumptionType.ExplicitPostcondition, AnalysisSourceInfo.createAnalysisSourceInfo(e)))
     dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
@@ -434,10 +434,10 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       nodeMap.put(n.id, n.id)
       mergedGraph.addAssumptionNode(n)
     }
-    val assumptionNodesBySource = dependencyGraph.getAssumptionNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType))
-    assumptionNodesBySource foreach { case ((sourceInfo, assumptionType), assumptionNodes) =>
+    val assumptionNodesBySource = dependencyGraph.getAssumptionNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType, n.isJoinNode))
+    assumptionNodesBySource foreach { case ((sourceInfo, assumptionType, isJoinNode), assumptionNodes) =>
       if (assumptionNodes.nonEmpty) {
-        val newNode = SimpleAssumptionNode(True, None, sourceInfo, assumptionType, isClosed = false)
+        val newNode = SimpleAssumptionNode(True, None, sourceInfo, assumptionType, isClosed = false, isJoinNode=isJoinNode)
         assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addAssumptionNode(newNode)
       }
@@ -487,7 +487,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {}
   override def addAssertionNode(node: GeneralAssertionNode): Unit = {}
   override def addAssumptionNode(node: GeneralAssumptionNode): Unit = {}
-  override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String] = None): Option[Int] = None
+  override def addAssumption(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isJoinNode: Boolean, description: Option[String] = None): Option[Int] = None
   override def addAxiom(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = None
   override def createLabelNode(labelTerm: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = None
 

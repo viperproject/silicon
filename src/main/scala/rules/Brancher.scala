@@ -52,7 +52,7 @@ object brancher extends BranchingRules {
       if(!Expressions.isKnownWellDefined(conditionExp._1, Some(s.program))){
         v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
       }
-      v.decider.dependencyAnalyzer.addAssumption(condition, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType)
+      v.decider.dependencyAnalyzer.addAssumption(condition, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=false)
       v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(analysisSourceInfo)
       return fThen(s, v).combine(fElse(s, v))
     }

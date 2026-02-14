@@ -31,7 +31,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def getJoinCandidateNodes: Iterable[DependencyAnalysisNode] = joinCandidateNodes
 
-  protected lazy val joinCandidateNodes: Seq[DependencyAnalysisNode] = dependencyGraph.getNodes.filter(node => node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType) || AssumptionType.methodCallTypes.contains(node.assumptionType))
+  protected lazy val joinCandidateNodes: Seq[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.filter(node => AssumptionType.joinConditionTypes.contains(node.assumptionType)) ++
+    dependencyGraph.getAssumptionNodes.filter(node => node.isJoinNode || node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
   
   private def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
   

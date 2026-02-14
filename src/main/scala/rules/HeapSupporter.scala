@@ -189,7 +189,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
   : VerificationResult = {
     if(v.decider.isPathInfeasible()){
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
-      v.decider.dependencyAnalyzer.addAssumption(False, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType)
+      v.decider.dependencyAnalyzer.addAssumption(False, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=false)
       return Q(s, v)
     }
 

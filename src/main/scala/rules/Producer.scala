@@ -216,7 +216,7 @@ object producer extends ProductionRules {
       if(!Expressions.isKnownWellDefined(a, Some(s.program))){
         v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
       }
-      v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType)
+      v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=false)
 
       return Q(s, v)
     }
@@ -235,7 +235,7 @@ object producer extends ProductionRules {
                          _assumptionType: AssumptionType)
                         (continuation: (State, Verifier) => VerificationResult)
                         : VerificationResult = {
-    val assumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(a.info).getOrElse(_assumptionType)
+    val assumptionType = _assumptionType
     v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
 

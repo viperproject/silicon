@@ -59,7 +59,7 @@ object DependencyType {
 case class DependencyType(assumptionType: AssumptionType, assertionType: AssumptionType)
 
 case class AnalysisInfo(decider: Decider, dependencyAnalyzer: DependencyAnalyzer, sourceInfo: AnalysisSourceInfo,
-                        assumptionType: AssumptionType) {
+                        assumptionType: AssumptionType, isJoinNode: Boolean) {
   def withAssumptionType(newAssumptionType: AssumptionType): AnalysisInfo = {
     copy(assumptionType=newAssumptionType)
   }

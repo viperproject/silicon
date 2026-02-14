@@ -168,7 +168,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       analysisSourceInfoStack = AnalysisSourceInfoStack()
     }
 
-    def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, dependencyAnalyzer, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+    def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, dependencyAnalyzer, analysisSourceInfoStack.getFullSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantAssumption)
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -387,7 +387,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, _) =>
-        val assumptionId: Option[Int] = dependencyAnalyzer.addAssumption(t, analysisSourceInfo, assumptionType)
+        val assumptionId: Option[Int] = dependencyAnalyzer.addAssumption(t, analysisSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantAssumption)
         (t, DependencyAnalyzer.createAssumptionLabel(assumptionId))
       }
 
@@ -423,7 +423,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private def addAssumptionLabels(filteredTerms: Iterable[Term], assumptionType: AssumptionType) = {
       filteredTerms map (t => {
-        val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
+        val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantAssumption)
         (t, DependencyAnalyzer.createAssumptionLabel(assumptionIds))
       })
     }
