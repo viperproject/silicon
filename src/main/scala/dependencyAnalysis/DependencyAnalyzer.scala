@@ -1,7 +1,7 @@
 package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.DependencyAnalyzer.{runtimeOverheadPermissionNodes, startTimeMeasurement, stopTimeMeasurementAndAddToTotal, timeToProcessUnsatCore}
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer.{runtimeOverheadPermissionNodes, startTimeMeasurement, stopTimeMeasurementAndAddToTotal, timeToAddTransitiveEdges, timeToMergeNodes, timeToProcessUnsatCore, timeToRemoveInternalNodes}
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
@@ -83,6 +83,9 @@ object DependencyAnalyzer {
   val runtimeOverheadPermissionNodes: AtomicLong = new AtomicLong(0)
   val timeToExtractUnsatCore: AtomicLong = new AtomicLong(0)
   val timeToProcessUnsatCore: AtomicLong = new AtomicLong(0)
+  val timeToMergeNodes: AtomicLong = new AtomicLong(0)
+  val timeToRemoveInternalNodes: AtomicLong = new AtomicLong(0)
+  val timeToAddTransitiveEdges: AtomicLong = new AtomicLong(0)
 
   def startTimeMeasurement(): Long = {
     if(!Verifier.config.enableDependencyAnalysisProfiling()) return 0
@@ -105,6 +108,9 @@ object DependencyAnalyzer {
     println(s"    Time spent on adding explicit permission nodes: ${runtimeOverheadPermissionNodes.get() / 1e6}ms")
     println(s"    Time spent on extracting the unsat core: ${timeToExtractUnsatCore.get() / 1e6}ms")
     println(s"    Time spent on processing the unsat core: ${timeToProcessUnsatCore.get() / 1e6}ms")
+    println(s"    Time spent on merging lower-level nodes: ${timeToMergeNodes.get() / 1e6}ms")
+    println(s"    Time spent on removing internal nodes: ${timeToRemoveInternalNodes.get() / 1e6}ms")
+    println(s"    Time spent on adding transitive edges in lower-level graph: ${timeToAddTransitiveEdges.get() / 1e6}ms")
     println(s"  Postprocessing: ${timeOfPostprocessing.get() / 1e6}ms")
     println(s"    Time spent on adding nodes: ${timeToAddNodes.get() / 1e6}ms")
     println(s"    Time spent on adding edges: ${timeToAddEdges.get() / 1e6}ms")
@@ -401,10 +407,18 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    * Further, this operation removes unnecessary details from the graph by, for example, removing label nodes and merging identical nodes.
    */
   override def buildFinalGraph(): Option[DependencyGraph] = {
+    val removingNodesStart = DependencyAnalyzer.startTimeMeasurement()
     dependencyGraph.removeLabelNodes()
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(removingNodesStart, timeToRemoveInternalNodes)
+    val mergingNodesStart = DependencyAnalyzer.startTimeMeasurement()
     val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph else  buildAndGetMergedGraph()
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(mergingNodesStart, timeToMergeNodes)
+    val addingTransitiveEdgesStart = DependencyAnalyzer.startTimeMeasurement()
     mergedGraph.addTransitiveEdges()
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(addingTransitiveEdgesStart, timeToAddTransitiveEdges)
+    val removingNodesStart2 = DependencyAnalyzer.startTimeMeasurement()
     if(!Verifier.config.enableDependencyAnalysisDebugging()) mergedGraph.removeInternalNodes()
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(removingNodesStart2, timeToRemoveInternalNodes)
     Some(mergedGraph)
   }
 
