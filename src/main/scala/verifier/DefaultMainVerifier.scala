@@ -645,6 +645,8 @@ class DefaultMainVerifier(config: Config,
       result.getFullDependencyGraphInterpreter.exportGraph()
     }
 
+    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)
+
     if (Verifier.config.startDependencyAnalysisTool()) {
       val commandLineTool = new DependencyAnalysisUserTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
       commandLineTool.run()
@@ -657,6 +659,6 @@ class DefaultMainVerifier(config: Config,
       case _ =>
     }
 
-    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)
+
   }
 }

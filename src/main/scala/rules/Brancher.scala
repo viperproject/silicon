@@ -79,7 +79,7 @@ object brancher extends BranchingRules {
          skipPathFeasibilityCheck
       || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), assumptionType))
 
-    val thenInfeasibilityNode: Option[Int] = if(Verifier.config.enableDependencyAnalysis() && !executeThenBranch) {
+    val thenInfeasibilityNode: Option[Int] = if(v.decider.isDependencyAnalysisEnabled && !executeThenBranch) {
       val (_, node) = v.decider.checkAndGetInfeasibilityNode(negatedCondition, Verifier.config.checkTimeout(), assumptionType)
       node
     } else None
@@ -90,7 +90,7 @@ object brancher extends BranchingRules {
       || skipPathFeasibilityCheck
       || !v.decider.check(condition, Verifier.config.checkTimeout(), assumptionType))
 
-    val elseInfeasibilityNode: Option[Int] = if(Verifier.config.enableDependencyAnalysis() && !executeElseBranch) {
+    val elseInfeasibilityNode: Option[Int] = if(v.decider.isDependencyAnalysisEnabled && !executeElseBranch) {
       val (_, node) = v.decider.checkAndGetInfeasibilityNode(condition, Verifier.config.checkTimeout(), assumptionType)
       node
     } else None

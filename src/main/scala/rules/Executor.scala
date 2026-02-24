@@ -456,7 +456,7 @@ object executor extends ExecutionRules {
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v, getAssumptionType(AssumptionType.Explicit))((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if(Verifier.config.enableDependencyAnalysis() && a.isInstanceOf[ast.FalseLit]) {
+            if(v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) {
               val (_, node) = v1.decider.checkAndGetInfeasibilityNode(False, Verifier.config.checkTimeout(), getAssumptionType(AssumptionType.Explicit))
               v1.decider.pcs.setCurrentInfeasibilityNode(node)
             }
@@ -692,7 +692,7 @@ object executor extends ExecutionRules {
 
    private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, assumptionType: AssumptionType): (Term, Option[ast.Exp]) = {
      rhs match {
-       case _: Var | _: Literal if !Verifier.config.enableDependencyAnalysis() =>
+       case _: Var | _: Literal if !v.decider.isDependencyAnalysisEnabled =>
          (rhs, rhsExpNew)
 
        case _  =>

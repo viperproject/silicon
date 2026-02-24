@@ -124,9 +124,9 @@ object DependencyAnalyzer {
   }
 
   def extractDependencyTypeFromInfo(info: ast.Info): Option[DependencyType] = {
-    val annotation = extractAnnotationFromInfo(info, assumptionTypeAnnotationKey)
+    val annotation = Some(List.empty) // TODO ake extractAnnotationFromInfo(info, assumptionTypeAnnotationKey)
     val dependencyAnalysisInfo = info.getUniqueInfo[FrontendDependencyAnalysisInfo]
-    if(annotation.isDefined && annotation.get.nonEmpty) AssumptionType.fromString(annotation.get.head).map(DependencyType.make)
+    if(annotation.isDefined && annotation.get.nonEmpty) AssumptionType.fromString(annotation.get.head).map(DependencyType.make) // TODO ake: assumption and assertion type might not be the same!
     else if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.dependencyType
     else None
   }

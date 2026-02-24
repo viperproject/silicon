@@ -120,6 +120,7 @@ trait Decider {
   def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit
   def removeDependencyAnalyzer(): Unit
   def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo
+  def isDependencyAnalysisEnabled: Boolean
 }
 
 /*
@@ -151,6 +152,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     var dependencyAnalyzer: DependencyAnalyzer = new NoDependencyAnalyzer()
     var analysisSourceInfoStack: AnalysisSourceInfoStack = AnalysisSourceInfoStack()
+
+    def isDependencyAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
     override def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit = {
       val isAnalysisEnabled = DependencyAnalyzer.extractEnableAnalysisFromInfo(member.info).getOrElse(Verifier.config.enableDependencyAnalysis())
@@ -317,7 +320,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH = {
-      if(!Verifier.config.enableDependencyAnalysis())
+      if(!isDependencyAnalysisEnabled)
         return buildChunk(perm)
 
       val labelNodeOpt = getOrCreateAnalysisLabelNode() // if(createLabel) getOrCreateAnalysisLabelNode() else getOrCreateAnalysisLabelNode(sourceChunks)
@@ -330,7 +333,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def getOrCreateAnalysisLabelNode(sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Option[LabelNode] = {
-      if(!Verifier.config.enableDependencyAnalysis())
+      if(!isDependencyAnalysisEnabled)
         return None
 
 //      if(sourceChunks.size == 1 && sourceTerms.isEmpty){
@@ -345,7 +348,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term = {
-      if(!Verifier.config.enableDependencyAnalysis() || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
+      if(!isDependencyAnalysisEnabled || term.equals(True) || sourceChunks.size + sourceTerms.size == 0)
         return term
 
       val labelNode = getOrCreateAnalysisLabelNode(sourceChunks, sourceTerms)
@@ -548,7 +551,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val asserted = if(Verifier.config.enableDependencyAnalysis()) t.equals(True) else isKnownToBeTrue(t)
+      val asserted = if(isDependencyAnalysisEnabled) t.equals(True) else isKnownToBeTrue(t)
 
       val assertNode = if(!asserted) dependencyAnalyzer.createAssertOrCheckNode(t, assumptionType, decider.analysisSourceInfoStack.getFullSourceInfo, isCheck) else None
 
