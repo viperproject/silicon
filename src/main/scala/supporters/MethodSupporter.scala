@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType}
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
@@ -78,7 +78,15 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       }
 
       val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(method.info)
-      val postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(method.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
+      var postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(method.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
+
+      val daJoinNodeInfoOpt = method.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
+      if(daJoinNodeInfoOpt.isDefined){
+        val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
+        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
+        postConditionType = AssumptionType.CustomInternal
+        v.decider.dependencyAnalyzer.addAssertionNode(infodaJoinNodeInfo.getAssertionNode)
+      }
 
       errorsReportedSoFar.set(0)
       val result =
@@ -112,6 +120,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
 
       result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
+
+      if(daJoinNodeInfoOpt.isDefined) v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(daJoinNodeInfoOpt.get.sourceInfo)
 
       v.decider.resetProverOptions()
 

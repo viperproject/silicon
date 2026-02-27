@@ -421,7 +421,7 @@ object executor extends ExecutionRules {
         val debugExp = Option.when(withExp)(ast.NeCmp(x, ast.NullLit()())())
         val debugExpSubst = Option.when(withExp)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
         val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, stmt.pos)
-        v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst, AssumptionType.SourceCode)
+        v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst, getAssumptionType(AssumptionType.SourceCode))
 
         val eRcvr = Option.when(withExp)(Seq(x))
         val p = FullPerm
@@ -571,7 +571,7 @@ object executor extends ExecutionRules {
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             v2.decider.analysisSourceInfoStack.isJoinRelevantAssumption = true
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, getAssumptionType(AssumptionType.MethodCall))((s5, v3) => { // TODO ake: make sure the join is always made!
+            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, getAssumptionType(AssumptionType.MethodCall))((s5, v3) => {
               v3.decider.analysisSourceInfoStack.isJoinRelevantAssumption = false
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)

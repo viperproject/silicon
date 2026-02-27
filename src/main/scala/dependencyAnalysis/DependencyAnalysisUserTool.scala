@@ -41,7 +41,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
         println(infoString)
       }
     }catch {
-      case e: Exception => println(e.getMessage)
+      case e: Exception => println("Error:\n" + e.getMessage)
     }
     runInternal()
   }

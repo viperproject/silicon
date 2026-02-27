@@ -1,5 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.state.terms.True
 import viper.silver.ast
 import viper.silver.ast._
 
@@ -123,4 +124,20 @@ case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, 
   override def isAnalysisEnabled: Boolean = coarseGrainedSource.isAnalysisEnabled && fineGrainedSource.isAnalysisEnabled
 
   override def getDescription: String = coarseGrainedSource.getDescription
+}
+
+
+case class DependencyAnalysisJoinNodeInfo(sourceInfo: AnalysisSourceInfo) extends Info {
+  def getAssertionNode: GeneralAssertionNode =
+    SimpleAssertionNode(True, AssumptionType.CustomInternal, sourceInfo, isClosed=false, isJoinNode=true)
+
+  def getAssertionNode(outerSourceInfo: AnalysisSourceInfo): GeneralAssertionNode =
+    SimpleAssertionNode(True, AssumptionType.CustomInternal, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), isClosed=false, isJoinNode=true)
+
+  def getAssumptionNode(outerSourceInfo: AnalysisSourceInfo): GeneralAssumptionNode =
+    SimpleAssumptionNode(True, None, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), AssumptionType.CustomInternal, isClosed=false, isJoinNode=true)
+
+  override def comment: Seq[String] = Nil
+
+  override def isCached: Boolean = false
 }

@@ -209,7 +209,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
   def removeInternalNodes(): Unit = {
-    def filterCriteria(n: DependencyAnalysisNode) = AssumptionType.internalTypes.contains(n.assumptionType)
+    def filterCriteria(n: DependencyAnalysisNode) = AssumptionType.internalTypes.contains(n.assumptionType) && !AssumptionType.CustomInternal.equals(n.assumptionType)
 
     assumptionNodes filter filterCriteria foreach removeAllEdgesForNode
     assumptionNodes = assumptionNodes filterNot filterCriteria

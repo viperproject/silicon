@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyType}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.ChunkIdentifer
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
@@ -89,6 +89,16 @@ object evaluator extends EvaluationRules {
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
     val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(e)
     v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, dependencyType.getOrElse(v.decider.analysisSourceInfoStack.getDependencyType))
+    if(e.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].isDefined){
+      val joinNodeInfo = e.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].get
+      val currentTopLevelSource = v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource
+      val assertionNode = joinNodeInfo.getAssertionNode(currentTopLevelSource)
+      val assumptionNode = joinNodeInfo.getAssumptionNode(currentTopLevelSource)
+      v.decider.dependencyAnalyzer.addAssertionNode(assertionNode)
+      v.decider.dependencyAnalyzer.addAssumptionNode(assumptionNode)
+      v.decider.dependencyAnalyzer.addDependency(Some(assumptionNode.id), Some(assertionNode.id))
+    }
+
     eval3(s, e, pve, v)((s1, t, eNew, v1) => {
       v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
       v1.symbExLog.closeScope(sepIdentifier)
