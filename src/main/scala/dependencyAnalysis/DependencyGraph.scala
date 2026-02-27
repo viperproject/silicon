@@ -225,18 +225,19 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   private def exportEdges(fileName: String): Unit = {
     val writer = new PrintWriter(fileName)
     writer.println("source,target,label")
-    getAllEdges foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",direct")))
+    getDirectEdges foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",direct")))
+    getEdgesConnectingMethods foreach (e => e._2 foreach (s => writer.println(s.toString + "," + e._1.toString + ",interprocedural")))
     writer.close()
   }
 
   private def exportNodes(fileName: String): Unit = {
     val sep = "#"
     def getNodeExportString(node: DependencyAnalysisNode): String = {
-      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.getFineGrainedSource.toString)
+      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.getFineGrainedSource.toString, node.sourceInfo.getDescription)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
     val writer = new PrintWriter(fileName)
-    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source")
+    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source", "description")
     writer.println(headerParts.mkString(sep))
     getNodes foreach (n => writer.println(getNodeExportString(n).replace("\n", " ")))
     writer.close()

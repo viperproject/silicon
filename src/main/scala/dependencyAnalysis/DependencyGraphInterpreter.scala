@@ -6,7 +6,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{If, Stmt}
+import viper.silver.ast.{If, Program, Stmt}
 import viper.silver.dependencyAnalysis.AbstractDependencyGraphInterpreter
 
 import java.io.PrintWriter
@@ -98,11 +98,19 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
     getNonInternalAssertionNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).filter(_.hasFailed)
 
-  def exportGraph(): Unit = {
+  def exportGraph(program: ast.Program): Unit = {
     if(Verifier.config.dependencyAnalysisExportPath.isEmpty) return
     val directory = Paths.get(Verifier.config.dependencyAnalysisExportPath()).toFile
     directory.mkdir()
     dependencyGraph.exportGraph(Verifier.config.dependencyAnalysisExportPath() + "/" + name)
+    exportProgram(program, Verifier.config.dependencyAnalysisExportPath() + "/" + name)
+  }
+
+  private def exportProgram(program: Program, path: String) = {
+    // TODO ake: we should copy the original source file in order to keep the line numbering!
+    val writer = new PrintWriter(path + "/program.vpr")
+    writer.println(program.toString())
+    writer.close()
   }
 
   private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {

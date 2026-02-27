@@ -637,12 +637,13 @@ class DefaultMainVerifier(config: Config,
     val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
     val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
 
+    // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
     val result = DependencyAnalysisResult(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined"), program, dependencyGraphInterpreters)
     dependencyAnalysisResult = Some(result)
 
     if (Verifier.config.dependencyAnalysisExportPath.isDefined) {
-      result.dependencyGraphInterpreters foreach (_.exportGraph())
-      result.getFullDependencyGraphInterpreter.exportGraph()
+      result.dependencyGraphInterpreters foreach (_.exportGraph(program))
+      result.getFullDependencyGraphInterpreter.exportGraph(program)
     }
 
     DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)

@@ -9,6 +9,7 @@ object AnalysisSourceInfo {
     p match {
       case NoPosition => "???"
       case filePos: AbstractSourcePosition => filePos.file.getFileName.toString + " @ line " + filePos.line
+      case filePos: FilePosition => filePos.file.getFileName.toString + " @ line " + filePos.line
       case lineColumn: HasLineColumn => "line " + lineColumn.line.toString
       case VirtualPosition(identifier) => "label " + identifier
     }
