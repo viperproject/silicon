@@ -233,10 +233,17 @@ class DefaultMainVerifier(config: Config,
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      decider.initDependencyAnalyzer(function, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
-      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
-        .flatMap(extractAllVerificationResults)
-      decider.removeDependencyAnalyzer()
+      var results: Seq[VerificationResult] = null
+      try {
+        decider.initDependencyAnalyzer(function, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
+        results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+          .flatMap(extractAllVerificationResults)
+        decider.removeDependencyAnalyzer()
+      } catch {
+        case e : Throwable =>
+          logger error s"An exception was thrown while verifying function `${function.name}`."
+          throw e
+      }
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -245,10 +252,17 @@ class DefaultMainVerifier(config: Config,
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      decider.initDependencyAnalyzer(predicate, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
-      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
-        .flatMap(extractAllVerificationResults)
-      decider.removeDependencyAnalyzer()
+      var results: Seq[VerificationResult] = null
+      try {
+        decider.initDependencyAnalyzer(predicate, allProvers.getPreambleAnalysisNodes ++ decider.prover.getPreambleAnalysisNodes)
+        results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+          .flatMap(extractAllVerificationResults)
+        decider.removeDependencyAnalyzer()
+      } catch {
+        case e: Throwable =>
+          logger error s"An exception was thrown while verifying predicate `${predicate.name}`."
+          throw e
+      }
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -270,16 +284,22 @@ class DefaultMainVerifier(config: Config,
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
-
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
           Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          v.decider.initDependencyAnalyzer(method, allProvers.getPreambleAnalysisNodes ++ v.decider.prover.getPreambleAnalysisNodes)
-          val results = v.methodSupporter.verify(s, method)
-            .flatMap(extractAllVerificationResults)
-          v.decider.removeDependencyAnalyzer()
+          var results: Seq[VerificationResult] = null
+          try {
+            v.decider.initDependencyAnalyzer(method, allProvers.getPreambleAnalysisNodes ++ v.decider.prover.getPreambleAnalysisNodes)
+            results = v.methodSupporter.verify(s, method)
+              .flatMap(extractAllVerificationResults)
+            v.decider.removeDependencyAnalyzer()
+          } catch {
+            case e: Throwable =>
+              logger error s"An exception was thrown while verifying method `${method.name}`."
+              throw e
+          }
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -292,8 +312,16 @@ class DefaultMainVerifier(config: Config,
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val results = v.cfgSupporter.verify(s, cfg)
-            .flatMap(extractAllVerificationResults)
+
+          var results: Seq[VerificationResult] = null
+          try {
+            results = v.cfgSupporter.verify(s, cfg)
+              .flatMap(extractAllVerificationResults)
+          } catch {
+            case e: Throwable =>
+              logger error s"An exception was thrown while verifying a cfg."
+              throw e
+          }
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
