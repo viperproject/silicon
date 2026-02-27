@@ -727,6 +727,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
+    descr = "Enables UNSAT cores",
+    default = Some(false),
+    noshort = true
+  )
+
   val dependencyAnalysisPostProcessingMode: ScallopOption[Int] = opt[Int]("dependencyAnalysisPostProcessingMode",
     descr = "Postprocessing mode: 0=default, 1=disable memory footprint optimizations, 2=disable joining of graphs and all of 1 (does not compute dependencies between methods), 3=disable transitive edges and all of 2 (UNSOUND)",
     default = Some(0),

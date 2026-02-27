@@ -252,8 +252,8 @@ abstract class ProverStdIO(uniqueId: String,
   def assume(term: String, label: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    if(Verifier.config.enableDependencyAnalysis() && label.nonEmpty){
-      writeLine("(assert (! " + term + " :named " + label + "))")
+    if((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) ||  Verifier.config.enableUnsatCores()){
+      writeLine("(assert (! " + term + " :named " + (if(label.nonEmpty) label else nextProverLabel()) + "))")
     }else{
       writeLine("(assert " + term + ")")
     }
@@ -282,8 +282,8 @@ abstract class ProverStdIO(uniqueId: String,
     push()
     setTimeout(timeout)
 
-    if(Verifier.config.enableDependencyAnalysis() && label.nonEmpty){
-      writeLine("(assert (! (not " + goal + ") :named " + label + "))")
+    if((Verifier.config.enableDependencyAnalysis() && label.nonEmpty) || Verifier.config.enableUnsatCores()){
+      writeLine("(assert (! (not " + goal + ") :named " + (if(label.nonEmpty) label else nextProverLabel()) + "))")
     }else{
       writeLine("(assert (not " + goal + "))")
     }
