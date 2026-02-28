@@ -66,6 +66,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
         handleVerificationProgressQuery()
     }else if (inputParts.head.equalsIgnoreCase("progressDebug")) {
       handleVerificationProgressDEBUGQuery()
+    }else if (inputParts.head.equalsIgnoreCase("progressNaive")) {
+      handleVerificationProgressNaiveQuery()
     }else if (inputParts.head.equalsIgnoreCase("guidance") || inputParts.head.equalsIgnoreCase("guide")) {
       handleVerificationGuidanceQuery()
     }else if(inputParts.head.equalsIgnoreCase("prune")) {
@@ -176,6 +178,16 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
     println(s"Finished in ${optTime}ms")
     if(Math.abs(naiveProgressPeter - optProgressPeter) > 0.001 || Math.abs(naiveProgressLea - optProgressLea) > 0.001) println("Progress is not equal!")
+  }
+
+  private def handleVerificationProgressNaiveQuery(): Unit = {
+    if(verificationErrors.nonEmpty) println(s"Fix verification failures first!")
+
+    val ((naiveProgressPeter, naiveProgressLea, naiveInfo), naiveTime) = measureTime(fullGraphInterpreter.computeVerificationProgressNaive())
+    //    println(s"Overall verification progress: $progress")
+    println(s"$naiveInfo")
+    println(s"Peter: $naiveProgressPeter; Lea: $naiveProgressLea")
+    println(s"Finished in ${naiveTime}ms")
   }
 
   protected def getSourceInfoString(nodes: Set[DependencyAnalysisNode]): String = {

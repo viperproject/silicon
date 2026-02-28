@@ -78,7 +78,7 @@ trait Decider {
 
   def check(t: Term, timeout: Int): Boolean
   def check(t: Term, timeout: Int, assumptionType: AssumptionType): Boolean
-  def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType): (Boolean, Option[Int])
+  def checkSmokeAndSetInfeasibilityNode(): Unit
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
@@ -501,7 +501,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
         val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
-//        THIS IS UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
+//        THIS WOULD BE UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
 //        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
         pcs.setCurrentInfeasibilityNode(checkNode.map(_.id))
@@ -509,23 +509,22 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       result
     }
 
+    def checkSmokeAndSetInfeasibilityNode(): Unit = {
+      var infeasibilityNodeId: Option[Int] = pcs.getCurrentInfeasibilityNode
+      if(infeasibilityNodeId.isDefined) return
+
+      val (success, checkNode) = deciderAssert(False, AssumptionType.Internal, Some(Verifier.config.checkTimeout()), isCheck=true)
+      if(success){
+        infeasibilityNodeId = dependencyAnalyzer.addInfeasibilityNode(isCheck = true, analysisSourceInfoStack.getFullSourceInfo, AssumptionType.CustomInternal)
+        dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibilityNodeId)
+        pcs.setCurrentInfeasibilityNode(infeasibilityNodeId)
+      }
+    }
+
     def check(t: Term, timeout: Int): Boolean = check(t, timeout, analysisSourceInfoStack.getAssertionType)
 
     def check(t: Term, timeout: Int, assumptionType: AssumptionType): Boolean = {
       deciderAssert(t, assumptionType, Some(timeout), isCheck=true)._1
-    }
-
-    def checkAndGetInfeasibilityNode(t: Term, timeout: Int, assumptionType: AssumptionType): (Boolean, Option[Int]) = {
-      var infeasibilityNodeId: Option[Int] = pcs.getCurrentInfeasibilityNode
-      if(infeasibilityNodeId.isDefined){
-        return (true, infeasibilityNodeId)
-      }
-      val (success, checkNode) = deciderAssert(t, assumptionType, Some(timeout), isCheck=true)
-      if(success){
-        infeasibilityNodeId = dependencyAnalyzer.addInfeasibilityNode(isCheck = true, analysisSourceInfoStack.getFullSourceInfo, assumptionType)
-        dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibilityNodeId)
-      }
-      (success, infeasibilityNodeId)
     }
 
     def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)(Q:  Boolean => VerificationResult): VerificationResult = assert(t, analysisSourceInfoStack.getAssertionType, timeout)(Q)

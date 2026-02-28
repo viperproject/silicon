@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, DependencyAnalyzer, DependencyType}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
@@ -77,23 +77,14 @@ object brancher extends BranchingRules {
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), assumptionType))
-
-    val thenInfeasibilityNode: Option[Int] = if(v.decider.isDependencyAnalysisEnabled && !executeThenBranch) {
-      val (_, node) = v.decider.checkAndGetInfeasibilityNode(negatedCondition, Verifier.config.checkTimeout(), assumptionType)
-      node
-    } else None
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), AssumptionType.Internal))
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout(), assumptionType))
+      || !v.decider.check(condition, Verifier.config.checkTimeout(), AssumptionType.Internal))
 
-    val elseInfeasibilityNode: Option[Int] = if(v.decider.isDependencyAnalysisEnabled && !executeElseBranch) {
-      val (_, node) = v.decider.checkAndGetInfeasibilityNode(condition, Verifier.config.checkTimeout(), assumptionType)
-      node
-    } else None
     v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
@@ -177,7 +168,7 @@ object brancher extends BranchingRules {
             val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(conditionExp._1, DependencyType.PathCondition))
             v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), assumptionType)
-            v1.decider.pcs.setCurrentInfeasibilityNode(elseInfeasibilityNode)
+            if(v.decider.isDependencyAnalysisEnabled && !executeElseBranch) v.decider.checkSmokeAndSetInfeasibilityNode()
             v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
@@ -232,7 +223,7 @@ object brancher extends BranchingRules {
             val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(conditionExp._1)
             v1.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(conditionExp._1, DependencyType.PathCondition))
             v1.decider.setCurrentBranchCondition(condition, conditionExp, assumptionType)
-            v1.decider.pcs.setCurrentInfeasibilityNode(thenInfeasibilityNode)
+            if(v.decider.isDependencyAnalysisEnabled && !executeThenBranch) v.decider.checkSmokeAndSetInfeasibilityNode()
             v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)

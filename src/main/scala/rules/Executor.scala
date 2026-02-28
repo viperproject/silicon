@@ -456,10 +456,7 @@ object executor extends ExecutionRules {
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v, getAssumptionType(AssumptionType.Explicit))((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if(v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) {
-              val (_, node) = v1.decider.checkAndGetInfeasibilityNode(False, Verifier.config.checkTimeout(), getAssumptionType(AssumptionType.Explicit))
-              v1.decider.pcs.setCurrentInfeasibilityNode(node)
-            }
+            if(v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmokeAndSetInfeasibilityNode()
             Q(s1, v1)})
       }
 
