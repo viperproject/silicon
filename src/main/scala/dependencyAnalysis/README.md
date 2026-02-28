@@ -74,3 +74,14 @@ Importing dependency graphs to Neo4j:
    1. For a quick start, open the Explore tool and search for `label_NonInternal-(any)-label_NonInternal`. The tool presents the graph described in (ii).
    1. Some query templates, which can be imported to Neo4j, can be found in `neo4j_query_saved_cypher_2025-9-17.csv`.
 
+# Graph Importer and Stand-Alone Interpreter
+
+Once a graph has been exported, it can also be loaded and analyzed using a stand-along importer and interpreter, namely `viper.silicon.dependencyAnalysis.DependencyGraphImporter`.
+
+Example arguments:
+- `--graphFolder "C:\Users\andre\dev\viper\gobra\viperserver\silicon\graphExports\src_test_resources_dependencyAnalysisTests_viperTest" --cmds "dep 16;downDep 14;progress"`
+  - executes each of the semicolon-separated commands.
+- `--graphFolder "C:\Users\andre\dev\viper\gobra\viperserver\silicon\graphExports\src_test_resources_dependencyAnalysisTests_viperTest"`
+  - starts the interactive command line tool.
+
+Note that currently the pruning is not supported.

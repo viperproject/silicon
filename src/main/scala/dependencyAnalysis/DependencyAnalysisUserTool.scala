@@ -28,6 +28,10 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     runInternal()
   }
 
+  def run(commandStr: String): Unit = {
+    handleUserInput(commandStr)
+  }
+
   @tailrec
   private def runInternal(): Unit = {
     try {

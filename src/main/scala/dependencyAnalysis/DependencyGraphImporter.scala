@@ -12,25 +12,59 @@ import viper.silver.frontend.SilFrontend
 
 import java.nio.file.Paths
 import scala.io.Source
-import scala.io.StdIn.readLine
 
 object DependencyGraphImporter {
 
-  lazy val dummyLabelNode = LabelNode(dummyVar)
-  lazy val dummyVar = Var.actualCreate((SimpleIdentifier("a"), Bool, false))
+  lazy val dummyLabelNode: LabelNode = LabelNode(dummyVar)
+  lazy val dummyVar: Var = Var.actualCreate((SimpleIdentifier("a"), Bool, false))
   lazy val frontend: SiliconFrontend = createFrontend(Seq.empty)
 
+  /**
+   * This method processes command line arguments to import a dependency graph and execute queries on it.
+   *
+   * Expected command line arguments:
+   *  - `--graphFolder "[PATH_TO_GRAPH]"`: (Required) Specifies the path to the folder containing the dependency graph export files.
+   *  - `--cmds "[SEMICOLON_SEPARATED_LIST_OF_QUERIES]"`: (Optional) Specifies a series of commands separated by semicolons.
+   *    The supported commands correspond to the ones of the DependencyAnalysisUserTool.
+   *    If this argument is not provided, the interactive mode of the DependencyAnalysisUserTool will start instead.
+   *
+   * @throws IllegalArgumentException if the `--graphFolder` argument is not provided.
+   */
+
   def main(args: Array[String]): Unit = {
-    print("Path to graph folder: ")
-    val userInput = readLine()
-    val graph = importGraphFromCsv(userInput)
+    val graphFolder = extractGraphFolderFromArgs(args)
+    val graph = importGraphFromCsv(graphFolder)
 
     // TODO ake: doesn't fully work yet, because the exported program has a different line numbering than the program used for the analysis
-    val program = importProgram(userInput)
+    val program = importProgram(graphFolder)
 
     val interpreter = new DependencyGraphInterpreter("test", graph, List.empty, None)
     val userTool = new DependencyAnalysisUserTool(interpreter, Seq.empty, program, List.empty)
-    userTool.run()
+
+    runUserTool(args, userTool)
+  }
+
+  private def extractGraphFolderFromArgs(args: Array[String]): String = {
+    val idx = args.indexOf("--graphFolder")
+    if(0 <= idx && idx < args.length - 1)
+      args(idx + 1)
+    else
+        throw new IllegalArgumentException("Error: --graphFolder argument is required but not found.")
+  }
+
+  def runUserTool(args: Array[String], userTool: DependencyAnalysisUserTool): Unit = {
+    val cmdsIndex = args.indexOf("--cmds")
+
+    val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) args(cmdsIndex + 1).split(";").map(_.trim)
+    else Array.empty
+
+    if(cmds.isEmpty)
+      userTool.run()
+    else
+      cmds foreach {c =>
+        println(s"\n--------\nProcessing command \"$c\"...")
+        userTool.run(c)
+      }
   }
 
 
