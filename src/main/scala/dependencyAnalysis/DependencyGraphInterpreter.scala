@@ -239,44 +239,44 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source.getTopLevelSource)
 
     val coveredSourceCodeNodes = coveredNodes.map(_.source.getTopLevelSource).intersect(allSourceCodeNodes)
-    println(s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
-    println(s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
+//    println(s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
+//    println(s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
     println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
     coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
   }
-
-  var perMethodDependencyRuntime: Long = 0L
-  var depsToPostcondRuntime: Long = 0L
-  var aggregationOfSummaryNodesRuntime: Long = 0L
-  var filteringNodesRuntime: Long = 0L
+// TODO ake: remove profiling artifacts
+//  var perMethodDependencyRuntime: Long = 0L
+//  var depsToPostcondRuntime: Long = 0L
+//  var aggregationOfSummaryNodesRuntime: Long = 0L
+//  var filteringNodesRuntime: Long = 0L
 
   private lazy val sourceToAssertionNodes: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource)
 
   val deps: DAMemo[AnalysisSourceInfo, Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { assertionNode =>
-    val startFilteringNodes0 = System.nanoTime()
+//    val startFilteringNodes0 = System.nanoTime()
     val allNonInternalAssertions = sourceToAssertionNodes.getOrElse(assertionNode, Set.empty)
-    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes0)
-    val startPerMethodDeps = System.nanoTime()
+//    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes0)
+//    val startPerMethodDeps = System.nanoTime()
     val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeIntraMethodEdges=false)
-    perMethodDependencyRuntime = perMethodDependencyRuntime + (System.nanoTime() - startPerMethodDeps)
+//    perMethodDependencyRuntime = perMethodDependencyRuntime + (System.nanoTime() - startPerMethodDeps)
 
-    val startFilteringNodes1 = System.nanoTime()
+//    val startFilteringNodes1 = System.nanoTime()
     val intraMethodDependencies = intraMethodDependencyIds.flatMap(nonInternalAssumptionNodesMap.get).filter(!_.sourceInfo.getTopLevelSource.equals(assertionNode))
-    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes1)
+//    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes1)
 
     val startDepsToPostcond = System.nanoTime()
     val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethods.getOrElse(n, Set.empty))
-    depsToPostcondRuntime = depsToPostcondRuntime + (System.nanoTime() - startDepsToPostcond)
+//    depsToPostcondRuntime = depsToPostcondRuntime + (System.nanoTime() - startDepsToPostcond)
     val startFilteringNodes2 = System.nanoTime()
     val postconditionNodes = postconditionNodeIds flatMap nodesMap.get
-    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes2)
+//    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes2)
 
 
     val transDeps = postconditionNodes.map(_.sourceInfo.getTopLevelSource).diff(Set(assertionNode)) flatMap deps
 
-    val startAggregation = System.nanoTime()
+//    val startAggregation = System.nanoTime()
     val res = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ postconditionNodes) ++ transDeps)
-    aggregationOfSummaryNodesRuntime = aggregationOfSummaryNodesRuntime + (System.nanoTime() - startAggregation)
+//    aggregationOfSummaryNodesRuntime = aggregationOfSummaryNodesRuntime + (System.nanoTime() - startAggregation)
     res
   }
 
@@ -338,17 +338,17 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val proofQualityLea = assertionQualitiesSum / numAssertions.toDouble
 
     val info = {
-      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(_._2.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
-      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(_.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
+//      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(_._2.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
+//      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(_.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
       s"specQuality = $specQuality\n" +
       s"proof quality (Peter): $numFullyVerifiedAssertions / $numAssertions = $proofQualityPeter\n" +
       s"proof quality (Lea): $assertionQualitiesSum / $numAssertions = $proofQualityLea\n"
     }
 
-    println(s"Runtimes:\n\tperMethodDependencyRuntime: ${perMethodDependencyRuntime/1e6}ms\n\t" +
-    s"depsToPostcondRuntime: ${depsToPostcondRuntime/1e6}ms\n\t" +
-    s"aggregationOfSummaryNodesRuntime: ${aggregationOfSummaryNodesRuntime/1e6}ms\n\t" +
-    s"filteringNodesRuntime: ${filteringNodesRuntime/1e6}ms\n\t")
+//    println(s"Runtimes:\n\tperMethodDependencyRuntime: ${perMethodDependencyRuntime/1e6}ms\n\t" +
+//    s"depsToPostcondRuntime: ${depsToPostcondRuntime/1e6}ms\n\t" +
+//    s"aggregationOfSummaryNodesRuntime: ${aggregationOfSummaryNodesRuntime/1e6}ms\n\t" +
+//    s"filteringNodesRuntime: ${filteringNodesRuntime/1e6}ms\n\t")
 
     (specQuality * proofQualityPeter, specQuality * proofQualityLea, info)
   }
