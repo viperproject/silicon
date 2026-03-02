@@ -152,8 +152,7 @@ object producer extends ProductionRules {
       val a = as.head.whenInhaling
       val pve = pves.head
 
-      val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(a)
-      v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(a, DependencyType.make(assumptionType)))
+      val sourceInfo = v.decider.pushAndGetAnalysisSourceInfo(a, Some(DependencyType.get(a, DependencyType.make(assumptionType))))
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v, assumptionType)((s1, v1) => {
           v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)

@@ -17,13 +17,13 @@ object AnalysisSourceInfo {
 
   def createAnalysisSourceInfo(exp: ast.Exp): AnalysisSourceInfo = {
     val depInfo = exp.info.getUniqueInfo[FrontendDependencyAnalysisInfo]
-    if(depInfo.isDefined) depInfo.get.createAnalysisSourceInfo()
+    if(depInfo.isDefined) depInfo.get.getAnalysisSourceInfo
     else ExpAnalysisSourceInfo(exp, exp.pos)
   }
 
   def createAnalysisSourceInfo(stmt: ast.Stmt): AnalysisSourceInfo = {
     val depInfo = stmt.info.getUniqueInfo[FrontendDependencyAnalysisInfo]
-    if(depInfo.isDefined) depInfo.get.createAnalysisSourceInfo()
+    if(depInfo.isDefined) depInfo.get.getAnalysisSourceInfo
     else StmtAnalysisSourceInfo(stmt, stmt.pos)
   }
 
@@ -125,20 +125,4 @@ case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, 
   override def isAnalysisEnabled: Boolean = coarseGrainedSource.isAnalysisEnabled && fineGrainedSource.isAnalysisEnabled
 
   override def getDescription: String = coarseGrainedSource.getDescription
-}
-
-
-case class DependencyAnalysisJoinNodeInfo(sourceInfo: AnalysisSourceInfo) extends Info {
-  def getAssertionNode: GeneralAssertionNode =
-    SimpleAssertionNode(True, AssumptionType.CustomInternal, sourceInfo, isClosed=false, isJoinNode=true)
-
-  def getAssertionNode(outerSourceInfo: AnalysisSourceInfo): GeneralAssertionNode =
-    SimpleAssertionNode(True, AssumptionType.CustomInternal, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), isClosed=false, isJoinNode=true)
-
-  def getAssumptionNode(outerSourceInfo: AnalysisSourceInfo): GeneralAssumptionNode =
-    SimpleAssumptionNode(True, None, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), AssumptionType.CustomInternal, isClosed=false, isJoinNode=true)
-
-  override def comment: Seq[String] = Nil
-
-  override def isCached: Boolean = false
 }

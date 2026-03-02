@@ -66,6 +66,8 @@ trait Decider {
   def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
   def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
   def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
+  def pushAndGetAnalysisSourceInfo(e: ast.Exp, dependencyType: Option[DependencyType]): AnalysisSourceInfo
+  def pushAndGetAnalysisSourceInfo(stmt: ast.Stmt, dependencyType: Option[DependencyType]): AnalysisSourceInfo
   def isPathInfeasible(): Boolean
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit
@@ -362,6 +364,34 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         pathConditions.addDebugExp(e)
       }
     }
+
+    def pushAndGetAnalysisSourceInfo(e: ast.Exp, dependencyType: Option[DependencyType]): AnalysisSourceInfo = {
+      val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(e)
+      pushAnalysisSourceInfo(sourceInfo, e.info, dependencyType)
+      sourceInfo
+    }
+
+    def pushAndGetAnalysisSourceInfo(stmt: ast.Stmt, dependencyType: Option[DependencyType]): AnalysisSourceInfo = {
+      val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(stmt)
+      pushAnalysisSourceInfo(sourceInfo, stmt.info, dependencyType)
+      sourceInfo
+    }
+
+    private def pushAnalysisSourceInfo(sourceInfo: AnalysisSourceInfo, info: ast.Info, dependencyType: Option[DependencyType]): Unit = {
+      analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, dependencyType.getOrElse(analysisSourceInfoStack.getDependencyType))
+      if (info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].isDefined) {
+        // add assertions and assumptions nodes that can be used for a graph join
+        val joinNodeInfo = info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].get
+        val currentTopLevelSource = analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource
+        val assertionNode = joinNodeInfo.getAssertionNode(currentTopLevelSource)
+        val assumptionNode = joinNodeInfo.getAssumptionNode(currentTopLevelSource)
+        dependencyAnalyzer.addAssertionNode(assertionNode)
+        dependencyAnalyzer.addAssumptionNode(assumptionNode)
+        dependencyAnalyzer.addDependency(Some(assumptionNode.id), Some(assertionNode.id))
+      }
+    }
+
+
 
     def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], assumptionType: AssumptionType): Unit = {
       if (finalExp.isDefined) {

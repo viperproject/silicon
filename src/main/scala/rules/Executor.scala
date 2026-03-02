@@ -335,8 +335,7 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(stmt)
-    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, DependencyType.get(stmt))
+    val sourceInfo = v.decider.pushAndGetAnalysisSourceInfo(stmt, Some(DependencyType.get(stmt)))
     exec2(s, stmt, v)((s1, v1) => {
       v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
       v1.symbExLog.closeScope(sepIdentifier)

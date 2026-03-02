@@ -87,17 +87,7 @@ object evaluator extends EvaluationRules {
           : VerificationResult = {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
-    val sourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(e)
-    v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, dependencyType.getOrElse(v.decider.analysisSourceInfoStack.getDependencyType))
-    if(e.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].isDefined){
-      val joinNodeInfo = e.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].get
-      val currentTopLevelSource = v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource
-      val assertionNode = joinNodeInfo.getAssertionNode(currentTopLevelSource)
-      val assumptionNode = joinNodeInfo.getAssumptionNode(currentTopLevelSource)
-      v.decider.dependencyAnalyzer.addAssertionNode(assertionNode)
-      v.decider.dependencyAnalyzer.addAssumptionNode(assumptionNode)
-      v.decider.dependencyAnalyzer.addDependency(Some(assumptionNode.id), Some(assertionNode.id))
-    }
+    val sourceInfo = v.decider.pushAndGetAnalysisSourceInfo(e, dependencyType)
 
     eval3(s, e, pve, v)((s1, t, eNew, v1) => {
       v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
