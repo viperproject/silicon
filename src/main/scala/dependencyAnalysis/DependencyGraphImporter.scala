@@ -55,13 +55,12 @@ object DependencyGraphImporter {
   def runUserTool(args: Array[String], userTool: DependencyAnalysisUserTool): Unit = {
     val cmdsIndex = args.indexOf("--cmds")
 
-    val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) args(cmdsIndex + 1).split(";").map(_.trim)
-    else Array.empty
+    val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) Some(args(cmdsIndex + 1).split(";").map(_.trim)) else None
 
     if(cmds.isEmpty)
       userTool.run()
     else
-      cmds foreach {c =>
+      cmds.get foreach {c =>
         println(s"\n--------\nProcessing command \"$c\"...")
         userTool.run(c)
       }

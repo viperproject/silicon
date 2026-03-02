@@ -670,7 +670,7 @@ class DefaultMainVerifier(config: Config,
     dependencyAnalysisResult = Some(result)
 
     if (Verifier.config.dependencyAnalysisExportPath.isDefined) {
-      result.dependencyGraphInterpreters foreach (_.exportGraph(program))
+//      result.dependencyGraphInterpreters foreach (_.exportGraph(program)) // comment this in to get the individual methods' graphs
       result.getFullDependencyGraphInterpreter.exportGraph(program)
     }
 
