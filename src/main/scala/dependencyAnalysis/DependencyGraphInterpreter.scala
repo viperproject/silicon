@@ -435,7 +435,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   /* returns an ordered list of (Assumption, #dependents) */
   def computeAssumptionRanking(): List[(String, Int)] = {
-    toUserLevelNodes(getExplicitAssumptionNodes).map(node => (node.toString, getAllNonInternalDependents(node.lowerLevelNodes.map(_.id)).size))
+    toUserLevelNodes(getExplicitAssumptionNodes).map(node => (node.toString, toUserLevelNodes(getAllNonInternalDependents(node.lowerLevelNodes.map(_.id))).diff(Set(node)).size))
       .toList.sortBy(_._2).reverse
   }
 
