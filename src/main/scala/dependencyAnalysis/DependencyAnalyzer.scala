@@ -1,6 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.AssumptionType.{AssumptionType, CustomInternal}
 import viper.silicon.dependencyAnalysis.DependencyAnalyzer.{runtimeOverheadPermissionNodes, startTimeMeasurement, stopTimeMeasurementAndAddToTotal, timeToAddTransitiveEdges, timeToMergeNodes, timeToProcessUnsatCore, timeToRemoveInternalNodes}
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms._
@@ -210,7 +210,8 @@ object DependencyAnalyzer {
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForFunctionJoin)
     startTime = startTimeMeasurement()
-
+    
+    val customInternalNodes = joinCandidateNodes.filter(_.assumptionType.equals(CustomInternal)).map(_.id).toSet
     // postconditions of methods assumed by every method call should depend on the assertions that justify them
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
     val relevantAssumptionNodes = joinCandidateNodes
@@ -220,7 +221,11 @@ object DependencyAnalyzer {
       .toMap
     joinCandidateNodes.filter(node => AssumptionType.postconditionTypes.contains(node.assumptionType) || node.isJoinNode)
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
-      .foreach { case (src, targets) => newGraph.addEdgesConnectingMethods(src, targets)}
+      .foreach { case (src, targets) =>
+        if (customInternalNodes.intersect(targets.toSet.union(Set(src))).isEmpty) newGraph.addEdgesConnectingMethods(src, targets)
+        else newGraph.addEdges(src, targets)
+      }
+
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForMethodJoin)
 
