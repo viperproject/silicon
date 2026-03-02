@@ -281,8 +281,16 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
       val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(function.info)
-      val postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(function.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
+      var postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(function.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
       decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
+
+      val daJoinNodeInfoOpt = function.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
+      if(daJoinNodeInfoOpt.isDefined){
+        val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
+        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
+        postConditionType = AssumptionType.CustomInternal
+        v.decider.dependencyAnalyzer.addAssertionNode(infodaJoinNodeInfo.getAssertionNode)
+      }
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
@@ -305,6 +313,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               consumes(s2, posts, false, postconditionViolated, v, DependencyType.make(postConditionType))((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
+
+      if(daJoinNodeInfoOpt.isDefined) v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(daJoinNodeInfoOpt.get.sourceInfo)
 
       data.advancePhase(recorders)
 
