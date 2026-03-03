@@ -317,7 +317,7 @@ class FunctionData(val programFunction: ast.Function,
       val allTriggers = (
            Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
-      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), AssumptionType.SourceCode)))
+      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), AssumptionType.FunctionBody)))
     })
   }
 
@@ -326,7 +326,7 @@ class FunctionData(val programFunction: ast.Function,
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
       (Forall(arguments, body, Seq(Trigger(functionApplication))),
-        Option.when(isAnalysisEnabled)((ExpAnalysisSourceInfo(programFunction.body.get, programFunction.body.get.pos), AssumptionType.SourceCode)))
+        Option.when(isAnalysisEnabled)((ExpAnalysisSourceInfo(programFunction.body.get, programFunction.body.get.pos), AssumptionType.FunctionBody)))
     }) else None
     bodyPreconditions.toSeq
   }

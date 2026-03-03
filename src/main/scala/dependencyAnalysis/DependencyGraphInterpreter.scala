@@ -440,7 +440,9 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def computeUncoveredStatements(): Int = {
-    val allSourceCodeStmts = UserLevelDependencyAnalysisNode.extractSourceCodeNodes(toUserLevelNodes(getNonInternalAssumptionNodes)).getSourceSet()
+    val allNodes = toUserLevelNodes(getNonInternalAssumptionNodes)
+    val allSourceCodeStmts = allNodes.getSourceSet().diff(UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes,
+      AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes ++ Set(AssumptionType.FunctionBody)).getSourceSet())
     val coveredSourceCodeStmts = toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(getNonInternalAssertionNodes).map(_.id))).getSourceSet()
     allSourceCodeStmts.diff(coveredSourceCodeStmts).size
   }
