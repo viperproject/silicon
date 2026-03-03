@@ -390,8 +390,9 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     val numRelevantAssertions = relevantAssertions.keySet.size.toDouble
 
+    val numAllSourceCodeStmts = coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble
     // Peter's metric
-    val specQuality  = coveredSourceCodeStmts.size.toDouble / (coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble)
+    val specQuality  = if(numAllSourceCodeStmts > 0) coveredSourceCodeStmts.size.toDouble / numAllSourceCodeStmts else 1.0
     val proofQualityPeter = if(numRelevantAssertions > 0) fullyVerifiedAssertions.size.toDouble / numRelevantAssertions else 1.0
     val verificationProgressPeter = specQuality * proofQualityPeter
 
