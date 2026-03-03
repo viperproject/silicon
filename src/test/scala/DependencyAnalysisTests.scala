@@ -80,8 +80,9 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
     val dependencyGraphInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember
     val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter
 
-    AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()
-    PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter.get).execute()
+    new AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()
+    new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter.get).execute()
+//    new PrecisionEvaluation(filePrefix, fileName, program, joinedDependencyGraphInterpreter.get).execute()
   }
 
   def executePerformanceBenchmark(filePrefix: String,
