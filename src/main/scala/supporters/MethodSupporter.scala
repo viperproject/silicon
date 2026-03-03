@@ -77,7 +77,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
-      val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(method.info)
+      val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractDependencyTypeFromInfo(method.info).map(_.assertionType)
       var postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(method.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
 
       val daJoinNodeInfoOpt = method.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
