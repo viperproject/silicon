@@ -441,11 +441,14 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def computeUncoveredStatements(): Int = {
+    val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
+    // TODO ake: once the infinite loop in the deps() function is removed, we should use this optimized version
+    val allDependencies = allAssertions.flatMap(ass => toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass))).getSourceSet()
+
     val allNodes = toUserLevelNodes(getNonInternalAssumptionNodes)
     val allSourceCodeStmts = allNodes.getSourceSet().diff(UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes,
       AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes ++ Set(AssumptionType.FunctionBody)).getSourceSet())
-    val coveredSourceCodeStmts = toUserLevelNodes(getAllNonInternalDependencies(getNodesWithIdenticalSource(getNonInternalAssertionNodes).map(_.id))).getSourceSet()
-    allSourceCodeStmts.diff(coveredSourceCodeStmts).size
+    allSourceCodeStmts.diff(allDependencies).size
   }
 }
 
