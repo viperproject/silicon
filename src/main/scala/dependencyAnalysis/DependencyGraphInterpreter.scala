@@ -238,6 +238,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
     val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source.getTopLevelSource)
 
+    if(allSourceCodeNodes.isEmpty) return 1.0
+
     val coveredSourceCodeNodes = coveredNodes.map(_.source.getTopLevelSource).intersect(allSourceCodeNodes)
 //    println(s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
 //    println(s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
@@ -332,10 +334,10 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
     val numFullyVerifiedAssertions = fullyVerifiedAssertions.size
 
-    val proofQualityPeter = numFullyVerifiedAssertions.toDouble / numAssertions.toDouble
+    val proofQualityPeter = if(numAssertions > 0) numFullyVerifiedAssertions.toDouble / numAssertions.toDouble else 1.0
 
     val assertionQualitiesSum = assertionQualities.map(_._1).sum
-    val proofQualityLea = assertionQualitiesSum / numAssertions.toDouble
+    val proofQualityLea = if(numAssertions > 0) assertionQualitiesSum / numAssertions.toDouble else 1.0
 
     val info = {
 //      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(_._2.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
