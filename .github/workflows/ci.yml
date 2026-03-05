@@ -24,7 +24,7 @@ jobs:
 
       # Checkout Silicon (note: all checkouts delete the contents of their working directory)
       - name: Checkout Silicon
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -45,7 +45,7 @@ jobs:
         # Cache path is relative to the directory in which sbt is invoked
         run: echo "SBT_OPTS=-Dsbt.global.base=sbt-cache/.sbtboot -Dsbt.boot.directory=sbt-cache/.boot -Dsbt.ivy.home=sbt-cache/.ivy" >> $GITHUB_ENV
       - name: Cache sbt
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             sbt-cache/.sbtboot
@@ -68,7 +68,7 @@ jobs:
           cp target/scala-2.13/silicon.jar .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-and-assemble
           path: |
@@ -85,12 +85,12 @@ jobs:
     steps:
       # Checkout Silicon (deletes content of working directory)
       - name: Checkout Silicon
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
       - name: Download artifacts from job test-and-assemble
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: test-and-assemble
 
