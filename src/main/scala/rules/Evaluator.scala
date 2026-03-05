@@ -1163,7 +1163,7 @@ object evaluator extends EvaluationRules {
                        oldHeaps = s3.oldHeaps + (label -> s3.h),
                        partiallyConsumedHeap = s.partiallyConsumedHeap,
                        possibleTriggers = newPossibleTriggers,
-                       isEvalInOld = false)
+                       isEvalInOld = s.isEvalInOld)
       Q(s4, t, eNew, v1)})
   }
 

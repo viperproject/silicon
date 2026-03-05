@@ -242,6 +242,7 @@ class DebugExpPrintConfiguration {
   var nodeToHierarchyLevelMap: Map[Int, Int] = Map.empty
   var isPrintAxiomsEnabled: Boolean = false
   var printInternalTermRepresentation: Boolean = false
+  var printOldHeaps: Boolean = false
 
   def setPrintHierarchyLevel(level: String): Unit ={
     printHierarchyLevel = level match {
@@ -272,11 +273,13 @@ class DebugExpPrintConfiguration {
   }
 
   override def toString: String = {
-    s"isPrintInternalEnabled = $isPrintInternalEnabled\n" +
-      s"nChildrenToShow      = $nChildrenToShow\n" +
-      s"printHierarchyLevel  = $printHierarchyLevel\n" +
-      s"hierarchy per id     = $nodeToHierarchyLevelMap\n" +
-      s"isPrintAxiomsEnabled = $isPrintAxiomsEnabled\n"
+    s"  isPrintInternalEnabled = $isPrintInternalEnabled\n" +
+      s"  nChildrenToShow        = $nChildrenToShow\n" +
+      s"  printHierarchyLevel    = $printHierarchyLevel\n" +
+      s"  hierarchy per id       = $nodeToHierarchyLevelMap\n" +
+      s"  isPrintAxiomsEnabled   = $isPrintAxiomsEnabled\n" +
+      s"  printInternalTermReps  = $printInternalTermRepresentation\n" +
+      s"  printOldHeaps          = $printOldHeaps\n"
   }
 }
 
