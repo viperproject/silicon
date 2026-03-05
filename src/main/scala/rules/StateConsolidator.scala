@@ -278,7 +278,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
 
           val debugExp = if (withExp) {
-            val (debugHeapName, debugLabel) = v.getDebugOldLabel(sn, ast.NoPosition)
+            val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
             sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
             val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(receiverExp.localVar, field)())(ast.NoPosition, ast.NoInfo, ast.NoTrafos), debugLabel)()
             val exp = ast.Forall(Seq(receiverExp), Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
@@ -296,7 +296,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
               val debugExp = if (withExp) {
-                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sn, ast.NoPosition)
+                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
                 val permExp = ast.DebugLabelledOld(ast.CurrentPerm(ast.FieldAccess(chunk.singletonRcvrExp.get, field)())(), debugLabel)()
                 sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
                 val exp = ast.PermLeCmp(permExp, ast.FullPerm()())()
@@ -311,7 +311,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
               val debugExp = if (withExp) {
                 val chunkReceiverExp = chunk.quantifiedVarExps.get.head.localVar
                 var permExp: ast.Exp = ast.CurrentPerm(ast.FieldAccess(chunkReceiverExp, field)())(chunkReceiverExp.pos, chunkReceiverExp.info, chunkReceiverExp.errT)
-                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sn, ast.NoPosition)
+                val (debugHeapName, debugLabel) = v.getDebugOldLabel(sf, ast.NoPosition)
                 sf = sf.copy(oldHeaps = sf.oldHeaps + (debugHeapName -> sf.h))
                 permExp = ast.DebugLabelledOld(permExp, debugLabel)()
                 val exp = ast.Forall(chunk.quantifiedVarExps.get, Seq(), ast.PermLeCmp(permExp, ast.FullPerm()())())()
