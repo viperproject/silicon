@@ -385,7 +385,7 @@ object executor extends ExecutionRules {
         val (tRcvr, eRcvrNew) = v.decider.fresh(x)
         val debugExp = Option.when(withExp)(ast.NeCmp(x, ast.NullLit()())())
         val debugExpSubst = Option.when(withExp)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
-        val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, stmt.pos)
+
         v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst)
 
         val eRcvr = Option.when(withExp)(Seq(x))
@@ -399,8 +399,7 @@ object executor extends ExecutionRules {
           } else {
             val fld = flds.head
             val snap = v.decider.fresh(fld.name, v.symbolConverter.toSort(fld.typ), Option.when(withExp)(extractPTypeFromExp(x)))
-            val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, fld)(), debugLabel)(stmt.pos, stmt.info, stmt.errT))
-            v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, snapExp, p, pExp, NullPartialVerificationError, false, v)((s1, v1) => {
+            v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, None, p, pExp, NullPartialVerificationError, false, v)((s1, v1) => {
               addFieldPerms(s1, flds.tail, v1)(QB)
             })
           }
@@ -409,6 +408,7 @@ object executor extends ExecutionRules {
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
         addFieldPerms(s, fields, v)((s0, v0) => {
           val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
+          val (debugHeapName, _) = v.getDebugOldLabel(s1, stmt.pos, Some(magicWandSupporter.getEvalHeap(s1)))
           val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
           v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
           Q(s2, v0)

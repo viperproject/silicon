@@ -201,13 +201,14 @@ object evaluator extends EvaluationRules {
 
       case fa: ast.FieldAccess =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, eRcvr, v1) => {
-          val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fa.pos)
-          val newFa = Option.when(withExp)({
-            if (s1.isEvalInOld) ast.FieldAccess(eRcvr.get, fa.field)(fa.pos, fa.info, fa.errT)
-            else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugLabel)(fa.pos, fa.info, fa.errT)
-          })
+
           val ve = pve dueTo InsufficientPermission(fa)
           v.heapSupporter.evalFieldAccess(s1, fa, tRcvr, eRcvr, ve, v1)((s2, snap, v2) => {
+            val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, fa.pos, Some(magicWandSupporter.getEvalHeap(s2)))
+            val newFa = Option.when(withExp)({
+              if (s1.isEvalInOld) ast.FieldAccess(eRcvr.get, fa.field)(fa.pos, fa.info, fa.errT)
+              else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugLabel)(fa.pos, fa.info, fa.errT)
+            })
             val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld)
               s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2)))
             else s2
@@ -1163,7 +1164,7 @@ object evaluator extends EvaluationRules {
                        oldHeaps = s3.oldHeaps + (label -> s3.h),
                        partiallyConsumedHeap = s.partiallyConsumedHeap,
                        possibleTriggers = newPossibleTriggers,
-                       isEvalInOld = false)
+                       isEvalInOld = s.isEvalInOld)
       Q(s4, t, eNew, v1)})
   }
 
