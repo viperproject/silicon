@@ -70,6 +70,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       handleVerificationProgressNaiveQuery()
     }else if (inputParts.head.equalsIgnoreCase("guidance") || inputParts.head.equalsIgnoreCase("guide")) {
       handleVerificationGuidanceQuery()
+    }else if (inputParts.head.equalsIgnoreCase("guideOld")) {
+      handleVerificationGuidanceOldQuery()
     }else if(inputParts.head.equalsIgnoreCase("prune")) {
       handlePruningRequest(inputParts.tail)
     }else if(inputParts.head.equalsIgnoreCase("benchmark")) {
@@ -208,21 +210,22 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   private def handleDependencyQuery(inputs: Set[String]): Unit = {
-    val queriedNodes = getQueriedNodesFromInput(inputs).filter(node => node.isInstanceOf[GeneralAssertionNode])
+    val queriedNodes = getQueriedNodesFromInput(inputs)
+    val queriedAssertions = queriedNodes.filter(node => node.isInstanceOf[GeneralAssertionNode])
 
-    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedNodes.map(_.id)))
-    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id)))
-    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id), includeInfeasibilityNodes=false))
-    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllExplicitDependencies(queriedNodes.map(_.id)))
+    val (directDependencies, timeDirect) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getDirectDependencies(queriedAssertions.map(_.id)))
+    val (allDependencies, timeAll) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id)))
+    val (allDependenciesWithoutInfeasibility, timeWithoutInfeasibility) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id), includeInfeasibilityNodes=false))
+    val (explicitDependencies, timeExplicit) = measureTime[Set[DependencyAnalysisNode]](fullGraphInterpreter.getAllExplicitDependencies(queriedAssertions.map(_.id)))
 
     println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
 
-    println(s"\nDirect Dependencies (${timeDirect}ms):\n\t${getSourceInfoString(directDependencies)}")
-    println(s"\nAll Dependencies (${timeAll}ms):\n\t${getSourceInfoString(allDependencies)}")
-    println(s"\nDependencies without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(allDependenciesWithoutInfeasibility)}")
-    println(s"\nExplicit Dependencies (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependencies)}")
+    println(s"\nDirect Dependencies (${timeDirect}ms):\n\t${getSourceInfoString(directDependencies.diff(queriedNodes))}")
+    println(s"\nAll Dependencies (${timeAll}ms):\n\t${getSourceInfoString(allDependencies.diff(queriedNodes))}")
+    println(s"\nDependencies without infeasibility (${timeWithoutInfeasibility}ms):\n\t${getSourceInfoString(allDependenciesWithoutInfeasibility.diff(queriedNodes))}")
+    println(s"\nExplicit Dependencies (${timeExplicit}ms):\n\t${getSourceInfoString(explicitDependencies.diff(queriedNodes))}")
 
-    if(queriedNodes.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
+    if(queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
     println("Done.")
   }
 
@@ -316,7 +319,22 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       return
     }
 
-    val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking().filter(_._2 > 0)
+    val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking().filter(_._2 > 0.0)
+    println(s"Assumptions and their impact on progress:\n\t${assumptionRanking.mkString("\n\t")}\n")
+
+    val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])
+      .map(mInterpreter => (mInterpreter.getMember.get.name, mInterpreter.computeUncoveredStatements()))
+      .toList.filter(_._2 > 0).sortBy(_._2).reverse
+    println(s"Methods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
+  }
+
+  def handleVerificationGuidanceOldQuery(): Unit = {
+    if(verificationErrors.nonEmpty) {
+      println(s"Fix verification failures first!")
+      return
+    }
+
+    val assumptionRanking = fullGraphInterpreter.computeAssumptionRankingOld().filter(_._2 > 0)
     println(s"Assumptions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
     val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])

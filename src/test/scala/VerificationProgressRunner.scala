@@ -17,6 +17,7 @@ object VerificationProgressRunner extends DependencyAnalysisTestFramework {
   val pathToTests: String = "src/test/resources/"
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/verificationProgress/incrRand",
+    "dependencyAnalysisTests/verificationProgress/guidanceTest",
     "dependencyAnalysisTests/verificationProgress/perms"
   )
 

@@ -435,7 +435,23 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   /* returns an ordered list of (Assumption, #dependents) */
-  def computeAssumptionRanking(): List[(String, Int)] = {
+  def computeAssumptionRanking(): List[(String, Double)] = {
+    val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
+
+    val relevantDependenciesPerAssertion = allAssertions
+      .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
+      .filter{case (_, assumptions) => assumptions.nonEmpty}
+    val numAssertions = relevantDependenciesPerAssertion.size.toDouble
+
+    val assumptionImpacts= relevantDependenciesPerAssertion.toList.flatMap { case (assertion, assumptions) =>
+      val explicitDeps = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(assumptions)
+      explicitDeps.map(node => (node, 1.0/assumptions.size/numAssertions)).toList
+    }.groupBy(_._1).map{case (assumption, impacts) => (assumption.source.getTopLevelSource.toString, impacts.map(_._2).sum)}.toList
+
+    assumptionImpacts.sortBy(_._2).reverse
+  }
+
+  def computeAssumptionRankingOld(): List[(String, Int)] = {
     toUserLevelNodes(getExplicitAssumptionNodes).map(node => (node.toString, toUserLevelNodes(getAllNonInternalDependents(node.lowerLevelNodes.map(_.id))).diff(Set(node)).size))
       .toList.sortBy(_._2).reverse
   }

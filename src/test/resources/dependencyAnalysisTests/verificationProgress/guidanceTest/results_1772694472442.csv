@@ -1,0 +1,6 @@
+File name	Progress (Peter)	Progress (Lea)	verification successful?
+p1-b-proved	0.333	0.815	true
+p1-precond-added	0.333	0.606	true
+p1-res-proved	0.500	0.625	true
+p1	0.167	0.565	true
+p2-a-proved	0.167	0.648	true
