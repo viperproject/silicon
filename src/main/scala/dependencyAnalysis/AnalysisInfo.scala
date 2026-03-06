@@ -14,6 +14,12 @@ object AssumptionType extends Enumeration {
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
   def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, Precondition, Explicit, DomainAxiom, Ghost)
   def sourceCodeTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes ++ explicitAssertionTypes ++ verificationAnnotationTypes ++ internalTypes)
+
+  def getMaxPriorityAssumptionType(types: Set[AssumptionType]): Option[AssumptionType] = {
+    val priorityList = List(ExplicitPostcondition, Explicit) ++ internalTypes.toList ++ verificationAnnotationTypes.toList ++ sourceCodeTypes.toList ++ values.toList
+    priorityList.find(t => types.contains(t))
+  }
+
 }
 
 import viper.silicon.dependencyAnalysis.AssumptionType._
@@ -53,6 +59,12 @@ object DependencyType {
   }
 
   def get(exp: ast.Exp, dependencyType: DependencyType): DependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(exp.info).getOrElse(dependencyType)
+
+  def getMaxPriorityType(types: Set[DependencyType]): Option[DependencyType] = {
+    val assumptionType = AssumptionType.getMaxPriorityAssumptionType(types.map(_.assumptionType))
+    val assertionType = AssumptionType.getMaxPriorityAssumptionType(types.map(_.assertionType))
+    if(assumptionType.isDefined && assertionType.isDefined) Some(DependencyType(assumptionType.get, assertionType.get)) else None
+  }
 
 }
 
