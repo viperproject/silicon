@@ -152,6 +152,9 @@ class FunctionData(val programFunction: ast.Function,
   lazy val postconditionType: AssumptionType = DependencyAnalyzer.extractDependencyTypeFromInfo(programFunction.info).map(_.assertionType)
     .getOrElse(if(programFunction.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
 
+  lazy val functionBodyType: AssumptionType = DependencyAnalyzer.extractDependencyTypeFromInfo(programFunction.info).map(_.assumptionType)
+    .getOrElse(AssumptionType.FunctionBody)
+
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
    */
@@ -319,7 +322,7 @@ class FunctionData(val programFunction: ast.Function,
       val allTriggers = (
            Seq(Trigger(functionApplication)) ++ actualPredicateTriggers)
 
-      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), AssumptionType.FunctionBody)))
+      (Forall(arguments, body, allTriggers), Option.when(isAnalysisEnabled)((AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), functionBodyType)))
     })
   }
 
@@ -328,7 +331,7 @@ class FunctionData(val programFunction: ast.Function,
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
       val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
       (Forall(arguments, body, Seq(Trigger(functionApplication))),
-        Option.when(isAnalysisEnabled)((ExpAnalysisSourceInfo(programFunction.body.get, programFunction.body.get.pos), AssumptionType.FunctionBody)))
+        Option.when(isAnalysisEnabled)((ExpAnalysisSourceInfo(programFunction.body.get, programFunction.body.get.pos), functionBodyType)))
     }) else None
     bodyPreconditions.toSeq
   }
