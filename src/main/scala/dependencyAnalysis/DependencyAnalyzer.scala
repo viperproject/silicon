@@ -50,7 +50,7 @@ trait DependencyAnalyzer {
    * Adds dependencies between all pairs of sourceExps and targetExps, where sourceExps should be preconditions and
    * targetExps should be postconditions of an abstract function or method.
    */
-  def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit
+  def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], postConditionType: AssumptionType = AssumptionType.ExplicitPostcondition): Unit
 
   /**
    * Adds edges connecting nodes representing function postconditions with the corresponding axiom nodes.
@@ -398,9 +398,9 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     dependencyGraph.addEdges(sourceNodes map (_.id), targetNodes map (_.id))
   }
 
-  override def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {
+  override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], postConditionType: AssumptionType = AssumptionType.ExplicitPostcondition): Unit = {
     val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, AnalysisSourceInfo.createAnalysisSourceInfo(e), AssumptionType.Precondition, isJoinNode=false, None))
-    val targetNodes = targetExps.flatMap(e => addAssertNode(True, AssumptionType.ExplicitPostcondition, AnalysisSourceInfo.createAnalysisSourceInfo(e)))
+    val targetNodes = targetExps.flatMap(e => addAssertNode(True, postConditionType, AnalysisSourceInfo.createAnalysisSourceInfo(e)))
     dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
@@ -517,7 +517,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {}
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {}
-  override def addDependenciesForExplicitPostconditions(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp]): Unit = {}
+  override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], postConditionType: AssumptionType = AssumptionType.ExplicitPostcondition): Unit = {}
   override def addFunctionAxiomEdges(): Unit = {}
 
   override def buildFinalGraph(): Option[DependencyGraph] = None

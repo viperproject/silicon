@@ -207,7 +207,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
           if (function.body.isEmpty) {
             decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
-            decider.dependencyAnalyzer.addDependenciesForExplicitPostconditions(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts))
+            decider.dependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), getPostconditionType(function))
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -245,9 +245,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val postconditionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(function.info)
-        .getOrElse(if(function.body.isDefined) ImplicitPostcondition else ExplicitPostcondition)
-
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
         produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, AssumptionType.Precondition)((s1, _) => {
@@ -257,13 +254,18 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
-          produces(s1, freshSnap, posts, ContractNotWellformed, v, postconditionType)((s2, _) => {
+          produces(s1, freshSnap, posts, ContractNotWellformed, v, getPostconditionType(function))((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 
       data.advancePhase(recorders)
 
       (result, phase1Data)
+    }
+
+    private def getPostconditionType(function: ast.Function) = {
+      DependencyAnalyzer.extractAssumptionTypeFromInfo(function.info)
+        .getOrElse(if (function.body.isDefined) ImplicitPostcondition else ExplicitPostcondition)
     }
 
     private def verify(function: ast.Function, phase1data: Seq[Phase1Data])
@@ -281,7 +283,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
       val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(function.info)
-      var postConditionType = annotatedAssumptionTypeOpt.getOrElse(if(function.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
+      var postConditionType = getPostconditionType(function)
       decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
 
       val daJoinNodeInfoOpt = function.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]

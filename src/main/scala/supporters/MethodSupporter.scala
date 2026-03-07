@@ -114,7 +114,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                       Success())})}) }  )})})
 
       if(method.body.isEmpty){
-        v.decider.dependencyAnalyzer.addDependenciesForExplicitPostconditions(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts))
+        v.decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), postConditionType)
       }
 
       val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
