@@ -20,6 +20,17 @@ object AssumptionType extends Enumeration {
     priorityList.find(t => types.contains(t))
   }
 
+  def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType]=None): AssumptionType = {
+    dependencyType.flatMap(_.assertionType match {
+      case AssumptionType.Explicit | AssumptionType.ExplicitPostcondition => Some(AssumptionType.ExplicitPostcondition)
+      case AssumptionType.Ghost | AssumptionType.ImplicitPostcondition  => Some(AssumptionType.ImplicitPostcondition)
+      case AssumptionType.Internal => Some(AssumptionType.Internal)
+      case AssumptionType.CustomInternal => Some(AssumptionType.CustomInternal)
+      case _ => None
+    }).getOrElse(
+      if(isAbstractFunction) AssumptionType.ExplicitPostcondition else AssumptionType.ImplicitPostcondition
+    )
+  }
 }
 
 import viper.silicon.dependencyAnalysis.AssumptionType._

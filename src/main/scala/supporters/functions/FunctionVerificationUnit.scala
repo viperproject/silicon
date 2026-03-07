@@ -264,8 +264,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     }
 
     private def getPostconditionType(function: ast.Function) = {
-      DependencyAnalyzer.extractAssumptionTypeFromInfo(function.info)
-        .getOrElse(if (function.body.isDefined) ImplicitPostcondition else ExplicitPostcondition)
+      AssumptionType.getPostcondType(function.body.isEmpty, DependencyAnalyzer.extractDependencyTypeFromInfo(function.info))
     }
 
     private def verify(function: ast.Function, phase1data: Seq[Phase1Data])
