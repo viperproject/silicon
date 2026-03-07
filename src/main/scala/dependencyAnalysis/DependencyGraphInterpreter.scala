@@ -255,31 +255,33 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   private lazy val sourceToAssertionNodes: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource)
 
   val deps: DAMemo[AnalysisSourceInfo, Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { assertionNode =>
-//    val startFilteringNodes0 = System.nanoTime()
-    val allNonInternalAssertions = sourceToAssertionNodes.getOrElse(assertionNode, Set.empty)
-//    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes0)
-//    val startPerMethodDeps = System.nanoTime()
-    val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeIntraMethodEdges=false)
-//    perMethodDependencyRuntime = perMethodDependencyRuntime + (System.nanoTime() - startPerMethodDeps)
+    def computeDependencies(currentNode: AnalysisSourceInfo, visited: Set[AnalysisSourceInfo]): Set[CompactUserLevelDependencyAnalysisNode] = {
+      if (visited.contains(currentNode)) {
+        return Set.empty // break cycles to avoid infinite loops
+      }
 
-//    val startFilteringNodes1 = System.nanoTime()
-    val intraMethodDependencies = intraMethodDependencyIds.flatMap(nonInternalAssumptionNodesMap.get).filter(!_.sourceInfo.getTopLevelSource.equals(assertionNode))
-//    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes1)
+      if (deps.contains(currentNode)) {
+        return deps(currentNode)
+      }
 
-    val startDepsToPostcond = System.nanoTime()
-    val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethods.getOrElse(n, Set.empty))
-//    depsToPostcondRuntime = depsToPostcondRuntime + (System.nanoTime() - startDepsToPostcond)
-    val startFilteringNodes2 = System.nanoTime()
-    val postconditionNodes = postconditionNodeIds flatMap nodesMap.get
-//    filteringNodesRuntime = filteringNodesRuntime + (System.nanoTime() - startFilteringNodes2)
+      val updatedVisited = visited + currentNode
+      val allNonInternalAssertions = sourceToAssertionNodes.getOrElse(currentNode, Set.empty)
 
+      val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeIntraMethodEdges=false)
+      val intraMethodDependencies = intraMethodDependencyIds.flatMap(nonInternalAssumptionNodesMap.get).filterNot(_.sourceInfo.getTopLevelSource.equals(currentNode))
 
-    val transDeps = postconditionNodes.map(_.sourceInfo.getTopLevelSource).diff(Set(assertionNode)) flatMap deps
+      val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethods.getOrElse(n, Set.empty))
+      val postconditionNodes = postconditionNodeIds.flatMap(nodesMap.get)
 
-//    val startAggregation = System.nanoTime()
-    val res = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ postconditionNodes) ++ transDeps)
-//    aggregationOfSummaryNodesRuntime = aggregationOfSummaryNodesRuntime + (System.nanoTime() - startAggregation)
-    res
+      val transDeps = postconditionNodes.map(_.sourceInfo.getTopLevelSource).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited))
+
+      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ postconditionNodes) ++ transDeps)
+
+      deps.put(currentNode, result)
+      result
+    }
+
+    computeDependencies(assertionNode, Set.empty)
   }
 
   private def reduceCompactUserLevelNodes(inputNodes: Set[CompactUserLevelDependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
@@ -472,7 +474,15 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
 case class DAMemo[A,B](f: A => B) extends (A => B) {
   private val cache = mutable.Map.empty[A, B]
-  def apply(x: A) = cache getOrElseUpdate (x, f(x))
+  def apply(x: A): B = cache getOrElseUpdate (x, f(x))
+
+  def put(a: A, b: B): Option[B] = {
+    cache.put(a, b)
+  }
+
+  def contains(a: A): Boolean = {
+    cache.contains(a)
+  }
 }
 
 

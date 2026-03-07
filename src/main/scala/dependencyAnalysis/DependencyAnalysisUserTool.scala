@@ -179,7 +179,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println(s"$optInfo")
     println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
     println(s"Finished in ${optTime}ms")
-    if(Math.abs(naiveProgressPeter - optProgressPeter) > 0.001 || Math.abs(naiveProgressLea - optProgressLea) > 0.001) println("Progress is not equal!")
+    if(Math.abs(naiveProgressPeter - optProgressPeter) > 0.001 || Math.abs(naiveProgressLea - optProgressLea) > 0.001) println("Fail: Progress is not equal!")
+    else println("Success: Progress is equal!")
   }
 
   private def handleVerificationProgressNaiveQuery(): Unit = {
