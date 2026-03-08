@@ -178,7 +178,7 @@ object DependencyAnalyzer {
    * The new graph is built by adding all existing nodes and edges of all input graphs and joining them via postconditions
    * of functions and methods.
    */
-  def joinGraphsAndGetInterpreter(name: String, dependencyGraphInterpreters: Iterable[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
+  def joinGraphsAndGetInterpreter(name: String, dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
     var startTime = startTimeMeasurement()
     val newGraph = new DependencyGraph
 
@@ -189,19 +189,20 @@ object DependencyAnalyzer {
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
     stopTimeMeasurementAndAddToTotal(startTime, timeToAddEdges)
     startTime = startTimeMeasurement()
-    val joinCandidateNodes = dependencyGraphInterpreters flatMap(_.getJoinCandidateNodes)
+    val joinCandidateAssertions = dependencyGraphInterpreters flatMap(i => i.joinAssertionNodes)
+    val joinCandidateAssumptions = dependencyGraphInterpreters flatMap(i => i.joinAssumptionNodes)
+    val joinCandidateAxioms = dependencyGraphInterpreters flatMap(i => i.axiomNodes)
+    val joinCandidateNodes = joinCandidateAssumptions ++ joinCandidateAssertions
     stopTimeMeasurementAndAddToTotal(startTime, timeToExtractCandidateNodes)
 
     startTime = startTimeMeasurement()
     // axioms assumed by every method / function should depend on the assertions that justify them
     // hence, we add edges from function postconditions & bodies to the corresponding axioms
-    val axiomAssertionNodes = joinCandidateNodes
-      .filter(n => (n.isInstanceOf[GeneralAssertionNode] && AssumptionType.postconditionTypes.contains(n.assumptionType))
-      || AssumptionType.FunctionBody.equals(n.assumptionType))
+    val axiomAssertionNodes = (joinCandidateAssertions ++ joinCandidateAssumptions.filter(_.assumptionType.equals(AssumptionType.FunctionBody)))
       .groupBy(_.sourceInfo.getTopLevelSource)
       .view.mapValues(_.map(_.id))
       .toMap
-    joinCandidateNodes.filter(_.isInstanceOf[AxiomAssumptionNode])
+    joinCandidateAxioms
       .groupBy(n => n.sourceInfo)
       .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo.getTopLevelSource, Seq.empty))}
       .foreach{case (axiomNodeIds, assertionNodeIds) =>
@@ -211,15 +212,15 @@ object DependencyAnalyzer {
     stopTimeMeasurementAndAddToTotal(startTime, timeForFunctionJoin)
     startTime = startTimeMeasurement()
     
-    val customInternalNodes = joinCandidateNodes.filter(_.assumptionType.equals(CustomInternal)).map(_.id).toSet
+    val customInternalNodes = joinCandidateAssumptions.filter(_.assumptionType.equals(CustomInternal)).map(_.id)
     // postconditions of methods assumed by every method call should depend on the assertions that justify them
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
-    val relevantAssumptionNodes = joinCandidateNodes
-      .filter(node => node.isInstanceOf[GeneralAssumptionNode] && node.asInstanceOf[GeneralAssumptionNode].isJoinNode)
+    val relevantAssumptionNodes = joinCandidateAssumptions
+      .filter(_.isJoinNode)
       .groupBy(_.sourceInfo.getFineGrainedSource)
       .view.mapValues(_.map(_.id))
       .toMap
-    joinCandidateNodes.filter(node => AssumptionType.postconditionTypes.contains(node.assumptionType) || node.isJoinNode)
+    joinCandidateNodes.diff(joinCandidateAxioms.toSet)
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
       .foreach { case (src, targets) =>
         if (customInternalNodes.intersect(targets.toSet.union(Set(src))).isEmpty) newGraph.addEdgesConnectingMethods(src, targets)
