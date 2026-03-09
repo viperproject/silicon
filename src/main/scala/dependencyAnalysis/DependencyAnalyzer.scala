@@ -66,6 +66,8 @@ trait DependencyAnalyzer {
    * @return the final dependency graph representing all direct and transitive dependencies
    */
   def buildFinalGraph(): Option[DependencyGraph]
+
+  def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int]
 }
 
 object DependencyAnalyzer {
@@ -356,6 +358,12 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     Some(node.id)
   }
 
+  override def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = {
+    val assertFailedNode = SimpleAssertionNode(failedAssertion, assertionType, sourceInfo, isClosed=false, hasFailed=true)
+    dependencyGraph.addNode(assertFailedNode)
+    Some(assertFailedNode.id)
+  }
+
 
   // adding dependencies
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {
@@ -514,6 +522,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
   override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = None
   override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
+  override def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = None
 
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {}
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}

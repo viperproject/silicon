@@ -211,7 +211,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
         assert(heaps.length == hs.length)
         assert(consumedChunks.length == hs.length)
         Q(s1, heaps.reverse, consumedChunks.reverse, v)
-      case Incomplete(_, _) => failure
+      case Incomplete(_, _) =>
+        if(s1.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+        if(s1.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s1, heaps.reverse, consumedChunks.reverse, v) else failure
     }
   }
 

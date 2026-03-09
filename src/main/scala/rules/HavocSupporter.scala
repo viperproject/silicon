@@ -127,7 +127,10 @@ object havocSupporter extends SymbolicExecutionRules {
         val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp, assumptionType)
         v.decider.assert(receiverInjectivityCheck) {
-          case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
+          case false =>
+            val failure = createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
+            if(s1.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(receiverInjectivityCheck, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+            if(s1.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s1, v1) else failure
           case true =>
             // Generate the inverse axioms
             val (inverseFunctions, imagesOfCodomain) = quantifiedChunkSupporter.getFreshInverseFunctions(

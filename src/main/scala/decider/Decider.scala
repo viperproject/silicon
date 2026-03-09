@@ -123,6 +123,7 @@ trait Decider {
   def removeDependencyAnalyzer(): Unit
   def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo
   def isDependencyAnalysisEnabled: Boolean
+  def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, assertionType: AssumptionType, reportFurtherErrors: Boolean): Unit
 }
 
 /*
@@ -548,6 +549,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         infeasibilityNodeId = dependencyAnalyzer.addInfeasibilityNode(isCheck = true, analysisSourceInfoStack.getFullSourceInfo, AssumptionType.CustomInternal)
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibilityNodeId)
         pcs.setCurrentInfeasibilityNode(infeasibilityNodeId)
+      }
+    }
+
+    override def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, assertionType: AssumptionType, reportFurtherErrors: Boolean): Unit = {
+      dependencyAnalyzer.addAssertionFailedNode(failedAssertion, assertionType, analysisSourceInfoStack.getFullSourceInfo)
+      if(reportFurtherErrors){
+        assume(failedAssertion, None, None, AssumptionType.Explicit)
+        failedAssertion match {
+          case False => checkSmokeAndSetInfeasibilityNode()
+          case _ =>
+        }
       }
     }
 

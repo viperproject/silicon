@@ -248,7 +248,10 @@ object evaluator extends EvaluationRules {
           lbl
         s.oldHeaps.get(heapName) match {
           case None =>
-            createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, heapName)(old.pos, old.info, old.errT)), v, s, "labelled state reached")
+            val failure = createFailure(pve dueTo LabelledStateNotReached(ast.LabelledOld(e0, heapName)(old.pos, old.info, old.errT)), v, s, "labelled state reached")
+            if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+            val freshVar = v.decider.fresh(v.symbolConverter.toSort(old.typ), None)
+            if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
           case _ =>
             evalInOldState(s, heapName, e0, pve, v)((s1, t0, _, v1) =>
               Q(s1, t0, Some(old), v1))
@@ -257,7 +260,10 @@ object evaluator extends EvaluationRules {
       case old @ ast.LabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
           case None =>
-            createFailure(pve dueTo LabelledStateNotReached(old), v, s, "labelled state reached")
+            val failure = createFailure(pve dueTo LabelledStateNotReached(old), v, s, "labelled state reached")
+            if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+            val freshVar = v.decider.fresh(v.symbolConverter.toSort(old.typ), None)
+            if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)((s1, t0, e0New, v1) =>
               Q(s1, t0, e0New.map(ast.LabelledOld(_, lbl)(old.pos, old.info, old.errT)), v1))}
@@ -578,7 +584,10 @@ object evaluator extends EvaluationRules {
             if (v1.decider.checkSmoke(isAssert = true)) {
               Unreachable()
             } else {
-              createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
+              val failure = createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
+              if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+              val freshVar = v.decider.fresh(v.symbolConverter.toSort(sourceQuant.typ), None)
+              if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
             }
         }
 
@@ -776,7 +785,10 @@ object evaluator extends EvaluationRules {
                     Q(s12, r12._1, r12._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
-                  createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}))
+                  val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
+                  if(s.retryLevel == 0) v2.decider.handleFailedAssertionForDependencyAnalysis(False, v2.decider.analysisSourceInfoStack.getAssertionType, v2.reportFurtherErrors())
+                  if(s.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2, False /* TODO ake */, None, v2) else failure
+              }))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
           val newFuncRec = s.functionRecorder.recordFreshSnapshot(unknownValue.applicable.asInstanceOf[Function])

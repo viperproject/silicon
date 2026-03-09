@@ -7,12 +7,11 @@
 package viper.silicon.rules
 
 import viper.silicon
-import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyType}
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyType}
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.CommentRecord
@@ -1054,12 +1053,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                      conservedPcs = conservedPcs,
                      smCache = smCache1)
             Q(s1, v)
-          case false => {
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
-          }
+          case false =>
+            val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver is injective")
+            if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(completeReceiverInjectivityCheck, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+            if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
       case false =>
-        createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)}
+        val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegImplication, nonNegImplicationExp)
+        if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(nonNegTerm, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+        if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
+    }
+
   }
 
   def produceSingleLocation(s: State,
@@ -1391,12 +1395,31 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     Q(s2, h3, None, v)
                   }
                 case (Incomplete(_, _), s2, _) =>
-                  createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")}
+                  val failure = createFailure(pve dueTo insufficientPermissionReason, v, s2, "QP consume")
+                  if(s2.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, dependencyType.assertionType, v.reportFurtherErrors())
+                  if(s2.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2, s2.h, None, v) else failure
+              }
             }
           case false =>
-            createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")}
+            val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")
+            if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(receiverInjectivityCheck, dependencyType.assertionType, v.reportFurtherErrors())
+            if(s.retryLevel == 0 && v.reportFurtherErrors()){
+              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+              failure combine Q(s, s.h, if(returnSnap) Some(snap) else None, v)
+            }else{
+              failure
+            }
+        }
       case false =>
-        createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)}
+        val failure = createFailure(pve dueTo negativePermissionReason, v, s, nonNegTerm, nonNegExp)
+        if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(nonNegTerm, dependencyType.assertionType, v.reportFurtherErrors())
+        if(s.retryLevel == 0 && v.reportFurtherErrors()){
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          failure combine Q(s, s.h, if(returnSnap) Some(snap) else None, v)
+        }else{
+          failure
+        }
+    }
   }
 
   def consumeSingleLocation(s: State,
@@ -1522,11 +1545,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             Q(s1, h1, None, v)
           }
         case (Incomplete(_, _), _, _) =>
-          resourceAccess match {
+          val failure = resourceAccess match {
             case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s, "single QP consume")
             case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s, "single QP consume")
             case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
           }
+          if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, dependencyType.assertionType, v.reportFurtherErrors())
+          if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, s.h, None, v) else failure
       }
     }
   }

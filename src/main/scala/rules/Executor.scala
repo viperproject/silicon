@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType}
+import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyType}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -469,8 +469,11 @@ object executor extends ExecutionRules {
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
           if (v1.decider.checkSmoke(getAssertionType(AssumptionType.Explicit), isAssert = true))
             QS(s1.copy(h = s.h), v1)
-          else
-            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
+          else {
+            val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
+            if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(False, getAssertionType(AssumptionType.Explicit), v1.reportFurtherErrors())
+            if(s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
+          }
         })((s2, v2) =>
           if (Verifier.config.disableInfeasibilityChecks())
             Q(s2, v2)

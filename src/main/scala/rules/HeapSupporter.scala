@@ -241,7 +241,9 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
           Q(s5, v)
         case (Incomplete(_, _), s3, _) =>
-          createFailure(ve, v, s3, "sufficient permission")
+          val failure = createFailure(ve, v, s3, "sufficient permission")
+          if(s3.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, dependencyType.assertionType, v.reportFurtherErrors())
+          if(s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, v) else failure
       }
     } else {
       val description = s"consume ${ass.pos}: $ass"
@@ -374,7 +376,10 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
             v.decider.assert(toAssert) {
               case false =>
-                createFailure(ve, v, s, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
+                val failure = createFailure(ve, v, s, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
+                if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(toAssert, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+                val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s, v), Option.when(withExp)(PUnknown()))
+                if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, snap, v) else failure
               case true =>
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                 val fr1 = s.functionRecorder.recordSnapshot(fa, v.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -425,7 +430,10 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             }
           v.decider.assert(permCheck) {
             case false =>
-              createFailure(ve, v, s3, permCheck, permCheckExp)
+              val failure = createFailure(ve, v, s3, permCheck, permCheckExp)
+              if(s3.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(permCheck, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
+              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s3, v), Option.when(withExp)(PUnknown()))
+              if(s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, snap, v) else failure
             case true =>
               val smLookup = Lookup(fa.field.name, sm, tRcvr)
               val fr2 =
