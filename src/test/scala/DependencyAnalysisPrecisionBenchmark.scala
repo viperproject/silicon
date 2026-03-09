@@ -71,8 +71,8 @@ object DependencyAnalysisPrecisionBenchmark extends DependencyAnalysisTestFramew
     }
 
     protected def computePrecision(dependencyGraphInterpreter: DependencyGraphInterpreter): Double = {
-      val assumptionNodes = getTestIrrelevantAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
-      val assumptionsPerSource = assumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
+      val irrelevantAssumptionNodes =  getTestIrrelevantAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
+      val irrelevantAssumptionsPerSource = irrelevantAssumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
       val assertionNodes = getTestAssertionNodes(dependencyGraphInterpreter.getNonInternalAssertionNodes)
 
       val dependencies = dependencyGraphInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))
@@ -80,7 +80,7 @@ object DependencyAnalysisPrecisionBenchmark extends DependencyAnalysisTestFramew
       val dependencyIds = dependencies.map(_.id)
 
       if(dependenciesPerSource.nonEmpty){
-        val wrongDependencies = assumptionsPerSource.filter({ case (_, assumptions) => dependencyIds.intersect(assumptions.map(_.id)).nonEmpty })
+        val wrongDependencies = irrelevantAssumptionsPerSource.filter({ case (_, irrelevantAssumptions) => dependencyIds.intersect(irrelevantAssumptions.map(_.id)).nonEmpty })
         1.0 - (wrongDependencies.size.toDouble / dependenciesPerSource.size.toDouble)
       }else{
         1.0

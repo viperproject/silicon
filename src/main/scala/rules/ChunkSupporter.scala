@@ -156,8 +156,8 @@ object chunkSupporter extends ChunkSupportRules {
                 Success() // TODO: Mark branch as dead?
             case _ =>
               val failure = createFailure(ve, v1, s1, "consuming chunk", true)
-              if(s.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(False, dependencyType.assertionType, v1.reportFurtherErrors())
-              if(s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()){
+              if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(False, dependencyType.assertionType, v1.reportFurtherErrors())
+              if(s1.retryLevel == 0 && v1.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()){
                 failure combine QS(s1.copy(h = s.h), s1.h, None, v1)
               }else{
                 failure

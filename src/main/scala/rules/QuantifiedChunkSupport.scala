@@ -1404,7 +1404,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val failure = createFailure(pve dueTo notInjectiveReason, v, s, receiverInjectivityCheck, "QP receiver injective")
             if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(receiverInjectivityCheck, dependencyType.assertionType, v.reportFurtherErrors())
             if(s.retryLevel == 0 && v.reportFurtherErrors()){
-              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+              val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown())) // TODO ake: function recorder
               failure combine Q(s, s.h, if(returnSnap) Some(snap) else None, v)
             }else{
               failure

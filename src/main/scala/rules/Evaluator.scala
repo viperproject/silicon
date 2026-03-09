@@ -585,9 +585,9 @@ object evaluator extends EvaluationRules {
               Unreachable()
             } else {
               val failure = createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
-              if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, v.decider.analysisSourceInfoStack.getAssertionType, v.reportFurtherErrors())
-              val freshVar = v.decider.fresh(v.symbolConverter.toSort(sourceQuant.typ), None)
-              if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, freshVar, None, v) else failure
+              if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(False, v1.decider.analysisSourceInfoStack.getAssertionType, v1.reportFurtherErrors())
+              val freshVar = v1.decider.fresh(v1.symbolConverter.toSort(sourceQuant.typ), None)
+              if(s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine Q(s1, freshVar, None, v1) else failure
             }
         }
 
@@ -786,8 +786,9 @@ object evaluator extends EvaluationRules {
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
                   val failure = createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))
-                  if(s.retryLevel == 0) v2.decider.handleFailedAssertionForDependencyAnalysis(False, v2.decider.analysisSourceInfoStack.getAssertionType, v2.reportFurtherErrors())
-                  if(s.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2, False /* TODO ake */, None, v2) else failure
+                  if(s2.retryLevel == 0) v2.decider.handleFailedAssertionForDependencyAnalysis(False, v2.decider.analysisSourceInfoStack.getAssertionType, v2.reportFurtherErrors())
+                  val freshVar = v2.decider.fresh(v2.symbolConverter.toSort(e.typ), None) // TODO ake: function recorder
+                  if(s2.retryLevel == 0 && v2.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()) failure combine Q(s2, freshVar, None, v2) else failure
               }))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
