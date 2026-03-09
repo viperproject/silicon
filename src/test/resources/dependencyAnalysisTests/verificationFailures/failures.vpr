@@ -1,0 +1,76 @@
+field f: Int
+
+
+method foo(x: Ref)
+    requires acc(x.f, 1/2)
+    ensures acc(x.f, 1/2)
+{
+    var a: Int
+    a := x.f
+    if(x.f > 0){
+        x.f := 1
+        x.f := 2
+        assert a == 0
+    }
+
+    assert a == x.f
+}
+
+
+method divBy0(a: Int)
+    requires a < 100
+{
+
+    var b: Int
+    if(a > 0){
+        b := 10
+    }
+
+    b := 100 / a
+
+    assert a < 100
+
+    assert a != 0
+
+    assert b >= 0
+
+}
+
+method divBy0_2(a: Int, x: Ref)
+    requires a < 100
+{
+
+    var b: Int
+    b := 100 / a
+
+    x.f := 0
+
+    assert a < 100
+
+    assert a != 0
+
+    assert b >= 0
+
+}
+
+
+method client()
+{
+    var x: Ref := new(f)
+    x.f := 0
+
+    foo(x)
+
+    assert x.f == 0
+    exhale acc(x.f)
+}
+
+
+method permissions(x: Ref, y: Ref, z: Ref)
+    requires acc(x.f, 1/2) && acc(y.f, 1/2) && acc(z.f, 1/2)
+{
+    assume x == y
+
+    assert z != y
+
+}

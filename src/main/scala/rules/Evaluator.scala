@@ -829,6 +829,7 @@ object evaluator extends EvaluationRules {
                   case false =>
                     val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2)
+                    if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(Less(t1, SeqLength(t0)), v1.decider.analysisSourceInfoStack.getAssertionType, assumeFailedAssertion=false)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                       val assertExp2 = Option.when(withExp)(ast.LeCmp(e1, ast.SeqLength(e0)())())
                       val assertExp2New = esNew.map(es => ast.LeCmp(es(1), ast.SeqLength(es.head)())())
@@ -839,6 +840,7 @@ object evaluator extends EvaluationRules {
                 val assertExp1 = Option.when(withExp)(ast.GeCmp(e1, ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
                 val assertExp1New = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, AtLeast(t1, IntLiteral(0)), assertExp1New)
+                if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(AtLeast(t1, IntLiteral(0)), v1.decider.analysisSourceInfoStack.getAssertionType, assumeFailedAssertion=false)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)), assertExp1, assertExp1New, AssumptionType.Explicit)
                   val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
@@ -848,6 +850,7 @@ object evaluator extends EvaluationRules {
                       failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     case false =>
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2New)
+                      if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(Less(t1, SeqLength(t0)), v1.decider.analysisSourceInfoStack.getAssertionType, assumeFailedAssertion=false)
                       if (v1.reportFurtherErrors()) {
                         v1.decider.assume(Less(t1, SeqLength(t0)), assertExp2, assertExp2New, AssumptionType.Explicit)
                         failure2 combine Q(s1, SeqAt(t0, t1), eNew, v1)
@@ -882,6 +885,7 @@ object evaluator extends EvaluationRules {
                     Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                   case false =>
                     val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2New)
+                    if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(Less(t1, SeqLength(t0)), v1.decider.analysisSourceInfoStack.getAssertionType, assumeFailedAssertion=false)
                     if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                       val assertExp3 = Option.when(withExp)(ast.LeCmp(e1, ast.SeqLength(e0)())())
                       val assertExp3New = Option.when(withExp)(ast.LeCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())())
@@ -890,6 +894,7 @@ object evaluator extends EvaluationRules {
                     else failure}
               case false =>
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1, AtLeast(t1, IntLiteral(0)), assertExpNew)
+                if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(AtLeast(t1, IntLiteral(0)), v1.decider.analysisSourceInfoStack.getAssertionType, assumeFailedAssertion=false)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)), assertExp, assertExpNew, AssumptionType.Explicit)
                   val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
@@ -899,6 +904,7 @@ object evaluator extends EvaluationRules {
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                     case false =>
                       val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1, Less(t1, SeqLength(t0)), assertExp2New)
+                      if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(Less(t1, SeqLength(t0)), v1.decider.analysisSourceInfoStack.getAssertionType, assumeFailedAssertion=false)
                       if (v1.reportFurtherErrors()) {
                         v1.decider.assume(Less(t1, SeqLength(t0)), assertExp2, assertExp2New, AssumptionType.Explicit)
                         failure2 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
@@ -1018,6 +1024,7 @@ object evaluator extends EvaluationRules {
                 val assertExp = Option.when(withExp)(ast.MapContains(key, base)(ml.pos, ml.info, ml.errT))
                 val assertExpNew = Option.when(withExp)(ast.MapContains(esNew.get(1), esNew.get(0))(ml.pos, ml.info, ml.errT))
                 val failure1 = createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1, SetIn(keyT, MapDomain(baseT)), assertExpNew)
+                if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(SetIn(keyT, MapDomain(baseT)), v1.decider.analysisSourceInfoStack.getAssertionType, assumeFailedAssertion=false)
                 if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
                   v1.decider.assume(SetIn(keyT, MapDomain(baseT)), assertExp, assertExpNew, AssumptionType.Explicit)
                   failure1 combine Q(s1, MapLookup(baseT, keyT), eNew, v1)
@@ -1247,6 +1254,7 @@ object evaluator extends EvaluationRules {
           (Some(ast.NeCmp(eDivisor, ast.IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT)), Some(ast.NeCmp(eDivisorNew.get, ast.IntLit(0)())(eDivisor.pos, eDivisor.info, eDivisor.errT)))
         } else { (None, None) }
         val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s, tDivisor !== tZero, notZeroExpNew)
+        if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(tDivisor !== tZero, v.decider.analysisSourceInfoStack.getAssertionType, assumeFailedAssertion=false)
         if (s.retryLevel == 0  && v.reportFurtherErrors()) {
           v.decider.assume(tDivisor !== tZero, notZeroExp, notZeroExpNew, AssumptionType.Explicit)
           failure combine Q(s, t, v)

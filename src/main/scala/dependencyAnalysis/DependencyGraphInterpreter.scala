@@ -320,7 +320,13 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       )}.toSet
   }
 
-  private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode]): Double = {
+  private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: AnalysisSourceInfo): Double = {
+    val assertionNodes = sourceToAssertionNodes.getOrElse(assertion, Set.empty).filter(node => node.isInstanceOf[GeneralAssertionNode])
+    val failedAssertionNodes = assertionNodes.filter(node =>  node.asInstanceOf[GeneralAssertionNode].hasFailed)
+    // assertions with failures have quality = 0.0
+    if(failedAssertionNodes.nonEmpty)
+      return 0.0
+
     val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).map(_.source)
     val numDepsTotal = allDependencies.map(_.source).size
     (numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble
@@ -333,7 +339,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     val specQuality = computeSpecQuality(assertionDeps.flatMap(_._1).toSet)
 
-    val assertionQualities = assertionDeps filterNot (_._1.isEmpty) map (ass => (computeAssertionQuality(ass._1), ass._2)) filterNot (n => isNaN(n._1))
+    val assertionQualities1 = assertionDeps map (ass => (computeAssertionQuality(ass._1, ass._2), ass._2))
+    val assertionQualities = assertionQualities1 filterNot (n => isNaN(n._1))
     val numAssertions = assertionQualities.size
     val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
     val numFullyVerifiedAssertions = fullyVerifiedAssertions.size
@@ -369,7 +376,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     // TODO ake: this is suuuper slow. Can we reuse previously computed results? Caching?
     val relevantDependenciesPerAssertion = allAssertions
       .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
-      .filter{case (_, assumptions) => assumptions.nonEmpty} // filter out trivial assertions like `assert true`
+      .filter{case (ass, assumptions) => assumptions.nonEmpty || ass.hasFailures} // filter out trivial assertions like `assert true`
 
 //    val endTime = System.nanoTime()
 //    println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
@@ -391,8 +398,9 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     // assertions
     val relevantAssertions = relevantDependenciesPerAssertion
-    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.getSourceSet()
-    val fullyVerifiedAssertions = relevantAssertions.keySet.getSourceSet().diff(assertionsWithExplicitDeps)
+    val assertionsWithFailures = relevantAssertions.filter(assertion => assertion._1.hasFailures).keySet.getSourceSet()
+    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => !deps._1.hasFailures && deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.getSourceSet().diff(assertionsWithFailures)
+    val fullyVerifiedAssertions = relevantAssertions.keySet.getSourceSet().diff(assertionsWithExplicitDeps).diff(assertionsWithFailures)
 
     val numRelevantAssertions = relevantAssertions.keySet.size.toDouble
 
@@ -404,8 +412,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     // Lea's metric
     val proofQualityPerAssertion = relevantAssertions.toList.map { case (assertion, assumptions) =>
-      val nonExplicitDeps = UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions)
-      (nonExplicitDeps.size.toDouble / assumptions.size.toDouble, assertion)
+      if(assertion.hasFailures) (0.0, assertion)
+      else {
+        val nonExplicitDeps = UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions)
+        (nonExplicitDeps.size.toDouble / assumptions.size.toDouble, assertion)
+      }
     }
 
     val proofQualityLea =  if(numRelevantAssertions > 0) proofQualityPerAssertion.map(_._1).sum / numRelevantAssertions else 1.0
@@ -429,6 +440,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
         "\n" +
       s"Fully verified assertions:\n\t\t${getString(fullyVerifiedAssertions)}" + "\n\n" +
         s"Assertions depending on explicit assumptions:\n\t\t${getString(assertionsWithExplicitDeps)}" + "\n\n" +
+        s"Assertions with failures:\n\t\t${getString(assertionsWithFailures)}" + "\n\n" +
         "\n" +
         s"Assertion Qualities:\n\t\t${proofQualityPerAssertion.filterNot(_._1 == 1.0).sortBy(_._2.source.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
       "\n" +
@@ -446,7 +458,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     val relevantDependenciesPerAssertion = allAssertions
       .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
-      .filter{case (_, assumptions) => assumptions.nonEmpty}
+      .filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures}
     val numAssertions = relevantDependenciesPerAssertion.size.toDouble
 
     val assumptionImpacts= relevantDependenciesPerAssertion.toList.flatMap { case (assertion, assumptions) =>
@@ -460,6 +472,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def computeAssumptionRankingOld(): List[(String, Int)] = {
     toUserLevelNodes(getExplicitAssumptionNodes).map(node => (node.toString, toUserLevelNodes(getAllNonInternalDependents(node.lowerLevelNodes.map(_.id))).diff(Set(node)).size))
       .toList.sortBy(_._2).reverse
+  }
+
+  def getFailedAssertions: List[String] = {
+    val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
+    allAssertions.filter(_.hasFailures).getSourceSet().toList.sortBy(_.getLineNumber).map(_.getTopLevelSource.toString)
   }
 
   def computeUncoveredStatements(): Int = {

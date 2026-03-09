@@ -123,7 +123,7 @@ trait Decider {
   def removeDependencyAnalyzer(): Unit
   def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo
   def isDependencyAnalysisEnabled: Boolean
-  def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, assertionType: AssumptionType, reportFurtherErrors: Boolean): Unit
+  def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, assertionType: AssumptionType, assumeFailedAssertion: Boolean): Unit
 }
 
 /*
@@ -552,9 +552,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-    override def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, assertionType: AssumptionType, reportFurtherErrors: Boolean): Unit = {
+    override def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, assertionType: AssumptionType, assumeFailedAssertion: Boolean): Unit = {
       dependencyAnalyzer.addAssertionFailedNode(failedAssertion, assertionType, analysisSourceInfoStack.getFullSourceInfo)
-      if(reportFurtherErrors){
+      if(assumeFailedAssertion){
         assume(failedAssertion, None, None, AssumptionType.Explicit)
         failedAssertion match {
           case False => checkSmokeAndSetInfeasibilityNode()
@@ -598,11 +598,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val result = asserted || proverAssert(t, timeout, DependencyAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
-      if(result){
+      if(result) {
         assertNode foreach dependencyAnalyzer.addAssertionNode
-      }else if(!isCheck){ // TODO ake: only for asserts?
-        assertNode foreach {node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode())}
       }
+//      }else if(!isCheck){
+//        // An assertion only truly fails once state.retryLevel == 0. Instead of here, we add AssertFailedNodes at the caller-side.
+//        assertNode foreach {node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode())}
+//      }
 
       symbExLog.closeScope(sepIdentifier)
       (result, assertNode)
