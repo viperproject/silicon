@@ -16,17 +16,11 @@ import viper.silver.verifier.{DummyReason, PartialVerificationError, Verificatio
 
 import scala.annotation.tailrec
 
-case class InferenceResult(start: HasLineColumn, end: HasLineColumn, newText: String)
+case class ProgramEdit(start: HasLineColumn, end: HasLineColumn, newText: String) extends InferenceResult
 
-trait BiAbductionResult {
-  def s: State
+trait InferenceResult
 
-  def v: Verifier
-}
-
-trait BiAbductionSuccess extends BiAbductionResult
-
-case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[(Exp, Option[BasicChunk])] = Seq(), stmts: Seq[Stmt] = Seq(), newFieldChunks: Map[BasicChunk, LocationAccess], allNewChunks: Seq[BasicChunk], trigger: Option[Positioned] = None) extends BiAbductionSuccess {
+case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[(Exp, Option[BasicChunk])] = Seq(), stmts: Seq[Stmt] = Seq(), newFieldChunks: Map[BasicChunk, LocationAccess], allNewChunks: Seq[BasicChunk], trigger: Option[Positioned] = None) extends InferenceResult {
 
   override def toString: String = {
     "Abduced pres " + state.length + ", Abduced statements " + stmts.length
@@ -95,7 +89,7 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
   }
 }
 
-case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), loop: While, pcs: PathConditionStack) extends BiAbductionSuccess {
+case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), loop: While, pcs: PathConditionStack) extends InferenceResult {
   override def toString: String = "Successful loop invariant abduction"
 
   def getBcsExps(bcs: Seq[Term]): Seq[Exp] = {
@@ -108,7 +102,7 @@ case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), l
   }
 }
 
-case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positioned, pcs: PathConditionStack, varTran: VarTransformer) extends BiAbductionSuccess {
+case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positioned, pcs: PathConditionStack, varTran: VarTransformer) extends InferenceResult {
   override def toString: String = "Successful framing"
 
   def getBcExps(bcsTerms: Seq[Term], prefVars: Map[AbstractLocalVar, (Term, Option[Exp])], otherVars: Map[AbstractLocalVar, (Term, Option[Exp])]): Seq[Exp] = {
@@ -118,7 +112,7 @@ case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positione
   }
 }
 
-case class BiAbductionFailure(s: State, v: Verifier, pcs: PathConditionStack) extends BiAbductionResult {
+case class BiAbductionFailure(s: State, v: Verifier, pcs: PathConditionStack) extends InferenceResult {
   override def toString: String = "Abduction failed"
 
   def addToMethod(m: Method): Method = {
@@ -193,7 +187,7 @@ object BiAbductionSolver {
     }
   }
 
-  def solveAbductionForError(s: State, v: Verifier, err: VerificationError, stateAllowed: Boolean, trigger: Option[Positioned] = None)(Q: Option[BiAbductionResult] => VerificationResult): VerificationResult = {
+  def solveAbductionForError(s: State, v: Verifier, err: VerificationError, stateAllowed: Boolean, trigger: Option[Positioned] = None)(Q: Option[InferenceResult] => VerificationResult): VerificationResult = {
 
     val initPcs = v.decider.pcs.duplicate()
 
@@ -285,7 +279,7 @@ object BiAbductionSolver {
     }
   }
 
-  def resolveAbductionResults(m: Method, nf: NonFatalResult): Option[(Method, Seq[InferenceResult])] = {
+  def resolveAbductionResults(m: Method, nf: NonFatalResult): Option[(Method, Seq[ProgramEdit])] = {
     val abdReses = abductionUtils.getAbductionSuccesses(nf)
     val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
     val abdCases = abdReses.groupBy(res => (res.trigger.get, res.trigger.get.pos, res.stmts, res.state))
@@ -315,7 +309,7 @@ object BiAbductionSolver {
     }
 
     // We want to add things in the reverse order of the abduction results.
-    abdReses.reverse.foldLeft[Option[(Method, Seq[InferenceResult])]](Some((m, Seq.empty))) {
+    abdReses.reverse.foldLeft[Option[(Method, Seq[ProgramEdit])]](Some((m, Seq.empty))) {
       case (Some((m1, infs)), res) =>
         joinedCases.get(res) match {
           case Some(joinedCase) =>
@@ -328,7 +322,7 @@ object BiAbductionSolver {
     }
   }
 
-  private def addToMethod(m: Method, bcExps: Seq[Exp], newFieldChunks: Map[BasicChunk, LocationAccess], abdRes: AbductionSuccess): Option[(Method, Seq[InferenceResult])] = {
+  private def addToMethod(m: Method, bcExps: Seq[Exp], newFieldChunks: Map[BasicChunk, LocationAccess], abdRes: AbductionSuccess): Option[(Method, Seq[ProgramEdit])] = {
 
     val s = abdRes.s
     val v = abdRes.v
@@ -346,13 +340,13 @@ object BiAbductionSolver {
     } else {
       val finalStmt = finalStmts.get
       val body = m.body.get
-      val (newBody: Seqn, stmtInfRes: Seq[InferenceResult]) = abdRes.trigger match {
+      val (newBody: Seqn, stmtInfRes: Seq[ProgramEdit]) = abdRes.trigger match {
         case _ if finalStmt.isEmpty => (body, Seq())
         case None => (body, Seq())
         case Some(t: Stmt) if t == abductionUtils.dummyEndStmt =>
           val newBody = addToInnerBody(body, finalStmt)
           val infPos = LineColumnPosition(m.pos.asInstanceOf[SourcePosition].end.get.line, m.pos.asInstanceOf[SourcePosition].end.get.column)
-          val infRes = finalStmt.map(stmt => "  " + InferenceResult(infPos, infPos, stmt.toString() + "\n"))
+          val infRes = finalStmt.map(stmt => "  " + ProgramEdit(infPos, infPos, stmt.toString() + "\n"))
           (newBody, infRes)
 
         case Some(t: Stmt) if abductionUtils.isEndOfLoopStmt(t) =>
@@ -362,7 +356,7 @@ object BiAbductionSolver {
           val newBody = body.transform { case stmt if stmt == loop => newLoop }
 
           val infPos = LineColumnPosition(loop.pos.asInstanceOf[SourcePosition].end.get.line, loop.pos.asInstanceOf[SourcePosition].end.get.column)
-          val infRes = finalStmt.map(stmt => "  " + InferenceResult(infPos, infPos, stmt.toString() + "\n"))
+          val infRes = finalStmt.map(stmt => "  " + ProgramEdit(infPos, infPos, stmt.toString() + "\n"))
           (newBody, infRes)
 
         case Some(t: Stmt) =>
@@ -372,7 +366,7 @@ object BiAbductionSolver {
           }
           val col = t.pos.asInstanceOf[SourcePosition].start.column
           val infPos = LineColumnPosition(t.pos.asInstanceOf[SourcePosition].start.line, col)
-          val infRes = finalStmt.map(stmt => InferenceResult(infPos, infPos, stmt.toString() + "\n" + " ".repeat(col)))
+          val infRes = finalStmt.map(stmt => ProgramEdit(infPos, infPos, stmt.toString() + "\n" + " ".repeat(col)))
           (newBody, infRes)
 
         case Some(e: Exp) =>
@@ -385,7 +379,7 @@ object BiAbductionSolver {
           }
           val col = t.pos.asInstanceOf[SourcePosition].start.column
           val infPos = LineColumnPosition(t.pos.asInstanceOf[SourcePosition].start.line, col)
-          val infRes = abdRes.stmts.map(stmt => InferenceResult(infPos, infPos, stmt.toString() + "\n" + " ".repeat(col)))
+          val infRes = abdRes.stmts.map(stmt => ProgramEdit(infPos, infPos, stmt.toString() + "\n" + " ".repeat(col)))
           (newBody, infRes)
       }
 
@@ -397,7 +391,7 @@ object BiAbductionSolver {
       }
       val preInfs = pres.get.reverse.map { pre =>
         val insert = LineColumnPosition(prePos, m.pos.asInstanceOf[SourcePosition].start.column)
-        InferenceResult(insert, insert, Requires.keyword + " " + pre.toString + "\n")
+        ProgramEdit(insert, insert, Requires.keyword + " " + pre.toString + "\n")
       }
 
       Some((finalM, preInfs ++ stmtInfRes))
@@ -456,7 +450,7 @@ object BiAbductionSolver {
     m.copy(posts = m.posts ++ reses)(pos = m.pos, info = m.info, errT = m.errT)
   }
 
-  def generatePostFixes(m: Method, reses: Seq[Exp]): Seq[InferenceResult] = {
+  def generatePostFixes(m: Method, reses: Seq[Exp]): Seq[ProgramEdit] = {
 
     val column = m.pos.asInstanceOf[SourcePosition].start.column
     val line = m.posts match {
@@ -466,7 +460,7 @@ object BiAbductionSolver {
 
     reses.reverse.map{ res =>
       val insert = LineColumnPosition(line, column)
-      InferenceResult(insert, insert, Ensures.keyword + " " + res.toString + "\n")
+      ProgramEdit(insert, insert, Ensures.keyword + " " + res.toString + "\n")
     }
   }
 
@@ -511,7 +505,7 @@ object BiAbductionSolver {
     }
   }
 
-  def generateLoopInvFixes(reses: Map[While, Seq[Exp]]): Seq[InferenceResult] = {
+  def generateLoopInvFixes(reses: Map[While, Seq[Exp]]): Seq[ProgramEdit] = {
 
     reses.flatMap{ case (loop, invs) =>
       val column = loop.pos.asInstanceOf[SourcePosition].start.column
@@ -520,7 +514,7 @@ object BiAbductionSolver {
         case Seq() => LineColumnPosition(loop.body.pos.asInstanceOf[SourcePosition].start.line, column)
         case existingInvs => LineColumnPosition(existingInvs.head.pos.asInstanceOf[SourcePosition].start.line, column)
       }
-      invs.reverse.map(inv => InferenceResult(insert, insert, Invariant.keyword + " " + inv.toString + "\n"))
+      invs.reverse.map(inv => ProgramEdit(insert, insert, Invariant.keyword + " " + inv.toString + "\n"))
     }.toSeq
   }
 }

@@ -45,10 +45,6 @@ object abductionUtils {
     (vr +: vr.previous).collect { case Success(Some(inv: LoopInvariantSuccess)) => inv }
   }
 
-  def getBiAbductionSuccesses(vr: NonFatalResult): Seq[BiAbductionSuccess] = {
-    (vr +: vr.previous).collect { case Success(Some(suc: BiAbductionSuccess)) => suc }
-  }
-
   def getContainingPredicates(f: FieldAccess, p: Program): Seq[Predicate] = {
 
     p.predicates.filter { pred =>

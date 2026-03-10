@@ -21,7 +21,7 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silver.verifier.DummyNode
+import viper.silver.verifier.{DummyNode, DummyReason}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons.InternalReason
 
@@ -160,15 +160,25 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
 
           val mFail = abdFails.foldLeft(method) { case (m1, fail) => fail.addToMethod(m1) }
           val mAbd = resolveAbductionResults(mFail, suc)
-          val mInv = mAbd.flatMap{case (m2, _) => Some(addLoopInvResults(m2, resolveLoopInvResults(suc)))}
-          val mFrame = mInv.flatMap(someM => Some(addPostResults(someM, resolveFramingResults(someM, suc))))
+          val loopInvReses = resolveLoopInvResults(suc)
+          val mInv = mAbd.flatMap { case (m2, _) => Some(addLoopInvResults(m2, loopInvReses)) }
+          val framingReses = mInv.map(m2 => resolveFramingResults(m2, suc)).getOrElse(Seq())
+          val mFrame = mInv.flatMap(someM => Some(addPostResults(someM, framingReses)))
+          val allEdits = mAbd.map(_._2).getOrElse(Seq()) ++ generateLoopInvFixes(loopInvReses) ++ mInv.map(m2 => generatePostFixes(m2, framingReses)).getOrElse(Seq())
 
           mFrame match {
             case None => Failure(Internal(reason = InternalReason(DummyNode, "Resolving Biabduction results failed")))
             case Some(m) =>
-              println("Original method: \n" + method.toString + "\nAbduced method: \n" + m.toString)
+              println("Original method: \n" + method.toString + "\nAbduced method: \n" + m.toString + "\nEdits: \n" + allEdits.mkString("\n"))
               val sNoAbd = sInit.copy(doAbduction = false)
-              verify(sNoAbd, m).head
+              verify(sNoAbd, m) match {
+                case Seq(_: NonFatalResult) =>
+                  val error = Internal(DummyReason)
+                  error.failureContexts = Seq(SiliconAbductionFailureContext(None, Some(allEdits)))
+                  // We report an error with the fixes because fixes currently can only be contained in errors.
+                  Failure(error)
+                case Seq(res) => res
+              }
           }
 
         // Else return result as is
