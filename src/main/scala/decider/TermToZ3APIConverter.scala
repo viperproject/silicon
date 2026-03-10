@@ -406,7 +406,7 @@ class TermToZ3APIConverter
 
       case Domain(id, fvf) => createApp("$FVF.domain_" + id, Seq(fvf), term.sort)
 
-      case HasDomain(id, fvf) => createApp("$FVF.has_domain_" + id, Seq(fvf), term.sort)
+      case HasDomain(id, fvf, _) => createApp("$FVF.has_domain_" + id, Seq(fvf), term.sort)
 
       case Lookup(field, fvf, at) =>
         createApp("$FVF.lookup_" + field, Seq(fvf, at), term.sort)
@@ -420,7 +420,7 @@ class TermToZ3APIConverter
 
       case PredicateDomain(id, psf) => createApp("$PSF.domain_" + id, Seq(psf), term.sort)
 
-      case HasPredicateDomain(id, psf) => createApp("$PSF.has_domain_" + id, Seq(psf), term.sort)
+      case HasPredicateDomain(id, psf, _) => createApp("$PSF.has_domain_" + id, Seq(psf), term.sort)
 
       case PredicateLookup(id, psf, args) =>
         val snap: Term = toSnapTree(args)

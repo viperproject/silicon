@@ -215,7 +215,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             v.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2)
           }
           val s4 = s3.copy(h = h3 + ch)
-          val (debugHeapName, _) = v.getDebugOldLabel(s4, ass.lhs.pos)
+          val (debugHeapName, _) = v.getDebugOldLabel(s4, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s4)))
           val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
           Q(s5, v)
         case (Incomplete(_, _), s3, _) =>
@@ -228,7 +228,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)))
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
-          val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos)
+          val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos, Some(magicWandSupporter.getEvalHeap(s5)))
           val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
           Q(s6, v4)
         })

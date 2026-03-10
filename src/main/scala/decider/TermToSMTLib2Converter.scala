@@ -263,7 +263,7 @@ class TermToSMTLib2Converter
 
     case Domain(id, fvf) => parens(text("$FVF.domain_") <> id <+> render(fvf))
 
-    case HasDomain(id, fvf) => parens(text("$FVF.has_domain_") <> id <+> render(fvf))
+    case HasDomain(id, fvf, _) => parens(text("$FVF.has_domain_") <> id <+> render(fvf))
 
     case Lookup(field, fvf, at) => //fvf.sort match {
 //      case _: sorts.PartialFieldValueFunction =>
@@ -284,7 +284,7 @@ class TermToSMTLib2Converter
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
-    case HasPredicateDomain(id, psf) => parens(text("$PSF.has_domain_") <> id <+> render(psf))
+    case HasPredicateDomain(id, psf, _) => parens(text("$PSF.has_domain_") <> id <+> render(psf))
 
     case PredicateLookup(id, psf, args) =>
       val snap: Term = toSnapTree(args)

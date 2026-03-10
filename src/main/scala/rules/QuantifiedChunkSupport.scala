@@ -526,12 +526,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val (domainTerm, hasDomain) = resource match {
       case field: ast.Field =>
-        (Domain(field.name, sm), HasDomain(field.name, sm))
+        (Domain(field.name, sm), HasDomain(field.name, sm, relevantQvars.isEmpty))
       case predicate: ast.Predicate =>
-        (PredicateDomain(predicate.name, sm), HasPredicateDomain(predicate.name, sm))
+        (PredicateDomain(predicate.name, sm), HasPredicateDomain(predicate.name, sm, relevantQvars.isEmpty))
       case wand: ast.MagicWand =>
         val mwi = MagicWandIdentifier(wand, s.program).toString
-        (PredicateDomain(mwi, sm), HasPredicateDomain(mwi, sm))
+        (PredicateDomain(mwi, sm), HasPredicateDomain(mwi, sm, relevantQvars.isEmpty))
     }
 
     val qvarInDomainOfSummarisingSm = SetIn(qvar, domainTerm)
