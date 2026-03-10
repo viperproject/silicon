@@ -313,11 +313,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   def handleVerificationGuidanceQuery(): Unit = {
 
-    val failedAssertions = fullGraphInterpreter.getFailedAssertions
-    println(s"Failed assertions:\n\t${failedAssertions.mkString("\n\t")}\n")
-
     val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking().filter(_._2 > 0.0)
-    println(s"Assumptions and their impact on progress:\n\t${assumptionRanking.mkString("\n\t")}\n")
+    println(s"Assumptions/unverified assertions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
     val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])
       .map(mInterpreter => (mInterpreter.getMember.get.name, mInterpreter.computeUncoveredStatements()))
@@ -326,9 +323,6 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   def handleVerificationGuidanceOldQuery(): Unit = {
-
-    val failedAssertions = fullGraphInterpreter.getFailedAssertions
-    println(s"Failed assertions:\n\t${failedAssertions.mkString("\n\t")}\n")
 
     val assumptionRanking = fullGraphInterpreter.computeAssumptionRankingOld().filter(_._2 > 0)
     println(s"Assumptions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
