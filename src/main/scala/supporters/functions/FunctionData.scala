@@ -152,8 +152,7 @@ class FunctionData(val programFunction: ast.Function,
   lazy val postconditionType: AssumptionType = DependencyAnalyzer.extractDependencyTypeFromInfo(programFunction.info).map(_.assertionType)
     .getOrElse(if(programFunction.body.isDefined) AssumptionType.ImplicitPostcondition else AssumptionType.ExplicitPostcondition)
 
-  lazy val functionBodyType: AssumptionType = DependencyAnalyzer.extractDependencyTypeFromInfo(programFunction.info).map(_.assumptionType)
-    .getOrElse(AssumptionType.FunctionBody)
+  lazy val functionBodyType: AssumptionType = AssumptionType.FunctionBody // TODO ake: maybe extract from programFunction.info but make sure both ghost and non-ghost function bodies are treated as verification annotations
 
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
@@ -342,7 +341,7 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
       bodies.map(b => (Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))),
-        Option.when(isAnalysisEnabled)((StringAnalysisSourceInfo("postPreconditionPropagationAxiom", programFunction.pos), postconditionType))))
+        Option.when(isAnalysisEnabled)((StringAnalysisSourceInfo("postPreconditionPropagationAxiom", programFunction.pos), AssumptionType.ImplicitPostcondition))))
     } else Seq()
     postPreconditions
   }

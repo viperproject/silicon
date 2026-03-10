@@ -13,7 +13,7 @@ object AssumptionType extends Enumeration {
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger, CustomInternal) // will always be hidden from user
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
   def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
-  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Ghost)
+  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom)
   def sourceCodeTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes ++ explicitAssertionTypes ++ verificationAnnotationTypes ++ internalTypes)
 
   def getMaxPriorityAssumptionType(types: Set[AssumptionType]): Option[AssumptionType] = {
@@ -27,9 +27,10 @@ object AssumptionType extends Enumeration {
     dependencyType.flatMap(_.assertionType match {
       case AssumptionType.Explicit | AssumptionType.ExplicitPostcondition => Some(AssumptionType.ExplicitPostcondition)
       case AssumptionType.ImportedPostcondition => Some(AssumptionType.ImportedPostcondition)
-      case AssumptionType.Ghost | AssumptionType.ImplicitPostcondition  => Some(AssumptionType.ImplicitPostcondition)
+      case AssumptionType.ImplicitPostcondition  => Some(AssumptionType.ImplicitPostcondition)
       case AssumptionType.Internal => Some(AssumptionType.Internal)
       case AssumptionType.CustomInternal => Some(AssumptionType.CustomInternal)
+      case AssumptionType.Ghost => None
       case _ => None
     }).getOrElse(
       if(isAbstractFunction) AssumptionType.ExplicitPostcondition else AssumptionType.ImplicitPostcondition
