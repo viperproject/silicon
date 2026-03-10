@@ -3,16 +3,17 @@ package viper.silicon.dependencyAnalysis
 
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
-  val Explicit, LoopInvariant, PathCondition, Rewrite, SourceCode, DomainAxiom, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, MethodCall, FunctionBody, Precondition, Ghost, CustomInternal, Unknown = Value
+  val Explicit, LoopInvariant, PathCondition, Rewrite, SourceCode, DomainAxiom, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, MethodCall, FunctionBody, Precondition, Ghost, CustomInternal, Unknown = Value
 
   def fromString(s: String): Option[Value] = values.find(_.toString == s)
 
   def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition)
-  def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition)
+  def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition, ImportedPostcondition)
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger, CustomInternal) // will always be hidden from user
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
-  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, Precondition, Explicit, DomainAxiom, Ghost)
+  def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
+  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Ghost)
   def sourceCodeTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes ++ explicitAssertionTypes ++ verificationAnnotationTypes ++ internalTypes)
 
   def getMaxPriorityAssumptionType(types: Set[AssumptionType]): Option[AssumptionType] = {
@@ -20,9 +21,12 @@ object AssumptionType extends Enumeration {
     priorityList.find(t => types.contains(t))
   }
 
-  def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType]=None): AssumptionType = {
+  def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType]=None, isImported: Boolean=false): AssumptionType = {
+    if(isImported) return ImportedPostcondition
+
     dependencyType.flatMap(_.assertionType match {
       case AssumptionType.Explicit | AssumptionType.ExplicitPostcondition => Some(AssumptionType.ExplicitPostcondition)
+      case AssumptionType.ImportedPostcondition => Some(AssumptionType.ImportedPostcondition)
       case AssumptionType.Ghost | AssumptionType.ImplicitPostcondition  => Some(AssumptionType.ImplicitPostcondition)
       case AssumptionType.Internal => Some(AssumptionType.Internal)
       case AssumptionType.CustomInternal => Some(AssumptionType.CustomInternal)
