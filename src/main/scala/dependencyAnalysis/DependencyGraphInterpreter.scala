@@ -43,6 +43,12 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
 
+
+  def getAssertionNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
+    val fullAnnotation = s"@label(\"$label\")"
+    getAssertionNodes.filter(node => node.toString.contains(label))
+  }
+
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
     var queue = nodeIdsToAnalyze
     var result: Set[Int] = Set.empty

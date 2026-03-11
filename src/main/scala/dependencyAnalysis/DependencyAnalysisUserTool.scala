@@ -5,9 +5,11 @@ import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.Method
 
-import java.io.PrintWriter
+import java.io.{BufferedWriter, FileWriter, PrintWriter}
 import scala.annotation.tailrec
+import scala.io.Source
 import scala.io.StdIn.readLine
+import scala.util.matching.Regex
 
 class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterpreter, memberInterpreters: Seq[DependencyGraphInterpreter],
                                  program: ast.Program, verificationErrors: List[Failure]) {
@@ -76,6 +78,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       handlePruningRequest(inputParts.tail)
     }else if(inputParts.head.equalsIgnoreCase("benchmark")) {
       handleBenchmarkQuery()
+    }else if(inputParts.head.equalsIgnoreCase("precisionEval")) {
+      handlePrecisionEval(inputParts.tail)
     }else if(inputParts.head.equalsIgnoreCase("graphSize")){
       if(inputParts.tail.isEmpty) {
         handleGraphSizeQuery(fullGraphInterpreter)
@@ -226,6 +230,79 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     if(queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
     println("Done.")
   }
+
+  private def handlePrecisionEval(inputs: Seq[String]): Unit = {
+    val labelPattern: Regex = """@label\("([^"]+)"\)""".r
+    val header = "Assertion Label,Sound?,#True Dependencies,#Reported Dependencies,#False-Positives,Runtime"
+
+    def readFile(path: String): Map[String, List[String]] = {
+      val src = Source.fromFile(path)
+      try {
+        src.getLines()
+          .filter(_.trim.nonEmpty)        // skip empty lines
+          .map { line =>
+            val Array(left, right) = line.split("=", 2)  // split into key and rest
+            val key = left.trim
+            val values = right.split(",").map(_.trim).toList
+            key -> values
+          }
+          .toMap
+      } finally {
+        src.close()
+      }
+    }
+
+    def addOutput(bw: BufferedWriter, output: String): Unit = {
+      bw.write(output)
+      bw.newLine()
+      println(output)
+    }
+
+    def evalSingleAssertion(assertionLabel: String, dependencyLabels: List[String], bw: BufferedWriter): Unit = {
+      val startAnalysis = System.nanoTime()
+      val queriedAssertions = fullGraphInterpreter.getAssertionNodesByLabel(assertionLabel)
+      val allDependencies = fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id))
+      val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).getSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).getSourceSet())
+
+      val endAnalysis = System.nanoTime()
+      val durationMs = (endAnalysis - startAnalysis) / 1e6
+
+      val sourceDependenciesString = sourceDependencies.mkString("\n\t")
+
+      val isSound = dependencyLabels.forall(sourceDependenciesString.contains)
+      val imprecise = sourceDependencies.filter(node =>
+        labelPattern.findFirstMatchIn(node.toString) match {
+          case Some(label) => !dependencyLabels.contains(label.group(1))
+          case _ => true
+      })
+
+      addOutput(bw, s"$assertionLabel,${if(isSound) "YES" else "NO"},${dependencyLabels.size},${sourceDependencies.size},${imprecise.size},${durationMs}ms")
+
+//      println(s"Queried:\n\t${getSourceInfoString(queriedAssertions)}")
+//      println(s"\nAll Dependencies (${timeAll}ms):\n\t$sourceDependenciesString")
+//
+//      if(queriedAssertions.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)) println("\nQueried assertions (partially) FAILED!\n")
+    }
+
+    assert(inputs.size == 1)
+    val pathToGroundTruth = inputs.head
+
+    val bw = new BufferedWriter(new FileWriter(pathToGroundTruth.replace(".txt", "_result.csv")))
+
+    try {
+      val groundTruths = readFile(pathToGroundTruth)
+      addOutput(bw, header)
+      groundTruths.foreach { case (assertionLabel, dependencyLabels) => evalSingleAssertion(assertionLabel, dependencyLabels, bw) }
+
+      bw.close()
+      println("Done.")
+    }catch {
+      case _ => println("Failed.")
+    }finally {
+      bw.close()
+    }
+  }
+
 
   private def handleDependentsQuery(inputs: Set[String]): Unit = {
 
