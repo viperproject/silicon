@@ -342,6 +342,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val info = {
 //      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(n => (n._2.getLineNumber, n._2.toString())).mkString("\n\t\t")}" + "\n\n" +
 //      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t\t")}" + "\n\n" +
+//      s"Assertion qualities\n\t\t${assertionQualities.sortBy(n => (n._2.getLineNumber, n._2.toString())).mkString("\n\t\t")}" + "\n\n" +
       s"specQuality = $specQuality\n" +
       s"proof quality (Peter): $numFullyVerifiedAssertions / $numAssertions = $proofQualityPeter\n" +
       s"proof quality (Lea): $assertionQualitiesSum / $numAssertions = $proofQualityLea\n"

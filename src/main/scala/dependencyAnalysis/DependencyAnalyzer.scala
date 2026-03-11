@@ -359,7 +359,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val assumeNode = SimpleAssumptionNode(failedAssertion, None, sourceInfo, AssumptionType.Explicit, isClosed=false, isJoinNode=false)
+    val assumptionType = if(AssumptionType.postconditionTypes.contains(assertionType)) AssumptionType.ExplicitPostcondition else AssumptionType.Explicit
+    val assumeNode = SimpleAssumptionNode(failedAssertion, None, sourceInfo, assumptionType, isClosed=false, isJoinNode=false)
     val assertFailedNode = SimpleAssertionNode(failedAssertion, assertionType, sourceInfo, isClosed=false, hasFailed=true)
     dependencyGraph.addNode(assumeNode)
     dependencyGraph.addNode(assertFailedNode)
