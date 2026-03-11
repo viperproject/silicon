@@ -3,7 +3,7 @@ package viper.silicon.dependencyAnalysis
 
 object AssumptionType extends Enumeration {
   type AssumptionType = Value
-  val Explicit, LoopInvariant, PathCondition, Rewrite, SourceCode, DomainAxiom, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, MethodCall, FunctionBody, Precondition, Ghost, CustomInternal, Unknown = Value
+  val Explicit, LoopInvariant, PathCondition, Rewrite, SourceCode, DomainAxiom, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, MethodCall, FunctionBody, Precondition, Ghost, Annotation, CustomInternal, Unknown = Value
 
   def fromString(s: String): Option[Value] = values.find(_.toString == s)
 
@@ -13,7 +13,7 @@ object AssumptionType extends Enumeration {
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger, CustomInternal) // will always be hidden from user
   def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
   def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
-  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom)
+  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Annotation)
   def sourceCodeTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes ++ explicitAssertionTypes ++ verificationAnnotationTypes ++ internalTypes)
 
   def getMaxPriorityAssumptionType(types: Set[AssumptionType]): Option[AssumptionType] = {
@@ -30,7 +30,7 @@ object AssumptionType extends Enumeration {
       case AssumptionType.ImplicitPostcondition  => Some(AssumptionType.ImplicitPostcondition)
       case AssumptionType.Internal => Some(AssumptionType.Internal)
       case AssumptionType.CustomInternal => Some(AssumptionType.CustomInternal)
-      case AssumptionType.Ghost => None
+      case AssumptionType.Annotation | AssumptionType.Ghost => None
       case _ => None
     }).getOrElse(
       if(isAbstractFunction) AssumptionType.ExplicitPostcondition else AssumptionType.ImplicitPostcondition
@@ -56,6 +56,7 @@ object DependencyType {
   val Trigger: DependencyType = DependencyType(AssumptionType.Trigger, AssumptionType.Trigger)
   val MethodCall: DependencyType = DependencyType(AssumptionType.MethodCall, AssumptionType.MethodCall)
   val Ghost: DependencyType = DependencyType.make(AssumptionType.Ghost)
+  val Annotation: DependencyType = DependencyType.make(AssumptionType.Annotation)
 
   def make(singleType: AssumptionType): DependencyType = DependencyType(singleType, singleType)
 

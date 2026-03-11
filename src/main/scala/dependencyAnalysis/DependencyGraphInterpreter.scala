@@ -108,7 +108,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     exportProgram(program, Verifier.config.dependencyAnalysisExportPath() + "/" + name)
   }
 
-  private def exportProgram(program: Program, path: String) = {
+  private def exportProgram(program: Program, path: String): Unit = {
     // TODO ake: we should copy the original source file in order to keep the line numbering!
     val writer = new PrintWriter(path + "/program.vpr")
     writer.println(program.toString())
@@ -235,19 +235,6 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     computeVerificationProgressOptimized()
   }
 
-  private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode]): Double = {
-
-    val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
-    val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source.getTopLevelSource)
-
-    if(allSourceCodeNodes.isEmpty) return 1.0
-
-    val coveredSourceCodeNodes = coveredNodes.map(_.source.getTopLevelSource).intersect(allSourceCodeNodes)
-//    println(s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(_.getLineNumber).mkString("\n\t")}")
-//    println(s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(_.getLineNumber).mkString("\n\t")}")
-    println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
-    coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
-  }
 // TODO ake: remove profiling artifacts
 //  var perMethodDependencyRuntime: Long = 0L
 //  var depsToPostcondRuntime: Long = 0L
@@ -353,8 +340,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val proofQualityLea = if(numAssertions > 0) assertionQualitiesSum / numAssertions.toDouble else 1.0
 
     val info = {
-//      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(_._2.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
-//      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(_.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
+//      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(n => (n._2.getLineNumber, n._2.toString())).mkString("\n\t\t")}" + "\n\n" +
+//      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t\t")}" + "\n\n" +
       s"specQuality = $specQuality\n" +
       s"proof quality (Peter): $numFullyVerifiedAssertions / $numAssertions = $proofQualityPeter\n" +
       s"proof quality (Lea): $assertionQualitiesSum / $numAssertions = $proofQualityLea\n"
@@ -366,6 +353,22 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 //    s"filteringNodesRuntime: ${filteringNodesRuntime/1e6}ms\n\t")
 
     (specQuality * proofQualityPeter, specQuality * proofQualityLea, info)
+  }
+
+
+  private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode]): Double = {
+
+    val explicitAssertions = toCompactUserLevelNodes(getExplicitAssertionNodes)
+    val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
+    val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source.getTopLevelSource).diff(explicitAssertions.map(_.source.getTopLevelSource))
+
+    if(allSourceCodeNodes.isEmpty) return 1.0
+
+    val coveredSourceCodeNodes = coveredNodes.map(_.source.getTopLevelSource).intersect(allSourceCodeNodes)
+//    println(s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
+//    println(s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
+    println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
+    coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
   }
 
 
@@ -428,7 +431,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
 
     def getString(nodes: Set[AnalysisSourceInfo]): String = {
-      nodes.toList.sortBy(_.getLineNumber).mkString("\n\t\t")
+      nodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t\t")
     }
 
     val info = {
@@ -447,7 +450,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
         s"Assertions with failures:\n\t\t${getString(assertionsWithFailures)}" + "\n\n" +
         s"Explicit Postcondition:\n\t\t${getString(explicitPostconditions)}" + "\n\n" +
         "\n" +
-        s"Assertion Qualities:\n\t\t${proofQualityPerAssertion.filterNot(_._1 == 1.0).sortBy(_._2.source.getLineNumber).mkString("\n\t\t")}" + "\n\n" +
+        s"Assertion Qualities:\n\t\t${proofQualityPerAssertion.filterNot(_._1 == 1.0).sortBy(n => (n._2.source.getLineNumber, n._2.toString())).mkString("\n\t\t")}" + "\n\n" +
       "\n" +
       s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
       s"${fullyVerifiedAssertions.size}/${relevantAssertions.keySet.size} = ${"%.2f".format(verificationProgressPeter)}" + "\n" +
@@ -493,10 +496,14 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
     val allDependencies = allAssertions.flatMap(ass => toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass))).getSourceSet()
 
+    val explicitAssertions = toUserLevelNodes(getExplicitAssertionNodes)
     val allNodes = toUserLevelNodes(getNonInternalAssumptionNodes)
     val allSourceCodeStmts = allNodes.getSourceSet().diff(UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes,
-      AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes ++ Set(AssumptionType.FunctionBody)).getSourceSet())
-    allSourceCodeStmts.diff(allDependencies).size
+      AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes).getSourceSet()).diff(explicitAssertions.getSourceSet())
+    val uncoveredSourceCodeStmts = allSourceCodeStmts.diff(allDependencies)
+    if(uncoveredSourceCodeStmts.nonEmpty)
+      println(s"$name:\n\t${allSourceCodeStmts.diff(allDependencies).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
+    uncoveredSourceCodeStmts.size
   }
 }
 

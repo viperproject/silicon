@@ -41,7 +41,7 @@ object UserLevelDependencyAnalysisNode {
   }
 
   def mkString(nodes: Set[UserLevelDependencyAnalysisNode], sep: String = "\n"): String = {
-    nodes.toList.sortBy(_.source.getLineNumber).mkString(sep)
+    nodes.toList.sortBy(n => (n.source.getLineNumber, n.source.toString)).mkString(sep)
   }
 
   def mkUserLevelString(nodes: Set[DependencyAnalysisNode], sep: String = "\n"): String = {
