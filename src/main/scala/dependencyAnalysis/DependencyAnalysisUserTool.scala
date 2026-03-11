@@ -3,7 +3,7 @@ package viper.silicon.dependencyAnalysis
 import dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
-import viper.silver.ast.Method
+import viper.silver.ast.{AbstractAssign, AnnotationInfo, AnonymousDomainAxiom, Apply, Assert, Assume, Exhale, ExtensionStmt, Fold, Goto, If, Inhale, Label, LocalVarDeclStmt, MakeInfoPair, Method, MethodCall, NamedDomainAxiom, NewStmt, Package, Quasihavoc, Quasihavocall, Seqn, Unfold, While}
 
 import java.io.{BufferedWriter, FileWriter, PrintWriter}
 import scala.annotation.tailrec
@@ -80,6 +80,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       handleBenchmarkQuery()
     }else if(inputParts.head.equalsIgnoreCase("precisionEval")) {
       handlePrecisionEval(inputParts.tail)
+    }else if(inputParts.head.equalsIgnoreCase("annotate")) {
+      handleAnnotateQuery(inputParts.tail)
     }else if(inputParts.head.equalsIgnoreCase("graphSize")){
       if(inputParts.tail.isEmpty) {
         handleGraphSizeQuery(fullGraphInterpreter)
@@ -301,6 +303,65 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     }finally {
       bw.close()
     }
+  }
+
+  private def handleAnnotateQuery(inputs: Seq[String]): Unit = {
+    var n = 0
+    def nextN: Int = {
+      n = n + 1
+      n
+    }
+
+    def newInfo(info: ast.Info): ast.Info = MakeInfoPair(AnnotationInfo(Map(("label", Seq(s"L$nextN")))), info)
+
+
+    def annotateConjungts(exp: ast.Exp): ast.Exp = {
+      exp match {
+        case ast.And(l, r) => ast.And(annotateConjungts(l), annotateConjungts(r))(exp.pos, exp.info, exp.errT)
+        case _ => annotateExp(exp)
+      }
+    }
+
+    def annotateExp(exp: ast.Exp): ast.Exp = exp.withMeta((exp.pos, newInfo(exp.info), exp.errT))
+
+    def annotateSeqn(seqn: ast.Seqn):ast.Seqn = Seqn(seqn.ss.map(annotateStmt), seqn.scopedSeqnDeclarations)(seqn.pos, seqn.info, seqn.errT)
+
+    def annotateStmt(stmt: ast.Stmt): ast.Stmt = {
+      stmt match {
+        case Inhale(exp) => Inhale(annotateConjungts(exp))(exp.pos, exp.info, exp.errT)
+        case Assume(exp) => Assume(annotateConjungts(exp))(exp.pos, exp.info, exp.errT)
+        case seqn: Seqn => annotateSeqn(seqn)
+        case If(cond, thn, els) => If(annotateExp(cond), annotateSeqn(thn), annotateSeqn(els))(stmt.pos, stmt.info, stmt.errT)
+        case While(cond, invs, body) => While(annotateExp(cond), invs.map(annotateConjungts), annotateSeqn(body))(stmt.pos, stmt.info, stmt.errT)
+        case Label(name, invs) => Label(name, invs.map(annotateConjungts))(stmt.pos, stmt.info, stmt.errT)
+        case _: Goto | _: LocalVarDeclStmt => stmt
+        case Package(wand, proofScript) => Package(wand, annotateSeqn(proofScript))(stmt.pos, newInfo(stmt.info), stmt.errT)
+        case _ => stmt.withMeta((stmt.pos, newInfo(stmt.info), stmt.errT))
+      }
+    }
+
+    def annotateDomain(domain: ast.Domain): ast.Domain = {
+      def annotateAxiom(axiom: ast.DomainAxiom): ast.DomainAxiom = axiom match {
+        case NamedDomainAxiom(name, exp) => NamedDomainAxiom(name, annotateExp(exp))(axiom.pos, axiom.info, axiom.domainName, axiom.errT)
+        case AnonymousDomainAxiom(exp) => AnonymousDomainAxiom(annotateExp(exp))(axiom.pos, axiom.info, axiom.domainName, axiom.errT)
+      }
+      domain.copy(axioms = domain.axioms.map(annotateAxiom))(domain.pos, domain.info, domain.errT)
+    }
+
+    def annotateFunction(function: ast.Function): ast.Function =
+      function.copy(pres=function.pres.map(annotateConjungts), posts=function.posts.map(annotateConjungts), body=function.body.map(annotateExp))(function.pos, function.info, function.errT)
+
+    def annotateMethod(method: ast.Method): ast.Method =
+      method.copy(pres=method.pres.map(annotateConjungts), posts=method.posts.map(annotateConjungts), body=method.body.map(annotateSeqn))(method.pos, method.info, method.errT)
+
+    val newProgram: ast.Program = program.copy(domains=program.domains.map(annotateDomain), functions=program.functions.map(annotateFunction),
+      methods=program.methods.map(annotateMethod))(program.pos, program.info, program.errT)
+
+    val writer = new PrintWriter(inputs.head)
+    writer.println(newProgram.toString())
+    writer.close()
+    println("Done.")
+
   }
 
 
