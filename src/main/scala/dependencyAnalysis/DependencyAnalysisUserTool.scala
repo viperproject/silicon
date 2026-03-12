@@ -237,10 +237,10 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   }
 
   private def handlePrecisionEval(inputs: Seq[String]): Unit = {
-    val labelPattern: Regex = """@label\("([^"]+)"\)""".r
+    val labelPattern: Regex = """@label\(\s*("?)([^")\s]+)\1\s*\)""".r
     val header = "Assertion Label,Sound?,#True Dependencies,#Reported Dependencies,#False-Positives,Call Graph Size,Runtime"
 
-    def readFile(path: String): Map[String, List[String]] = {
+    def readFile(path: String): Map[String, Set[String]] = {
       val src = Source.fromFile(path)
       try {
         src.getLines()
@@ -248,7 +248,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
           .map { line =>
             val Array(left, right) = line.split("=", 2)  // split into key and rest
             val key = left.trim
-            val values = right.split(",").map(_.trim).toList
+            val values = right.split(",").map(_.trim).toSet
             key -> values
           }
           .toMap
@@ -263,7 +263,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       println(output)
     }
 
-    def evalSingleAssertion(assertionLabel: String, groundTruthLabels: List[String], callGraphLabels: List[String], bw: BufferedWriter): Unit = {
+    def evalSingleAssertion(assertionLabel: String, groundTruthLabels: Set[String], callGraphLabels: Set[String], bw: BufferedWriter): Unit = {
       val startAnalysis = System.nanoTime()
       val queriedAssertions = fullGraphInterpreter.getAssertionNodesByLabel(assertionLabel)
       val allDependencies = fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id))
@@ -272,16 +272,16 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       val endAnalysis = System.nanoTime()
       val durationMs = (endAnalysis - startAnalysis) / 1e6
 
-      val sourceDependenciesString = sourceDependencies.mkString("\n\t")
+      val labelsInReportedDeps: Set[String] = sourceDependencies.flatMap(node =>
+        labelPattern.findAllMatchIn(node.toString).map(_.group(2)))
 
-      val isSound = groundTruthLabels.forall(sourceDependenciesString.contains)
-      val imprecise = sourceDependencies.filter(node =>
-        labelPattern.findFirstMatchIn(node.toString) match {
-          case Some(label) => !groundTruthLabels.contains(label.group(1))
-          case _ => true
-      })
+      val isSound = groundTruthLabels.diff(labelsInReportedDeps).isEmpty
+      val imprecise = labelsInReportedDeps.diff(groundTruthLabels)
 
-      addOutput(bw, s"$assertionLabel,${if(isSound) "YES" else "NO"},${groundTruthLabels.size},${sourceDependencies.size},${imprecise.size},${callGraphLabels.size},${durationMs}ms")
+      assert(!isSound || groundTruthLabels.size + imprecise.size == labelsInReportedDeps.size, s"Imprecision calculation is wrong.")
+      assert(labelsInReportedDeps.size <= callGraphLabels.size, "Call graph size is smaller than reported dependencies.")
+
+        addOutput(bw, s"$assertionLabel,${if(isSound) "YES" else "NO"},${groundTruthLabels.size},${labelsInReportedDeps.size},${imprecise.size},${callGraphLabels.size},${durationMs}ms")
 
 //      println(s"Queried:\n\t${getSourceInfoString(queriedAssertions)}")
 //      println(s"\nAll Dependencies (${timeAll}ms):\n\t$sourceDependenciesString")
@@ -306,12 +306,12 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       val groundTruths = readFile(pathToGroundTruth.toUri.getPath)
       val callGraphs = readFile(pathToCallGraphs.toUri.getPath)
       addOutput(bw, header)
-      groundTruths.foreach { case (assertionLabel, dependencyLabels) => evalSingleAssertion(assertionLabel, dependencyLabels, callGraphs.getOrElse(assertionLabel, List()), bw) }
+      callGraphs.foreach { case (assertionLabel, callGraphLabels) => evalSingleAssertion(assertionLabel, groundTruths.getOrElse(assertionLabel, Set.empty), callGraphLabels, bw) }
 
       bw.close()
       println("Done.")
     }catch {
-      case _ => println("Failed.")
+      case e: Throwable => println(s"Failed. ${e.getMessage}")
     }finally {
       bw.close()
     }
