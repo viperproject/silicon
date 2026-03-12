@@ -89,8 +89,10 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
       val basePathAnnotatedPrograms = "src/test/resources/dependencyAnalysisTests/viper-online-examples-annotated"
       val directory = new File(basePathAnnotatedPrograms)
       directory.mkdir()
+      val directoryTestCase = new File(s"$basePathAnnotatedPrograms/$fileName")
+      directoryTestCase.mkdir()
       val dependencyAnalysisUserTool = new DependencyAnalysisUserTool(joinedDependencyGraphInterpreter.get, dependencyGraphInterpreters, program, List())
-      dependencyAnalysisUserTool.run(s"annotate $basePathAnnotatedPrograms/$fileName")
+      dependencyAnalysisUserTool.run(s"annotate $basePathAnnotatedPrograms/$fileName/$fileName.vpr")
     }
     new AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()
     new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter.get).execute()
