@@ -3,9 +3,12 @@ package viper.silicon.dependencyAnalysis
 import dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
-import viper.silver.ast.{AbstractAssign, AnnotationInfo, AnonymousDomainAxiom, Apply, Assert, Assume, Exhale, ExtensionStmt, Fold, Goto, If, Inhale, Label, LocalVarDeclStmt, MakeInfoPair, Method, MethodCall, NamedDomainAxiom, NewStmt, Package, Quasihavoc, Quasihavocall, Seqn, Unfold, While}
+import viper.silver.ast.{AnnotationInfo, AnonymousDomainAxiom, Assume, Goto, If, Inhale, Label, LocalVarDeclStmt, MakeInfoPair, Method, NamedDomainAxiom, Package, Seqn, While}
 
 import java.io.{BufferedWriter, FileWriter, PrintWriter}
+import java.nio.file.{Path, Paths}
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import scala.annotation.tailrec
 import scala.io.Source
 import scala.io.StdIn.readLine
@@ -235,7 +238,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handlePrecisionEval(inputs: Seq[String]): Unit = {
     val labelPattern: Regex = """@label\("([^"]+)"\)""".r
-    val header = "Assertion Label,Sound?,#True Dependencies,#Reported Dependencies,#False-Positives,Runtime"
+    val header = "Assertion Label,Sound?,#True Dependencies,#Reported Dependencies,#False-Positives,Call Graph Size,Runtime"
 
     def readFile(path: String): Map[String, List[String]] = {
       val src = Source.fromFile(path)
@@ -260,7 +263,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       println(output)
     }
 
-    def evalSingleAssertion(assertionLabel: String, dependencyLabels: List[String], bw: BufferedWriter): Unit = {
+    def evalSingleAssertion(assertionLabel: String, groundTruthLabels: List[String], callGraphLabels: List[String], bw: BufferedWriter): Unit = {
       val startAnalysis = System.nanoTime()
       val queriedAssertions = fullGraphInterpreter.getAssertionNodesByLabel(assertionLabel)
       val allDependencies = fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id))
@@ -271,14 +274,14 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
       val sourceDependenciesString = sourceDependencies.mkString("\n\t")
 
-      val isSound = dependencyLabels.forall(sourceDependenciesString.contains)
+      val isSound = groundTruthLabels.forall(sourceDependenciesString.contains)
       val imprecise = sourceDependencies.filter(node =>
         labelPattern.findFirstMatchIn(node.toString) match {
-          case Some(label) => !dependencyLabels.contains(label.group(1))
+          case Some(label) => !groundTruthLabels.contains(label.group(1))
           case _ => true
       })
 
-      addOutput(bw, s"$assertionLabel,${if(isSound) "YES" else "NO"},${dependencyLabels.size},${sourceDependencies.size},${imprecise.size},${durationMs}ms")
+      addOutput(bw, s"$assertionLabel,${if(isSound) "YES" else "NO"},${groundTruthLabels.size},${sourceDependencies.size},${imprecise.size},${callGraphLabels.size},${durationMs}ms")
 
 //      println(s"Queried:\n\t${getSourceInfoString(queriedAssertions)}")
 //      println(s"\nAll Dependencies (${timeAll}ms):\n\t$sourceDependenciesString")
@@ -287,14 +290,23 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     }
 
     assert(inputs.size == 1)
-    val pathToGroundTruth = inputs.head
 
-    val bw = new BufferedWriter(new FileWriter(pathToGroundTruth.replace(".txt", "_result.csv")))
+    val dir: Path = Paths.get(inputs.head)
+
+    val pathToGroundTruth = dir.resolve("ground-truth.txt")
+    val pathToCallGraphs = dir.resolve("call-graphs.txt")
+
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss")
+    val timestamp = LocalDateTime.now().format(formatter)
+
+    val output: Path = dir.resolve( s"result_$timestamp.csv")
+    val bw = new BufferedWriter(new FileWriter(output.toUri.getPath))
 
     try {
-      val groundTruths = readFile(pathToGroundTruth)
+      val groundTruths = readFile(pathToGroundTruth.toUri.getPath)
+      val callGraphs = readFile(pathToCallGraphs.toUri.getPath)
       addOutput(bw, header)
-      groundTruths.foreach { case (assertionLabel, dependencyLabels) => evalSingleAssertion(assertionLabel, dependencyLabels, bw) }
+      groundTruths.foreach { case (assertionLabel, dependencyLabels) => evalSingleAssertion(assertionLabel, dependencyLabels, callGraphs.getOrElse(assertionLabel, List()), bw) }
 
       bw.close()
       println("Done.")

@@ -18,14 +18,19 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
   val CHECK_PRECISION = false
   val EXECUTE_TEST = true
   val EXECUTE_PERFORMANCE_BENCHMARK = false
+  val ANNOTATE_PROGRAMS = false
   override val EXPORT_PRUNED_PROGRAMS: Boolean = false
   val ignores: Seq[String] = Seq()
   val testDirectories: Seq[String] = Seq(
     "dependencyAnalysisTests/all",
     "dependencyAnalysisTests/unitTests",
     "dependencyAnalysisTests/real-world-examples",
+//    "dependencyAnalysisTests/viper-online-examples"
 
   )
+
+//  override val ignores = Seq("quickselect", "adts", "graph-marking-qps", "linked-list-iterator", "linked-list-predicates")
+
 
 
   if(EXECUTE_PERFORMANCE_BENCHMARK)
@@ -80,6 +85,13 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
     val dependencyGraphInterpreters = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].dependencyGraphInterpretersPerMember
     val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter
 
+    if(ANNOTATE_PROGRAMS){
+      val basePathAnnotatedPrograms = "src/test/resources/dependencyAnalysisTests/viper-online-examples-annotated"
+      val directory = new File(basePathAnnotatedPrograms)
+      directory.mkdir()
+      val dependencyAnalysisUserTool = new DependencyAnalysisUserTool(joinedDependencyGraphInterpreter.get, dependencyGraphInterpreters, program, List())
+      dependencyAnalysisUserTool.run(s"annotate $basePathAnnotatedPrograms/$fileName")
+    }
     new AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()
     new PruningTest(filePrefix + "/" + fileName, program, joinedDependencyGraphInterpreter.get).execute()
 //    new PrecisionEvaluation(filePrefix, fileName, program, joinedDependencyGraphInterpreter.get).execute()

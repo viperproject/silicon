@@ -46,7 +46,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def getAssertionNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
     val fullAnnotation = s"@label(\"$label\")"
-    getAssertionNodes.filter(node => node.toString.contains(label))
+    getAssertionNodes.filter(node => node.toString.contains(fullAnnotation))
   }
 
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
