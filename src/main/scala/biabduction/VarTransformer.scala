@@ -66,28 +66,25 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
     }
   }
 
-  def permExpToTerm(permExp: Exp, v: Verifier): Option[Term] = {
+  def permExpToTerm(permExp: Exp): Term = {
 
-    def binPermOp(e1: ast.Exp, e2: ast.Exp, op: (terms.Term, terms.Term) => terms.Term): Option[terms.Term] = {
-      Some(op(
-        permExpToTerm(e1, v).getOrElse(terms.FullPerm),
-        permExpToTerm(e2, v).getOrElse(terms.FullPerm)
-      ))
+    def binPermOp(e1: Exp, e2: Exp, op: (Term, Term) => Term): Term = {
+      op(permExpToTerm(e1), permExpToTerm(e2))
     }
 
-    permExp match {
+    val ret = permExp match {
       case ast.IntLit(n) =>
-        Some(terms.IntLiteral(n))
+        terms.IntLiteral(n)
       case ast.FullPerm() =>
-        Some(terms.FullPerm)
+        terms.FullPerm
       case ast.NoPerm() =>
-        Some(terms.NoPerm)
+        terms.NoPerm
       case ast.WildcardPerm() =>
         val arp = v.decider.freshARP("abductionWC")
         v.decider.assume(arp._2, None, None)
-        Some(arp._1)
+        arp._1
       case ast.FractionalPerm(ast.IntLit(e1), ast.IntLit(e2)) =>
-        Some(terms.FractionPerm((terms.IntLiteral(e1), terms.IntLiteral(e2))))
+        terms.FractionPerm((terms.IntLiteral(e1), terms.IntLiteral(e2)))
       case ast.PermMul(e1, e2) =>
         binPermOp(e1, e2, terms.PermTimes(_, _))
       case ast.PermSub(e1, e2) =>
@@ -95,11 +92,13 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case ast.PermAdd(e1, e2) =>
         binPermOp(e1, e2, terms.PermPlus(_, _))
       case ast.PermDiv(e1, e2) =>
-        binPermOp(e1, e2, terms.PermIntDiv(_, _))
+        binPermOp(e1, e2, terms.PermPermDiv(_, _))
       case ast.PermPermDiv(e1, e2) =>
         binPermOp(e1, e2, terms.PermPermDiv(_, _))
-      case _ => None
+      case _ => throw new IllegalStateException(s"permExpToTerm can't transform $permExp")
     }
+    // println(s"Transformed $permExp into $ret")
+    ret
   }
 
   // This function assumes that prefVars are the Vars in the precondition(s) and
@@ -161,7 +160,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
 
     resolveMatches()
 
-    t match {
+    (t match {
       case t if matches.contains(t) => matches.get(t)
       case BuiltinEquals(t1, t2) => (transformTerm(t1), transformTerm(t2)) match {
         case (Some(e1), Some(e2)) =>
@@ -171,17 +170,15 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case v@terms.Var(_) if v.isWildcard => Some(ast.WildcardPerm()())
       // FIXME: This is probably wrong
       case terms.PermMin(t1, t2) =>
-        val e1 = transformTerm(t1).getOrElse(ast.FullPerm()())
-        val e2 = transformTerm(t2).getOrElse(ast.FullPerm()())
-        val minP = abductionUtils.permMin(e1, e2)
+        val e1 = transformTerm(t1)
+        val e2 = transformTerm(t2)
+        val minP = abductionUtils.minPermRational(e1, e2)
         Some(ast.FractionalPerm(ast.IntLit(minP.numerator)(), ast.IntLit(minP.denominator)())())
 
       case terms.FractionPermLiteral(r) => Some(ast.FractionalPerm(ast.IntLit(r.numerator)(), ast.IntLit(r.denominator)())())
       case terms.FullPerm => Some(ast.FullPerm()())
       case terms.NoPerm => Some(ast.NoPerm()())
       case terms.PermTimes(t1, t2) => binPermOp(t1, t2, ast.FullPerm()(), ast.PermMul(_, _)())
-      // Div is just TIMES 1 / n
-      // case terms.PermDiv(t1, t2) => binPermOp(t1, t2, ast.PermDiv(_, _)())
       case terms.PermPermDiv(t1, t2) => binPermOp(t1, t2, ast.FullPerm()(), ast.PermPermDiv(_, _)())
       case terms.FractionPerm(t1, t2) => binPermOp(t1, t2, ast.FullPerm()(), ast.PermDiv(_, _)())
       case terms.PermMinus(t1, t2) => binPermOp(t1, t2, ast.NoPerm()(), ast.PermSub(_, _)())
@@ -203,26 +200,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case or: terms.Or =>
         val subs = or.ts.map(transformTerm)
         if (subs.contains(None)) None else Some(BigOr(subs.map(_.get)))
-      /*
-      case app: terms.App =>
-        app.applicable match {
-          case df: terms.DomainFun => 
-            val args = app.args.map(transformTerm)
-            if (args.contains(None)) None else {
-              val funcName = df.id.name.split('[').head
-              val domFunc = s.program.domainFunctionsByName.get(funcName)
-              Some(ast.DomainFuncApp(domFunc.get, args.map(_.get), Map())())
-            }
-            
-          case _ => 
-            val args = app.args.tail.map(transformTerm)
-            if (args.contains(None)) None else {
-              val funcName = app.applicable.id.name
-              val func = s.program.functionsByName.get(funcName)
-              Some(ast.FuncApp(func.get, args.map(_.get))())
-            }
-        }
-        */
       case sl: terms.SeqLength => transformTerm(sl.p).flatMap(e => Some(ast.SeqLength(e)()))
       case sa: terms.SeqAt => (transformTerm(sa.p0), transformTerm(sa.p1)) match {
         case (Some(e0), Some(e1)) => Some(ast.SeqIndex(e0, e1)())
@@ -230,7 +207,8 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       }
       case terms.IntLiteral(n) => Some(ast.IntLit(n)())
       case _ => None
-    }
+    }).map(abductionUtils.simplifyPermission)
+
   }
 
   def transformState(s: State): Seq[ast.Exp] = {

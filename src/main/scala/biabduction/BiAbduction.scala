@@ -5,6 +5,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.rules.consumer.consumes
+import viper.silicon.rules.evaluator.eval
 import viper.silicon.rules.{evaluator, executionFlowController, executor}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, True}
@@ -32,7 +33,7 @@ trait BiAbductionSuccess extends BiAbductionResult
 case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[(Exp, Option[BasicChunk])] = Seq(), stmts: Seq[Stmt] = Seq(), newFieldChunks: Map[BasicChunk, LocationAccess], allNewChunks: Seq[BasicChunk], trigger: Option[Positioned] = None) extends BiAbductionSuccess {
 
   override def toString: String = {
-    "Abduced pres " + state.length + ", Abduced statements " + stmts.length
+    "Abduced " + state.length + " pres: " + state + ", Abduced " + stmts.length + " statements " + stmts
   }
 
   def getBcExps(bcsTerms: Seq[Term]): Seq[Option[Exp]] = {
@@ -40,21 +41,21 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
 
     v.decider.setPcs(pcs)
 
-    //val varTrans = VarTransformer(s, v, s.g.values, s.h)
+    //val varTran = VarTransformer(s, v, s.g.values, s.h)
     //val preExps = bcExps.map {
     //  case Some(t) => preTrans.transformExp(t, strict = false)
     //  case None => None
     //}
-    
+
 
     // If we can express as in vars, then we want to
     val ins = s.currentMember.get.asInstanceOf[Method].formalArgs.map(_.localVar)
     val preVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
 
     val otherVars: Map[AbstractLocalVar, (Term, Option[Exp])] = s.g.values
-    val varTrans = VarTransformer(s, v, preVars, s.h, otherVars = otherVars)
-    val bcExps = bcsTerms.map { t => varTrans.transformTerm(t) }
-    
+    val varTran = VarTransformer(s, v, preVars, s.h, otherVars = otherVars)
+    val bcExps = bcsTerms.map { t => varTran.transformTerm(t) }
+
     v.decider.setPcs(prevPcs)
     bcExps
   }
@@ -81,19 +82,19 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
       Some(Seq())
     } else {
 
-      val varTrans = VarTransformer(s, v, preVars, preHeap, newFieldChunks)
+      val varTran = VarTransformer(s, v, preVars, preHeap, newFieldChunks)
       val presTransformed = state.collect {
         // TODO: Some(ch) has the wrong permission amount, pre, is an expression that has the right perm amount
         // probably
-        case (pre, Some(ch)) =>
+        case (pre, Some(ch)) => //varTran.transformChunk(ch)
           pre match {
             case ap: AccessPredicate =>
-              varTrans.transformChunk(ch.copy(perm = varTrans.permExpToTerm(ap.perm, v).getOrElse(terms.FullPerm)))
-          }//case (pre, None) => varTrans.transformExp(pre)
+              varTran.transformChunk(ch.copy(perm = varTran.permExpToTerm(ap.perm)))
+          }//case (pre, None) => varTran.transformExp(pre)
       }
-      //println(s"presTransformed: $presTransformed")
+      // println(s"presTransformed: $presTransformed")
       val bcPreExps = bcExps.collect {
-        case exp => varTrans.transformExp(exp)
+        case exp => varTran.transformExp(exp)
       }
 
       // If we cannot express the precondition, we have to fail
@@ -129,8 +130,8 @@ case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positione
   override def toString: String = "Successful framing"
 
   def getBcExps(bcsTerms: Seq[Term], prefVars: Map[AbstractLocalVar, (Term, Option[Exp])], otherVars: Map[AbstractLocalVar, (Term, Option[Exp])]): Seq[Exp] = {
-    val varTrans = VarTransformer(s, v, prefVars, s.h, otherVars = otherVars)
-    val bcExps = bcsTerms.map { t => varTrans.transformTerm(t) }
+    val varTran = VarTransformer(s, v, prefVars, s.h, otherVars = otherVars)
+    val bcExps = bcsTerms.map { t => varTran.transformTerm(t) }
     bcExps.collect { case Some(e) => e.topLevelConjuncts }.flatten.distinct
   }
 }
@@ -144,10 +145,10 @@ case class BiAbductionFailure(s: State, v: Verifier, pcs: PathConditionStack) ex
     val inVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
     val prevPcs = v.decider.pcs
     v.decider.setPcs(pcs)
-    val varTrans = VarTransformer(s, v, inVars, preHeap)
+    val varTran = VarTransformer(s, v, inVars, preHeap)
     val bcTerms = v.decider.pcs.branchConditions
     val bcExpOpt = bcTerms.map {
-      bc => varTrans.transformTerm(bc)
+      bc => varTran.transformTerm(bc)
     }
     v.decider.setPcs(prevPcs)
 
@@ -180,6 +181,7 @@ trait RuleApplier[S] {
         case Some(out) =>
           applyRules(out)(Q)
         case None =>
+          // println(s"Rule $currentRule did not work, attempting ${currentRule + 1}")
           applyRules(in, currentRule + 1)(Q)
       }
     }
@@ -205,14 +207,16 @@ object BiAbductionSolver {
     } else {
 
       val initPcs = v.decider.pcs.duplicate()
-      println(s"f $f Reason ${f.message.reason}")
+      println(s"\tf $f\n\tReason ${f.message.reason}")
+      println(s"in state ${s.h.values.mkString("\n\t")}")
+      // println(s"with pcs ${v.decider.pcs}")
+      println(s"with g ${s.g.values.mkString("\n\t")}")
       val reason = f.message.reason match {
         case reason: InsufficientPermission =>
           val perm = f.message.offendingNode match {
             case _: Fold => Some(PermMul(s.abdPermScalingFactorExp, reason.permExp.getOrElse(FullPerm()()))())
             case _ => reason.permExp
           }
-          // TODO: We need scaling only if we're inside a fold
           val acc = reason.offendingNode match {
             case n: FieldAccess =>
               FieldAccessPredicate(n, perm)()
@@ -225,11 +229,9 @@ object BiAbductionSolver {
         case reason =>
           None
       }
-      //println("reason", reason)
       reason match {
         case None => f
         case Some(abdGoal) =>
-          println(s"abdGoal $abdGoal")
 
           val tra = f.message.failureContexts.collectFirst {
             case SiliconAbductionFailureContext(trafo) if trafo.isDefined => trafo.get
@@ -240,7 +242,7 @@ object BiAbductionSolver {
             case Some(trafo) => trafo.f(qPre).asInstanceOf[AbductionQuestion]
             case _ => qPre
           }
-
+          println(s"abdGoal $abdGoal in s: \n\t${s.h.values.mkString("\n\t")}")
           // NOTE: Without fractional permissions, the comment below is true
           // With fractional permissions, we HAVE to start with rule one because if we hold a fraction smaller
           // than the goal, we must subtract it from the goal
@@ -258,12 +260,12 @@ object BiAbductionSolver {
                   Success(Some(BiAbductionFailure(s, v, initPcs)))
                   //Unreachable()
                 } else {
-                  // TODO: Here we fetch the postcondition simply by looking at the chunks, but this isn't correct right?
                   val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
                   //val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
                   //val s1 = q1.s.copy(oldHeaps = newOldHeaps)
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
                   val abd = AbductionSuccess(q1.s, q1.v, q1.v.decider.pcs.duplicate(), newState, newStmts, fieldChunks, newChunks, trigger)
+                  println(s"Solved abduction succesfully with state ${q1.s.h.values.mkString("\n\t")} and pcs ${q1.v.decider.pcs.branchConditions}")
                   Success(Some(abd)) && Q(q1.s, q1.v)
                 }
               } else {
@@ -279,6 +281,7 @@ object BiAbductionSolver {
     AbstractionApplier.applyRules(q) { q1 =>
       val absTransForm = VarTransformer(q1.s, q1.v, q1.s.g.values, q1.s.h)
       val res = absTransForm.transformState(q1.s)
+      println(s"Solved abstraction with res $res and state \n\t${q1.s.h.values.mkString("\n\t")}")
       Q(q1.s, res, q1.v)
     }
   }
@@ -287,11 +290,14 @@ object BiAbductionSolver {
 
     //val tra = VarTransformer(s, v, targetVars, s.h)
     executionFlowController.tryOrElse1[Option[Term]](s, v) { (s, v, QS) =>
+      println(s"Will consume POSTS $knownPosts in \n\t${s.h.values.mkString("\n\t")}")
       consumes(s, knownPosts, false, pvef, v)(QS)
     } { (s1: State, _: Option[Term], v1: Verifier) =>
       executionFlowController.locallyWithResult[Seq[Exp]](s1, v1) { (s1a, v1a, T) =>
+        println(s"Will solve abst in \n\t${s1a.h.values.mkString("\n\t")}")
         BiAbductionSolver.solveAbstraction(s1a, v1a) { (s2, framedPosts, v2) =>
           val newPosts = framedPosts.map { e => tra.transformExp(e) }.collect { case Some(e) => e }
+          println(s"New posts $newPosts")
           T(abductionUtils.sortExps(newPosts))
         }
       } {
@@ -300,8 +306,11 @@ object BiAbductionSolver {
           Q(FramingSuccess(s1, v1, Seq(), loc, v.decider.pcs.duplicate(), tra)) // No new state or needed stmts
         // We consumed the post conditions and found new ones. Handle the new ones and add them to the result
         case newPosts1 =>
+          println(s"Will try to solve framing (in f, succ) for post $newPosts1")
           solveFraming(s1, v1, pvef, tra, loc, newPosts1, stateAllowed) { frame =>
-            val newFrame = frame.copy(posts = frame.posts ++ newPosts1)
+            println(s"\tNew post is ${frame.posts}")
+            val sortedPost = abductionUtils.sortExps(newPosts1)
+            val newFrame = frame.copy(posts = frame.posts ++ sortedPost)
             Q(newFrame)
           }
       }
@@ -309,6 +318,7 @@ object BiAbductionSolver {
       // We failed to fulfill the posts. Perform abduction, add the results and try again.
       f =>
         BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(loc))((s3, v3) => {
+          println(s"Will try to solve framing (in f, fail) for post $knownPosts")
           solveFraming(s3, v3, pvef, tra, loc, knownPosts, stateAllowed)(Q)
 
           /*{
@@ -328,10 +338,13 @@ object BiAbductionSolver {
 
   def resolveAbductionResults(m: Method, nf: NonFatalResult): Option[Method] = {
     val abdReses = abductionUtils.getAbductionSuccesses(nf)
-    //println(s"abdReses: $abdReses")
+    println(s"abdReses:")
+    println(s"\t${abdReses.mkString("\n")}")
     val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
+    //println(s"newMatches: $newMatches")
     val abdCases = abdReses.groupBy(res => (res.trigger.get, res.trigger.get.pos, res.stmts, res.state))
-
+    println(s"abdCases:")
+    println(s"\t${abdCases.mkString("\n")}")
     // Try to join by bc terms
     val joinedCases = abdCases.map {
       case (_, reses) =>
@@ -355,7 +368,7 @@ object BiAbductionSolver {
         val finalBcs = BigOr(expJoined.map(e => BigAnd(e._2)))
         (abdRes -> finalBcs)
     }
-
+    println(s"joinedCases: \n\t${joinedCases.mkString("\n\t")}")
     // We want to add things in the reverse order of the abduction results.
     abdReses.reverse.foldLeft[Option[Method]](Some(m)) { (mOpt, res) =>
       mOpt match {
@@ -377,6 +390,7 @@ object BiAbductionSolver {
     val preVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
     val prevPcs = v.decider.pcs
     v.decider.setPcs(abdRes.pcs)
+    println(s"bcExps: $bcExps")
     val pres = abdRes.getPreconditions(preVars, preHeap, bcExps, newFieldChunks)
     val finalStmts = abdRes.getStatements(bcExps)
     v.decider.setPcs(prevPcs)
@@ -405,7 +419,7 @@ object BiAbductionSolver {
           case whileStmt: While if whileStmt.cond == e && whileStmt.cond.pos == e.pos => Seqn(abdRes.stmts :+ whileStmt, Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
         }
       }
-      val newPres = abductionUtils.sortExps(abductionUtils.normalizePreconditions(m.pres ++ pres.get, VarTransformer(s, v, s.g.values, s.h)))
+      val newPres = abductionUtils.sortExps(abductionUtils.normalizePreconditions(m.pres ++ pres.get, s, v))
       Some(m.copy(pres = newPres, body = Some(newBody))(pos = m.pos, info = m.info, errT = m.errT))
     }
   }
@@ -441,11 +455,14 @@ object BiAbductionSolver {
 
     // We can remove bcs that hold in every branch
     val everyTerms = cases.head._2.filter { t => cases.forall(_._2.contains(t)) }
+    println(s"everyTerms: $everyTerms")
 
     val res = cases.collect {
       case (posts, bcs) if posts.nonEmpty && bcs.diff(everyTerms).nonEmpty => Implies(BigAnd(bcs.diff(everyTerms)), BigAnd(posts))()
       case (posts, _) if posts.nonEmpty => BigAnd(posts)
     } ++ everyPosts
+
+    // we still need to sort the posts
     val newM = m.copy(posts = m.posts ++ res)(pos = m.pos, info = m.info, errT = m.errT)
     Some(newM)
 
@@ -534,6 +551,8 @@ object BiAbductionSolver {
 }
 
 object abductionUtils {
+
+  val pve: PartialVerificationError = Internal()
 
   def isValidPredicate(pred: Predicate): Boolean = {
     pred.formalArgs.size == 1 && pred.body.isDefined
@@ -697,7 +716,9 @@ object abductionUtils {
     fields ++ preds ++ others
   }
 
-  def normalizePreconditions(expressions: Seq[Exp], varTrans: VarTransformer): Seq[Exp] = {
+  def normalizePreconditions(expressions: Seq[Exp], s: State, v: Verifier): Seq[Exp] = {
+    val varTran = VarTransformer(s, v, s.g.values, s.h)
+
     def normalizePermissions(exp: Exp): Exp = {
       exp.transform({
         case fap: FieldAccessPredicate =>
@@ -707,31 +728,32 @@ object abductionUtils {
       })
     }
 
-    val groups = expressions.map { exp =>
-      exp.transform{
-        case fap: FieldAccessPredicate =>
-          varTrans.transformExp(fap).getOrElse(fap)
-        case pap: PredicateAccessPredicate =>
-          varTrans.transformExp(pap).getOrElse(pap)
-      }
-    }.groupBy(normalizePermissions).values
+    def extractPerm(exp: Exp): Exp = exp match {
+      case fap: FieldAccessPredicate         => fap.perm
+      case pap: PredicateAccessPredicate     => pap.perm
+      case Implies(_, fap: FieldAccessPredicate)     => fap.perm
+      case Implies(_, pap: PredicateAccessPredicate) => pap.perm
+      case e => e
+    }
 
-    groups.map { group =>
+    expressions.groupBy(normalizePermissions).values.map { group =>
       if (group.size == 1) {
         group.head
       } else {
         val ap = group.head
-        val permSum = group.map {
-          case fap: FieldAccessPredicate => fap.perm
-          case pap: PredicateAccessPredicate => pap.perm
-          case e => e
-        }.reduceLeft((p1, p2) => PermAdd(p1, p2)())
+        val permSum = group
+          .map(extractPerm)
+          .reduceLeft((p1, p2) => PermAdd(p1, p2)(p1.pos, p1.info, p1.errT))
 
         ap match {
           case fap: FieldAccessPredicate =>
             fap.copy(permExp = Some(permSum))(fap.pos, fap.info, fap.errT)
           case pap: PredicateAccessPredicate =>
             pap.copy(permExp = Some(permSum))(pap.pos, pap.info, pap.errT)
+          case Implies(lhs, fap: FieldAccessPredicate) =>
+            Implies(lhs, fap.copy(permExp = Some(permSum))(fap.pos, fap.info, fap.errT))(ap.pos, ap.info, ap.errT)
+          case Implies(lhs, pap: PredicateAccessPredicate) =>
+            Implies(lhs, pap.copy(permExp = Some(permSum))(pap.pos, pap.info, pap.errT))(ap.pos, ap.info, ap.errT)
           case other => other
         }
       }
@@ -750,9 +772,9 @@ object abductionUtils {
       LocalVarAssign(permVar, CurrentPerm(loc)())()
     ), Seq())()
     executor.exec(q.s, toExec, q.v, q.trigger, q.stateAllowed) { (s1, v1) =>
-      val varTrans = VarTransformer(s1, v1, s1.g.values, s1.h)
-      //println(s"      which are ${varTrans.permsTo(permVar)}")
-      Q(varTrans.permsTo(permVar))
+      val varTran = VarTransformer(s1, v1, s1.g.values, s1.h)
+      //println(s"      which are ${varTran.permsTo(permVar)}")
+      Q(varTran.permsTo(permVar))
     }*/
     val resource = loc.res(q.s.program)
     val id = ChunkIdentifier(resource, q.s.program)
@@ -788,18 +810,21 @@ object abductionUtils {
     }
   }
 
-  def asRational(p: Exp): Rational = p match {
-    case _: FullPerm => Rational(1, 1)
-    case _: NoPerm => Rational(0, 1)
-    case FractionalPerm(IntLit(l), IntLit(r)) => Rational(l, r)
-    case PermMul(e1, e2) => asRational(e1) * asRational(e2)
-    case PermSub(e1, e2) => asRational(e1) - asRational(e2)
-    case PermAdd(e1, e2) => asRational(e1) + asRational(e2)
-    case PermDiv(e1, e2) => asRational(e1) / asRational(e2)
-    case PermPermDiv(e1, e2) => asRational(e1) / asRational(e2)
-    case WildcardPerm() => Rational(0, 1)
-    case e =>
-      throw new IllegalStateException(s"Impossible by invariant: $p")
+  def asRational(p: Option[Exp]): Rational = p match {
+    case Some(p2) => p2 match {
+      case _: FullPerm => Rational(1, 1)
+      case _: NoPerm => Rational(0, 1)
+      case FractionalPerm(IntLit(l), IntLit(r)) => Rational(l, r)
+      case PermMul(e1, e2) => asRational(Some(e1)) * asRational(Some(e2))
+      case PermSub(e1, e2) => asRational(Some(e1)) - asRational(Some(e2))
+      case PermAdd(e1, e2) => asRational(Some(e1)) + asRational(Some(e2))
+      case PermDiv(e1, e2) => asRational(Some(e1)) / asRational(Some(e2))
+      case PermPermDiv(e1, e2) => asRational(Some(e1)) / asRational(Some(e2))
+      case WildcardPerm() => Rational(0, 1)
+      case e =>
+        throw new IllegalStateException(s"Impossible by invariant: $p")
+    }
+    case None => Rational(1, 1)
   }
 
   def asPerm(r: Rational): Exp = {
@@ -807,7 +832,7 @@ object abductionUtils {
   }
 
   // This does max(a - b, 0)
-  def clampSubPerm(a: Exp, b: Exp): FractionalPerm = {
+  def clampSubPerm(a: Option[Exp], b: Option[Exp]): FractionalPerm = {
     //println(s"Doing $a - $b")
     val sub = asRational(a) - asRational(b)
     FractionalPerm(
@@ -816,13 +841,43 @@ object abductionUtils {
     )()
   }
 
-  def permMax(a: Exp, b: Exp): Rational = {
+  def maxPerm(p1: Exp, p2: Exp, v: Verifier, varTran: VarTransformer): Exp = {
+    (p1, p2) match {
+      case (Implies(lhs1, inner1), Implies(lhs2, inner2)) if lhs1 == lhs2 =>
+        val term1 = varTran.permExpToTerm(inner1 match { case fap: FieldAccessPredicate => fap.perm case pap: PredicateAccessPredicate => pap.perm })
+        val term2 = varTran.permExpToTerm(inner2 match { case fap: FieldAccessPredicate => fap.perm case pap: PredicateAccessPredicate => pap.perm })
+        if (v.decider.check(terms.AtLeast(term1, term2), Verifier.config.checkTimeout())) p1 else p2
+      case (Implies(_, _), _) | (_, Implies(_, _)) =>
+        p1
+      case _ =>
+        val term1 = varTran.permExpToTerm(p1)
+        val term2 = varTran.permExpToTerm(p2)
+        if (v.decider.check(terms.AtLeast(term1, term2), Verifier.config.checkTimeout())) p1 else p2
+    }
+  }
+
+  def minPerm(p1: Exp, p2: Exp, v: Verifier, varTran: VarTransformer): Exp = {
+    (p1, p2) match {
+      case (Implies(lhs1, inner1), Implies(lhs2, inner2)) if lhs1 == lhs2 =>
+        val term1 = varTran.permExpToTerm(inner1 match { case fap: FieldAccessPredicate => fap.perm case pap: PredicateAccessPredicate => pap.perm })
+        val term2 = varTran.permExpToTerm(inner2 match { case fap: FieldAccessPredicate => fap.perm case pap: PredicateAccessPredicate => pap.perm })
+        if (v.decider.check(terms.AtMost(term1, term2), Verifier.config.checkTimeout())) p1 else p2
+      case (Implies(_, _), _) | (_, Implies(_, _)) =>
+        p1
+      case _ =>
+        val term1 = varTran.permExpToTerm(p1)
+        val term2 = varTran.permExpToTerm(p2)
+        if (v.decider.check(terms.AtMost(term1, term2), Verifier.config.checkTimeout())) p1 else p2
+    }
+  }
+
+  def maxPermRational(a: Option[Exp], b: Option[Exp]): Rational = {
     val aRational = asRational(a)
     val bRational = asRational(b)
     if (aRational.compare(bRational) >= 0) aRational else bRational
   }
 
-  def permMin(a: Exp, b: Exp): Rational = {
+  def minPermRational(a: Option[Exp], b: Option[Exp]): Rational = {
     val aRational = asRational(a)
     val bRational = asRational(b)
     if (aRational.compare(bRational) < 0) aRational else bRational
@@ -856,4 +911,153 @@ object abductionUtils {
         PredicateAccessPredicate(loc, transPerm(perm, pap))(pap.pos, pap.info, pap.errT)
     }
   }
+
+  def checkChunk(loc: LocationAccess, s: State, v: Verifier, lostAccesses: Map[Exp, Term])
+                          (Q: Option[BasicChunk] => VerificationResult): VerificationResult = {
+    val arg = loc match {
+      case FieldAccess(rcv, _) => rcv
+      case PredicateAccess(args, _) => args.head
+    }
+    safeEval(arg, s, v, lostAccesses) { (s2, terms, v2) =>
+      terms match {
+        case Some(term) =>
+          val resource = loc.res(s2.program)
+          val id = ChunkIdentifier(resource, s2.program)
+          val chunk = findChunk[BasicChunk](s2.h.values, id, Seq(term), v2)
+          Q(chunk)
+        case None => Q(None)
+      }
+    }
+  }
+
+  /**
+   * Does a couple of things to ensure evalution works properly:
+   *
+   * Check the lost accesses to see if the access is there
+   * Evaluate sub-expressions safely to ensure that a missing chunk will not cause the evaluation to silently abort
+   */
+  def safeEval(e: Exp, s: State, v: Verifier, lostAccesses: Map[Exp, Term])
+                        (Q: (State, Option[Term], Verifier) => VerificationResult): VerificationResult = {
+
+    if (!e.contains[LocationAccess]) {
+      eval(s, e, pve, v)((s1, t, _, v1) => Q(s1, Some(t), v1))
+    } else {
+
+      // If the arg was lost, we have it in the map
+      if (lostAccesses.contains(e)) {
+        Q(s, Some(lostAccesses(e)), v)
+      } else {
+        e match {
+          // If the arg is a location access, we have to recursively check it
+          case loc: LocationAccess => checkChunk(loc, s, v, lostAccesses) {
+            case Some(c) => Q(s, Some(c.snap), v)
+            case None => Q(s, None, v)
+          }
+          //case lv: AbstractLocalVar => Q(s, Some(s.g(lv)), v)
+          case _ => eval(s, e, pve, v)((s, t, _, v) => Q(s, Some(t), v))
+          //case _ => evalLocationAccess(q.s, loc, pve, q.v) { (s2, _, tArgs, v2) => Q(s2, Some(tArgs), v2) }
+        }
+      }
+    }
+  }
+
+  def permsTo(loc: LocationAccess, s: State, v: Verifier, lostAccesses: Map[Exp, Term])
+                       (Q: Option[Exp] => VerificationResult) = {
+    val arg = loc match {
+      case FieldAccess(rcv, _) => rcv
+      case PredicateAccess(args, _) => args.head
+    }
+
+    safeEval(arg, s, v, lostAccesses) { (s2, terms, v2) =>
+      terms match {
+        case Some(term) =>
+          val resource = loc.res(s2.program)
+          val id = ChunkIdentifier(resource, s2.program)
+          /*println(s"\t\tid is $id")
+          println(s"\t\twe eval'd arg $arg to\n\t\tterms $term")*/
+          val chunkOpt = findChunk[BasicChunk](s2.h.values, id, Seq(term), v2)
+          chunkOpt match {
+            case None => Q(Some(NoPerm()()))
+            case Some(chunk) =>
+              val varTran = VarTransformer(s, v, s.g.values, s.h)
+              // TODO: Maybe here transform the permTerm?
+              Q(varTran.transformTerm(chunk.perm))
+          }
+        case None => Q(Some(NoPerm()()))
+      }
+    }
+  }
+
+  def expMatchWithPermissions(exp1: Exp, exp2: Exp, v: Verifier, varTran: VarTransformer): Boolean = {
+    (exp1, exp2) match {
+      case (fap1: FieldAccessPredicate, fap2: FieldAccessPredicate) =>
+        fap1.loc == fap2.loc &&
+          ((fap1.permExp, fap2.permExp) match {
+          case (Some(perm1), Some(perm2)) =>
+            v.decider.check(terms.Equals(varTran.permExpToTerm(perm1), varTran.permExpToTerm(perm2)), Verifier.config.checkTimeout())
+          case _ => false
+        })
+      case (pap1: PredicateAccessPredicate, pap2: PredicateAccessPredicate) =>
+        pap1.loc == pap2.loc &&
+          ((pap1.permExp, pap2.permExp) match {
+          case (Some(perm1), Some(perm2)) =>
+            v.decider.check(terms.Equals(varTran.permExpToTerm(perm1), varTran.permExpToTerm(perm2)), Verifier.config.checkTimeout())
+          case _ => false
+        })
+      case _ => false
+    }
+  }
+
+  def simplifyPermission(e: Exp): Exp = {
+    if (!e.isInstanceOf[PermExp] || e.isInstanceOf[WildcardPerm]) return e
+    val rational = abductionUtils.asRational(Some(e))
+    if (rational.numerator == 1 && rational.denominator == 1) {
+      FullPerm()()
+    } else if (rational.numerator == 0) {
+      NoPerm()()
+    } else {
+      FractionalPerm(IntLit(rational.numerator)(), IntLit(rational.denominator)())()
+    }
+  }
+
+  def concretizeAccs(accs: Seq[AccessPredicate], q: AbductionQuestion)
+                    (Q: Seq[AccessPredicate] => VerificationResult): VerificationResult = {
+    def go(remaining: List[AccessPredicate],
+           accumulated: List[AccessPredicate]): VerificationResult = {
+      remaining match {
+        case Nil =>
+          Q(accumulated.reverse)
+
+        case (fap@FieldAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
+          go(tail, abductionUtils.accWithPerm(fap, Some(FractionalPerm(IntLit(1)(), IntLit(4)())())) :: accumulated)
+        /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
+          val perm = permOpt.getOrElse(FullPerm()())
+          go(tail, abductionUtils.accWithPerm(fap, Some(perm)) :: accumulated)
+        }*/
+
+        case (pap@PredicateAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
+          go(tail, abductionUtils.accWithPerm(pap, Some(FractionalPerm(IntLit(1)(), IntLit(4)())())) :: accumulated)
+        /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
+          val perm = permOpt.getOrElse(FullPerm()())
+          go(tail, abductionUtils.accWithPerm(pap, Some(perm)) :: accumulated)
+        }*/
+
+        case acc :: tail =>
+          acc match {
+            case g @ AccessPredicate(loc: LocationAccess, permG) =>
+              abductionUtils.permsTo(loc, q.s, q.v, q.lostAccesses) { permH =>
+                val newP = abductionUtils.clampSubPerm(Some(permG), permH)
+                val g2   = abductionUtils.accWithPerm(g, Some(newP))
+                go(tail, g2 :: accumulated)
+              }
+
+            /*case _ =>
+              go(tail, acc :: accumulated)*/
+          }
+      }
+    }
+
+    go(accs.toList, Nil)
+  }
+
 }
