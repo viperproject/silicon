@@ -33,7 +33,7 @@ trait BiAbductionSuccess extends BiAbductionResult
 case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[(Exp, Option[BasicChunk])] = Seq(), stmts: Seq[Stmt] = Seq(), newFieldChunks: Map[BasicChunk, LocationAccess], allNewChunks: Seq[BasicChunk], trigger: Option[Positioned] = None) extends BiAbductionSuccess {
 
   override def toString: String = {
-    "Abduced " + state.length + " pres: " + state + ", Abduced " + stmts.length + " statements " + stmts
+    s"Abduced ${state.length} pres: $state triggered by ${trigger.getOrElse("{}")}, Abduced ${stmts.length} statements $stmts and bcs ${pcs.branchConditions}"
   }
 
   def getBcExps(bcsTerms: Seq[Term]): Seq[Option[Exp]] = {
@@ -139,7 +139,8 @@ case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positione
 case class BiAbductionFailure(s: State, v: Verifier, pcs: PathConditionStack) extends BiAbductionResult {
   override def toString: String = "Abduction failed"
 
-  def addToMethod(m: Method): Method = {
+  def
+  addToMethod(m: Method): Method = {
     val ins = m.formalArgs.map(_.localVar)
     val preHeap = s.oldHeaps.head._2
     val inVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
@@ -338,13 +339,14 @@ object BiAbductionSolver {
 
   def resolveAbductionResults(m: Method, nf: NonFatalResult): Option[Method] = {
     val abdReses = abductionUtils.getAbductionSuccesses(nf)
-    println(s"abdReses:")
-    println(s"\t${abdReses.mkString("\n")}")
     val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
     //println(s"newMatches: $newMatches")
-    val abdCases = abdReses.groupBy(res => (res.trigger.get, res.trigger.get.pos, res.stmts, res.state))
+    val abdCases = abdReses.groupBy(res => (res.trigger.get.pos, res.stmts, res.state.map({ case (e, _) => e })))
     println(s"abdCases:")
-    println(s"\t${abdCases.mkString("\n")}")
+    abdCases.foreach { case (key, values) =>
+      println(s"\t$key")
+      values.foreach(v => println(s"\t\t$v"))
+    }
     // Try to join by bc terms
     val joinedCases = abdCases.map {
       case (_, reses) =>
@@ -355,7 +357,6 @@ object BiAbductionSolver {
             case term => Seq(term)
           }.distinct.filter(_ != True)))
         val termJoined = abductionUtils.joinBcsTerms(unjoined)
-
         // Now transform to exp, remove Nones and join again. TODO: Removing Nones here might be unsound
         // That is why we do as much as possible on term level to avoid this as much as possible
         val expUnjoined = termJoined.map {
@@ -363,7 +364,6 @@ object BiAbductionSolver {
             reses -> reses.head.getBcExps(bcTerms).collect { case Some(bc) => bc }.flatMap(_.topLevelConjuncts).distinct
         }
         val expJoined = abductionUtils.joinBcsExps(expUnjoined)
-
         val abdRes = expJoined.head._1.head
         val finalBcs = BigOr(expJoined.map(e => BigAnd(e._2)))
         (abdRes -> finalBcs)
@@ -373,7 +373,7 @@ object BiAbductionSolver {
     abdReses.reverse.foldLeft[Option[Method]](Some(m)) { (mOpt, res) =>
       mOpt match {
         case Some(m1) if joinedCases.contains(res) =>
-          //println(s"Adding $res to method")
+          println(s"Adding $res to method ${Seq(joinedCases(res))}")
           addToMethod(m1, Seq(joinedCases(res)), newMatches, res)
         case _ => mOpt
       }
@@ -390,7 +390,6 @@ object BiAbductionSolver {
     val preVars = s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
     val prevPcs = v.decider.pcs
     v.decider.setPcs(abdRes.pcs)
-    println(s"bcExps: $bcExps")
     val pres = abdRes.getPreconditions(preVars, preHeap, bcExps, newFieldChunks)
     val finalStmts = abdRes.getStatements(bcExps)
     v.decider.setPcs(prevPcs)
@@ -455,7 +454,6 @@ object BiAbductionSolver {
 
     // We can remove bcs that hold in every branch
     val everyTerms = cases.head._2.filter { t => cases.forall(_._2.contains(t)) }
-    println(s"everyTerms: $everyTerms")
 
     val res = cases.collect {
       case (posts, bcs) if posts.nonEmpty && bcs.diff(everyTerms).nonEmpty => Implies(BigAnd(bcs.diff(everyTerms)), BigAnd(posts))()
@@ -463,7 +461,8 @@ object BiAbductionSolver {
     } ++ everyPosts
 
     // we still need to sort the posts
-    val newM = m.copy(posts = m.posts ++ res)(pos = m.pos, info = m.info, errT = m.errT)
+    val sortedPosts = abductionUtils.sortExps(m.posts ++ res)
+    val newM = m.copy(posts = sortedPosts)(pos = m.pos, info = m.info, errT = m.errT)
     Some(newM)
 
     /*
@@ -1058,6 +1057,99 @@ object abductionUtils {
     }
 
     go(accs.toList, Nil)
+  }
+
+  def buildPredicatePermissionsMap(s: State, v: Verifier): Map[Predicate, Map[Object, FractionalPerm]] = {
+
+    var result: Map[Predicate, Map[Object, FractionalPerm]] = Map.empty
+
+    def processLocation(bS: State, bV: Verifier, eS: State, loc: LocationAccess)
+                       (Q: FractionalPerm => VerificationResult): VerificationResult = {
+
+      abductionUtils.permsTo(loc, eS, v, Map.empty) { prevPerm =>
+        abductionUtils.permsTo(loc, bS, bV, Map.empty) { currPerm =>
+          val gainedPerm = abductionUtils.clampSubPerm(currPerm, prevPerm)
+          Q(gainedPerm)
+        }
+      }
+
+    }
+
+    def processPredicates(remaining: List[Predicate], acc: Map[Predicate, Map[Object, FractionalPerm]]): VerificationResult = remaining match {
+      case Nil =>
+        result = acc
+        Success()
+      case pred :: rest =>
+        processPredicate(pred) { locationPermMap =>
+          processPredicates(rest, acc + (pred -> locationPermMap))
+        }
+    }
+
+    def processPredicate(pred: Predicate)
+                        (Q: Map[Object, FractionalPerm] => VerificationResult): VerificationResult = {
+
+      // Collect locations
+
+      def innermostFA(loc: LocationAccess): Option[FieldAccess] = loc match {
+        case fa @ FieldAccess(rcv, _) =>
+          rcv match {
+            case innerRcv: FieldAccess => innermostFA(innerRcv)
+            case _ => Some(fa)
+          }
+        case _ => None
+      }
+
+      val locations: Seq[LocationAccess] = pred.body.get.flatMap {
+        case PredicateAccessPredicate(loc, _) => Some(loc)
+        case FieldAccessPredicate(loc, _) => innermostFA(loc)
+        case _ => None
+      }.toSeq.distinct
+
+      val freshVars = pred.formalArgs.map(arg => LocalVar(arg.name, arg.typ)())
+      val varDecls = freshVars.map {
+        fv => LocalVarDeclStmt(LocalVarDecl(fv.name, fv.typ)())()
+      }
+
+      // Helper to merge two maps taking max permission for each key
+      def mergeMaxPerms(acc1: Map[Object, FractionalPerm],
+                        acc2: Map[Object, FractionalPerm]): Map[Object, FractionalPerm] = {
+        val allKeys = acc1.keySet ++ acc2.keySet
+        allKeys.map { key =>
+          val perm1 = acc1.get(key).orElse(Some(NoPerm()()))
+          val perm2 = acc2.get(key).orElse(Some(NoPerm()()))
+          val maxP = abductionUtils.maxPermRational(perm1, perm2)
+          key -> FractionalPerm(IntLit(maxP.numerator)(), IntLit(maxP.denominator)())()
+        }.toMap
+      }
+
+      var accumulatedPerms: Map[Object, FractionalPerm] = Map.empty
+
+      def processLocations(bS: State, bV: Verifier, eS: State, remaining: Seq[LocationAccess], acc: Map[Object, FractionalPerm]): VerificationResult = remaining match {
+        case Nil =>
+          // Merge this branch's results into accumulated max
+          accumulatedPerms = mergeMaxPerms(accumulatedPerms, acc)
+          Success()
+        case loc :: rest =>
+          processLocation(bS, bV, eS, loc) { perm =>
+            loc match {
+              case PredicateAccess(_, name) => processLocations(bS, bV, eS, rest, acc + (name -> perm))
+              case FieldAccess(_, field) => processLocations(bS, bV, eS, rest, acc + (field -> perm))
+            }
+          }
+      }
+
+      val result = executor.exec(s, Seqn(varDecls, Seq.empty)(), v) { (eS, _) =>
+        executor.exec(s, Seqn(varDecls :+ Inhale(pred.body.get)(), Seq.empty)(), v) { (bS, bV) =>
+          processLocations(bS, bV, eS, locations, Map.empty)
+        }
+      }
+
+      // After all branches have been explored, pass the max perms to Q
+      result && Q(accumulatedPerms)
+    }
+
+    processPredicates(s.program.predicates.toList, Map.empty)
+    result
   }
 
 }

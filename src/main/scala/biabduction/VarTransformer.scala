@@ -22,7 +22,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
   //val pve: PartialVerificationError = Internal()
 
   // Ask the decider whether any of the terms are equal to a target.
-  val matches: Map[Term, ast.Exp] = resolveMatches()
+  var matches: Map[Term, ast.Exp] = resolveMatches()
 
   val newChunkBySnap = newFieldChunks.map { case (c, fa: ast.FieldAccess) => c.snap -> (c, fa) }
 
@@ -158,10 +158,9 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       }
     }
 
-    resolveMatches()
-
     (t match {
-      case t if matches.contains(t) => matches.get(t)
+      case t if matches.contains(t) =>
+        matches.get(t)
       case BuiltinEquals(t1, t2) => (transformTerm(t1), transformTerm(t2)) match {
         case (Some(e1), Some(e2)) =>
           Some(ast.EqCmp(e1, e2)())
@@ -206,7 +205,25 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
         case _ => None
       }
       case terms.IntLiteral(n) => Some(ast.IntLit(n)())
-      case _ => None
+      case terms.Greater(t1, t2) =>(transformTerm(t1), transformTerm(t2)) match {
+          case (Some(e1), Some(e2)) =>
+            Some(ast.GtCmp(e1, e2)())
+        }
+      case terms.AtLeast(t1, t2) =>(transformTerm(t1), transformTerm(t2)) match {
+          case (Some(e1), Some(e2)) =>
+            Some(ast.GeCmp(e1, e2)())
+        }
+      case terms.AtMost(t1, t2) =>(transformTerm(t1), transformTerm(t2)) match {
+        case (Some(e1), Some(e2)) =>
+          Some(ast.LeCmp(e1, e2)())
+      }
+      case terms.Less(t1, t2) =>(transformTerm(t1), transformTerm(t2)) match {
+        case (Some(e1), Some(e2)) =>
+          Some(ast.LtCmp(e1, e2)())
+      }
+      case e =>
+        println(s"ERROR IN TRASNFORMTERM: Unsupported operand ${e}:${e.getClass}")
+        None
     }).map(abductionUtils.simplifyPermission)
 
   }

@@ -19,104 +19,11 @@ object AbstractionApplier extends RuleApplier[AbstractionQuestion] {
 case class AbstractionQuestion(s: State, v: Verifier) {
 
   val pve: PartialVerificationError = Internal()
-  val predPermMap = buildPredicatePermissionsMap()
+  val predPermMap = abductionUtils.buildPredicatePermissionsMap(s, v)
 
   def varTran: VarTransformer = VarTransformer(s, v, s.g.values, s.h)
   // This is probably very wrong?
   def emptyState = State(program= s.program, currentMember= s.currentMember, predicateData= s.predicateData, functionData= s.functionData)
-
-  def buildPredicatePermissionsMap(): Map[Predicate, Map[Object, FractionalPerm]] = {
-
-    var result: Map[Predicate, Map[Object, FractionalPerm]] = Map.empty
-
-    def processPredicates(remaining: List[Predicate], acc: Map[Predicate, Map[Object, FractionalPerm]]): VerificationResult = remaining match {
-      case Nil =>
-        result = acc
-        Success()
-      case pred :: rest =>
-        processPredicate(pred) { locationPermMap =>
-          processPredicates(rest, acc + (pred -> locationPermMap))
-        }
-    }
-
-    processPredicates(s.program.predicates.toList, Map.empty)
-    result
-  }
-
-  def processPredicate(pred: Predicate)
-                      (Q: Map[Object, FractionalPerm] => VerificationResult): VerificationResult = {
-
-    // Collect locations
-
-    def innermostFA(loc: LocationAccess): Option[FieldAccess] = loc match {
-      case fa @ FieldAccess(rcv, _) =>
-        rcv match {
-          case innerRcv: FieldAccess => innermostFA(innerRcv)
-          case _ => Some(fa)
-        }
-      case _ => None
-    }
-
-    val locations: Seq[LocationAccess] = pred.body.get.flatMap {
-      case PredicateAccessPredicate(loc, _) => Some(loc)
-      case FieldAccessPredicate(loc, _) => innermostFA(loc)
-      case _ => None
-    }.toSeq.distinct
-
-    val freshVars = pred.formalArgs.map(arg => LocalVar(arg.name, arg.typ)())
-    val varDecls = freshVars.map {
-      fv => LocalVarDeclStmt(LocalVarDecl(fv.name, fv.typ)())()
-    }
-
-    // Helper to merge two maps taking max permission for each key
-    def mergeMaxPerms(acc1: Map[Object, FractionalPerm],
-                      acc2: Map[Object, FractionalPerm]): Map[Object, FractionalPerm] = {
-      val allKeys = acc1.keySet ++ acc2.keySet
-      allKeys.map { key =>
-        val perm1 = acc1.get(key).orElse(Some(NoPerm()()))
-        val perm2 = acc2.get(key).orElse(Some(NoPerm()()))
-        val maxP = abductionUtils.maxPermRational(perm1, perm2)
-        key -> FractionalPerm(IntLit(maxP.numerator)(), IntLit(maxP.denominator)())()
-      }.toMap
-    }
-
-    var accumulatedPerms: Map[Object, FractionalPerm] = Map.empty
-
-    def processLocations(bS: State, bV: Verifier, eS: State, remaining: Seq[LocationAccess], acc: Map[Object, FractionalPerm]): VerificationResult = remaining match {
-      case Nil =>
-        // Merge this branch's results into accumulated max
-        accumulatedPerms = mergeMaxPerms(accumulatedPerms, acc)
-        Success()
-      case loc :: rest =>
-        processLocation(bS, bV, eS, loc) { perm =>
-          loc match {
-            case PredicateAccess(_, name) => processLocations(bS, bV, eS, rest, acc + (name -> perm))
-            case FieldAccess(_, field) => processLocations(bS, bV, eS, rest, acc + (field -> perm))
-          }
-        }
-    }
-
-    val result = executor.exec(s, Seqn(varDecls, Seq.empty)(), v) { (eS, _) =>
-      executor.exec(s, Seqn(varDecls :+ Inhale(pred.body.get)(), Seq.empty)(), v) { (bS, bV) =>
-        processLocations(bS, bV, eS, locations, Map.empty)
-      }
-    }
-
-    // After all branches have been explored, pass the max perms to Q
-    result && Q(accumulatedPerms)
-  }
-
-  def processLocation(bS: State, bV: Verifier, eS: State, loc: LocationAccess)
-                     (Q: FractionalPerm => VerificationResult): VerificationResult = {
-
-    abductionUtils.permsTo(loc, eS, v, Map.empty) { prevPerm =>
-      abductionUtils.permsTo(loc, bS, bV, Map.empty) { currPerm =>
-        val gainedPerm = abductionUtils.clampSubPerm(currPerm, prevPerm)
-        Q(gainedPerm)
-      }
-    }
-
-  }
 }
 
 trait AbstractionRule extends BiAbductionRule[AbstractionQuestion] {}

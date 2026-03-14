@@ -485,18 +485,14 @@ object AbductionPackage extends AbductionRule {
       case None => Q(None)
       case Some(wand) =>
         assertLHS(q.s, q.v, wand, q) { (s0, v0) =>
-          println(s"Managed to assert LHS to ${s0.h.values.mkString("\n\t")}")
           executionFlowController.locally(s0, v0) { (s1, v1) =>
             executor.exec(s1, Assert(wand.left)(), v1) { (s2, v2) =>
               val packQ = q.copy(s = s2, v = v2, goal = wand.right.topLevelConjuncts)
-              println(s"Will try to pack ${wand} (abdState: ${q.stateAllowed})")
               AbductionApplier.applyRules(packQ) { packRes =>
                 if (packRes.goal.nonEmpty) {
-                  println(s"Failed packing due to goal non emtpy: ${packRes.goal}")
                   Failure(pve dueTo DummyReason)
                 } else {
                   val newState = packRes.foundState
-                  println(s"newState is ${newState}")
                   val newStmts = packRes.foundStmts
                   Success(Some(AbductionSuccess(packRes.s, packRes.v, packRes.v.decider.pcs.duplicate(), newState, newStmts, Map(), Seq(), None)))
                 }

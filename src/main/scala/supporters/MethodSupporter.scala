@@ -176,11 +176,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
           case suc: NonFatalResult if method.body.isDefined =>
             val abdFails = abductionUtils.getAbductionFailures(suc)
             val mFail = abdFails.foldLeft(method) { case (m1, fail) => fail.addToMethod(m1) }
-            //println(s"mFail $mFail")
+            println(s"mFail $mFail")
             val mAbd = resolveAbductionResults(mFail, suc)
-            //println(s"mAbd $mAbd")
+            println(s"mAbd $mAbd")
             val mInv = mAbd.flatMap(m2 => resolveLoopInvResults(m2, suc))
-            //println(s"mInv $mInv")
+            println(s"mInv $mInv")
             val mFrame = mInv.flatMap(someM => resolveFramingResults(someM, suc))
 
             mFrame match {
