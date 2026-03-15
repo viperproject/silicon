@@ -44,9 +44,9 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
 
 
-  def getAssertionNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
+  def getNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
     val fullAnnotation = ("""@label\(\s*"?""" + java.util.regex.Pattern.quote(label) + """"?\s*\)""").r
-    getAssertionNodes.filter(node => fullAnnotation.findFirstIn(node.toString).isDefined)
+    getNodes.filter(node => fullAnnotation.findFirstIn(node.toString).isDefined)
   }
 
   def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {

@@ -265,7 +265,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
     def evalSingleAssertion(assertionLabel: String, groundTruthLabels: Set[String], callGraphLabels: Set[String], bw: BufferedWriter): Unit = {
       val startAnalysis = System.nanoTime()
-      val queriedAssertions = fullGraphInterpreter.getAssertionNodesByLabel(assertionLabel)
+      val queriedAssertions = fullGraphInterpreter.getNodesByLabel(assertionLabel)
       val allDependencies = fullGraphInterpreter.getAllNonInternalDependencies(queriedAssertions.map(_.id))
       val sourceDependencies = UserLevelDependencyAnalysisNode.from(allDependencies).getSourceSet().diff(UserLevelDependencyAnalysisNode.from(queriedAssertions).getSourceSet())
 
@@ -306,7 +306,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       val groundTruths = readFile(pathToGroundTruth.toUri.getPath)
       val callGraphs = readFile(pathToCallGraphs.toUri.getPath)
       addOutput(bw, header)
-      callGraphs.foreach { case (assertionLabel, callGraphLabels) => evalSingleAssertion(assertionLabel, groundTruths.getOrElse(assertionLabel, Set.empty), callGraphLabels, bw) }
+      callGraphs.foreach { case (assertionLabel, callGraphLabels) => evalSingleAssertion(assertionLabel, groundTruths(assertionLabel), callGraphLabels, bw) }
 
       bw.close()
       println("Done.")
