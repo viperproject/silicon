@@ -1,5 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.state.terms.True
 import viper.silver.ast.{Info, Position}
 
@@ -29,12 +30,15 @@ case class SimpleFrontendDependencyAnalysisInfo(sourceInfo: AnalysisSourceInfo, 
  The idea is that these nodes can be used to join graphs without the need for an explicit method call.
  We use this, for example, for Gobra interfaces and implementation proofs.
  */
-case class DependencyAnalysisJoinNodeInfo(sourceInfo: AnalysisSourceInfo, _dependencyType: DependencyType = DependencyType.make(AssumptionType.CustomInternal)) extends FrontendDependencyAnalysisInfo {
+case class DependencyAnalysisJoinNodeInfo(sourceInfo: AnalysisSourceInfo, _dependencyType: DependencyType) extends FrontendDependencyAnalysisInfo {
   def getAssertionNode: GeneralAssertionNode =
     SimpleAssertionNode(True, AssumptionType.CustomInternal, sourceInfo, isClosed=false, isJoinNode=true)
 
   def getAssertionNode(outerSourceInfo: AnalysisSourceInfo): GeneralAssertionNode =
     SimpleAssertionNode(True, AssumptionType.CustomInternal, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), isClosed=false, isJoinNode=true)
+
+  def getAssertionNode(outerSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): GeneralAssertionNode =
+    SimpleAssertionNode(True, assumptionType, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), isClosed=false, isJoinNode=true)
 
   def getAssumptionNode(outerSourceInfo: AnalysisSourceInfo): GeneralAssumptionNode =
     SimpleAssumptionNode(True, None, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), AssumptionType.CustomInternal, isClosed=false, isJoinNode=true)

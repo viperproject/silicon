@@ -479,10 +479,10 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       nodeMap.put(n.id, n.id)
       mergedGraph.addAssertionNode(n)
     }
-    val assertionNodesBySource = dependencyGraph.getAssertionNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType))
-    assertionNodesBySource foreach { case ((sourceInfo, assumptionType), assertionNodes) =>
+    val assertionNodesBySource = dependencyGraph.getAssertionNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType, n.isJoinNode))
+    assertionNodesBySource foreach { case ((sourceInfo, assumptionType, isJoinNode), assertionNodes) =>
       if (assertionNodes.nonEmpty) {
-        val newNode = SimpleAssertionNode(True, assumptionType, sourceInfo, isClosed = false, hasFailed=assertionNodes.exists(_.hasFailed))
+        val newNode = SimpleAssertionNode(True, assumptionType, sourceInfo, isClosed = false, hasFailed=assertionNodes.exists(_.hasFailed), isJoinNode=isJoinNode)
         assertionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addAssertionNode(newNode)
       }

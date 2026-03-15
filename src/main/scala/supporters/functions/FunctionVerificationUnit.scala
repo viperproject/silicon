@@ -288,9 +288,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val daJoinNodeInfoOpt = function.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
       if(daJoinNodeInfoOpt.isDefined){
         val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
-        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
-        postConditionType = AssumptionType.CustomInternal
-        v.decider.dependencyAnalyzer.addAssertionNode(infodaJoinNodeInfo.getAssertionNode)
+//        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
+//        postConditionType = AssumptionType.CustomInternal
+        val postCondNodes = posts.flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+        val customJoinNode = infodaJoinNodeInfo.getAssertionNode
+        postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
+        v.decider.dependencyAnalyzer.addAssertionNode(customJoinNode)
+        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
+        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
       }
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
@@ -315,7 +320,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 recorders :+= s3.functionRecorder
                 Success()})})})}
 
-      if(daJoinNodeInfoOpt.isDefined) v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(daJoinNodeInfoOpt.get.sourceInfo)
+//      if(daJoinNodeInfoOpt.isDefined) v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(daJoinNodeInfoOpt.get.sourceInfo)
 
       data.advancePhase(recorders)
 

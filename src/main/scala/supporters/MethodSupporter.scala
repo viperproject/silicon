@@ -9,11 +9,12 @@ package viper.silicon.supporters
 import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType, SimpleAssumptionNode}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.terms.True
 import viper.silicon.state.{State, Store}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -83,9 +84,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val daJoinNodeInfoOpt = method.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
       if(daJoinNodeInfoOpt.isDefined){
         val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
-        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
-        postConditionType = AssumptionType.CustomInternal
-        v.decider.dependencyAnalyzer.addAssertionNode(infodaJoinNodeInfo.getAssertionNode)
+        // v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
+//        postConditionType = AssumptionType.CustomInternal
+        val postCondNodes = posts.flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+        val customJoinNode = infodaJoinNodeInfo.getAssertionNode
+        postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
+        v.decider.dependencyAnalyzer.addAssertionNode(customJoinNode)
+        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
+        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
       }
 
       errorsReportedSoFar.set(0)
@@ -121,7 +127,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       result.dependencyGraphInterpreter = v.decider.dependencyAnalyzer.buildFinalGraph().map(new DependencyGraphInterpreter(method.name, _, allErrors, Some(method)))
 
-      if(daJoinNodeInfoOpt.isDefined) v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(daJoinNodeInfoOpt.get.sourceInfo)
+      // if(daJoinNodeInfoOpt.isDefined) v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(daJoinNodeInfoOpt.get.sourceInfo)
 
       v.decider.resetProverOptions()
 
