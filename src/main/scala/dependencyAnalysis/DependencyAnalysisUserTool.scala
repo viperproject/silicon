@@ -238,7 +238,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handlePrecisionEval(inputs: Seq[String]): Unit = {
     val labelPattern: Regex = """@label\(\s*("?)([^")\s]+)\1\s*\)""".r
-    val header = "Assertion Label,Sound?,#True Dependencies,#Reported Dependencies,#False-Positives,Call Graph Size,Runtime"
+    val header = "Assertion Label,Sound?,#True Dependencies,#Reported Dependencies,#False-Positives,Call Graph Size,Runtime,Noise"
 
     def readFile(path: String): Map[String, Set[String]] = {
       val src = Source.fromFile(path)
@@ -272,16 +272,18 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       val endAnalysis = System.nanoTime()
       val durationMs = (endAnalysis - startAnalysis) / 1e6
 
-      val labelsInReportedDeps: Set[String] = sourceDependencies.flatMap(node =>
-        labelPattern.findAllMatchIn(node.toString).map(_.group(2)))
+      val labelsInReportedDeps: Set[Set[String]] = sourceDependencies.map(node => labelPattern.findAllMatchIn(node.toString).map(_.group(2)).toSet)
 
-      val isSound = groundTruthLabels.diff(labelsInReportedDeps).isEmpty
-      val imprecise = labelsInReportedDeps.diff(groundTruthLabels)
+      val actualLabelInReportedDeps = labelsInReportedDeps.filter(_.size == 1).flatten
+      val noise = labelsInReportedDeps.filterNot(_.size == 1)
 
-      assert(!isSound || groundTruthLabels.size + imprecise.size == labelsInReportedDeps.size, s"Imprecision calculation is wrong.")
-      assert(labelsInReportedDeps.size <= callGraphLabels.size, "Call graph size is smaller than reported dependencies.")
+      val isSound = groundTruthLabels.diff(actualLabelInReportedDeps).isEmpty
+      val imprecise = actualLabelInReportedDeps.diff(groundTruthLabels)
 
-        addOutput(bw, s"$assertionLabel,${if(isSound) "YES" else "NO"},${groundTruthLabels.size},${labelsInReportedDeps.size},${imprecise.size},${callGraphLabels.size},${durationMs}ms")
+      assert(!isSound || groundTruthLabels.size + imprecise.size == actualLabelInReportedDeps.size, s"Imprecision calculation is wrong.")
+      assert(actualLabelInReportedDeps.size <= callGraphLabels.size, "Call graph size is smaller than reported dependencies.")
+
+        addOutput(bw, s"$assertionLabel,${if(isSound) "YES" else "NO"},${groundTruthLabels.size},${actualLabelInReportedDeps.size},${imprecise.size},${callGraphLabels.size},${durationMs}ms,${noise.size}")
 
 //      println(s"Queried:\n\t${getSourceInfoString(queriedAssertions)}")
 //      println(s"\nAll Dependencies (${timeAll}ms):\n\t$sourceDependenciesString")
