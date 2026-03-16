@@ -290,12 +290,18 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
 //        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
 //        postConditionType = AssumptionType.CustomInternal
-        val postCondNodes = posts.flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+        val postCondNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+        val postCondAssertNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AssumptionType.ImplicitPostcondition, AnalysisSourceInfo.createAnalysisSourceInfo(pc), isClosed=false, isJoinNode=true))
         val customJoinNode = infodaJoinNodeInfo.getAssertionNode
+
         postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
+        postCondAssertNodes foreach v.decider.dependencyAnalyzer.addAssertionNode
         v.decider.dependencyAnalyzer.addAssertionNode(customJoinNode)
+
         postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
         postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
+        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
+        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
       }
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {

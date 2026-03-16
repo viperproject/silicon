@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType, SimpleAssumptionNode}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType, SimpleAssertionNode, SimpleAssumptionNode}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
@@ -86,12 +86,18 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
         // v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
 //        postConditionType = AssumptionType.CustomInternal
-        val postCondNodes = posts.flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+        val postCondNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+        val postCondAssertNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AssumptionType.ImplicitPostcondition, AnalysisSourceInfo.createAnalysisSourceInfo(pc), isClosed=false, isJoinNode=true))
         val customJoinNode = infodaJoinNodeInfo.getAssertionNode
         postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
+        postCondAssertNodes foreach v.decider.dependencyAnalyzer.addAssertionNode
+
         v.decider.dependencyAnalyzer.addAssertionNode(customJoinNode)
+
         postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
         postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
+        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
+        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
       }
 
       errorsReportedSoFar.set(0)
