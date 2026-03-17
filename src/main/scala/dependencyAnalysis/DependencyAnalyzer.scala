@@ -211,7 +211,7 @@ object DependencyAnalyzer {
       .groupBy(n => n.sourceInfo)
       .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo.getTopLevelSource, Seq.empty))}
       .foreach{case (axiomNodeIds, assertionNodeIds) =>
-        newGraph.addEdgesConnectingMethods(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
+        newGraph.addEdgesConnectingMethodsDownwards(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
     }
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForFunctionJoin)
@@ -228,7 +228,7 @@ object DependencyAnalyzer {
     joinCandidateNodes.diff(joinCandidateAxioms.toSet)
       .map(node => (node.id, relevantAssumptionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
       .foreach { case (src, targets) =>
-        if (customInternalNodes.intersect(targets.toSet.union(Set(src))).isEmpty) newGraph.addEdgesConnectingMethods(src, targets)
+        if (customInternalNodes.intersect(targets.toSet.union(Set(src))).isEmpty) newGraph.addEdgesConnectingMethodsDownwards(src, targets)
         else newGraph.addEdges(src, targets)
       }
 
@@ -240,7 +240,7 @@ object DependencyAnalyzer {
     joinCandidateNodes
       .map(node => (node.id, relevantAssertionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
       .foreach { case (target, sources) =>
-        if (customInternalNodes.intersect(sources.toSet.union(Set(target))).isEmpty) newGraph.addEdgesConnectingMethods(sources, target)
+        if (customInternalNodes.intersect(sources.toSet.union(Set(target))).isEmpty) newGraph.addEdgesConnectingMethodsUpwards(sources, target)
         else newGraph.addEdges(sources, target)
       }
 

@@ -120,7 +120,7 @@ object DependencyGraphImporter {
 
       tag match {
         case "direct" => graph.addEdges(List(sourceId.toInt), targetId.toInt)
-        case "interprocedural" => graph.addEdgesConnectingMethods(List(sourceId.toInt), targetId.toInt)
+        case "interprocedural" => graph.addEdgesConnectingMethodsDownwards(List(sourceId.toInt), targetId.toInt)
         case _ => throw new IllegalArgumentException(s"Unknown tag: $tag")
       }
 

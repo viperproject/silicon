@@ -1,6 +1,7 @@
 package viper.silicon.dependencyAnalysis
 
 import dependencyAnalysis.{CompactUserLevelDependencyAnalysisNode, UserLevelDependencyAnalysisNode}
+import viper.silicon.dependencyAnalysis.DATraversalMode.{DATraversalMode, Downwards, Upwards}
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -13,6 +14,13 @@ import java.io.PrintWriter
 import java.lang.Double.isNaN
 import java.nio.file.Paths
 import scala.collection.mutable
+
+
+
+object DATraversalMode extends Enumeration {
+  type DATraversalMode = Value
+  val Upwards, Downwards = Value
+}
 
 
 class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
@@ -63,23 +71,27 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependencies = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes)
-    allDependencies flatMap nonInternalAssumptionNodesMap.get
+    val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=true, includeDownwardEdges=false)
+    val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=false, includeDownwardEdges=true)
+    (allDependenciesUpwards ++ allDependenciesDownwards) flatMap nonInternalAssumptionNodesMap.get
   }
 
   def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependencies = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes)
-    getExplicitAssumptionNodes.filter(node => allDependencies.contains(node.id))
+    val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=true, includeDownwardEdges=false)
+    val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=false, includeDownwardEdges=true)
+    getExplicitAssumptionNodes.filter(node => (allDependenciesUpwards ++ allDependenciesDownwards).contains(node.id))
   }
 
   def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependents = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
-    getNonInternalAssertionNodes.filter(node => allDependents.contains(node.id))
+    val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=true, includeDownwardEdges=false)
+    val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=false, includeDownwardEdges=true)
+    getNonInternalAssertionNodes.filter(node => (allDependentsUpwards ++ allDependentsDownwards).contains(node.id))
   }
 
   def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependents = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
-    getExplicitAssertionNodes.filter(node => allDependents.contains(node.id))
+    val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=true, includeDownwardEdges=false)
+    val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=false, includeDownwardEdges=true)
+    getExplicitAssertionNodes.filter(node => (allDependentsUpwards ++ allDependentsDownwards).contains(node.id))
   }
 
   def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
@@ -93,6 +105,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)
     )
 
+  @deprecated // needs to be adapted to the notion of upward and downward edges
   def hasAnyDependency(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Boolean =
     nodesToAnalyze.intersect(getNonInternalAssumptionNodes)
       .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
@@ -134,7 +147,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def computeProofCoverage(assertionNodes: Set[DependencyAnalysisNode]): (Double, Set[String]) = {
     val assertionNodeIds = assertionNodes map (_.id)
-    val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true)
+    val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true, includeUpwardEdges=true, includeDownwardEdges=true)
     val coveredNodes = dependencies ++ assertionNodeIds
 
     val userLevelNodes = toUserLevelNodes(getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]))
@@ -250,34 +263,40 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   private lazy val sourceToAssertionNodes: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource)
 
-  val deps: DAMemo[AnalysisSourceInfo, Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { assertionNode =>
-    def computeDependencies(currentNode: AnalysisSourceInfo, visited: Set[AnalysisSourceInfo]): Set[CompactUserLevelDependencyAnalysisNode] = {
-      if (visited.contains(currentNode)) {
+
+
+  val deps: DAMemo[(AnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { case (assertionNode, mode) =>
+    def computeDependencies(currentNode: AnalysisSourceInfo, visited: Set[(AnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
+      if (visited.contains((currentNode, traversalMode))) {
         return Set.empty // break cycles to avoid infinite loops
       }
 
-      if (deps.contains(currentNode)) {
-        return deps(currentNode)
+      if (deps.contains(currentNode, traversalMode)) {
+        return deps((currentNode, traversalMode))
       }
 
-      val updatedVisited = visited + currentNode
+      val updatedVisited = visited ++  Set((currentNode, traversalMode))
       val allNonInternalAssertions = sourceToAssertionNodes.getOrElse(currentNode, Set.empty)
 
-      val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeIntraMethodEdges=false)
+      val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeUpwardEdges=false, includeDownwardEdges=false)
       val intraMethodDependencies = intraMethodDependencyIds.flatMap(nonInternalAssumptionNodesMap.get).filterNot(_.sourceInfo.getTopLevelSource.equals(currentNode))
 
-      val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethods.getOrElse(n, Set.empty))
+      val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethodsDownwards.getOrElse(n, Set.empty))
       val postconditionNodes = postconditionNodeIds.flatMap(nodesMap.get)
 
-      val transDeps = postconditionNodes.map(_.sourceInfo.getTopLevelSource).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited))
+      val preconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethodsUpwards.getOrElse(n, Set.empty))
+      val preconditionNodes = preconditionNodeIds.flatMap(nodesMap.get)
 
-      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ postconditionNodes) ++ transDeps)
+      val transDepsDownwards = postconditionNodes.map(_.sourceInfo.getTopLevelSource).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, DATraversalMode.Downwards))
+      val transDepsUpwards = preconditionNodes.map(_.sourceInfo.getTopLevelSource).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, DATraversalMode.Upwards))
 
-      deps.put(currentNode, result)
+      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ postconditionNodes) ++ transDepsDownwards ++ transDepsUpwards)
+
+      deps.put((currentNode, traversalMode), result)
       result
     }
 
-    computeDependencies(assertionNode, Set.empty)
+    computeDependencies(assertionNode, Set.empty, mode)
   }
 
   private def reduceCompactUserLevelNodes(inputNodes: Set[CompactUserLevelDependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
@@ -331,7 +350,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def computeVerificationProgressOptimized(): (Double, Double, String)  = {
 
     val allAssertions = getAssertionsRelevantForProgress.keySet.toList
-    val assertionDeps = allAssertions map (ass => (deps(ass), ass))
+    val assertionDeps = allAssertions map (ass => ({
+      val ups = deps((ass, Upwards))
+      val downs = deps((ass, Downwards))
+      reduceCompactUserLevelNodes(ups ++ downs)
+    }, ass))
 
     val specQuality = computeSpecQuality(assertionDeps.flatMap(_._1).toSet)
 
@@ -527,6 +550,5 @@ case class DAMemo[A,B](f: A => B) extends (A => B) {
     cache.contains(a)
   }
 }
-
 
 
