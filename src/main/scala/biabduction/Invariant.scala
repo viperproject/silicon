@@ -230,7 +230,7 @@ object LoopInvariantSolver {
                   // val allNewChunks = abdReses.map(abd => (abd.allNewChunks, abd.pcs.branchConditions))
 
                   // We need to merge chunks that refer to the same value but have different snaps(?)
-                  println(s"Will merge chunks starting from ${abdReses.map(abd => (abd.allNewChunks, abd.pcs.branchConditions))}")
+                  println(s"Will merge chunks starting from \n\t${abdReses.map(abd => (abd.allNewChunks, abd.pcs.branchConditions)).mkString("\n\t")}")
                   val preChunks = abdReses
                     .map(abd => (abd.allNewChunks, abd.pcs.branchConditions))
                     .flatMap { case (chunks, pcs) => chunks.map(chunk => (chunk, pcs)) }
@@ -246,6 +246,7 @@ object LoopInvariantSolver {
                       bestChunk
                     }
                     .toList
+                  println(s"new prechunks \n\t${preChunks.mkString("\n\t")}")
 
                   // val matchingPreChunks = allNewChunks.collect { case (chunks, bcs) if bcs.diff(vPostAbs.decider.pcs.branchConditions).isEmpty => chunks }.flatten
                   solveLoopInvariants(sPostAbs, vPostAbs, origVars, loopHead, loopEdges, joinPoint, initialBcs, q.copy(preHeap = newPreState.h + Heap(preChunks), preAbstraction = newPreAbstraction,

@@ -319,7 +319,6 @@ object executor extends ExecutionRules {
 
                 val con = executionFlowController.locally(s, v) ((s0, v0) => {
                   v0.decider.prover.comment("Loop head block: Establish invariant")
-                  println(s"Checking condition $condition")
                   checkInvariants(s0, v0, invs, condition, stateAllowed = true)((sLeftover, v1) => {
                     v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                     phase1data.foldLeft(Success(): VerificationResult) {
@@ -351,7 +350,6 @@ object executor extends ExecutionRules {
                                   // relying on the reentry of the loop head, as this will not have the found invariants
                                   // Existing invariants may be required for framing and stuff, so we produce them again first
                                   producer.produces(s6, freshSnap, existingInvs, ContractNotWellformed, v6) { (s7, v7) =>
-                                    println(s"Checking existing invs (after producing) $existingInvs")
                                     //println(s"Produced $existingInvs in ${s7.h.values.mkString(" ")} with pcs ${v7.decider.pcs.branchConditions}")
                                     checkInvariants(s7, v7, foundInvs, endStmt, stateAllowed = false)((_, _) => Success())
                                   }
@@ -391,17 +389,13 @@ object executor extends ExecutionRules {
     } else {
       executionFlowController.tryOrElse1[Option[Term]](s, v) {
         (s1, v1, QS) =>
-          println(s"Will consume $invs in \n\t${s1.h.values.mkString("\n\t")}")
           consumes(s1, invs, false, LoopInvariantNotPreserved, v1)(QS)
       } {
         (s2, _, v2) =>
-          println(s"Consumed to \n\t${s2.h.values.mkString("\n\t")}")
           Q(s2, v2)
       } {
         f =>
-          println(s"Failed to consume with $f")
         BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(location)) { (s3, v3) =>
-          println(s"After solving for error state is {\n\t${s3.h.values.mkString("\n\t")}\n}")
           /* val varTrans = VarTransformer(s3, v3, s3.g.values, s3.h)
           println(s"\targs {\n\t${s3.h.values.map(_.asInstanceOf[BasicChunk].args.map(varTrans.transformTerm)) }\n}")*/
           checkInvariants(s3, v3, invs, location, stateAllowed)(Q)

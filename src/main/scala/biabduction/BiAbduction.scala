@@ -209,9 +209,7 @@ object BiAbductionSolver {
 
       val initPcs = v.decider.pcs.duplicate()
       println(s"\tf $f\n\tReason ${f.message.reason}")
-      println(s"in state ${s.h.values.mkString("\n\t")}")
       // println(s"with pcs ${v.decider.pcs}")
-      println(s"with g ${s.g.values.mkString("\n\t")}")
       val reason = f.message.reason match {
         case reason: InsufficientPermission =>
           val perm = f.message.offendingNode match {
