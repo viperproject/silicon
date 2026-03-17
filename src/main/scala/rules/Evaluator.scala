@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyType}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, CompositeAnalysisSourceInfo, DependencyAnalyzer, DependencyType}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.ChunkIdentifer
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
@@ -100,8 +100,11 @@ object evaluator extends EvaluationRules {
            : VerificationResult = {
 
     if(v.decider.isPathInfeasible()){
+      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(e, s.program)
+      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssumption(True, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=true))
+
       if(!Expressions.isKnownWellDefined(e, Some(s.program))){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
       }
       val sort = v.symbolConverter.toSort(e.typ)
       val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
@@ -667,7 +670,10 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
+            val oldIsRelevantJoinNode = v2.decider.analysisSourceInfoStack.isJoinRelevantNode
+            v2.decider.analysisSourceInfoStack.isJoinRelevantNode = true
             consumes(s3, pres, true, _ => pvePre, v2, v2.decider.analysisSourceInfoStack.getDependencyType)((s4, snap, v3) => {
+              v3.decider.analysisSourceInfoStack.isJoinRelevantNode = oldIsRelevantJoinNode
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({

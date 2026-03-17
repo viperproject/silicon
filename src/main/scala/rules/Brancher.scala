@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, DependencyType}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, CompositeAnalysisSourceInfo, DependencyAnalyzer, DependencyType}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
@@ -48,8 +48,10 @@ object brancher extends BranchingRules {
 
     if(v.decider.isPathInfeasible()){
       val analysisSourceInfo = v.decider.pushAndGetAnalysisSourceInfo(conditionExp._1, Some(DependencyAnalyzer.extractDependencyTypeFromInfo(conditionExp._1.info).getOrElse(DependencyType.PathCondition)))
+      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(conditionExp._1, s.program)
+      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
       if(!Expressions.isKnownWellDefined(conditionExp._1, Some(s.program))){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, assertionNodesForJoin.nonEmpty || v.decider.analysisSourceInfoStack.isJoinRelevantNode)
       }
       v.decider.dependencyAnalyzer.addAssumption(condition, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=false)
       v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(analysisSourceInfo)

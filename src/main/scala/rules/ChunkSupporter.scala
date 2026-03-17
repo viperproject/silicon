@@ -84,7 +84,7 @@ object chunkSupporter extends ChunkSupportRules {
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
     if(v.decider.isPathInfeasible()){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
 
@@ -252,7 +252,7 @@ object chunkSupporter extends ChunkSupportRules {
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
     if(v.decider.isPathInfeasible()){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
       return Q(s, h, Unit, v)
     }
 

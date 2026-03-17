@@ -188,7 +188,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                      (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
     if(v.decider.isPathInfeasible()){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
       v.decider.dependencyAnalyzer.addAssumption(False, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=false)
       return Q(s, v)
     }
@@ -274,7 +274,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                      (Q: (State, Term, Verifier) => VerificationResult): VerificationResult =
     {
       if(v.decider.isPathInfeasible()){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
         return Q(s, NoPerm, v)
       }
 
@@ -341,7 +341,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                      (Q: (State, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     if(v.decider.isPathInfeasible()){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
 
       val sort = v.symbolConverter.toSort(fa.field.typ)
       val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
@@ -546,7 +546,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     dependencyType: DependencyType)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     if(v.decider.isPathInfeasible()){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
       return Q(s, h, Some(Unit), v)
     }
 
@@ -662,7 +662,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         dependencyType: DependencyType)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     if(v.decider.isPathInfeasible()){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
       return Q(s, h, Some(Unit), v)
     }
 

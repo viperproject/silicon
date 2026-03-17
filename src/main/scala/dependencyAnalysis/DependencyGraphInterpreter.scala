@@ -86,7 +86,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
     (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-      || AssumptionType.postconditionTypes.contains(node.assumptionType) // postconditions act as assumptions for callers
+      || AssumptionType.postconditionTypes.contains(node.assumptionType) || node.isJoinNode // postconditions act as assumptions for callers
     )
 
   def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
@@ -98,7 +98,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
   
   
-  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node => !AssumptionType.internalTypes.contains(node.assumptionType))
+  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
+    !AssumptionType.internalTypes.contains(node.assumptionType) || node.isJoinNode)
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))

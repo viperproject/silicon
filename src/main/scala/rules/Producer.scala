@@ -213,7 +213,7 @@ object producer extends ProductionRules {
 
     if(v.decider.isPathInfeasible()){
       if(!Expressions.isKnownWellDefined(a, Some(s.program))){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, v.decider.analysisSourceInfoStack.isJoinRelevantNode)
       }
       v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=false)
 

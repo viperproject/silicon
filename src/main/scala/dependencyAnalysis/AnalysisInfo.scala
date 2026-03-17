@@ -9,9 +9,10 @@ object AssumptionType extends Enumeration {
 
   def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition)
   def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition, ImportedPostcondition)
+  def preconditionTypes: Set[AssumptionType] = Set(Precondition)
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger, CustomInternal) // will always be hidden from user
-  def joinConditionTypes: Set[AssumptionType] = postconditionTypes ++ Set(FunctionBody)
+  def joinConditionTypes: Set[AssumptionType] = preconditionTypes ++ postconditionTypes ++ Set(FunctionBody, MethodCall)
   def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
   def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Annotation)
   def sourceCodeTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes ++ explicitAssertionTypes ++ verificationAnnotationTypes ++ internalTypes)

@@ -191,6 +191,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         conservingSnapshotGeneration = true,
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
+
+      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AssumptionType.Precondition, AnalysisSourceInfo.createAnalysisSourceInfo(pc), isClosed=false, isJoinNode=true))
+      presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
+
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {
         case (result1: FatalResult, _) =>

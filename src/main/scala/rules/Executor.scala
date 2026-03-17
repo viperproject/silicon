@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, DependencyType}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, CompositeAnalysisSourceInfo, DependencyAnalyzer, DependencyType, SimpleAssumptionNode}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -348,8 +348,11 @@ object executor extends ExecutionRules {
            : VerificationResult = {
 
     if(v.decider.isPathInfeasible()){
+      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(stmt, state.program)
+      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
+
       if(Statements.hasProofObligations(stmt, state.program)){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType)
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=false)
       }
       if(Statements.introducesSmtAssumptions(stmt)){
         v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=false)
@@ -565,6 +568,8 @@ object executor extends ExecutionRules {
             tArgs zip Seq.fill(tArgs.size)(None)
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
+
+          v1.decider.analysisSourceInfoStack.isJoinRelevantNode = true
           consumes(s2, meth.pres, false, _ => pvePre, v1, getDependencyType(DependencyType.MethodCall))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
@@ -572,9 +577,8 @@ object executor extends ExecutionRules {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            v2.decider.analysisSourceInfoStack.isJoinRelevantAssumption = true
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, getAssumptionType(AssumptionType.MethodCall))((s5, v3) => {
-              v3.decider.analysisSourceInfoStack.isJoinRelevantAssumption = false
+              v3.decider.analysisSourceInfoStack.isJoinRelevantNode = false
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)

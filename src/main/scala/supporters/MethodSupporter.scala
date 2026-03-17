@@ -81,6 +81,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractDependencyTypeFromInfo(method.info).map(_.assumptionType)
       var postConditionType = AssumptionType.getPostcondType(method.body.isEmpty, DependencyAnalyzer.extractDependencyTypeFromInfo(method.info))
 
+      val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AssumptionType.Precondition, AnalysisSourceInfo.createAnalysisSourceInfo(pc), isClosed=false, isJoinNode=true))
+      presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
+
+
       val daJoinNodeInfoOpt = method.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
       if(daJoinNodeInfoOpt.isDefined){
         val infodaJoinNodeInfo = daJoinNodeInfoOpt.get

@@ -98,7 +98,7 @@ case class AxiomAssumptionNode(term: Term, description: Option[String], sourceIn
 case class SimpleAssertionNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + term.toString
 
-  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, assumptionType, sourceInfo, isClosed, hasFailed=true)
+  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, assumptionType, sourceInfo, isClosed, hasFailed=true, isJoinNode=isJoinNode)
 }
 
 case class SimpleCheckNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {

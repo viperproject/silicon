@@ -6,6 +6,9 @@ import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.utility.Expressions.isKnownWellDefined
+import viper.silver.ast.{Apply, Applying, Assert, Asserting, Assume, Div, Exhale, Exp, ExtensionStmt, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, FuncApp, Goto, If, Inhale, Label, LocalVarAssign, LocalVarDeclStmt, MapLookup, MethodCall, Mod, NewStmt, Package, Program, Quasihavoc, Quasihavocall, SeqIndex, Seqn, Stmt, Unfold, Unfolding, While}
+import viper.silver.ast.utility.{Expressions, ViperStrategy}
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
@@ -37,8 +40,8 @@ trait DependencyAnalyzer {
   def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo): CH = buildChunk(perm)
   def createLabelNode(label: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode]
 
-  def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode]
-  def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int]
+  def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean, isJoinNode: Boolean): Option[GeneralAssertionNode]
+  def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isJoinNode: Boolean): Option[Int]
   def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int]
 
   def addDependency(source: Option[Int], dest: Option[Int]): Unit
@@ -60,14 +63,14 @@ trait DependencyAnalyzer {
   /**
    * Adds an assertion and assumption node with the given analysis source info and dependencies to the current infeasibility node.
    */
-  def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): Unit = {}
+  def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType, isJoinNode: Boolean): Unit = {}
 
   /**
    * @return the final dependency graph representing all direct and transitive dependencies
    */
   def buildFinalGraph(): Option[DependencyGraph]
 
-  def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int]
+  def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isJoinNode: Boolean): Option[Int]
 }
 
 object DependencyAnalyzer {
@@ -229,11 +232,55 @@ object DependencyAnalyzer {
         else newGraph.addEdges(src, targets)
       }
 
+    val relevantAssertionNodes = joinCandidateAssertions // method call pres assertions
+      .filter(_.isJoinNode)
+      .groupBy(_.sourceInfo.getFineGrainedSource)
+      .view.mapValues(_.map(_.id))
+      .toMap
+    joinCandidateNodes
+      .map(node => (node.id, relevantAssertionNodes.getOrElse(node.sourceInfo.getTopLevelSource, Seq.empty)))
+      .foreach { case (target, sources) =>
+        if (customInternalNodes.intersect(sources.toSet.union(Set(target))).isEmpty) newGraph.addEdgesConnectingMethods(sources, target)
+        else newGraph.addEdges(sources, target)
+      }
+
 
     stopTimeMeasurementAndAddToTotal(startTime, timeForMethodJoin)
 
     val newInterpreter = new DependencyGraphInterpreter(name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
+  }
+
+  def extractAssertionsForJoin(exp: ast.Exp, program: ast.Program): Seq[ast.Exp] = {
+    exp match {
+      case FieldAccessPredicate(FieldAccess(rcv, _), prm) =>
+        // Extra case for field access predicates because the contained field access does NOT require already having the field permission.
+        extractAssertionsForJoin(rcv, program) ++ extractAssertionsForJoin(prm.get, program)
+      case f: FuncApp =>
+        program.findFunction(f.funcname).pres
+      case other => other.subExps.flatMap(extractAssertionsForJoin(_, program))
+    }
+  }
+
+  def extractAssertionsForJoin(s: Stmt, p: Program): Seq[ast.Exp] = {
+    def goE(exp: Exp): Seq[ast.Exp] = extractAssertionsForJoin(exp, p)
+
+    def goEs(exps: Seq[Exp]): Seq[ast.Exp] = exps flatMap goE
+
+    s match {
+      case NewStmt(lhs, _) => goE(lhs)
+      case LocalVarAssign(lhs, rhs) => goE(lhs) ++ goE(rhs)
+      case MethodCall(methodName, args, targets) =>
+        p.findMethod(methodName).pres.flatMap(_.topLevelConjuncts) ++ goEs(args) ++ goEs(targets)
+      case Inhale(exp) => goE(exp)
+      case Assume(exp) => goE(exp)
+      case Seqn(ss, _) => ss flatMap (extractAssertionsForJoin(_, p))
+      case If(cond, thn, els) => goE(cond) ++ extractAssertionsForJoin(thn, p) ++ extractAssertionsForJoin(els, p)
+      case While(cond, invs, body) => goEs(invs) ++ goE(cond) ++ extractAssertionsForJoin(body, p)
+      case Label(_, invs) => goEs(invs)
+      case _ => goEs(s.subnodes.filter(_.isInstanceOf[ast.Exp]).map(
+        _.asInstanceOf[ast.Exp]))
+    }
   }
 }
 
@@ -333,21 +380,21 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   // adding assertion nodes
-  override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
+  override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean, isJoinNode: Boolean): Option[GeneralAssertionNode] = {
     if(isCheck)
-      Some(SimpleCheckNode(term, assumptionType, analysisSourceInfo, isClosed_))
+      Some(SimpleCheckNode(term, assumptionType, analysisSourceInfo, isClosed_, isJoinNode=isJoinNode))
     else
-      Some(SimpleAssertionNode(term, assumptionType, analysisSourceInfo, isClosed_))
+      Some(SimpleAssertionNode(term, assumptionType, analysisSourceInfo, isClosed_, isJoinNode=isJoinNode))
   }
   
-  def addAssertNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val node = createAssertOrCheckNode(term, assumptionType, analysisSourceInfo, isCheck=false)
+  def addAssertNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isJoinNode: Boolean): Option[Int] = {
+    val node = createAssertOrCheckNode(term, assumptionType, analysisSourceInfo, isCheck=false, isJoinNode=isJoinNode)
     node foreach addAssertionNode
     node map (_.id)
   }
 
-  override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = {
-    val node = createAssertOrCheckNode(False, assumptionType, sourceInfo, isCheck)
+  override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isJoinNode: Boolean): Option[Int] = {
+    val node = createAssertOrCheckNode(False, assumptionType, sourceInfo, isCheck, isJoinNode)
     addAssertionNode(node.get)
     node.map(_.id)
   }
@@ -358,10 +405,10 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     Some(node.id)
   }
 
-  override def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = {
+  override def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isJoinNode: Boolean): Option[Int] = {
     val assumptionType = if(AssumptionType.postconditionTypes.contains(assertionType)) AssumptionType.ExplicitPostcondition else AssumptionType.Explicit
-    val assumeNode = SimpleAssumptionNode(failedAssertion, None, sourceInfo, assumptionType, isClosed=false, isJoinNode=false)
-    val assertFailedNode = SimpleAssertionNode(failedAssertion, assertionType, sourceInfo, isClosed=false, hasFailed=true)
+    val assumeNode = SimpleAssumptionNode(failedAssertion, None, sourceInfo, assumptionType, isClosed=false, isJoinNode=isJoinNode)
+    val assertFailedNode = SimpleAssertionNode(failedAssertion, assertionType, sourceInfo, isClosed=false, hasFailed=true, isJoinNode=isJoinNode)
     dependencyGraph.addNode(assumeNode)
     dependencyGraph.addNode(assertFailedNode)
     dependencyGraph.addEdges(Set(assumeNode.id), assertFailedNode.id)
@@ -412,8 +459,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], postConditionType: AssumptionType = AssumptionType.ExplicitPostcondition): Unit = {
-    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, AnalysisSourceInfo.createAnalysisSourceInfo(e), AssumptionType.Precondition, isJoinNode=false, None))
-    val targetNodes = targetExps.flatMap(e => addAssertNode(True, postConditionType, AnalysisSourceInfo.createAnalysisSourceInfo(e)))
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, AnalysisSourceInfo.createAnalysisSourceInfo(e), AssumptionType.Precondition, isJoinNode=true, None))
+    val targetNodes = targetExps.flatMap(e => addAssertNode(True, postConditionType, AnalysisSourceInfo.createAnalysisSourceInfo(e), isJoinNode=true))
     dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
@@ -500,8 +547,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    * Adds an assertion node with the given analysis source info and dependencies to the current infeasibility node.
    * The resulting assertion node is required to detect dependencies of the source statement/expression on infeasible paths.
    */
-  override def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): Unit = {
-    val newAssertionNodeId = addAssertNode(False, dependencyType.assertionType, analysisSourceInfo)
+  override def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisSourceInfo: AnalysisSourceInfo, dependencyType: DependencyType, isJoinNode: Boolean): Unit = {
+    val newAssertionNodeId = addAssertNode(False, dependencyType.assertionType, analysisSourceInfo, isJoinNode)
     addDependency(infeasNodeId, newAssertionNodeId)
   }
 
@@ -523,10 +570,10 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def addAxiom(assumption: Term, analysisSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, description: Option[String]): Option[Int] = None
   override def createLabelNode(labelTerm: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = None
 
-  override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
-  override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = None
+  override def createAssertOrCheckNode(term: Term, assumptionType: AssumptionType, analysisSourceInfo: AnalysisSourceInfo, isCheck: Boolean, isJoinNode: Boolean): Option[GeneralAssertionNode] = None
+  override def addAssertFalseNode(isCheck: Boolean, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isJoinNode: Boolean): Option[Int] = None
   override def addInfeasibilityNode(isCheck: Boolean, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): Option[Int] = None
-  override def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo): Option[Int] = None
+  override def addAssertionFailedNode(failedAssertion: Term, assertionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isJoinNode: Boolean): Option[Int] = None
 
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {}
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}

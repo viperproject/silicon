@@ -174,7 +174,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       analysisSourceInfoStack = AnalysisSourceInfoStack()
     }
 
-    def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, dependencyAnalyzer, analysisSourceInfoStack.getFullSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantAssumption)
+    def getAnalysisInfo(assumptionType: AssumptionType): AnalysisInfo = AnalysisInfo(this, dependencyAnalyzer, analysisSourceInfoStack.getFullSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantNode)
     
     def functionDecls: Set[FunctionDecl] = _declaredFreshFunctions
     def macroDecls: Vector[MacroDecl] = _declaredFreshMacros
@@ -421,7 +421,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
 
       val filteredAssumptionsWithLabels = filteredAssumptions map{case (t, _) =>
-        val assumptionId: Option[Int] = dependencyAnalyzer.addAssumption(t, analysisSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantAssumption)
+        val assumptionId: Option[Int] = dependencyAnalyzer.addAssumption(t, analysisSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantNode)
         (t, DependencyAnalyzer.createAssumptionLabel(assumptionId))
       }
 
@@ -457,7 +457,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private def addAssumptionLabels(filteredTerms: Iterable[Term], assumptionType: AssumptionType) = {
       filteredTerms map (t => {
-        val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantAssumption)
+        val assumptionIds = dependencyAnalyzer.addAssumption(t, analysisSourceInfoStack.getFullSourceInfo, assumptionType, analysisSourceInfoStack.isJoinRelevantNode)
         (t, DependencyAnalyzer.createAssumptionLabel(assumptionIds))
       })
     }
@@ -519,7 +519,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def checkSmoke(isAssert: Boolean=false): Boolean = checkSmoke(analysisSourceInfoStack.getAssertionType, isAssert)
 
     def checkSmoke(assumptionType: AssumptionType, isAssert: Boolean): Boolean = {
-      val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, assumptionType, analysisSourceInfoStack.getFullSourceInfo, !isAssert)
+      val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, assumptionType, analysisSourceInfoStack.getFullSourceInfo, !isAssert, analysisSourceInfoStack.isJoinRelevantNode)
       val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
@@ -553,7 +553,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     override def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, assertionType: AssumptionType, assumeFailedAssertion: Boolean): Unit = {
-      dependencyAnalyzer.addAssertionFailedNode(failedAssertion, assertionType, analysisSourceInfoStack.getFullSourceInfo)
+      dependencyAnalyzer.addAssertionFailedNode(failedAssertion, assertionType, analysisSourceInfoStack.getFullSourceInfo, analysisSourceInfoStack.isJoinRelevantNode)
       if(assumeFailedAssertion){
         assume(failedAssertion, None, None, AssumptionType.Explicit)
         failedAssertion match {
@@ -594,7 +594,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       val asserted = if(isDependencyAnalysisEnabled) t.equals(True) else isKnownToBeTrue(t)
 
-      val assertNode = if(!asserted) dependencyAnalyzer.createAssertOrCheckNode(t, assumptionType, decider.analysisSourceInfoStack.getFullSourceInfo, isCheck) else None
+      val assertNode = if(!asserted) dependencyAnalyzer.createAssertOrCheckNode(t, assumptionType, decider.analysisSourceInfoStack.getFullSourceInfo, isCheck, analysisSourceInfoStack.isJoinRelevantNode) else None
 
       val result = asserted || proverAssert(t, timeout, DependencyAnalyzer.createAssertionLabel(assertNode map (_.id)))
 
