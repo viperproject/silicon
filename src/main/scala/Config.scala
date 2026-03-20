@@ -753,10 +753,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val pruneExportFileName: ScallopOption[String] = opt[String]("pruneExportFileName",
     descr = "Export file name for the pruned program (used with --pruneLines)",
-    default = Some("pruned"),
+    default = Some("prunedExport.vpr"),
+    noshort = true
+  )
+  
+  val computeVerificationProgress: ScallopOption[Boolean] = opt[Boolean]("computeVerificationProgress",
+    descr = "Computes verification progress of the program",
+    default = Some(false),
     noshort = true
   )
 
+  val computeVerificationProgressFileName: ScallopOption[String] = opt[String]("computeVerificationProgressFileName",
+    descr = "Export file name for the verification progress output (used with --computeVerificationProgress)",
+    default = Some("progressExport.vpr"),
+    noshort = true
+  )
 
   /* Option validation (trailing file argument is validated by parent class) */
 
@@ -840,6 +851,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (Some(_), Some(true)) => Right(())
     case (Some(_), _) =>
       Left(s"Option ${pruneLines.name} requires option ${enableDependencyAnalysis.name}")
+  }
+
+  validateOpt(computeVerificationProgress, enableDependencyAnalysis) {
+    case (Some(false), _) => Right(())
+    case (_, Some(true)) => Right(())
+    case (_, _) =>
+      Left(s"Option ${computeVerificationProgress.name} requires option ${enableDependencyAnalysis.name}")
   }
 
   validateOpt(startDebuggerAutomatically, enableDebugging) {

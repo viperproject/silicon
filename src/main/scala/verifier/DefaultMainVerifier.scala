@@ -683,6 +683,11 @@ class DefaultMainVerifier(config: Config,
       commandLineTool.handlePruningRequest(lineInputs, Some(exportFileName))
     }
 
+    if (Verifier.config.computeVerificationProgress()) {
+      val commandLineTool = new DependencyAnalysisUserTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+      val exportFileName = Verifier.config.computeVerificationProgressFileName()
+      commandLineTool.handleVerificationProgressQuery(Some(exportFileName))
+    }
 
     if (Verifier.config.startDependencyAnalysisTool()) {
       val commandLineTool = new DependencyAnalysisUserTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)

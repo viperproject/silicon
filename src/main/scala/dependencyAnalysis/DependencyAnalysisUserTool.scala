@@ -162,13 +162,19 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println("Done.")
   }
 
-  private def handleVerificationProgressQuery(): Unit = {
+  def handleVerificationProgressQuery(exportFileNameOpt: Option[String] = None): Unit = {
 
     val ((optProgressPeter, optProgressLea, optInfo), optTime) = measureTime(fullGraphInterpreter.computeVerificationProgress())
     //    println(s"Overall verification progress: $progress")
-    println(s"$optInfo")
-    println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
-    println(s"Finished in ${optTime}ms")
+    
+    val output = s"$optInfo\nPeter: $optProgressPeter; Lea: $optProgressLea\nFinished in ${optTime}ms"
+    println(output)
+
+    if (exportFileNameOpt.isDefined) {
+      val writer = new PrintWriter(exportFileNameOpt.get)
+      writer.println(output)
+      writer.close()
+    }
   }
 
   private def handleVerificationProgressDEBUGQuery(): Unit = {
