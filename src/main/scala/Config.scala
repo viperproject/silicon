@@ -745,6 +745,19 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val pruneLines: ScallopOption[List[Int]] = opt[List[Int]]("pruneLines",
+    descr = "Line numbers to prune the program with respect to. Part of the dependency analysis tool.",
+    default = None,
+    noshort = true
+  )
+
+  val pruneExportFileName: ScallopOption[String] = opt[String]("pruneExportFileName",
+    descr = "Export file name for the pruned program (used with --pruneLines)",
+    default = Some("pruned"),
+    noshort = true
+  )
+
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
@@ -820,6 +833,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (_, Some(true)) => Right(())
     case (_, _) =>
       Left(s"Option ${startDependencyAnalysisTool.name} requires option ${enableDependencyAnalysis.name}")
+  }
+
+  validateOpt(pruneLines, enableDependencyAnalysis) {
+    case (None, _) => Right(())
+    case (Some(_), Some(true)) => Right(())
+    case (Some(_), _) =>
+      Left(s"Option ${pruneLines.name} requires option ${enableDependencyAnalysis.name}")
   }
 
   validateOpt(startDebuggerAutomatically, enableDebugging) {

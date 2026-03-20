@@ -413,9 +413,11 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     (res, durationMs)
   }
 
-  private def handlePruningRequest(inputs: Seq[String]): Unit = {
-    println("exportFileName: ")
-    val exportFileName = readLine()
+  def handlePruningRequest(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
+    val exportFileName = exportFileNameOpt.getOrElse {
+      println("exportFileName: ")
+      readLine()
+    }
 
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
     val dependencies = fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id))

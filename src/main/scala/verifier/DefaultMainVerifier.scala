@@ -676,6 +676,14 @@ class DefaultMainVerifier(config: Config,
 
     DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)
 
+    if (Verifier.config.pruneLines.isDefined) {
+      val commandLineTool = new DependencyAnalysisUserTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+      val lineInputs = Verifier.config.pruneLines().map(_.toString)
+      val exportFileName = Verifier.config.pruneExportFileName()
+      commandLineTool.handlePruningRequest(lineInputs, Some(exportFileName))
+    }
+
+
     if (Verifier.config.startDependencyAnalysisTool()) {
       val commandLineTool = new DependencyAnalysisUserTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
       commandLineTool.run()
