@@ -118,16 +118,16 @@ object LoopInvariantSolver {
 
     executionFlowController.locally(s, v) { (s1, v1) =>
       producer.produce(s1, freshSnap, BigAnd(loopHead.invs), pve, v1, withAbduction = true) { (s2, v2) =>
-        println(s"After producing invs: \n\t${s2.h.values.mkString("\n\t")}")
+        //println(s"After producing invs: \n\t${s2.h.values.mkString("\n\t")}")
         executionFlowController.locally(s2, v2) { (sF, vF) =>
           executor.follows(sF, loopEdges, pveLam, vF, joinPoint) { (s3, v3) =>
-            println(s"After follow: \n\t${s3.h.values.mkString("\n\t")}")
+            //println(s"After follow: \n\t${s3.h.values.mkString("\n\t")}")
             // To find a fixed point we are only interested in branches where the loop condition can remains true
             var nextCon = false
             executionFlowController.locally(s3, v3) { (s4, v4) =>
               producer.produce(s4, freshSnap, loopConExp, pve, v4, withAbduction = true) { (s5, v5) =>
                 nextCon = !v5.decider.checkSmoke()
-                println(s"nextCon: $nextCon in \n\t${s5.h.values.mkString("\n\t")}")
+                //println(s"nextCon: $nextCon in \n\t${s5.h.values.mkString("\n\t")}")
                 Success()
               }
             }
@@ -137,7 +137,7 @@ object LoopInvariantSolver {
               val endStmt = abductionUtils.getEndOfLoopStmt(loop)
               val postTran = VarTransformer(s3, v3, s3.g.values, s3.h)
               val postState = postTran.transformState(s3)
-              println(s"Successful framing with s \n\t${s3.h.values.mkString("\n\t")}")
+              //println(s"Successful framing with s \n\t${s3.h.values.mkString("\n\t")}")
               Success(Some(FramingSuccess(s3, v3, postState, endStmt, v3.decider.pcs.duplicate(), postTran)))
             }
           }

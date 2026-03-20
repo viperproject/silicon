@@ -204,7 +204,6 @@ object BiAbductionSolver {
     } else {
 
       val initPcs = v.decider.pcs.duplicate()
-      println(s"\tf $f\n\tReason ${f.message.reason}")
       val reason = f.message.reason match {
         case reason: InsufficientPermission =>
           val perm = f.message.offendingNode match {
@@ -232,7 +231,6 @@ object BiAbductionSolver {
       reason match {
         case None => f
         case Some(Assert(assertion)) =>
-          println(s"FAILED FOLD BECAUSE OF $assertion WILL REATTEMPT")
           // If we failed to fold a predicate because of an assertion, we try producing the assertion in the state and continuing
           executionFlowController.tryOrElse0(s, v) { (s1, v1, T) =>
             producer.produce(s1, freshSnap, assertion, pve, v1) { (s2, v2) =>
@@ -256,7 +254,7 @@ object BiAbductionSolver {
             case Some(trafo) => trafo.f(qPre).asInstanceOf[AbductionQuestion]
             case _ => qPre
           }
-          println(s"abdGoal $abdGoal in s: \n\t${s.h.values.mkString("\n\t")}")
+          // println(s"abdGoal $abdGoal in s: \n\t${s.h.values.mkString("\n\t")}")
           // NOTE: Without fractional permissions, the comment below is true
           // With fractional permissions, we HAVE to start with rule one because if we hold a fraction smaller
           // than the goal, we must subtract it from the goal
@@ -265,7 +263,7 @@ object BiAbductionSolver {
           // This allows us to fold on null references multiple times, as is required for e.g. trees.
           AbductionApplier.applyRules(q){ //, currentRule = 1) {
             q1 =>
-              println(s"Completed abduction with state: \n\t${q1.s.h.values.mkString("\n\t")}")
+              //println(s"Completed abduction with state: \n\t${q1.s.h.values.mkString("\n\t")}")
               if (q1.goal.isEmpty) {
                 val newState = q1.foundState.reverse
                 val newStmts = q1.foundStmts
@@ -426,7 +424,7 @@ object BiAbductionSolver {
 
   def resolveFramingResults(m: Method, nf: NonFatalResult): Option[Method] = {
     val frames = abductionUtils.getFramingSuccesses(nf)
-
+    println(s"Will resovle framing results for ${frames.mkString("\n")}")
     // We get a framing result for every branch.
     // So postconditions that are in every branch can just be added without any bcs
     val everyPosts = frames.head.posts.filter { p => frames.forall(_.posts.contains(p)) }

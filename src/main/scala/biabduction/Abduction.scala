@@ -156,9 +156,12 @@ object AbductionFoldBase extends AbductionRule {
           case Some(cond) =>
             val g1 = q.goal.filterNot(_ == a)
             val concCond = cond.transform { case lv: AbstractLocalVar if lv == pred.formalArgs.head.localVar => a.loc.args.head }
+            //println(s"will eval cond $concCond")
             abductionUtils.safeEval(concCond, q.s, q.v, q.lostAccesses) {
               case (s1, Some(term), v1) =>
+                //println(s"eval'd to $term")
                 if (v1.decider.check(term, Verifier.config.checkTimeout())) {
+                  //println(s"FALSE")
                   abductionUtils.safeEval(a.loc.args.head, q.s, q.v, q.lostAccesses) {
                     case (s2, Some(t), v2) =>
                       val wildcards = s2.constrainableARPs -- s1.constrainableARPs
@@ -173,6 +176,7 @@ object AbductionFoldBase extends AbductionRule {
                       }
                   }
                 } else {
+                  //println(s"TRUE")
                   apply(q.copy(goal = g1)) {
                     case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
                     case None => Q(None)
@@ -251,7 +255,7 @@ object AbductionFold extends AbductionRule {
 
             val foldS = q.s.copy(abdPermScalingFactorExp= a.perm)//PermMul(q.s.abdPermScalingFactorExp, a.perm)()), we're now setting this when fold fails
             val fold = Fold(a)()
-            println(s"Will attempt fold $fold triggered by $field ($chunk)")
+            //println(s"Will attempt fold $fold triggered by $field ($chunk)")
             executor.exec(foldS, fold, q.v, q.trigger, q.stateAllowed) { (s1, v1) =>
               val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, chunk.snap.sort))
               val q2 = q.copy(s = s1.copy(abdPermScalingFactorExp = FullPerm()()), v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
@@ -468,12 +472,12 @@ object AbductionPackage extends AbductionRule {
       (s1a, v1a) => Q(s1a, v1a)
     } {
       f =>
-        println(s"FAILED ASSERTING LHS WITH $f")
+        //println(s"FAILED ASSERTING LHS WITH $f")
         f.message.reason match {
           // In case we fail to abductively asser the LHS because of an assertion, we try to simply produce it
           // and reattempt the fold
           case AssertionFalse(assertion) =>
-            println(s"Asserting LHS failed with ${f.message.reason}, will reattempt in \n\t${s.h.values.mkString("\n\t")}")
+            //println(s"Asserting LHS failed with ${f.message.reason}, will reattempt in \n\t${s.h.values.mkString("\n\t")}")
             producer.produce(s, freshSnap, assertion, pve, v) { (s1r, v1r) =>
               assertLHS(s1r, v1r, wand, q)(Q)
             }
@@ -488,9 +492,9 @@ object AbductionPackage extends AbductionRule {
       case None => Q(None)
       case Some(wand) =>
           executionFlowController.locally(q.s, q.v) { (s1, v1) =>
-            println(s"Will attempt asserting LHS")
+            //println(s"Will attempt asserting LHS")
             assertLHS(s1, v1, wand, q) { (s2, v2) =>
-              println(s"Succesfully asserted ${wand.left}")
+              //println(s"Succesfully asserted ${wand.left}")
                 val packQ = q.copy(s = s2, v = v2, goal = wand.right.topLevelConjuncts, packing = true)
                 AbductionApplier.applyRules(packQ) { packRes =>
                   if (packRes.goal.nonEmpty) {
@@ -504,13 +508,13 @@ object AbductionPackage extends AbductionRule {
             }
           } match {
             case fail: FatalResult =>
-              println(s"FAILED WITH $fail")
+              //println(s"FAILED WITH $fail")
               Q(None)
             case suc: NonFatalResult =>
               // We need to filter out those abdRes that come from asserting the LHS of the wand
               val abdRes = abductionUtils.getAbductionSuccesses(suc).filter(res => res.trigger != Some(Assert(wand.left)()))
-              println(s"abdRes:")
-              abdRes.foreach(x => println(s"\t - $x")) // \n\t\t${x.trigger}: ${x.trigger == Some(Assert(wand.left)())}
+              //println(s"abdRes:")
+              //abdRes.foreach(x => println(s"\t - $x")) // \n\t\t${x.trigger}: ${x.trigger == Some(Assert(wand.left)())}
               val stmts = abdRes.flatMap(_.stmts).reverse
               val state = abdRes.flatMap(_.state).reverse
 
@@ -530,7 +534,7 @@ object AbductionPackage extends AbductionRule {
                       val lv = tran.transformExp(e, strict = false)
                       lv.get
                   }
-                  println(s"Will try packaging $wand with $script")
+                  //println(s"Will try packaging $wand with $script")
                   magicWandSupporter.packageWand(sPack, wand, script, pve, v1) {
                     (s2, wandChunk, v2) =>
                       val g1 = q.goal.filterNot(_ == wand)
