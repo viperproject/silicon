@@ -117,29 +117,27 @@ object LoopInvariantSolver {
     //}
 
     executionFlowController.locally(s, v) { (s1, v1) =>
-      println(s"Will produce ${loopHead.invs}")
       producer.produce(s1, freshSnap, BigAnd(loopHead.invs), pve, v1, withAbduction = true) { (s2, v2) =>
-        println(s"\tProduced invs from ${s1.h.values.mkString("\n\t")} to to ${s2.h.values.mkString("\n\t")}")
+        println(s"After producing invs: \n\t${s2.h.values.mkString("\n\t")}")
         executionFlowController.locally(s2, v2) { (sF, vF) =>
           executor.follows(sF, loopEdges, pveLam, vF, joinPoint) { (s3, v3) =>
-            println(s"\tExecd follows to ${s3.h.values.mkString("\n\t")}")
-            // To find a fixed point, we are only interested in branches where the loop condition can remains true
+            println(s"After follow: \n\t${s3.h.values.mkString("\n\t")}")
+            // To find a fixed point we are only interested in branches where the loop condition can remains true
             var nextCon = false
             executionFlowController.locally(s3, v3) { (s4, v4) =>
               producer.produce(s4, freshSnap, loopConExp, pve, v4, withAbduction = true) { (s5, v5) =>
-                println(s"\tProduced $loopConExp to ${s5.h.values.mkString("\n\t")}")
                 nextCon = !v5.decider.checkSmoke()
+                println(s"nextCon: $nextCon in \n\t${s5.h.values.mkString("\n\t")}")
                 Success()
               }
             }
             if (!nextCon) {
-              println(s"nextCon false")
               Success()
             } else {
-              println(s"nextCon true")
               val endStmt = abductionUtils.getEndOfLoopStmt(loop)
               val postTran = VarTransformer(s3, v3, s3.g.values, s3.h)
               val postState = postTran.transformState(s3)
+              println(s"Successful framing with s \n\t${s3.h.values.mkString("\n\t")}")
               Success(Some(FramingSuccess(s3, v3, postState, endStmt, v3.decider.pcs.duplicate(), postTran)))
             }
           }
@@ -150,7 +148,6 @@ object LoopInvariantSolver {
       case nonf: NonFatalResult =>
 
         val abdReses = abductionUtils.getAbductionSuccesses(nonf).reverse
-        println(s"reses: $abdReses")
         // TODO nklose do we want to join branches properly here like we do for preconditions?
         val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
         val preLoopVars = s.g.values.filter { case (v, _) => origVars.contains(v) }
@@ -177,6 +174,7 @@ object LoopInvariantSolver {
 
         abductionUtils.findOptChunks(accs, preState, v, pve) {
           chunks =>
+            println(s"Prestate is: ${preState.h.values.mkString("\n\t")}")
             val toKeep = chunks.keys
             val toAbs = preState.copy(h= Heap(preState.h.values.toSeq.diff(toKeep.toSeq)))
             println(s"Will try to abstract for pre from ${toAbs.h.values.mkString("\n\t")}")
@@ -230,7 +228,6 @@ object LoopInvariantSolver {
                   // val allNewChunks = abdReses.map(abd => (abd.allNewChunks, abd.pcs.branchConditions))
 
                   // We need to merge chunks that refer to the same value but have different snaps(?)
-                  println(s"Will merge chunks starting from \n\t${abdReses.map(abd => (abd.allNewChunks, abd.pcs.branchConditions)).mkString("\n\t")}")
                   val preChunks = abdReses
                     .map(abd => (abd.allNewChunks, abd.pcs.branchConditions))
                     .flatMap { case (chunks, pcs) => chunks.map(chunk => (chunk, pcs)) }
@@ -246,7 +243,6 @@ object LoopInvariantSolver {
                       bestChunk
                     }
                     .toList
-                  println(s"new prechunks \n\t${preChunks.mkString("\n\t")}")
 
                   // val matchingPreChunks = allNewChunks.collect { case (chunks, bcs) if bcs.diff(vPostAbs.decider.pcs.branchConditions).isEmpty => chunks }.flatten
                   solveLoopInvariants(sPostAbs, vPostAbs, origVars, loopHead, loopEdges, joinPoint, initialBcs, q.copy(preHeap = newPreState.h + Heap(preChunks), preAbstraction = newPreAbstraction,

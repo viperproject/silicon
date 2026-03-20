@@ -1,20 +1,22 @@
 package viper.silicon.biabduction
 
+import viper.silicon.biabduction.abductionUtils.pve
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.rules.consumer.consumes
 import viper.silicon.rules.evaluator.eval
-import viper.silicon.rules.{evaluator, executionFlowController, executor}
+import viper.silicon.rules.{evaluator, executionFlowController, executor, producer}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, True}
 import viper.silicon.utils.ast.{BigAnd, BigOr}
+import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
 import viper.silver.utility.Common.Rational
 import viper.silver.verifier.errors.Internal
-import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
+import viper.silver.verifier.reasons.{AssertionFalse, InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{DummyReason, PartialVerificationError, VerificationError}
 
 import scala.annotation.tailrec
@@ -90,9 +92,8 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
           pre match {
             case ap: AccessPredicate =>
               varTran.transformChunk(ch.copy(perm = varTran.permExpToTerm(ap.perm)))
-          }//case (pre, None) => varTran.transformExp(pre)
+          }
       }
-      // println(s"presTransformed: $presTransformed")
       val bcPreExps = bcExps.collect {
         case exp => varTran.transformExp(exp)
       }
@@ -174,15 +175,12 @@ trait RuleApplier[S] {
     */
   def applyRules(in: S, currentRule: Int = 0)(Q: S => VerificationResult): VerificationResult = {
     if (currentRule == rules.length) {
-      //println("Out of bouuuunds")
       Q(in)
     } else {
-      //println(s"Current Rule: $currentRule: ${rules(currentRule).getClass}")
       rules(currentRule).apply(in) {
         case Some(out) =>
           applyRules(out)(Q)
         case None =>
-          // println(s"Rule $currentRule did not work, attempting ${currentRule + 1}")
           applyRules(in, currentRule + 1)(Q)
       }
     }
@@ -201,15 +199,12 @@ trait BiAbductionRule[S] {
 object BiAbductionSolver {
 
   def solveAbductionForError(s: State, v: Verifier, f: Failure, stateAllowed: Boolean, trigger: Option[Positioned] = None)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
-    //println("Doing Abduction...")
-    //println(s.permLocations)
     if (!s.doAbduction) {
       f
     } else {
 
       val initPcs = v.decider.pcs.duplicate()
       println(s"\tf $f\n\tReason ${f.message.reason}")
-      // println(s"with pcs ${v.decider.pcs}")
       val reason = f.message.reason match {
         case reason: InsufficientPermission =>
           val perm = f.message.offendingNode match {
@@ -225,12 +220,32 @@ object BiAbductionSolver {
           Some(acc)
         case reason: MagicWandChunkNotFound =>
           Some(reason.offendingNode)
-        case reason =>
+        case AssertionFalse(assert) =>
+          // println(s"Failed due to assertion in \n\t${s.h.values.mkString("\n\t")}\n\t${s.g.values.mkString("\n\t")}\nwith pcs ${v.decider.pcs}")
+          f.message.offendingNode match {
+            case _: Fold => Some(Assert(assert)())
+            case _ => None
+          }
+        case _ =>
           None
       }
       reason match {
         case None => f
-        case Some(abdGoal) =>
+        case Some(Assert(assertion)) =>
+          println(s"FAILED FOLD BECAUSE OF $assertion WILL REATTEMPT")
+          // If we failed to fold a predicate because of an assertion, we try producing the assertion in the state and continuing
+          executionFlowController.tryOrElse0(s, v) { (s1, v1, T) =>
+            producer.produce(s1, freshSnap, assertion, pve, v1) { (s2, v2) =>
+              T(s2, v2)
+            }
+          } {
+            (s1a, v1a) =>
+              val abd = AbductionSuccess(s1a, v1a, v1a.decider.pcs.duplicate(), Seq.empty, Seq.empty, Map.empty, Seq.empty, trigger)
+              Success(Some(abd)) && Q(s1a, v1a)
+          } {
+            f => f
+          }
+        case Some(abdGoal: Exp) =>
 
           val tra = f.message.failureContexts.collectFirst {
             case SiliconAbductionFailureContext(trafo) if trafo.isDefined => trafo.get
@@ -250,8 +265,8 @@ object BiAbductionSolver {
           // This allows us to fold on null references multiple times, as is required for e.g. trees.
           AbductionApplier.applyRules(q){ //, currentRule = 1) {
             q1 =>
+              println(s"Completed abduction with state: \n\t${q1.s.h.values.mkString("\n\t")}")
               if (q1.goal.isEmpty) {
-                //println("Goal somehow is empty?")
                 val newState = q1.foundState.reverse
                 val newStmts = q1.foundStmts
 
@@ -264,7 +279,6 @@ object BiAbductionSolver {
                   //val s1 = q1.s.copy(oldHeaps = newOldHeaps)
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
                   val abd = AbductionSuccess(q1.s, q1.v, q1.v.decider.pcs.duplicate(), newState, newStmts, fieldChunks, newChunks, trigger)
-                  println(s"Solved abduction succesfully with state ${q1.s.h.values.mkString("\n\t")} and pcs ${q1.v.decider.pcs.branchConditions}")
                   Success(Some(abd)) && Q(q1.s, q1.v)
                 }
               } else {
@@ -280,7 +294,6 @@ object BiAbductionSolver {
     AbstractionApplier.applyRules(q) { q1 =>
       val absTransForm = VarTransformer(q1.s, q1.v, q1.s.g.values, q1.s.h)
       val res = absTransForm.transformState(q1.s)
-      println(s"Solved abstraction with res $res and state \n\t${q1.s.h.values.mkString("\n\t")}")
       Q(q1.s, res, q1.v)
     }
   }
@@ -289,14 +302,11 @@ object BiAbductionSolver {
 
     //val tra = VarTransformer(s, v, targetVars, s.h)
     executionFlowController.tryOrElse1[Option[Term]](s, v) { (s, v, QS) =>
-      println(s"Will consume POSTS $knownPosts in \n\t${s.h.values.mkString("\n\t")}")
       consumes(s, knownPosts, false, pvef, v)(QS)
     } { (s1: State, _: Option[Term], v1: Verifier) =>
       executionFlowController.locallyWithResult[Seq[Exp]](s1, v1) { (s1a, v1a, T) =>
-        println(s"Will solve abst in \n\t${s1a.h.values.mkString("\n\t")}")
         BiAbductionSolver.solveAbstraction(s1a, v1a) { (s2, framedPosts, v2) =>
           val newPosts = framedPosts.map { e => tra.transformExp(e) }.collect { case Some(e) => e }
-          println(s"New posts $newPosts")
           T(abductionUtils.sortExps(newPosts))
         }
       } {
@@ -305,9 +315,7 @@ object BiAbductionSolver {
           Q(FramingSuccess(s1, v1, Seq(), loc, v.decider.pcs.duplicate(), tra)) // No new state or needed stmts
         // We consumed the post conditions and found new ones. Handle the new ones and add them to the result
         case newPosts1 =>
-          println(s"Will try to solve framing (in f, succ) for post $newPosts1")
           solveFraming(s1, v1, pvef, tra, loc, newPosts1, stateAllowed) { frame =>
-            println(s"\tNew post is ${frame.posts}")
             val sortedPost = abductionUtils.sortExps(newPosts1)
             val newFrame = frame.copy(posts = frame.posts ++ sortedPost)
             Q(newFrame)
@@ -317,19 +325,7 @@ object BiAbductionSolver {
       // We failed to fulfill the posts. Perform abduction, add the results and try again.
       f =>
         BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(loc))((s3, v3) => {
-          println(s"Will try to solve framing (in f, fail) for post $knownPosts")
           solveFraming(s3, v3, pvef, tra, loc, knownPosts, stateAllowed)(Q)
-
-          /*{
-            frame =>
-              val newAbdRes = if (res.state.nonEmpty) {
-                Success(Some(res.copy(stmts = Seq())))
-              } else {
-                Success()
-              }
-              //val newFrame = frame.copy(stmts = frame.stmts ++ res.stmts)
-              Q(frame)
-          }*/
         }
         )
     }
@@ -338,7 +334,6 @@ object BiAbductionSolver {
   def resolveAbductionResults(m: Method, nf: NonFatalResult): Option[Method] = {
     val abdReses = abductionUtils.getAbductionSuccesses(nf)
     val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
-    //println(s"newMatches: $newMatches")
     val abdCases = abdReses.groupBy(res => (res.trigger.get.pos, res.stmts, res.state.map({ case (e, _) => e })))
     println(s"abdCases:")
     abdCases.foreach { case (key, values) =>
@@ -366,12 +361,10 @@ object BiAbductionSolver {
         val finalBcs = BigOr(expJoined.map(e => BigAnd(e._2)))
         (abdRes -> finalBcs)
     }
-    println(s"joinedCases: \n\t${joinedCases.mkString("\n\t")}")
     // We want to add things in the reverse order of the abduction results.
     abdReses.reverse.foldLeft[Option[Method]](Some(m)) { (mOpt, res) =>
       mOpt match {
         case Some(m1) if joinedCases.contains(res) =>
-          println(s"Adding $res to method ${Seq(joinedCases(res))}")
           addToMethod(m1, Seq(joinedCases(res)), newMatches, res)
         case _ => mOpt
       }
@@ -758,48 +751,6 @@ object abductionUtils {
   }
 
 
-
-/*   def permsTo(loc: LocationAccess, q: AbductionQuestion)
-                       (Q: Option[Exp] => VerificationResult): VerificationResult =
-  {
-    //println(s"Computing perms to $loc")
-    /*val permVar = LocalVar(s"perm_abduction", Perm)()
-    val toExec = Seqn(Seq(
-      LocalVarDeclStmt(LocalVarDecl(s"perm_abduction", Perm)())(),
-      LocalVarAssign(permVar, CurrentPerm(loc)())()
-    ), Seq())()
-    executor.exec(q.s, toExec, q.v, q.trigger, q.stateAllowed) { (s1, v1) =>
-      val varTran = VarTransformer(s1, v1, s1.g.values, s1.h)
-      //println(s"      which are ${varTran.permsTo(permVar)}")
-      Q(varTran.permsTo(permVar))
-    }*/
-    val resource = loc.res(q.s.program)
-    val id = ChunkIdentifier(resource, q.s.program)
-    val chunk = findChunk[BasicChunk](q.s.h.values, id, Seq(term), q.v)
-
-  }
-
-  // Who doesn't love CPS???
-  def permsToSeq(remaining: Seq[AccessPredicate], built: Seq[AccessPredicate], q: AbductionQuestion)
-                (Q: Seq[AccessPredicate] => VerificationResult): VerificationResult = remaining match {
-    case Nil =>
-      Q(built)
-
-    case acc +: tail =>
-      acc.loc match {
-        case la: LocationAccess =>
-          permsTo(la, q) { pHOpt =>
-            val pG = acc.perm
-            val frac: Exp = pHOpt match {
-              case Some(pH) => clampSubPerm(pG, pH)
-              case None     => pG
-            }
-
-            permsToSeq(tail, built :+ accWithPerm(acc, frac), q)(Q)
-          }
-      }
-  }*/
-
   def accWithPerm(ap: AccessPredicate, newPerm: Option[Exp]): AccessPredicate = {
     ap match {
       case fap: FieldAccessPredicate => FieldAccessPredicate(fap.loc, newPerm)(fap.pos, fap.info, fap.errT)
@@ -830,7 +781,6 @@ object abductionUtils {
 
   // This does max(a - b, 0)
   def clampSubPerm(a: Option[Exp], b: Option[Exp]): FractionalPerm = {
-    //println(s"Doing $a - $b")
     val sub = asRational(a) - asRational(b)
     FractionalPerm(
       IntLit(if (sub.compare(Rational(0, 1)) < 0) 0 else sub.numerator)(),
@@ -970,8 +920,6 @@ object abductionUtils {
         case Some(term) =>
           val resource = loc.res(s2.program)
           val id = ChunkIdentifier(resource, s2.program)
-          /*println(s"\t\tid is $id")
-          println(s"\t\twe eval'd arg $arg to\n\t\tterms $term")*/
           val chunkOpt = findChunk[BasicChunk](s2.h.values, id, Seq(term), v2)
           chunkOpt match {
             case None => Q(Some(NoPerm()()))
@@ -1086,8 +1034,6 @@ object abductionUtils {
     def processPredicate(pred: Predicate)
                         (Q: Map[Object, FractionalPerm] => VerificationResult): VerificationResult = {
 
-      // Collect locations
-
       def innermostFA(loc: LocationAccess): Option[FieldAccess] = loc match {
         case fa @ FieldAccess(rcv, _) =>
           rcv match {
@@ -1124,7 +1070,6 @@ object abductionUtils {
 
       def processLocations(bS: State, bV: Verifier, eS: State, remaining: Seq[LocationAccess], acc: Map[Object, FractionalPerm]): VerificationResult = remaining match {
         case Nil =>
-          // Merge this branch's results into accumulated max
           accumulatedPerms = mergeMaxPerms(accumulatedPerms, acc)
           Success()
         case loc :: rest =>
@@ -1142,12 +1087,37 @@ object abductionUtils {
         }
       }
 
-      // After all branches have been explored, pass the max perms to Q
       result && Q(accumulatedPerms)
     }
 
     processPredicates(s.program.predicates.toList, Map.empty)
     result
   }
+
+  /*def retryOnFailedAssertion(
+                                 s: State,
+                                 v: Verifier,
+                                 exec: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult
+                               )(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+    executionFlowController.tryOrElse0(s, v) { (s1, v1, T) =>
+      exec(s1, v1, T)
+    } {
+      (s1a, v1a) =>
+        println(s"Attempt successful")
+        Q(s1a, v1a)
+    } {
+      f =>
+        f.message.reason match {
+          case AssertionFalse(assertion) =>
+            println(s"exec failed with ${f.message.reason}")
+            producer.produce(s, freshSnap, assertion, pve, v) { (s1r, v1r) =>
+              println(s"Produced, will reattempt")
+              retryOnFailedAssertion(s1r, v1r, exec)(Q)
+            }
+          case _ =>
+            f
+        }
+    }
+  }*/
 
 }

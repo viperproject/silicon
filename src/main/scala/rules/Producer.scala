@@ -110,7 +110,7 @@ object producer extends ProductionRules {
              : VerificationResult = {
 
     if(!withAbduction){
-    produceR(s, sf, a.whenInhaling, pve, v)(Q)
+      produceR(s, sf, a.whenInhaling, pve, v)(Q)
     } else {
       executionFlowController.tryOrElse0(s, v) { (s1, v1, T) =>
         produceR(s1, sf, a.whenInhaling, pve, v1)(T)

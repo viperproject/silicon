@@ -38,7 +38,7 @@ final case class State(g: Store = Store(),
                        doAbduction: Boolean = false,
                        abductionResults: Seq[BiAbductionResult] = Seq(),
 
-                      // Needed for tracking in fractional abduction
+                       // Needed for tracking in fractional abduction
                        abdPermScalingFactorExp: ast.Exp = ast.FullPerm()(),
 
                        recordVisited: Boolean = false,

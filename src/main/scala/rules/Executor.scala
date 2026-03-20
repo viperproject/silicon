@@ -301,7 +301,6 @@ object executor extends ExecutionRules {
                   case Seq() if !s.doAbduction => (Seq(), Success())
                 }
                 val invs = abductionUtils.sortExps(foundInvs ++ existingInvs)
-                //println(s"invs: $invs")
 
                 type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
                 var phase1data: Vector[PhaseData] = Vector.empty
@@ -350,7 +349,6 @@ object executor extends ExecutionRules {
                                   // relying on the reentry of the loop head, as this will not have the found invariants
                                   // Existing invariants may be required for framing and stuff, so we produce them again first
                                   producer.produces(s6, freshSnap, existingInvs, ContractNotWellformed, v6) { (s7, v7) =>
-                                    //println(s"Produced $existingInvs in ${s7.h.values.mkString(" ")} with pcs ${v7.decider.pcs.branchConditions}")
                                     checkInvariants(s7, v7, foundInvs, endStmt, stateAllowed = false)((_, _) => Success())
                                   }
                                 }
@@ -377,7 +375,6 @@ object executor extends ExecutionRules {
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             // TODO If we reach this from the invariant generation, then state is OK. If from the final loop checking, it is not!
-            println(s"Checking existing invs (loop head from n-edge or o-edge) $existingInvs")
             checkInvariants(s, v, existingInvs, endStmt, stateAllowed = true)(Q)
         }
     }
@@ -396,8 +393,6 @@ object executor extends ExecutionRules {
       } {
         f =>
         BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(location)) { (s3, v3) =>
-          /* val varTrans = VarTransformer(s3, v3, s3.g.values, s3.h)
-          println(s"\targs {\n\t${s3.h.values.map(_.asInstanceOf[BasicChunk].args.map(varTrans.transformTerm)) }\n}")*/
           checkInvariants(s3, v3, invs, location, stateAllowed)(Q)
         }
       }

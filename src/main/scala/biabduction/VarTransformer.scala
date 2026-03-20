@@ -28,6 +28,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
 
   private def resolveMatches(): Map[Term, ast.Exp] = {
 
+    // TODO: Should probably exclude null
     val allTerms: Seq[Term] = (s.g.values.values.map { case (t1, _) => t1 }
       ++ s.h.values.collect {
       case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap)
@@ -97,7 +98,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
         binPermOp(e1, e2, terms.PermPermDiv(_, _))
       case _ => throw new IllegalStateException(s"permExpToTerm can't transform $permExp")
     }
-    // println(s"Transformed $permExp into $ret")
     ret
   }
 
@@ -137,12 +137,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
   }*/
 
   def transformTerm(t: Term): Option[ast.Exp] = {
-    /*def binPermOp(t1: terms.Term, t2: terms.Term, op: (ast.Exp, ast.Exp) => ast.Exp): Option[ast.Exp] = {
-      Some(op(
-        transformTerm(t1).getOrElse(ast.FullPerm()()),
-        transformTerm(t2).getOrElse(ast.FullPerm()())
-      ))
-    }*/
 
     def binPermOp(t1: terms.Term, t2: terms.Term, identity: ast.Exp, op: (ast.Exp, ast.Exp) => ast.Exp): Option[ast.Exp] = {
       val exp1 = transformTerm(t1).getOrElse(ast.FullPerm()())
@@ -334,7 +328,6 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           }
         }
       }
-      // println(s"Transformed $e in $res")
       Some(res)
     } catch {
       case _: NoSuchElementException => if (strict) None else Some(e)

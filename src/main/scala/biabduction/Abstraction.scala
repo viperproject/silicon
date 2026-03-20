@@ -60,29 +60,30 @@ object AbstractionFold extends AbstractionRule {
           acc
         case _ => None
       }
-      println(s"RETRY FOLD: $reason in \n\t${currentQ.s.h.values.mkString("\n\t")}")
       reason match {
         // We ONLY want to reattempt fold if we're missing a field
         case Some(acc: FieldAccessPredicate) =>
           abductionUtils.permsTo(acc.loc, currentQ.s, currentQ.v, Map.empty) { permH =>
             permH match {
-              case Some(_) =>
+              // We only reattempt the fold if we have some permissions to the other field
+              case Some(np: NoPerm) =>
+                checkChunks(rest, q)(Q)
+              case Some(p) =>
+                println(s"Will reattempt fold due to having $p to ${acc.loc}")
                 val newPerm = abductionUtils.clampSubPerm(acc.permExp, permH)
                 val toProd  = abductionUtils.accWithPerm(acc, Some(newPerm))
                 producer.produce(currentQ.s, freshSnap, toProd, pve, currentQ.v) { (s1p, v1p) =>
                   executionFlowController.tryOrElse0(s1p, v1p) {
                     (s1, v1, T) =>
                       val permToFold = fold.acc.permExp.getOrElse(FullPerm()())
-                      println(s"AbstractionFold retrying fold with perms $permToFold after producing $toProd")
                       executor.exec(s1.copy(abdPermScalingFactorExp = permToFold), fold, v1, None, abdStateAllowed = false)((s1a, v1a) => {
                         T(s1a, v1a)
                       })
                   } {
                     (s2, v2) =>
-                      println(s"Fold succeeded after adding permissions to\n\t${s2.h.values.mkString("\n\t")}")
                       Q(Some(currentQ.copy(s = s2.copy(abdPermScalingFactorExp = FullPerm()()), v = v2)))
                   } {
-                    f2 => retryFold(fold, currentQ.copy(s = s1p.copy(abdPermScalingFactorExp = FullPerm()()), v = v1p), f2, rest)
+                    f2 => retryFold(fold, currentQ.copy(s = s1p, v = v1p), f2, rest)
                   }
                 }
               case _ =>
@@ -125,7 +126,6 @@ object AbstractionFold extends AbstractionRule {
             val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), Some(permToFold))())()
             executionFlowController.tryOrElse0(q.s, q.v) {
               (s1, v1, T) =>
-                println(s"AbstractionFold trying to fold $fold (triggered by $chunk) in \n\t${s1.h.values.mkString("\n\t")}")
                 executor.exec(s1.copy(abdPermScalingFactorExp = permToFold), fold, v1, None, abdStateAllowed = false)((s1a, v1a) => {
                   T(s1a, v1a)
                 }
@@ -133,7 +133,6 @@ object AbstractionFold extends AbstractionRule {
 
             } {
               (s2, v2) =>
-                println(s"Fold succeeded to\n\t${s2.h.values.mkString("\n\t")} ")
                 Q(Some(q.copy(s = s2.copy(abdPermScalingFactorExp = FullPerm()()), v = v2)))
             } {
               f =>
@@ -142,7 +141,6 @@ object AbstractionFold extends AbstractionRule {
                 // we can just add the field and keep going
                 // If we have acc(x.next, 1/1) && acc(x.data, 1/4), then it just means that x.data was never accesses
                 // for write permissions BUT we can just over-approximate and add them
-                println(s"Fold failed with $f")
                 retryFold(fold, q.copy(s = q.s.copy(abdPermScalingFactorExp = permToFold)), f, rest)
             }
         }
@@ -155,7 +153,16 @@ object AbstractionFold extends AbstractionRule {
       .collect { case bc: BasicChunk => (bc, getFieldPredicate(bc, q)) }
       .collect { case (c, Some(pred)) => (c, pred) }
       .toSeq
-    // println(s"$candChunks are candidates in \n\t${q.s.h.values.mkString("\n\t")}\n}")
+      // We need to sort the chunks from biggest to smallest (in term of permissions) because otherwise if we have
+      // x.next -> 1/4 and x.data -> 1/1, and we check first x.next, we will end up with
+      // list(x, 1/4) and x.data -> 3/4 and retryFold will fail
+      .sortWith { case ((c1, _), (c2, _)) =>
+        q.v.decider.check(
+          terms.Greater(c1.perm, c2.perm),
+          Verifier.config.checkTimeout()
+        )
+      }
+
     checkChunks(candChunks, q)(Q)
   }
 }
@@ -171,7 +178,6 @@ object AbstractionPackage extends AbstractionRule {
     q.s.g.termValues.collectFirst { case (lv, term) if term.sort == bc.snap.sort && q.v.decider.check(terms.Equals(term, bc.snap), Verifier.config.checkTimeout()) => lv } match {
       case None => Q(None)
       case Some(lhsArgExp) =>
-        println(s"For chunk $bc we have $lhsArgExp")
         // Now we check whether the predicate contains a predicate call on the field
         val field = abductionUtils.getField(bc.id, q.s.program)
         // TODO we assume each field only appears in at most one predicate
@@ -188,7 +194,6 @@ object AbstractionPackage extends AbstractionRule {
                 // We only want to create the wand if the inner predicate is not present in the current state.
                 abductionUtils.findChunkFromExp(lhsLoc, q.s, q.v, pve) {
                   case Some(_) =>
-                    println(s"\t$lhsLoc present in state")
                     Q(None)
                   case None =>
                     q.varTran.transformTerm(bc.args.head) match {
@@ -204,7 +209,6 @@ object AbstractionPackage extends AbstractionRule {
                         val lhs = PredicateAccessPredicate(lhsLoc, Some(lhsPerm))()
                         val rhs = PredicateAccessPredicate(rhsLoc, Some(rhsPerm))()
                         val wand = MagicWand(lhs, rhs)()
-                        println(s"\tWill try to package $wand triggered by $field")
                         Q(Some(wand))
 
                     }
@@ -215,7 +219,6 @@ object AbstractionPackage extends AbstractionRule {
   }
 
   private def findWand(chunks: Seq[Chunk], q: AbstractionQuestion)(Q: Option[MagicWand] => VerificationResult): VerificationResult = {
-    // println(s"\tchunks: $chunks")
     chunks match {
       case Seq() => Q(None)
       case (chunk: BasicChunk) +: rest if chunk.resourceID == FieldID =>
@@ -233,7 +236,6 @@ object AbstractionPackage extends AbstractionRule {
       case Some(wand)  =>
         executor.exec(q.s, Assert(wand)(), q.v) {
           (s1, v1) =>
-            println(s"AbstractionPackage added $wand from \n\t${q.s.h.values.mkString("\n\t")}\nto \n\t${s1.h.values.mkString("\n\t")}")
             Q(Some(q.copy(s = s1, v = v1)))
         }
       case _ => Q(None)
@@ -255,7 +257,6 @@ object AbstractionJoin extends AbstractionRule {
       case Some((w1, w2)) =>
         magicWandSupporter.packageWand(q.s, MagicWand(w1.left, w2.right)(), Seqn(Seq(Apply(w1)(), Apply(w2)()), Seq())(), pve, q.v) {
           (s1, wandChunk, v1) =>
-            //println(s"\tAbstractionJoin added ${MagicWand(w1.left, w2.right)()}")
             Q(Some(q.copy(s = s1.copy(h = s1.reserveHeaps.head.+(wandChunk)), v = v1)))
         }
     }
@@ -275,7 +276,6 @@ object AbstractionApply extends AbstractionRule {
       case Some(wand) =>
         magicWandSupporter.applyWand(q.s, wand, pve, q.v) {
           (s1, v1) =>
-            //println(s"\tAbstractionApply applied $wand")
             Q(Some(q.copy(s = s1, v = v1)))
         }
     }

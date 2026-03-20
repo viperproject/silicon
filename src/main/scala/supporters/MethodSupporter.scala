@@ -131,7 +131,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                     val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
                     val vars = s4.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
                     val tra = VarTransformer(s4, v4, vars, s4.h)
-                    println(s"Will try to solve framing for post $posts in ${s4.h.values.mkString(" ")} ${v4.decider.pcs.branchConditions}")
                     solveFraming(s4, v4, postViolated, tra, abductionUtils.dummyEndStmt, posts, stateAllowed = true) {
                       frame => Success(Some(frame.copy(s = s4, v = v4))
                       )
