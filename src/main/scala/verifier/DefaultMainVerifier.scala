@@ -20,9 +20,9 @@ import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
-import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
+import viper.silicon.supporters._
 import viper.silicon.utils.Counter
 import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
@@ -664,6 +664,19 @@ class DefaultMainVerifier(config: Config,
 
     if (Verifier.config.dependencyAnalysisExportPath.isDefined) {
       result.getFullDependencyGraphInterpreter.exportGraph(program)
+    }
+
+		if (Verifier.config.pruneLines.isDefined) {
+			val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+			val lineInputs = Verifier.config.pruneLines().map(_.toString)
+			val exportFileName = Verifier.config.pruneExportFileName()
+			commandLineTool.handlePruningRequest(lineInputs, Some(exportFileName))
+		}
+
+    if (Verifier.config.computeVerificationProgress()) {
+      val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+      val exportFileName = Verifier.config.computeVerificationProgressFileName()
+      commandLineTool.handleVerificationProgressQuery(Seq.empty, Some(exportFileName))
     }
 
     if (Verifier.config.startDependencyAnalysisTool()) {

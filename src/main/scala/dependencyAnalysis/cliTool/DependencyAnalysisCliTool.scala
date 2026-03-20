@@ -7,6 +7,7 @@ import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.Method
 
+import java.io.PrintWriter
 import scala.annotation.tailrec
 import scala.io.StdIn.readLine
 
@@ -122,13 +123,19 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     println("Done.")
   }
 
-  private def handleVerificationProgressQuery(inputs: Seq[String]): Unit = {
+  def handleVerificationProgressQuery(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
 		val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
     val ((optProgressPeter, optProgressLea), optTime) = measureTime(fullGraphInterpreter.progressSupporter.computeVerificationProgress(enableDebugging))
 
-    println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
-    println(s"Finished in ${optTime}ms")
+		val output = s"Peter: $optProgressPeter; Lea: $optProgressLea\nFinished in ${optTime}ms"
+		println(output)
+
+		if (exportFileNameOpt.isDefined) {
+			val writer = new PrintWriter(exportFileNameOpt.get)
+			writer.println(output)
+			writer.close()
+		}
   }
 
   private def handleDependencyQuery(inputs: Set[String]): Unit = {
@@ -167,9 +174,11 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     println("Done.")
   }
 
-  private def handlePruningRequest(inputs: Seq[String]): Unit = {
-    println("exportFileName: ")
-    val exportFileName = readLine()
+  def handlePruningRequest(inputs: Seq[String], exportFileNameOpt: Option[String] = None): Unit = {
+		val exportFileName = exportFileNameOpt.getOrElse {
+			println("exportFileName: ")
+			readLine()
+		}
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
 		fullGraphInterpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
     println("Done.")
