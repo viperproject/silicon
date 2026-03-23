@@ -57,48 +57,37 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handleUserInput(userInput: String): Unit = {
     val inputParts = userInput.split(" ").toSeq
-    if (inputParts.head.equalsIgnoreCase("dep")) {
-      handleDependencyQuery(inputParts.tail.toSet)
-    } else if (inputParts.head.equalsIgnoreCase("downDep")) {
-      handleDependentsQuery(inputParts.tail.toSet)
-    } else if (inputParts.head.equalsIgnoreCase("hasDep")) {
-      handleHasDependencyQuery(inputParts.tail.toSet)
-    } else if (inputParts.head.equalsIgnoreCase("coverage") || inputParts.head.equalsIgnoreCase("cov")) {
-      handleProofCoverageQuery(inputParts.tail)
-    }else if (inputParts.head.equalsIgnoreCase("covLines") || inputParts.head.equalsIgnoreCase("covL")) {
-      handleProofCoverageLineQuery(inputParts.tail)
-    }else if (inputParts.head.equalsIgnoreCase("progress") || inputParts.head.equalsIgnoreCase("prog")) {
-        handleVerificationProgressQuery()
-    }else if (inputParts.head.equalsIgnoreCase("progressDebug")) {
-      handleVerificationProgressDEBUGQuery()
-    }else if (inputParts.head.equalsIgnoreCase("progressNaive")) {
-      handleVerificationProgressNaiveQuery()
-    }else if (inputParts.head.equalsIgnoreCase("guidance") || inputParts.head.equalsIgnoreCase("guide")) {
-      handleVerificationGuidanceQuery()
-    }else if (inputParts.head.equalsIgnoreCase("guideOld")) {
-      handleVerificationGuidanceOldQuery()
-    }else if(inputParts.head.equalsIgnoreCase("prune")) {
-      handlePruningRequest(inputParts.tail)
-    }else if(inputParts.head.equalsIgnoreCase("benchmark")) {
-      handleBenchmarkQuery()
-    }else if(inputParts.head.equalsIgnoreCase("precisionEval")) {
-      handlePrecisionEval(inputParts.tail)
-    }else if(inputParts.head.equalsIgnoreCase("annotate")) {
-      handleAnnotateQuery(inputParts.tail)
-    }else if(inputParts.head.equalsIgnoreCase("graphSize")){
-      if(inputParts.tail.isEmpty) {
-        handleGraphSizeQuery(fullGraphInterpreter)
-      }else{
-        memberInterpreters.filter(aa => aa.getMember.isDefined && aa.getMember.exists {
-            case meth: Method => meth.body.isDefined && inputParts.tail.contains(meth.name)
-            case func: ast.Function => func.body.isDefined && inputParts.tail.contains(func.name)
-            case _ => false
-          })
-          .foreach(aa => handleGraphSizeQuery(aa))
+    if (inputParts.nonEmpty) {
+      inputParts.head.toLowerCase match {
+        case "dep" => handleDependencyQuery(inputParts.tail.toSet)
+        case "downdep" => handleDependentsQuery(inputParts.tail.toSet)
+        case "hasdep" => handleHasDependencyQuery(inputParts.tail.toSet)
+        case "coverage" | "cov" => handleProofCoverageQuery(inputParts.tail)
+        case "covlines" | "covl" => handleProofCoverageLineQuery(inputParts.tail)
+        case "progress" | "prog" => handleVerificationProgressQuery()
+        case "progressdebug" => handleVerificationProgressDEBUGQuery()
+        case "progressnaive" => handleVerificationProgressNaiveQuery()
+        case "guidance" | "guide" => handleVerificationGuidanceQuery()
+        case "guideold" => handleVerificationGuidanceOldQuery()
+        case "prune" => handlePruningRequest(inputParts.tail)
+        case "benchmark" => handleBenchmarkQuery()
+        case "precisioneval" => handlePrecisionEval(inputParts.tail)
+        case "annotate" => handleAnnotateQuery(inputParts.tail)
+        case "graphsize" =>
+          if (inputParts.tail.isEmpty) {
+            handleGraphSizeQuery(fullGraphInterpreter)
+          } else {
+            memberInterpreters.filter(aa => aa.getMember.isDefined &&
+              aa.getMember.exists {
+                case meth: Method => meth.body.isDefined && inputParts.tail.contains(meth.name);
+                case func: ast.Function => func.body.isDefined && inputParts.tail.contains(func.name);
+                case _ => false })
+              .foreach(aa => handleGraphSizeQuery(aa))
+          }
+        case _ => println("Invalid input."); println(infoString)
       }
     } else {
-      println("Invalid input.")
-      println(infoString)
+      println("Invalid input."); println(infoString)
     }
   }
 
