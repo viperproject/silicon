@@ -255,7 +255,7 @@ object AbductionFold extends AbductionRule {
 
             val foldS = q.s.copy(abdPermScalingFactorExp= a.perm)//PermMul(q.s.abdPermScalingFactorExp, a.perm)()), we're now setting this when fold fails
             val fold = Fold(a)()
-            //println(s"Will attempt fold $fold triggered by $field ($chunk)")
+            println(s"Will attempt fold $fold triggered by $field ($chunk)")
             executor.exec(foldS, fold, q.v, q.trigger, q.stateAllowed) { (s1, v1) =>
               val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, chunk.snap.sort))
               val q2 = q.copy(s = s1.copy(abdPermScalingFactorExp = FullPerm()()), v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
@@ -381,6 +381,8 @@ object AbductionUnfold extends AbductionRule {
             produces(q.s, freshSnap, conds, _ => pve, q.v)((s1, v1) => {
               val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
               predicateSupporter.unfold(s1, pred.loc(q.s.program), predChunk.args.toList, None, p, None, wildcards, pve, v1, pred) { (s2, v2) =>
+                println(s"AbdUnfold -- Unfolded from \n\t${s1.h.values.mkString("\n\t")}\nto\n\t${s2.h.values.mkString("\n\t")}")
+                println(s"with assumptions: \n\t${v2.decider.pcs.assumptions.mkString("\n\t")}")
                   val varTrans2 = VarTransformer(s2, v2, s2.g.values, s2.h)
                   Q(Some(q.copy(s = s2, v = v2, foundStmts = q.foundStmts :+ Unfold(PredicateAccessPredicate(pred, varTrans2.transformTerm(p))())(),
                     foundState = q.foundState ++ conds.map(c => c -> None))))

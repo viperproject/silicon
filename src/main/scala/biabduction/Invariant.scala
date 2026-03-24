@@ -117,17 +117,28 @@ object LoopInvariantSolver {
     //}
 
     executionFlowController.locally(s, v) { (s1, v1) =>
+      println(s"BEFORE PRODUCING H: \n\t${s1.h.values.mkString("\n\t")}")
+      println(s"BEFORE PRODUCING G: \n\t${s1.g.values.mkString("\n\t")}")
+      println(s"BEFORE PRODUCING V: \n\t${v1.decider.pcs.assumptions.mkString("\n\t")}")
       producer.produce(s1, freshSnap, BigAnd(loopHead.invs), pve, v1, withAbduction = true) { (s2, v2) =>
-        //println(s"After producing invs: \n\t${s2.h.values.mkString("\n\t")}")
+        println(s"AFTER PRODUCING H: \n\t${s2.h.values.mkString("\n\t")}")
+        println(s"AFTER PRODUCING G: \n\t${s2.g.values.mkString("\n\t")}")
+        println(s"AFTER PRODUCING V: \n\t${v2.decider.pcs.assumptions.mkString("\n\t")}")
+
         executionFlowController.locally(s2, v2) { (sF, vF) =>
+          println(s"WILL EXECUTE FOLLOW")
+          // edges have condition that is assumed by verifier
           executor.follows(sF, loopEdges, pveLam, vF, joinPoint) { (s3, v3) =>
-            //println(s"After follow: \n\t${s3.h.values.mkString("\n\t")}")
+            println(s"DONE")
+            println(s"After follows: \n\t${s3.h.values.mkString("\n\t")}")
             // To find a fixed point we are only interested in branches where the loop condition can remains true
             var nextCon = false
+            println(s"Will produce loopConExp")
             executionFlowController.locally(s3, v3) { (s4, v4) =>
               producer.produce(s4, freshSnap, loopConExp, pve, v4, withAbduction = true) { (s5, v5) =>
                 nextCon = !v5.decider.checkSmoke()
-                //println(s"nextCon: $nextCon in \n\t${s5.h.values.mkString("\n\t")}")
+                println(s"nextCon: $nextCon in \n\t${s5.h.values.mkString("\n\t")}")
+                println(s"and V \n\t${v5.decider.pcs.assumptions.mkString("\n\t")}")
                 Success()
               }
             }
@@ -137,7 +148,8 @@ object LoopInvariantSolver {
               val endStmt = abductionUtils.getEndOfLoopStmt(loop)
               val postTran = VarTransformer(s3, v3, s3.g.values, s3.h)
               val postState = postTran.transformState(s3)
-              //println(s"Successful framing with s \n\t${s3.h.values.mkString("\n\t")}")
+              println(s"SUCCESSFUL framing with s \n\t${s3.h.values.mkString("\n\t")}")
+              println(s"and V \n\t${v3.decider.pcs.assumptions.mkString("\n\t")}")
               Success(Some(FramingSuccess(s3, v3, postState, endStmt, v3.decider.pcs.duplicate(), postTran)))
             }
           }
@@ -154,8 +166,10 @@ object LoopInvariantSolver {
         val preState = s.copy(h = q.preHeap)
         val preTran = VarTransformer(preState, v, preLoopVars, preState.h)
         // We need to normalize the state otherwise we might have fragmented chunks
+        println(s"ABDRESES: - ${abdReses.mkString("\n- ")}")
+        println(s"ABDRESES PRE: ${abdReses.flatMap(abd => abd.getPreconditions(preLoopVars, s.h, Seq(), newMatches).get)}")
         val newStateOpt = abductionUtils.normalizePreconditions(abdReses.flatMap(abd => abd.getPreconditions(preLoopVars, s.h, Seq(), newMatches).get), s, v)
-
+        println(s"NEWSTATEOPT: $newStateOpt")
         // We still need to remove the current loop condition
         val newState = abductionUtils.sortExps(newStateOpt.map(_.transform {
           case im: Implies if im.left == loopConExp => im.right
@@ -171,12 +185,14 @@ object LoopInvariantSolver {
           case fa: FieldAccessPredicate => fa.loc
           case pa: PredicateAccessPredicate => pa.loc
         }
-
+        println(s"Prestate is: ${preState.h.values.mkString("\n\t")}")
+        println(s"Prestate verifier: \n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
+        println(s"accs $accs")
         abductionUtils.findOptChunks(accs, preState, v, pve) {
           chunks =>
-            println(s"Prestate is: ${preState.h.values.mkString("\n\t")}")
             val toKeep = chunks.keys
             val toAbs = preState.copy(h= Heap(preState.h.values.toSeq.diff(toKeep.toSeq)))
+            println(s"toAbs is: ${toAbs.h.values.mkString("\n\t")}")
             println(s"Will try to abstract for pre from ${toAbs.h.values.mkString("\n\t")}")
 
             BiAbductionSolver.solveAbstraction(toAbs, v) { (newPreState0, newPreAbstraction0, _) =>
@@ -193,7 +209,7 @@ object LoopInvariantSolver {
 
               // Consolidate the framing successes
               val posts = abductionUtils.getFramingSuccesses(nonf).groupBy(_.posts)
-
+              println(s"posts $posts")
               // We take the frame with the most posts
               val chosenFrame = posts.maxBy { case (exps, _) => exps.size }._2.head //posts.head._2.head
               chosenFrame.v.decider.setPcs(chosenFrame.pcs)
@@ -201,7 +217,7 @@ object LoopInvariantSolver {
               val inVars = chosenFrame.s.g.values.collect { case (v, t) if ins.contains(v) => (v, t) }
               val preLoopVars = chosenFrame.s.g.values.filter { case (v, _) => origVars.contains(v) }
               val postTran = VarTransformer(chosenFrame.s, chosenFrame.v, inVars, chosenFrame.s.h, otherVars = preLoopVars)
-              println(s"Will try to abstract for post from ${chosenFrame.s.h.values.mkString("\n\t")}")
+              println(s"Will try to abstract for post from \n\t${chosenFrame.s.h.values.mkString("\n\t")}\nwith v\n\t${chosenFrame.v.decider.pcs.assumptions.mkString("\n\t")}")
               BiAbductionSolver.solveAbstraction(chosenFrame.s, chosenFrame.v) { (sPostAbs, postAbstraction0, vPostAbs) =>
 
                 val newPostAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)

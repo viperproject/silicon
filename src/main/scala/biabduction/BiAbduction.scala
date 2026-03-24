@@ -35,7 +35,7 @@ trait BiAbductionSuccess extends BiAbductionResult
 case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, state: Seq[(Exp, Option[BasicChunk])] = Seq(), stmts: Seq[Stmt] = Seq(), newFieldChunks: Map[BasicChunk, LocationAccess], allNewChunks: Seq[BasicChunk], trigger: Option[Positioned] = None) extends BiAbductionSuccess {
 
   override def toString: String = {
-    s"Abduced ${state.length} pres: $state triggered by ${trigger.getOrElse("{}")}, Abduced ${stmts.length} statements $stmts and bcs ${pcs.branchConditions}"
+    s"Abduced ${state.length} pres: $state triggered by ${trigger.getOrElse("{}")}, Abduced ${stmts.length} statements $stmts"
   }
 
   def getBcExps(bcsTerms: Seq[Term]): Seq[Option[Exp]] = {
@@ -56,7 +56,10 @@ case class AbductionSuccess(s: State, v: Verifier, pcs: PathConditionStack, stat
 
     val otherVars: Map[AbstractLocalVar, (Term, Option[Exp])] = s.g.values
     val varTran = VarTransformer(s, v, preVars, s.h, otherVars = otherVars)
-    val bcExps = bcsTerms.map { t => varTran.transformTerm(t) }
+    val bcExps = bcsTerms.map { t =>
+      val t1 = varTran.transformTerm(t)
+      t1
+    }
 
     v.decider.setPcs(prevPcs)
     bcExps
@@ -231,6 +234,8 @@ object BiAbductionSolver {
       reason match {
         case None => f
         case Some(Assert(assertion)) =>
+          println(s"abdGoal $assertion triggered by $trigger in s: \n\t${s.h.values.mkString("\n\t")}")
+          println(s"\tdue to $f")
           // If we failed to fold a predicate because of an assertion, we try producing the assertion in the state and continuing
           executionFlowController.tryOrElse0(s, v) { (s1, v1, T) =>
             producer.produce(s1, freshSnap, assertion, pve, v1) { (s2, v2) =>
@@ -254,7 +259,8 @@ object BiAbductionSolver {
             case Some(trafo) => trafo.f(qPre).asInstanceOf[AbductionQuestion]
             case _ => qPre
           }
-          // println(s"abdGoal $abdGoal in s: \n\t${s.h.values.mkString("\n\t")}")
+          println(s"abdGoal $abdGoal triggered by $trigger in h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
+          println(s"\tdue to $f")
           // NOTE: Without fractional permissions, the comment below is true
           // With fractional permissions, we HAVE to start with rule one because if we hold a fraction smaller
           // than the goal, we must subtract it from the goal
@@ -275,6 +281,8 @@ object BiAbductionSolver {
                   val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
                   //val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
                   //val s1 = q1.s.copy(oldHeaps = newOldHeaps)
+                  println(s"ABDUCTION TERMINATED IN \n\t${q1.s.h.values.mkString("\n\t")}")
+                  println(s"\tWITH NEWSTATE ${newState}")
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
                   val abd = AbductionSuccess(q1.s, q1.v, q1.v.decider.pcs.duplicate(), newState, newStmts, fieldChunks, newChunks, trigger)
                   Success(Some(abd)) && Q(q1.s, q1.v)
@@ -424,7 +432,6 @@ object BiAbductionSolver {
 
   def resolveFramingResults(m: Method, nf: NonFatalResult): Option[Method] = {
     val frames = abductionUtils.getFramingSuccesses(nf)
-    println(s"Will resovle framing results for ${frames.mkString("\n")}")
     // We get a framing result for every branch.
     // So postconditions that are in every branch can just be added without any bcs
     val everyPosts = frames.head.posts.filter { p => frames.forall(_.posts.contains(p)) }

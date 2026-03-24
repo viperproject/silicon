@@ -70,7 +70,6 @@ object executor extends ExecutionRules {
           val s1 = handleOutEdge(s, edge, v)
           //executionFlowController.tryOrElse2[Term, Option[Exp]](s1, v) {(s1a, va, R) =>
           evalWithAbduction(s1, ce.condition, IfFailed(ce.condition), v) {(s2, tCond, condNew, v1) =>
-
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */

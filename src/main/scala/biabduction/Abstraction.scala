@@ -62,6 +62,7 @@ object AbstractionFold extends AbstractionRule {
       }
       reason match {
         // We ONLY want to reattempt fold if we're missing a field
+        // TODO: This should NOT be a field of a recursive predicate
         case Some(acc: FieldAccessPredicate) =>
           abductionUtils.permsTo(acc.loc, currentQ.s, currentQ.v, Map.empty) { permH =>
             permH match {
