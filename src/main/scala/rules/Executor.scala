@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, CompositeAnalysisSourceInfo, DependencyAnalyzer, DependencyType, SimpleAssumptionNode}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, CompositeAnalysisSourceInfo, DependencyAnalysisInfo, DependencyAnalysisInfoWithoutSource, DependencyAnalyzer, DependencyType, FullDependencyAnalysisInfo, NoDependencyAnalysisInfo, SimpleAssumptionNode}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -68,12 +68,12 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
-          val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(ce.condition.info).getOrElse(DependencyType.PathCondition)
-          eval(s1, ce.condition, IfFailed(ce.condition), v, Some(dependencyType))((s2, tCond, condNew, v1) =>
+          val dAInfo = FullDependencyAnalysisInfo.create(ce.condition)
+          eval(s1, ce.condition, IfFailed(ce.condition), v, dAInfo)((s2, tCond, condNew, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
-            brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1, dependencyType.assumptionType)(
+            brancher.branch(s2.copy(parallelizeBranches = false), tCond, (ce.condition, condNew), v1, dAInfo)(
               (s3, v3) =>
                 exec(s3.copy(parallelizeBranches = s2.parallelizeBranches), ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
                   v4.symbExLog.closeScope(sepIdentifier)
@@ -94,7 +94,7 @@ object executor extends ExecutionRules {
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
       case cfg.Kind.Out if !v.decider.isPathInfeasible() =>
-        val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v)
+        val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v, dAInfo)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
           invariantContexts = s.invariantContexts.tail)
         s1
@@ -147,12 +147,12 @@ object executor extends ExecutionRules {
           case _ => false
         })
 
-        val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(cedge1.condition.info).getOrElse(DependencyType.PathCondition)
+        val dAInfo = FullDependencyAnalysisInfo.create(cedge1.condition)
 
-        eval(s, cedge1.condition, pvef(cedge1.condition), v, Some(dependencyType))((s1, t0, condNew, v1) =>
+        eval(s, cedge1.condition, pvef(cedge1.condition), v, dAInfo)((s1, t0, condNew, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
-          joiner.join[scala.Null, scala.Null](s1, v1, dependencyType.assumptionType, resetState = false)((s2, v2, QB) => {
-            brancher.branch(s2, t0, (cedge1.condition, condNew), v2, dependencyType.assumptionType)(
+          joiner.join[scala.Null, scala.Null](s1, v1, dAInfo, resetState = false)((s2, v2, QB) => {
+            brancher.branch(s2, t0, (cedge1.condition, condNew), v2, dAInfo)(
               // Follow only until join point.
               (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
               (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
@@ -183,9 +183,9 @@ object executor extends ExecutionRules {
         if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)() =>
         val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-        val dependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(thenEdge.condition.info).getOrElse(DependencyType.PathCondition)
-        val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v, Some(dependencyType))((s2, tCond, eCondNew, v1) =>
-          brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1, dependencyType.assumptionType)(
+        val dAInfo = FullDependencyAnalysisInfo.create(thenEdge.condition)
+        val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v, dAInfo)((s2, tCond, eCondNew, v1) =>
+          brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1, dAInfo)(
             (s3, v3) => {
               follow(s3, thenEdge, v3, joinPoint)(Q)
             },
@@ -279,7 +279,8 @@ object executor extends ExecutionRules {
                 })})
             combine executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, DependencyType.Invariant)((sLeftover, _, v1) => {
+                val dAInfoInv = DependencyAnalysisInfoWithoutSource(DependencyType.Invariant) // FIXME ake: NoInfo?
+                consumes(s0, invs, false, LoopInvariantNotEstablished, v0, dAInfoInv)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (result, _) if !result.continueVerification => result
@@ -315,7 +316,8 @@ object executor extends ExecutionRules {
              * attempting to re-establish the invariant.
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
-            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, DependencyType.Invariant)((_, _, _) =>
+            val dAInfoInv = DependencyAnalysisInfoWithoutSource(DependencyType.Invariant) // FIXME ake: NoInfo?
+            consumes(s, invs, false, e => LoopInvariantNotPreserved(e), v, dAInfoInv)((_, _, _) =>
               Success())
         }
     }
@@ -335,27 +337,27 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    val sourceInfo = v.decider.pushAndGetAnalysisSourceInfo(stmt, Some(DependencyType.get(stmt)))
-    exec2(s, stmt, v)((s1, v1) => {
-      v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
+    val dAInfo = FullDependencyAnalysisInfo.create(stmt)
+    exec2(s, stmt, v, dAInfo)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)
     })
   }
 
-  def exec2(state: State, stmt: ast.Stmt, v: Verifier)
+  def exec2(state: State, stmt: ast.Stmt, v: Verifier, dAInfo: DependencyAnalysisInfo)
            (continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
 
     if(v.decider.isPathInfeasible()){
-      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(stmt, state.program)
-      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
+      // FIXME ake: infeasbile path
+//      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(stmt, state.program)
+//      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
 
       if(Statements.hasProofObligations(stmt, state.program)){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=false)
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, dAInfo)
       }
       if(Statements.introducesSmtAssumptions(stmt)){
-        v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=false)
+        v.decider.dependencyAnalyzer.addAssumption(True, dAInfo)
       }
       return continuation(state, v)
     }
@@ -376,14 +378,6 @@ object executor extends ExecutionRules {
         v.decider.prover.comment(stmt.toString())
     }
 
-    val annotatedDependencyTypeOpt = DependencyAnalyzer.extractDependencyTypeFromInfo(stmt.info)
-    
-    def getDependencyType(defaultType: DependencyType): DependencyType = annotatedDependencyTypeOpt.getOrElse(defaultType)
-    
-    def getAssumptionType(defaultType: AssumptionType): AssumptionType = annotatedDependencyTypeOpt.map(_.assumptionType).getOrElse(defaultType)
-    
-    def getAssertionType(defaultType: AssumptionType): AssumptionType = annotatedDependencyTypeOpt.map(_.assertionType).getOrElse(defaultType)
-
     val executed = stmt match {
       case ast.Seqn(stmts, _) =>
         execs(s, stmts, v)(Q)
@@ -398,8 +392,8 @@ object executor extends ExecutionRules {
         Q(s.copy(g = s.g + (x -> (t, newExp))), v)
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
-        eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, rhsNew, v1) => {
-          val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v, s1, getAssumptionType(AssumptionType.SourceCode))
+        eval(s, rhs, AssignmentFailed(ass), v, dAInfo)((s1, tRhs, rhsNew, v1) => {
+          val (t, e) = ssaifyRhs(tRhs, rhs, rhsNew, x.name, x.typ, v, s1, dAInfo)
           Q(s1.copy(g = s1.g + (x, (t, e))), v1)})
 
       /* TODO: Encode assignments e1.f := e2 as
@@ -411,10 +405,10 @@ object executor extends ExecutionRules {
       case ass @ ast.FieldAssign(ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) => {
-          eval(s1, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
-            val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2, getAssumptionType(AssumptionType.SourceCode))
-            v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2, getDependencyType(DependencyType.SourceCode))(Q)
+        eval(s, eRcvr, pve, v, dAInfo)((s1, tRcvr, eRcvrNew, v1) => {
+          eval(s1, rhs, pve, v1, dAInfo)((s2, tRhs, eRhsNew, v2) => {
+            val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2, dAInfo)
+            v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2, dAInfo)(Q)
           })
         })
 
@@ -423,7 +417,7 @@ object executor extends ExecutionRules {
         val debugExp = Option.when(withExp)(ast.NeCmp(x, ast.NullLit()())())
         val debugExpSubst = Option.when(withExp)(ast.NeCmp(eRcvrNew.get, ast.NullLit()())())
         val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, stmt.pos)
-        v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst, getAssumptionType(AssumptionType.SourceCode))
+        v.decider.assume(tRcvr !== Null, debugExp, debugExpSubst, dAInfo)
 
         val eRcvr = Option.when(withExp)(Seq(x))
         val p = FullPerm
@@ -437,7 +431,7 @@ object executor extends ExecutionRules {
             val fld = flds.head
             val snap = v.decider.fresh(fld.name, v.symbolConverter.toSort(fld.typ), Option.when(withExp)(extractPTypeFromExp(x)))
             val snapExp = Option.when(withExp)(ast.DebugLabelledOld(ast.FieldAccess(eRcvrNew.get, fld)(), debugLabel)(stmt.pos, stmt.info, stmt.errT))
-            v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, snapExp, p, pExp, NullPartialVerificationError, false, v, getDependencyType(DependencyType.SourceCode))((s1, v1) => {
+            v.heapSupporter.produceSingle(s, fld, Seq(tRcvr), eRcvr, snap, snapExp, p, pExp, NullPartialVerificationError, false, v, dAInfo)((s1, v1) => {
               addFieldPerms(s1, flds.tail, v1)(QB)
             })
           }
@@ -447,7 +441,7 @@ object executor extends ExecutionRules {
         addFieldPerms(s, fields, v)((s0, v0) => {
           val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
           val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
-          v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false, getAssumptionType(AssumptionType.SourceCode))
+          v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false, dAInfo)
           Q(s2, v0)
         })
 
@@ -456,25 +450,25 @@ object executor extends ExecutionRules {
           /* We're done */
           Success()
         case _ =>
-          produce(s, freshSnap, a, InhaleFailed(inhale), v, getAssumptionType(AssumptionType.Explicit))((s1, v1) => {
+          produce(s, freshSnap, a, InhaleFailed(inhale), v, dAInfo)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if(v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmokeAndSetInfeasibilityNode()
+            if(v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmokeAndSetInfeasibilityNode(dAInfo)
             Q(s1, v1)})
       }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v, getDependencyType(DependencyType.ExplicitAssertion))((s1, _, v1) =>
+        consume(s, a, false, pve, v, dAInfo)((s1, _, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          if (v1.decider.checkSmoke(getAssertionType(AssumptionType.Explicit), isAssert = true))
+          if (v1.decider.checkSmoke(dAInfo, isAssert = true))
             QS(s1.copy(h = s.h), v1)
           else {
             val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
-            if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(False, getAssertionType(AssumptionType.Explicit), v1.reportFurtherErrors())
+            if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(False, dAInfo, v1.reportFurtherErrors())
             if(s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>
@@ -486,7 +480,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, false, AssertFailed(assert), v, getDependencyType(DependencyType.ExplicitAssertion))((_, _, _) =>
+          consume(s, a, false, AssertFailed(assert), v, dAInfo)((_, _, _) =>
             Success())
 
         r combine Q(s, v)
@@ -502,11 +496,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v, getDependencyType(DependencyType.ExplicitAssertion))((s2, _, v1) => {
+          consume(s, a, false, pve, v, dAInfo)((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v, getDependencyType(DependencyType.ExplicitAssertion))((s1, _, v1) => {
+          consume(s, a, false, pve, v, dAInfo)((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
@@ -515,7 +509,7 @@ object executor extends ExecutionRules {
       case ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
-        val analysisInfo = v.decider.getAnalysisInfo(getAssumptionType(AssumptionType.Explicit))
+        val analysisInfo = v.decider.getAnalysisInfo(dAInfo)
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
         val member = s.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
@@ -546,14 +540,15 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call)
         val pveCallTransformed = pveCall.withReasonNodeTransformed(reasonTransformer)
 
-        v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType,
-          isJoinNode=false, None)
+        // FIXME ake: why was this added?
+//        v.decider.dependencyAnalyzer.addAssumption(True, v.decider.analysisSourceInfoStack.getFullSourceInfo, v.decider.analysisSourceInfoStack.getAssumptionType,
+//          isJoinNode=false, None)
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
         val paramId = v.symbExLog.openScope(paramLog)
-        evals(s, eArgs, _ => pveCall, v)((s1, tArgs, eArgsNew, v1) => {
+        evals(s, eArgs, _ => pveCall, v, dAInfo)((s1, tArgs, eArgsNew, v1) => {
           v1.symbExLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
@@ -570,14 +565,14 @@ object executor extends ExecutionRules {
                            recordVisited = true)
 
           v1.decider.analysisSourceInfoStack.isJoinRelevantNode = true
-          consumes(s2, meth.pres, false, _ => pvePre, v1, getDependencyType(DependencyType.MethodCall))((s3, _, v2) => {
+          consumes(s2, meth.pres, false, _ => pvePre, v1, dAInfo)((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, getAssumptionType(AssumptionType.MethodCall))((s5, v3) => {
+            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, dAInfo)((s5, v3) => {
               v3.decider.analysisSourceInfoStack.isJoinRelevantNode = false
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
@@ -594,14 +589,12 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
-        val predicateAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info).map(DependencyType.make)
-        val finalDependencyType = getDependencyType(predicateAnnotatedAssumptionType.getOrElse(DependencyType.Rewrite))
         val pve = FoldFailed(fold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
-            permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
+        evals(s, eArgs, _ => pve, v, dAInfo)((s1, tArgs, eArgsNew, v1) =>
+          eval(s1, ePerm, pve, v1, dAInfo)((s2, tPerm, ePermNew, v2) =>
+            permissionSupporter.assertPositive(s2, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2, dAInfo)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, finalDependencyType)((s4, v4) => {
+              predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, dAInfo)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4, v4)
                 }
@@ -612,16 +605,14 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
-        val predicateAnnotatedAssumptionType = DependencyAnalyzer.extractAssumptionTypeFromInfo(predicate.info).map(DependencyType.make)
-        val finalDependencyType = getDependencyType(predicateAnnotatedAssumptionType.getOrElse(DependencyType.Rewrite))
         val pve = UnfoldFailed(unfold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
-            val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2)
+        evals(s, eArgs, _ => pve, v, dAInfo)((s1, tArgs, eArgsNew, v1) =>
+          eval(s1, ePerm, pve, v1, dAInfo)((s2, tPerm, ePermNew, v2) => {
+            val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2, dAInfo)
 
-            permissionSupporter.assertPositive(s2a, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
+            permissionSupporter.assertPositive(s2a, tPerm, if (withExp) ePermNew.get else ePerm, pve, v2, dAInfo)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, finalDependencyType)(
+              predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa, dAInfo)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   Q(s4, v4)
@@ -631,7 +622,7 @@ object executor extends ExecutionRules {
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v, getDependencyType(DependencyType.Rewrite))((s1, chWand, v1) => {
+          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v, dAInfo)((s1, chWand, v1) => {
 
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
@@ -657,7 +648,7 @@ object executor extends ExecutionRules {
 
             val s3 = chWand match {
               case ch: QuantifiedMagicWandChunk =>
-                v1.heapSupporter.triggerResourceIfNeeded(s2, wand, ch.singletonArgs.get, ch.singletonArgExps, v1)
+                v1.heapSupporter.triggerResourceIfNeeded(s2, wand, ch.singletonArgs.get, ch.singletonArgExps, v1, dAInfo)
               case _ => s2
             }
 
@@ -666,13 +657,13 @@ object executor extends ExecutionRules {
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        magicWandSupporter.applyWand(s, e, pve, v, getDependencyType(DependencyType.Rewrite))(Q)
+        magicWandSupporter.applyWand(s, e, pve, v, dAInfo)(Q)
 
       case havoc: ast.Quasihavoc =>
-        havocSupporter.execHavoc(havoc, v, s, getAssumptionType(AssumptionType.Explicit))(Q)
+        havocSupporter.execHavoc(havoc, v, s, dAInfo)(Q)
 
       case havocall: ast.Quasihavocall =>
-        havocSupporter.execHavocall(havocall, v, s, getAssumptionType(AssumptionType.Explicit))(Q)
+        havocSupporter.execHavocall(havocall, v, s, dAInfo)(Q)
 
       case viper.silicon.extensions.TryBlock(body) =>
         var bodySucceeded = false
@@ -696,7 +687,7 @@ object executor extends ExecutionRules {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, assumptionType: AssumptionType): (Term, Option[ast.Exp]) = {
+   private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State, dAInfo: DependencyAnalysisInfo): (Term, Option[ast.Exp]) = {
      rhs match {
        case _: Var | _: Literal if !v.decider.isDependencyAnalysisEnabled =>
          (rhs, rhsExpNew)
@@ -723,7 +714,7 @@ object executor extends ExecutionRules {
          } else {
             (None, None)
          }
-         v.decider.assumeDefinition(BuiltinEquals(t, rhs), debugExp, assumptionType)
+         v.decider.assumeDefinition(BuiltinEquals(t, rhs), debugExp, dAInfo)
          (t, eNew)
      }
    }

@@ -95,17 +95,17 @@ case class AxiomAssumptionNode(term: Term, description: Option[String], sourceIn
   override def getNodeType: String = "Axiom"
 }
 
-case class SimpleAssertionNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
+case class SimpleAssertionNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + term.toString
 
-  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, assumptionType, sourceInfo, isClosed, hasFailed=true, isJoinNode=isJoinNode)
+  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, sourceInfo, assumptionType, isClosed, hasFailed=true, isJoinNode=isJoinNode)
 }
 
-case class SimpleCheckNode(term: Term, assumptionType: AssumptionType, sourceInfo: AnalysisSourceInfo, isClosed: Boolean, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
+case class SimpleCheckNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "check " + term
   override def getNodeType: String = "Check"
 
-  override def getAssertFailedNode(): GeneralAssertionNode = SimpleCheckNode(term, assumptionType, sourceInfo, isClosed, hasFailed=true)
+  override def getAssertFailedNode(): GeneralAssertionNode = SimpleCheckNode(term, sourceInfo, assumptionType, isClosed, hasFailed=true)
 }
 
 case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, labelNode: LabelNode, isJoinNode: Boolean, _id: Option[Int]=None) extends GeneralAssumptionNode with ChunkAnalysisInfo {
