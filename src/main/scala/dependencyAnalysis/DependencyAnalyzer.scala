@@ -2,7 +2,7 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.DependencyAnalyzer._
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
-import viper.silicon.state.terms._
+import viper.silicon.state.terms.{NoPerm, _}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
