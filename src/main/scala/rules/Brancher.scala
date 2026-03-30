@@ -50,7 +50,7 @@ object brancher extends BranchingRules {
       val analysisInfoes1 = analysisInfoes.addInfo(conditionExp._1.info, conditionExp._1)
 // FIXME ake: infeasible path
       //      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(conditionExp._1, s.program)
-//      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
+//      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
       if(!Expressions.isKnownWellDefined(conditionExp._1, Some(s.program))){
         v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes1)
       }

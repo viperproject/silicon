@@ -7,6 +7,7 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
+import viper.silicon.Config.Sink
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
@@ -189,7 +190,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
 
-      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, isClosed=false, isJoinNode=true))
+      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, isClosed=false, joinInfoes = List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink))))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
 
       /* Phase 1: Check well-definedness of the specifications */

@@ -45,10 +45,22 @@ case class DependencyAnalysisInfoes(sourceInfoes: List[AnalysisSourceInfo], depe
   def getMergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
 //    mergeInfoes.head // TODO
 
-  def getJoinInfo: List[DependencyAnalysisJoinInfo] = joinInfoes
+  def getJoinInfoes: List[DependencyAnalysisJoinInfo] = joinInfoes
+
+  def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
+    if(joinInfoes.isEmpty) return List.empty
+    val h = joinInfoes.head match {
+      case EvalStackDependencyAnalysisJoin(joinType) => SimpleDependencyAnalysisJoin(sourceInfoes.last, joinType)
+      case a: SimpleDependencyAnalysisJoin => a
+    }
+    List(h)
+  }
 
   def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfoes =
     this.copy(mergeInfoes = mergeInfo +: mergeInfoes)
+
+  def withJoinInfo(joinInfo: EvalStackDependencyAnalysisJoin): DependencyAnalysisInfoes =
+    this.copy(joinInfoes = joinInfo +: joinInfoes)
 }
 
 object DependencyAnalysisInfoes {
@@ -79,6 +91,7 @@ object JoinType extends Enumeration {
 trait DependencyAnalysisJoinInfo extends ast.Info {
 
   def isJoin: Boolean = true
+
 
   override def comment: Seq[String] = Nil
   override def isCached: Boolean = false

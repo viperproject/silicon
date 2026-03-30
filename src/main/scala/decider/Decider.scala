@@ -376,7 +376,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //      if (info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].isDefined) {
 //        // add assertions and assumptions nodes that can be used for a graph join
 //        val joinNodeInfo = info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].get
-//        val currentTopLevelSource = analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource
+//        val currentTopLevelSource = analysisSourceInfoStack.getFullSourceInfo
 //        val assertionNode = joinNodeInfo.getAssertionNode(currentTopLevelSource, analysisSourceInfoStack.getDependencyType.assertionType)
 //        val assumptionNode = joinNodeInfo.getAssumptionNode(currentTopLevelSource)
 //        dependencyAnalyzer.addAssertionNode(assertionNode)

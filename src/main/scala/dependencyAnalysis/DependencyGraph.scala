@@ -204,7 +204,8 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
 
   // TODO ake: maybe move to DependencyAnalyzer?
   private def getNodesPerTransitivitySourceInfo: Map[AnalysisSourceInfo, Seq[DependencyAnalysisNode]] = {
-    getNodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges)
+//    getNodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges)
+    getNodes.groupBy(_.sourceInfo) // TODO ake: fix merge
   }
 
   // TODO ake: maybe move to DependencyAnalyzer?
@@ -265,7 +266,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   private def exportNodes(fileName: String): Unit = {
     val sep = "#"
     def getNodeExportString(node: DependencyAnalysisNode): String = {
-      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.getFineGrainedSource.toString, node.sourceInfo.getDescription)
+      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.toString /* TODO ake: merge info */, node.sourceInfo.getDescription)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
     val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source", "description")

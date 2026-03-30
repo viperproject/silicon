@@ -37,7 +37,7 @@ trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
   val isClosed: Boolean
 
 
-  val isJoinNode: Boolean
+  val joinInfoes: List[SimpleDependencyAnalysisJoin]
 
   /**
    * The assumes or asserted Silicon term. Currently, only used for debugging purposes.
@@ -45,8 +45,8 @@ trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
   val term: Term
   def getTerm: Term = term
 
-  def getUserLevelRepresentation: String = sourceInfo.getTopLevelSource.toString
-  def getSourceCodePosition: Position = sourceInfo.getTopLevelSource.getPosition
+  def getUserLevelRepresentation: String = sourceInfo.toString
+  def getSourceCodePosition: Position = sourceInfo.getPosition
 
   /*
     Some string representations, mainly used for debugging purposes.
@@ -86,34 +86,34 @@ trait ChunkAnalysisInfo {
   val labelNode: LabelNode
 }
 
-case class SimpleAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, isJoinNode: Boolean, _id: Option[Int]=None) extends GeneralAssumptionNode {
+case class SimpleAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, joinInfoes: List[SimpleDependencyAnalysisJoin]=List.empty, _id: Option[Int]=None) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + term.toString + description.map(" (" + _ + ")").getOrElse("")
 }
 
-case class AxiomAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssumptionNode {
+case class AxiomAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, joinInfoes: List[SimpleDependencyAnalysisJoin]=List.empty, _id: Option[Int]=None) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume axiom " + term.toString + description.map(" (" + _ + ")").getOrElse("")
   override def getNodeType: String = "Axiom"
 }
 
-case class SimpleAssertionNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
+case class SimpleAssertionNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, hasFailed: Boolean = false, joinInfoes: List[SimpleDependencyAnalysisJoin]=List.empty, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + term.toString
 
-  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, sourceInfo, assumptionType, isClosed, hasFailed=true, isJoinNode=isJoinNode)
+  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, sourceInfo, assumptionType, isClosed, hasFailed=true, joinInfoes=joinInfoes)
 }
 
-case class SimpleCheckNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
+case class SimpleCheckNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, hasFailed: Boolean = false, joinInfoes: List[SimpleDependencyAnalysisJoin]=List.empty, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "check " + term
   override def getNodeType: String = "Check"
 
   override def getAssertFailedNode(): GeneralAssertionNode = SimpleCheckNode(term, sourceInfo, assumptionType, isClosed, hasFailed=true)
 }
 
-case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, labelNode: LabelNode, isJoinNode: Boolean, _id: Option[Int]=None) extends GeneralAssumptionNode with ChunkAnalysisInfo {
+case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, labelNode: LabelNode, joinInfoes: List[SimpleDependencyAnalysisJoin]=List.empty, _id: Option[Int]=None) extends GeneralAssumptionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "inhale " + chunk.toString
   override def getNodeType: String = "Inhale"
 }
 
-case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, labelNode: LabelNode, hasFailed: Boolean = false, isJoinNode: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode with ChunkAnalysisInfo {
+case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, isClosed: Boolean, labelNode: LabelNode, hasFailed: Boolean = false, joinInfoes: List[SimpleDependencyAnalysisJoin]=List.empty, _id: Option[Int]=None) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.toString
 
@@ -129,7 +129,7 @@ case class LabelNode(term: Var, _id: Option[Int]=None) extends GeneralAssumption
   val assumptionType: AssumptionType = AssumptionType.Internal
   val isClosed: Boolean = true
   val description: String = term.toString
-  val isJoinNode: Boolean = false
+  val joinInfoes: List[SimpleDependencyAnalysisJoin] = List.empty
   override def getNodeType: String = "Label"
   override def getNodeString: String = "assume " + description
 }
@@ -145,7 +145,7 @@ case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo, assumptionType: Ass
   val term: Term = False
   val isClosed: Boolean = true
   val description: String = "False"
-  val isJoinNode: Boolean = false
+  val joinInfoes: List[SimpleDependencyAnalysisJoin] = List.empty
 
   override def getNodeType: String = "Infeasible"
   override def getNodeString: String = "infeasible"

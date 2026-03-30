@@ -92,17 +92,17 @@ object DependencyGraphImporter {
       val description: Option[String] = None
       val isClosed: Boolean = false
       val labelNode: LabelNode = dummyLabelNode
-      val isJoinNode: Boolean = false
+      val joinNodeInfoes: List[SimpleDependencyAnalysisJoin] = List.empty
 
       val nodeId = Some(nodeIdStr.toInt)
       // Create node based on type
       val node = nodeType match {
-        case "Assumption" => SimpleAssumptionNode(term, description, sourceInfo, assumptionType, isClosed, isJoinNode, _id=nodeId)
-        case "Axiom" => AxiomAssumptionNode(term, description, sourceInfo, assumptionType, isClosed, isJoinNode, _id=nodeId)
-        case "Assertion" => SimpleAssertionNode(term, sourceInfo, assumptionType, isClosed, hasFailed = false, isJoinNode, _id=nodeId)
-        case "Check" => SimpleCheckNode(term, sourceInfo, assumptionType, isClosed, hasFailed = false, isJoinNode, _id=nodeId)
-        case "Inhale" => PermissionInhaleNode(chunk, term, sourceInfo, assumptionType, isClosed, labelNode, isJoinNode, _id=nodeId)
-        case "Exhale" => PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, isClosed, labelNode, hasFailed = false, isJoinNode, _id=nodeId)
+        case "Assumption" => SimpleAssumptionNode(term, description, sourceInfo, assumptionType, isClosed, joinNodeInfoes, _id=nodeId)
+        case "Axiom" => AxiomAssumptionNode(term, description, sourceInfo, assumptionType, isClosed, joinNodeInfoes, _id=nodeId)
+        case "Assertion" => SimpleAssertionNode(term, sourceInfo, assumptionType, isClosed, hasFailed = false, joinNodeInfoes, _id=nodeId)
+        case "Check" => SimpleCheckNode(term, sourceInfo, assumptionType, isClosed, hasFailed = false, joinNodeInfoes, _id=nodeId)
+        case "Inhale" => PermissionInhaleNode(chunk, term, sourceInfo, assumptionType, isClosed, labelNode, joinNodeInfoes, _id=nodeId)
+        case "Exhale" => PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, isClosed, labelNode, hasFailed = false, joinNodeInfoes, _id=nodeId)
         case "Label" => LabelNode(dummyVar, _id=nodeId)
         case "Infeasible" => InfeasibilityNode(sourceInfo, assumptionType, _id=nodeId)
         case _ => throw new IllegalArgumentException(s"Unknown node type: $nodeType")

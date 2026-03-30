@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, EvalStackDependencyAnalysisJoin, JoinType}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -356,7 +356,7 @@ object executor extends ExecutionRules {
     if(v.decider.isPathInfeasible()){
       // FIXME ake: infeasbile path
 //      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(stmt, state.program)
-//      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
+//      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
 
       if(Statements.hasProofObligations(stmt, state.program)){
         v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
@@ -569,7 +569,7 @@ object executor extends ExecutionRules {
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
 
-          consumes(s2, meth.pres, false, _ => pvePre, v1, analysisInfoes)((s3, _, v2) => { // TODO ake: join
+          consumes(s2, meth.pres, false, _ => pvePre, v1, analysisInfoes.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source)))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)

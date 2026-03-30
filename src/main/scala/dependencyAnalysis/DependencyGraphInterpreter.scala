@@ -41,7 +41,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   val joinAssertionNodes: Set[GeneralAssertionNode] = getJoinCandidateNodes(dependencyGraph.getAssertionNodes.toSet)
   val axiomNodes: Set[GeneralAssumptionNode] = dependencyGraph.getAssumptionNodes.filter(_.isInstanceOf[AxiomAssumptionNode]).toSet
 
-  def getJoinCandidateNodes[T <: DependencyAnalysisNode](nodes: Set[T]): Set[T] = nodes.filter(node => node.isJoinNode || node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
+  def getJoinCandidateNodes[T <: DependencyAnalysisNode](nodes: Set[T]): Set[T] = nodes.filter(node => node.joinInfoes.nonEmpty || node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
   
   private def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
   
@@ -98,7 +98,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
     (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-      || AssumptionType.postconditionTypes.contains(node.assumptionType) || node.isJoinNode // postconditions act as assumptions for callers
+      || AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfoes.nonEmpty // postconditions act as assumptions for callers
     )
 
   def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
@@ -112,7 +112,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   
   
   def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
-    !AssumptionType.internalTypes.contains(node.assumptionType) || node.isJoinNode)
+    !AssumptionType.internalTypes.contains(node.assumptionType) || node.joinInfoes.nonEmpty)
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
@@ -136,8 +136,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val sourceInfos = nodes map (_.sourceInfo.getTopLevelSource)
-    getNodes filter (node => sourceInfos.contains(node.sourceInfo.getTopLevelSource))
+    val sourceInfos = nodes map (_.sourceInfo)
+    getNodes filter (node => sourceInfos.contains(node.sourceInfo))
   }
 
   def computeProofCoverage(): (Double, Set[String]) = {
@@ -170,7 +170,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       crucialNodesWithStmtInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(stmt.pos)))
     }
 
-    val crucialNodeSourceInfos = crucialNodes map (_.sourceInfo.getTopLevelSource)
+    val crucialNodeSourceInfos = crucialNodes map (_.sourceInfo)
     var total = 0
     var removed = 0
     var nonDetermBoolCount = 0
@@ -261,7 +261,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 //  var aggregationOfSummaryNodesRuntime: Long = 0L
 //  var filteringNodesRuntime: Long = 0L
 
-  private lazy val sourceToAssertionNodes: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = getNonInternalAssertionNodes.groupBy(_.sourceInfo.getTopLevelSource)
+  private lazy val sourceToAssertionNodes: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
 
 
@@ -279,7 +279,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       val allNonInternalAssertions = sourceToAssertionNodes.getOrElse(currentNode, Set.empty)
 
       val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeUpwardEdges=false, includeDownwardEdges=false)
-      val intraMethodDependencies = intraMethodDependencyIds.flatMap(nonInternalAssumptionNodesMap.get).filterNot(_.sourceInfo.getTopLevelSource.equals(currentNode))
+      val intraMethodDependencies = intraMethodDependencyIds.flatMap(nonInternalAssumptionNodesMap.get).filterNot(_.sourceInfo.equals(currentNode))
 
       val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethodsDownwards.getOrElse(n, Set.empty))
       val postconditionNodes = postconditionNodeIds.flatMap(nodesMap.get)
@@ -287,8 +287,8 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       val preconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethodsUpwards.getOrElse(n, Set.empty))
       val preconditionNodes = preconditionNodeIds.flatMap(nodesMap.get)
 
-      val transDepsDownwards = postconditionNodes.map(_.sourceInfo.getTopLevelSource).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, DATraversalMode.Downwards))
-      val transDepsUpwards = preconditionNodes.map(_.sourceInfo.getTopLevelSource).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, DATraversalMode.Upwards))
+      val transDepsDownwards = postconditionNodes.map(_.sourceInfo).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, DATraversalMode.Downwards))
+      val transDepsUpwards = preconditionNodes.map(_.sourceInfo).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, DATraversalMode.Upwards))
 
       val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ postconditionNodes) ++ transDepsDownwards ++ transDepsUpwards)
 
@@ -324,7 +324,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   }
 
   private def toCompactUserLevelNodes(lowLevelNodes: Set[DependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
-    lowLevelNodes.groupBy(_.sourceInfo.getTopLevelSource).map{case (source, nodes) =>
+    lowLevelNodes.groupBy(_.sourceInfo).map{case (source, nodes) =>
       val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
       CompactUserLevelDependencyAnalysisNode(source,
         nodes.filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.assumptionType),
@@ -391,11 +391,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
     val explicitAssertions = toCompactUserLevelNodes(getExplicitAssertionNodes)
     val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
-    val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source.getTopLevelSource).diff(explicitAssertions.map(_.source.getTopLevelSource))
+    val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source).diff(explicitAssertions.map(_.source))
 
     if(allSourceCodeNodes.isEmpty) return 1.0
 
-    val coveredSourceCodeNodes = coveredNodes.map(_.source.getTopLevelSource).intersect(allSourceCodeNodes)
+    val coveredSourceCodeNodes = coveredNodes.map(_.source).intersect(allSourceCodeNodes)
 //    println(s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
 //    println(s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
     println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
@@ -508,7 +508,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     val unverifiedAssertionImpacts = getAssertionsWithZeroQuality.map(assertion => (assertion, 1.0/numAssertions)).toList
 
     val totalImpacts1 = (assumptionImpacts ++ unverifiedAssertionImpacts).groupBy(_._1)
-    val totalImpacts = totalImpacts1.map{case (assumption, impacts) => (assumption.getTopLevelSource.toString, impacts.map(_._2).sum)}.toList
+    val totalImpacts = totalImpacts1.map{case (assumption, impacts) => (assumption.toString, impacts.map(_._2).sum)}.toList
 
     totalImpacts.sortBy(_._2).reverse
   }

@@ -1,16 +1,17 @@
 package viper.silicon.tests
 
 import viper.silicon.SiliconFrontend
-import viper.silicon.dependencyAnalysis.{DependencyGraphInterpreter, DependencyAnalysisNode, AssumptionType, DependencyAnalysisReporter}
-import viper.silver.ast.{Infoed, Program}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, DependencyAnalysisReporter, DependencyGraphInterpreter}
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.{ast, verifier}
+import viper.silver.ast.{Infoed, Program}
+import viper.silver.dependencyAnalysis.AssumptionType
 import viper.silver.verifier.VerificationResult
-import scala.jdk.CollectionConverters.IterableHasAsScala
+import viper.silver.{ast, verifier}
 
 import java.io.PrintWriter
 import java.nio.file.{Files, Path, Paths}
 import scala.annotation.unused
+import scala.jdk.CollectionConverters.IterableHasAsScala
 
 trait DependencyAnalysisTestFramework {
   val irrelevantKeyword = "irrelevant"
@@ -129,7 +130,7 @@ trait DependencyAnalysisTestFramework {
 
     protected def evaluatePrecision(relevantLines: Set[Int]): Unit = {
       val relevantNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
-      val sourceInfoes = relevantNodes.groupBy(_.sourceInfo.getTopLevelSource).keySet
+      val sourceInfoes = relevantNodes.groupBy(_.sourceInfo).keySet
       println(s"Evaluating precision of\n\t${sourceInfoes.mkString("\n\t")}")
 
       val reportedDependencies = fullGraphInterpreter.getAllNonInternalDependencies(relevantNodes.map(_.id)).diff(relevantNodes)
