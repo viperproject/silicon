@@ -190,7 +190,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
 
-      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, isClosed=false, joinInfoes = List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink))))
+      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink))))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
 
       /* Phase 1: Check well-definedness of the specifications */
@@ -305,12 +305,12 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             val labelledBcsPre = And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
-            val precondAnalysisSourceInfoes = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes /* TODO ake */
+            val precondAnalysisSourceInfoes = DependencyAnalysisInfoes.create("preconditions", DependencyType.make(AssumptionType.Precondition)) /* TODO ake */
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfoes)
             val labelledPcsPre = pcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))
             decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, precondAnalysisSourceInfoes)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-            eval(s1, body, FunctionNotWellformed(function), v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s2, tBody, bodyNew, _) => {
+            eval(s1, body, FunctionNotWellformed(function), v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.addInfo(body.info, body))((s2, tBody, bodyNew, _) => {
               val debugExp = if (wExp) {
                 val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)

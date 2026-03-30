@@ -192,32 +192,21 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     visited
   }
 
-  private def addTransitiveEdges(sources: Iterable[DependencyAnalysisNode], target: DependencyAnalysisNode): Unit = {
-    val oldSources = edges.getOrElse(target.id, Set.empty)
-    val newSources = sources map(_.id) // filter(_ > target.id) does not work due to loop invariants
-    if(newSources.nonEmpty) edges.update(target.id, oldSources ++ newSources)
-  }
-
-  private def addTransitiveEdges(sources: Iterable[DependencyAnalysisNode], targets: Iterable[DependencyAnalysisNode]): Unit = {
-    targets foreach (t => addTransitiveEdges(sources, t))
-  }
-
   // TODO ake: maybe move to DependencyAnalyzer?
-  private def getNodesPerTransitivitySourceInfo: Map[AnalysisSourceInfo, Seq[DependencyAnalysisNode]] = {
-//    getNodes.groupBy(_.sourceInfo.getSourceForTransitiveEdges)
-    getNodes.groupBy(_.sourceInfo) // TODO ake: fix merge
+  private def getNodesByMergeInfo: Map[DependencyAnalysisMergeInfo, Seq[DependencyAnalysisNode]] = {
+    getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
   }
 
   // TODO ake: maybe move to DependencyAnalyzer?
   def addTransitiveEdges(): Unit = {
-    val nodesPerSourceInfo = getNodesPerTransitivitySourceInfo
+    val nodesPerSourceInfo = getNodesByMergeInfo
     nodesPerSourceInfo foreach {case (_, nodes) =>
       val asserts = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
-      val assumes = nodes.filter(n => !n.isClosed && n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
-      addTransitiveEdges(asserts, assumes)
+      val assumes = nodes.filter(n => n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
+      addEdges(asserts.map(_.id), assumes.map(_.id))
       val checks = asserts.filter(_.isInstanceOf[SimpleCheckNode])
-      val notChecks = nodes.filter(n => !n.isClosed && !n.isInstanceOf[SimpleCheckNode])
-      addTransitiveEdges(checks, notChecks)
+      val notChecks = nodes.filter(n => !n.isInstanceOf[SimpleCheckNode])
+      addEdges(checks.map(_.id), notChecks.map(_.id))
     }
   }
 

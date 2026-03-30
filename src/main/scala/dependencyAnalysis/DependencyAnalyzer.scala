@@ -323,13 +323,13 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 
   // adding assumption nodes
   override def addAssumption(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String]): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, description, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo)
+    val node = SimpleAssumptionNode(assumption, description, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, analysisInfoes.getJoinInfo)
     addAssumptionNode(node)
     Some(node.id)
   }
 
   override def addAxiom(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String]): Option[Int] = {
-    val node = AxiomAssumptionNode(assumption, description, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo)
+    val node = AxiomAssumptionNode(assumption, description, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, analysisInfoes.getJoinInfo)
     addAssumptionNode(node)
     Some(node.id)
   }
@@ -338,7 +338,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
-    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.analysisInfoes.getSourceInfo, analysisInfo.analysisInfoes.getDependencyType.assertionType, labelNode)
+    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.analysisInfoes, labelNode)
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
 //    addPermissionDependencies(sourceChunks, Set(), chunkNode) TODO ake: can be removed
@@ -350,7 +350,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite((labelNode.term, perm, NoPerm)))
-    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.analysisInfoes.getSourceInfo, analysisInfo.analysisInfoes.getDependencyType.assumptionType, labelNode, analysisInfo.analysisInfoes.getJoinInfo)
+    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.analysisInfoes, labelNode)
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
 //    addPermissionDependencies(sourceChunks, Set(), chunkNode) TODO ake: can be removed
@@ -358,14 +358,14 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     chunk
   }
 
-  private def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, labelNode: LabelNode, joinInfoes: List[SimpleDependencyAnalysisJoin]): Option[Int] = {
-    val node = PermissionInhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, labelNode, joinInfoes)
+  private def addPermissionInhaleNode(chunk: Chunk, permAmount: Term, analysisInfoes: DependencyAnalysisInfoes, labelNode: LabelNode): Option[Int] = {
+    val node = PermissionInhaleNode(chunk, permAmount, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, labelNode, analysisInfoes.getJoinInfo)
     addAssumptionNode(node)
     Some(node.id)
   }
 
-  private def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, labelNode: LabelNode): Option[Int] = {
-    val node = PermissionExhaleNode(chunk, permAmount, sourceInfo, assumptionType, isClosed_, labelNode)
+  private def addPermissionExhaleNode(chunk: Chunk, permAmount: Term, analysisInfoes: DependencyAnalysisInfoes, labelNode: LabelNode): Option[Int] = {
+    val node = PermissionExhaleNode(chunk, permAmount, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assertionType, analysisInfoes.getMergeInfo, labelNode, analysisInfoes.getJoinInfo)
     addAssertionNode(node)
 //    addPermissionDependencies(Set(chunk), Set(), Some(node.id)) TODO ake: can be removed
     Some(node.id)
@@ -381,9 +381,9 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   // adding assertion nodes
   override def createAssertOrCheckNode(term: Term, analysisInfoes: DependencyAnalysisInfoes, isCheck: Boolean): Option[GeneralAssertionNode] = {
     if(isCheck)
-      Some(SimpleCheckNode(term, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, joinInfoes=analysisInfoes.getJoinInfo))
+      Some(SimpleCheckNode(term, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, analysisInfoes.getJoinInfo))
     else
-      Some(SimpleAssertionNode(term, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, joinInfoes=analysisInfoes.getJoinInfo))
+      Some(SimpleAssertionNode(term, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, analysisInfoes.getJoinInfo))
   }
   
   def addAssertNode(term: Term, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = {
@@ -405,8 +405,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addAssertionFailedNode(failedAssertion: Term, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = {
-    val assumeNode = SimpleAssumptionNode(failedAssertion, None, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo)
-    val assertFailedNode = SimpleAssertionNode(failedAssertion, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, hasFailed=true, joinInfoes=analysisInfoes.getJoinInfo)
+    val assumeNode = SimpleAssumptionNode(failedAssertion, None, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, analysisInfoes.getJoinInfo)
+    val assertFailedNode = SimpleAssertionNode(failedAssertion, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, analysisInfoes.getJoinInfo, hasFailed=true)
     dependencyGraph.addNode(assumeNode)
     dependencyGraph.addNode(assertFailedNode)
     dependencyGraph.addEdges(Set(assumeNode.id), assertFailedNode.id)
@@ -458,8 +458,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfoes: DependencyAnalysisInfoes): Unit = {
-    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, analysisInfoes))
-    val targetNodes = targetExps.flatMap(e => addAssertNode(True, analysisInfoes))
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, analysisInfoes.addInfo(e.info, e)))
+    val targetNodes = targetExps.flatMap(e => addAssertNode(True, analysisInfoes.addInfo(e.info, e)))
     dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
@@ -503,7 +503,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    * the low-level graph containing all details.
    */
   private def buildAndGetMergedGraph(): DependencyGraph = {
-    def keepNode(n: DependencyAnalysisNode): Boolean = n.isClosed || n.isInstanceOf[InfeasibilityNode] || n.isInstanceOf[AxiomAssumptionNode]
+    def keepNode(n: DependencyAnalysisNode): Boolean = !n.mergeInfo.isMerge || n.isInstanceOf[InfeasibilityNode] || n.isInstanceOf[AxiomAssumptionNode]
 
     val mergedGraph = new DependencyGraph
     val nodeMap = mutable.HashMap[Int, Int]()
@@ -515,7 +515,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val assumptionNodesBySource = dependencyGraph.getAssumptionNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType, n.joinInfoes)) // TODO ake: review joinInfoes
     assumptionNodesBySource foreach { case ((sourceInfo, assumptionType, joinInfoes), assumptionNodes) =>
       if (assumptionNodes.nonEmpty) {
-        val newNode = SimpleAssumptionNode(True, None, sourceInfo, assumptionType, isClosed = false, joinInfoes=joinInfoes) // TODO ake: review joinInfoes
+        val newNode = SimpleAssumptionNode(True, None, sourceInfo, assumptionType, SimpleDependencyAnalysisMerge(sourceInfo), joinInfoes) // TODO ake: review joinInfoes
         assumptionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addAssumptionNode(newNode)
       }
@@ -528,7 +528,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val assertionNodesBySource = dependencyGraph.getAssertionNodes.filter(!keepNode(_)).groupBy(n => (n.sourceInfo, n.assumptionType, n.joinInfoes)) // TODO ake: review joinInfoes
     assertionNodesBySource foreach { case ((sourceInfo, assumptionType, joinInfoes), assertionNodes) =>
       if (assertionNodes.nonEmpty) {
-        val newNode = SimpleAssertionNode(True, sourceInfo, assumptionType, isClosed = false, hasFailed=assertionNodes.exists(_.hasFailed), joinInfoes=joinInfoes) // TODO ake: review joinInfoes
+        val newNode = SimpleAssertionNode(True, sourceInfo, assumptionType, SimpleDependencyAnalysisMerge(sourceInfo), hasFailed=assertionNodes.exists(_.hasFailed), joinInfoes=joinInfoes) // TODO ake: review joinInfoes
         assertionNodes foreach (n => nodeMap.put(n.id, newNode.id))
         mergedGraph.addAssertionNode(newNode)
       }

@@ -261,8 +261,7 @@ object executor extends ExecutionRules {
             val sBody = s.copy(g = gBody, h = v.heapSupporter.getEmptyHeap(s.program))
 
             val analysisInfoesInv = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes
-            val analysisInfoesLoopInternal = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes
-              .withSource(StringAnalysisSourceInfo(s"Loop ${block.id}", ast.NoPosition)).withDependencyType(DependencyType.Internal)
+            val analysisInfoesLoopInternal = DependencyAnalysisInfoes.create(s"Loop ${block.id}\"", DependencyType.Internal)
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)

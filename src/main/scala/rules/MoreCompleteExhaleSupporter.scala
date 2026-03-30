@@ -109,7 +109,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
     })
 
-    val analysisInfoes = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes // TODO ake
+    val analysisInfoes = DependencyAnalysisInfoes.create("summarize", DependencyType.Internal) // TODO ake
 
     val taggedSummarisingSnapshot =
       summarisingSnapshotDefinitions
@@ -168,7 +168,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     // query to check if the permission amount we have is sufficient to get the correct counterexample. If we perform
     // the query in two parts (one part here, one part in our caller to see if the permission amount is sufficient),
     // the counterexample might be wrong.
-    val analysisInfoes = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes // TODO ake
+    val analysisInfoes = DependencyAnalysisInfoes.create("summarise", DependencyType.Internal) // TODO ake
 
     if (relevantChunks.size == 1 &&  !Verifier.config.counterexample.isDefined) {
       val chunk = relevantChunks.head

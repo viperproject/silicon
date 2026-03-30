@@ -2,7 +2,7 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.JoinType.JoinType
 import viper.silver.ast
-import viper.silver.ast.{AbstractAssign, Apply, Assert, Assume, DependencyTypeInfo, Exhale, ExtensionStmt, Fold, Goto, If, Inhale, Label, LocalVarDeclStmt, MethodCall, NewStmt, NoPosition, Quasihavoc, Quasihavocall, Seqn, Unfold, While}
+import viper.silver.ast.{DependencyTypeInfo, NoPosition}
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType, StringAnalysisSourceInfo}
 
 
@@ -42,10 +42,7 @@ case class DependencyAnalysisInfoes(sourceInfoes: List[AnalysisSourceInfo], depe
 
   def getDependencyType: DependencyType = dependencyTypes.head.dependencyType
 
-  def getMergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
-//    mergeInfoes.head // TODO
-
-  def getJoinInfoes: List[DependencyAnalysisJoinInfo] = joinInfoes
+  def getMergeInfo: DependencyAnalysisMergeInfo = mergeInfoes.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
 
   def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
     if(joinInfoes.isEmpty) return List.empty
@@ -89,10 +86,6 @@ object JoinType extends Enumeration {
 
 
 trait DependencyAnalysisJoinInfo extends ast.Info {
-
-  def isJoin: Boolean = true
-
-
   override def comment: Seq[String] = Nil
   override def isCached: Boolean = false
 }
@@ -104,7 +97,7 @@ case class SimpleDependencyAnalysisJoin(sourceInfo: AnalysisSourceInfo, joinType
 
 trait DependencyAnalysisMergeInfo extends ast.Info {
 
-  def isMerge: Boolean = true
+  def isMerge: Boolean
 
   override def comment: Seq[String] = Nil
   override def isCached: Boolean = false
@@ -114,7 +107,9 @@ case class NoDependencyAnalysisMerge() extends DependencyAnalysisMergeInfo {
   override def isMerge: Boolean = false
 }
 
-case class SimpleDependencyAnalysisMerge(sourceInfo: AnalysisSourceInfo) extends DependencyAnalysisMergeInfo
+case class SimpleDependencyAnalysisMerge(sourceInfo: AnalysisSourceInfo) extends DependencyAnalysisMergeInfo {
+  override def isMerge: Boolean = true
+}
 
 
 
