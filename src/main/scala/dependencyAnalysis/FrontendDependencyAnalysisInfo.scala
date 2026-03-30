@@ -32,13 +32,13 @@ case class SimpleFrontendDependencyAnalysisInfo(sourceInfo: AnalysisSourceInfo, 
  */
 case class DependencyAnalysisJoinNodeInfo(sourceInfo: AnalysisSourceInfo, _dependencyType: DependencyType) extends FrontendDependencyAnalysisInfo {
   def getAssertionNode: GeneralAssertionNode =
-    SimpleAssertionNode(True, AssumptionType.CustomInternal, sourceInfo, isClosed=false, isJoinNode=true)
+    SimpleAssertionNode(True, sourceInfo, AssumptionType.CustomInternal, isClosed=false, isJoinNode=true)
 
   def getAssertionNode(outerSourceInfo: AnalysisSourceInfo): GeneralAssertionNode =
-    SimpleAssertionNode(True, AssumptionType.CustomInternal, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), isClosed=false, isJoinNode=true)
+    SimpleAssertionNode(True, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), AssumptionType.CustomInternal,  isClosed=false, isJoinNode=true)
 
   def getAssertionNode(outerSourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType): GeneralAssertionNode =
-    SimpleAssertionNode(True, assumptionType, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), isClosed=false, isJoinNode=true)
+    SimpleAssertionNode(True, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), assumptionType,  isClosed=false, isJoinNode=true)
 
   def getAssumptionNode(outerSourceInfo: AnalysisSourceInfo): GeneralAssumptionNode =
     SimpleAssumptionNode(True, None, CompositeAnalysisSourceInfo(outerSourceInfo, sourceInfo), AssumptionType.CustomInternal, isClosed=false, isJoinNode=true)

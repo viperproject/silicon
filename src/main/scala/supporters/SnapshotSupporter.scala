@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfo
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes}
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
 import viper.silicon.state.{MagicWandIdentifier, State, SymbolConverter}
 import viper.silicon.utils.toSf
@@ -28,7 +28,7 @@ trait SnapshotSupporter {
                          a0: ast.Exp,
                          a1: ast.Exp,
                          v: Verifier,
-                         dAInfo: DependencyAnalysisInfo)
+                         analysisInfoes: DependencyAnalysisInfoes)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term)
 }
 
@@ -120,10 +120,10 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
                          a0: ast.Exp,
                          a1: ast.Exp,
                          v: Verifier,
-                         dAInfo: DependencyAnalysisInfo)
+                         analysisInfoes: DependencyAnalysisInfoes)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term) = {
 
-    val (snap0, snap1) = createSnapshotPair(s, sf(sorts.Snap, v), a0, a1, v, dAInfo)
+    val (snap0, snap1) = createSnapshotPair(s, sf(sorts.Snap, v), a0, a1, v, analysisInfoes)
 
     val sf0 = toSf(snap0)
     val sf1 = toSf(snap1)
@@ -131,7 +131,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
     (sf0, sf1)
   }
 
-  private def createSnapshotPair(@unused s: State, snap: Term, @unused a0: ast.Exp, @unused a1: ast.Exp, v: Verifier, dAInfo: DependencyAnalysisInfo): (Term, Term) = {
+  private def createSnapshotPair(@unused s: State, snap: Term, @unused a0: ast.Exp, @unused a1: ast.Exp, v: Verifier, analysisInfoes: DependencyAnalysisInfoes): (Term, Term) = {
     /* [2015-11-17 Malte] If both fresh snapshot terms and first/second datatypes
      * are used, then the overall test suite verifies in 2min 10sec, whereas
      * it takes 2min 20sec when only first/second datatypes are used. Might be
@@ -163,7 +163,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
 
         (snap0, snap1, snap === Combine(snap0, snap1))
       }
-    v.decider.assume(snapshotEq, Option.when(Verifier.config.enableDebugging())(DebugExp.createInstance("Snapshot", true)), dAInfo)
+    v.decider.assume(snapshotEq, Option.when(Verifier.config.enableDebugging())(DebugExp.createInstance("Snapshot", true)), analysisInfoes)
 
     (snap0, snap1)
   }

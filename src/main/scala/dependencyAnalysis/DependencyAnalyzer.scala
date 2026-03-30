@@ -34,15 +34,15 @@ trait DependencyAnalyzer {
   def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit
   def addAssertionNode(node: GeneralAssertionNode): Unit
   def addAssumptionNode(node: GeneralAssumptionNode): Unit
-  def addAssumption(assumption: Term, dAInfo: DependencyAnalysisInfo, description: Option[String] = None): Option[Int]
-  def addAxiom(assumption: Term, dAInfo: DependencyAnalysisInfo, description: Option[String] = None): Option[Int]
+  def addAssumption(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String] = None): Option[Int]
+  def addAxiom(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String] = None): Option[Int]
   def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNode: Option[LabelNode], analysisInfo: AnalysisInfo): CH = buildChunk(perm)
   def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo): CH = buildChunk(perm)
   def createLabelNode(label: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode]
 
-  def createAssertOrCheckNode(term: Term, dAInfo: DependencyAnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode]
-  def addAssertFalseNode(isCheck: Boolean, dAInfo: DependencyAnalysisInfo): Option[Int]
-  def addInfeasibilityNode(isCheck: Boolean, dAInfo: DependencyAnalysisInfo): Option[Int]
+  def createAssertOrCheckNode(term: Term, analysisInfoes: DependencyAnalysisInfoes, isCheck: Boolean): Option[GeneralAssertionNode]
+  def addAssertFalseNode(isCheck: Boolean, analysisInfoes: DependencyAnalysisInfoes): Option[Int]
+  def addInfeasibilityNode(isCheck: Boolean, analysisInfoes: DependencyAnalysisInfoes): Option[Int]
 
   def addDependency(source: Option[Int], dest: Option[Int]): Unit
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
@@ -53,7 +53,7 @@ trait DependencyAnalyzer {
    * Adds dependencies between all pairs of sourceExps and targetExps, where sourceExps should be preconditions and
    * targetExps should be postconditions of an abstract function or method.
    */
-  def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], dAInfo: DependencyAnalysisInfo): Unit
+  def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfoes: DependencyAnalysisInfoes): Unit
 
   /**
    * Adds edges connecting nodes representing function postconditions with the corresponding axiom nodes.
@@ -63,14 +63,14 @@ trait DependencyAnalyzer {
   /**
    * Adds an assertion and assumption node with the given analysis source info and dependencies to the current infeasibility node.
    */
-  def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], dAInfo: DependencyAnalysisInfo): Unit = {}
+  def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisInfoes: DependencyAnalysisInfoes): Unit = {}
 
   /**
    * @return the final dependency graph representing all direct and transitive dependencies
    */
   def buildFinalGraph(): Option[DependencyGraph]
 
-  def addAssertionFailedNode(failedAssertion: Term, dAInfo: DependencyAnalysisInfo): Option[Int]
+  def addAssertionFailedNode(failedAssertion: Term, analysisInfoes: DependencyAnalysisInfoes): Option[Int]
 }
 
 object DependencyAnalyzer {
@@ -323,14 +323,14 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def addAssertionNode(node: GeneralAssertionNode): Unit = dependencyGraph.addAssertionNode(node)
 
   // adding assumption nodes
-  override def addAssumption(assumption: Term, dAInfo: DependencyAnalysisInfo, description: Option[String]): Option[Int] = {
-    val node = SimpleAssumptionNode(assumption, description, dAInfo.getSourceInfo, dAInfo.getDependencyType.assumptionType, dAInfo.getMergeInfo.isMerge, dAInfo.getJoinInfo.isJoin)
+  override def addAssumption(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String]): Option[Int] = {
+    val node = SimpleAssumptionNode(assumption, description, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo.exists(_.isJoin))
     addAssumptionNode(node)
     Some(node.id)
   }
 
-  override def addAxiom(assumption: Term, dAInfo: DependencyAnalysisInfo, description: Option[String]): Option[Int] = {
-    val node = AxiomAssumptionNode(assumption, description, dAInfo.getSourceInfo, dAInfo.getDependencyType.assumptionType, dAInfo.getMergeInfo.isMerge, dAInfo.getJoinInfo.isJoin)
+  override def addAxiom(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String]): Option[Int] = {
+    val node = AxiomAssumptionNode(assumption, description, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo.exists(_.isJoin))
     addAssumptionNode(node)
     Some(node.id)
   }
@@ -339,7 +339,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
-    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, labelNode)
+    val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.analysisInfoes.getSourceInfo, analysisInfo.analysisInfoes.getDependencyType.assertionType, labelNode)
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
 //    addPermissionDependencies(sourceChunks, Set(), chunkNode) TODO ake: can be removed
@@ -351,7 +351,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
     val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
-    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.sourceInfo, analysisInfo.assumptionType, labelNode, isJoinNode=analysisInfo.isJoinNode)
+    val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.analysisInfoes.getSourceInfo, analysisInfo.analysisInfoes.getDependencyType.assumptionType, labelNode, isJoinNode=analysisInfo.analysisInfoes.getJoinInfo.exists(_.isJoin))
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
 //    addPermissionDependencies(sourceChunks, Set(), chunkNode) TODO ake: can be removed
@@ -380,35 +380,35 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   // adding assertion nodes
-  override def createAssertOrCheckNode(term: Term, dAInfo: DependencyAnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode] = {
+  override def createAssertOrCheckNode(term: Term, analysisInfoes: DependencyAnalysisInfoes, isCheck: Boolean): Option[GeneralAssertionNode] = {
     if(isCheck)
-      Some(SimpleCheckNode(term, dAInfo.getSourceInfo, dAInfo.getDependencyType.assumptionType, dAInfo.getMergeInfo.isMerge, dAInfo.getJoinInfo.isJoin))
+      Some(SimpleCheckNode(term, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo.exists(_.isJoin)))
     else
-      Some(SimpleAssertionNode(term, dAInfo.getSourceInfo, dAInfo.getDependencyType.assumptionType, dAInfo.getMergeInfo.isMerge, dAInfo.getJoinInfo.isJoin))
+      Some(SimpleAssertionNode(term, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo.exists(_.isJoin)))
   }
   
-  def addAssertNode(term: Term, dAInfo: DependencyAnalysisInfo): Option[Int] = {
-    val node = createAssertOrCheckNode(term, dAInfo, isCheck=false)
+  def addAssertNode(term: Term, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = {
+    val node = createAssertOrCheckNode(term, analysisInfoes, isCheck=false)
     node foreach addAssertionNode
     node map (_.id)
   }
 
-  override def addAssertFalseNode(isCheck: Boolean, dAInfo: DependencyAnalysisInfo): Option[Int] = {
-    val node = createAssertOrCheckNode(False, dAInfo, isCheck)
+  override def addAssertFalseNode(isCheck: Boolean, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = {
+    val node = createAssertOrCheckNode(False, analysisInfoes, isCheck)
     addAssertionNode(node.get)
     node.map(_.id)
   }
 
-  override def addInfeasibilityNode(isCheck: Boolean, dAInfo: DependencyAnalysisInfo): Option[Int] = {
-    val node = InfeasibilityNode(dAInfo.getSourceInfo, dAInfo.getDependencyType.assumptionType)
+  override def addInfeasibilityNode(isCheck: Boolean, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = {
+    val node = InfeasibilityNode(analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType)
     addAssumptionNode(node)
     Some(node.id)
   }
 
-  override def addAssertionFailedNode(failedAssertion: Term, dAInfo: DependencyAnalysisInfo): Option[Int] = {
-    val assumptionType = if(AssumptionType.postconditionTypes.contains(dAInfo.getDependencyType.assumptionType)) AssumptionType.ExplicitPostcondition else AssumptionType.Explicit
-    val assumeNode = SimpleAssumptionNode(failedAssertion, None, dAInfo.getSourceInfo, dAInfo.getDependencyType.assumptionType, dAInfo.getMergeInfo.isMerge, dAInfo.getJoinInfo.isJoin)
-    val assertFailedNode = SimpleAssertionNode(failedAssertion, dAInfo.getSourceInfo, dAInfo.getDependencyType.assumptionType, dAInfo.getMergeInfo.isMerge, dAInfo.getJoinInfo.isJoin, hasFailed=true)
+  override def addAssertionFailedNode(failedAssertion: Term, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = {
+    val assumptionType = if(AssumptionType.postconditionTypes.contains(analysisInfoes.getDependencyType.assumptionType)) AssumptionType.ExplicitPostcondition else AssumptionType.Explicit
+    val assumeNode = SimpleAssumptionNode(failedAssertion, None, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo.exists(_.isJoin))
+    val assertFailedNode = SimpleAssertionNode(failedAssertion, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, hasFailed=true, isJoinNode=analysisInfoes.getJoinInfo.exists(_.isJoin))
     dependencyGraph.addNode(assumeNode)
     dependencyGraph.addNode(assertFailedNode)
     dependencyGraph.addEdges(Set(assumeNode.id), assertFailedNode.id)
@@ -458,9 +458,9 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     dependencyGraph.addEdges(sourceNodes map (_.id), targetNodes map (_.id))
   }
 
-  override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], dAInfo: DependencyAnalysisInfo): Unit = {
-    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, dAInfo))
-    val targetNodes = targetExps.flatMap(e => addAssertNode(True, dAInfo))
+  override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfoes: DependencyAnalysisInfoes): Unit = {
+    val sourceNodeIds = sourceExps.flatMap(e => addAssumption(True, analysisInfoes))
+    val targetNodes = targetExps.flatMap(e => addAssertNode(True, analysisInfoes))
     dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
@@ -547,8 +547,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    * Adds an assertion node with the given analysis source info and dependencies to the current infeasibility node.
    * The resulting assertion node is required to detect dependencies of the source statement/expression on infeasible paths.
    */
-  override def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], dAInfo: DependencyAnalysisInfo): Unit = {
-    val newAssertionNodeId = addAssertNode(False, dAInfo)
+  override def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisInfoes: DependencyAnalysisInfoes): Unit = {
+    val newAssertionNodeId = addAssertNode(False, analysisInfoes)
     addDependency(infeasNodeId, newAssertionNodeId)
   }
 
@@ -566,19 +566,19 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def addNodes(nodes: Iterable[DependencyAnalysisNode]): Unit = {}
   override def addAssertionNode(node: GeneralAssertionNode): Unit = {}
   override def addAssumptionNode(node: GeneralAssumptionNode): Unit = {}
-  override def addAssumption(assumption: Term, dAInfo: DependencyAnalysisInfo, description: Option[String] = None): Option[Int] = None
-  override def addAxiom(assumption: Term, dAInfo: DependencyAnalysisInfo, description: Option[String]): Option[Int] = None
+  override def addAssumption(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String] = None): Option[Int] = None
+  override def addAxiom(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String]): Option[Int] = None
   override def createLabelNode(labelTerm: Var, sourceChunks: Iterable[Chunk], sourceTerms: Iterable[Term]): Option[LabelNode] = None
 
-  override def createAssertOrCheckNode(term: Term, dAInfo: DependencyAnalysisInfo, isCheck: Boolean): Option[GeneralAssertionNode] = None
-  override def addAssertFalseNode(isCheck: Boolean, dAInfo: DependencyAnalysisInfo): Option[Int] = None
-  override def addInfeasibilityNode(isCheck: Boolean, dAInfo: DependencyAnalysisInfo): Option[Int] = None
-  override def addAssertionFailedNode(failedAssertion: Term, dAInfo: DependencyAnalysisInfo): Option[Int] = None
+  override def createAssertOrCheckNode(term: Term, analysisInfoes: DependencyAnalysisInfoes, isCheck: Boolean): Option[GeneralAssertionNode] = None
+  override def addAssertFalseNode(isCheck: Boolean, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = None
+  override def addInfeasibilityNode(isCheck: Boolean, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = None
+  override def addAssertionFailedNode(failedAssertion: Term, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = None
 
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {}
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}
   override def addCustomTransitiveDependency(sourceSourceInfo: AnalysisSourceInfo, targetSourceInfo: AnalysisSourceInfo): Unit = {}
-  override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], dAInfo: DependencyAnalysisInfo): Unit = {}
+  override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfoes: DependencyAnalysisInfoes): Unit = {}
   override def addFunctionAxiomEdges(): Unit = {}
 
   override def buildFinalGraph(): Option[DependencyGraph] = None

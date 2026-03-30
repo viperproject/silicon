@@ -88,5 +88,7 @@ object DependencyType {
 
 case class DependencyType(assumptionType: AssumptionType, assertionType: AssumptionType)
 
-case class AnalysisInfo(decider: Decider, dependencyAnalyzer: DependencyAnalyzer, dAInfo: DependencyAnalysisInfo)
+case class AnalysisInfo(decider: Decider, dependencyAnalyzer: DependencyAnalyzer, analysisInfoes: DependencyAnalysisInfoes) {
+  def withDependencyType(dependencyType: DependencyType) = this.copy(analysisInfoes=analysisInfoes.withDependencyType(dependencyType))
+}
 

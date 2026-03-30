@@ -8,22 +8,22 @@ package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalyzer, NoDependencyAnalysisInfo}
+import viper.silicon.decider.Decider
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.rules.executionFlowController
+import viper.silicon.state.State.OldHeaps
+import viper.silicon.state._
+import viper.silicon.state.terms._
+import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecorder, FunctionRecorderHandler, NoopFunctionRecorder}
+import viper.silicon.utils.{freshSnap, toSf}
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.{Map, toMap}
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
-import viper.silicon.decider.Decider
-import viper.silicon.{Map, toMap}
-import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.state._
-import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms._
-import viper.silicon.interfaces._
-import viper.silicon.rules.executionFlowController
-import viper.silicon.supporters.functions.{ActualFunctionRecorder, FunctionRecorder, FunctionRecorderHandler, NoopFunctionRecorder}
-import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.utils.{freshSnap, toSf}
 
 class PredicateData(val predicate: ast.Predicate)
                    /* Note: Holding a reference to a fixed symbol converter (instead of going
@@ -123,7 +123,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
           /*    locallyXXX {
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
-                  produce(s1, toSf(snap), body, err, v, NoDependencyAnalysisInfo())((s2, v2) => {
+                  produce(s1, toSf(snap), body, err, v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s2, v2) => {
                     val branchConds = v2.decider.pcs.branchConditions.reverse
                     val branchCondExps = v2.decider.pcs.branchConditionExps.reverse
                     assert(branchConds.length == branchCondExps.length)

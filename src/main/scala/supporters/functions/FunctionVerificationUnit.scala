@@ -192,7 +192,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         assertReadAccessOnly = !Verifier.config.respectFunctionPrePermAmounts())
 
 
-      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AssumptionType.Precondition, AnalysisSourceInfo.createAnalysisSourceInfo(pc), isClosed=false, isJoinNode=true))
+      val presAssertionNodeForJoin = function.pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, isClosed=false, isJoinNode=true))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
 
       /* Phase 1: Check well-definedness of the specifications */
@@ -211,7 +211,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
           if (function.body.isEmpty) {
             decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
-            decider.dependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), getPostconditionType(function))
+            decider.dependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes /* TODO ake */)
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -251,24 +251,20 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, AssumptionType.Precondition)((s1, _) => {
+        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s1, _) => {
           val relevantPathConditionStack = decider.pcs.after(preMark)
           phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
             relevantPathConditionStack.assumptions, Option.when(evaluator.withExp)(relevantPathConditionStack.assumptionExps))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
-          produces(s1, freshSnap, posts, ContractNotWellformed, v, getPostconditionType(function))((s2, _) => {
+          produces(s1, freshSnap, posts, ContractNotWellformed, v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 
       data.advancePhase(recorders)
 
       (result, phase1Data)
-    }
-
-    private def getPostconditionType(function: ast.Function) = {
-      AssumptionType.getPostcondType(function.body.isEmpty, DependencyAnalyzer.extractDependencyTypeFromInfo(function.info))
     }
 
     private def verify(function: ast.Function, phase1data: Seq[Phase1Data])
@@ -285,17 +281,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       var recorders: Seq[FunctionRecorder] = Vector.empty
       val wExp = evaluator.withExp
-      val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractAssumptionTypeFromInfo(function.info)
-      var postConditionType = getPostconditionType(function)
       decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
 
       val daJoinNodeInfoOpt = function.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
       if(daJoinNodeInfoOpt.isDefined){
         val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
 //        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
-//        postConditionType = AssumptionType.CustomInternal
         val postCondNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
-        val postCondAssertNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AssumptionType.ImplicitPostcondition, AnalysisSourceInfo.createAnalysisSourceInfo(pc), isClosed=false, isJoinNode=true))
+        val postCondAssertNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
         val customJoinNode = infodaJoinNodeInfo.getAssertionNode
 
         postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
@@ -313,24 +306,22 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             val labelledBcsPre = And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
-            decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))), annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Precondition))
+            val precondAnalysisSourceInfoes = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes /* TODO ake */
+            decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfoes)
             val labelledPcsPre = pcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))
-            decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, assumptionType=annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Precondition))
+            decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, precondAnalysisSourceInfoes)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-            eval(s1, body, FunctionNotWellformed(function), v, Some(DependencyType.make(AssumptionType.FunctionBody)))((s2, tBody, bodyNew, _) => {
+            eval(s1, body, FunctionNotWellformed(function), v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s2, tBody, bodyNew, _) => {
               val debugExp = if (wExp) {
                 val e = ast.EqCmp(ast.Result(function.typ)(), body)(function.pos, function.info, function.errT)
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
-              decider.analysisSourceInfoStack.setForcedSource(AnalysisSourceInfo.createAnalysisSourceInfo(body), DependencyType.get(body, DependencyType.make(AssumptionType.FunctionBody)))
-              decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, AssumptionType.FunctionBody)
-              decider.analysisSourceInfoStack.removeForcedSource()
-              consumes(s2, posts, false, postconditionViolated, v, DependencyType.make(postConditionType))((s3, _, _) => {
+              val bodyAnalysisSourceInfoes = DependencyAnalysisInfoes.create(AnalysisSourceInfo.createAnalysisSourceInfo(body), DependencyType.get(body,DependencyType.make(AssumptionType.FunctionBody)))
+              decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, bodyAnalysisSourceInfoes)
+              consumes(s2, posts, false, postconditionViolated, v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
-
-//      if(daJoinNodeInfoOpt.isDefined) v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(daJoinNodeInfoOpt.get.sourceInfo)
 
       data.advancePhase(recorders)
 

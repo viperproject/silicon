@@ -46,7 +46,8 @@ trait ProverLike {
     if(Verifier.config.enableDependencyAnalysis()){
       axioms.foreach(axiom => {
         val axiomInfo = axiom._2
-        val id = if(axiomInfo.isDefined) preambleDependencyAnalyzer.addAxiom(axiom._1, axiomInfo.get._1, axiomInfo.get._2) else None
+        val analysisInfoes = axiomInfo.map(ai => DependencyAnalysisInfoes.create(ai._1, DependencyType.make(ai._2)))
+        val id = if(analysisInfoes.isDefined) preambleDependencyAnalyzer.addAxiom(axiom._1, analysisInfoes.get) else None
         assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
       })
     } else{

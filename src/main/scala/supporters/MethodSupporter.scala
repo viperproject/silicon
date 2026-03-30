@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType, SimpleAssertionNode, SimpleAssumptionNode}
+import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisInfoes, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType, SimpleAssertionNode, SimpleAssumptionNode}
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
@@ -78,10 +78,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
-      val annotatedAssumptionTypeOpt = DependencyAnalyzer.extractDependencyTypeFromInfo(method.info).map(_.assumptionType)
-      var postConditionType = AssumptionType.getPostcondType(method.body.isEmpty, DependencyAnalyzer.extractDependencyTypeFromInfo(method.info))
-
-      val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AssumptionType.Precondition, AnalysisSourceInfo.createAnalysisSourceInfo(pc), isClosed=false, isJoinNode=true))
+      val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, isClosed=false, isJoinNode=true))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
 
 
@@ -89,9 +86,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       if(daJoinNodeInfoOpt.isDefined){
         val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
         // v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
-//        postConditionType = AssumptionType.CustomInternal
         val postCondNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
-        val postCondAssertNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AssumptionType.ImplicitPostcondition, AnalysisSourceInfo.createAnalysisSourceInfo(pc), isClosed=false, isJoinNode=true))
+        val postCondAssertNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
         val customJoinNode = infodaJoinNodeInfo.getAssertionNode
         postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
         postCondAssertNodes foreach v.decider.dependencyAnalyzer.addAssertionNode
@@ -110,14 +106,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
          * rules in Smans' paper.
          */
         executionFlowController.locally(s, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1, annotatedAssumptionTypeOpt.getOrElse(AssumptionType.Precondition))((s2, v2) => {
+          produces(s1, freshSnap, pres, ContractNotWellformed, v1, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, postConditionType)((_, _) => {
+                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
@@ -126,11 +122,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                  if(method.body.isEmpty) v3.decider.removeDependencyAnalyzer()
                   exec(s3, body, v3)((s4, v4) => {
                     if(method.body.isEmpty) v3.decider.dependencyAnalyzer = da
-                    consumes(s4, posts, false, postViolated, v4, DependencyType.make(postConditionType))((_, _, _) =>
+                    consumes(s4, posts, false, postViolated, v4, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((_, _, _) =>
                       Success())})}) }  )})})
 
       if(method.body.isEmpty){
-        v.decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), postConditionType)
+        v.decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)
       }
 
       val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])

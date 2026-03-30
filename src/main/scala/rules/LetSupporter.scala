@@ -6,24 +6,24 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfo
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
+import viper.silicon.interfaces.VerificationResult
+import viper.silicon.state.terms.Term
+import viper.silicon.state.{State, Store}
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.VerificationResult
-import viper.silicon.state.{State, Store}
-import viper.silicon.state.terms.Term
-import viper.silicon.verifier.Verifier
 
 trait LetSupportRules extends SymbolicExecutionRules {
   def handle[E <: ast.Exp]
             (s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier,
-             dAInfo: DependencyAnalysisInfo)
+             analysisInfoes: DependencyAnalysisInfoes)
             (Q: (State, Store, E, Verifier) => VerificationResult)
             : VerificationResult
 
   def handle[E <: ast.Exp]
             (s: State, let: ast.Let, pve: PartialVerificationError, v: Verifier,
-             dAInfo: DependencyAnalysisInfo)
+             analysisInfoes: DependencyAnalysisInfoes)
             (Q: (State, Store, E, Verifier) => VerificationResult)
             : VerificationResult
 }
@@ -33,23 +33,23 @@ object letSupporter extends LetSupportRules {
 
   def handle[E <: ast.Exp]
             (s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier,
-             dAInfo: DependencyAnalysisInfo)
+             analysisInfoes: DependencyAnalysisInfoes)
             (Q: (State, Store, E, Verifier) => VerificationResult)
             : VerificationResult = {
 
     e match {
-      case let: ast.Let => handle(s, Nil, let, pve, v, dAInfo)(Q)
+      case let: ast.Let => handle(s, Nil, let, pve, v, analysisInfoes)(Q)
       case _ => Q(s, Store(), e.asInstanceOf[E], v)
     }
   }
 
   def handle[E <: ast.Exp]
             (s: State, let: ast.Let, pve: PartialVerificationError, v: Verifier,
-             dAInfo: DependencyAnalysisInfo)
+             analysisInfoes: DependencyAnalysisInfoes)
             (Q: (State, Store, E, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    handle(s, Nil, let, pve, v, dAInfo)(Q)
+    handle(s, Nil, let, pve, v, analysisInfoes)(Q)
   }
 
   private def handle[E <: ast.Exp]
@@ -58,17 +58,17 @@ object letSupporter extends LetSupportRules {
                      let: ast.Let,
                      pve: PartialVerificationError,
                      v: Verifier,
-                     dAInfo: DependencyAnalysisInfo)
+                     analysisInfoes: DependencyAnalysisInfoes)
                     (Q: (State, Store, E, Verifier) => VerificationResult)
                     : VerificationResult = {
 
     val ast.Let(x, exp, body) = let
 
-    eval(s, exp, pve, v, dAInfo)((s1, t, expNew, v1) => {
+    eval(s, exp, pve, v, analysisInfoes)((s1, t, expNew, v1) => {
       val bindings1 = bindings :+ (x.localVar, (t, expNew))
       val s2 = s1.copy(s1.g + (x.localVar, (t, expNew)))
       body match {
-        case nestedLet: ast.Let => handle(s2, bindings1, nestedLet, pve, v1, dAInfo)(Q)
+        case nestedLet: ast.Let => handle(s2, bindings1, nestedLet, pve, v1, analysisInfoes)(Q)
         case _ => Q(s2, Store(bindings1), body.asInstanceOf[E], v1)}})
   }
 }

@@ -31,7 +31,7 @@ object AnalysisSourceInfo {
 
 }
 
-abstract class AnalysisSourceInfo {
+trait AnalysisSourceInfo extends ast.Info {
   override def toString: String = getPositionString
 
   def getDescription: String
@@ -64,6 +64,10 @@ abstract class AnalysisSourceInfo {
   def getFineGrainedSource: AnalysisSourceInfo = this
 
   def isAnalysisEnabled: Boolean = true
+
+
+  override def comment: Seq[String] = Nil
+  override def isCached: Boolean = false
 }
 
 case class NoAnalysisSourceInfo() extends AnalysisSourceInfo {
