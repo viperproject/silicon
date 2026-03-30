@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyType}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{ChunkIdentifer, GeneralChunk, NonQuantifiedChunk}
 import viper.silicon.resources.FieldID
@@ -21,6 +21,7 @@ import viper.silicon.supporters.{PredicateBranchNode, PredicateContentsTree, Pre
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.dependencyAnalysis.DependencyType
 import viper.silver.verifier.PartialVerificationError
 
 trait PredicateSupportRules extends SymbolicExecutionRules {

@@ -6,11 +6,12 @@
 
 package viper.silicon.interfaces.state
 
-import viper.silicon.dependencyAnalysis.{AnalysisInfo, AssumptionType, DependencyType}
 import viper.silicon
+import viper.silicon.dependencyAnalysis.AnalysisInfo
 import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.{Term, Var}
 import viper.silver.ast
+import viper.silver.dependencyAnalysis.DependencyType
 
 import scala.annotation.unused
 

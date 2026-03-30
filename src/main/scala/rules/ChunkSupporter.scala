@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyType, StringAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
@@ -17,6 +17,7 @@ import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.utils.ast.buildMinExp
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.dependencyAnalysis.{DependencyType, StringAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.VerificationError
 

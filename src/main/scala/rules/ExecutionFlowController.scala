@@ -107,9 +107,6 @@ object executionFlowController extends ExecutionFlowRules {
 
     var localActionSuccess = false
 
-    val analysisSourceInfoStackPrev = v.decider.analysisSourceInfoStack.getAnalysisSourceInfos
-    val analysisSourceInfoStackForcedSource = v.decider.analysisSourceInfoStack.getForcedSource
-
     /* TODO: Consider how to handle situations where the action branches and the first branch
      *       succeeds, i.e. localActionSuccess has been set to true, but the second fails.
      *       Currently, the verification will fail without attempting to remedy the situation,
@@ -143,8 +140,6 @@ object executionFlowController extends ExecutionFlowRules {
             Verifier.config.exhaleMode != ExhaleMode.Greedy
         }
 
-        v.decider.analysisSourceInfoStack.setAnalysisSourceInfo(analysisSourceInfoStackPrev)
-        v.decider.analysisSourceInfoStack.setForcedSource(analysisSourceInfoStackForcedSource)
         action(s0.copy(retrying = true, retryLevel = s.retryLevel, moreCompleteExhale = temporaryMCE), v, (s1, r, v1) => {
           v1.symbExLog.closeScope(sepIdentifier)
           Q(s1.copy(retrying = false, moreCompleteExhale = s0.moreCompleteExhale), r, v1)

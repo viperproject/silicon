@@ -10,7 +10,7 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
@@ -21,6 +21,7 @@ import viper.silver.ast
 import viper.silver.ast.{Exp, NoPosition, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
+import viper.silver.dependencyAnalysis.{DependencyType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.PartialVerificationError
 
@@ -246,7 +247,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  (Q: (State, Chunk, Verifier) => VerificationResult)
                  : VerificationResult = {
 
-    val prevAnalysisStack = v.decider.analysisSourceInfoStack.getAnalysisSourceInfos
 
     val s = if (state.exhaleExt) state else
       state.copy(reserveHeaps = v.heapSupporter.getEmptyHeap(state.program) :: state.h :: Nil)
@@ -444,7 +444,6 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // We execute the continuation Q in a new scope with all branch conditions and all conserved path conditions.
         executionFlowController.locally(s1, v)((s2, v1) => {
-          v1.decider.analysisSourceInfoStack.setAnalysisSourceInfo(prevAnalysisStack)
           val exp = viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._1))
           val expNew = Option.when(withExp)(viper.silicon.utils.ast.BigAnd(branchConditionsExp.map(_._2.get)))
           // Set the branch conditions

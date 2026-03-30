@@ -1,6 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
-import viper.silver.dependencyAnalysis.AbstractReadOnlyDependencyGraph
+import viper.silver.dependencyAnalysis.{AbstractReadOnlyDependencyGraph, AnalysisSourceInfo, AssumptionType}
 
 import java.io.PrintWriter
 import java.nio.file.Paths

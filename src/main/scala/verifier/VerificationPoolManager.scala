@@ -9,13 +9,13 @@ package viper.silicon.verifier
 import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
 import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
 import viper.silicon.Config
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Decl, Term}
 import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis.AnalysisSourceInfo
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 
 import java.util.concurrent._
 

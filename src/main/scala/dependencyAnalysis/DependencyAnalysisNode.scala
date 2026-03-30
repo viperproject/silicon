@@ -1,10 +1,10 @@
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
 import viper.silver.ast.Position
-import viper.silver.dependencyAnalysis.AbstractDependencyAnalysisNode
+import viper.silver.dependencyAnalysis.{AbstractDependencyAnalysisNode, AnalysisSourceInfo, AssumptionType, NoAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 
 
 trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {

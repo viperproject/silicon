@@ -7,13 +7,14 @@
 package viper.silicon.resources
 
 import viper.silicon.Map
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyType}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{QuantifiedBasicChunk, terms}
 import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.dependencyAnalysis.DependencyType
 
 class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) extends PropertyInterpreter {
 

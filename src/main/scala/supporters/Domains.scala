@@ -6,17 +6,18 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, DependencyAnalyzer, AssumptionType, ExpAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
 import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, terms}
 import viper.silicon.toMap
 import viper.silver.ast
-import viper.silver.ast.{MakeInfoPair, NamedDomainAxiom}
+import viper.silver.ast.NamedDomainAxiom
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]

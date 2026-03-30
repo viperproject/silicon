@@ -10,7 +10,6 @@ import com.typesafe.scalalogging.Logger
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
@@ -23,6 +22,7 @@ import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
 import viper.silver.ast.{LocalVarWithVersion, Member, NoPosition}
 import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyAnalysisJoinNodeInfo, DependencyType}
 import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 import viper.silver.verifier.{DependencyNotFoundError, Model}
@@ -65,8 +65,6 @@ trait Decider {
   def registerChunk[CH <: GeneralChunk](buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean): CH
   def registerDerivedChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, analysisInfo: AnalysisInfo, isExhale: Boolean, createLabel: Boolean=true): CH
   def wrapWithDependencyAnalysisLabel(term: Term, sourceChunks: Iterable[Chunk] = Set.empty, sourceTerms: Iterable[Term] = Set.empty): Term
-  def pushAndGetAnalysisSourceInfo(e: ast.Exp, dependencyType: Option[DependencyType]): AnalysisSourceInfo
-  def pushAndGetAnalysisSourceInfo(stmt: ast.Stmt, dependencyType: Option[DependencyType]): AnalysisSourceInfo
   def isPathInfeasible(): Boolean
 
   def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfoes: DependencyAnalysisInfoes): Unit
@@ -116,7 +114,6 @@ trait Decider {
   def statistics(): Map[String, String]
 
   var dependencyAnalyzer: DependencyAnalyzer
-  var analysisSourceInfoStack: AnalysisSourceInfoStack
   def initDependencyAnalyzer(member: Member, preambleNodes: Iterable[DependencyAnalysisNode]): Unit
   def removeDependencyAnalyzer(): Unit
   def getAnalysisInfo(daInfoes: DependencyAnalysisInfoes): AnalysisInfo
@@ -152,7 +149,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private val _debuggerAssumedTerms: mutable.Set[Term] = mutable.Set.empty
 
     var dependencyAnalyzer: DependencyAnalyzer = new NoDependencyAnalyzer()
-    var analysisSourceInfoStack: AnalysisSourceInfoStack = AnalysisSourceInfoStack()
 
     def isDependencyAnalysisEnabled: Boolean = Verifier.config.enableDependencyAnalysis() && !dependencyAnalyzer.isInstanceOf[NoDependencyAnalyzer]
 
@@ -164,12 +160,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }else{
         removeDependencyAnalyzer()
       }
-      analysisSourceInfoStack = AnalysisSourceInfoStack()
     }
 
     override def removeDependencyAnalyzer(): Unit = {
       dependencyAnalyzer = new NoDependencyAnalyzer
-      analysisSourceInfoStack = AnalysisSourceInfoStack()
     }
 
     def getAnalysisInfo(analysisInfoes: DependencyAnalysisInfoes): AnalysisInfo = AnalysisInfo(this, dependencyAnalyzer, analysisInfoes)
@@ -377,35 +371,36 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def pushAnalysisSourceInfo(sourceInfo: AnalysisSourceInfo, info: ast.Info, dependencyType: Option[DependencyType]): Unit = {
-      analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, dependencyType.getOrElse(analysisSourceInfoStack.getDependencyType))
-      if (info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].isDefined) {
-        // add assertions and assumptions nodes that can be used for a graph join
-        val joinNodeInfo = info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].get
-        val currentTopLevelSource = analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource
-        val assertionNode = joinNodeInfo.getAssertionNode(currentTopLevelSource, analysisSourceInfoStack.getDependencyType.assertionType)
-        val assumptionNode = joinNodeInfo.getAssumptionNode(currentTopLevelSource)
-        dependencyAnalyzer.addAssertionNode(assertionNode)
-        dependencyAnalyzer.addAssumptionNode(assumptionNode)
-        dependencyAnalyzer.addDependency(Some(assumptionNode.id), Some(assertionNode.id))
-      }
+//      analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, dependencyType.getOrElse(analysisSourceInfoStack.getDependencyType))
+      // TODO ake: frontend join
+//      if (info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].isDefined) {
+//        // add assertions and assumptions nodes that can be used for a graph join
+//        val joinNodeInfo = info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].get
+//        val currentTopLevelSource = analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource
+//        val assertionNode = joinNodeInfo.getAssertionNode(currentTopLevelSource, analysisSourceInfoStack.getDependencyType.assertionType)
+//        val assumptionNode = joinNodeInfo.getAssumptionNode(currentTopLevelSource)
+//        dependencyAnalyzer.addAssertionNode(assertionNode)
+//        dependencyAnalyzer.addAssumptionNode(assumptionNode)
+//        dependencyAnalyzer.addDependency(Some(assumptionNode.id), Some(assertionNode.id))
+//      }
     }
 
 
 
     def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfoes: DependencyAnalysisInfoes): Unit = {
       if (finalExp.isDefined) {
-        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), analysisSourceInfoStack.getFullSourceInfo, enforceAssumption = false, isDefinition = false, analysisInfoes)
+        assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), analysisInfoes.getSourceInfo, enforceAssumption = false, isDefinition = false, analysisInfoes)
       } else {
-        assume(assumptions=InsertionOrderedSet((t, None)), analysisSourceInfoStack.getFullSourceInfo, enforceAssumption = false, isDefinition = false, analysisInfoes)
+        assume(assumptions=InsertionOrderedSet((t, None)), analysisInfoes.getSourceInfo, enforceAssumption = false, isDefinition = false, analysisInfoes)
       }
     }
 
     def assume(t: Term, debugExp: Option[DebugExp], analysisInfoes: DependencyAnalysisInfoes): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), analysisSourceInfoStack.getFullSourceInfo, enforceAssumption = false, isDefinition = false, analysisInfoes)
+      assume(InsertionOrderedSet(Seq((t, debugExp))), analysisInfoes.getSourceInfo, enforceAssumption = false, isDefinition = false, analysisInfoes)
     }
 
     def assumeDefinition(t: Term, debugExp: Option[DebugExp], analysisInfoes: DependencyAnalysisInfoes): Unit = {
-      assume(InsertionOrderedSet(Seq((t, debugExp))), analysisSourceInfoStack.getFullSourceInfo, enforceAssumption=false, isDefinition=true, analysisInfoes)
+      assume(InsertionOrderedSet(Seq((t, debugExp))), analysisInfoes.getSourceInfo, enforceAssumption=false, isDefinition=true, analysisInfoes)
     }
 
     def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], analysisSourceInfo: AnalysisSourceInfo, enforceAssumption: Boolean, isDefinition: Boolean, analysisInfoes: DependencyAnalysisInfoes): Unit = {

@@ -8,6 +8,7 @@ import viper.silicon.state.terms.sorts.Bool
 import viper.silicon.state.terms.{NoPerm, Term, True, Var}
 import viper.silver.ast
 import viper.silver.ast._
+import viper.silver.dependencyAnalysis.{AssumptionType, StringAnalysisSourceInfo}
 import viper.silver.frontend.SilFrontend
 
 import java.nio.file.Paths

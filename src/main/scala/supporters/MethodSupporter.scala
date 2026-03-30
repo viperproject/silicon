@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisInfoes, DependencyAnalysisJoinNodeInfo, DependencyAnalyzer, DependencyGraphInterpreter, DependencyType, SimpleAssertionNode, SimpleAssumptionNode}
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
@@ -20,6 +20,7 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo}
 import viper.silver.verifier.errors._
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
@@ -83,22 +84,23 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
 
       val daJoinNodeInfoOpt = method.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
-      if(daJoinNodeInfoOpt.isDefined){
-        val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
-        // v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
-        val postCondNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
-        val postCondAssertNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
-        val customJoinNode = infodaJoinNodeInfo.getAssertionNode
-        postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
-        postCondAssertNodes foreach v.decider.dependencyAnalyzer.addAssertionNode
-
-        v.decider.dependencyAnalyzer.addAssertionNode(customJoinNode)
-
-        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
-        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
-        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
-        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
-      }
+      // TODO ake: frontend join
+//      if(daJoinNodeInfoOpt.isDefined){
+//        val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
+//        // v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
+//        val postCondNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+//        val postCondAssertNodes = (posts ++ pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+//        val customJoinNode = infodaJoinNodeInfo.getAssertionNode
+//        postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
+//        postCondAssertNodes foreach v.decider.dependencyAnalyzer.addAssertionNode
+//
+//        v.decider.dependencyAnalyzer.addAssertionNode(customJoinNode)
+//
+//        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
+//        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
+//        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
+//        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
+//      }
 
       errorsReportedSoFar.set(0)
       val result =

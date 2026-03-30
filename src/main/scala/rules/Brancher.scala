@@ -8,14 +8,15 @@ package viper.silicon.rules
 
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyAnalyzer, DependencyType}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyAnalyzer}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
-import viper.silicon.reporting.condenseToViperResult
+import viper.silicon.reporting.{condenseToViperResult, convertToViperResult}
 import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.Expressions
+import viper.silver.dependencyAnalysis.DependencyType
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
 
@@ -46,15 +47,14 @@ object brancher extends BranchingRules {
             : VerificationResult = {
 
     if(v.decider.isPathInfeasible()){
-      val analysisSourceInfo = v.decider.pushAndGetAnalysisSourceInfo(conditionExp._1, Some(DependencyAnalyzer.extractDependencyTypeFromInfo(conditionExp._1.info).getOrElse(DependencyType.PathCondition)))
+      val analysisInfoes1 = analysisInfoes.addInfo(conditionExp._1.info, conditionExp._1)
 // FIXME ake: infeasible path
       //      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(conditionExp._1, s.program)
 //      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo.getTopLevelSource, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
       if(!Expressions.isKnownWellDefined(conditionExp._1, Some(s.program))){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes1)
       }
-      v.decider.dependencyAnalyzer.addAssumption(condition, analysisInfoes)
-      v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(analysisSourceInfo)
+      v.decider.dependencyAnalyzer.addAssumption(condition, analysisInfoes1)
       return fThen(s, v).combine(fElse(s, v))
     }
 
@@ -73,19 +73,17 @@ object brancher extends BranchingRules {
           && s.quantifiedVariables.map(_._1).exists(condition.freeVariables.contains))
     )
 
-    val sourceInfo = v.decider.pushAndGetAnalysisSourceInfo(conditionExp._1, Some(DependencyType.get(conditionExp._1, DependencyType.PathCondition)))
+    val analysisInfoes1 = analysisInfoes.addInfo(conditionExp._1.info, conditionExp._1)
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), analysisInfoes.withDependencyType(DependencyType.Internal)))
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(), analysisInfoes1.withDependencyType(DependencyType.Internal)))
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout(), analysisInfoes.withDependencyType(DependencyType.Internal)))
-
-    v.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
+      || !v.decider.check(condition, Verifier.config.checkTimeout(), analysisInfoes1.withDependencyType(DependencyType.Internal)))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
@@ -115,7 +113,6 @@ object brancher extends BranchingRules {
     var macrosOfElseBranchDecider: Seq[MacroDecl] = null
     var pcsForElseBranch: PathConditionStack = null
     var noOfErrors = 0
-    val currentAnalysisSourceInfos = v.decider.analysisSourceInfoStack.getAnalysisSourceInfos
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch || Verifier.config.disableInfeasibilityChecks()) {
@@ -162,13 +159,10 @@ object brancher extends BranchingRules {
           }
           elseBranchVerifier = v0.uniqueId
 
-          v0.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            val sourceInfo = v.decider.pushAndGetAnalysisSourceInfo(conditionExp._1, Some(DependencyType.get(conditionExp._1, DependencyType.PathCondition)))
-            v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), analysisInfoes)
-            if(v.decider.isDependencyAnalysisEnabled && !executeElseBranch) v.decider.checkSmokeAndSetInfeasibilityNode(analysisInfoes)
-            v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
+            v1.decider.setCurrentBranchCondition(negatedCondition, (negatedConditionExp, negatedConditionExpNew), analysisInfoes1)
+            if(v.decider.isDependencyAnalysisEnabled && !executeElseBranch) v.decider.checkSmokeAndSetInfeasibilityNode(analysisInfoes1)
 
             var functionsOfElseBranchdDeciderBefore: Set[FunctionDecl] = null
             var nMacrosOfElseBranchDeciderBefore: Int = 0
@@ -216,13 +210,10 @@ object brancher extends BranchingRules {
     val res = {
       val thenRes = if (executeThenBranch || Verifier.config.disableInfeasibilityChecks()) {
           v.symbExLog.markReachable(uidBranchPoint)
-          v.decider.analysisSourceInfoStack.setAnalysisSourceInfo(currentAnalysisSourceInfos)
           executionFlowController.locally(s, v)((s1, v1) => {
             v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-            val sourceInfo = v.decider.pushAndGetAnalysisSourceInfo(conditionExp._1, Some(DependencyType.get(conditionExp._1, DependencyType.PathCondition)))
-            v1.decider.setCurrentBranchCondition(condition, conditionExp, analysisInfoes)
-            if(v.decider.isDependencyAnalysisEnabled && !executeThenBranch) v.decider.checkSmokeAndSetInfeasibilityNode(analysisInfoes)
-            v1.decider.analysisSourceInfoStack.popAnalysisSourceInfo(sourceInfo)
+            v1.decider.setCurrentBranchCondition(condition, conditionExp, analysisInfoes1)
+            if(v.decider.isDependencyAnalysisEnabled && !executeThenBranch) v.decider.checkSmokeAndSetInfeasibilityNode(analysisInfoes1)
 
             fThen(v1.stateConsolidator(s1).consolidateOptionally(s1, v1), v1)
           })

@@ -16,6 +16,7 @@ import viper.silicon.utils.ast.BigAnd
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.dependencyAnalysis.{DependencyType, StringAnalysisSourceInfo}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 

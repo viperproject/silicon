@@ -2,7 +2,8 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.JoinType.JoinType
 import viper.silver.ast
-import viper.silver.ast.NoPosition
+import viper.silver.ast.{AbstractAssign, Apply, Assert, Assume, DependencyTypeInfo, Exhale, ExtensionStmt, Fold, Goto, If, Inhale, Label, LocalVarDeclStmt, MethodCall, NewStmt, NoPosition, Quasihavoc, Quasihavocall, Seqn, Unfold, While}
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType, StringAnalysisSourceInfo}
 
 
 trait AnalysisInfoes {
@@ -41,7 +42,8 @@ case class DependencyAnalysisInfoes(sourceInfoes: List[AnalysisSourceInfo], depe
 
   def getDependencyType: DependencyType = dependencyTypes.head.dependencyType
 
-  def getMergeInfo: DependencyAnalysisMergeInfo = mergeInfoes.head // TODO
+  def getMergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
+//    mergeInfoes.head // TODO
 
   def getJoinInfo: List[DependencyAnalysisJoinInfo] = joinInfoes
 
@@ -65,11 +67,7 @@ object DependencyAnalysisInfoes {
     create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType)
 }
 
-case class DependencyTypeInfo(dependencyType: DependencyType) extends ast.Info {
 
-  override def comment: Seq[String] = Nil
-  override def isCached: Boolean = false
-}
 
 
 object JoinType extends Enumeration {

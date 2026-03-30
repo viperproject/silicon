@@ -7,11 +7,10 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.dependencyAnalysis.AssumptionType.{AssumptionType, ExplicitPostcondition, ImplicitPostcondition}
-import viper.silicon.dependencyAnalysis._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
@@ -19,10 +18,6 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
-import viper.silicon.supporters.PredicateData
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.Decider
-import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.supporters.{AnnotationSupporter, PredicateData}
 import viper.silicon.utils.ast.{BigAnd, simplifyVariableName}
 import viper.silicon.utils.{freshSnap, toSf}
@@ -32,6 +27,8 @@ import viper.silver.ast
 import viper.silver.ast.LocalVarWithVersion
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyType}
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.parser.PType
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
 
@@ -284,22 +281,23 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
 
       val daJoinNodeInfoOpt = function.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
-      if(daJoinNodeInfoOpt.isDefined){
-        val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
-//        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
-        val postCondNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
-        val postCondAssertNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
-        val customJoinNode = infodaJoinNodeInfo.getAssertionNode
-
-        postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
-        postCondAssertNodes foreach v.decider.dependencyAnalyzer.addAssertionNode
-        v.decider.dependencyAnalyzer.addAssertionNode(customJoinNode)
-
-        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
-        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
-        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
-        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
-      }
+      // TODO ake: frontend join
+//      if(daJoinNodeInfoOpt.isDefined){
+//        val infodaJoinNodeInfo = daJoinNodeInfoOpt.get
+////        v.decider.analysisSourceInfoStack.addAnalysisSourceInfo(infodaJoinNodeInfo.sourceInfo, DependencyType.make(AssumptionType.CustomInternal))
+//        val postCondNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssumptionNode(True, None, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+//        val postCondAssertNodes = (posts ++ function.pres).flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.ImplicitPostcondition, isClosed=false, isJoinNode=true))
+//        val customJoinNode = infodaJoinNodeInfo.getAssertionNode
+//
+//        postCondNodes foreach v.decider.dependencyAnalyzer.addAssumptionNode
+//        postCondAssertNodes foreach v.decider.dependencyAnalyzer.addAssertionNode
+//        v.decider.dependencyAnalyzer.addAssertionNode(customJoinNode)
+//
+//        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
+//        postCondNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
+//        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(customJoinNode.id), Some(n.id)))
+//        postCondAssertNodes foreach (n => v.decider.dependencyAnalyzer.addDependency(Some(n.id), Some(customJoinNode.id)))
+//      }
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
@@ -317,7 +315,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 val eNew = ast.EqCmp(ast.Result(function.typ)(), bodyNew.get)(function.pos, function.info, function.errT)
                 Some(DebugExp.createInstance(e, eNew))
               } else { None }
-              val bodyAnalysisSourceInfoes = DependencyAnalysisInfoes.create(AnalysisSourceInfo.createAnalysisSourceInfo(body), DependencyType.get(body,DependencyType.make(AssumptionType.FunctionBody)))
+              val bodyAnalysisSourceInfoes = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.addInfo(body.info, body)
               decider.assume(BuiltinEquals(data.formalResult, tBody), debugExp, bodyAnalysisSourceInfoes)
               consumes(s2, posts, false, postconditionViolated, v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s3, _, _) => {
                 recorders :+= s3.functionRecorder

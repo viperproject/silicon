@@ -1,14 +1,13 @@
 package viper.silicon.dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.AssumptionType.{AssumptionType, CustomInternal}
-import viper.silicon.dependencyAnalysis.DependencyAnalyzer.{runtimeOverheadPermissionNodes, startTimeMeasurement, stopTimeMeasurementAndAddToTotal, timeToAddTransitiveEdges, timeToMergeNodes, timeToProcessUnsatCore, timeToRemoveInternalNodes}
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer._
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.utility.Expressions.isKnownWellDefined
-import viper.silver.ast.{Apply, Applying, Assert, Asserting, Assume, Div, Exhale, Exp, ExtensionStmt, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, FuncApp, Goto, If, Inhale, Label, LocalVarAssign, LocalVarDeclStmt, MapLookup, MethodCall, Mod, NewStmt, Package, Program, Quasihavoc, Quasihavocall, SeqIndex, Seqn, Stmt, Unfold, Unfolding, While}
-import viper.silver.ast.utility.{Expressions, ViperStrategy}
+import viper.silver.ast.{NoPerm, _}
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType, FrontendDependencyAnalysisInfo}
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
@@ -217,7 +216,7 @@ object DependencyAnalyzer {
     stopTimeMeasurementAndAddToTotal(startTime, timeForFunctionJoin)
     startTime = startTimeMeasurement()
     
-    val customInternalNodes = joinCandidateAssumptions.filter(_.assumptionType.equals(CustomInternal)).map(_.id)
+    val customInternalNodes = joinCandidateAssumptions.filter(_.assumptionType.equals(AssumptionType.CustomInternal)).map(_.id)
     // postconditions of methods assumed by every method call should depend on the assertions that justify them
     // hence, we add edges from assertions of method postconditions to assumptions of the same postcondition (at method calls)
     val relevantAssumptionNodes = joinCandidateAssumptions
@@ -338,7 +337,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def registerExhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo): CH = {
     val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
-    val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
+    val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm.asInstanceOf[Term]))
     val chunkNode = addPermissionExhaleNode(chunk, chunk.perm, analysisInfo.analysisInfoes.getSourceInfo, analysisInfo.analysisInfoes.getDependencyType.assertionType, labelNode)
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
@@ -350,7 +349,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def registerInhaleChunk[CH <: GeneralChunk](sourceChunks: Set[Chunk], buildChunk: Term => CH, perm: Term, labelNodeOpt: Option[LabelNode], analysisInfo: AnalysisInfo): CH = {
     val startTime = startTimeMeasurement()
     val labelNode = labelNodeOpt.get
-    val chunk = buildChunk(Ite(labelNode.term, perm, NoPerm))
+    val chunk = buildChunk(Ite((labelNode.term, perm, NoPerm.asInstanceOf[Term])))
     val chunkNode = addPermissionInhaleNode(chunk, chunk.perm, analysisInfo.analysisInfoes.getSourceInfo, analysisInfo.analysisInfoes.getDependencyType.assumptionType, labelNode, isJoinNode=analysisInfo.analysisInfoes.getJoinInfo.exists(_.isJoin))
     if(chunkNode.isDefined)
       addDependency(chunkNode, Some(labelNode.id))
@@ -406,7 +405,6 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addAssertionFailedNode(failedAssertion: Term, analysisInfoes: DependencyAnalysisInfoes): Option[Int] = {
-    val assumptionType = if(AssumptionType.postconditionTypes.contains(analysisInfoes.getDependencyType.assumptionType)) AssumptionType.ExplicitPostcondition else AssumptionType.Explicit
     val assumeNode = SimpleAssumptionNode(failedAssertion, None, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, analysisInfoes.getJoinInfo.exists(_.isJoin))
     val assertFailedNode = SimpleAssertionNode(failedAssertion, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo.isMerge, hasFailed=true, isJoinNode=analysisInfoes.getJoinInfo.exists(_.isJoin))
     dependencyGraph.addNode(assumeNode)

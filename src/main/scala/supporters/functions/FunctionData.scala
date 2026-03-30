@@ -7,9 +7,8 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalyzer, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.dependencyAnalysis.DependencyAnalyzer
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, PermMapDefinition, SnapshotMapDefinition, functionSupporter}
 import viper.silicon.state.terms._
@@ -22,6 +21,8 @@ import viper.silicon.{Config, Map, toMap}
 import viper.silver.ast
 import viper.silver.ast.LocalVarWithVersion
 import viper.silver.ast.utility.Functions
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, ExpAnalysisSourceInfo, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 

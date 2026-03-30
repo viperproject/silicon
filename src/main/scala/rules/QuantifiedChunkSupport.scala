@@ -27,7 +27,7 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.NoPosition
+import viper.silver.dependencyAnalysis.DependencyType
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
@@ -794,8 +794,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           optSmDomainDefinitionCondition: Option[Term] = None,
                           optQVarsInstantiations: Option[Seq[Term]] = None)
                          : (State, SnapshotMapDefinition, PermMapDefinition) = {
-    v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.dependencyAnalyzer.disableTransitiveEdges()
     val (smDef, smCache) =
       summarisingSnapshotMap(
         s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition, optQVarsInstantiations)
@@ -807,8 +805,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s1, resource, codomainQVars, relevantChunks, smDef, v)
 
     val s2 = s1.copy(pmCache = pmCache, functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef).recordPermMap(pmDef))
-    v.decider.analysisSourceInfoStack.removeForcedSource()
-    v.decider.dependencyAnalyzer.enableTransitiveEdges()
     (s2, smDef, pmDef)
   }
 
@@ -821,16 +817,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                           relevantChunks: Seq[QuantifiedBasicChunk],
                           v: Verifier)
   : (State, PermMapDefinition) = {
-    v.decider.analysisSourceInfoStack.setForcedSource("summarizing heap")
-    v.decider.dependencyAnalyzer.disableTransitiveEdges()
     val s1 = s
     val (pmDef, pmCache) =
       quantifiedChunkSupporter.summarisingPermissionMap(
         s1, resource, codomainQVars, relevantChunks, null, v)
 
     val s2 = s1.copy(pmCache = pmCache)
-    v.decider.analysisSourceInfoStack.removeForcedSource()
-    v.decider.dependencyAnalyzer.enableTransitiveEdges()
     (s2, pmDef)
   }
 
@@ -1181,9 +1173,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val comment = "Nested auxiliary terms: globals"
     v.decider.prover.comment(comment)
-    v.decider.analysisSourceInfoStack.setForcedSource(comment)
-    v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, analysisInfoes=analysisInfoes.withDependencyType(DependencyType.Internal))
-    v.decider.analysisSourceInfoStack.removeForcedSource()
+    v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=comment, children=auxGlobalsExp.get)), enforceAssumption = false, analysisInfoes=DependencyAnalysisInfoes.create(comment, DependencyType.Internal))
 
     val comment2 = "Nested auxiliary terms: non-globals"
     v.decider.prover.comment(comment2)

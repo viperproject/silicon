@@ -11,7 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes
-import viper.silicon.dependencyAnalysis.{AssumptionType, DependencyAnalysisInfoes, DependencyAnalyzer, DependencyType, StringAnalysisSourceInfo}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -24,6 +24,7 @@ import viper.silver.ast.utility.Statements
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
+import viper.silver.dependencyAnalysis.{DependencyType, StringAnalysisSourceInfo}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
@@ -568,8 +569,7 @@ object executor extends ExecutionRules {
           val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
                            recordVisited = true)
 
-          v1.decider.analysisSourceInfoStack.isJoinRelevantNode = true
-          consumes(s2, meth.pres, false, _ => pvePre, v1, analysisInfoes)((s3, _, v2) => {
+          consumes(s2, meth.pres, false, _ => pvePre, v1, analysisInfoes)((s3, _, v2) => { // TODO ake: join
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
@@ -577,7 +577,6 @@ object executor extends ExecutionRules {
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, analysisInfoes)((s5, v3) => {
-              v3.decider.analysisSourceInfoStack.isJoinRelevantNode = false
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)

@@ -1,9 +1,10 @@
 package dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisNode, GeneralAssertionNode, GeneralAssumptionNode, StringAnalysisSourceInfo}
-import viper.silicon.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.state.terms.{And, Term}
 import viper.silver.ast.Position
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 
 object UserLevelDependencyAnalysisNode {
 

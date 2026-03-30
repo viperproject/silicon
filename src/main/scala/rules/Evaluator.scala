@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyType}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.ChunkIdentifer
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
@@ -25,6 +25,7 @@ import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
 import viper.silver.ast.utility.Expressions
 import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, WeightedQuantifier}
+import viper.silver.dependencyAnalysis.DependencyType
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
@@ -597,7 +598,6 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-        val dependencyType = v.decider.analysisSourceInfoStack.getDependencyType
         evals2(s, eArgs, Nil, _ => pve, v, analysisInfoes)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
@@ -671,10 +671,7 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            val oldIsRelevantJoinNode = v2.decider.analysisSourceInfoStack.isJoinRelevantNode
-            v2.decider.analysisSourceInfoStack.isJoinRelevantNode = true
-            consumes(s3, pres, true, _ => pvePre, v2, analysisInfoes)((s4, snap, v3) => {
-              v3.decider.analysisSourceInfoStack.isJoinRelevantNode = oldIsRelevantJoinNode
+            consumes(s3, pres, true, _ => pvePre, v2, analysisInfoes)((s4, snap, v3) => { // TODO ake: join!
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
