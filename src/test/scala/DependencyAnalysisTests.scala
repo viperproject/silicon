@@ -65,9 +65,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
         resetFrontend()
         executeTest(dirName + "/", fileName, frontend)
       }catch{
-        case t: Throwable =>
-          println(t.getMessage)
-          fail(t)
+        case t: Throwable => fail(t)
       }
     }
   }
