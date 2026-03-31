@@ -72,7 +72,7 @@ trait GeneralAssertionNode extends DependencyAnalysisNode {
 
   val hasFailed: Boolean
 
-  def getAssertFailedNode(): GeneralAssertionNode
+  def getAssertFailedNode: GeneralAssertionNode
 }
 
 // this is not strictly needed anymore but storing the chunk and label node is useful for debugging purposes
@@ -93,14 +93,14 @@ case class AxiomAssumptionNode(term: Term, description: Option[String], sourceIn
 case class SimpleAssertionNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin], hasFailed: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + term.toString
 
-  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, hasFailed=true, joinInfos=joinInfos)
+  override def getAssertFailedNode: GeneralAssertionNode = SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, hasFailed=true, joinInfos=joinInfos)
 }
 
 case class SimpleCheckNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin], hasFailed: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "check " + term
   override def getNodeType: String = "Check"
 
-  override def getAssertFailedNode(): GeneralAssertionNode = SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinInfos, hasFailed=true)
+  override def getAssertFailedNode: GeneralAssertionNode = SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinInfos, hasFailed=true)
 }
 
 case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, labelNode: LabelNode, joinInfos: List[SimpleDependencyAnalysisJoin], _id: Option[Int]=None) extends GeneralAssumptionNode with ChunkAnalysisInfo {
@@ -112,7 +112,7 @@ case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSo
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.toString
 
-  override def getAssertFailedNode(): GeneralAssertionNode = PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfos, hasFailed=true, _id=_id)
+  override def getAssertFailedNode: GeneralAssertionNode = PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfos, hasFailed=true, _id=_id)
 }
 
 /**

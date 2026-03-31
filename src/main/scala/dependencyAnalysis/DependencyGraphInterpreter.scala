@@ -40,7 +40,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Sink)))
   val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Source)))
 
-  def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfos.nonEmpty)
+  private def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfos.nonEmpty)
   
   private def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
   
@@ -344,7 +344,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     (numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble
   }
 
-  def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = sourceToAssertionNodes.filter(ass => ass._2.map(_.assumptionType).intersect(AssumptionType.importedTypes).isEmpty)
+  private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = sourceToAssertionNodes.filter(ass => ass._2.map(_.assumptionType).intersect(AssumptionType.importedTypes).isEmpty)
 
   def computeVerificationProgressOptimized(): (Double, Double, String)  = {
 
@@ -517,7 +517,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       .toList.sortBy(_._2).reverse
   }
 
-  def getAssertionsWithZeroQuality: Set[AnalysisSourceInfo] = {
+  private def getAssertionsWithZeroQuality: Set[AnalysisSourceInfo] = {
     val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
     allAssertions.filter(assertion => assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)).getSourceSet()
   }

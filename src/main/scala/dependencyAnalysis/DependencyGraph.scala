@@ -152,7 +152,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   }
 
 
-  def addVacuousProof(assertionId: Int) = {
+  def addVacuousProof(assertionId: Int): Unit = {
     vacuousProofs = assertionId +: vacuousProofs
   }
 

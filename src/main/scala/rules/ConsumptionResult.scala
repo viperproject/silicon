@@ -6,11 +6,11 @@
 
 package viper.silicon.rules
 
-import viper.silicon.dependencyAnalysis.{AnalysisInfos, DependencyAnalysisInfos}
-import viper.silicon.state.terms.{Forall, Term, Var}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.state.terms.perms.IsNonPositive
-import viper.silver.ast
+import viper.silicon.state.terms.{Forall, Term, Var}
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 
 sealed trait ConsumptionResult {
   def isComplete: Boolean

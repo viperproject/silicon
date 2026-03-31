@@ -6,7 +6,6 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.JoinType.JoinType
 import viper.silver.ast._
-import viper.silver.dependencyAnalysis.{AssumptionType, DependencyType, FrontendDependencyAnalysisInfo}
 
 import scala.collection.mutable
 
@@ -208,7 +207,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       Some(SimpleAssertionNode(term, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo))
   }
   
-  def addAssertNode(term: Term, analysisInfos: DependencyAnalysisInfos): Option[Int] = {
+  private def addAssertNode(term: Term, analysisInfos: DependencyAnalysisInfos): Option[Int] = {
     val node = createAssertOrCheckNode(term, analysisInfos, isCheck=false)
     node foreach addAssertionNode
     node map (_.id)

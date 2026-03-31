@@ -5,10 +5,7 @@ import viper.silver.ast.{DependencyAnalysisJoinInfo, DependencyAnalysisMergeInfo
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType, StringAnalysisSourceInfo}
 
 
-trait AnalysisInfos {
-}
-
-case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node]) extends AnalysisInfos {
+case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node]) {
 
   def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
     val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
@@ -74,10 +71,6 @@ object DependencyAnalysisInfos {
   def create(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
     create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType)
 }
-
-
-
-
 
 
 

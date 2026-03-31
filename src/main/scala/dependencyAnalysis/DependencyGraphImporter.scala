@@ -16,7 +16,7 @@ import scala.io.Source
 
 object DependencyGraphImporter {
 
-  lazy val dummyLabelNode: LabelNode = LabelNode(dummyVar)
+  private lazy val dummyLabelNode: LabelNode = LabelNode(dummyVar)
   lazy val dummyVar: Var = Var.actualCreate((SimpleIdentifier("a"), Bool, false))
   lazy val frontend: SiliconFrontend = createFrontend(Seq.empty)
 
@@ -53,7 +53,7 @@ object DependencyGraphImporter {
         throw new IllegalArgumentException("Error: --graphFolder argument is required but not found.")
   }
 
-  def runUserTool(args: Array[String], userTool: DependencyAnalysisUserTool): Unit = {
+  private def runUserTool(args: Array[String], userTool: DependencyAnalysisUserTool): Unit = {
     val cmdsIndex = args.indexOf("--cmds")
 
     val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) Some(args(cmdsIndex + 1).split(";").map(_.trim)) else None
@@ -68,14 +68,14 @@ object DependencyGraphImporter {
   }
 
 
-  def importGraphFromCsv(csvFilePath: String): ReadOnlyDependencyGraph = {
+  private def importGraphFromCsv(csvFilePath: String): ReadOnlyDependencyGraph = {
     val graph = new DependencyGraph()
     createNodesFromCsv(graph, csvFilePath)
     createEdgesFromCsv(graph, csvFilePath)
     graph
   }
 
-  def createNodesFromCsv(graph: DependencyGraph, csvFilePath: String): Unit = {
+  private def createNodesFromCsv(graph: DependencyGraph, csvFilePath: String): Unit = {
 
     val bufferedSource = Source.fromFile(csvFilePath + "/nodes.csv")
     for (line <- bufferedSource.getLines().drop(1)) {
@@ -99,10 +99,10 @@ object DependencyGraphImporter {
       val node = nodeType match {
         case "Assumption" => SimpleAssumptionNode(term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, _id=nodeId)
         case "Axiom" => AxiomAssumptionNode(term, description, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, _id=nodeId)
-        case "Assertion" => SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, hasFailed = false, _id=nodeId)
-        case "Check" => SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, hasFailed = false, _id=nodeId)
+        case "Assertion" => SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, _id=nodeId)
+        case "Check" => SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinNodeInfos, _id=nodeId)
         case "Inhale" => PermissionInhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, _id=nodeId)
-        case "Exhale" => PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, hasFailed = false, _id=nodeId)
+        case "Exhale" => PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinNodeInfos, _id=nodeId)
         case "Label" => LabelNode(dummyVar, _id=nodeId)
         case "Infeasible" => InfeasibilityNode(sourceInfo, assumptionType, _id=nodeId)
         case _ => throw new IllegalArgumentException(s"Unknown node type: $nodeType")
@@ -113,7 +113,7 @@ object DependencyGraphImporter {
     bufferedSource.close()
   }
 
-  def createEdgesFromCsv(graph: DependencyGraph, csvFilePath: String): Unit = {
+  private def createEdgesFromCsv(graph: DependencyGraph, csvFilePath: String): Unit = {
 
     val bufferedSource = Source.fromFile(csvFilePath + "/edges.csv")
     for (line <- bufferedSource.getLines().drop(1)) {
@@ -153,7 +153,7 @@ object DependencyGraphImporter {
     frontend.translationResult
   }
 
-  def parsePositionString(positionString: String): Position = positionString match {
+  private def parsePositionString(positionString: String): Position = positionString match {
     case "???" => NoPosition
     case str if str.startsWith("label ") =>
       val identifier = str.stripPrefix("label ")

@@ -188,7 +188,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println(s"Finished in ${naiveTime}ms")
   }
 
-  protected def getSourceInfoString(nodes: Set[DependencyAnalysisNode]): String = {
+  private def getSourceInfoString(nodes: Set[DependencyAnalysisNode]): String = {
     UserLevelDependencyAnalysisNode.mkUserLevelString(nodes, "\n\t")
   }
 
@@ -452,7 +452,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     writer.close()
   }
 
-  def handleVerificationGuidanceQuery(): Unit = {
+  private def handleVerificationGuidanceQuery(): Unit = {
 
     val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking().filter(_._2 > 0.0)
     println(s"Assumptions/unverified assertions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
@@ -464,7 +464,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println(s"\nMethods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
   }
 
-  def handleVerificationGuidanceOldQuery(): Unit = {
+  private def handleVerificationGuidanceOldQuery(): Unit = {
 
     val assumptionRanking = fullGraphInterpreter.computeAssumptionRankingOld().filter(_._2 > 0)
     println(s"Assumptions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
