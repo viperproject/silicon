@@ -254,12 +254,6 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
     computeVerificationProgressOptimized()
   }
 
-// TODO ake: remove profiling artifacts
-//  var perMethodDependencyRuntime: Long = 0L
-//  var depsToPostcondRuntime: Long = 0L
-//  var aggregationOfSummaryNodesRuntime: Long = 0L
-//  var filteringNodesRuntime: Long = 0L
-
   private lazy val sourceToAssertionNodes: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
 
@@ -407,14 +401,10 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
 //    println(s"#assertions: ${allAssertions.size}")
 
-//    val startTime = System.nanoTime()
-    // TODO ake: this is suuuper slow. Can we reuse previously computed results? Caching?
+		// This is super slow. See optimized progress computation.
     val relevantDependenciesPerAssertion = allAssertions
       .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
       .filter{case (ass, assumptions) => assumptions.nonEmpty || ass.hasFailures  || ass.assertionTypes.contains(AssumptionType.ExplicitPostcondition)} // filter out trivial assertions like `assert true`
-
-//    val endTime = System.nanoTime()
-//    println(s"Runtime of computing dependencies per assertion: ${(endTime-startTime)/1e6}ms")
 
     val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2).filter(_.assumptionTypes.nonEmpty).toSet
 

@@ -20,8 +20,8 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{EdgeType, EvalStackDependencyAnalysisJoin, JoinType}
 import viper.silver.ast.utility.Statements
+import viper.silver.ast.{EdgeType, EvalStackDependencyAnalysisJoin, JoinType}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
@@ -96,7 +96,7 @@ object executor extends ExecutionRules {
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
       case cfg.Kind.Out if !v.decider.isPathInfeasible =>
-        val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos // TODO ake
+        val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
         val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v, analysisInfos)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
           invariantContexts = s.invariantContexts.tail)
@@ -459,7 +459,7 @@ object executor extends ExecutionRules {
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v, analysisInfos)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            if(v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmokeAndSetInfeasibilityNode(analysisInfos)
+            if(v1.decider.isDependencyAnalysisEnabled && a.isInstanceOf[ast.FalseLit]) v1.decider.checkSmoke(analysisInfos)
             Q(s1, v1)})
       }
 
@@ -475,7 +475,7 @@ object executor extends ExecutionRules {
             QS(s1.copy(h = s.h), v1)
           else {
             val failure = createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))
-            if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(False, analysisInfos, v1.reportFurtherErrors())
+            if(s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, analysisInfos, v1.reportFurtherErrors())
             if(s1.retryLevel == 0 && v1.reportFurtherErrors()) failure combine QS(s1, v1) else failure
           }
         })((s2, v2) =>
@@ -536,7 +536,7 @@ object executor extends ExecutionRules {
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
-        val s1 = v.stateConsolidator(s).consolidate(s, v) // TODO ake: pass assumption Type?
+        val s1 = v.stateConsolidator(s).consolidate(s, v)
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>

@@ -208,7 +208,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     predecessors foreach (pid => edges.update(pid, edges.getOrElse(pid, Set.empty).filter(_ != id) ++ successors))
   }
 
-  // TODO ake: maybe move to DependencyAnalyzer?
+
   def removeLabelNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = n.isInstanceOf[LabelNode]
 
@@ -245,7 +245,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   private def exportNodes(fileName: String): Unit = {
     val sep = "#"
     def getNodeExportString(node: DependencyAnalysisNode): String = {
-      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.sourceInfo.toString /* TODO ake: merge info */, node.sourceInfo.getDescription)
+      val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.mergeInfo.toString, node.sourceInfo.getDescription)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
     val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source", "description")

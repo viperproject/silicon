@@ -29,7 +29,7 @@ object permissionSupporter extends SymbolicExecutionRules {
           case false =>
             val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
             val failure = createFailure(pve dueTo NegativePermission(ePerm), v, s, perms.IsNonNegative(tPerm), assertExp)
-            if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(perms.IsNonNegative(tPerm), analysisInfos, v.reportFurtherErrors())
+            if(s.retryLevel == 0) v.decider.handleFailedAssertion(perms.IsNonNegative(tPerm), analysisInfos, v.reportFurtherErrors())
             if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
     }
@@ -47,7 +47,7 @@ object permissionSupporter extends SymbolicExecutionRules {
           case true => Q(s, v)
           case false =>
             val failure = createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), Option.when(withExp)(perms.IsPositive(ePerm)()))
-            if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(perms.IsPositive(tPerm), analysisInfos, v.reportFurtherErrors())
+            if(s.retryLevel == 0) v.decider.handleFailedAssertion(perms.IsPositive(tPerm), analysisInfos, v.reportFurtherErrors())
             if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, v) else failure
         }
     }

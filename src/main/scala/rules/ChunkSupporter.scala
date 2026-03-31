@@ -157,7 +157,7 @@ object chunkSupporter extends ChunkSupportRules {
                 Success() // TODO: Mark branch as dead?
             case _ =>
               val failure = createFailure(ve, v1, s1, "consuming chunk", true)
-              if(s1.retryLevel == 0) v1.decider.handleFailedAssertionForDependencyAnalysis(False, analysisInfos, v1.reportFurtherErrors())
+              if(s1.retryLevel == 0) v1.decider.handleFailedAssertion(False, analysisInfos, v1.reportFurtherErrors())
               if(s1.retryLevel == 0 && v1.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()){
                 failure combine QS(s1.copy(h = s.h), s1.h, None, v1)
               }else{
@@ -235,8 +235,6 @@ object chunkSupporter extends ChunkSupportRules {
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult)
              : VerificationResult = {
-
-    // TODO ake
     val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withSource(StringAnalysisSourceInfo("produce", ast.NoPosition)).withDependencyType(DependencyType.Internal)
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
@@ -293,7 +291,7 @@ object chunkSupporter extends ChunkSupportRules {
         }
       case _ =>
         val failure = createFailure(ve, v, s, "looking up chunk", true)
-        if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, analysisInfos, v.reportFurtherErrors())
+        if(s.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
         if(s.retryLevel == 0 && v.reportFurtherErrors() && Verifier.config.disableInfeasibilityChecks()){
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           failure combine Q(s, snap, v)

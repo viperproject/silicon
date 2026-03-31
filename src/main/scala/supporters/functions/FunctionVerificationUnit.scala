@@ -24,8 +24,8 @@ import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.{Map, Stack, toMap}
 import viper.silver.ast
+import viper.silver.ast._
 import viper.silver.ast.utility.Functions
-import viper.silver.ast.{And, _}
 import viper.silver.components.StatefulComponent
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyType}
 import viper.silver.parser.PType
@@ -206,7 +206,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
           if (function.body.isEmpty) {
             decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
-            decider.dependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos /* TODO ake */)
+            decider.dependencyAnalyzer.addDependenciesForAbstractMembers(function.pres.flatMap(_.topLevelConjuncts), function.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */

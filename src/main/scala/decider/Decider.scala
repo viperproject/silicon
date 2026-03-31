@@ -51,7 +51,6 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(analysisInfos: DependencyAnalysisInfos): Boolean
   def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean = false): Boolean
 
   def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp]), analysisInfos: DependencyAnalysisInfos): Unit
@@ -75,7 +74,6 @@ trait Decider {
   def assumeLabel(term: Term, assumptionLabel: String): Unit
 
   def check(t: Term, timeout: Int, analysisInfos: DependencyAnalysisInfos): Boolean
-  def checkSmokeAndSetInfeasibilityNode(analysisInfos: DependencyAnalysisInfos): Unit
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
@@ -117,7 +115,7 @@ trait Decider {
   def removeDependencyAnalyzer(): Unit
   def getAnalysisInfo(daInfos: DependencyAnalysisInfos): AnalysisInfo
   def isDependencyAnalysisEnabled: Boolean
-  def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
+  def handleFailedAssertion(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit
 }
 
 /*
@@ -494,19 +492,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(analysisInfos: DependencyAnalysisInfos): Boolean = checkSmoke(analysisInfos, isAssert = false)
-
     def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean=false): Boolean = {
+      if(isPathInfeasible) return true
+
       val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, analysisInfos, !isAssert)
       val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      val result = isPathInfeasible || prover.check(timeout, label) == Unsat
+      val result = prover.check(timeout, label) == Unsat
 
-      if(isPathInfeasible){
-        checkNode foreach dependencyAnalyzer.addAssertionNode
-        dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
-      }else if(result){
+      if(result){
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
         val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisInfos)
@@ -514,28 +509,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
         pcs.setCurrentInfeasibilityNode(checkNode.map(_.id))
+      }else if(isAssert){
+        checkNode foreach (node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode))
       }
       result
     }
 
-    def checkSmokeAndSetInfeasibilityNode(analysisInfos: DependencyAnalysisInfos): Unit = {
-      var infeasibilityNodeId: Option[Int] = pcs.getCurrentInfeasibilityNode
-      if(infeasibilityNodeId.isDefined) return
-
-      val (success, checkNode) = deciderAssert(False, analysisInfos, Some(Verifier.config.checkTimeout()), isCheck=true)
-      if(success){
-        infeasibilityNodeId = dependencyAnalyzer.addInfeasibilityNode(isCheck = true, analysisInfos)
-        dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibilityNodeId)
-        pcs.setCurrentInfeasibilityNode(infeasibilityNodeId)
-      }
-    }
-
-    override def handleFailedAssertionForDependencyAnalysis(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
+    override def handleFailedAssertion(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos, assumeFailedAssertion: Boolean): Unit = {
       dependencyAnalyzer.addAssertionFailedNode(failedAssertion, analysisInfos)
       if(assumeFailedAssertion){
         assume(failedAssertion, None, None, analysisInfos)
         failedAssertion match {
-          case False => checkSmokeAndSetInfeasibilityNode(analysisInfos)
+          case False => checkSmoke(analysisInfos)
           case _ =>
         }
       }

@@ -241,7 +241,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           Q(s5, v)
         case (Incomplete(_, _), s3, _) =>
           val failure = createFailure(ve, v, s3, "sufficient permission")
-          if(s3.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, analysisInfos, v.reportFurtherErrors())
+          if(s3.retryLevel == 0) v.decider.handleFailedAssertion(False, analysisInfos, v.reportFurtherErrors())
           if(s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, v) else failure
       }
     } else {
@@ -375,7 +375,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             v.decider.assert(toAssert, analysisInfos) {
               case false =>
                 val failure = createFailure(ve, v, s, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
-                if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(toAssert, analysisInfos, v.reportFurtherErrors())
+                if(s.retryLevel == 0) v.decider.handleFailedAssertion(toAssert, analysisInfos, v.reportFurtherErrors())
                 val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s, v), Option.when(withExp)(PUnknown()))
                 if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, snap, v) else failure
               case true =>
@@ -429,7 +429,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           v.decider.assert(permCheck,analysisInfos) {
             case false =>
               val failure = createFailure(ve, v, s3, permCheck, permCheckExp)
-              if(s3.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(permCheck, analysisInfos, v.reportFurtherErrors())
+              if(s3.retryLevel == 0) v.decider.handleFailedAssertion(permCheck, analysisInfos, v.reportFurtherErrors())
               val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s3, v), Option.when(withExp)(PUnknown()))
               if(s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, snap, v) else failure
             case true =>

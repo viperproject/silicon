@@ -127,7 +127,7 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.assert(receiverInjectivityCheck, analysisInfos) {
           case false =>
             val failure = createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
-            if(s1.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(receiverInjectivityCheck, analysisInfos, v.reportFurtherErrors())
+            if(s1.retryLevel == 0) v.decider.handleFailedAssertion(receiverInjectivityCheck, analysisInfos, v.reportFurtherErrors())
             if(s1.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s1, v1) else failure
           case true =>
             // Generate the inverse axioms
