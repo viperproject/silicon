@@ -192,24 +192,6 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     visited
   }
 
-  // TODO ake: maybe move to DependencyAnalyzer?
-  private def getNodesByMergeInfo: Map[DependencyAnalysisMergeInfo, Seq[DependencyAnalysisNode]] = {
-    getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
-  }
-
-  // TODO ake: maybe move to DependencyAnalyzer?
-  def addTransitiveEdges(): Unit = {
-    val nodesPerSourceInfo = getNodesByMergeInfo
-    nodesPerSourceInfo foreach {case (_, nodes) =>
-      val asserts = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
-      val assumes = nodes.filter(n => n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
-      addEdges(asserts.map(_.id), assumes.map(_.id))
-      val checks = asserts.filter(_.isInstanceOf[SimpleCheckNode])
-      val notChecks = nodes.filter(n => !n.isInstanceOf[SimpleCheckNode])
-      addEdges(checks.map(_.id), notChecks.map(_.id))
-    }
-  }
-
   private def removeAllEdgesForNode(node: DependencyAnalysisNode): Unit = {
     val id = node.id
     val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys

@@ -59,7 +59,7 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   */
 class DefaultStateConsolidator(protected val config: Config) extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
-    if(v.decider.isPathInfeasible()) return s
+    if(v.decider.isPathInfeasible) return s
 
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
@@ -132,7 +132,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   }
 
   def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier, analysisInfoes: DependencyAnalysisInfoes): (FunctionRecorder, Heap) = {
-    if(v.decider.isPathInfeasible()) return (fr1, h)
+    if(v.decider.isPathInfeasible) return (fr1, h)
 
     val analysisInfoes1 = analysisInfoes.addInfo("merge", ast.NoPosition, DependencyType.Internal)
 

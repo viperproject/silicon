@@ -204,7 +204,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
         val nonDetermBool = getNextNonDetermBool
         ast.Seqn(Seq(
           ast.LocalVarDeclStmt(ast.LocalVarDecl(nonDetermBool, ast.Bool)())(),
-          ast.If(ast.LocalVar(nonDetermBool, ast.Bool)(), thenBody, elseBody)())
+          ast.If(ast.LocalVar(nonDetermBool, ast.Bool)(cond.pos, cond.info, cond.errT), thenBody, elseBody)(ifStmt.pos, ifStmt.info, ifStmt.errT))
           , Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
       case ifStmt: If =>
         total += 1
@@ -216,7 +216,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
         val nonDetermBool = getNextNonDetermBool
         ast.Seqn(Seq(
           ast.LocalVarDeclStmt(ast.LocalVarDecl(nonDetermBool, ast.Bool)())(),
-          ast.While(ast.LocalVar(nonDetermBool, ast.Bool)(), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
+          ast.While(ast.LocalVar(nonDetermBool, ast.Bool)(cond.pos, cond.info, cond.errT), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
           , Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
       case whileStmt@ast.While(cond, invs, body) =>
         val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
@@ -231,11 +231,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
       case s: ast.Package if !isCrucialStmt(s, crucialNodeSourceInfos) =>
         total += 1
         removed += 1
-        ast.Inhale(ast.TrueLit()())()
+        ast.Inhale(ast.TrueLit()(s.pos, s.info, s.errT))(s.pos, s.info, s.errT)
       case s: Stmt if !isCrucialStmt(s, crucialNodeSourceInfos) =>
         total += 1
         removed += 1
-        ast.Inhale(ast.TrueLit()())()
+        ast.Inhale(ast.TrueLit()(s.pos, s.info, s.errT))(s.pos, s.info, s.errT)
       case s: Stmt =>
         total += 1
         s

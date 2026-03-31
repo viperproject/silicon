@@ -190,7 +190,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfoes: DependencyAnalysisInfoes)
                      (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
       v.decider.dependencyAnalyzer.addAssumption(False, analysisInfoes)
       return Q(s, v)
@@ -273,7 +273,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfoes: DependencyAnalysisInfoes)
                      (Q: (State, Term, Verifier) => VerificationResult): VerificationResult =
     {
-      if(v.decider.isPathInfeasible()){
+      if(v.decider.isPathInfeasible){
         v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
         return Q(s, NoPerm, v)
       }
@@ -341,7 +341,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       analysisInfoes: DependencyAnalysisInfoes)
                      (Q: (State, Term, Verifier) => VerificationResult)
   : VerificationResult = {
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
 
       val sort = v.symbolConverter.toSort(fa.field.typ)
@@ -547,7 +547,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     v: Verifier,
                     analysisInfoes: DependencyAnalysisInfoes)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
       return Q(s, h, Some(Unit), v)
     }
@@ -663,7 +663,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         v: Verifier,
                         analysisInfoes: DependencyAnalysisInfoes)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
       return Q(s, h, Some(Unit), v)
     }

@@ -84,7 +84,7 @@ object chunkSupporter extends ChunkSupportRules {
               analysisInfoes: DependencyAnalysisInfoes)
              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
              : VerificationResult = {
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }
@@ -254,7 +254,7 @@ object chunkSupporter extends ChunkSupportRules {
              analysisInfoes: DependencyAnalysisInfoes)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
       return Q(s, h, Unit, v)
     }

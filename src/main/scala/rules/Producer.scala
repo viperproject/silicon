@@ -208,7 +208,7 @@ object producer extends ProductionRules {
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       if(!Expressions.isKnownWellDefined(a, Some(s.program))){
         v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
       }

@@ -199,7 +199,7 @@ object consumer extends ConsumptionRules {
      * time permissions have been consumed.
      */
 
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
       return Q(s, h, Option.when(returnSnap)(Unit), v)
     }

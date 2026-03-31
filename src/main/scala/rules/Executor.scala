@@ -94,7 +94,7 @@ object executor extends ExecutionRules {
 
   def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
     edge.kind match {
-      case cfg.Kind.Out if !v.decider.isPathInfeasible() =>
+      case cfg.Kind.Out if !v.decider.isPathInfeasible =>
         val analysisInfoes = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes // TODO ake
         val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, s.invariantContexts.head, v, analysisInfoes)
         val s1 = s.copy(functionRecorder = fr1, h = h1,
@@ -134,9 +134,9 @@ object executor extends ExecutionRules {
           // as opposed to a loop head block.
           edge1.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] &&
           edge2.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]]) ||
-          v.decider.isPathInfeasible() =>
+          v.decider.isPathInfeasible =>
 
-        val isPathInfeasibleBefore = v.decider.isPathInfeasible()
+        val isPathInfeasibleBefore = v.decider.isPathInfeasible
         assert(edge1.source == edge2.source)
 
         val cedge1 = edge1.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
@@ -352,7 +352,7 @@ object executor extends ExecutionRules {
            (continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
 
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       // FIXME ake: infeasbile path
 //      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(stmt, state.program)
 //      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
@@ -453,6 +453,8 @@ object executor extends ExecutionRules {
         case _: ast.FalseLit if !Verifier.config.disableInfeasibilityChecks() =>
           /* We're done */
           Success()
+        case _: ast.TrueLit =>
+          Q(s, v)
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v, analysisInfoes)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)

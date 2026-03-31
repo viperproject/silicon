@@ -46,7 +46,7 @@ object brancher extends BranchingRules {
              fElse: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
-    if(v.decider.isPathInfeasible()){
+    if(v.decider.isPathInfeasible){
       val analysisInfoes1 = analysisInfoes.addInfo(conditionExp._1.info, conditionExp._1)
 // FIXME ake: infeasible path
       //      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(conditionExp._1, s.program)

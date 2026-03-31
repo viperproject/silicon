@@ -455,9 +455,21 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def buildFinalGraph(): Option[DependencyGraph] = {
     dependencyGraph.removeLabelNodes()
     val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph else  buildAndGetMergedGraph()
-    mergedGraph.addTransitiveEdges()
+    addTransitiveEdges(mergedGraph)
     if(!Verifier.config.enableDependencyAnalysisDebugging()) mergedGraph.removeInternalNodes()
     Some(mergedGraph)
+  }
+
+  private def addTransitiveEdges(mergedGraph: DependencyGraph): Unit = {
+    val nodesPerSourceInfo = mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
+    nodesPerSourceInfo foreach {case (_, nodes) =>
+      val asserts = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
+      val assumes = nodes.filter(n => n.isInstanceOf[GeneralAssumptionNode] && !n.isInstanceOf[LabelNode])
+      mergedGraph.addEdges(asserts.map(_.id), assumes.map(_.id))
+      val checks = asserts.filter(_.isInstanceOf[SimpleCheckNode])
+      val notChecks = nodes.filter(n => !n.isInstanceOf[SimpleCheckNode])
+      mergedGraph.addEdges(checks.map(_.id), notChecks.map(_.id)) // TODO ake: why do we need this?
+    }
   }
 
   override def addFunctionAxiomEdges(): Unit = {
