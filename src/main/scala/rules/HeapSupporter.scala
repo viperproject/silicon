@@ -39,7 +39,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                       eRcvr: Option[ast.Exp],
                       ve: VerificationError,
                       v: Verifier,
-                      analysisInfoes: DependencyAnalysisInfoes)
+                      analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Term, Verifier) => VerificationResult)
                      : VerificationResult
 
@@ -50,7 +50,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                       tArgs: Seq[Term],
                       eArgs: Option[Seq[ast.Exp]],
                       v: Verifier,
-                      analysisInfoes: DependencyAnalysisInfoes)
+                      analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Term, Verifier) => VerificationResult): VerificationResult
 
   def isPossibleTrigger(s: State, fa: ast.FieldAccess): Boolean
@@ -63,7 +63,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                       eRhsNew: Option[ast.Exp],
                       pve: PartialVerificationError,
                       v: Verifier,
-                      analysisInfoes: DependencyAnalysisInfoes)
+                      analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult
 
@@ -72,7 +72,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                               tArgs: Seq[Term],
                               eArgs: Option[Seq[ast.Exp]],
                               v: Verifier,
-                              analysisInfoes: DependencyAnalysisInfoes): State
+                              analysisInfos: DependencyAnalysisInfos): State
 
   def consumeSingle(s: State,
                     h: Heap,
@@ -84,7 +84,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                     returnSnap: Boolean,
                     pve: PartialVerificationError,
                     v: Verifier,
-                    analysisInfoes: DependencyAnalysisInfoes)
+                    analysisInfos: DependencyAnalysisInfos)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult
 
   def consumeQuantified(s: State,
@@ -113,7 +113,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                         notInjectiveReason: => ErrorReason,
                         insufficientPermissionReason: => ErrorReason,
                         v: Verifier,
-                        analysisInfoes: DependencyAnalysisInfoes)
+                        analysisInfos: DependencyAnalysisInfos)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult
 
   def produceSingle(s: State,
@@ -127,7 +127,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                     pve: PartialVerificationError,
                     mergeAndTrigger: Boolean,
                     v: Verifier,
-                    analysisInfoes: DependencyAnalysisInfoes)
+                    analysisInfos: DependencyAnalysisInfos)
                    (Q: (State, Verifier) => VerificationResult): VerificationResult
 
   def produceQuantified(s: State,
@@ -155,7 +155,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                         negativePermissionReason: => ErrorReason,
                         notInjectiveReason: => ErrorReason,
                         v: Verifier,
-                        analysisInfoes: DependencyAnalysisInfoes)
+                        analysisInfos: DependencyAnalysisInfos)
                        (Q: (State, Verifier) => VerificationResult): VerificationResult
 
   def havocResource(s: State,
@@ -163,7 +163,7 @@ trait HeapSupportRules extends SymbolicExecutionRules {
                     resource: ast.Resource,
                     condInfo: HavocHelperData,
                     v: Verifier,
-                    analysisInfoes: DependencyAnalysisInfoes): Heap
+                    analysisInfos: DependencyAnalysisInfos): Heap
 
   def collectForPermConditions(s: State,
                                resource: ast.Resource,
@@ -188,12 +188,12 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       eRhsNew: Option[ast.Exp],
                       pve: PartialVerificationError,
                       v: Verifier,
-                      analysisInfoes: DependencyAnalysisInfoes)
+                      analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
     if(v.decider.isPathInfeasible){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
-      v.decider.dependencyAnalyzer.addAssumption(False, analysisInfoes)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
+      v.decider.dependencyAnalyzer.addAssumption(False, analysisInfos)
       return Q(s, v)
     }
 
@@ -203,10 +203,10 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val (relevantChunks, otherChunks) =
         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(field.name))
       val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v, analysisInfoes)
-      val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v, analysisInfoes)
+      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v, analysisInfos)
+      val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v, analysisInfos)
       v.decider.clearModel()
-      val lhsSourceInfoes = analysisInfoes.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
+      val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
       val result = quantifiedChunkSupporter.removePermissions(
         s2,
         relevantChunks,
@@ -220,7 +220,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         Option.when(withExp)(ast.FullPerm()()),
         chunkOrderHeuristics,
         v,
-        lhsSourceInfoes
+        lhsSourceInfos
       )
       result match {
         case (Complete(), s3, remainingChunks) =>
@@ -228,12 +228,12 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v)
           v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
           val debugExp = Option.when(withExp)(DebugExp.createInstance("Definitional axioms for singleton-FVF's value", isInternal_ = true))
-          v.decider.assumeDefinition(smValueDef, debugExp, analysisInfoes)
+          v.decider.assumeDefinition(smValueDef, debugExp, analysisInfos)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), Option.when(withExp)(Seq(ast.LocalVarDecl("r", ast.Ref)(ass.pos, ass.info, ass.errT))),
-            field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v, lhsSourceInfoes.withDependencyType(DependencyType.Internal), isExhale=false)
+            field, Seq(tRcvr), Option.when(withExp)(Seq(eRcvrNew.get)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), sm, s.program, v, lhsSourceInfos.withDependencyType(DependencyType.Internal), isExhale=false)
           if (s3.heapDependentTriggers.contains(field)) {
             val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
-            v.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, lhsSourceInfoes.withDependencyType(DependencyType.Trigger))
+            v.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, lhsSourceInfos.withDependencyType(DependencyType.Trigger))
           }
           val s4 = s3.copy(h = h3 + ch)
           val (debugHeapName, _) = v.getDebugOldLabel(s4, ass.lhs.pos)
@@ -241,15 +241,15 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           Q(s5, v)
         case (Incomplete(_, _), s3, _) =>
           val failure = createFailure(ve, v, s3, "sufficient permission")
-          if(s3.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, analysisInfoes, v.reportFurtherErrors())
+          if(s3.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(False, analysisInfos, v.reportFurtherErrors())
           if(s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, v) else failure
       }
     } else {
       val description = s"consume ${ass.pos}: $ass"
-      val lhsSourceInfoes = analysisInfoes.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
-      chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, lhsSourceInfoes)((s3, h3, _, v3) => {
+      val lhsSourceInfos = analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(ass.lhs))) // splitting lhs and rhs to make permission flow analysis more precise
+      chunkSupporter.consume(s, s.h, field, Seq(tRcvr), eRcvrNew.map(Seq(_)), FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), false, ve, v, description, lhsSourceInfos)((s3, h3, _, v3) => {
         val id = BasicChunkIdentifier(field.name)
-        val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), v3.decider.getAnalysisInfo(lhsSourceInfoes.withDependencyType(DependencyType.Internal)))
+        val newChunk = BasicChunk.apply(FieldID, id, Seq(tRcvr), eRcvrNew.map(Seq(_)), tRhs, eRhsNew, FullPerm, Option.when(withExp)(ast.FullPerm()(ass.pos, ass.info, ass.errT)), v3.decider.getAnalysisInfo(lhsSourceInfos.withDependencyType(DependencyType.Internal)))
         chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) => {
           val s5 = s4.copy(h = h4)
           val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos)
@@ -267,11 +267,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       tArgs: Seq[Term],
                       eArgs: Option[Seq[ast.Exp]],
                       v: Verifier,
-                      analysisInfoes: DependencyAnalysisInfoes)
+                      analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Term, Verifier) => VerificationResult): VerificationResult =
     {
       if(v.decider.isPathInfeasible){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
+        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
         return Q(s, NoPerm, v)
       }
 
@@ -300,7 +300,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                 case w: ast.MagicWand => MagicWandIdentifier(w, s2.program).toString
               }
               DebugExp.createInstance(s"Resource trigger(${name}($argsString))", isInternal_ = true)
-            }), analysisInfoes.withDependencyType(DependencyType.Trigger))
+            }), analysisInfos.withDependencyType(DependencyType.Trigger))
           }
 
           val currentPermAmount = ResourcePermissionLookup(res, pmDef.pm, tArgs, s2.program)
@@ -310,7 +310,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
               v.decider.prover.comment(s"perm($resAcc)  ~~>  assume upper permission bound")
               val (debugHeapName, debugLabel) = v.getDebugOldLabel(s2, resAcc.pos, Some(h))
               val exp = Option.when(withExp)(ast.PermLeCmp(ast.DebugLabelledOld(ast.CurrentPerm(resAcc)(), debugLabel)(), ast.FullPerm()())())
-              v.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)), analysisInfoes.withDependencyType(DependencyType.Internal))
+              v.decider.assume(PermAtMost(currentPermAmount, FullPerm), exp, exp.map(s2.substituteVarsInExp(_)), analysisInfos.withDependencyType(DependencyType.Internal))
               val s3 = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> h)) else s2
               s3
             case _ => s2
@@ -335,11 +335,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                       eRcvr: Option[ast.Exp],
                       ve: VerificationError,
                       v: Verifier,
-                      analysisInfoes: DependencyAnalysisInfoes)
+                      analysisInfos: DependencyAnalysisInfos)
                      (Q: (State, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     if(v.decider.isPathInfeasible){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
 
       val sort = v.symbolConverter.toSort(fa.field.typ)
       val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
@@ -359,11 +359,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
            * quantifier in whose body field 'fa.field' was accessed)
            * which is protected by a trigger term that we currently don't have.
            */
-          v.decider.assume(And(fvfDef.valueDefinitions), Option.when(withExp)(DebugExp.createInstance("Value definitions", isInternal_ = true)), analysisInfoes.withDependencyType(DependencyType.Internal))
+          v.decider.assume(And(fvfDef.valueDefinitions), Option.when(withExp)(DebugExp.createInstance("Value definitions", isInternal_ = true)), analysisInfos.withDependencyType(DependencyType.Internal))
           if (s.heapDependentTriggers.contains(fa.field)) {
             val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
             val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-            v.decider.assume(trigger, triggerExp, analysisInfoes.withDependencyType(DependencyType.Trigger))
+            v.decider.assume(trigger, triggerExp, analysisInfos.withDependencyType(DependencyType.Trigger))
           }
           if (s.triggerExp) {
             val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
@@ -372,10 +372,10 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             Q(s2, fvfLookup, v)
           } else {
             val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
-            v.decider.assert(toAssert, analysisInfoes) {
+            v.decider.assert(toAssert, analysisInfos) {
               case false =>
                 val failure = createFailure(ve, v, s, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
-                if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(toAssert, analysisInfoes, v.reportFurtherErrors())
+                if(s.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(toAssert, analysisInfos, v.reportFurtherErrors())
                 val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s, v), Option.when(withExp)(PUnknown()))
                 if(s.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s, snap, v) else failure
               case true =>
@@ -410,7 +410,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           if (s2.heapDependentTriggers.contains(fa.field)) {
             val trigger = FieldTrigger(fa.field.name, sm, tRcvr)
             val triggerExp = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvr.toString()}.${fa.field.name})"))
-            v.decider.assume(trigger, triggerExp, analysisInfoes.withDependencyType(DependencyType.Trigger))
+            v.decider.assume(trigger, triggerExp, analysisInfos.withDependencyType(DependencyType.Trigger))
           }
           val (permCheck, permCheckExp, s3) =
             if (s2.triggerExp) {
@@ -426,10 +426,10 @@ class DefaultHeapSupportRules extends HeapSupportRules {
               }
               (Implies(lhs, IsPositive(totalPerms)), Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT))(fa.pos, fa.info, fa.errT)), s3)
             }
-          v.decider.assert(permCheck,analysisInfoes) {
+          v.decider.assert(permCheck,analysisInfos) {
             case false =>
               val failure = createFailure(ve, v, s3, permCheck, permCheckExp)
-              if(s3.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(permCheck, analysisInfoes, v.reportFurtherErrors())
+              if(s3.retryLevel == 0) v.decider.handleFailedAssertionForDependencyAnalysis(permCheck, analysisInfos, v.reportFurtherErrors())
               val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(fa.field, s3, v), Option.when(withExp)(PUnknown()))
               if(s3.retryLevel == 0 && v.reportFurtherErrors()) failure combine Q(s3, snap, v) else failure
             case true =>
@@ -442,7 +442,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       }
     } else {
       val resource = fa.res(s.program)
-      chunkSupporter.lookup(s, s.h, resource, Seq(tRcvr), Option.when(withExp)(Seq(eRcvr.get)), ve, v, analysisInfoes)((s2, h2, tSnap, v2) => {
+      chunkSupporter.lookup(s, s.h, resource, Seq(tRcvr), Option.when(withExp)(Seq(eRcvr.get)), ve, v, analysisInfos)((s2, h2, tSnap, v2) => {
         val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
         val s3 = s2.copy(h = h2, functionRecorder = fr)
         Q(s3, tSnap, v)
@@ -455,7 +455,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                               tArgs: Seq[Term],
                               eArgs: Option[Seq[ast.Exp]],
                               v: Verifier,
-                              analysisInfoes: DependencyAnalysisInfoes): State = {
+                              analysisInfos: DependencyAnalysisInfos): State = {
     if (s.isUsedAsTrigger(resAcc.res(s.program))) {
       val resource = resAcc.res(s.program)
       val chunkId = ChunkIdentifier(resource, s.program)
@@ -477,7 +477,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val eArgsStr = eArgs.mkString(", ")
       val debugExp = Option.when(withExp)(DebugExp.createInstance(Some(s"Resource trigger(${name}($eArgsStr))"), Some(resAcc),
         Some(resAcc), None, isInternal_ = true, InsertionOrderedSet.empty))
-      v.decider.assume(trigger(smDef1.sm), debugExp, analysisInfoes.withDependencyType(DependencyType.Trigger))
+      v.decider.assume(trigger(smDef1.sm), debugExp, analysisInfos.withDependencyType(DependencyType.Trigger))
       s.copy(smCache = smCache1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef1))
     } else {
       s
@@ -495,7 +495,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     pve: PartialVerificationError,
                     mergeAndTrigger: Boolean,
                     v: Verifier,
-                    analysisInfoes: DependencyAnalysisInfoes)
+                    analysisInfos: DependencyAnalysisInfos)
                    (Q: (State, Verifier) => VerificationResult) : VerificationResult = {
     val useQPs = s.isQuantifiedResource(resource)
     if (useQPs) {
@@ -503,17 +503,17 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val tFormalArgs = s.getFormalArgVars(resource, v)
       val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
       quantifiedChunkSupporter.produceSingleLocation(
-        s, resource, tFormalArgs, eFormalArgs, tArgs, eArgs, tSnap, tPerm, ePerm, trigger, mergeAndTrigger, v, analysisInfoes)(Q)
+        s, resource, tFormalArgs, eFormalArgs, tArgs, eArgs, tSnap, tPerm, ePerm, trigger, mergeAndTrigger, v, analysisInfos)(Q)
     } else {
       resource match {
         case w: ast.MagicWand =>
-          magicWandSupporter.createChunk(s, w, MagicWandSnapshot(tSnap), pve, v, analysisInfoes)((s2, chWand, v2) =>
+          magicWandSupporter.createChunk(s, w, MagicWandSnapshot(tSnap), pve, v, analysisInfos)((s2, chWand, v2) =>
             chunkSupporter.produce(s2, s2.h, chWand, v2)((s3, h3, v3) =>
               Q(s3.copy(h = h3), v3)))
         case _ =>
           val chunkId = ChunkIdentifier(resource, s.program)
           val (resId, snap1) = if (resource.isInstanceOf[ast.Field]) (FieldID, tSnap) else (PredicateID, tSnap.convert(sorts.Snap))
-          val ch = BasicChunk.apply(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm, ePerm, v.decider.getAnalysisInfo(analysisInfoes))
+          val ch = BasicChunk.apply(resId, chunkId.asInstanceOf[BasicChunkIdentifier], tArgs, eArgs, snap1, eSnap, tPerm, ePerm, v.decider.getAnalysisInfo(analysisInfos))
           if (mergeAndTrigger) {
             chunkSupporter.produce(s, s.h, ch, v)((s2, h2, v2) => {
               if (resource.isInstanceOf[ast.Predicate] && Verifier.config.enablePredicateTriggersOnInhale() && s2.functionRecorder == NoopFunctionRecorder
@@ -521,7 +521,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                 val predicate = resource.asInstanceOf[ast.Predicate]
                 val argsString = eArgs.mkString(", ")
                 val debugExp = Option.when(withExp)(DebugExp.createInstance(s"PredicateTrigger(${predicate.name}($argsString))", isInternal_ = true))
-                v2.decider.assume(App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp, analysisInfoes.withDependencyType(DependencyType.Trigger))
+                v2.decider.assume(App(s2.predicateData(predicate.name).triggerFunction, snap1 +: tArgs), debugExp, analysisInfos.withDependencyType(DependencyType.Trigger))
               }
               Q(s2.copy(h = h2), v2)
             })
@@ -542,10 +542,10 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     returnSnap: Boolean,
                     pve: PartialVerificationError,
                     v: Verifier,
-                    analysisInfoes: DependencyAnalysisInfoes)
+                    analysisInfos: DependencyAnalysisInfos)
                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     if(v.decider.isPathInfeasible){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
       return Q(s, h, Some(Unit), v)
     }
 
@@ -555,14 +555,14 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val tFormalArgs = s.getFormalArgVars(resource, v)
       val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
       quantifiedChunkSupporter.consumeSingleLocation(
-        s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v, analysisInfoes)(Q)
+        s, h, tFormalArgs, eFormalArgs, tArgs, eArgs, resAcc, tPerm, ePerm, returnSnap, None, pve, v, analysisInfos)(Q)
     } else {
       val ve = resAcc match {
         case l: ast.LocationAccess => pve dueTo InsufficientPermission(l)
         case w: ast.MagicWand => pve dueTo MagicWandChunkNotFound(w)
       }
       val description = s"consume ${resAcc.pos}: $resAcc"
-      chunkSupporter.consume(s, h, resource, tArgs, eArgs, tPerm, ePerm, returnSnap, ve, v, description, analysisInfoes)(Q)
+      chunkSupporter.consume(s, h, resource, tArgs, eArgs, tPerm, ePerm, returnSnap, ve, v, description, analysisInfos)(Q)
     }
   }
 
@@ -591,7 +591,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         negativePermissionReason: => ErrorReason,
                         notInjectiveReason: => ErrorReason,
                         v: Verifier,
-                        analysisInfoes: DependencyAnalysisInfoes)
+                        analysisInfos: DependencyAnalysisInfos)
                         (Q: (State, Verifier) => VerificationResult): VerificationResult = {
     val tSnap = resource match {
       case f: ast.Field =>
@@ -628,7 +628,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       negativePermissionReason,
       notInjectiveReason,
       v,
-      analysisInfoes
+      analysisInfos
     )(Q)
   }
 
@@ -658,10 +658,10 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                         notInjectiveReason: => ErrorReason,
                         insufficientPermissionReason: => ErrorReason,
                         v: Verifier,
-                        analysisInfoes: DependencyAnalysisInfoes)
+                        analysisInfos: DependencyAnalysisInfos)
                        (Q: (State, Heap, Option[Term], Verifier) => VerificationResult): VerificationResult = {
     if(v.decider.isPathInfeasible){
-      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfoes)
+      v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
       return Q(s, h, Some(Unit), v)
     }
 
@@ -692,7 +692,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       notInjectiveReason,
       insufficientPermissionReason,
       v,
-      analysisInfoes
+      analysisInfos
     )(Q)
   }
 
@@ -701,11 +701,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                     resource: ast.Resource,
                     condInfo: HavocHelperData,
                     v: Verifier,
-                    analysisInfoes: DependencyAnalysisInfoes): Heap = {
+                    analysisInfos: DependencyAnalysisInfos): Heap = {
     if (s.isQuantifiedResource(resource)) {
-      havocQuantifiedResource(s, lhs, resource, condInfo, v, analysisInfoes)
+      havocQuantifiedResource(s, lhs, resource, condInfo, v, analysisInfos)
     } else {
-      havocNonQuantifiedResource(s, lhs, resource, condInfo, v, analysisInfoes)
+      havocNonQuantifiedResource(s, lhs, resource, condInfo, v, analysisInfos)
     }
   }
 
@@ -727,7 +727,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                                          resource: ast.Resource,
                                          condInfo: HavocHelperData,
                                          v: Verifier,
-                                         analysisInfoes: DependencyAnalysisInfoes)
+                                         analysisInfos: DependencyAnalysisInfos)
   : Heap = {
 
     val id = ChunkIdentifier(resource, s.program)
@@ -738,12 +738,12 @@ class DefaultHeapSupportRules extends HeapSupportRules {
         val havockedSnap = v.decider.fresh("mwsf", sorts.MagicWandSnapFunction, Option.when(withExp)(PUnknown()))
         val cond = replacementCond(lhs, ch.args, condInfo)
         val magicWandSnapshot = MagicWandSnapshot(Ite(cond, havockedSnap, ch.snap.mwsf))
-        NonQuantifiedChunk.withSnap(ch, magicWandSnapshot, None, v.decider.getAnalysisInfo(analysisInfoes))
+        NonQuantifiedChunk.withSnap(ch, magicWandSnapshot, None, v.decider.getAnalysisInfo(analysisInfos))
 
       case ch =>
         val havockedSnap = freshSnap(ch.snap.sort, v)
         val cond = replacementCond(lhs, ch.args, condInfo)
-        NonQuantifiedChunk.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, v.decider.getAnalysisInfo(analysisInfoes))
+        NonQuantifiedChunk.withSnap(ch, Ite(cond, havockedSnap, ch.snap), None, v.decider.getAnalysisInfo(analysisInfos))
     }
     Heap(otherChunks ++ newChunks)
   }
@@ -770,7 +770,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
                                       resource: ast.Resource,
                                       condInfo: HavocHelperData,
                                       v: Verifier,
-                                      analysisInfoes: DependencyAnalysisInfoes) : Heap = {
+                                      analysisInfos: DependencyAnalysisInfos) : Heap = {
 
     // Quantified field chunks are of the form R(r; sm, pm).
     // Conceptually, quantified predicate/wand chunks look like R(r1, ..., rn; sm, pm).
@@ -823,9 +823,9 @@ class DefaultHeapSupportRules extends HeapSupportRules {
 
       v.decider.prover.comment("axiomatized snapshot map after havoc")
       val debugExp = Option.when(withExp)(DebugExp.createInstance("havoc new axiom", isInternal_ = true))
-      v.decider.assume(newAxiom, debugExp, analysisInfoes)
+      v.decider.assume(newAxiom, debugExp, analysisInfos)
 
-      QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.getAnalysisInfo(analysisInfoes))
+      QuantifiedChunk.withSnapshotMap(ch, newSm, v.decider.getAnalysisInfo(analysisInfos))
     }
     Heap(newChunks ++ otherChunks)
   }

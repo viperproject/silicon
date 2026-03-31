@@ -40,14 +40,14 @@ trait ProverLike {
     terms foreach assume
   }
 
-  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisInfoes)], description: String): Unit = {
+  def assumeAxiomsWithAnalysisInfo(axioms: InsertionOrderedSet[(Term, DependencyAnalysisInfos)], description: String): Unit = {
     if (debugMode)
       preambleAssumptions :+= new DebugAxiom(description, axioms.map(_._1))
 
     if(Verifier.config.enableDependencyAnalysis()){
       axioms.foreach(axiom => {
-        val analysisInfoes = axiom._2
-        val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisInfoes)
+        val analysisInfos = axiom._2
+        val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisInfos)
         assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
       })
     } else{

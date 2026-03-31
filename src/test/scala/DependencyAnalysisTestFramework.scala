@@ -130,8 +130,8 @@ trait DependencyAnalysisTestFramework {
 
     protected def evaluatePrecision(relevantLines: Set[Int]): Unit = {
       val relevantNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
-      val sourceInfoes = relevantNodes.groupBy(_.sourceInfo).keySet
-      println(s"Evaluating precision of\n\t${sourceInfoes.mkString("\n\t")}")
+      val sourceInfos = relevantNodes.groupBy(_.sourceInfo).keySet
+      println(s"Evaluating precision of\n\t${sourceInfos.mkString("\n\t")}")
 
       val reportedDependencies = fullGraphInterpreter.getAllNonInternalDependencies(relevantNodes.map(_.id)).diff(relevantNodes)
       val verifies = pruneAndVerify(reportedDependencies ++ relevantNodes)

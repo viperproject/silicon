@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import com.typesafe.scalalogging.Logger
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
-import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfos
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.rules.executionFlowController
@@ -123,7 +123,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
           /*    locallyXXX {
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
-                  produce(s1, toSf(snap), body, err, v, DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)((s2, v2) => {
+                  produce(s1, toSf(snap), body, err, v, DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)((s2, v2) => {
                     val branchConds = v2.decider.pcs.branchConditions.reverse
                     val branchCondExps = v2.decider.pcs.branchConditionExps.reverse
                     assert(branchConds.length == branchCondExps.length)

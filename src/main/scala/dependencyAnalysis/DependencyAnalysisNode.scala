@@ -32,7 +32,7 @@ trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
   val mergeInfo: DependencyAnalysisMergeInfo
 
 
-  val joinInfoes: List[SimpleDependencyAnalysisJoin]
+  val joinInfos: List[SimpleDependencyAnalysisJoin]
 
   /**
    * The assumes or asserted Silicon term. Currently, only used for debugging purposes.
@@ -81,38 +81,38 @@ trait ChunkAnalysisInfo {
   val labelNode: LabelNode
 }
 
-case class SimpleAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfoes: List[SimpleDependencyAnalysisJoin], _id: Option[Int]=None) extends GeneralAssumptionNode {
+case class SimpleAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin], _id: Option[Int]=None) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume " + term.toString + description.map(" (" + _ + ")").getOrElse("")
 }
 
-case class AxiomAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfoes: List[SimpleDependencyAnalysisJoin], _id: Option[Int]=None) extends GeneralAssumptionNode {
+case class AxiomAssumptionNode(term: Term, description: Option[String], sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin], _id: Option[Int]=None) extends GeneralAssumptionNode {
   override def getNodeString: String = "assume axiom " + term.toString + description.map(" (" + _ + ")").getOrElse("")
   override def getNodeType: String = "Axiom"
 }
 
-case class SimpleAssertionNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfoes: List[SimpleDependencyAnalysisJoin], hasFailed: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
+case class SimpleAssertionNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin], hasFailed: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "assert " + term.toString
 
-  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, hasFailed=true, joinInfoes=joinInfoes)
+  override def getAssertFailedNode(): GeneralAssertionNode = SimpleAssertionNode(term, sourceInfo, assumptionType, mergeInfo, hasFailed=true, joinInfos=joinInfos)
 }
 
-case class SimpleCheckNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfoes: List[SimpleDependencyAnalysisJoin], hasFailed: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
+case class SimpleCheckNode(term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, joinInfos: List[SimpleDependencyAnalysisJoin], hasFailed: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode {
   override def getNodeString: String = "check " + term
   override def getNodeType: String = "Check"
 
-  override def getAssertFailedNode(): GeneralAssertionNode = SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinInfoes, hasFailed=true)
+  override def getAssertFailedNode(): GeneralAssertionNode = SimpleCheckNode(term, sourceInfo, assumptionType, mergeInfo, joinInfos, hasFailed=true)
 }
 
-case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, labelNode: LabelNode, joinInfoes: List[SimpleDependencyAnalysisJoin], _id: Option[Int]=None) extends GeneralAssumptionNode with ChunkAnalysisInfo {
+case class PermissionInhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, labelNode: LabelNode, joinInfos: List[SimpleDependencyAnalysisJoin], _id: Option[Int]=None) extends GeneralAssumptionNode with ChunkAnalysisInfo {
   override def getNodeString: String = "inhale " + chunk.toString
   override def getNodeType: String = "Inhale"
 }
 
-case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, labelNode: LabelNode, joinInfoes: List[SimpleDependencyAnalysisJoin], hasFailed: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode with ChunkAnalysisInfo {
+case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSourceInfo, assumptionType: AssumptionType, mergeInfo: DependencyAnalysisMergeInfo, labelNode: LabelNode, joinInfos: List[SimpleDependencyAnalysisJoin], hasFailed: Boolean = false, _id: Option[Int]=None) extends GeneralAssertionNode with ChunkAnalysisInfo {
   override def getNodeType: String = "Exhale"
   override def getNodeString: String = "exhale " + chunk.toString
 
-  override def getAssertFailedNode(): GeneralAssertionNode = PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfoes, hasFailed=true, _id=_id)
+  override def getAssertFailedNode(): GeneralAssertionNode = PermissionExhaleNode(chunk, term, sourceInfo, assumptionType, mergeInfo, labelNode, joinInfos, hasFailed=true, _id=_id)
 }
 
 /**
@@ -124,7 +124,7 @@ case class LabelNode(term: Var, _id: Option[Int]=None) extends GeneralAssumption
   val assumptionType: AssumptionType = AssumptionType.Internal
   val mergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
   val description: String = term.toString
-  val joinInfoes: List[SimpleDependencyAnalysisJoin] = List.empty
+  val joinInfos: List[SimpleDependencyAnalysisJoin] = List.empty
   override def getNodeType: String = "Label"
   override def getNodeString: String = "assume " + description
 }
@@ -140,7 +140,7 @@ case class InfeasibilityNode(sourceInfo: AnalysisSourceInfo, assumptionType: Ass
   val term: Term = False
   val mergeInfo: DependencyAnalysisMergeInfo = NoDependencyAnalysisMerge()
   val description: String = "False"
-  val joinInfoes: List[SimpleDependencyAnalysisJoin] = List.empty
+  val joinInfos: List[SimpleDependencyAnalysisJoin] = List.empty
 
   override def getNodeType: String = "Infeasible"
   override def getNodeString: String = "infeasible"

@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyAnalyzer}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfos, DependencyAnalyzer}
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
@@ -30,7 +30,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
-  private var collectedAxioms = InsertionOrderedSet[(Term, DependencyAnalysisInfoes)]()
+  private var collectedAxioms = InsertionOrderedSet[(Term, DependencyAnalysisInfos)]()
   private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
@@ -107,7 +107,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
         val enableAnalysis = DependencyAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
-        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.addInfo(axiom.exp.info, axiom.exp)))
+        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(axiom.exp.info, axiom.exp)))
       })
     })
   }

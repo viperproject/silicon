@@ -37,10 +37,10 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
   def getErrors: List[Failure] = errors
 
-  val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfoes.exists(_.joinType.equals(JoinType.Sink)))
-  val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfoes.exists(_.joinType.equals(JoinType.Source)))
+  val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Sink)))
+  val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Source)))
 
-  def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfoes.nonEmpty)
+  def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfos.nonEmpty)
   
   private def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
   
@@ -97,7 +97,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
     (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-      || AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfoes.nonEmpty // postconditions act as assumptions for callers
+      || AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty // postconditions act as assumptions for callers
     )
 
   def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
@@ -111,7 +111,7 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   
   
   def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
-    !AssumptionType.internalTypes.contains(node.assumptionType) || node.joinInfoes.nonEmpty)
+    !AssumptionType.internalTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty)
 
   def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
     getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))

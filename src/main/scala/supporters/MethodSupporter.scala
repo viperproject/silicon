@@ -83,8 +83,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
 
-      val analysisInfoesPrecondition = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
-      val analysisInfoesPostcondition = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
+      val analysisInfosPrecondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))
+      val analysisInfosPostcondition = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
 
 
       val daJoinNodeInfoOpt = method.info.getUniqueInfo[DependencyAnalysisJoinNodeInfo]
@@ -112,14 +112,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
          * rules in Smans' paper.
          */
         executionFlowController.locally(s, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1, analysisInfoesPrecondition)((s2, v2) => {
+          produces(s1, freshSnap, pres, ContractNotWellformed, v1, analysisInfosPrecondition)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, analysisInfoesPostcondition)((_, _) => {
+                  produces(s4, freshSnap, posts, ContractNotWellformed, v3, analysisInfosPostcondition)((_, _) => {
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
@@ -128,11 +128,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                  if(method.body.isEmpty) v3.decider.removeDependencyAnalyzer()
                   exec(s3, body, v3)((s4, v4) => {
                     if(method.body.isEmpty) v3.decider.dependencyAnalyzer = da
-                    consumes(s4, posts, false, postViolated, v4, analysisInfoesPostcondition)((_, _, _) =>
+                    consumes(s4, posts, false, postViolated, v4, analysisInfosPostcondition)((_, _, _) =>
                       Success())})}) }  )})})
 
       if(method.body.isEmpty){
-        v.decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes)
+        v.decider.dependencyAnalyzer.addDependenciesForAbstractMembers(method.pres.flatMap(_.topLevelConjuncts), method.posts.flatMap(_.topLevelConjuncts), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos)
       }
 
       val allErrors = (result :: result.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])

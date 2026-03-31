@@ -5,73 +5,73 @@ import viper.silver.ast.{DependencyAnalysisJoinInfo, DependencyAnalysisMergeInfo
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType, StringAnalysisSourceInfo}
 
 
-trait AnalysisInfoes {
+trait AnalysisInfos {
 }
 
-case class DependencyAnalysisInfoes(sourceInfoes: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfoes: List[DependencyAnalysisMergeInfo], joinInfoes: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node]) extends AnalysisInfoes {
+case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node]) extends AnalysisInfos {
 
-  def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfoes = {
-    val newSourceInfoes = sourceInfoes ++ info.getUniqueInfo[AnalysisSourceInfo].toList
-    val newDependencyInfoes = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
-    val newMergeInfoes = mergeInfoes ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
-    val newJoinInfoes = joinInfoes ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-    DependencyAnalysisInfoes(newSourceInfoes, newDependencyInfoes, newMergeInfoes, newJoinInfoes, nodes ++ List(node))
+  def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
+    val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
+    val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
+    val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
+    val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
+    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes ++ List(node))
   }
 
-  def addInfo(info: ast.Info): DependencyAnalysisInfoes = {
-    val newSourceInfoes = sourceInfoes ++ info.getUniqueInfo[AnalysisSourceInfo].toList
-    val newDependencyInfoes = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
-    val newMergeInfoes = mergeInfoes ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
-    val newJoinInfoes = joinInfoes ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
-    DependencyAnalysisInfoes(newSourceInfoes, newDependencyInfoes, newMergeInfoes, newJoinInfoes, nodes)
+  def addInfo(info: ast.Info): DependencyAnalysisInfos = {
+    val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
+    val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
+    val newMergeInfos = mergeInfos ++ info.getUniqueInfo[DependencyAnalysisMergeInfo].toList
+    val newJoinInfos = joinInfos ++ info.getUniqueInfo[DependencyAnalysisJoinInfo].toList
+    DependencyAnalysisInfos(newSourceInfos, newDependencyInfos, newMergeInfos, newJoinInfos, nodes)
   }
 
-  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfoes =
-    this.copy(sourceInfoes = sourceInfoes ++ List(StringAnalysisSourceInfo(infoString, pos)), dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
+  def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos =
+    this.copy(sourceInfos = sourceInfos ++ List(StringAnalysisSourceInfo(infoString, pos)), dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
 
-  def withDependencyType(dependencyType: DependencyType): DependencyAnalysisInfoes = {
+  def withDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos = {
     this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
   }
 
-  def withSource(source: AnalysisSourceInfo): DependencyAnalysisInfoes = {
-    this.copy(sourceInfoes = source +: sourceInfoes)
+  def withSource(source: AnalysisSourceInfo): DependencyAnalysisInfos = {
+    this.copy(sourceInfos = source +: sourceInfos)
   }
 
-  def getSourceInfo: AnalysisSourceInfo = sourceInfoes.head
+  def getSourceInfo: AnalysisSourceInfo = sourceInfos.head
 
   def getDependencyType: DependencyType = dependencyTypes.head.dependencyType
 
-  def getMergeInfo: DependencyAnalysisMergeInfo = mergeInfoes.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
+  def getMergeInfo: DependencyAnalysisMergeInfo = mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
 
   def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
-    if(joinInfoes.isEmpty) return List.empty
-    val h = joinInfoes.head match {
-      case EvalStackDependencyAnalysisJoin(joinType, edgeType) => SimpleDependencyAnalysisJoin(sourceInfoes.last, joinType, edgeType)
+    if(joinInfos.isEmpty) return List.empty
+    val h = joinInfos.head match {
+      case EvalStackDependencyAnalysisJoin(joinType, edgeType) => SimpleDependencyAnalysisJoin(sourceInfos.last, joinType, edgeType)
       case a: SimpleDependencyAnalysisJoin => a
     }
     List(h)
   }
 
-  def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfoes =
-    this.copy(mergeInfoes = mergeInfo +: mergeInfoes)
+  def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
+    this.copy(mergeInfos = mergeInfo +: mergeInfos)
 
-  def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfoes =
-    this.copy(joinInfoes = joinInfo +: joinInfoes)
+  def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos =
+    this.copy(joinInfos = joinInfo +: joinInfos)
 }
 
-object DependencyAnalysisInfoes {
-  val DefaultDependencyAnalysisInfoes = DependencyAnalysisInfoes(List.empty, List.empty, List.empty, List.empty, List.empty)
+object DependencyAnalysisInfos {
+  val DefaultDependencyAnalysisInfos = DependencyAnalysisInfos(List.empty, List.empty, List.empty, List.empty, List.empty)
 
-  def create(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType, mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfoes =
-    DependencyAnalysisInfoes(List(sourceInfo), List(DependencyTypeInfo(dependencyType)), List(mergeInfo), List.empty, List.empty)
+  def create(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType, mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
+    DependencyAnalysisInfos(List(sourceInfo), List(DependencyTypeInfo(dependencyType)), List(mergeInfo), List.empty, List.empty)
 
-  def create(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfoes =
-    DependencyAnalysisInfoes(List(sourceInfo), List(DependencyTypeInfo(dependencyType)), List.empty, List.empty, List.empty)
+  def create(sourceInfo: AnalysisSourceInfo, dependencyType: DependencyType): DependencyAnalysisInfos =
+    DependencyAnalysisInfos(List(sourceInfo), List(DependencyTypeInfo(dependencyType)), List.empty, List.empty, List.empty)
 
-  def create(infoString: String, dependencyType: DependencyType, mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfoes =
+  def create(infoString: String, dependencyType: DependencyType, mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos =
     create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType, mergeInfo)
 
-  def create(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfoes =
+  def create(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
     create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType)
 }
 
