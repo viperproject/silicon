@@ -346,7 +346,7 @@ object BiAbductionSolver {
         case Some(t: Stmt) if t == abductionUtils.dummyEndStmt =>
           val newBody = addToInnerBody(body, finalStmt)
           val infPos = LineColumnPosition(m.pos.asInstanceOf[SourcePosition].end.get.line, m.pos.asInstanceOf[SourcePosition].end.get.column)
-          val infRes = finalStmt.map(stmt => "  " + ProgramEdit(infPos, infPos, stmt.toString() + "\n"))
+          val infRes = finalStmt.map(stmt => ProgramEdit(infPos, infPos, "  " + stmt.toString() + "\n"))
           (newBody, infRes)
 
         case Some(t: Stmt) if abductionUtils.isEndOfLoopStmt(t) =>
@@ -356,7 +356,7 @@ object BiAbductionSolver {
           val newBody = body.transform { case stmt if stmt == loop => newLoop }
 
           val infPos = LineColumnPosition(loop.pos.asInstanceOf[SourcePosition].end.get.line, loop.pos.asInstanceOf[SourcePosition].end.get.column)
-          val infRes = finalStmt.map(stmt => "  " + ProgramEdit(infPos, infPos, stmt.toString() + "\n"))
+          val infRes = finalStmt.map(stmt => ProgramEdit(infPos, infPos, "  " + stmt.toString() + "\n"))
           (newBody, infRes)
 
         case Some(t: Stmt) =>

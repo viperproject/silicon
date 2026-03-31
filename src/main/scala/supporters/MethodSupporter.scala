@@ -167,13 +167,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
           val allEdits = mAbd.map(_._2).getOrElse(Seq()) ++ generateLoopInvFixes(loopInvReses) ++ mInv.map(m2 => generatePostFixes(m2, framingReses)).getOrElse(Seq())
 
           mFrame match {
-            case None => Failure(Internal(reason = InternalReason(DummyNode, "Resolving Biabduction results failed")))
+            case None => Failure(Internal(reason = InternalReason(method, "Resolving Biabduction results failed")))
             case Some(m) =>
               println("Original method: \n" + method.toString + "\nAbduced method: \n" + m.toString + "\nEdits: \n" + allEdits.mkString("\n"))
               val sNoAbd = sInit.copy(doAbduction = false)
               verify(sNoAbd, m) match {
                 case Seq(_: NonFatalResult) =>
-                  val error = Internal(DummyReason)
+                  val error = Internal(offendingNode = method, reason = InternalReason(method, "Inference successful"))
                   error.failureContexts = Seq(SiliconAbductionFailureContext(None, Some(allEdits)))
                   // We report an error with the fixes because fixes currently can only be contained in errors.
                   Failure(error)
