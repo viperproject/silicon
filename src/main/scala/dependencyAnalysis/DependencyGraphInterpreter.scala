@@ -37,11 +37,11 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
   def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
   def getErrors: List[Failure] = errors
 
-  val joinAssumptionNodes: Set[GeneralAssumptionNode] = getJoinCandidateNodes(dependencyGraph.getAssumptionNodes.toSet)
-  val joinAssertionNodes: Set[GeneralAssertionNode] = getJoinCandidateNodes(dependencyGraph.getAssertionNodes.toSet)
+  val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfoes.exists(_.joinType.equals(JoinType.Sink)))
+  val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfoes.exists(_.joinType.equals(JoinType.Source)))
   val axiomNodes: Set[GeneralAssumptionNode] = dependencyGraph.getAssumptionNodes.filter(_.isInstanceOf[AxiomAssumptionNode]).toSet
 
-  def getJoinCandidateNodes[T <: DependencyAnalysisNode](nodes: Set[T]): Set[T] = nodes.filter(node => node.joinInfoes.nonEmpty || node.isInstanceOf[AxiomAssumptionNode] || AssumptionType.joinConditionTypes.contains(node.assumptionType))
+  def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfoes.nonEmpty)
   
   private def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
   
