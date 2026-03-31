@@ -1,6 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
-import viper.silver.dependencyAnalysis.{AbstractReadOnlyDependencyGraph, AnalysisSourceInfo, AssumptionType}
+import viper.silver.dependencyAnalysis.{AbstractReadOnlyDependencyGraph, AssumptionType}
 
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -40,6 +40,7 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // keep this, it's relevant for computing verification progress
   private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // keep this, it's relevant for computing verification progress
+  private var vacuousProofs: mutable.Seq[Int] = mutable.Seq()
 
   def getNodes: Seq[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
   def getAssumptionNodes: Seq[GeneralAssumptionNode] = assumptionNodes.toSeq
@@ -78,6 +79,8 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
     }
     allEdges.toMap
   }
+
+  def getVacuousProofs: Set[Int] = vacuousProofs.toSet // TODO ake: what to do with these?
 
   def addAssumptionNode(node: GeneralAssumptionNode): Unit = {
     assumptionNodes = assumptionNodes :+ node
@@ -146,6 +149,11 @@ class DependencyGraph extends ReadOnlyDependencyGraph {
 
   def addEdgesConnectingMethodsUpwards(source: Int, targets: Iterable[Int]): Unit = {
     addEdgesConnectingMethodsUpwards(Set(source), targets)
+  }
+
+
+  def addVacuousProof(assertionId: Int) = {
+    vacuousProofs = assertionId +: vacuousProofs
   }
 
   @deprecated // needs to be adapted to the notion of upward and downward edges

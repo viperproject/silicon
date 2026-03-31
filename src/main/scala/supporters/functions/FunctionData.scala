@@ -142,7 +142,7 @@ class FunctionData(val programFunction: ast.Function,
 
   private val bodyAnalysisInfoes: DependencyAnalysisInfoes = if(programFunction.body.isDefined)
     DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.addInfo(programFunction.body.get.info, programFunction.body.get)
-      .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Source, EdgeType.Down))
+      .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
   else DependencyAnalysisInfoes.create("unverified function body", DependencyType.Internal)
 
 
@@ -249,7 +249,7 @@ class FunctionData(val programFunction: ast.Function,
         (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), bodyAnalysisInfoes) +:
           programFunction.posts.flatMap(_.topLevelConjuncts).map({p =>
             val terms = expressionTranslator.translatePostcondition(program, Seq(p), this)
-            (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True), analysisInfoes.addInfo(p.info, p).withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(p), JoinType.Source, EdgeType.Down)))
+            (And(Forall(arguments, wrapBody(Implies(pre, And(terms))), Trigger(limitedFunctionApplication)), True), analysisInfoes.addInfo(p.info, p).withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(p), JoinType.Sink, EdgeType.Down)))
           })
       }else{
         val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))

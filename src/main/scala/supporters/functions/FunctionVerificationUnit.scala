@@ -281,7 +281,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val wExp = evaluator.withExp
       decider.dependencyAnalyzer.addNodes(v.decider.prover.getPreambleAnalysisNodes)
 
-
+      val precondAnalysisSourceInfoes = DependencyAnalysisInfoes.create("preconditions", DependencyType.Internal)
       val analysisInfoesPostcondition = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Down))
       val analysisInfoesBody = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.addInfo(body.info, body)
         .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(body), JoinType.Source, EdgeType.Down))
@@ -311,7 +311,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             val labelledBcsPre = terms.And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
-            val precondAnalysisSourceInfoes = DependencyAnalysisInfoes.create("preconditions", DependencyType.Internal)
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfoes)
             val labelledPcsPre = pcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))
             decider.assume(labelledPcsPre, pcsPreExp, s"precondition of ${function.name}", enforceAssumption=false, precondAnalysisSourceInfoes)

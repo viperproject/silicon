@@ -55,22 +55,12 @@ trait DependencyAnalyzer {
 
 object DependencyAnalyzer {
   val analysisLabelName: String = "$$analysisLabel$$"
-  private val assumptionTypeAnnotationKey = "assumptionType"
   private val enableDependencyAnalysisAnnotationKey = "enableDependencyAnalysis"
-
 
   private def extractAnnotationFromInfo(info: ast.Info, annotationKey: String): Option[Seq[String]] = {
     info.getAllInfos[ast.AnnotationInfo]
       .filter(_.values.contains(annotationKey))
       .map(_.values(annotationKey)).headOption
-  }
-
-  def extractDependencyTypeFromInfo(info: ast.Info): Option[DependencyType] = {
-    val annotation = Some(List.empty) // TODO ake extractAnnotationFromInfo(info, assumptionTypeAnnotationKey)
-    val dependencyAnalysisInfo = info.getUniqueInfo[FrontendDependencyAnalysisInfo]
-    if(annotation.isDefined && annotation.get.nonEmpty) AssumptionType.fromString(annotation.get.head).map(DependencyType.make) // TODO ake: assumption and assertion type might not be the same!
-    else if(dependencyAnalysisInfo.isDefined) dependencyAnalysisInfo.get.dependencyType
-    else None
   }
 
   def extractEnableAnalysisFromInfo(info: ast.Info): Option[Boolean] = {
@@ -99,12 +89,6 @@ object DependencyAnalyzer {
     label.split("_")(1).toInt
   }
 
-  def isAssertionLabel(label: String): Boolean = label.startsWith("assertion_")
-
-  def isAssumptionLabel(label: String): Boolean = label.startsWith("assumption_")
-
-  def isAxiomLabel(label: String): Boolean = label.startsWith("axiom_")
-
   /**
    *
    * @param name Optional name for the result graph.
@@ -119,25 +103,10 @@ object DependencyAnalyzer {
 
     newGraph.addAssumptionNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getAssumptionNodes))
     newGraph.addAssertionNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getAssertionNodes))
-
     dependencyGraphInterpreters foreach (interpreter => interpreter.getGraph.getAllEdges foreach {case (t, deps) => newGraph.addEdges(deps, t)})
 
     val joinSourceNodes = dependencyGraphInterpreters flatMap(i => i.joinSourceNodes)
-    val joinSinkNodes = dependencyGraphInterpreters flatMap(i => i.joinSinkNodes)
-    val joinCandidateAxioms = dependencyGraphInterpreters flatMap(i => i.axiomNodes)
-
-    // axioms assumed by every method / function should depend on the assertions that justify them
-    // hence, we add edges from function postconditions & bodies to the corresponding axioms
-    val axiomAssertionNodes = (joinSourceNodes ++ joinSinkNodes.filter(_.assumptionType.equals(AssumptionType.FunctionBody)))
-      .groupBy(_.sourceInfo)
-      .view.mapValues(_.map(_.id))
-      .toMap
-    joinCandidateAxioms
-      .groupBy(n => n.sourceInfo) // TODO ake: add joinInfoes to the axiom nodes
-      .map{case (sourceInfo, axiomNodes) => (axiomNodes.map(_.id), axiomAssertionNodes.getOrElse(sourceInfo, Seq.empty))}
-      .foreach{case (axiomNodeIds, assertionNodeIds) =>
-        newGraph.addEdgesConnectingMethodsDownwards(assertionNodeIds, axiomNodeIds) // TODO ake: maybe we could merge the axiom nodes here since they represent the same axiom?
-    }
+    val joinSinkNodes   = dependencyGraphInterpreters flatMap(i => i.joinSinkNodes)
 
     def getJoinNodesByJoinInfo(candidateNodes: Set[DependencyAnalysisNode], joinType: JoinType) = {
       candidateNodes
@@ -158,41 +127,8 @@ object DependencyAnalyzer {
         newGraph.addEdgesConnectingMethodsDownwards(matchingSourceNodes.map(_.id), nodes.map(_.id))
     }
 
-
     val newInterpreter = new DependencyGraphInterpreter(name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
-  }
-
-  def extractAssertionsForJoin(exp: ast.Exp, program: ast.Program): Seq[ast.Exp] = {
-    exp match {
-      case FieldAccessPredicate(FieldAccess(rcv, _), prm) =>
-        // Extra case for field access predicates because the contained field access does NOT require already having the field permission.
-        extractAssertionsForJoin(rcv, program) ++ extractAssertionsForJoin(prm.get, program)
-      case f: FuncApp =>
-        program.findFunction(f.funcname).pres
-      case other => other.subExps.flatMap(extractAssertionsForJoin(_, program))
-    }
-  }
-
-  def extractAssertionsForJoin(s: Stmt, p: Program): Seq[ast.Exp] = {
-    def goE(exp: Exp): Seq[ast.Exp] = extractAssertionsForJoin(exp, p)
-
-    def goEs(exps: Seq[Exp]): Seq[ast.Exp] = exps flatMap goE
-
-    s match {
-      case NewStmt(lhs, _) => goE(lhs)
-      case LocalVarAssign(lhs, rhs) => goE(lhs) ++ goE(rhs)
-      case MethodCall(methodName, args, targets) =>
-        p.findMethod(methodName).pres.flatMap(_.topLevelConjuncts) ++ goEs(args) ++ goEs(targets)
-      case Inhale(exp) => goE(exp)
-      case Assume(exp) => goE(exp)
-      case Seqn(ss, _) => ss flatMap (extractAssertionsForJoin(_, p))
-      case If(cond, thn, els) => goE(cond) ++ extractAssertionsForJoin(thn, p) ++ extractAssertionsForJoin(els, p)
-      case While(cond, invs, body) => goEs(invs) ++ goE(cond) ++ extractAssertionsForJoin(body, p)
-      case Label(_, invs) => goEs(invs)
-      case _ => goEs(s.subnodes.filter(_.isInstanceOf[ast.Exp]).map(
-        _.asInstanceOf[ast.Exp]))
-    }
   }
 }
 
@@ -202,22 +138,6 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   override def getMember: Option[ast.Member] = Some(member)
 
   override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.getNodes
-
-  // TODO ake: remove once we are sure this is not needed anymore
-//  override def getChunkNode(chunk: Chunk): Option[ChunkAnalysisInfo] = {
-//    val chunkNode = dependencyGraph.getNodes
-//      .filter(c => c.isInstanceOf[ChunkAnalysisInfo] && chunk.equals(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
-//      .map(_.asInstanceOf[ChunkAnalysisInfo])
-//    assert(chunkNode.size == 1)
-//    chunkNode.headOption
-//  }
-//
-//  private def getChunkNodeIds(oldChunks: Set[Chunk]): Set[Int] = {
-//    Set.empty
-//    dependencyGraph.getNodes
-//      .filter(c => c.isInstanceOf[ChunkAnalysisInfo] && oldChunks.contains(c.asInstanceOf[ChunkAnalysisInfo].getChunk))
-//      .map(_.id).toSet
-//  }
 
   private def getNodeIdsByTerm(terms: Set[Term]): Set[Int] = {
     dependencyGraph.getNodes
@@ -234,7 +154,6 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 
   override def addAssertionNode(node: GeneralAssertionNode): Unit = dependencyGraph.addAssertionNode(node)
 
-  // adding assumption nodes
   override def addAssumption(assumption: Term, analysisInfoes: DependencyAnalysisInfoes, description: Option[String]): Option[Int] = {
     val node = SimpleAssumptionNode(assumption, description, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, analysisInfoes.getJoinInfo)
     addAssumptionNode(node)
@@ -282,7 +201,6 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     Some(labelNode)
   }
 
-  // adding assertion nodes
   override def createAssertOrCheckNode(term: Term, analysisInfoes: DependencyAnalysisInfoes, isCheck: Boolean): Option[GeneralAssertionNode] = {
     if(isCheck)
       Some(SimpleCheckNode(term, analysisInfoes.getSourceInfo, analysisInfoes.getDependencyType.assumptionType, analysisInfoes.getMergeInfo, analysisInfoes.getJoinInfo))
@@ -318,7 +236,6 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
 
-  // adding dependencies
   override def addDependency(source: Option[Int], dest: Option[Int]): Unit = {
     if(source.isDefined && dest.isDefined)
       dependencyGraph.addEdges(source.get, Set(dest.get))
@@ -326,13 +243,11 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {
     val assumptionLabels = dep.replace("(", "").replace(")", "").split(" ")
-    val assumptionIds = assumptionLabels.filter(DependencyAnalyzer.isAssumptionLabel).map(DependencyAnalyzer.getIdFromLabel)
-    val assertionIdsFromUnsatCore = assumptionLabels.filter(DependencyAnalyzer.isAssertionLabel).map(DependencyAnalyzer.getIdFromLabel)
-    val assertionIdFromLabel = DependencyAnalyzer.getIdFromLabel(assertionLabel)
-    val assertionIds = assertionIdFromLabel +: assertionIdsFromUnsatCore
-    dependencyGraph.addEdges(assumptionIds, assertionIds)
-    val axiomIds = assumptionLabels.filter(DependencyAnalyzer.isAxiomLabel).map(DependencyAnalyzer.getIdFromLabel)
-    dependencyGraph.addEdges(axiomIds, assertionIds)
+    val assertionId = DependencyAnalyzer.getIdFromLabel(assertionLabel)
+    val assumptionIds = assumptionLabels.map(DependencyAnalyzer.getIdFromLabel).toSet
+    if(!assumptionIds.contains(assertionId))
+      dependencyGraph.addVacuousProof(assertionId)
+    dependencyGraph.addEdges(assumptionIds.diff(Set(assertionId)), assertionId)
   }
 
   override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfoes: DependencyAnalysisInfoes): Unit = {

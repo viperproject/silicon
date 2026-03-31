@@ -39,7 +39,6 @@ class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependen
 
   val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfoes.exists(_.joinType.equals(JoinType.Sink)))
   val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfoes.exists(_.joinType.equals(JoinType.Source)))
-  val axiomNodes: Set[GeneralAssumptionNode] = dependencyGraph.getAssumptionNodes.filter(_.isInstanceOf[AxiomAssumptionNode]).toSet
 
   def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfoes.nonEmpty)
   
