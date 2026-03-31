@@ -24,6 +24,7 @@ import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.SimpleDependencyAnalysisMerge
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
@@ -234,8 +235,6 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             val debugExp2 = Option.when(withExp)(DebugExp.createInstance(s"FieldTrigger(${eRcvrNew.toString}.${field.name})"))
             v.decider.assume(FieldTrigger(field.name, sm, tRcvr), debugExp2, lhsSourceInfoes.withDependencyType(DependencyType.Trigger))
           }
-          // TODO ake
-//          v.decider.dependencyAnalyzer.addCustomTransitiveDependency(lhsSourceInfoes.getMergeInfo, v.decider.analysisSourceInfoStack.getFullSourceInfo)
           val s4 = s3.copy(h = h3 + ch)
           val (debugHeapName, _) = v.getDebugOldLabel(s4, ass.lhs.pos)
           val s5 = if (withExp) s4.copy(oldHeaps = s4.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s4))) else s4
@@ -255,8 +254,6 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           val s5 = s4.copy(h = h4)
           val (debugHeapName, _) = v4.getDebugOldLabel(s5, ass.lhs.pos)
           val s6 = if (withExp) s5.copy(oldHeaps = s5.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s5))) else s5
-          // TODO ake
-//          v4.decider.dependencyAnalyzer.addCustomTransitiveDependency(lhsSourceInfo, v4.decider.analysisSourceInfoStack.getFullSourceInfo)
           Q(s6, v4)
         })
       })

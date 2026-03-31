@@ -10,7 +10,7 @@ import viper.silicon
 import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, NoDependencyAnalysisMerge}
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.ChunkIdentifer
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
@@ -24,7 +24,7 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, LocalVarWithVersion, NoDependencyAnalysisMerge, WeightedQuantifier}
 import viper.silver.dependencyAnalysis.DependencyType
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
@@ -559,12 +559,11 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            v1.decider.dependencyAnalyzer.disableTransitiveEdges()
-            v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, analysisInfoes.withDependencyType(DependencyType.Internal))
+            val auxAnalysisInfoes = analysisInfoes.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
+            v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, auxAnalysisInfoes)
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
-            v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, analysisInfoes.withDependencyType(DependencyType.Internal))
-            v1.decider.dependencyAnalyzer.enableTransitiveEdges()
+            v1.decider.assume(tAuxHeapIndep/*tAux*/, Option.when(withExp)(DebugExp.createInstance(description=commentNonGlobals, children=auxNonGlobalsExp.get)), enforceAssumption = false, auxAnalysisInfoes)
             if (qantOp == Exists) {
               // For universal quantification, the non-global auxiliary assumptions will contain the information that
               // forall vars :: all function preconditions are fulfilled.
@@ -577,7 +576,7 @@ object evaluator extends EvaluationRules {
                 val exp = ast.Forall(eQuant.variables, eTriggers, body)(sourceQuant.pos, sourceQuant.info, sourceQuant.errT)
                 DebugExp.createInstance(exp, expNew)
               })
-              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name, quantWeight), debugExp, analysisInfoes.withMergeInfo(NoDependencyAnalysisMerge()))
+              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name, quantWeight), debugExp, analysisInfoes)
             }
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name, quantWeight)
@@ -671,13 +670,14 @@ object evaluator extends EvaluationRules {
                              moreJoins = JoinMode.Off,
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
-            consumes(s3, pres, true, _ => pvePre, v2, analysisInfoes)((s4, snap, v3) => { // TODO ake: join!
+            val precondAnalysisInfoes = analysisInfoes.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
+            consumes(s3, pres, true, _ => pvePre, v2, precondAnalysisInfoes)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
-              v3.decider.assume(preFApp, preExp, analysisInfoes)
+              v3.decider.assume(preFApp, preExp, precondAnalysisInfoes)
               val funcAnn = func.info.getUniqueInfo[AnnotationInfo]
               val tFApp = funcAnn match {
                 case Some(a) if a.values.contains("opaque") =>

@@ -7,7 +7,6 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.Config.Sink
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
@@ -25,11 +24,10 @@ import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.{Map, Stack, toMap}
 import viper.silver.ast
-import viper.silver.ast.LocalVarWithVersion
 import viper.silver.ast.utility.Functions
+import viper.silver.ast.{And, _}
 import viper.silver.components.StatefulComponent
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyType}
-import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 import viper.silver.parser.PType
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
 
@@ -55,9 +53,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[String, FunctionData] = Map.empty
-    private var emittedFunctionAxioms: Vector[(Term, Option[(AnalysisSourceInfo, AssumptionType)])] = Vector.empty
+    private var emittedFunctionAxioms: Vector[(Term, DependencyAnalysisInfoes)] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
-    private var postConditionAxioms: Vector[(Term, Option[(AnalysisSourceInfo, AssumptionType)])] = Vector.empty
+    private var postConditionAxioms: Vector[(Term, DependencyAnalysisInfoes)] = Vector.empty
 
     private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
@@ -172,8 +170,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       v.decider.resetProverOptions()
       symbExLog.closeMemberScope()
-
-      v.decider.dependencyAnalyzer.addFunctionAxiomEdges()
 
       val allErrors = (res :: res.previous.toList).filter(_.isInstanceOf[Failure]).map(_.asInstanceOf[Failure])
 
@@ -314,7 +310,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
-            val labelledBcsPre = And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
+            val labelledBcsPre = terms.And(bcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t))))
             val precondAnalysisSourceInfoes = DependencyAnalysisInfoes.create("preconditions", DependencyType.Internal)
             decider.setCurrentBranchCondition(labelledBcsPre, (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))), precondAnalysisSourceInfoes)
             val labelledPcsPre = pcsPre map (t => v.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(t)))
@@ -336,7 +332,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(axiom: (Term, Option[(AnalysisSourceInfo, AssumptionType)])*): Unit = {
+    private def emitAndRecordFunctionAxioms(axiom: (Term, DependencyAnalysisInfoes)*): Unit = {
       val cleanAxiom =
         if(!Verifier.config.enableDependencyAnalysis()) axiom
         else axiom.map(a => (a._1.transform{

@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.dependencyAnalysis.DependencyAnalyzer
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, DependencyAnalyzer}
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
@@ -16,7 +16,7 @@ import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, te
 import viper.silicon.toMap
 import viper.silver.ast
 import viper.silver.ast.NamedDomainAxiom
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType}
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
@@ -30,7 +30,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
-  private var collectedAxioms = InsertionOrderedSet[(Term, Option[(AnalysisSourceInfo, AssumptionType)])]()
+  private var collectedAxioms = InsertionOrderedSet[(Term, DependencyAnalysisInfoes)]()
   private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
@@ -107,7 +107,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
         val enableAnalysis = DependencyAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
-        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), Option.when(enableAnalysis)((AnalysisSourceInfo.createAnalysisSourceInfo(axiom.exp), AssumptionType.DomainAxiom))))
+        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.addInfo(axiom.exp.info, axiom.exp)))
       })
     })
   }

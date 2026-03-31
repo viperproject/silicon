@@ -210,7 +210,6 @@ class DefaultMainVerifier(config: Config,
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
 
 
-    val verificationStartTime = DependencyAnalyzer.startTimeMeasurement()
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
     allProvers.comment("Silicon.version: " + Silicon.version)
     allProvers.comment(s"Input file: ${inputFile.getOrElse("<unknown>")}")
@@ -345,11 +344,7 @@ class DefaultMainVerifier(config: Config,
       ++ predicateVerificationResults
       ++ methodVerificationResults)
 
-    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, DependencyAnalyzer.timeToVerifyAndCollectDependencies)
     runDependencyAnalysisWorkflow(verificationResults, program, inputFile)
-    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(verificationStartTime, DependencyAnalyzer.timeToVerifyAndBuildFinalGraph)
-
-    DependencyAnalyzer.printProfilingResults()
 
     if (Verifier.config.startDebuggerAutomatically()){
       val debugger = new SiliconDebugger(verificationResults, identifierFactory, reporter, FrontendStateCache.resolver, FrontendStateCache.pprogram, FrontendStateCache.translator, this)
@@ -660,8 +655,6 @@ class DefaultMainVerifier(config: Config,
   def runDependencyAnalysisWorkflow(verificationResults: List[VerificationResult], program: ast.Program, inputFile: Option[String]): Unit = {
     if(!Verifier.config.enableDependencyAnalysis()) return
 
-    val postProcessingStartTime = DependencyAnalyzer.startTimeMeasurement()
-
     val dependencyGraphInterpreters = verificationResults.filter(_.dependencyGraphInterpreter.isDefined).map(_.dependencyGraphInterpreter.get)
     val verificationErrors: List[Failure] = (verificationResults filter (_.isInstanceOf[Failure])) map (_.asInstanceOf[Failure])
 
@@ -670,11 +663,8 @@ class DefaultMainVerifier(config: Config,
     dependencyAnalysisResult = Some(result)
 
     if (Verifier.config.dependencyAnalysisExportPath.isDefined) {
-//      result.dependencyGraphInterpreters foreach (_.exportGraph(program)) // comment this in to get the individual methods' graphs
       result.getFullDependencyGraphInterpreter.exportGraph(program)
     }
-
-    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(postProcessingStartTime, DependencyAnalyzer.timeOfPostprocessing)
 
     if (Verifier.config.startDependencyAnalysisTool()) {
       val commandLineTool = new DependencyAnalysisUserTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)

@@ -20,6 +20,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.NoDependencyAnalysisMerge
 import viper.silver.dependencyAnalysis.DependencyType
 
 import scala.annotation.unused

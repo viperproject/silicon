@@ -308,11 +308,9 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   def extractUnsatCore(): String = {
-    val startTime = DependencyAnalyzer.startTimeMeasurement()
     writeLine("(get-unsat-core)")
     val unsatCore = input.readLine()
     comment("unsat core: " + unsatCore)
-    DependencyAnalyzer.stopTimeMeasurementAndAddToTotal(startTime, DependencyAnalyzer.timeToExtractUnsatCore)
     unsatCore
   }
 

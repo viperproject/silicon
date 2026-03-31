@@ -19,6 +19,7 @@ import viper.silicon.state.{State, Store}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
+import viper.silver.ast._
 import viper.silver.components.StatefulComponent
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo}
 import viper.silver.verifier.errors._
@@ -79,7 +80,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
-      val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), joinInfoes = List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))))
+      val presAssertionNodeForJoin = pres.flatMap(_.topLevelConjuncts).map(pc => SimpleAssertionNode(True, AnalysisSourceInfo.createAnalysisSourceInfo(pc), AssumptionType.Precondition, SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(pc)), List(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(pc), JoinType.Sink, EdgeType.Up))))
       presAssertionNodeForJoin foreach v.decider.dependencyAnalyzer.addAssertionNode
 
       val analysisInfoesPrecondition = DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Up))

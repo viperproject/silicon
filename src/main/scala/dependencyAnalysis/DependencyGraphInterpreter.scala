@@ -7,7 +7,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{If, Program, Stmt}
+import viper.silver.ast.{If, JoinType, Program, Stmt}
 import viper.silver.dependencyAnalysis.{AbstractDependencyGraphInterpreter, AnalysisSourceInfo, AssumptionType}
 
 import java.io.PrintWriter

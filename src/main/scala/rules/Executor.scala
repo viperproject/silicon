@@ -10,8 +10,8 @@ import viper.silicon.Config.JoinMode
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes
 import viper.silicon.dependencyAnalysis.DependencyAnalysisInfoes.DefaultDependencyAnalysisInfoes
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisInfoes, EdgeType, EvalStackDependencyAnalysisJoin, JoinType}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.{NonQuantifiedChunk, QuantifiedChunk}
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
@@ -20,11 +20,12 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.{EdgeType, EvalStackDependencyAnalysisJoin, JoinType}
 import viper.silver.ast.utility.Statements
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
-import viper.silver.dependencyAnalysis.{DependencyType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.DependencyType
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}

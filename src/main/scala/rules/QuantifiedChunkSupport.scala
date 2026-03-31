@@ -27,6 +27,7 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.NoDependencyAnalysisMerge
 import viper.silver.dependencyAnalysis.DependencyType
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
