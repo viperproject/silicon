@@ -269,7 +269,7 @@ object AbstractionApply extends AbstractionRule {
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
     val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect { case Some(wand: MagicWand) => wand }
     val targets = q.s.h.values.collect { case c: BasicChunk => q.varTran.transformChunk(c) }.collect { case Some(exp) => exp }.toSeq
-
+    println(s"Will try apply rule with wands $wands and targets $targets")
     wands.collectFirst {
       case wand if targets.exists(target => abductionUtils.expMatchWithPermissions(wand.left, target, q.v, q.varTran)) => wand
     } match {

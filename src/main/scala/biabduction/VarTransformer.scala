@@ -4,7 +4,7 @@ import org.checkerframework.checker.units.qual.m
 import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.chunkSupporter.findChunk
-import viper.silicon.state.terms.{BuiltinEquals, Null, Term, Var}
+import viper.silicon.state.terms.{BuiltinEquals, Combine, Null, SortWrapper, Term, Var, Unit}
 import viper.silicon.state._
 import viper.silicon.state.terms.sorts.Perm
 import viper.silicon.utils.ast.{BigAnd, BigOr}
@@ -28,11 +28,29 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
 
   private def resolveMatches(): Map[Term, ast.Exp] = {
 
+    def extractSnapTerms(snap: Term): Seq[Term] = snap match {
+      case Combine(s1, s2) =>
+        extractSnapTerms(s1) ++ extractSnapTerms(s2)
+      case SortWrapper(t, _) =>
+        extractSnapTerms(t)
+      case terms.Unit =>
+        Seq.empty
+      case t =>
+        Seq(t)
+    }
+
     // TODO: Should probably exclude null
+    /*println(s"\t\t s.h(): \n\t\t\t${s.h.values.mkString("\n\t\t\t")}")
+    println(s"\t\t s.g(): \n\t\t\t${s.g.values.mkString("\n\t\t\t")}")
+    println(s"\t\t s.g: ${s.g.values.values.map { case (t1, _) => t1 }}")
+    println(s"\t\t s.h: ${s.h.values.collect {
+      case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap)
+      case c: BasicChunk if c.resourceID == PredicateID => c.args ++ extractSnapTerms(c.snap)
+    }.flatten}")*/
     val allTerms: Seq[Term] = (s.g.values.values.map { case (t1, _) => t1 }
       ++ s.h.values.collect {
       case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap)
-      case c: BasicChunk if c.resourceID == PredicateID => c.args
+      case c: BasicChunk if c.resourceID == PredicateID =>  c.args ++ extractSnapTerms(c.snap)
     }.flatten
       ++ prefVars.values.map(_._1) ++ otherVars.values.map(_._1)
       ++ v.decider.pcs.branchConditions.collect { case t => t.subterms.collect { case tVar: Var => tVar } }.flatten
@@ -42,16 +60,17 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
     //val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
     val directPrefTargets = prefVars.map{case (lv, (t, _)) => t -> lv} //++ Map(terms.Null -> ast.NullLit()())
-
+    /*println(s"\tdirectPrefTargets: $directPrefTargets")*/
     val directTargets = directPrefTargets ++ otherVars.map{case (lv, (t, _)) => t -> lv}.filter { case (t, _) => !directPrefTargets.contains(t) }
-
+    /*println(s"\tdirectTargets: $directTargets")*/
     val directAliases = allTerms.map { t =>
       t -> directTargets.collectFirst { case (t1, e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
     }.collect { case (t2, Some(e)) => t2 -> e }.toMap
-
+    /*println(s"\tdirectAliases: $directAliases")*/
     val chunksToResolve = targetHeap.values.collect { case c: BasicChunk
       if c.resourceID == FieldID && !(directAliases.contains(c.args.head) && directAliases.contains(c.snap)) && c.snap != Null => c
     }.toSeq
+    /*println(s"\tchunksToResolve: $chunksToResolve")*/
 
     resolveChunks(directAliases, chunksToResolve, allTerms.filter(!directAliases.contains(_)))
   }
@@ -204,21 +223,30 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
       case terms.Greater(t1, t2) =>(transformTerm(t1), transformTerm(t2)) match {
           case (Some(e1), Some(e2)) =>
             Some(ast.GtCmp(e1, e2)())
+          case (_, None) => None
+          case (None, _) => None
         }
       case terms.AtLeast(t1, t2) =>(transformTerm(t1), transformTerm(t2)) match {
           case (Some(e1), Some(e2)) =>
             Some(ast.GeCmp(e1, e2)())
+          case (_, None) => None
+          case (None, _) => None
         }
       case terms.AtMost(t1, t2) =>(transformTerm(t1), transformTerm(t2)) match {
         case (Some(e1), Some(e2)) =>
           Some(ast.LeCmp(e1, e2)())
+        case (_, None) => None
+        case (None, _) => None
       }
       case terms.Less(t1, t2) =>(transformTerm(t1), transformTerm(t2)) match {
         case (Some(e1), Some(e2)) =>
           Some(ast.LtCmp(e1, e2)())
+        case (_, None) => None
+        case (None, _) => None
       }
       case e =>
         println(s"ERROR IN TRASNFORMTERM: Unsupported operand ${e}:${e.getClass}")
+        println(s"\tmatches is \n\t${matches.mkString("\n\t")}")
         None
     }).map(abductionUtils.simplifyPermission)
 

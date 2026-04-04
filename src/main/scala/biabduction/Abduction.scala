@@ -2,6 +2,7 @@ package viper.silicon.biabduction
 
 import viper.silicon
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.state.Chunk
 import viper.silicon.rules._
 import viper.silicon.rules.chunkSupporter.findChunk
 import viper.silicon.rules.evaluator.{eval, evals}
@@ -25,10 +26,7 @@ object AbductionApplier extends RuleApplier[AbductionQuestion] {
 
 case class AbductionQuestion(s: State, v: Verifier, goal: Seq[Exp],
                              lostAccesses: Map[Exp, Term] = Map(), foundState: Seq[(Exp, Option[BasicChunk])] = Seq(),
-                             foundStmts: Seq[Stmt] = Seq(), trigger: Option[Positioned], stateAllowed: Boolean,
-                            // We need the following ot keep a flag on when we are trying to pack a wand
-                            // if the flag is set to true, it means we can produce assertions the fold fails on
-                             packing: Boolean = false) extends BiAbductionQuestion
+                             foundStmts: Seq[Stmt] = Seq(), trigger: Option[Positioned], stateAllowed: Boolean) extends BiAbductionQuestion
 
 /**
   * A rule for abduction. A rule is a pair of a check method and an apply method. The check method checks whether the
@@ -255,7 +253,7 @@ object AbductionFold extends AbductionRule {
 
             val foldS = q.s.copy(abdPermScalingFactorExp= a.perm)//PermMul(q.s.abdPermScalingFactorExp, a.perm)()), we're now setting this when fold fails
             val fold = Fold(a)()
-            println(s"Will attempt fold $fold triggered by $field ($chunk)")
+            println(s"AbdFold -- Will attempt fold $fold triggered by $field ($chunk)")
             executor.exec(foldS, fold, q.v, q.trigger, q.stateAllowed) { (s1, v1) =>
               val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, chunk.snap.sort))
               val q2 = q.copy(s = s1.copy(abdPermScalingFactorExp = FullPerm()()), v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
@@ -285,6 +283,8 @@ object AbductionUnfold extends AbductionRule {
           case None =>
             checkPredicates(rest, q, goal)(Q)
           case Some(predChunk) =>
+
+            println(s"AbdUnfold -- Found chunk $predChunk for pred $pred")
             val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
             val bcsBefore = q.v.decider.pcs.branchConditions
             var failedBranches: Seq[silicon.Stack[Term]] = Seq()
@@ -337,8 +337,18 @@ object AbductionUnfold extends AbductionRule {
                 }
 
             }
+            // Here we must make sure we try to match chunks to their value in the store
+            // Otherwise if we for example unfold nodes(curr) to get ocurr.next.prev because we know
+            //    ocurr.next == curr then we should try to use curr.
+            val newPred = q.s.g.values.collectFirst {
+              case (localVar, (term, _)) if term == predChunk.args.head => localVar
+            } match {
+              case Some(localVar) => pred.copy(args = Seq(localVar))(pred.pos, pred.info, pred.errT)
+              case None => pred
+            }
             tryUnfold match {
-              case _: NonFatalResult => Q(Some(pred, predChunk, Seq(), predChunk.perm))
+              case _: NonFatalResult =>
+                Q(Some(newPred, predChunk, Seq(), predChunk.perm))
               case _: FatalResult =>
                 succBranches match {
                   case Seq() => checkPredicates(rest, q, goal)(Q)
@@ -346,7 +356,7 @@ object AbductionUnfold extends AbductionRule {
                     val condTerms = branch.distinct.filterNot(bcsBefore.contains)
                     val varTran = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
                     val conds = condTerms.map(varTran.transformTerm(_).get)
-                    Q(Some(pred, predChunk, conds, predChunk.perm))
+                    Q(Some(newPred, predChunk, conds, predChunk.perm))
                   case _ => checkPredicates(rest, q, goal)(Q) // Multiple succ branches would require a disjunction. Left out for now
                 }
             }
@@ -371,8 +381,9 @@ object AbductionUnfold extends AbductionRule {
         }
 
         val preds = abductionUtils.getContainingPredicates(a.loc, q.s.program).filter(abductionUtils.isValidPredicate)
-
+        // println(s"AbdUnfold -- preds $preds")
         val predAccs = preds.map { pred => PredicateAccess(Seq(a.loc.rcv), pred)(NoPosition, NoInfo, NoTrafos) }
+        // println(s"AbdUnfold -- predAccs $predAccs")
         // val varTrans = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
         // val pG = varTrans.permExpToTerm(a.permExp.getOrElse(FullPerm()()), q.v).getOrElse(terms.FullPerm)
         checkPredicates(predAccs, q, a.loc) {
@@ -382,7 +393,7 @@ object AbductionUnfold extends AbductionRule {
               val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
               predicateSupporter.unfold(s1, pred.loc(q.s.program), predChunk.args.toList, None, p, None, wildcards, pve, v1, pred) { (s2, v2) =>
                 println(s"AbdUnfold -- Unfolded from \n\t${s1.h.values.mkString("\n\t")}\nto\n\t${s2.h.values.mkString("\n\t")}")
-                println(s"with assumptions: \n\t${v2.decider.pcs.assumptions.mkString("\n\t")}")
+                // println(s"with assumptions: \n\t${v2.decider.pcs.assumptions.mkString("\n\t")}")
                   val varTrans2 = VarTransformer(s2, v2, s2.g.values, s2.h)
                   Q(Some(q.copy(s = s2, v = v2, foundStmts = q.foundStmts :+ Unfold(PredicateAccessPredicate(pred, varTrans2.transformTerm(p))())(),
                     foundState = q.foundState ++ conds.map(c => c -> None))))
@@ -474,7 +485,6 @@ object AbductionPackage extends AbductionRule {
       (s1a, v1a) => Q(s1a, v1a)
     } {
       f =>
-        //println(s"FAILED ASSERTING LHS WITH $f")
         f.message.reason match {
           // In case we fail to abductively asser the LHS because of an assertion, we try to simply produce it
           // and reattempt the fold
@@ -489,38 +499,74 @@ object AbductionPackage extends AbductionRule {
     }
   }
 
+  def tryPackageWand(s: State, wand: MagicWand, script: Seqn, v: Verifier)(Q: (State, Chunk, Verifier) => VerificationResult): VerificationResult = {
+    executionFlowController.tryOrElse1[Chunk](s, v) { (s1, v1, T) =>
+      magicWandSupporter.packageWand(s1, wand, script, pve, v1) {
+        (s2, wandChunk, v2) =>
+          T(s2, wandChunk, v2)
+      }
+    } {
+      (sSucc, wandChunk, vSucc) =>
+        Q(sSucc, wandChunk, vSucc)
+    } {
+      case f => f.message.reason match {
+        case AssertionFalse(assertion) =>
+          println(s"AbdPackage -- Will produce assertion")
+          producer.produce(s, freshSnap, assertion, pve, v) { (s2, v2) =>
+            tryPackageWand(s2, wand, script, v2)(Q)
+          }
+        case _ => f
+      }
+    }
+  }
+
   override def apply(q: AbductionQuestion)(Q: Option[AbductionQuestion] => VerificationResult): VerificationResult = {
     q.goal.collectFirst { case a: MagicWand => a } match {
       case None => Q(None)
       case Some(wand) =>
           executionFlowController.locally(q.s, q.v) { (s1, v1) =>
-            //println(s"Will attempt asserting LHS")
+            println(s"AbdPackage -- Will attempt asserting LHS")
             assertLHS(s1, v1, wand, q) { (s2, v2) =>
-              //println(s"Succesfully asserted ${wand.left}")
-                val packQ = q.copy(s = s2, v = v2, goal = wand.right.topLevelConjuncts, packing = true)
+              println(s"AbdPackage -- Succesfully asserted ${wand.left}")
+                val packQ = q.copy(s = s2, v = v2, goal = wand.right.topLevelConjuncts)
                 AbductionApplier.applyRules(packQ) { packRes =>
                   if (packRes.goal.nonEmpty) {
                     Failure(pve dueTo DummyReason)
                   } else {
                     val newState = packRes.foundState
                     val newStmts = packRes.foundStmts
-                    Success(Some(AbductionSuccess(packRes.s, packRes.v, packRes.v.decider.pcs.duplicate(), newState, newStmts, Map(), Seq(), None)))
+                    // Small hack: To flag these results to keep, we use a TrueLit as trigger (it will never be an actual trigger)
+                    Success(Some(AbductionSuccess(packRes.s, packRes.v, packRes.v.decider.pcs.duplicate(), newState, newStmts, Map(), Seq(), Some(TrueLit()()))))
                   }
                 }
             }
           } match {
             case fail: FatalResult =>
-              //println(s"FAILED WITH $fail")
+              println(s"AbdPackage -- FAILED WITH $fail")
               Q(None)
             case suc: NonFatalResult =>
+              val abdRes = abductionUtils.getAbductionSuccesses(suc)
+              // println(s"AbdPackage -- abdRes:")
+              // abdRes.foreach(x => println(s"\t - $x \n\t\t[${x.trigger}]"))
               // We need to filter out those abdRes that come from asserting the LHS of the wand
-              val abdRes = abductionUtils.getAbductionSuccesses(suc).filter(res => res.trigger != Some(Assert(wand.left)()))
-              //println(s"abdRes:")
-              //abdRes.foreach(x => println(s"\t - $x")) // \n\t\t${x.trigger}: ${x.trigger == Some(Assert(wand.left)())}
-              val stmts = abdRes.flatMap(_.stmts).reverse
-              val state = abdRes.flatMap(_.state).reverse
+              //    And then pick a branch to keep if there are multiples that are all correct
+              val picked = abductionUtils.pickBranch(abdRes).filter(res => res.trigger != Some(Assert(wand.left)()))
+              println(s"Picked")
+              picked.foreach(x => println(s"\t - $x"))
 
+              val truelit = abdRes.filter( res => res.trigger match {
+                case Some(TrueLit()) => true
+                case _ => false
+              })
+              println(s"truelit")
+              truelit.foreach(x => println(s"\t - $x"))
+
+              val stmts = picked.flatMap(_.stmts).reverse
+              val state = picked.flatMap(_.state).reverse
+              println(s"State: \n\t${state.mkString("\n\t")}")
+              println(s"Before prod \n\t${q.s.h.values.mkString("\n\t")}")
               produces(q.s, freshSnap, state.map(_._1), _ => pve, q.v) { (s1, v1) =>
+                println(s"After prod \n\t${s1.h.values.mkString("\n\t")}")
                 val locs: Seq[LocationAccess] = state.map {
                   case (p: FieldAccessPredicate, _) => p.loc
                   case (p: PredicateAccessPredicate, _) => p.loc
@@ -536,13 +582,22 @@ object AbductionPackage extends AbductionRule {
                       val lv = tran.transformExp(e, strict = false)
                       lv.get
                   }
-                  //println(s"Will try packaging $wand with $script")
-                  magicWandSupporter.packageWand(sPack, wand, script, pve, v1) {
+                  println(s"AbdPackage -- Will try packaging $wand with $script")
+                  println(s"in h:\n\t${sPack.h.values.mkString("\n\t")}\nand g:\n\t${sPack.g.values.mkString("\n\t")}")
+                  println(s"and v:\n\t${v1.decider.pcs.assumptions.mkString("\n\t")}")
+                  /*magicWandSupporter.packageWand(sPack, wand, script, pve, v1) {
                     (s2, wandChunk, v2) =>
                       val g1 = q.goal.filterNot(_ == wand)
                       val finalStmts = q.foundStmts :+ Package(wand, script)()
                       val finalState = q.foundState ++ state
+                      println(s"AbdPackage -- Packaged wand from ${sPack.h.values.mkString("\n\t")} to \n\t${s2.reserveHeaps.head.+(wandChunk).values.mkString("\n\t")}")
                       Q(Some(q.copy(s = s2.copy(h = s2.reserveHeaps.head.+(wandChunk)), v = v2, goal = g1, foundStmts = finalStmts, foundState = finalState)))
+                  }*/
+                  tryPackageWand(sPack, wand, script, v1) { (s2, wandChunk, v2) =>
+                    val g1 = q.goal.filterNot(_ == wand)
+                    val finalStmts = q.foundStmts :+ Package(wand, script)()
+                    val finalState = q.foundState ++ state
+                    Q(Some(q.copy(s = s2.copy(h = s2.reserveHeaps.head.+(wandChunk)), v = v2, goal = g1, foundStmts = finalStmts, foundState = finalState)))
                   }
                 }
               }

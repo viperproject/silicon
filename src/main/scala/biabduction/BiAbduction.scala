@@ -1,5 +1,6 @@
 package viper.silicon.biabduction
 
+import viper.silicon
 import viper.silicon.biabduction.abductionUtils.pve
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces._
@@ -131,8 +132,9 @@ case class LoopInvariantSuccess(s: State, v: Verifier, invs: Seq[Exp] = Seq(), l
 }
 
 case class FramingSuccess(s: State, v: Verifier, posts: Seq[Exp], loc: Positioned, pcs: PathConditionStack, varTran: VarTransformer) extends BiAbductionSuccess {
-  override def toString: String = "Successful framing"
-
+  override def toString: String = {
+    s"Succesfull framing with posts $posts"
+  }
   def getBcExps(bcsTerms: Seq[Term], prefVars: Map[AbstractLocalVar, (Term, Option[Exp])], otherVars: Map[AbstractLocalVar, (Term, Option[Exp])]): Seq[Exp] = {
     val varTran = VarTransformer(s, v, prefVars, s.h, otherVars = otherVars)
     val bcExps = bcsTerms.map { t => varTran.transformTerm(t) }
@@ -259,8 +261,8 @@ object BiAbductionSolver {
             case Some(trafo) => trafo.f(qPre).asInstanceOf[AbductionQuestion]
             case _ => qPre
           }
-          println(s"abdGoal $abdGoal triggered by $trigger in h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
-          println(s"\tdue to $f")
+          println(s"abdGoal $abdGoal due to $f \nin h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
+          //println(s"and v:\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
           // NOTE: Without fractional permissions, the comment below is true
           // With fractional permissions, we HAVE to start with rule one because if we hold a fraction smaller
           // than the goal, we must subtract it from the goal
@@ -281,9 +283,13 @@ object BiAbductionSolver {
                   val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
                   //val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
                   //val s1 = q1.s.copy(oldHeaps = newOldHeaps)
-                  println(s"ABDUCTION TERMINATED IN \n\t${q1.s.h.values.mkString("\n\t")}")
-                  println(s"\tWITH NEWSTATE ${newState}")
+                  println(s"ABDUCTION TERMINATED IN \n\t\t${q1.s.h.values.mkString("\n\t\t")}")
+                  println(s"\twith g: \n\t\t${q1.s.g.values.mkString("\n\t\t")}")
+                  println(s"\twith v: \n\t\t${q1.v.decider.pcs.assumptions.mkString("\n\t\t")}")
+                  println(s"\tWITH STATE ${newState}")
+                  println(s"\tWITH STATEMENTS ${newStmts}")
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
+                  println(s"\tFIELDCHUNKS: $fieldChunks")
                   val abd = AbductionSuccess(q1.s, q1.v, q1.v.decider.pcs.duplicate(), newState, newStmts, fieldChunks, newChunks, trigger)
                   Success(Some(abd)) && Q(q1.s, q1.v)
                 }
@@ -307,6 +313,7 @@ object BiAbductionSolver {
   def solveFraming(s: State, v: Verifier, pvef: Exp => PartialVerificationError, tra: VarTransformer, loc: Positioned, knownPosts: Seq[Exp], stateAllowed: Boolean)(Q: FramingSuccess => VerificationResult): VerificationResult = {
 
     //val tra = VarTransformer(s, v, targetVars, s.h)
+    println(s"Will consume $knownPosts")
     executionFlowController.tryOrElse1[Option[Term]](s, v) { (s, v, QS) =>
       consumes(s, knownPosts, false, pvef, v)(QS)
     } { (s1: State, _: Option[Term], v1: Verifier) =>
@@ -329,7 +336,7 @@ object BiAbductionSolver {
       }
     } {
       // We failed to fulfill the posts. Perform abduction, add the results and try again.
-      f =>
+      f =>println(s"Failed abstraction with $f")
         BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(loc))((s3, v3) => {
           solveFraming(s3, v3, pvef, tra, loc, knownPosts, stateAllowed)(Q)
         }
@@ -343,8 +350,8 @@ object BiAbductionSolver {
     val abdCases = abdReses.groupBy(res => (res.trigger.get.pos, res.stmts, res.state.map({ case (e, _) => e })))
     println(s"abdCases:")
     abdCases.foreach { case (key, values) =>
-      println(s"\t$key")
-      values.foreach(v => println(s"\t\t$v"))
+      println(s"-")
+      values.foreach(v => println(s"\t\t$v [${v.pcs.branchConditions}]"))
     }
     // Try to join by bc terms
     val joinedCases = abdCases.map {
@@ -437,7 +444,7 @@ object BiAbductionSolver {
     val everyPosts = frames.head.posts.filter { p => frames.forall(_.posts.contains(p)) }
     //val formals = m.formalArgs.map(_.localVar) ++ m.formalReturns.map(_.localVar)
     //val bcs = frames.map(_.pcs.branchConditions)
-
+    println(s"everyposts: $everyPosts")
     val cases = frames.map { f =>
       val prefVars = f.s.g.values.collect { case (var2, t) if m.formalArgs.map(_.localVar).contains(var2) => (var2, t) }
       val otherVars = f.s.g.values.collect { case (var2, t) if m.formalReturns.map(_.localVar).contains(var2) => (var2, t) }
@@ -447,7 +454,7 @@ object BiAbductionSolver {
       }.distinct.filter(_ != True)
       (f.posts.diff(everyPosts), f.getBcExps(bcs, prefVars, otherVars))
     }.distinct
-
+    println(s"cases: $cases")
     // We can remove bcs that hold in every branch
     val everyTerms = cases.head._2.filter { t => cases.forall(_._2.contains(t)) }
 
@@ -845,6 +852,9 @@ object abductionUtils {
         case Some(_: NoPerm)         => fap.loc -> Rational(0, 1)
         case Some(FractionalPerm(IntLit(a), IntLit(b))) => fap.loc -> Rational(a, b)
       }
+    }.filter { case (fa, _) =>
+      // We need ot filter out things like curr.next.prev
+      !fa.rcv.isInstanceOf[FieldAccess]
     }.toMap
   }
 
@@ -941,19 +951,27 @@ object abductionUtils {
   def expMatchWithPermissions(exp1: Exp, exp2: Exp, v: Verifier, varTran: VarTransformer): Boolean = {
     (exp1, exp2) match {
       case (fap1: FieldAccessPredicate, fap2: FieldAccessPredicate) =>
+        println(s"${fap1.permExp}, ${fap2.permExp}")
         fap1.loc == fap2.loc &&
           ((fap1.permExp, fap2.permExp) match {
           case (Some(perm1), Some(perm2)) =>
             v.decider.check(terms.Equals(varTran.permExpToTerm(perm1), varTran.permExpToTerm(perm2)), Verifier.config.checkTimeout())
+          case (None, None) => true
+          case (None, Some(FullPerm())) => true
+          case (Some(FullPerm()), None) => true
           case _ => false
         })
       case (pap1: PredicateAccessPredicate, pap2: PredicateAccessPredicate) =>
+        println(s"${pap1.permExp}, ${pap2.permExp}")
         pap1.loc == pap2.loc &&
           ((pap1.permExp, pap2.permExp) match {
-          case (Some(perm1), Some(perm2)) =>
-            v.decider.check(terms.Equals(varTran.permExpToTerm(perm1), varTran.permExpToTerm(perm2)), Verifier.config.checkTimeout())
-          case _ => false
-        })
+            case (Some(perm1), Some(perm2)) =>
+              v.decider.check(terms.Equals(varTran.permExpToTerm(perm1), varTran.permExpToTerm(perm2)), Verifier.config.checkTimeout())
+            case (None, None) => true
+            case (None, Some(FullPerm())) => true
+            case (Some(FullPerm()), None) => true
+            case _ => false
+          })
       case _ => false
     }
   }
@@ -1124,5 +1142,32 @@ object abductionUtils {
         }
     }
   }*/
+
+  def pickBranch(
+                  results: Seq[AbductionSuccess]
+                ): Seq[AbductionSuccess] = {
+    val grouped = results.groupBy(_.pcs.branchConditions)
+    if (grouped.isEmpty) return Seq.empty
+
+    val minSize = grouped.keys.map(_.size).min
+    var current = grouped.filter(_._1.size == minSize).maxBy(_._2.size)._1
+    val selectedBcs = collection.mutable.Set(current)
+
+    var searching = true
+    while (searching) {
+      val extensions = grouped.filter { case (bcs, _) =>
+        bcs.size == current.size + 1 && bcs.tail == current
+      }
+      if (extensions.isEmpty) {
+        searching = false
+      } else {
+        val (nextBcs, _) = extensions.maxBy(_._2.size)
+        selectedBcs += nextBcs
+        current = nextBcs
+      }
+    }
+
+    results.filter(r => selectedBcs.contains(r.pcs.branchConditions))
+  }
 
 }

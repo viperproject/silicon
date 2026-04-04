@@ -113,12 +113,12 @@ object executor extends ExecutionRules {
   }
 
   def follows(s: State,
-                      edges: Seq[SilverEdge],
-                      @unused pvef: ast.Exp => PartialVerificationError,
-                      v: Verifier,
-                      joinPoint: Option[SilverBlock])
-                     (Q: (State, Verifier) => VerificationResult)
-                     : VerificationResult = {
+              edges: Seq[SilverEdge],
+              @unused pvef: ast.Exp => PartialVerificationError,
+              v: Verifier,
+              joinPoint: Option[SilverBlock])
+              (Q: (State, Verifier) => VerificationResult)
+              : VerificationResult = {
 
     // If joining branches is enabled, find join point if it exists.
     val jp: Option[SilverBlock] = if (s.moreJoins.id >= JoinMode.All.id) {
