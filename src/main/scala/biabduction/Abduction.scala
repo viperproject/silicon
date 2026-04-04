@@ -546,8 +546,8 @@ object AbductionPackage extends AbductionRule {
               Q(None)
             case suc: NonFatalResult =>
               val abdRes = abductionUtils.getAbductionSuccesses(suc)
-              // println(s"AbdPackage -- abdRes:")
-              // abdRes.foreach(x => println(s"\t - $x \n\t\t[${x.trigger}]"))
+              println(s"AbdPackage -- abdRes:")
+              abdRes.foreach(x => println(s"\t - $x \n\t\t[${x.trigger}]"))
               // We need to filter out those abdRes that come from asserting the LHS of the wand
               //    And then pick a branch to keep if there are multiples that are all correct
               val picked = abductionUtils.pickBranch(abdRes).filter(res => res.trigger != Some(Assert(wand.left)()))
