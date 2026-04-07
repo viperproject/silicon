@@ -84,6 +84,11 @@ final case class State(g: Store = Store(),
                        moreCompleteExhale: Boolean = false,
                        moreJoins: JoinMode = JoinMode.Off)
     extends Mergeable[State] {
+  if (oldHeaps.contains("debug@2") || oldHeaps.contains("debug@3")) {
+    //println("+++")
+  }else{
+    //print("---")
+  }
 
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
@@ -224,7 +229,7 @@ object State {
           case State(`g1`, `h1`,
                      `program`, `member`,
                      `predicateData`, `functionData`,
-                     `oldHeaps1`,
+                     oldHeaps2,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
@@ -244,6 +249,7 @@ object State {
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
                      moreCompleteExhale2, `moreJoins`) =>
 
+            val oldHeaps3 = oldHeaps1 ++ oldHeaps2
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -261,7 +267,8 @@ object State {
               .zip(conservedPcs1)
               .map({ case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct })
 
-            s1.copy(functionRecorder = functionRecorder3,
+            s1.copy(oldHeaps = oldHeaps3,
+                    functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
