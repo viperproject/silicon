@@ -23,9 +23,9 @@ object DATraversalMode extends Enumeration {
 }
 
 
-class DependencyGraphInterpreter(name: String, dependencyGraph: ReadOnlyDependencyGraph, errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
+class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
 
-  def getGraph: ReadOnlyDependencyGraph = dependencyGraph
+  def getGraph: ReadOnlyDependencyGraph[T] = dependencyGraph
   def getName: String = name
   def getMember: Option[ast.Member] = member
 

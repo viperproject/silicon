@@ -16,7 +16,12 @@ object DependencyGraphHelper {
   }
 }
 
-trait ReadOnlyDependencyGraph extends AbstractReadOnlyDependencyGraph {
+trait DependencyGraphState
+class Init extends DependencyGraphState
+class IntraProcedural extends DependencyGraphState
+class Final extends DependencyGraphState
+
+trait ReadOnlyDependencyGraph[T <: DependencyGraphState] extends AbstractReadOnlyDependencyGraph {
   def getNodes: Seq[DependencyAnalysisNode]
   def getAssumptionNodes: Seq[GeneralAssumptionNode]
   def getAssertionNodes: Seq[GeneralAssertionNode]
@@ -34,7 +39,7 @@ trait ReadOnlyDependencyGraph extends AbstractReadOnlyDependencyGraph {
   def exportGraph(dirName: String): Unit
 }
 
-class DependencyGraph extends ReadOnlyDependencyGraph {
+class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph[T] {
   private var assumptionNodes: mutable.Seq[GeneralAssumptionNode] = mutable.Seq()
   private var assertionNodes: mutable.Seq[GeneralAssertionNode] = mutable.Seq()
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty

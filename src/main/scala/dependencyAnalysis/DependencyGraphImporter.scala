@@ -39,7 +39,7 @@ object DependencyGraphImporter {
     // TODO ake: doesn't fully work yet, because the exported program has a different line numbering than the program used for the analysis
     val program = importProgram(graphFolder)
 
-    val interpreter = new DependencyGraphInterpreter("test", graph, List.empty, None)
+    val interpreter = new DependencyGraphInterpreter[Final]("test", graph, List.empty, None)
     val userTool = new DependencyAnalysisUserTool(interpreter, Seq.empty, program, List.empty)
 
     runUserTool(args, userTool)
@@ -68,14 +68,14 @@ object DependencyGraphImporter {
   }
 
 
-  private def importGraphFromCsv(csvFilePath: String): ReadOnlyDependencyGraph = {
-    val graph = new DependencyGraph()
+  private def importGraphFromCsv(csvFilePath: String): ReadOnlyDependencyGraph[Final] = {
+    val graph = new DependencyGraph[Final]()
     createNodesFromCsv(graph, csvFilePath)
     createEdgesFromCsv(graph, csvFilePath)
     graph
   }
 
-  private def createNodesFromCsv(graph: DependencyGraph, csvFilePath: String): Unit = {
+  private def createNodesFromCsv(graph: DependencyGraph[Final], csvFilePath: String): Unit = {
 
     val bufferedSource = Source.fromFile(csvFilePath + "/nodes.csv")
     for (line <- bufferedSource.getLines().drop(1)) {
@@ -113,7 +113,7 @@ object DependencyGraphImporter {
     bufferedSource.close()
   }
 
-  private def createEdgesFromCsv(graph: DependencyGraph, csvFilePath: String): Unit = {
+  private def createEdgesFromCsv(graph: DependencyGraph[Final], csvFilePath: String): Unit = {
 
     val bufferedSource = Source.fromFile(csvFilePath + "/edges.csv")
     for (line <- bufferedSource.getLines().drop(1)) {

@@ -14,7 +14,7 @@ import scala.io.Source
 import scala.io.StdIn.readLine
 import scala.util.matching.Regex
 
-class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterpreter, memberInterpreters: Seq[DependencyGraphInterpreter],
+class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterpreter[Final], memberInterpreters: Seq[DependencyGraphInterpreter[IntraProcedural]],
                                  program: ast.Program, verificationErrors: List[Failure]) {
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
@@ -91,7 +91,7 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     }
   }
 
-  private def handleGraphSizeQuery(interpreter: DependencyGraphInterpreter): Unit = {
+  private def handleGraphSizeQuery[T <: DependencyGraphState](interpreter: DependencyGraphInterpreter[T]): Unit = {
     val allAssumptions = interpreter.getNonInternalAssumptionNodes
     val assumptions = UserLevelDependencyAnalysisNode.from(allAssumptions)
     val allAssertions = interpreter.getNonInternalAssertionNodes

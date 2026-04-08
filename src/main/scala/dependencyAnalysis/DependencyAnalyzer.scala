@@ -11,7 +11,7 @@ import scala.collection.mutable
 
 
 trait DependencyAnalyzer {
-  protected val dependencyGraph: DependencyGraph = new DependencyGraph()
+  protected val dependencyGraph: DependencyGraph[Init] = new DependencyGraph()
 
   def getMember: Option[ast.Member]
 
@@ -47,7 +47,7 @@ trait DependencyAnalyzer {
   /**
    * @return the final dependency graph representing all direct and transitive dependencies
    */
-  def buildFinalGraph(): Option[DependencyGraph]
+  def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]]
 
   def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int]
 }
@@ -94,11 +94,11 @@ object DependencyAnalyzer {
    * @param dependencyGraphInterpreters The graphs which should be joined.
    * @return A dependency graph interpreter operating on a new dependency graph that represents all input graphs and
    *         dependencies between them.
-   * The new graph is built by adding all existing nodes and edges of all input graphs and joining them via postconditions
-   * of functions and methods.
+   * The new graph is built by adding all existing nodes and edges of all input graphs and joining them
+	 * via the join information stored in each node.
    */
-  def joinGraphsAndGetInterpreter(name: String, dependencyGraphInterpreters: Set[DependencyGraphInterpreter]): DependencyGraphInterpreter = {
-    val newGraph = new DependencyGraph
+  def joinGraphsAndGetInterpreter(name: String, dependencyGraphInterpreters: Set[DependencyGraphInterpreter[IntraProcedural]]): DependencyGraphInterpreter[Final] = {
+    val newGraph = new DependencyGraph[Final]
 
     newGraph.addAssumptionNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getAssumptionNodes))
     newGraph.addAssertionNodes(dependencyGraphInterpreters.flatMap (_.getGraph.getAssertionNodes))
@@ -126,7 +126,7 @@ object DependencyAnalyzer {
         newGraph.addEdgesConnectingMethodsDownwards(matchingSourceNodes.map(_.id), nodes.map(_.id))
     }
 
-    val newInterpreter = new DependencyGraphInterpreter(name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
+    val newInterpreter = new DependencyGraphInterpreter[Final](name, newGraph, dependencyGraphInterpreters.toList.flatMap(_.getErrors))
     newInterpreter
   }
 }
@@ -262,15 +262,15 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    * source code statement.
    * Further, this operation removes unnecessary details from the graph by, for example, removing label nodes and merging identical nodes.
    */
-  override def buildFinalGraph(): Option[DependencyGraph] = {
+  override def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]] = {
     dependencyGraph.removeLabelNodes()
-    val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph else  buildAndGetMergedGraph()
+    val mergedGraph = /* TODO ake if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph else  */ buildAndGetMergedGraph()
     addTransitiveEdges(mergedGraph)
     if(!Verifier.config.enableDependencyAnalysisDebugging()) mergedGraph.removeInternalNodes()
     Some(mergedGraph)
   }
 
-  private def addTransitiveEdges(mergedGraph: DependencyGraph): Unit = {
+  private def addTransitiveEdges(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
     val nodesPerSourceInfo = mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
     nodesPerSourceInfo foreach {case (_, nodes) =>
       val asserts = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
@@ -289,10 +289,10 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    * has no effect on the dependency results but allows to inspect low-level details while debugging and exporting
    * the low-level graph containing all details.
    */
-  private def buildAndGetMergedGraph(): DependencyGraph = {
+  private def buildAndGetMergedGraph(): DependencyGraph[IntraProcedural] = {
     def keepNode(n: DependencyAnalysisNode): Boolean = !n.mergeInfo.isMerge || n.joinInfos.nonEmpty || n.isInstanceOf[InfeasibilityNode] || n.isInstanceOf[AxiomAssumptionNode]
 
-    val mergedGraph = new DependencyGraph
+    val mergedGraph = new DependencyGraph[IntraProcedural]
     val nodeMap = mutable.HashMap[Int, Int]()
 
     dependencyGraph.getAssumptionNodes.filter(keepNode).foreach { n =>
@@ -365,6 +365,6 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit = {}
   override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit = {}
 
-  override def buildFinalGraph(): Option[DependencyGraph] = None
+  override def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]] = None
 
 }
