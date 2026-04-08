@@ -1,7 +1,7 @@
 field f: Int
 
 method sum(x: Int, y: Int) returns(res: Int)
-  requires x >= 0 && y >= 0
+  requires y >= 0
   ensures res == x + y
   ensures res > 100
 {
@@ -24,9 +24,12 @@ method sumClient(x: Int, y: Int)
 
   // the following stmt reports dependency on n := sum(x, y) because (x < y && n == x + y && n > 100 ==> y != 0)
   // although you could also prove it via (0 <= x && x < y ==> y != 0)
-  var n2: Int 
+  var n2: Int
+  var arg1: Int
+  @dependency("SourceCode")
+  arg1 := x/y
   @dependency("MethodCall")
-  n2 := sum(x/y, y)
+  n2 := sum(arg1, y)
   @dependency("SourceCode")
   n := n + n2
 

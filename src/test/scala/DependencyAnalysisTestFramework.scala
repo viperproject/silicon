@@ -101,7 +101,7 @@ trait DependencyAnalysisTestFramework {
       val (newProgram, pruningFactor) = fullGraphInterpreter.getPrunedProgram(crucialNodes, program)
       val result = baselineFrontend.verifier.verify(newProgram)
       if(EXPORT_PRUNED_PROGRAMS) exportPrunedProgram(exportFileName, newProgram, pruningFactor, result)
-      assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program ${newProgram.toString()}")
+      assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program. ${result.transformedResult()}\n${newProgram.toString()}")
     }
 
     protected def exportPrunedProgram(exportFileName: String, newProgram: Program, pruningFactor: Double, result: VerificationResult): Unit = {
