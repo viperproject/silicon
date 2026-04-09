@@ -1,19 +1,14 @@
 package viper.silicon.dependencyAnalysis
 
-import dependencyAnalysis.{CompactUserLevelDependencyAnalysisNode, UserLevelDependencyAnalysisNode}
-import viper.silicon.dependencyAnalysis.DATraversalMode.{DATraversalMode, Downwards, Upwards}
+import dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{If, JoinType, Program, Stmt}
-import viper.silver.dependencyAnalysis.{AbstractDependencyGraphInterpreter, AnalysisSourceInfo, AssumptionType}
+import viper.silver.ast.{JoinType, Program}
+import viper.silver.dependencyAnalysis.{AbstractDependencyGraphInterpreter, AssumptionType}
 
 import java.io.PrintWriter
-import java.lang.Double.isNaN
 import java.nio.file.Paths
-import scala.collection.mutable
 
 
 
@@ -23,521 +18,142 @@ object DATraversalMode extends Enumeration {
 }
 
 
-class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter{
-
-  def getGraph: ReadOnlyDependencyGraph[T] = dependencyGraph
-  def getName: String = name
-  def getMember: Option[ast.Member] = member
-
-  lazy val nodesMap: Map[Int, DependencyAnalysisNode] = getNodes.map(node => (node.id, node)).toMap
-  lazy val nonInternalAssumptionNodesMap: Map[Int, DependencyAnalysisNode] = getNonInternalAssumptionNodes(getNodes).map(node => (node.id, node)).toMap
-  lazy val assertionNodesMap: Map[Int, DependencyAnalysisNode] = getAssertionNodes.map(node => (node.id, node)).toMap
-  def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes.toSet
-  def getAssumptionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssumptionNodes.toSet
-  def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
-  def getErrors: List[Failure] = errors
-
-  val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Sink)))
-  val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Source)))
-
-  private def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfos.nonEmpty)
-  
-  private def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
-  
-  def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
-    getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
-
-  def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
-    getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
-
-
-  def getNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
-    val fullAnnotation = ("""@label\(\s*"?""" + java.util.regex.Pattern.quote(label) + """"?\s*\)""").r
-    getNodes.filter(node => fullAnnotation.findFirstIn(node.toString).isDefined)
-  }
-
-  def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
-    var queue = nodeIdsToAnalyze
-    var result: Set[Int] = Set.empty
-    val internalNodeIds = getAssumptionNodes.diff(getNonInternalAssumptionNodes).map(_.id)
-    while(queue.nonEmpty){
-      val directDependencyIds = queue flatMap (id => dependencyGraph.getDirectEdges.getOrElse(id, Set.empty))
-      queue = internalNodeIds.intersect(directDependencyIds).diff(result) // internal assumptions are hidden -> add their direct dependencies instead
-      result = result.union(directDependencyIds)
-    }
-
-    getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
-  }
-
-  def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=true, includeDownwardEdges=false)
-    val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=false, includeDownwardEdges=true)
-    (allDependenciesUpwards ++ allDependenciesDownwards) flatMap nonInternalAssumptionNodesMap.get
-  }
-
-  def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=true, includeDownwardEdges=false)
-    val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=false, includeDownwardEdges=true)
-    getExplicitAssumptionNodes.filter(node => (allDependenciesUpwards ++ allDependenciesDownwards).contains(node.id))
-  }
-
-  def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=true, includeDownwardEdges=false)
-    val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=false, includeDownwardEdges=true)
-    getNonInternalAssertionNodes.filter(node => (allDependentsUpwards ++ allDependentsDownwards).contains(node.id))
-  }
-
-  def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-    val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=true, includeDownwardEdges=false)
-    val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges=false, includeDownwardEdges=true)
-    getExplicitAssertionNodes.filter(node => (allDependentsUpwards ++ allDependentsDownwards).contains(node.id))
-  }
-
-  def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
-
-  def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
-    (node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-      || AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty // postconditions act as assumptions for callers
-    )
-
-  def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
-    AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)
-    )
-
-  @deprecated // needs to be adapted to the notion of upward and downward edges
-  def hasAnyDependency(nodesToAnalyze: Set[DependencyAnalysisNode], includeInfeasibilityNodes: Boolean = true): Boolean =
-    nodesToAnalyze.intersect(getNonInternalAssumptionNodes)
-      .exists(node => dependencyGraph.existsAnyDependency(Set(node.id), nodesToAnalyze map (_.id) filter (_ != node.id), includeInfeasibilityNodes))
-  
-  
-  def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
-    !AssumptionType.internalTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty)
-
-  def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
-    getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
-
-  def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
-    getNonInternalAssertionNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).filter(_.hasFailed)
-
-  def exportGraph(program: ast.Program): Unit = {
-    if(Verifier.config.dependencyAnalysisExportPath.isEmpty) return
-    val directory = Paths.get(Verifier.config.dependencyAnalysisExportPath()).toFile
-    directory.mkdir()
-    dependencyGraph.exportGraph(Verifier.config.dependencyAnalysisExportPath() + "/" + name)
-    exportProgram(program, Verifier.config.dependencyAnalysisExportPath() + "/" + name)
-  }
-
-  private def exportProgram(program: Program, path: String): Unit = {
-    // TODO ake: we should copy the original source file in order to keep the line numbering!
-    val writer = new PrintWriter(path + "/program.vpr")
-    writer.println(program.toString())
-    writer.close()
-  }
-
-  private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
-    val sourceInfos = nodes map (_.sourceInfo)
-    getNodes filter (node => sourceInfos.contains(node.sourceInfo))
-  }
-
-  def computeProofCoverage(): (Double, Set[String]) = {
-    val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
-    computeProofCoverage(explicitAssertionNodes)
-  }
-
-  def computeProofCoverage(assertionNodes: Set[DependencyAnalysisNode]): (Double, Set[String]) = {
-    val assertionNodeIds = assertionNodes map (_.id)
-    val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes=true, includeUpwardEdges=true, includeDownwardEdges=true)
-    val coveredNodes = dependencies ++ assertionNodeIds
-
-    val userLevelNodes = toUserLevelNodes(getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]))
-    if(userLevelNodes.isEmpty) return (Double.NaN, Set())
-
-    val uncoveredUserLevelNodes = userLevelNodes filter (node =>
-      coveredNodes.intersect(node.lowerLevelNodes.map(_.id)).isEmpty
-      )
-    val proofCoverage = 1.0 - (uncoveredUserLevelNodes.size.toDouble / userLevelNodes.size.toDouble)
-    (proofCoverage, uncoveredUserLevelNodes.map(_.toString))
-  }
-
-  def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
-
-    def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[AnalysisSourceInfo]): Boolean = {
-      crucialNodesWithExpInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(exp.pos))) // TODO ake: currently we compare only lines not columns!
-    }
-
-    def isCrucialStmt(stmt: ast.Stmt, crucialNodesWithStmtInfo: Set[AnalysisSourceInfo]): Boolean = {
-      crucialNodesWithStmtInfo exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(stmt.pos)))
-    }
-
-    val crucialNodeSourceInfos = crucialNodes map (_.sourceInfo)
-    var total = 0
-    var removed = 0
-    var nonDetermBoolCount = 0
-
-    def getNextNonDetermBool: String = {
-      nonDetermBoolCount += 1
-      s"nonDetermBool_$nonDetermBoolCount"
-    }
-
-    val newProgram: ast.Program = ViperStrategy.Slim({
-      case s @(_: ast.Seqn | _: ast.Goto) => s
-      case domain@ast.Domain(name, functions, axioms, typVars, interpretations) =>
-        val newAxioms = axioms filter (a =>
-          crucialNodeSourceInfos exists (n => n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(a.exp.pos)) ||
-            n.getPositionString.equals(AnalysisSourceInfo.extractPositionString(a.pos))))
-        ast.Domain(name, functions, newAxioms, typVars, interpretations)(domain.pos, domain.info, domain.errT)
-      case function@ast.Function(name, formalArgs, typ, pres, posts, body) =>
-        val newPres = pres filter (isCrucialExp(_, crucialNodeSourceInfos))
-        val newPosts = posts filter (isCrucialExp(_, crucialNodeSourceInfos))
-        val newBody = body filter (isCrucialExp(_, crucialNodeSourceInfos))
-        ast.Function(name, formalArgs, typ, newPres, newPosts, newBody)(function.pos, function.info, function.errT)
-      case meth@ast.Method(name, inVars, outVars, pres, posts, body) =>
-        val newPres = pres filter (isCrucialExp(_, crucialNodeSourceInfos))
-        val newPosts = posts filter (isCrucialExp(_, crucialNodeSourceInfos))
-        total += pres.size + posts.size
-        removed += (pres.size - newPres.size) + (posts.size - newPosts.size)
-        ast.Method(name, inVars, outVars, newPres, newPosts, body)(meth.pos, meth.info, meth.errT)
-      case ifStmt@ast.If(cond, thenBody, elseBody) if !isCrucialExp(cond, crucialNodeSourceInfos) =>
-        total += 1
-        removed += 1
-        val nonDetermBool = getNextNonDetermBool
-        ast.Seqn(Seq(
-          ast.LocalVarDeclStmt(ast.LocalVarDecl(nonDetermBool, ast.Bool)())(),
-          ast.If(ast.LocalVar(nonDetermBool, ast.Bool)(cond.pos, cond.info, cond.errT), thenBody, elseBody)(ifStmt.pos, ifStmt.info, ifStmt.errT))
-          , Seq())(ifStmt.pos, ifStmt.info, ifStmt.errT)
-      case ifStmt: If =>
-        total += 1
-        ifStmt
-      case whileStmt@ast.While(cond, invs, body) if !isCrucialExp(cond, crucialNodeSourceInfos) =>
-        val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
-        total += 1 + invs.size
-        removed += 1 + (invs.size - newInvs.size)
-        val nonDetermBool = getNextNonDetermBool
-        ast.Seqn(Seq(
-          ast.LocalVarDeclStmt(ast.LocalVarDecl(nonDetermBool, ast.Bool)())(),
-          ast.While(ast.LocalVar(nonDetermBool, ast.Bool)(cond.pos, cond.info, cond.errT), newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT))
-          , Seq())(whileStmt.pos, whileStmt.info, whileStmt.errT)
-      case whileStmt@ast.While(cond, invs, body) =>
-        val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
-        total += 1 + invs.size
-        removed += (invs.size - newInvs.size)
-        ast.While(cond, newInvs, body)(whileStmt.pos, whileStmt.info, whileStmt.errT)
-      case label@ast.Label(name, invs) =>
-        val newInvs = invs filter (isCrucialExp(_, crucialNodeSourceInfos))
-        total += 1 + invs.size
-        removed += (invs.size - newInvs.size)
-        ast.Label(name, newInvs)(label.pos, label.info, label.errT)
-      case s: ast.Package if !isCrucialStmt(s, crucialNodeSourceInfos) =>
-        total += 1
-        removed += 1
-        ast.Inhale(ast.TrueLit()(s.pos, s.info, s.errT))(s.pos, s.info, s.errT)
-      case s: Stmt if !isCrucialStmt(s, crucialNodeSourceInfos) =>
-        total += 1
-        removed += 1
-        ast.Inhale(ast.TrueLit()(s.pos, s.info, s.errT))(s.pos, s.info, s.errT)
-      case s: Stmt =>
-        total += 1
-        s
-    }, Traverse.BottomUp).execute(program)
-    (newProgram, removed.toDouble / total.toDouble)
-  }
-
-  def pruneProgramAndExport(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program, exportFileName: String): Unit = {
-    val writer = new PrintWriter(exportFileName)
-    val (newProgram, pruningFactor) = getPrunedProgram(crucialNodes, program)
-    writer.println("// pruning factor: " + pruningFactor)
-    writer.println(newProgram.toString())
-    writer.close()
-  }
-
-  def computeVerificationProgress(): (Double, Double, String)  = {
-    computeVerificationProgressOptimized()
-  }
-
-  private lazy val sourceToAssertionNodes: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = getNonInternalAssertionNodes.groupBy(_.sourceInfo)
-
-
-
-  val deps: DAMemo[(AnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { case (assertionNode, mode) =>
-    def computeDependencies(currentNode: AnalysisSourceInfo, visited: Set[(AnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
-      if (visited.contains((currentNode, traversalMode))) {
-        return Set.empty // break cycles to avoid infinite loops
-      }
-
-      if (deps.contains(currentNode, traversalMode)) {
-        return deps((currentNode, traversalMode))
-      }
-
-      val updatedVisited = visited ++  Set((currentNode, traversalMode))
-      val allNonInternalAssertions = sourceToAssertionNodes.getOrElse(currentNode, Set.empty)
-
-      val intraMethodDependencyIds = dependencyGraph.getAllDependencies(allNonInternalAssertions.map(_.id), includeInfeasibilityNodes=true, includeUpwardEdges=false, includeDownwardEdges=false)
-      val intraMethodDependencies = intraMethodDependencyIds.flatMap(nonInternalAssumptionNodesMap.get).filterNot(_.sourceInfo.equals(currentNode))
-
-      val postconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethodsDownwards.getOrElse(n, Set.empty))
-      val postconditionNodes = postconditionNodeIds.flatMap(nodesMap.get)
-
-      val preconditionNodeIds = intraMethodDependencyIds.flatMap(n => dependencyGraph.getEdgesConnectingMethodsUpwards.getOrElse(n, Set.empty))
-      val preconditionNodes = preconditionNodeIds.flatMap(nodesMap.get)
-
-      val transDepsDownwards = postconditionNodes.map(_.sourceInfo).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, DATraversalMode.Downwards))
-      val transDepsUpwards = preconditionNodes.map(_.sourceInfo).filterNot(_.equals(currentNode)).flatMap(node => computeDependencies(node, updatedVisited, DATraversalMode.Upwards))
-
-      val result = reduceCompactUserLevelNodes(toCompactUserLevelNodes(intraMethodDependencies ++ postconditionNodes) ++ transDepsDownwards ++ transDepsUpwards)
-
-      deps.put((currentNode, traversalMode), result)
-      result
-    }
-
-    computeDependencies(assertionNode, Set.empty, mode)
-  }
-
-  private def reduceCompactUserLevelNodes(inputNodes: Set[CompactUserLevelDependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
-
-    val resultMap: mutable.Map[AnalysisSourceInfo, CompactUserLevelDependencyAnalysisNode] = mutable.Map()
-
-    for (node <- inputNodes) {
-      val existingNode = resultMap.get(node.source)
-
-      val newNode = existingNode match {
-        case Some(existing) =>
-          CompactUserLevelDependencyAnalysisNode(
-            source = node.source,
-            assumptionTypes = existing.assumptionTypes ++ node.assumptionTypes,
-            assertionTypes = existing.assertionTypes ++ node.assertionTypes,
-            hasFailures = existing.hasFailures || node.hasFailures
-          )
-        case None => node
-      }
-
-      resultMap.update(node.source, newNode)
-    }
-
-    resultMap.values.toSet
-  }
-
-  private def toCompactUserLevelNodes(lowLevelNodes: Set[DependencyAnalysisNode]): Set[CompactUserLevelDependencyAnalysisNode] = {
-    lowLevelNodes.groupBy(_.sourceInfo).map{case (source, nodes) =>
-      val assertionNodes = nodes.filter(_.isInstanceOf[GeneralAssertionNode])
-      CompactUserLevelDependencyAnalysisNode(source,
-        nodes.filter(_.isInstanceOf[GeneralAssumptionNode]).map(_.assumptionType),
-        assertionNodes.map(_.assumptionType),
-        assertionNodes.exists(_.asInstanceOf[GeneralAssertionNode].hasFailed)
-      )}.toSet
-  }
-
-  private def computeAssertionQuality(allDependencies: Set[CompactUserLevelDependencyAnalysisNode], assertion: AnalysisSourceInfo): Double = {
-    val assertionNodes = sourceToAssertionNodes.getOrElse(assertion, Set.empty).filter(node => node.isInstanceOf[GeneralAssertionNode])
-    val failedAssertionNodes = assertionNodes.filter(node =>  node.asInstanceOf[GeneralAssertionNode].hasFailed || node.assumptionType.equals(AssumptionType.ExplicitPostcondition))
-    // assertions with failures have quality = 0.0
-    if(failedAssertionNodes.nonEmpty)
-      return 0.0
-
-    val explicitDeps = allDependencies.filter(_.assumptionTypes.intersect(AssumptionType.explicitAssumptionTypes).nonEmpty).map(_.source)
-    val numDepsTotal = allDependencies.map(_.source).size
-    (numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble
-  }
-
-  private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = sourceToAssertionNodes.filter(ass => ass._2.map(_.assumptionType).intersect(AssumptionType.importedTypes).isEmpty)
-
-  def computeVerificationProgressOptimized(): (Double, Double, String)  = {
-
-    val allAssertions = getAssertionsRelevantForProgress.keySet.toList
-    val assertionDeps = allAssertions map (ass => ({
-      val ups = deps((ass, Upwards))
-      val downs = deps((ass, Downwards))
-      reduceCompactUserLevelNodes(ups ++ downs)
-    }, ass))
-
-    val specQuality = computeSpecQuality(assertionDeps.flatMap(_._1).toSet)
-
-    val assertionQualities1 = assertionDeps map (ass => (computeAssertionQuality(ass._1, ass._2), ass._2))
-    val assertionQualities = assertionQualities1 filterNot (n => isNaN(n._1))
-    val numAssertions = assertionQualities.size
-    val fullyVerifiedAssertions = assertionQualities.filter(_._1 == 1.0)
-    val numFullyVerifiedAssertions = fullyVerifiedAssertions.size
-
-    val proofQualityPeter = if(numAssertions > 0) numFullyVerifiedAssertions.toDouble / numAssertions.toDouble else 1.0
-
-    val assertionQualitiesSum = assertionQualities.map(_._1).sum
-    val proofQualityLea = if(numAssertions > 0) assertionQualitiesSum / numAssertions.toDouble else 1.0
-
-    val info = {
-//      s"Assertions with dependencies on explicit assumptions:\n\t\t${assertionQualities.filterNot(_._1 == 1.0).sortBy(n => (n._2.getLineNumber, n._2.toString())).mkString("\n\t\t")}" + "\n\n" +
-//      s"Assertions with perfect proof quality:\n\t\t${fullyVerifiedAssertions.map(_._2).sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t\t")}" + "\n\n" +
-//      s"Assertion qualities\n\t\t${assertionQualities.sortBy(n => (n._2.getLineNumber, n._2.toString())).mkString("\n\t\t")}" + "\n\n" +
-      s"specQuality = $specQuality\n" +
-      s"proof quality (Peter): $numFullyVerifiedAssertions / $numAssertions = $proofQualityPeter\n" +
-      s"proof quality (Lea): $assertionQualitiesSum / $numAssertions = $proofQualityLea\n"
-    }
-
-//    println(s"Runtimes:\n\tperMethodDependencyRuntime: ${perMethodDependencyRuntime/1e6}ms\n\t" +
-//    s"depsToPostcondRuntime: ${depsToPostcondRuntime/1e6}ms\n\t" +
-//    s"aggregationOfSummaryNodesRuntime: ${aggregationOfSummaryNodesRuntime/1e6}ms\n\t" +
-//    s"filteringNodesRuntime: ${filteringNodesRuntime/1e6}ms\n\t")
-
-    (specQuality * proofQualityPeter, specQuality * proofQualityLea, info)
-  }
-
-
-  private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode]): Double = {
-
-    val explicitAssertions = toCompactUserLevelNodes(getExplicitAssertionNodes)
-    val nonSourceCodeAssumptionTypes = AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes
-    val allSourceCodeNodes = toCompactUserLevelNodes(getNonInternalAssumptionNodes).filter(n => nonSourceCodeAssumptionTypes.intersect(n.assumptionTypes).isEmpty).map(_.source).diff(explicitAssertions.map(_.source))
-
-    if(allSourceCodeNodes.isEmpty) return 1.0
-
-    val coveredSourceCodeNodes = coveredNodes.map(_.source).intersect(allSourceCodeNodes)
-//    println(s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
-//    println(s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
-    println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
-    coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
-  }
-
-
-  def computeVerificationProgressNaive(): (Double, Double, String)  = {
-    val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes).filter(ass => ass.assertionTypes.intersect(AssumptionType.importedTypes).isEmpty)
-
-//    println(s"#assertions: ${allAssertions.size}")
-
-		// This is super slow. See optimized progress computation.
-    val relevantDependenciesPerAssertion = allAssertions
-      .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
-      .filter{case (ass, assumptions) => assumptions.nonEmpty || ass.hasFailures  || ass.assertionTypes.contains(AssumptionType.ExplicitPostcondition)} // filter out trivial assertions like `assert true`
-
-    val relevantDependencies = relevantDependenciesPerAssertion.flatMap(_._2).filter(_.assumptionTypes.nonEmpty).toSet
-
-    val explicitAssertions = toUserLevelNodes(getExplicitAssertionNodes).getSourceSet()
-
-    // covered
-    val coveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(relevantDependencies).getSourceSet()
-    val coveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(relevantDependencies).getSourceSet().diff(coveredExplicitSources)
-    val coveredSourceCodeStmts = relevantDependencies.getSourceSet().diff(coveredExplicitSources).diff(coveredVerificationAnnotations).diff(explicitAssertions)
-
-    // uncovered
-    val uncoveredNodes = toUserLevelNodes(getNonInternalAssumptionNodes).diffBySource(relevantDependencies)
-    val uncoveredExplicitSources = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(uncoveredNodes).getSourceSet()
-    val uncoveredVerificationAnnotations = UserLevelDependencyAnalysisNode.extractVerificationAnnotationNodes(uncoveredNodes).getSourceSet().diff(uncoveredExplicitSources) ++ explicitAssertions
-    val uncoveredSourceCodeStmts = uncoveredNodes.getSourceSet().diff(uncoveredExplicitSources).diff(uncoveredVerificationAnnotations)
-
-    // assertions
-    val relevantAssertions = relevantDependenciesPerAssertion
-    val assertionsWithFailures = relevantAssertions.filter(assertion => assertion._1.hasFailures).keySet.getSourceSet()
-    val explicitPostconditions = relevantAssertions.filter(assertion => assertion._1.assertionTypes.contains(AssumptionType.ExplicitPostcondition)).keySet.getSourceSet().diff(assertionsWithFailures)
-    val assertionsWithZeroProofQuality = assertionsWithFailures.union(explicitPostconditions)
-    val assertionsWithExplicitDeps = relevantAssertions.filter(deps => !deps._1.hasFailures && deps._2.exists(d => AssumptionType.explicitAssumptionTypes.intersect(d.assumptionTypes).nonEmpty)).keySet.getSourceSet().diff(assertionsWithZeroProofQuality)
-    val fullyVerifiedAssertions = relevantAssertions.keySet.getSourceSet().diff(assertionsWithExplicitDeps).diff(assertionsWithZeroProofQuality)
-
-    val numRelevantAssertions = relevantAssertions.keySet.size.toDouble
-
-    val numAllSourceCodeStmts = coveredSourceCodeStmts.size.toDouble + uncoveredSourceCodeStmts.size.toDouble
-    // Peter's metric
-    val specQuality  = if(numAllSourceCodeStmts > 0) coveredSourceCodeStmts.size.toDouble / numAllSourceCodeStmts else 1.0
-    val proofQualityPeter = if(numRelevantAssertions > 0) fullyVerifiedAssertions.size.toDouble / numRelevantAssertions else 1.0
-    val verificationProgressPeter = specQuality * proofQualityPeter
-
-    // Lea's metric
-    val proofQualityPerAssertion = relevantAssertions.toList.map { case (assertion, assumptions) =>
-      if(assertionsWithZeroProofQuality.contains(assertion.source)) (0.0, assertion)
-      else {
-        val nonExplicitDeps = UserLevelDependencyAnalysisNode.extractNonExplicitAssumptionNodes(assumptions)
-        (nonExplicitDeps.size.toDouble / assumptions.size.toDouble, assertion)
-      }
-    }
-
-    val proofQualityLea =  if(numRelevantAssertions > 0) proofQualityPerAssertion.map(_._1).sum / numRelevantAssertions else 1.0
-    val verificationProgressLea = specQuality * proofQualityLea
-
-
-    def getString(nodes: Set[AnalysisSourceInfo]): String = {
-      nodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t\t")
-    }
-
-    val info = {
-      s"Covered\n" +
-        s"\tExplicit Assumptions:\n\t\t${getString(coveredExplicitSources)}" + "\n" +
-        s"\tVerification Annotations:\n\t\t${getString(coveredVerificationAnnotations)}" + "\n" +
-        s"\tSource Code:\n\t\t${getString(coveredSourceCodeStmts)}" + "\n" +
-        "\n" +
-      s"Uncovered\n" +
-        s"\tExplicit Assumptions:\n\t\t${getString(uncoveredExplicitSources)}" + "\n" +
-        s"\tVerification Annotations:\n\t\t${getString(uncoveredVerificationAnnotations)}" + "\n" +
-        s"\tSource Code:\n\t\t${getString(uncoveredSourceCodeStmts)}" + "\n" +
-        "\n" +
-      s"Fully verified assertions:\n\t\t${getString(fullyVerifiedAssertions)}" + "\n\n" +
-        s"Assertions depending on explicit assumptions:\n\t\t${getString(assertionsWithExplicitDeps)}" + "\n\n" +
-        s"Assertions with failures:\n\t\t${getString(assertionsWithFailures)}" + "\n\n" +
-        s"Explicit Postcondition:\n\t\t${getString(explicitPostconditions)}" + "\n\n" +
-        "\n" +
-        s"Assertion Qualities:\n\t\t${proofQualityPerAssertion.filterNot(_._1 == 1.0).sortBy(n => (n._2.source.getLineNumber, n._2.toString())).mkString("\n\t\t")}" + "\n\n" +
-      "\n" +
-      s"Verification Progress (Peter):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
-      s"${fullyVerifiedAssertions.size}/${relevantAssertions.keySet.size} = ${"%.2f".format(verificationProgressPeter)}" + "\n" +
-      s"Verification Progress (Lea):\n\t${coveredSourceCodeStmts.size}/${coveredSourceCodeStmts.size + uncoveredSourceCodeStmts.size} * " +
-        f"${"%.2f".format(proofQualityPerAssertion.map(_._1).sum)}/${relevantAssertions.keys.size} = ${"%.2f".format(verificationProgressLea)}" + "\n"
-    }
-    (verificationProgressPeter, verificationProgressLea, info)
-  }
-
-  /* returns an ordered list of (Assumption, #dependents) */
-  def computeAssumptionRanking(): List[(String, Double)] = {
-    val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes).filter(ass => ass.assertionTypes.intersect(AssumptionType.importedTypes).isEmpty)
-
-    val relevantDependenciesPerAssertion = allAssertions
-      .map(ass => (ass, toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
-      .filter{case (assertion, assumptions) => assumptions.nonEmpty || assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)}
-    val numAssertions = relevantDependenciesPerAssertion.size.toDouble
-
-    val assumptionImpacts= relevantDependenciesPerAssertion.toList.flatMap { case (_, assumptions) =>
-      val explicitDeps = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(assumptions)
-      explicitDeps.map(node => (node.source, 1.0/assumptions.size/numAssertions)).toList
-    }
-
-    val unverifiedAssertionImpacts = getAssertionsWithZeroQuality.map(assertion => (assertion, 1.0/numAssertions)).toList
-
-    val totalImpacts1 = (assumptionImpacts ++ unverifiedAssertionImpacts).groupBy(_._1)
-    val totalImpacts = totalImpacts1.map{case (assumption, impacts) => (assumption.toString, impacts.map(_._2).sum)}.toList
-
-    totalImpacts.sortBy(_._2).reverse
-  }
-
-  def computeAssumptionRankingOld(): List[(String, Int)] = {
-    toUserLevelNodes(getExplicitAssumptionNodes).map(node => (node.toString, toUserLevelNodes(getAllNonInternalDependents(node.lowerLevelNodes.map(_.id))).diff(Set(node)).size))
-      .toList.sortBy(_._2).reverse
-  }
-
-  private def getAssertionsWithZeroQuality: Set[AnalysisSourceInfo] = {
-    val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
-    allAssertions.filter(assertion => assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)).getSourceSet()
-  }
-
-  def computeUncoveredStatements(): Int = {
-    val allAssertions = toUserLevelNodes(getNonInternalAssertionNodes)
-    val allDependencies = allAssertions.flatMap(ass => toUserLevelNodes(getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass))).getSourceSet()
-
-    val explicitAssertions = toUserLevelNodes(getExplicitAssertionNodes)
-    val allNodes = toUserLevelNodes(getNonInternalAssumptionNodes)
-    val allSourceCodeStmts = allNodes.getSourceSet().diff(UserLevelDependencyAnalysisNode.extractByAssumptionType(allNodes,
-      AssumptionType.explicitAssumptionTypes ++ AssumptionType.verificationAnnotationTypes).getSourceSet()).diff(explicitAssertions.getSourceSet())
-    val uncoveredSourceCodeStmts = allSourceCodeStmts.diff(allDependencies)
-    if(uncoveredSourceCodeStmts.nonEmpty)
-      println(s"$name:\n\t${allSourceCodeStmts.diff(allDependencies).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}")
-    uncoveredSourceCodeStmts.size
-  }
-}
-
-case class DAMemo[A,B](f: A => B) extends (A => B) {
-  private val cache = mutable.Map.empty[A, B]
-  def apply(x: A): B = cache getOrElseUpdate (x, f(x))
-
-  def put(a: A, b: B): Option[B] = {
-    cache.put(a, b)
-  }
-
-  def contains(a: A): Boolean = {
-    cache.contains(a)
-  }
+class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter {
+
+	def getGraph: ReadOnlyDependencyGraph[T] = dependencyGraph
+
+	def getName: String = name
+
+	def getMember: Option[ast.Member] = member
+
+	lazy val nodesMap: Map[Int, DependencyAnalysisNode] = getNodes.map(node => (node.id, node)).toMap
+	lazy val nonInternalAssumptionNodesMap: Map[Int, DependencyAnalysisNode] = getNonInternalAssumptionNodes(getNodes).map(node => (node.id, node)).toMap
+	lazy val assertionNodesMap: Map[Int, DependencyAnalysisNode] = getAssertionNodes.map(node => (node.id, node)).toMap
+
+	def getNodes: Set[DependencyAnalysisNode] = dependencyGraph.getNodes.toSet
+
+	def getAssumptionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssumptionNodes.toSet
+
+	def getAssertionNodes: Set[DependencyAnalysisNode] = dependencyGraph.getAssertionNodes.toSet
+
+	def getErrors: List[Failure] = errors
+
+	// TODO ake: join nodes are not needed for the final graph
+	val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Sink)))
+	val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Source)))
+
+	private def getJoinCandidateNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes.filter(node => node.joinInfos.nonEmpty)
+
+	def toUserLevelNodes(nodes: Iterable[DependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = UserLevelDependencyAnalysisNode.from(nodes)
+
+	def getNodesByLine(line: Int): Set[DependencyAnalysisNode] =
+		getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line)
+
+	def getNodesByPosition(file: String, line: Int): Set[DependencyAnalysisNode] =
+		getNodes.filter(n => !AssumptionType.internalTypes.contains(n.assumptionType)).filter(node => node.sourceInfo.getLineNumber.isDefined && node.sourceInfo.getLineNumber.get == line && node.sourceInfo.getPositionString.startsWith(file + "."))
+
+
+	def getNodesByLabel(label: String): Set[DependencyAnalysisNode] = {
+		val fullAnnotation = ("""@label\(\s*"?""" + java.util.regex.Pattern.quote(label) + """"?\s*\)""").r
+		getNodes.filter(node => fullAnnotation.findFirstIn(node.toString).isDefined)
+	}
+
+	def getDirectDependencies(nodeIdsToAnalyze: Set[Int]): Set[DependencyAnalysisNode] = {
+		var queue = nodeIdsToAnalyze
+		var result: Set[Int] = Set.empty
+		val internalNodeIds = getAssumptionNodes.diff(getNonInternalAssumptionNodes).map(_.id).union(getAssertionNodes.map(_.id))
+		while (queue.nonEmpty) {
+			val directDependencyIds = queue flatMap (id => dependencyGraph.getDirectEdges.getOrElse(id, Set.empty))
+			queue = internalNodeIds.intersect(directDependencyIds).diff(result) // internal assumptions are hidden -> add their direct dependencies instead
+			result = result.union(directDependencyIds)
+		}
+
+		getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
+	}
+
+	def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+		val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+		val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+		(allDependenciesUpwards ++ allDependenciesDownwards) flatMap nonInternalAssumptionNodesMap.get
+	}
+
+	def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+		val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+		val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+		getExplicitAssumptionNodes.filter(node => (allDependenciesUpwards ++ allDependenciesDownwards).contains(node.id))
+	}
+
+	def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+		val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+		val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+		getNonInternalAssertionNodes.filter(node => (allDependentsUpwards ++ allDependentsDownwards).contains(node.id))
+	}
+
+	def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+		val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+		val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+		getExplicitAssertionNodes.filter(node => (allDependentsUpwards ++ allDependentsDownwards).contains(node.id))
+	}
+
+	def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
+
+	def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
+		(node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
+			|| AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty // postconditions act as assumptions for callers
+		)
+
+	def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>
+		AssumptionType.explicitAssumptionTypes.contains(node.assumptionType)
+		)
+
+	def getNonInternalAssertionNodes: Set[DependencyAnalysisNode] = getAssertionNodes filter (node =>
+		!AssumptionType.internalTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty)
+
+	def getExplicitAssertionNodes: Set[DependencyAnalysisNode] =
+		getNonInternalAssertionNodes.filter(node => AssumptionType.explicitAssertionTypes.contains(node.assumptionType))
+
+	def getAssertionNodesWithFailures: Set[GeneralAssertionNode] =
+		getNonInternalAssertionNodes.filter(_.isInstanceOf[GeneralAssertionNode]).map(_.asInstanceOf[GeneralAssertionNode]).filter(_.hasFailed)
+
+	def exportGraph(program: ast.Program): Unit = {
+		if (Verifier.config.dependencyAnalysisExportPath.isEmpty) return
+		val directory = Paths.get(Verifier.config.dependencyAnalysisExportPath()).toFile
+		directory.mkdir()
+		dependencyGraph.exportGraph(Verifier.config.dependencyAnalysisExportPath() + "/" + name)
+		exportProgram(program, Verifier.config.dependencyAnalysisExportPath() + "/" + name)
+	}
+
+	private def exportProgram(program: Program, path: String): Unit = {
+		// TODO ake: we should copy the original source file in order to keep the line numbering!
+		val writer = new PrintWriter(path + "/program.vpr")
+		writer.println(program.toString())
+		writer.close()
+	}
+
+	private def getNodesWithIdenticalSource(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = {
+		val sourceInfos = nodes map (_.sourceInfo)
+		getNodes filter (node => sourceInfos.contains(node.sourceInfo))
+	}
+
+	def computeProofCoverage(): (Double, Set[String]) = {
+		val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
+		computeProofCoverage(explicitAssertionNodes)
+	}
+
+	def computeProofCoverage(assertionNodes: Set[DependencyAnalysisNode]): (Double, Set[String]) = {
+		val assertionNodeIds = assertionNodes map (_.id)
+		val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true)
+		val coveredNodes = dependencies ++ assertionNodeIds
+
+		val userLevelNodes = toUserLevelNodes(getNonInternalAssumptionNodes.filterNot(_.isInstanceOf[AxiomAssumptionNode]))
+		if (userLevelNodes.isEmpty) return (Double.NaN, Set())
+
+		val uncoveredUserLevelNodes = userLevelNodes filter (node =>
+			coveredNodes.intersect(node.lowerLevelNodes.map(_.id)).isEmpty
+			)
+		val proofCoverage = 1.0 - (uncoveredUserLevelNodes.size.toDouble / userLevelNodes.size.toDouble)
+		(proofCoverage, uncoveredUserLevelNodes.map(_.toString))
+	}
 }
 
 

@@ -31,8 +31,6 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] extends AbstractReadOnl
   def getAllEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getAllEdges(includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Map[Int, Set[Int]] // target -> direct dependencies
 
-  @deprecated // needs to be adapted to the notion of upward and downward edges
-  def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean
   def getAllDependencies(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
 
@@ -159,23 +157,6 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 
   def addVacuousProof(assertionId: Int): Unit = {
     vacuousProofs = assertionId +: vacuousProofs
-  }
-
-  @deprecated // needs to be adapted to the notion of upward and downward edges
-  def existsAnyDependency(sources: Set[Int], targets: Set[Int], includeInfeasibilityNodes: Boolean): Boolean = {
-    val infeasibilityNodeIds: Set[Int] = if(includeInfeasibilityNodes) Set.empty else (getAssumptionNodes filter (_.isInstanceOf[InfeasibilityNode]) map (_.id)).toSet
-    var visited: Set[Int] = Set.empty
-    var queue: List[Int] = targets.toList
-    val allEdges = getAllEdges
-    while(queue.nonEmpty){
-      val curr = queue.head
-      val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
-      if(newVisits.intersect(sources).nonEmpty)
-        return true
-      visited = visited ++ Set(curr)
-      queue = queue.tail ++ (newVisits filter (!visited.contains(_)))
-    }
-    false
   }
 
   def getAllDependencies(targets: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int] = {

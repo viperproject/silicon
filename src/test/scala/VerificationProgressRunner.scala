@@ -1,5 +1,6 @@
 package viper.silicon.tests
 
+import dependencyAnalysis.DependencyAnalysisProgressSupporter
 import viper.silicon.dependencyAnalysis.DependencyAnalysisReporter
 import viper.silver.ast.Program
 import viper.silver.frontend.SilFrontend
@@ -60,7 +61,7 @@ object VerificationProgressRunner extends DependencyAnalysisTestFramework {
 
     val joinedDependencyGraphInterpreter = frontend.reporter.asInstanceOf[DependencyAnalysisReporter].joinedDependencyGraphInterpreter
 
-    val (progressPeter, progressLea, _) = joinedDependencyGraphInterpreter.get.computeVerificationProgress()
+    val (progressPeter, progressLea, _) = new DependencyAnalysisProgressSupporter(joinedDependencyGraphInterpreter.get).computeVerificationProgress()
 
     writer.println(f"$fileName\t$progressPeter%.3f\t$progressLea%.3f\t${!hasFailures}")
     println(f"$fileName\t$progressPeter%.3f\t$progressLea%.3f\t${!hasFailures}")

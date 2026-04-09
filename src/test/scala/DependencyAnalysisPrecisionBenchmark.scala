@@ -1,5 +1,6 @@
 package viper.silicon.tests
 
+import dependencyAnalysis.DependencyAnalysisPruningSupporter
 import viper.silicon.dependencyAnalysis._
 import viper.silver.ast.Program
 import viper.silver.verifier
@@ -57,6 +58,8 @@ object DependencyAnalysisPrecisionBenchmark extends DependencyAnalysisTestFramew
 																		dependencyGraphInterpreters: List[DependencyGraphInterpreter[IntraProcedural]],
 																		fullGraphInterpreter: DependencyGraphInterpreter[Final],
 																		writer: PrintWriter) extends AnnotatedTest(program, dependencyGraphInterpreters, true) {
+		lazy val pruningSupporter = new DependencyAnalysisPruningSupporter[Final](fullGraphInterpreter)
+
     override def execute(): Unit = {
       if(!verifyTestSoundness()){
         writer.println(s"!!!!!!!!!!!\nFailed to verify soundness of precision test $fileName\n")
@@ -97,7 +100,7 @@ object DependencyAnalysisPrecisionBenchmark extends DependencyAnalysisTestFramew
 
     protected def pruneAndVerify(relevantLines: Set[Int], exportFileName: String): Boolean = {
       val crucialNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
-      val (newProgram, pruningFactor) = fullGraphInterpreter.getPrunedProgram(crucialNodes, program)
+      val (newProgram, pruningFactor) = pruningSupporter.getPrunedProgram(crucialNodes, program)
       val result = frontend.verifier.verify(newProgram)
 //      exportPrunedProgram(exportFileName, newProgram, pruningFactor, result) // can be used for debugging
       !result.isInstanceOf[verifier.Failure]

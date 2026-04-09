@@ -1,6 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
-import dependencyAnalysis.UserLevelDependencyAnalysisNode
+import dependencyAnalysis.{DependencyAnalysisDebugSupporter, DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, UserLevelDependencyAnalysisNode}
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.{AnnotationInfo, AnonymousDomainAxiom, Assume, Goto, If, Inhale, Label, LocalVarDeclStmt, MakeInfoPair, Method, NamedDomainAxiom, Package, Seqn, While}
@@ -16,6 +16,10 @@ import scala.util.matching.Regex
 
 class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterpreter[Final], memberInterpreters: Seq[DependencyGraphInterpreter[IntraProcedural]],
                                  program: ast.Program, verificationErrors: List[Failure]) {
+
+	lazy val progressSupporter = new DependencyAnalysisProgressSupporter[Final](fullGraphInterpreter)
+	lazy val pruningSupporter = new DependencyAnalysisPruningSupporter[Final](fullGraphInterpreter)
+
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
     "\n\t'downDep [line numbers]' to print all dependents of the given line numbers or" +
@@ -61,18 +65,15 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
       inputParts.head.toLowerCase match {
         case "dep" => handleDependencyQuery(inputParts.tail.toSet)
         case "downdep" => handleDependentsQuery(inputParts.tail.toSet)
-        case "hasdep" => handleHasDependencyQuery(inputParts.tail.toSet)
         case "coverage" | "cov" => handleProofCoverageQuery(inputParts.tail)
         case "covlines" | "covl" => handleProofCoverageLineQuery(inputParts.tail)
         case "progress" | "prog" => handleVerificationProgressQuery()
-        case "progressdebug" => handleVerificationProgressDEBUGQuery()
-        case "progressnaive" => handleVerificationProgressNaiveQuery()
         case "guidance" | "guide" => handleVerificationGuidanceQuery()
-        case "guideold" => handleVerificationGuidanceOldQuery()
         case "prune" => handlePruningRequest(inputParts.tail)
         case "benchmark" => handleBenchmarkQuery()
         case "precisioneval" => handlePrecisionEval(inputParts.tail)
         case "annotate" => handleAnnotateQuery(inputParts.tail)
+				case "debug" => handleDebugQuery()
         case "graphsize" =>
           if (inputParts.tail.isEmpty) {
             handleGraphSizeQuery(fullGraphInterpreter)
@@ -153,39 +154,10 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handleVerificationProgressQuery(): Unit = {
 
-    val ((optProgressPeter, optProgressLea, optInfo), optTime) = measureTime(fullGraphInterpreter.computeVerificationProgress())
-    //    println(s"Overall verification progress: $progress")
-    println(s"$optInfo")
+    val ((optProgressPeter, optProgressLea), optTime) = measureTime(progressSupporter.computeVerificationProgress())
+
     println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
     println(s"Finished in ${optTime}ms")
-  }
-
-  private def handleVerificationProgressDEBUGQuery(): Unit = {
-
-    println("\nNaive implementation")
-    val ((naiveProgressPeter, naiveProgressLea, naiveInfo), naiveTime) = measureTime(fullGraphInterpreter.computeVerificationProgressNaive())
-//    println(s"Overall verification progress: $progress")
-    println(s"$naiveInfo")
-    println(s"Peter: $naiveProgressPeter; Lea: $naiveProgressLea")
-    println(s"Finished in ${naiveTime}ms")
-
-    println("\nOptimized implementation")
-    val ((optProgressPeter, optProgressLea, optInfo), optTime) = measureTime(fullGraphInterpreter.computeVerificationProgressOptimized())
-    //    println(s"Overall verification progress: $progress")
-    println(s"$optInfo")
-    println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
-    println(s"Finished in ${optTime}ms")
-    if(Math.abs(naiveProgressPeter - optProgressPeter) > 0.001 || Math.abs(naiveProgressLea - optProgressLea) > 0.001) println("Fail: Progress is not equal!")
-    else println("Success: Progress is equal!")
-  }
-
-  private def handleVerificationProgressNaiveQuery(): Unit = {
-
-    val ((naiveProgressPeter, naiveProgressLea, naiveInfo), naiveTime) = measureTime(fullGraphInterpreter.computeVerificationProgressNaive())
-    //    println(s"Overall verification progress: $progress")
-    println(s"$naiveInfo")
-    println(s"Peter: $naiveProgressPeter; Lea: $naiveProgressLea")
-    println(s"Finished in ${naiveTime}ms")
   }
 
   private def getSourceInfoString(nodes: Set[DependencyAnalysisNode]): String = {
@@ -384,16 +356,6 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
     println("Done.")
   }
 
-  private def handleHasDependencyQuery(inputs: Set[String]): Unit = {
-    val queriedNodes = getQueriedNodesFromInput(inputs)
-
-    val (depExists, time) = measureTime[Boolean](fullGraphInterpreter.hasAnyDependency(queriedNodes))
-
-    println(s"Queried:\n\t${getSourceInfoString(queriedNodes)}")
-    println(s"Dependency exists? $depExists")
-    println(s"\nDone in ${time}ms.")
-  }
-
   private def measureTime[T](function: => T): (T, Double) = {
     val startAnalysis = System.nanoTime()
     val res = function
@@ -405,13 +367,8 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
   private def handlePruningRequest(inputs: Seq[String]): Unit = {
     println("exportFileName: ")
     val exportFileName = readLine()
-
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
-    val dependencies = fullGraphInterpreter.getAllNonInternalDependencies(queriedNodes.map(_.id))
-    val crucialNodes = queriedNodes ++ dependencies
-    println(s"Found ${crucialNodes.size} crucial nodes. Pruning...")
-
-    fullGraphInterpreter.pruneProgramAndExport(crucialNodes, program, exportFileName)
+		pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
     println("Done.")
   }
 
@@ -454,24 +411,17 @@ class DependencyAnalysisUserTool(fullGraphInterpreter: DependencyGraphInterprete
 
   private def handleVerificationGuidanceQuery(): Unit = {
 
-    val assumptionRanking = fullGraphInterpreter.computeAssumptionRanking().filter(_._2 > 0.0)
+    val assumptionRanking = progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
     println(s"Assumptions/unverified assertions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
     println("Uncovered source code per method: ")
     val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])
-      .map(mInterpreter => (mInterpreter.getMember.get.name, mInterpreter.computeUncoveredStatements()))
+      .map(mInterpreter => (mInterpreter.getMember.get.name, new DependencyAnalysisProgressSupporter(mInterpreter).computeUncoveredStatements()))
       .toList.filter(_._2 > 0).sortBy(_._2).reverse
     println(s"\nMethods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
   }
 
-  private def handleVerificationGuidanceOldQuery(): Unit = {
-
-    val assumptionRanking = fullGraphInterpreter.computeAssumptionRankingOld().filter(_._2 > 0)
-    println(s"Assumptions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
-
-    val memberCoverageRanking = memberInterpreters.filter(mInterpreter => mInterpreter.getMember.isDefined && mInterpreter.getMember.get.isInstanceOf[Method])
-      .map(mInterpreter => (mInterpreter.getMember.get.name, mInterpreter.computeUncoveredStatements()))
-      .toList.filter(_._2 > 0).sortBy(_._2).reverse
-    println(s"Methods and the number of uncovered statements:\n\t${memberCoverageRanking.mkString("\n\t")}\n")
-  }
+	private def handleDebugQuery(): Unit = {
+		new DependencyAnalysisDebugSupporter(fullGraphInterpreter).run()
+	}
 }

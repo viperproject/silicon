@@ -1,5 +1,6 @@
 package viper.silicon.tests
 
+import dependencyAnalysis.DependencyAnalysisPruningSupporter
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
 import viper.silver.ast.utility.ViperStrategy
@@ -81,6 +82,7 @@ trait DependencyAnalysisTestFramework {
    * Statements that are only required as a trigger need to be manually annotated with @trigger() by the user.
    */
   class PruningTest(fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
+		lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphInterpreter)
 
     def execute(): Unit = {
       val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
@@ -98,7 +100,7 @@ trait DependencyAnalysisTestFramework {
       val dependencies = fullGraphInterpreter.getAllNonInternalDependencies(relevantNodes.map(_.id))
 
       val crucialNodes = relevantNodes ++ dependencies
-      val (newProgram, pruningFactor) = fullGraphInterpreter.getPrunedProgram(crucialNodes, program)
+      val (newProgram, pruningFactor) = pruningSupporter.getPrunedProgram(crucialNodes, program)
       val result = baselineFrontend.verifier.verify(newProgram)
       if(EXPORT_PRUNED_PROGRAMS) exportPrunedProgram(exportFileName, newProgram, pruningFactor, result)
       assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program. ${result.transformedResult()}\n${newProgram.toString()}")
@@ -114,6 +116,7 @@ trait DependencyAnalysisTestFramework {
   }
 
   class PrecisionEvaluation(filePrefix: String, fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
+		lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphInterpreter)
     protected val folderName = s"src/test/resources/precision_groundTruths/$filePrefix"
 
     def execute(): Unit = {
@@ -154,7 +157,7 @@ trait DependencyAnalysisTestFramework {
         }
       }
 
-      val (minProgram, _) = fullGraphInterpreter.getPrunedProgram(bestDepSet ++ relevantNodes, program)
+      val (minProgram, _) = pruningSupporter.getPrunedProgram(bestDepSet ++ relevantNodes, program)
 
       exportPrunedProgram(s"${fileName}_${relevantLines.mkString("_")}.vpr", minProgram)
       val precision = minNumDeps.toDouble / reportedDependencies.size
@@ -162,7 +165,7 @@ trait DependencyAnalysisTestFramework {
     }
 
     protected def pruneAndVerify(crucialNodes: Set[DependencyAnalysisNode]): Boolean = {
-      val (newProgram, _) = fullGraphInterpreter.getPrunedProgram(crucialNodes, program)
+      val (newProgram, _) = pruningSupporter.getPrunedProgram(crucialNodes, program)
       val result = baselineFrontend.verifier.verify(newProgram)
       !result.isInstanceOf[verifier.Failure]
     }
