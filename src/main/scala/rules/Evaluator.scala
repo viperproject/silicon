@@ -24,8 +24,8 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{AnnotationInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, LocalVarWithVersion, NoDependencyAnalysisMerge, WeightedQuantifier}
-import viper.silver.dependencyAnalysis.DependencyType
+import viper.silver.ast.{AnnotationInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, LocalVarWithVersion, NoDependencyAnalysisMerge, SimpleDependencyAnalysisMerge, WeightedQuantifier}
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
@@ -597,7 +597,20 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-        evals2(s, eArgs, Nil, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) => {
+				val pres = func.pres.map(_.transform {
+					/* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
+					 * for Carbon issue #210, fail if the subsequent code that strips out triggers from
+					 * exhaled function preconditions, is commented. The code was originally a work-around
+					 * for Silicon issue #276. Removing triggers from function preconditions is OK-ish
+					 * because they are consumed (exhaled), i.e. asserted. However, the triggers are
+					 * also used to internally generated quantifiers, e.g. related to QPs. My hope is that
+					 * this hack is no longer needed once heap-dependent triggers are supported.
+					 */
+					case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
+				})
+				val presWithDAInfo = SimpleDependencyAnalysisMerge.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts))
+				val argsAnalysisInfo = analysisInfos.removeSource()
+        evals2(s, eArgs, Nil, _ => pve, v, argsAnalysisInfo)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fapp.pos)
@@ -613,17 +626,7 @@ object evaluator extends EvaluationRules {
            *       although the latter is not necessary.
            */
           joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1, analysisInfos)((s2, v2, QB) => {
-            val pres = func.pres.map(_.transform {
-              /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
-               * for Carbon issue #210, fail if the subsequent code that strips out triggers from
-               * exhaled function preconditions, is commented. The code was originally a work-around
-               * for Silicon issue #276. Removing triggers from function preconditions is OK-ish
-               * because they are consumed (exhaled), i.e. asserted. However, the triggers are
-               * also used to internally generated quantifiers, e.g. related to QPs. My hope is that
-               * this hack is no longer needed once heap-dependent triggers are supported.
-               */
-              case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
-            })
+
             /* Formal function arguments are instantiated with the corresponding actual arguments
              * by adding the corresponding bindings to the store. To avoid formals in error messages
              * and to report actuals instead, we have two choices: the first is two attach a reason
@@ -640,8 +643,19 @@ object evaluator extends EvaluationRules {
             val pvePre =
               ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
                 reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
-            val argsPairs: Seq[(Term, Option[ast.Exp])] = if (withExp) tArgs.zip(eArgsNew.get.map(Some(_))) else tArgs.zip(Seq.fill(tArgs.size)(None))
-            val s3 = s2.copy(g = Store(fargs.zip(argsPairs)),
+            val argsPairs: Seq[(Term, Option[ast.Exp])] = if(Verifier.config.enableDependencyAnalysis()){
+							tArgs zip eArgs.map(Some(_))
+						} else if (withExp) tArgs.zip(eArgsNew.get.map(Some(_))) else tArgs.zip(Seq.fill(tArgs.size)(None))
+						// encode the function call as a sequence of assignments to fresh variables (one for each argument) and a method call using the fresh variables as arguments
+						val argsFreshVar =
+							if(Verifier.config.enableDependencyAnalysis()){
+								argsPairs.map(arg => {
+									val argNew = v1.decider.fresh(arg._1.sort, None)
+									v1.decider.assume(Equals(argNew, arg._1), None, argsAnalysisInfo.withSource(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get)))
+									(argNew, None)
+								})
+							}else argsPairs
+            val s3 = s2.copy(g = Store(fargs.zip(argsFreshVar)),
                              recordVisited = true,
                              functionRecorder = s2.functionRecorder.changeDepthBy(+1),
                                 /* Temporarily disable the recorder: when recording (to later on
@@ -671,7 +685,7 @@ object evaluator extends EvaluationRules {
                              assertReadAccessOnly = if (Verifier.config.respectFunctionPrePermAmounts())
                                s2.assertReadAccessOnly /* should currently always be false */ else true)
             val precondAnalysisInfos = analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up))
-            consumes(s3, pres, true, _ => pvePre, v2, precondAnalysisInfos)((s4, snap, v3) => {
+            consumes(s3, presWithDAInfo, true, _ => pvePre, v2, precondAnalysisInfos)((s4, snap, v3) => {
               val snap1 = snap.get.convert(sorts.Snap)
               val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
               val preExp = Option.when(withExp)({
@@ -708,7 +722,11 @@ object evaluator extends EvaluationRules {
              *       joined snapshot could be defined and represented
              */
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, Option.when(withExp)(eArgs), v1, analysisInfos))((s6, r, v4)
-              => Q(s6, r._1, r._2, v4))})
+              => {
+						v4.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo,
+							Seq(SimpleDependencyAnalysisMerge.attachExpMergeInfo(fapp), SimpleDependencyAnalysisMerge.attachExpMergeInfo(fapp, analysisInfos.getSourceInfo)))
+						Q(s6, r._1, r._2, v4)
+					})})
 
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
@@ -1464,7 +1482,7 @@ object evaluator extends EvaluationRules {
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
         sJoined = sJoined.copy(functionRecorder = sJoined.functionRecorder.recordPathSymbol(joinSymbol))
 
-        joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew, analysisInfos.withDependencyType(DependencyType.Internal))}
+        joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew, analysisInfos)}
 
         (sJoined, (joinTerm, joinExp))
     }
