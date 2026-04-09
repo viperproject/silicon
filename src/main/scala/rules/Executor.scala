@@ -21,11 +21,11 @@ import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableNam
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.utility.Statements
-import viper.silver.ast.{EdgeType, EvalStackDependencyAnalysisJoin, JoinType}
+import viper.silver.ast.{EdgeType, EvalStackDependencyAnalysisJoin, JoinType, SimpleDependencyAnalysisMerge}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
-import viper.silver.dependencyAnalysis.DependencyType
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
@@ -553,7 +553,9 @@ object executor extends ExecutionRules {
         val sepIdentifier = v.symbExLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
         val paramId = v.symbExLog.openScope(paramLog)
-        evals(s, eArgs, _ => pveCall, v, analysisInfos)((s1, tArgs, eArgsNew, v1) => {
+				val eArgsWithDAInfo = SimpleDependencyAnalysisMerge.attachExpMergeInfo(eArgs)
+				val argsAnalysisInfo = analysisInfos.removeSource()
+        evals(s, eArgsWithDAInfo, _ => pveCall, v, argsAnalysisInfo)((s1, tArgs, eArgsNew, v1) => {
           v1.symbExLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
@@ -562,21 +564,37 @@ object executor extends ExecutionRules {
           val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
           val preCondId = v1.symbExLog.openScope(preCondLog)
-          val argsWithExp = if (withExp)
-            tArgs zip (eArgsNew.get.map(Some(_)))
-          else
-            tArgs zip Seq.fill(tArgs.size)(None)
-          val s2 = s1.copy(g = Store(fargs.zip(argsWithExp)),
+          val argsWithExp: Seq[(Term, Option[ast.Exp])] = {
+						if(Verifier.config.enableDependencyAnalysis()){
+							tArgs zip eArgsWithDAInfo.map(Some(_))
+						} else if (withExp)
+            	tArgs zip (eArgsNew.get.map(Some(_)))
+						else
+							tArgs zip Seq.fill(tArgs.size)(None)
+						}
+					// encode the method call as a sequence of assignments to fresh variables (one for each argument) and a method call using the fresh variables as arguments
+					val argsFreshVar =
+						if(Verifier.config.enableDependencyAnalysis()){
+							argsWithExp.map(arg => {
+								val argNew = v1.decider.fresh(arg._1.sort, None)
+								v1.decider.assume(Equals(argNew, arg._1), None, argsAnalysisInfo.withSource(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get)))
+								(argNew, None)
+							})
+						}else argsWithExp
+          val s2 = s1.copy(g = Store(fargs.zip(argsFreshVar)),
                            recordVisited = true)
 
-          consumes(s2, meth.pres, false, _ => pvePre, v1, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up)))((s3, _, v2) => {
+					val presWithDAInfo = SimpleDependencyAnalysisMerge.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts))
+          consumes(s2, presWithDAInfo, false, _ => pvePre, v1, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up)))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
             val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down)))((s5, v3) => {
+
+						val postsWithDAInfo = SimpleDependencyAnalysisMerge.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts))
+            produces(s4, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down)))((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
@@ -584,6 +602,7 @@ object executor extends ExecutionRules {
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
+							v3.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo, postsWithDAInfo)
               v3.symbExLog.closeScope(sepIdentifier)
               Q(s6, v3)})})})
 

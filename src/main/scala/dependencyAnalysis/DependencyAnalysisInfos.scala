@@ -68,6 +68,8 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 
 		this.copy(joinInfos = joinInfo +: joinInfos)
 	}
+
+	def removeSource(): DependencyAnalysisInfos = this.copy(sourceInfos = List.empty)
 }
 
 object DependencyAnalysisInfos {

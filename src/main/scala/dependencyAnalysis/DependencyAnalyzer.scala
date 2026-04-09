@@ -50,6 +50,8 @@ trait DependencyAnalyzer {
   def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]]
 
   def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int]
+
+	def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit
 }
 
 object DependencyAnalyzer {
@@ -255,6 +257,14 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     dependencyGraph.addEdges(sourceNodeIds, targetNodes)
   }
 
+	override def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = {
+		val sourceMergeInfos = sourceExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge)
+		val targetMergeInfos = targetExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge)
+		val sourceNodes = getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
+		val targetNodes = getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
+		dependencyGraph.addEdges(sourceNodes, targetNodes)
+	}
+
   /**
    *
    * @return the final dependency graph
@@ -366,5 +376,7 @@ class NoDependencyAnalyzer extends DependencyAnalyzer {
   override def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit = {}
 
   override def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]] = None
+
+	override def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = {}
 
 }
