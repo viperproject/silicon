@@ -1,0 +1,41 @@
+
+field f: Int
+
+function foo2(a: Int): Int
+    requires a > 0
+{
+    10
+}
+
+
+ function add_M(x: Ref, a: Int, b: Int, c: Int): Int
+   requires acc(x.f)
+   requires c == a + b
+   requires b > 0
+   requires a >= 0
+   ensures result > a + b
+  {
+   10 + c
+  }
+
+
+method client_meth2(x: Ref, a: Int)
+   requires acc(x.f)
+   requires a >= 0
+   requires a < 100
+{
+ var b: Int, c: Int
+ assume a != 0
+ b := 10
+
+ var arg1: Int := 1000/a
+ var arg2: Int := foo2(b)
+ var arg3a: Int := 1000/a
+ var arg3: Int := arg3a + foo2(b)
+ c := add_M(x, arg1, arg2, arg3)
+
+ assert c > 1000/a + b
+ assert c >= b
+ exhale acc(x.f)
+}
+
