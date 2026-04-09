@@ -1,6 +1,6 @@
 package viper.silicon.tests
 
-import viper.silicon.dependencyAnalysis.{DependencyGraphInterpreter, DependencyAnalysisReporter}
+import viper.silicon.dependencyAnalysis._
 import viper.silver.ast.Program
 import viper.silver.verifier
 import viper.silver.verifier.VerificationResult
@@ -54,9 +54,9 @@ object DependencyAnalysisPrecisionBenchmark extends DependencyAnalysisTestFramew
   }
 
   class AnnotatedPrecisionBenchmark(fileName: String, program: Program,
-                                    dependencyGraphInterpreters: List[DependencyGraphInterpreter],
-                                    fullGraphInterpreter: DependencyGraphInterpreter,
-                                    writer: PrintWriter) extends AnnotatedTest(program, dependencyGraphInterpreters, true) {
+																		dependencyGraphInterpreters: List[DependencyGraphInterpreter[IntraProcedural]],
+																		fullGraphInterpreter: DependencyGraphInterpreter[Final],
+																		writer: PrintWriter) extends AnnotatedTest(program, dependencyGraphInterpreters, true) {
     override def execute(): Unit = {
       if(!verifyTestSoundness()){
         writer.println(s"!!!!!!!!!!!\nFailed to verify soundness of precision test $fileName\n")
@@ -70,7 +70,7 @@ object DependencyAnalysisPrecisionBenchmark extends DependencyAnalysisTestFramew
       }
     }
 
-    protected def computePrecision(dependencyGraphInterpreter: DependencyGraphInterpreter): Double = {
+    protected def computePrecision[T <: DependencyGraphState](dependencyGraphInterpreter: DependencyGraphInterpreter[T]): Double = {
       val irrelevantAssumptionNodes =  getTestIrrelevantAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
       val irrelevantAssumptionsPerSource = irrelevantAssumptionNodes groupBy (n => extractSourceLine(n.sourceInfo.getPosition))
       val assertionNodes = getTestAssertionNodes(dependencyGraphInterpreter.getNonInternalAssertionNodes)

@@ -37,7 +37,8 @@ method appendList1(this: Ref, e: Int)
     @testAssertion("Implicit")
     fold list(n)
   } else {
-    appendList1(this.next, e)
+    var l_next: Ref := this.next
+    appendList1(l_next, e)
   }
 
   fold list(this)
@@ -67,8 +68,9 @@ method appendList2(this: Ref, e: Int)
     @irrelevant("Rewrite")
     fold list(n)
   } else {
+    var l_next: Ref := this.next
     @testAssertion("Implicit")
-    appendList2(this.next, e)
+    appendList2(l_next, e)
   }
 
   fold list(this)
@@ -98,8 +100,9 @@ method appendListFull(this: Ref, e: Int)
     @dependency("Rewrite")
     fold list(n)
   } else {
+    var l_next: Ref := this.next
     @dependency("MethodCall")
-    appendListFull(this.next, e)
+    appendListFull(l_next, e)
   }
 
   @testAssertion("Implicit")

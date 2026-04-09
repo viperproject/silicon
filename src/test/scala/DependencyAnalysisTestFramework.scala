@@ -1,7 +1,7 @@
 package viper.silicon.tests
 
 import viper.silicon.SiliconFrontend
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, DependencyAnalysisReporter, DependencyGraphInterpreter}
+import viper.silicon.dependencyAnalysis._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{Infoed, Program}
 import viper.silver.dependencyAnalysis.AssumptionType
@@ -80,7 +80,7 @@ trait DependencyAnalysisTestFramework {
    *
    * Statements that are only required as a trigger need to be manually annotated with @trigger() by the user.
    */
-  class PruningTest(fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter) {
+  class PruningTest(fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
 
     def execute(): Unit = {
       val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
@@ -113,7 +113,7 @@ trait DependencyAnalysisTestFramework {
     }
   }
 
-  class PrecisionEvaluation(filePrefix: String, fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter) {
+  class PrecisionEvaluation(filePrefix: String, fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
     protected val folderName = s"src/test/resources/precision_groundTruths/$filePrefix"
 
     def execute(): Unit = {
@@ -190,7 +190,7 @@ trait DependencyAnalysisTestFramework {
    * but multiple dependency/irrelevant annotations are allowed
    *
    */
-  class AnnotatedTest(program: Program, dependencyGraphInterpreters: List[DependencyGraphInterpreter], checkPrecision: Boolean) {
+  class AnnotatedTest(program: Program, dependencyGraphInterpreters: List[DependencyGraphInterpreter[IntraProcedural]], checkPrecision: Boolean) {
     def execute(): Unit = {
       val stmtsWithAssumptionAnnotation: Set[Infoed] = extractAnnotatedStmts({ annotationInfo => annotationInfo.values.contains(irrelevantKeyword + "(\"") || annotationInfo.values.contains(dependencyKeyword) })
       val allAssumptionNodes = dependencyGraphInterpreters.flatMap(_.getNonInternalAssumptionNodes)
@@ -238,7 +238,7 @@ trait DependencyAnalysisTestFramework {
       }
     }
 
-    protected def checkTestAssertionNodeExists(dependencyGraphInterpreter: DependencyGraphInterpreter): Seq[String] = {
+    protected def checkTestAssertionNodeExists(dependencyGraphInterpreter: DependencyGraphInterpreter[IntraProcedural]): Seq[String] = {
       val assumptionNodes = getTestAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes) ++ getTestIrrelevantAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
       val assertionNodes = getTestAssertionNodes(dependencyGraphInterpreter.getNonInternalAssertionNodes)
       if (assumptionNodes.nonEmpty && assertionNodes.isEmpty)
@@ -248,7 +248,7 @@ trait DependencyAnalysisTestFramework {
     }
 
 
-    protected def checkAllDependencies(dependencyGraphInterpreter: DependencyGraphInterpreter): Seq[String] = {
+    protected def checkAllDependencies(dependencyGraphInterpreter: DependencyGraphInterpreter[IntraProcedural]): Seq[String] = {
       val assertionNodes = getTestAssertionNodes(dependencyGraphInterpreter.getNonInternalAssertionNodes)
       val dependencies = dependencyGraphInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))map(_.id)
 
@@ -263,7 +263,7 @@ trait DependencyAnalysisTestFramework {
       resRelevant ++ resIrrelevant
     }
 
-    protected def checkExplicitDependencies(dependencyGraphInterpreter: DependencyGraphInterpreter): Seq[String] = {
+    protected def checkExplicitDependencies(dependencyGraphInterpreter: DependencyGraphInterpreter[IntraProcedural]): Seq[String] = {
       val assertionNodes = getTestAssertionNodes(dependencyGraphInterpreter.getNonInternalAssertionNodes)
       val dependencies = dependencyGraphInterpreter.getAllExplicitDependencies(assertionNodes.map(_.id)).map(_.id)
 
