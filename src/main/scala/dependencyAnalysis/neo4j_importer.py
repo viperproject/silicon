@@ -1,11 +1,11 @@
 
-from neo4j import GraphDatabase
 import os
-from neo4j import Transaction
 import pandas as pd
+from neo4j import GraphDatabase
+from neo4j import Transaction
 
-URI = "neo4j+ssc://df418be1.databases.neo4j.io"
-AUTH = ("neo4j", os.environ['NEO4J-PW'])
+URI = "neo4j+ssc://27de0942.databases.neo4j.io"
+AUTH = ("27de0942", os.environ['NEO4J-PW'])
 
 
 ASSUMPTION_NODE_TYPES = """["Inhale", "Assumption", "Infeasible", "Label"]"""
@@ -13,7 +13,7 @@ ASSERTION_NODE_TYPES = """["Exhale", "Assertion", "Check"]"""
 POSTCONDITION_TYPES = """["ExplicitPostcondition", "ImplicitPostcondition"]"""
 
 driver = GraphDatabase.driver(URI, auth=AUTH)
-session = driver.session(database="neo4j")
+session = driver.session(database="27de0942")
 driver.verify_connectivity()
 
 def create_id_uniquness_constraint(tx: Transaction, node_label: str):
@@ -51,7 +51,7 @@ def load_nodes(tx: Transaction, file_path: str, node_label: str):
             SET n.`node info` = row.`node info`
             SET n.`source info` = row.`source info`
             SET n.`position` = row.`position`
-            SET n.`fine grained source` = row.`fine grained source`
+            SET n.`merge info` = row.`merge info`
         }};
         """
         , nodes=nodes

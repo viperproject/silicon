@@ -253,7 +253,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
       val parts = mutable.Seq(node.id.toString, node.getNodeType, node.assumptionType.toString, node.getNodeString, node.sourceInfo.toString, node.sourceInfo.getPositionString, node.mergeInfo.toString, node.sourceInfo.getDescription)
       parts.map(_.replace("#", "@")).mkString(sep)
     }
-    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "fine grained source", "description")
+    val headerParts = mutable.Seq("id", "node type", "assumption type", "node info", "source info", "position", "merge info", "description")
     val builder = new StringBuilder()
     getNodes foreach (n => builder.append(getNodeExportString(n).replace("\n", " ") + "\n"))
 
