@@ -63,6 +63,7 @@ object Z3ProverAPI {
     "smt.qi.eager_threshold" -> 100.0,
   )
   val allParams = boolParams ++ intParams ++ stringParams ++ doubleParams
+  val timeoutReason = "(timeout)"
 }
 
 
@@ -74,6 +75,7 @@ class Z3ProverAPI(uniqueId: String,
     extends Prover
       with LazyLogging
 {
+  override val timeoutReason = Z3ProverAPI.timeoutReason
 
   /* protected */ var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1

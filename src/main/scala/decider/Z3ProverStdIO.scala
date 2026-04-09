@@ -23,6 +23,7 @@ object Z3ProverStdIO {
   val staticPreamble = "/z3config.smt2"
   val startUpArgs = Seq("-smt2", "-in")
   val randomizeSeedsOptions = Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
+  val timeoutReason = "canceled"
 }
 
 class Z3ProverStdIO(uniqueId: String,
@@ -39,6 +40,7 @@ class Z3ProverStdIO(uniqueId: String,
   val staticPreamble = Z3ProverStdIO.staticPreamble
   val startUpArgs = Z3ProverStdIO.startUpArgs
   val randomizeSeedsOptions = Z3ProverStdIO.randomizeSeedsOptions
+  override val timeoutReason: String = Z3ProverStdIO.timeoutReason
 
   protected def setTimeout(timeout: Option[Int]): Unit = {
     val effectiveTimeout = timeout.getOrElse(Verifier.config.proverTimeout)

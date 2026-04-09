@@ -22,6 +22,7 @@ object Cvc5ProverStdIO {
   val staticPreamble = "/cvc5config.smt2"
   val startUpArgs: Seq[String] = Seq("--lang=smt2.6")
   val randomizeSeedsOptions: Seq[String] = Seq("seed", "sat-random-seed")
+  val timeoutReason = "timeout"
 }
 
 class Cvc5ProverStdIO(uniqueId: String,
@@ -38,6 +39,7 @@ class Cvc5ProverStdIO(uniqueId: String,
   val staticPreamble: String = Cvc5ProverStdIO.staticPreamble
   val startUpArgs: Seq[String] = Cvc5ProverStdIO.startUpArgs
   val randomizeSeedsOptions: Seq[String] = Cvc5ProverStdIO.randomizeSeedsOptions
+  override val timeoutReason = Cvc5ProverStdIO.timeoutReason
 
   protected def setTimeout(timeout: Option[Int]): Unit = {
     val effectiveTimeout = timeout.getOrElse(Verifier.config.proverTimeout)

@@ -14,7 +14,8 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
-import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
+import viper.silver.verifier.reasons.QueryTimedOut
+import viper.silver.verifier.{AbstractVerificationError, Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
   lazy val withExp = Verifier.config.enableDebugging()
@@ -46,7 +47,7 @@ trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: Option[DebugExp], generateNewModel: Boolean): Failure = {
     if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
-    val res = ve match {
+    var res = ve match {
       case ErrorWrapperWithExampleTransformer(wrapped, trafo) =>
         ceTrafo = Some(trafo)
         wrapped
@@ -78,8 +79,17 @@ trait SymbolicExecutionRules {
       } else None
     } else None
 
-    val reasonUnknown = if (v != null && Verifier.config.reportReasonUnknown()) {
-      Some(v.decider.prover.getReasonUnknown())
+    val reasonUnknown = if (v != null) {
+      val reason = v.decider.prover.getReasonUnknown()
+      if (reason == v.decider.prover.timeoutReason) {
+        res = res match {
+          case ave: AbstractVerificationError => ave.withReason(QueryTimedOut(ave.reason, Verifier.config.assertTimeout()))
+          case _ => res
+        }
+      }
+      if (Verifier.config.reportReasonUnknown())
+        Some(reason)
+        else None
     } else {
       None
     }

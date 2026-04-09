@@ -23,6 +23,7 @@ object Unknown extends Result
 /* TODO: Should be generic, not hardcoded to Strings */
 trait ProverLike {
   protected val debugMode = Verifier.config.enableDebugging()
+  val timeoutReason: String = ""
   var preambleAssumptions: Seq[DebugAxiom] = Seq()
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }

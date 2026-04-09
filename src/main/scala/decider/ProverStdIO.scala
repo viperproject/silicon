@@ -310,13 +310,11 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   protected def retrieveReasonUnknown(): Unit = {
-    if (Verifier.config.reportReasonUnknown()) {
-      writeLine("(get-info :reason-unknown)")
-      var result = readLine()
-      if (result.startsWith("(:reason-unknown \""))
-        result = result.substring(18, result.length - 2)
-      lastReasonUnknown = result
-    }
+    writeLine("(get-info :reason-unknown)")
+    var result = readLine()
+    if (result.startsWith("(:reason-unknown \""))
+      result = result.substring(18, result.length - 2)
+    lastReasonUnknown = result
   }
 
   override def hasModel(): Boolean = {
