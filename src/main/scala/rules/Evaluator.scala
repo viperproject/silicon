@@ -24,8 +24,8 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{AnnotationInfo, DependencyAnalysisMergeInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, LocalVarWithVersion, NoDependencyAnalysisMerge, SimpleDependencyAnalysisMerge, WeightedQuantifier}
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
+import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, WeightedQuantifier}
+import viper.silver.dependencyAnalysis._
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
@@ -89,7 +89,7 @@ object evaluator extends EvaluationRules {
           : VerificationResult = {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
-    val analysisInfos1 = analysisInfos.addInfo(e.info, e)
+    val analysisInfos1 = v.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, e.info, e)
 
     eval3(s, e, pve, v, analysisInfos1)((s1, t, eNew, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)

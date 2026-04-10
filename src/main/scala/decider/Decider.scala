@@ -20,8 +20,9 @@ import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.ast
-import viper.silver.ast.{LocalVarWithVersion, Member, NoPosition}
+import viper.silver.ast.{Info, LocalVarWithVersion, Member, NoPosition}
 import viper.silver.components.StatefulComponent
+import viper.silver.dependencyAnalysis.{AdditionalAssertionNode, AdditionalAssumptionNode, AdditionalDependencyNodeInfo}
 import viper.silver.parser.{PKw, PPrimitiv, PReserved, PType}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 import viper.silver.verifier.{DependencyNotFoundError, Model}
@@ -80,7 +81,9 @@ trait Decider {
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
 
-  def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q: Boolean => VerificationResult): VerificationResult
+	def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos
+
+	def assert(t: Term, analysisInfos: DependencyAnalysisInfos)(Q: Boolean => VerificationResult): VerificationResult
   def assert(t: Term, analysisInfos: DependencyAnalysisInfos, timeout: Option[Int])(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
@@ -525,6 +528,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         }
       }
     }
+
+		def handleAndGetUpdatedAnalysisInfos(analysisInfos: DependencyAnalysisInfos, info: Info, node: ast.Node): DependencyAnalysisInfos = {
+			val newAnalysisInfos = analysisInfos.addInfo(info, node)
+			info.getAllInfos[AdditionalDependencyNodeInfo].foreach {
+				case AdditionalAssertionNode() => dependencyAnalyzer.createAssertOrCheckNode(True, newAnalysisInfos, isCheck = false).foreach(n => {
+					dependencyAnalyzer.addAssertionNode(n)
+					if(isPathInfeasible) dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, Some(n.id))
+				})
+				case AdditionalAssumptionNode() => dependencyAnalyzer.addAssumption(True, newAnalysisInfos)
+			}
+			newAnalysisInfos
+		}
 
     def check(t: Term, timeout: Int, analysisInfos: DependencyAnalysisInfos): Boolean = {
       deciderAssert(t, analysisInfos, Some(timeout), isCheck=true)._1

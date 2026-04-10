@@ -3,7 +3,7 @@ package viper.silicon.dependencyAnalysis
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis._
 
 /**
  * Stores all information about the currently evaluated statement/expression such that the dependency analysis can

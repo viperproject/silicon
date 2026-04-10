@@ -27,8 +27,7 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.NoDependencyAnalysisMerge
-import viper.silver.dependencyAnalysis.DependencyType
+import viper.silver.dependencyAnalysis.{DependencyType, NoDependencyAnalysisMerge}
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}

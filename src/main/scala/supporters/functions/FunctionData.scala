@@ -19,9 +19,9 @@ import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.ast
-import viper.silver.ast.{EdgeType, JoinType, LocalVarWithVersion, SimpleDependencyAnalysisJoin}
+import viper.silver.ast.LocalVarWithVersion
 import viper.silver.ast.utility.Functions
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType}
+import viper.silver.dependencyAnalysis._
 import viper.silver.parser.PUnknown
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 

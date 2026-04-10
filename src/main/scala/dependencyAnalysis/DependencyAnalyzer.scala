@@ -5,8 +5,9 @@ import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{NoPerm, _}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.JoinType.JoinType
 import viper.silver.ast._
+import viper.silver.dependencyAnalysis.JoinType.JoinType
+import viper.silver.dependencyAnalysis.{DependencyAnalysisMergeInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType}
 
 import scala.collection.mutable
 

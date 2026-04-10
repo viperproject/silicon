@@ -2,9 +2,9 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
-import viper.silver.ast.{DependencyAnalysisMergeInfo, NoDependencyAnalysisMerge, Position, SimpleDependencyAnalysisJoin}
+import viper.silver.ast.Position
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, NoAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis._
 
 
 trait DependencyAnalysisNode {

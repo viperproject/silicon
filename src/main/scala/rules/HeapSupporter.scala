@@ -24,8 +24,7 @@ import viper.silicon.utils.ast.{BigAnd, replaceVarsInExp}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.SimpleDependencyAnalysisMerge
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType, SimpleDependencyAnalysisMerge}
 import viper.silver.parser.PUnknown
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silver.verifier.{ErrorReason, PartialVerificationError, VerificationError}

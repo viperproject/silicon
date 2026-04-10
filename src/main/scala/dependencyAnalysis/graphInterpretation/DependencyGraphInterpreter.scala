@@ -5,8 +5,8 @@ import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.{JoinType, Program}
-import viper.silver.dependencyAnalysis.{AbstractDependencyGraphInterpreter, AssumptionType}
+import viper.silver.ast.Program
+import viper.silver.dependencyAnalysis.{AbstractDependencyGraphInterpreter, AssumptionType, JoinType}
 
 import java.io.PrintWriter
 import java.nio.file.Paths

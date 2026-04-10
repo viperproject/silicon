@@ -20,12 +20,12 @@ import viper.silicon.state.terms._
 import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableName}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.Literal
 import viper.silver.ast.utility.Statements
-import viper.silver.ast.{Literal, _}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
+import viper.silver.dependencyAnalysis._
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.verifier.{CounterexampleTransformer, NullPartialVerificationError, PartialVerificationError}
@@ -70,7 +70,7 @@ object executor extends ExecutionRules {
           val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
           val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val s1 = handleOutEdge(s, edge, v)
-          val analysisInfos = DefaultDependencyAnalysisInfos.addInfo(ce.condition.info, ce.condition)
+          val analysisInfos = v.decider.handleAndGetUpdatedAnalysisInfos(DefaultDependencyAnalysisInfos, ce.condition.info, ce.condition)
           eval(s1, ce.condition, IfFailed(ce.condition), v, analysisInfos)((s2, tCond, condNew, v1) =>
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
@@ -150,7 +150,7 @@ object executor extends ExecutionRules {
           case _ => false
         })
 
-        val analysisInfos = DefaultDependencyAnalysisInfos.addInfo(cedge1.condition.info, cedge1.condition)
+        val analysisInfos = v.decider.handleAndGetUpdatedAnalysisInfos(DefaultDependencyAnalysisInfos, cedge1.condition.info, cedge1.condition)
 
         eval(s, cedge1.condition, pvef(cedge1.condition), v, analysisInfos)((s1, t0, condNew, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
@@ -186,7 +186,7 @@ object executor extends ExecutionRules {
         if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)() =>
         val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
-        val analysisInfos = DefaultDependencyAnalysisInfos.addInfo(thenEdge.condition.info, thenEdge.condition)
+        val analysisInfos = v.decider.handleAndGetUpdatedAnalysisInfos(DefaultDependencyAnalysisInfos, thenEdge.condition.info, thenEdge.condition)
         val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v, analysisInfos)((s2, tCond, eCondNew, v1) =>
           brancher.branch(s2, tCond, (thenEdge.condition, eCondNew), v1, analysisInfos)(
             (s3, v3) => {
@@ -342,7 +342,7 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
-    val analysisInfos = DefaultDependencyAnalysisInfos.addInfo(stmt.info, stmt)
+    val analysisInfos = v.decider.handleAndGetUpdatedAnalysisInfos(DefaultDependencyAnalysisInfos, stmt.info, stmt)
     exec2(s, stmt, v, analysisInfos)((s1, v1) => {
       v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)

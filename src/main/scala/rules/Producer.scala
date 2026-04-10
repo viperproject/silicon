@@ -151,7 +151,7 @@ object producer extends ProductionRules {
       val a = as.head.whenInhaling
       val pve = pves.head
 
-      val analysisInfos1 = analysisInfos.addInfo(a.info, a)
+      val analysisInfos1 = v.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, a.info, a)
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v, analysisInfos1)((s1, v1) => {
           Q(s1, v1)

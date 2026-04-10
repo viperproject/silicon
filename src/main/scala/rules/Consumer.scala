@@ -180,7 +180,7 @@ object consumer extends ConsumptionRules {
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
-      val analysisInfos1 = analysisInfos.addInfo(a.info, a)
+      val analysisInfos1 = v1.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, a.info, a)
 
       consumeTlc(s1, h0, a, returnSnap, pve, v1, analysisInfos1)((s2, h2, snap2, v2) => {
         v2.symbExLog.closeScope(sepIdentifier)
