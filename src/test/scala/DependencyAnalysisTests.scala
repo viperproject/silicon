@@ -1,9 +1,9 @@
 package viper.silicon.tests
 
 import dependencyAnalysis.UserLevelDependencyAnalysisNode
-import dependencyAnalysis.cliTool.DependencyAnalysisUserTool
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliTool
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier
@@ -92,7 +92,7 @@ class DependencyAnalysisTests extends AnyFunSuite with DependencyAnalysisTestFra
       directory.mkdir()
       val directoryTestCase = new File(s"$basePathAnnotatedPrograms/$fileName")
       directoryTestCase.mkdir()
-      val dependencyAnalysisUserTool = new DependencyAnalysisUserTool(joinedDependencyGraphInterpreter.get, dependencyGraphInterpreters, program, List())
+      val dependencyAnalysisUserTool = new DependencyAnalysisCliTool(joinedDependencyGraphInterpreter.get, dependencyGraphInterpreters, program, List())
       dependencyAnalysisUserTool.run(s"annotate $basePathAnnotatedPrograms/$fileName/$fileName.vpr")
     }
     new AnnotatedTest(program, dependencyGraphInterpreters, CHECK_PRECISION).execute()

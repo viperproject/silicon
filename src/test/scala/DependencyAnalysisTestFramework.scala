@@ -1,8 +1,8 @@
 package viper.silicon.tests
 
-import dependencyAnalysis.graphInterpretation.{DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
 import viper.silicon.SiliconFrontend
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{Infoed, Program}
 import viper.silver.dependencyAnalysis.AssumptionType
