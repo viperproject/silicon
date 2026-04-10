@@ -3,7 +3,7 @@ package viper.silicon.dependencyAnalysis
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType, StringAnalysisSourceInfo}
 
 /**
  * Stores all information about the currently evaluated statement/expression such that the dependency analysis can
@@ -48,9 +48,11 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 		this.copy(sourceInfos = source +: sourceInfos)
   }
 
-  def getSourceInfo: AnalysisSourceInfo = sourceInfos.head
+  def getSourceInfo: AnalysisSourceInfo =
+		sourceInfos.headOption.getOrElse(nodes.headOption.map(AnalysisSourceInfo.createAnalysisSourceInfo).getOrElse(StringAnalysisSourceInfo("Unknown", NoPosition)))
 
-  def getDependencyType: DependencyType = dependencyTypes.head.dependencyType
+  def getDependencyType: DependencyType =
+		dependencyTypes.headOption.map(_.dependencyType).getOrElse(DependencyType.make(AssumptionType.Unknown))
 
   def getMergeInfo: DependencyAnalysisMergeInfo = mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
 
