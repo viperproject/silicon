@@ -205,9 +205,9 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 
   override def createAssertOrCheckNode(term: Term, analysisInfos: DependencyAnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode] = {
     if(isCheck)
-      Some(SimpleCheckNode(term, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo))
+      Some(SimpleCheckNode(term, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo))
     else
-      Some(SimpleAssertionNode(term, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo))
+      Some(SimpleAssertionNode(term, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo))
   }
   
   private def addAssertNode(term: Term, analysisInfos: DependencyAnalysisInfos): Option[Int] = {
@@ -229,8 +229,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
   override def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int] = {
-    val assumeNode = SimpleAssumptionNode(failedAssertion, None, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo)
-    val assertFailedNode = SimpleAssertionNode(failedAssertion, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assumptionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, hasFailed=true)
+    val assumeNode = SimpleAssumptionNode(failedAssertion, None, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo)
+    val assertFailedNode = SimpleAssertionNode(failedAssertion, analysisInfos.getSourceInfo, analysisInfos.getDependencyType.assertionType, analysisInfos.getMergeInfo, analysisInfos.getJoinInfo, hasFailed=true)
     dependencyGraph.addNode(assumeNode)
     dependencyGraph.addNode(assertFailedNode)
     dependencyGraph.addEdges(Set(assumeNode.id), assertFailedNode.id)
@@ -275,7 +275,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
    */
   override def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]] = {
     dependencyGraph.removeLabelNodes()
-    val mergedGraph = /* TODO ake if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph else  */ buildAndGetMergedGraph()
+    val mergedGraph = if(Verifier.config.enableDependencyAnalysisDebugging()) dependencyGraph.asInstanceOf[DependencyGraph[IntraProcedural]] else buildAndGetMergedGraph()
     addTransitiveEdges(mergedGraph)
     if(!Verifier.config.enableDependencyAnalysisDebugging()) mergedGraph.removeInternalNodes()
     Some(mergedGraph)

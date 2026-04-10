@@ -554,8 +554,7 @@ object executor extends ExecutionRules {
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
         val paramId = v.symbExLog.openScope(paramLog)
 				val eArgsWithDAInfo = SimpleDependencyAnalysisMerge.attachExpMergeInfo(eArgs)
-				val argsAnalysisInfo = analysisInfos.removeSource()
-        evals(s, eArgsWithDAInfo, _ => pveCall, v, argsAnalysisInfo)((s1, tArgs, eArgsNew, v1) => {
+        evals(s, eArgsWithDAInfo, _ => pveCall, v, analysisInfos)((s1, tArgs, eArgsNew, v1) => {
           v1.symbExLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
@@ -577,7 +576,7 @@ object executor extends ExecutionRules {
 						if(Verifier.config.enableDependencyAnalysis()){
 							argsWithExp.map(arg => {
 								val argNew = v1.decider.fresh(arg._1.sort, None)
-								v1.decider.assume(Equals(argNew, arg._1), None, argsAnalysisInfo.withSource(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get)))
+								v1.decider.assume(Equals(argNew, arg._1), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
 								(argNew, None)
 							})
 						}else argsWithExp

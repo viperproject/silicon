@@ -86,6 +86,9 @@ object DependencyAnalysisInfos {
 
   def create(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
     create(StringAnalysisSourceInfo(infoString, NoPosition), dependencyType)
+
+	def createUnique(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
+		create(StringAnalysisSourceInfo(s"$infoString-${DependencyGraphHelper.nextId()}", NoPosition), dependencyType)
 }
 
 

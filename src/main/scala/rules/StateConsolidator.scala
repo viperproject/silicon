@@ -20,7 +20,6 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.NoDependencyAnalysisMerge
 import viper.silver.dependencyAnalysis.DependencyType
 
 import scala.annotation.unused
@@ -64,7 +63,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
-    val analysisInfos = DependencyAnalysisInfos.create("state consolidation", DependencyType.Internal, NoDependencyAnalysisMerge()) // TODO ake: review
+    val analysisInfos = DependencyAnalysisInfos.createUnique("state consolidation", DependencyType.Internal)
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration)
 
@@ -178,7 +177,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
        * nextChunk: current chunk from the sequence of new chunks/of chunks to merge into the
        *           sequence of destination chunks
        */
-      val analysisInfos = DependencyAnalysisInfos.create("stat_consolidation", DependencyType.Internal, NoDependencyAnalysisMerge()) // TODO ake: review
+      val analysisInfos = DependencyAnalysisInfos.createUnique("state_consolidation", DependencyType.Internal)
       val res = findMatchingChunk(accMergedChunks, nextChunk, v, analysisInfos) match {
         case Some(ch) =>
           val resMerge = mergeChunks(fr1, ch, nextChunk, qvars, v, analysisInfos)
@@ -212,7 +211,6 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def mergeChunks(fr1: FunctionRecorder, chunk1: Chunk, chunk2: Chunk, qvars: Seq[Var], v: Verifier, analysisInfos: DependencyAnalysisInfos): Option[(FunctionRecorder, Chunk, Term)] = {
     val result = mergeChunks1(fr1, chunk1, chunk2, qvars, v, analysisInfos)
     result.map({case (fRec, ch, snapEq) =>
-//      v.decider.dependencyAnalyzer.addPermissionDependencies(Set(chunk1, chunk2), Set(), ch)
       (fRec, ch, v.decider.wrapWithDependencyAnalysisLabel(snapEq, Set(chunk1, chunk2)))})
   }
 
@@ -437,7 +435,7 @@ class MoreComplexExhaleStateConsolidator(config: Config) extends DefaultStateCon
     //   silver\src\test\resources\quantifiedpermissions\sets\generalised_shape.sil
     // to fail.
 
-    val analysisInfos = DependencyAnalysisInfos.create("state consolidation", DependencyType.Internal, NoDependencyAnalysisMerge()) // TODO ake: review
+    val analysisInfos = DependencyAnalysisInfos.createUnique("state consolidation", DependencyType.Internal)
 
     if (s.retrying) {
       // TODO: apply to all heaps (s.h +: s.reserveHeaps, as done below)

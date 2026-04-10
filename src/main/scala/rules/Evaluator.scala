@@ -559,7 +559,7 @@ object evaluator extends EvaluationRules {
             val auxNonGlobalsExp = auxExps.map(_._2)
             val commentGlobal = "Nested auxiliary terms: globals (aux)"
             v1.decider.prover.comment(commentGlobal)
-            val auxAnalysisInfos = analysisInfos.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge())
+            val auxAnalysisInfos = analysisInfos.withDependencyType(DependencyType.Internal).withMergeInfo(NoDependencyAnalysisMerge()) // TODO ake: review
             v1.decider.assume(tAuxGlobal, Option.when(withExp)(DebugExp.createInstance(description=commentGlobal, children=auxGlobalsExp.get)), enforceAssumption = false, auxAnalysisInfos)
             val commentNonGlobals = "Nested auxiliary terms: non-globals (aux)"
             v1.decider.prover.comment(commentNonGlobals)
@@ -609,8 +609,8 @@ object evaluator extends EvaluationRules {
 					case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
 				})
 				val presWithDAInfo = SimpleDependencyAnalysisMerge.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts))
-				val argsAnalysisInfo = analysisInfos.removeSource()
-        evals2(s, eArgs, Nil, _ => pve, v, argsAnalysisInfo)((s1, tArgs, eArgsNew, v1) => {
+				val eArgsWithDAInfO = SimpleDependencyAnalysisMerge.attachExpMergeInfo(eArgs)
+        evals2(s, eArgsWithDAInfO, Nil, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fapp.pos)
@@ -651,7 +651,7 @@ object evaluator extends EvaluationRules {
 							if(Verifier.config.enableDependencyAnalysis()){
 								argsPairs.map(arg => {
 									val argNew = v1.decider.fresh(arg._1.sort, None)
-									v1.decider.assume(Equals(argNew, arg._1), None, argsAnalysisInfo.withSource(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get)))
+									v1.decider.assume(Equals(argNew, arg._1), None, analysisInfos.withMergeInfo(SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(arg._2.get))))
 									(argNew, None)
 								})
 							}else argsPairs

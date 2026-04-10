@@ -674,7 +674,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                smDef: SnapshotMapDefinition,
                                v: Verifier)
                               : (PermMapDefinition, PmCache) = {
-    val analysisInfos = DependencyAnalysisInfos.create("summarizing heap", DependencyType.Internal, NoDependencyAnalysisMerge())
+    val analysisInfos = DependencyAnalysisInfos.createUnique("summarizing heap", DependencyType.Internal)
     val res = Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions, Option.when(withExp)(DebugExp.createInstance("value definitions", isInternal_ = true)), enforceAssumption = false, analysisInfos=analysisInfos)
@@ -713,7 +713,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              optSmDomainDefinitionCondition: Option[Term] = None,
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
-    val analysisInfos = DependencyAnalysisInfos.create("summarizing heap", DependencyType.Internal, NoDependencyAnalysisMerge())
+    val analysisInfos = DependencyAnalysisInfos.createUnique("summarizing heap", DependencyType.Internal)
 
     def emitSnapshotMapDefinition(s: State,
                                   smDef: SnapshotMapDefinition,
@@ -933,7 +933,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val commentGlobals = "Nested auxiliary terms: globals"
     v.decider.prover.comment(commentGlobals)
-    val analysisInfosGlobals = DependencyAnalysisInfos.create(commentGlobals, DependencyType.Internal, NoDependencyAnalysisMerge())
+    val analysisInfosGlobals = DependencyAnalysisInfos.create(commentGlobals, DependencyType.Internal, NoDependencyAnalysisMerge()) // TODO ake: review
     v.decider.assume(auxGlobals, Option.when(withExp)(DebugExp.createInstance(description=commentGlobals, children=auxGlobalsExp.get)),
       enforceAssumption = false, analysisInfos=analysisInfosGlobals)
 
