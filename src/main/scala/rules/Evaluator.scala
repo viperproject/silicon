@@ -15,6 +15,7 @@ import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, Precond
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.interfaces.state.ChunkIdentifer
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state._
@@ -561,7 +562,7 @@ object evaluator extends EvaluationRules {
             Q(s2, tQuant, eQuantNew, v1)
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
-            if (v1.decider.checkSmoke(true)) {
+            if (v1.decider.checkSmoke(true, pos = sourceQuant.pos, member = s1.currentMember.map(_.name))) {
               Unreachable()
             } else {
               createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
@@ -691,7 +692,10 @@ object evaluator extends EvaluationRules {
           v.decider.startDebugSubExp()
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
             eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) =>
-              v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
+              v2.decider.assert(IsPositive(tPerm), // TODO: Replace with permissionSupporter.assertNotNegative
+                                kind = ProofQueryKind.Heap,
+                                pos = ePerm.pos,
+                                member = s2.currentMember.map(_.name)) {
                 case true =>
                   joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
@@ -794,9 +798,13 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqAt(t0, t1), eNew, v1)
           } else {
-            v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+            v1.decider.assert(AtLeast(t1, IntLiteral(0)),
+                              kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
+                              member = s1.currentMember.map(_.name)) {
               case true =>
-                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                v1.decider.assert(Less(t1, SeqLength(t0)),
+                                  kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
+                                  member = s1.currentMember.map(_.name)) {
                   case true =>
                     Q(s1, SeqAt(t0, t1), eNew, v1)
                   case false =>
@@ -816,7 +824,9 @@ object evaluator extends EvaluationRules {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)), assertExp1, assertExp1New)
                   val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
                   val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
-                  v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  v1.decider.assert(Less(t1, SeqLength(t0)),
+                                    kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
+                                    member = s1.currentMember.map(_.name)) {
                     case true =>
                       failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     case false =>
@@ -847,10 +857,14 @@ object evaluator extends EvaluationRules {
           } else {
             val assertExp = Option.when(withExp)(ast.GeCmp(e1, ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
             val assertExpNew = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
-            v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+            v1.decider.assert(AtLeast(t1, IntLiteral(0)),
+                              kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
+                              member = s1.currentMember.map(_.name)) {
               case true =>
                 val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
-                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                v1.decider.assert(Less(t1, SeqLength(t0)),
+                                  kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
+                                  member = s1.currentMember.map(_.name)) {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                   case false =>
@@ -867,7 +881,9 @@ object evaluator extends EvaluationRules {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)), assertExp, assertExpNew)
                   val assertExp2 = Option.when(withExp)(ast.LtCmp(e1, ast.SeqLength(e0)())(e1.pos, e1.info, e1.errT))
                   val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
-                  v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  v1.decider.assert(Less(t1, SeqLength(t0)),
+                                    kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
+                                    member = s1.currentMember.map(_.name)) {
                     case true =>
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                     case false =>
@@ -985,7 +1001,10 @@ object evaluator extends EvaluationRules {
             Q(s1, MapLookup(baseT, keyT), esNew.map(es => ast.MapLookup(es(0), es(1))(e.pos, e.info, e.errT)), v1)
           case (s1, Seq(baseT, keyT), esNew, v1) =>
             val eNew = esNew.map(es => ast.MapLookup(es(0), es(1))(e.pos, e.info, e.errT))
-            v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
+            v1.decider.assert(SetIn(keyT, MapDomain(baseT)),
+                              kind = ProofQueryKind.FunctionalCorrectness,
+                              pos = ml.pos,
+                              member = s1.currentMember.map(_.name)) {
               case true => Q(s1, MapLookup(baseT, keyT), eNew, v1)
               case false =>
                 val assertExp = Option.when(withExp)(ast.MapContains(key, base)(ml.pos, ml.info, ml.errT))
@@ -1214,7 +1233,10 @@ object evaluator extends EvaluationRules {
                              (Q: (State, Term, Verifier) => VerificationResult)
                              : VerificationResult = {
 
-    v.decider.assert(tDivisor !== tZero){
+    v.decider.assert(tDivisor !== tZero,
+                     kind = ProofQueryKind.FunctionalCorrectness,
+                     pos = eDivisor.pos,
+                     member = s.currentMember.map(_.name)) {
       case true => Q(s, t, v)
       case false =>
         val (notZeroExp, notZeroExpNew) = if (withExp) {

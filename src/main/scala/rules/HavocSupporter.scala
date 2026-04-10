@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.rules.evaluator.{eval, evalQuantified, evals}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -120,7 +121,10 @@ object havocSupporter extends SymbolicExecutionRules {
 
         val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance("QP receiver injectivity check is well-defined", true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp)
-        v.decider.assert(receiverInjectivityCheck) {
+        v.decider.assert(receiverInjectivityCheck,
+                         kind = ProofQueryKind.Consistency,
+                         pos = havocall.pos,
+                         member = s.currentMember.map(_.name)) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
           case true =>
             // Generate the inverse axioms

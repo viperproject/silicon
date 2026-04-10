@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.state.terms.{Forall, Term, Var}
 import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silver.ast
@@ -33,7 +34,7 @@ object ConsumptionResult {
     } else {
       Forall(qvars, IsNonPositive(term), Seq())
     }
-    if (v.decider.check(toCheck, timeout))
+    if (v.decider.check(toCheck, timeout, kind = ProofQueryKind.Heap))
       Complete()
     else
       Incomplete(term, exp)
