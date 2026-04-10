@@ -26,8 +26,8 @@ trait ReadOnlyDependencyGraph[T <: DependencyGraphState] extends AbstractReadOnl
   def getAssumptionNodes: Seq[GeneralAssumptionNode]
   def getAssertionNodes: Seq[GeneralAssertionNode]
   def getDirectEdges: Map[Int, Set[Int]] // target -> direct dependencies
-  def getEdgesConnectingMethodsDownwards: Map[Int, Set[Int]]
-  def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]]
+  def getEdgesConnectingMethodsDownwards: Map[Int, Set[Int]] // e.g. edges connecting POSTcondition with method/function calls
+  def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] // e.g. edges connecting PREconditions with method/function calls
   def getAllEdges: Map[Int, Set[Int]] // target -> direct dependencies
   def getAllEdges(includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Map[Int, Set[Int]] // target -> direct dependencies
 
@@ -41,8 +41,8 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private var assumptionNodes: mutable.Seq[GeneralAssumptionNode] = mutable.Seq()
   private var assertionNodes: mutable.Seq[GeneralAssertionNode] = mutable.Seq()
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
-  private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // keep this, it's relevant for computing verification progress
-  private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // keep this, it's relevant for computing verification progress
+  private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting POSTcondition with method/function calls
+  private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting PREconditions with method/function calls
   private var vacuousProofs: mutable.Seq[Int] = mutable.Seq()
 
   def getNodes: Seq[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
