@@ -691,14 +691,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val recordProofQueries: ScallopOption[Boolean] = opt[Boolean]("recordProofQueries",
-    descr = "Record SMT query statistics (kind, member, source position, duration) per query in ProofQueryCollector",
-    default = Some(false),
-    noshort = true
-  )
-
-  val proofQueryCsvFile: ScallopOption[String] = opt[String]("proofQueryCsvFile",
-    descr = "Path to a CSV file to which proof query records are written at the end of verification (requires --recordProofQueries)",
+  val recordProofQueries: ScallopOption[String] = opt[String]("recordProofQueries",
+    descr = "Path to a CSV file to which SMT query statistics (kind, member, source position, duration) are written at the end of verification",
     default = None,
     noshort = true
   )

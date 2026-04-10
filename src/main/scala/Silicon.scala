@@ -236,23 +236,21 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
 
       /* Write proof-query CSV if requested */
-      if (config.recordProofQueries()) {
-        config.proofQueryCsvFile.toOption.foreach { path =>
-          val header = "isAssert,member,file,line,column,kind,durationMs,succeeded"
-          val rows = ProofQueryCollector.records.map { r =>
-            val (file, line, col) = r.pos match {
-              case sp: viper.silver.ast.AbstractSourcePosition =>
-                (sp.file.toString, sp.line.toString, sp.column.toString)
-              case _ => ("?", "?", "?")
-            }
-            Seq(r.isAssert, r.member.getOrElse("?"), file, line, col,
-                r.kind, r.durationMs, r.succeeded).mkString(",")
+      config.recordProofQueries.toOption.foreach { path =>
+        val header = "isAssert,member,file,line,column,kind,durationMs,succeeded"
+        val rows = ProofQueryCollector.records.map { r =>
+          val (file, line, col) = r.pos match {
+            case sp: viper.silver.ast.AbstractSourcePosition =>
+              (sp.file.toString, sp.line.toString, sp.column.toString)
+            case _ => ("?", "?", "?")
           }
-          java.nio.file.Files.write(
-            java.nio.file.Paths.get(path),
-            (header +: rows).mkString("\n").getBytes(java.nio.charset.StandardCharsets.UTF_8)
-          )
+          Seq(r.isAssert, r.member.getOrElse("?"), file, line, col,
+              r.kind, "%.3f".format(r.durationMs), r.succeeded).mkString(",")
         }
+        java.nio.file.Files.write(
+          java.nio.file.Paths.get(path),
+          (header +: rows).mkString("\n").getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        )
         ProofQueryCollector.clear()
       }
 

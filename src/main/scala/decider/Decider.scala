@@ -379,7 +379,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val t0  = System.nanoTime()
       val res = prover.check(timeout) == Unsat
       val dur = (System.nanoTime() - t0) / 1e6
-      if (Verifier.config.recordProofQueries())
+      if (Verifier.config.recordProofQueries.isDefined)
         ProofQueryCollector.record(ProofQueryRecord(
           isAssert   = false,
           member     = member,
@@ -430,7 +430,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = alreadyKnown || proverAssert(t, timeout)
       val durMs  = (System.nanoTime() - t0) / 1e6
 
-      if (Verifier.config.recordProofQueries())
+      if (Verifier.config.recordProofQueries.isDefined)
         ProofQueryCollector.record(ProofQueryRecord(
           isAssert   = isAssert,
           member     = member,
