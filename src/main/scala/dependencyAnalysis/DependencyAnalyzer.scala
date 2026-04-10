@@ -267,11 +267,11 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
 		customMergeDependencies = Set((sourceMergeInfos, targetMergeInfos)) ++ customMergeDependencies
 	}
 
-	protected def addCustomMergeDependencies(): Unit = {
+	protected def addCustomMergeDependencies(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
 		customMergeDependencies.foreach{ case (sourceMergeInfos, targetMergeInfos) =>
-			val sourceNodes = getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
-			val targetNodes = getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
-			dependencyGraph.addEdges(sourceNodes, targetNodes)
+			val sourceNodes = mergedGraph.getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
+			val targetNodes = mergedGraph.getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
+			mergedGraph.addEdges(sourceNodes, targetNodes)
 		}
 	}
 
@@ -301,7 +301,7 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       mergedGraph.addEdges(checks.map(_.id), notChecks.map(_.id)) // TODO ake: why do we need this?
     }
 
-		addCustomMergeDependencies()
+		addCustomMergeDependencies(mergedGraph)
   }
 
   /**

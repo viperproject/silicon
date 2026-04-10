@@ -23,8 +23,7 @@ trait DependencyAnalysisTestFramework {
   val ignores: Seq[String]
   var baseCommandLineArguments: Seq[String] = Seq("--timeout", "300" /* seconds */)
   var analysisCommandLineArguments: Seq[String] =
-    baseCommandLineArguments ++ Seq("--enableDependencyAnalysis", "--disableInfeasibilityChecks", "--proverArgs", "proof=true unsat-core=true",
-		"--enableTempDirectory")
+    baseCommandLineArguments ++ Seq("--enableDependencyAnalysis", "--disableInfeasibilityChecks", "--proverArgs", "proof=true unsat-core=true")
 
   def visitFiles(dirName: String, function: (String, String) => Unit): Unit = {
     val path = Paths.get(getClass.getClassLoader.getResource(dirName).toURI)
@@ -254,7 +253,7 @@ trait DependencyAnalysisTestFramework {
 
     protected def checkAllDependencies(dependencyGraphInterpreter: DependencyGraphInterpreter[IntraProcedural]): Seq[String] = {
       val assertionNodes = getTestAssertionNodes(dependencyGraphInterpreter.getNonInternalAssertionNodes)
-      val dependencies = dependencyGraphInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id))map(_.id)
+      val dependencies = dependencyGraphInterpreter.getAllNonInternalDependencies(assertionNodes.map(_.id)).map(_.id)
 
       val relevantAssumptionNodes = getTestAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
       val resRelevant: Seq[String] = checkDependenciesAndGetErrorMsgs(relevantAssumptionNodes, dependencies, isDependencyExpected = true, "Missing dependency")
