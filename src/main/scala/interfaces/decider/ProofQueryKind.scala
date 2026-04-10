@@ -29,4 +29,8 @@ object ProofQueryKind {
   /** (e) Path-infeasibility checks: smoke checks and branch-feasibility tests that determine
    *  whether the current execution path is reachable at all. */
   case object PathInfeasibility extends ProofQueryKind
+
+  /** (f) Unknown: used when the purpose of the query does not clearly fall into any of the
+   *  above categories, or has not yet been classified. */
+  case object Unknown extends ProofQueryKind
 }
