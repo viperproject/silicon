@@ -694,7 +694,7 @@ object evaluator extends EvaluationRules {
             eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) =>
               v2.decider.assert(IsPositive(tPerm), // TODO: Replace with permissionSupporter.assertNotNegative
                                 kind = ProofQueryKind.Heap,
-                                pos = ePerm.pos,
+                                pos = ePerm.map(_.pos).getOrElse(ast.NoPosition),
                                 member = s2.currentMember.map(_.name)) {
                 case true =>
                   joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {

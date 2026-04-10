@@ -1509,7 +1509,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     // final check
     val result =
       if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), /* This check is a must-check, i.e. an assert */
-                          kind = ProofQueryKind.Heap, pos = resource.pos,
+                          kind = ProofQueryKind.Heap, pos = permsExp.map(_.pos).getOrElse(ast.NoPosition),
                           member = s.currentMember.map(_.name)))
         Complete()
       else
