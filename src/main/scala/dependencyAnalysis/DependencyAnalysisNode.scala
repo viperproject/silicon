@@ -3,11 +3,11 @@ package viper.silicon.dependencyAnalysis
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.{False, Term, Var}
 import viper.silver.ast.{DependencyAnalysisMergeInfo, NoDependencyAnalysisMerge, Position, SimpleDependencyAnalysisJoin}
-import viper.silver.dependencyAnalysis.{AbstractDependencyAnalysisNode, AnalysisSourceInfo, AssumptionType, NoAnalysisSourceInfo}
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, NoAnalysisSourceInfo}
 
 
-trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
+trait DependencyAnalysisNode {
 
   /**
    * The unique node id, which is also given to the SMT solver such that unsat cores can be mapped back to dependency nodes.
@@ -29,9 +29,15 @@ trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
    */
   val assumptionType: AssumptionType
 
+	/**
+	 * The merge info determines which nodes should be "merged" when lifting the graph to the user level. In reality,
+	 * the nodes are connected by edges instead and are only partially merged.
+	 */
   val mergeInfo: DependencyAnalysisMergeInfo
 
-
+	/**
+	 * The join infos specify how the node should be joined with nodes of other verification component's graphs.
+	 */
   val joinInfos: List[SimpleDependencyAnalysisJoin]
 
   /**
@@ -43,7 +49,7 @@ trait DependencyAnalysisNode extends AbstractDependencyAnalysisNode {
   def getUserLevelRepresentation: String = sourceInfo.toString
   def getSourceCodePosition: Position = sourceInfo.getPosition
 
-  /*
+  /**
     Some string representations, mainly used for debugging purposes.
     The strings represented to users are obtained via sourceInfo.toString and do not contain any low-level information
     about the node (such as the id or term).
@@ -116,7 +122,7 @@ case class PermissionExhaleNode(chunk: Chunk, term: Term, sourceInfo: AnalysisSo
 }
 
 /**
- * Label nodes are internally used nodes, mostly used to improve precision of the dependency analysis.
+ * Label nodes are internally-used nodes, mostly used to improve precision of the dependency analysis.
  * They are completely hidden from users.
  */
 case class LabelNode(term: Var, _id: Option[Int]=None) extends GeneralAssumptionNode {

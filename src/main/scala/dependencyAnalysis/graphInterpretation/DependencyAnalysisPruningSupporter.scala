@@ -11,6 +11,9 @@ import java.io.PrintWriter
 
 class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter: DependencyGraphInterpreter[T]) {
 
+	/**
+	 * Prunes the program. That is, all statements and expressions that are not a crucial node are removed from the program.
+	 */
 	def getPrunedProgram(crucialNodes: Set[DependencyAnalysisNode], program: ast.Program): (ast.Program, Double) = {
 
 		def isCrucialExp(exp: ast.Exp, crucialNodesWithExpInfo: Set[AnalysisSourceInfo]): Boolean = {
@@ -99,6 +102,11 @@ class DependencyAnalysisPruningSupporter[T <: DependencyGraphState](interpreter:
 		queriedNodes ++ dependencies
 	}
 
+	/**
+	 * Prunes the given program with respect to the queries nodes. That is, all statements and expressions that are neither
+	 * one of the queried nodes nor a dependencies of a queried node are removed from the program. The program is exported
+	 * to the given export file.
+	 */
 	def pruneProgramAndExport(queriedNodes: Set[DependencyAnalysisNode], program: ast.Program, exportFileName: String): Unit = {
 		val writer = new PrintWriter(exportFileName)
 

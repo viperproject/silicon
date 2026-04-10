@@ -16,13 +16,13 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		computeVerificationProgressOptimized(enableDebugging)
 	}
 
-
 	/**
 	 * Computes all dependencies of a given dependency node. Intermediate results are cached at procedure-boundaries.
 	 * That is, the dependencies of each pre- and postcondition are cached and can thus be reused for subsequent computations.
 	 * We do not cache intraprocedural dependencies to allow for precise computation of dependencies using the low-level graph.
 	 */
 	val deps: DAMemo[(AnalysisSourceInfo, DATraversalMode), Set[CompactUserLevelDependencyAnalysisNode]] = DAMemo { case (assertionNode, mode) =>
+		// TODO ake: maybe this should be moved to the DependencyGraphInterpreter such that other queries can be optimized as well.
 		def computeDependencies(currentNode: AnalysisSourceInfo, visited: Set[(AnalysisSourceInfo, DATraversalMode)], traversalMode: DATraversalMode): Set[CompactUserLevelDependencyAnalysisNode] = {
 			if (visited.contains((currentNode, traversalMode))) {
 				return Set.empty // break cycles to avoid infinite loops
@@ -112,7 +112,11 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = sourceToAssertionNodesMap.filter(ass => ass._2.map(_.assumptionType).intersect(AssumptionType.importedTypes).isEmpty)
 
 	/**
-	 * @return the verification progress of the entire program
+	 * @return the verification progress of the entire program.
+	 *         Verification progress is defined as the product of specification quality and proof quality.
+	 *         Specification quality is the fraction of source code statements that is a dependency of any proof obligation.
+	 *         Proof quality is defined as the average assertion quality over all proof obligations.
+	 *         Assertion quality of an assertion a is the fraction of non-assumption dependencies over all dependencies of the assertion a.
 	 */
 	def computeVerificationProgressOptimized(enableDebugOutput: Boolean = false): (Double, Double)  = {
 
@@ -156,6 +160,10 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	}
 
 
+	/**
+	 * Computes the specification quality given the covered nodes. Specification quality is defined as the fraction of
+	 * all (user-level) nodes in the graph that are covered.
+	 */
 	private def computeSpecQuality(coveredNodes: Set[CompactUserLevelDependencyAnalysisNode], enableDebugOutput: Boolean = false): Double = {
 
 		val explicitAssertions = toCompactUserLevelNodes(interpreter.getExplicitAssertionNodes)
@@ -177,8 +185,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
 
 	/**
-	 *
-	 * @return a list of assumption nodes ordered by their impact on proof quality
+	 * @return a list of assumption nodes ordered by their impact on proof quality.
 	 */
 	def computeAssumptionRanking(): List[(String, Double)] = {
 		val allAssertions = interpreter.toUserLevelNodes(interpreter.getNonInternalAssertionNodes).filter(ass => ass.assertionTypes.intersect(AssumptionType.importedTypes).isEmpty)
@@ -206,6 +213,9 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		allAssertions.filter(assertion => assertion.hasFailures || assertion.assertionTypes.contains(AssumptionType.ExplicitPostcondition)).getSourceSet()
 	}
 
+	/**
+	 * Prints all uncovered source code statements and returns the number of uncovered source code statements.
+	 */
 	def computeUncoveredStatements(): Int = {
 		val allAssertions = interpreter.toUserLevelNodes(interpreter.getNonInternalAssertionNodes)
 		val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass))).getSourceSet()

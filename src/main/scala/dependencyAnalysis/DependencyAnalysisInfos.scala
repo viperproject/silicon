@@ -5,6 +5,10 @@ import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType, StringAnalysisSourceInfo}
 
+/**
+ * Stores all information about the currently evaluated statement/expression such that the dependency analysis can
+ * correctly add nodes and edges to the graph.
+ */
 case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node]) {
 
   def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
@@ -68,8 +72,6 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 
 		this.copy(joinInfos = joinInfo +: joinInfos)
 	}
-
-	def removeSource(): DependencyAnalysisInfos = this.copy(sourceInfos = List.empty)
 }
 
 object DependencyAnalysisInfos {

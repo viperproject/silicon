@@ -30,8 +30,19 @@ trait DependencyAnalyzer {
   def createAssertOrCheckNode(term: Term, analysisInfos: DependencyAnalysisInfos, isCheck: Boolean): Option[GeneralAssertionNode]
   def addAssertFalseNode(isCheck: Boolean, analysisInfos: DependencyAnalysisInfos): Option[Int]
   def addInfeasibilityNode(isCheck: Boolean, analysisInfos: DependencyAnalysisInfos): Option[Int]
+	def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int]
 
+	/**
+	 * Adds a dependency between all pairs of source and dest node ids.
+	 */
   def addDependency(source: Option[Int], dest: Option[Int]): Unit
+
+	/**
+	 * @param dep The UNSAT core as reported by Z3.
+	 * @param assertionLabel the label of the assertion that was proven using the UNSAT core
+   *
+	 *  Parses the UNSAT core and adds all its components as dependencies of the provided assertion.
+	 */
   def processUnsatCoreAndAddDependencies(dep: String, assertionLabel: String): Unit
 
   /**
@@ -41,17 +52,20 @@ trait DependencyAnalyzer {
   def addDependenciesForAbstractMembers(sourceExps: Seq[ast.Exp], targetExps: Seq[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit
 
   /**
-   * Adds an assertion and assumption node with the given analysis source info and dependencies to the current infeasibility node.
+   * Adds an assertion and assumption node with the given analysis source info including dependencies to the current infeasibility node.
    */
   def addAssertionWithDepToInfeasNode(infeasNodeId: Option[Int], analysisInfos: DependencyAnalysisInfos): Unit = {}
 
   /**
-   * @return the final dependency graph representing all direct and transitive dependencies
+   * @return the final dependency graph representing all (direct and transitive) intraprocedural dependencies
    */
   def buildFinalGraph(): Option[DependencyGraph[IntraProcedural]]
 
-  def addAssertionFailedNode(failedAssertion: Term, analysisInfos: DependencyAnalysisInfos): Option[Int]
-
+	/**
+	 * Stores the information that all nodes having a merge info in sourceExps should be connected to all nodes having a
+	 * merge info in targetExps.
+	 * These edges are eventually added when building the final graph ([[viper.silicon.dependencyAnalysis.DependencyAnalyzer#buildFinalGraph]]).
+	 */
 	def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit
 }
 
@@ -94,9 +108,9 @@ object DependencyAnalyzer {
   /**
    *
    * @param name Optional name for the result graph.
-   * @param dependencyGraphInterpreters The graphs which should be joined.
+   * @param dependencyGraphInterpreters The graphs to be joined.
    * @return A dependency graph interpreter operating on a new dependency graph that represents all input graphs and
-   *         dependencies between them.
+   *         all dependencies between them.
    * The new graph is built by adding all existing nodes and edges of all input graphs and joining them
 	 * via the join information stored in each node.
    */
@@ -135,8 +149,6 @@ object DependencyAnalyzer {
 }
 
 class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
-  protected var proofCoverage: Double = 0.0
-
 	protected var customMergeDependencies: Set[(Set[DependencyAnalysisMergeInfo], Set[DependencyAnalysisMergeInfo])] = Set.empty
 
   override def getMember: Option[ast.Member] = Some(member)
@@ -290,6 +302,11 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
     Some(mergedGraph)
   }
 
+	/**
+	 * Adds edges between the nodes with identical merge info and the ones to be connected as given by the custom merge dependencies
+	 * to the merged graph. This step is necessary to ensure that the low-level graph is connected and encodes all direct
+	 * and indirect dependencies.
+	 */
   private def addTransitiveEdges(mergedGraph: DependencyGraph[IntraProcedural]): Unit = {
     val nodesPerSourceInfo = mergedGraph.getNodes.filter(_.mergeInfo.isMerge).groupBy(_.mergeInfo)
     nodesPerSourceInfo foreach {case (_, nodes) =>

@@ -1,6 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
-import viper.silver.dependencyAnalysis.{AbstractReadOnlyDependencyGraph, AssumptionType}
+import viper.silver.dependencyAnalysis.AssumptionType
 
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -11,6 +11,9 @@ import scala.collection.mutable
 object DependencyGraphHelper {
   private val idCounter: AtomicInteger = new AtomicInteger(0)
 
+	/**
+	 * Helper function used to ensure uniqueness of all dependency node ids.
+	 */
   def nextId(): Int = {
     idCounter.getAndIncrement()
   }
@@ -21,19 +24,55 @@ class Init extends DependencyGraphState
 class IntraProcedural extends DependencyGraphState
 class Final extends DependencyGraphState
 
-trait ReadOnlyDependencyGraph[T <: DependencyGraphState] extends AbstractReadOnlyDependencyGraph {
+trait ReadOnlyDependencyGraph[T <: DependencyGraphState] {
   def getNodes: Seq[DependencyAnalysisNode]
   def getAssumptionNodes: Seq[GeneralAssumptionNode]
   def getAssertionNodes: Seq[GeneralAssertionNode]
-  def getDirectEdges: Map[Int, Set[Int]] // target -> direct dependencies
-  def getEdgesConnectingMethodsDownwards: Map[Int, Set[Int]] // e.g. edges connecting POSTcondition with method/function calls
-  def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] // e.g. edges connecting PREconditions with method/function calls
-  def getAllEdges: Map[Int, Set[Int]] // target -> direct dependencies
-  def getAllEdges(includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Map[Int, Set[Int]] // target -> direct dependencies
 
+	/**
+	 * @return a map from node to the set of direct dependencies in the intraprocedural low-level graph
+	 */
+  def getDirectEdges: Map[Int, Set[Int]]
+
+	/**
+	 * @return all interprocedural downward edges in the graph as a map from node to all its direct downward dependencies.
+	 *         A downward edge connects a node representing the proof of a property to a node representing the assumption of
+	 *         said property in another verification component.
+	 *         For example, a downward edge may connect a postcondition with a corresponding method call.
+	 */
+  def getEdgesConnectingMethodsDownwards: Map[Int, Set[Int]]
+
+	/**
+	 * @return all interprocedural upwards edges in the graph as a map from node to all its direct upwards dependencies.
+	 *         An upwards edge connects a node justifying an assumption (by proving it) to a node representing the specification
+	 *         element depending on it in another verification component.
+	 *         For example, an upwards edge may connect a method call with a corresponding precondition.
+	 */
+  def getEdgesConnectingMethodsUpwards: Map[Int, Set[Int]] // e.g. edges connecting PREconditions with method/function calls
+  def getAllEdges: Map[Int, Set[Int]]
+  def getAllEdges(includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Map[Int, Set[Int]]
+
+	/**
+	 * @param sources a set of node ids
+	 * @param includeInfeasibilityNodes if set to true, dependencies found via infeasibility nodes are included in the result
+	 * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
+	 * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
+	 * @return the set of dependencies of the provided sources
+	 */
   def getAllDependencies(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
+
+	/**
+	 * @param sources a set of node ids
+	 * @param includeInfeasibilityNodes if set to true, dependents found via infeasibility nodes are included in the result
+	 * @param includeUpwardEdges if set to true, interprocedural upward edges are taken into account
+	 * @param includeDownwardEdges if set to true, interprocedural downward edges are taken into account
+	 * @return the set of dependents of the provided sources
+	 */
   def getAllDependents(sources: Set[Int], includeInfeasibilityNodes: Boolean, includeUpwardEdges: Boolean, includeDownwardEdges: Boolean): Set[Int]
 
+	/**
+	 * Exports the graph to the folder 'dirName'.
+	 */
   def exportGraph(dirName: String): Unit
 }
 
@@ -43,7 +82,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   private val edges: mutable.Map[Int, Set[Int]] = mutable.Map.empty
   private val edgesConnectingMethodsDownwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting POSTcondition with method/function calls
   private val edgesConnectingMethodsUpwards: mutable.Map[Int, Set[Int]] = mutable.Map.empty // e.g. edges connecting PREconditions with method/function calls
-  private var vacuousProofs: mutable.Seq[Int] = mutable.Seq()
+	private var vacuousProofs: mutable.Seq[Int] = mutable.Seq()
 
   def getNodes: Seq[DependencyAnalysisNode] = getAssumptionNodes ++ getAssertionNodes
   def getAssumptionNodes: Seq[GeneralAssumptionNode] = assumptionNodes.toSeq
@@ -186,6 +225,9 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     visited
   }
 
+	/**
+	 * Removes the provided nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
+	 */
   private def removeAllEdgesForNode(node: DependencyAnalysisNode): Unit = {
     val id = node.id
     val predecessors = (edges filter { case (_, t) => t.contains(id) }).keys
@@ -195,6 +237,9 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
   }
 
 
+	/**
+	 * Removes all label nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
+	 */
   def removeLabelNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = n.isInstanceOf[LabelNode]
 
@@ -202,6 +247,9 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
     assumptionNodes = assumptionNodes filterNot filterCriteria
   }
 
+	/**
+	 * Removes internal nodes while perceiving the transitive closure by adding edges between the predecessors and successors.
+	 */
   def removeInternalNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = AssumptionType.internalTypes.contains(n.assumptionType) && !AssumptionType.CustomInternal.equals(n.assumptionType)
 

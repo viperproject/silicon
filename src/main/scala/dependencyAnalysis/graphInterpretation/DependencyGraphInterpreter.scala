@@ -11,13 +11,10 @@ import viper.silver.dependencyAnalysis.{AbstractDependencyGraphInterpreter, Assu
 import java.io.PrintWriter
 import java.nio.file.Paths
 
-
-
 object DATraversalMode extends Enumeration {
   type DATraversalMode = Value
   val Upwards, Downwards = Value
 }
-
 
 class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter {
 
@@ -39,7 +36,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 
 	def getErrors: List[Failure] = errors
 
-	// TODO ake: join nodes are not needed for the final graph
+	// TODO ake: join nodes are not needed for the final graph. Maybe we can outsource this to a dedicated intraprocedural graph interpreter class.
 	val joinSinkNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Sink)))
 	val joinSourceNodes: Set[DependencyAnalysisNode] = getJoinCandidateNodes(getNodes).filter(_.joinInfos.exists(_.joinType.equals(JoinType.Source)))
 
@@ -136,11 +133,13 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 		getNodes filter (node => sourceInfos.contains(node.sourceInfo))
 	}
 
+	// TODO ake: might be deprecated
 	def computeProofCoverage(): (Double, Set[String]) = {
 		val explicitAssertionNodes = getNodesWithIdenticalSource(getExplicitAssertionNodes)
 		computeProofCoverage(explicitAssertionNodes)
 	}
 
+	// TODO ake: might be deprecated
 	def computeProofCoverage(assertionNodes: Set[DependencyAnalysisNode]): (Double, Set[String]) = {
 		val assertionNodeIds = assertionNodes map (_.id)
 		val dependencies = dependencyGraph.getAllDependencies(assertionNodeIds, includeInfeasibilityNodes = true, includeUpwardEdges = true, includeDownwardEdges = true)
