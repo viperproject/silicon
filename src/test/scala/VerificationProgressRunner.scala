@@ -1,6 +1,6 @@
 package viper.silicon.tests
 
-import dependencyAnalysis.DependencyAnalysisProgressSupporter
+import dependencyAnalysis.graphInterpretation.DependencyAnalysisProgressSupporter
 import viper.silicon.dependencyAnalysis.DependencyAnalysisReporter
 import viper.silver.ast.Program
 import viper.silver.frontend.SilFrontend

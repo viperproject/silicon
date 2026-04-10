@@ -1,7 +1,8 @@
-package dependencyAnalysis
+package viper.silicon.dependencyAnalysis.graphInterpretation
 
-import viper.silicon.dependencyAnalysis.DATraversalMode.{DATraversalMode, Downwards, Upwards}
+import dependencyAnalysis.{CompactUserLevelDependencyAnalysisNode, UserLevelDependencyAnalysisNode}
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graphInterpretation.DATraversalMode.DATraversalMode
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}
 
 import scala.collection.mutable
@@ -40,8 +41,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
 			// recursively compute all interprocedural dependencies and cache results at procedure-boundaries
 			val relevantInterProceduralEdges = traversalMode match {
-				case Upwards   => dependencyGraph.getEdgesConnectingMethodsUpwards
-				case Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
+				case DATraversalMode.Upwards   => dependencyGraph.getEdgesConnectingMethodsUpwards
+				case DATraversalMode.Downwards => dependencyGraph.getEdgesConnectingMethodsDownwards
 			}
 			val interProceduralNodeIds = intraMethodDependencyIds.flatMap(n => relevantInterProceduralEdges.getOrElse(n, Set.empty))
 			val interProceduralNodes = interProceduralNodeIds.flatMap(interpreter.nodesMap.get)
@@ -118,8 +119,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		// compute all dependencies of each proof obligation
 		val allAssertions = getAssertionsRelevantForProgress.keySet.toList
 		val allDependenciesPerAssertionNode = allAssertions map (ass => ({
-			val ups = deps((ass, Upwards))
-			val downs = deps((ass, Downwards))
+			val ups = deps((ass, DATraversalMode.Upwards))
+			val downs = deps((ass, DATraversalMode.Downwards))
 			reduceCompactUserLevelNodes(ups ++ downs)
 		}, ass))
 
@@ -169,7 +170,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 					s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}" +
 					s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}"
 				)
-				
+
 		println(s"Spec Quality = ${coveredSourceCodeNodes.size} / ${allSourceCodeNodes.size}")
 		coveredSourceCodeNodes.size.toDouble / allSourceCodeNodes.size.toDouble
 	}
@@ -188,7 +189,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		val numAssertions = relevantDependenciesPerAssertion.size.toDouble
 
 		val assumptionImpacts= relevantDependenciesPerAssertion.toList.flatMap { case (_, assumptions) =>
-			val explicitDeps = UserLevelDependencyAnalysisNode.extractExplicitAssumptionNodes(assumptions)
+			val explicitDeps = UserLevelDependencyAnalysisNode.extractByAssumptionType(assumptions, AssumptionType.explicitAssumptionTypes)
 			explicitDeps.map(node => (node.source, 1.0/assumptions.size/numAssertions)).toList
 		}
 

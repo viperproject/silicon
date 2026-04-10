@@ -12,6 +12,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliTool
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -21,7 +22,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
-import viper.silicon.supporters.{AnnotationSupporter, DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast
@@ -667,7 +667,7 @@ class DefaultMainVerifier(config: Config,
     }
 
     if (Verifier.config.startDependencyAnalysisTool()) {
-      val commandLineTool = new DependencyAnalysisUserTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
+      val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)
       commandLineTool.run()
     }
 

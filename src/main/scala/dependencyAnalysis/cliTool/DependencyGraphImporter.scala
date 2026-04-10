@@ -1,7 +1,9 @@
-package viper.silicon.dependencyAnalysis
+package viper.silicon.dependencyAnalysis.cliTool
 
 import viper.silicon
 import viper.silicon.SiliconFrontend
+import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.SimpleIdentifier
 import viper.silicon.state.terms.sorts.Bool
@@ -40,7 +42,7 @@ object DependencyGraphImporter {
     val program = importProgram(graphFolder)
 
     val interpreter = new DependencyGraphInterpreter[Final]("test", graph, List.empty, None)
-    val userTool = new DependencyAnalysisUserTool(interpreter, Seq.empty, program, List.empty)
+    val userTool = new DependencyAnalysisCliTool(interpreter, Seq.empty, program, List.empty)
 
     runUserTool(args, userTool)
   }
@@ -53,7 +55,7 @@ object DependencyGraphImporter {
         throw new IllegalArgumentException("Error: --graphFolder argument is required but not found.")
   }
 
-  private def runUserTool(args: Array[String], userTool: DependencyAnalysisUserTool): Unit = {
+  private def runUserTool(args: Array[String], userTool: DependencyAnalysisCliTool): Unit = {
     val cmdsIndex = args.indexOf("--cmds")
 
     val cmds = if (0 <= cmdsIndex && cmdsIndex < args.length - 1) Some(args(cmdsIndex + 1).split(";").map(_.trim)) else None

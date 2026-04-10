@@ -1,5 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.terms.{NoPerm, _}
 import viper.silicon.verifier.Verifier

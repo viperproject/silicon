@@ -1,6 +1,6 @@
-package dependencyAnalysis
+package viper.silicon.dependencyAnalysis.graphInterpretation
 
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, DependencyGraphInterpreter, DependencyGraphState}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, DependencyGraphState}
 import viper.silver.ast
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse

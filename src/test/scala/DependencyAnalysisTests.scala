@@ -1,6 +1,7 @@
 package viper.silicon.tests
 
 import dependencyAnalysis.UserLevelDependencyAnalysisNode
+import dependencyAnalysis.cliTool.DependencyAnalysisUserTool
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.dependencyAnalysis._
 import viper.silver.ast._

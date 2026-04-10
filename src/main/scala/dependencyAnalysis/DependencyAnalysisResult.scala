@@ -1,5 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silver.ast.Program
 import viper.silver.dependencyAnalysis.AbstractDependencyAnalysisResult
 

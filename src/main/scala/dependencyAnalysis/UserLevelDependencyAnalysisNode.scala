@@ -3,8 +3,8 @@ package dependencyAnalysis
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.state.terms.{And, Term}
 import viper.silver.ast.Position
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, StringAnalysisSourceInfo}
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, StringAnalysisSourceInfo}
 
 object UserLevelDependencyAnalysisNode {
 
@@ -17,36 +17,12 @@ object UserLevelDependencyAnalysisNode {
     res
   }
 
-  def extractExplicitAssumptionNodes(nodes: Set[UserLevelDependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
-    extractByAssumptionType(nodes, AssumptionType.explicitAssumptionTypes)
-  }
-
-  def extractNonExplicitAssumptionNodes(nodes: Set[UserLevelDependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
-    nodes.diff(extractExplicitAssumptionNodes(nodes))
-  }
-
-  def extractVerificationAnnotationNodes(nodes: Set[UserLevelDependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
-    extractByAssumptionType(nodes, AssumptionType.verificationAnnotationTypes)
-  }
-
-  def extractSourceCodeNodes(nodes: Set[UserLevelDependencyAnalysisNode]): Set[UserLevelDependencyAnalysisNode] = {
-    nodes.diff(extractExplicitAssumptionNodes(nodes)).diff(extractVerificationAnnotationNodes(nodes))
-  }
-
   def extractByAssumptionType(nodes: Set[UserLevelDependencyAnalysisNode], assumptionTypes: Set[AssumptionType]): Set[UserLevelDependencyAnalysisNode] = {
     nodes.filter(node => assumptionTypes.intersect(node.assumptionTypes).nonEmpty)
   }
 
-  def extractByAssertionType(nodes: Set[UserLevelDependencyAnalysisNode], assertionTypes: Set[AssumptionType]): Set[UserLevelDependencyAnalysisNode] = {
-    nodes.filter(node => assertionTypes.intersect(node.assertionTypes).nonEmpty)
-  }
-
-  def mkString(nodes: Set[UserLevelDependencyAnalysisNode], sep: String = "\n"): String = {
-    nodes.toList.sortBy(n => (n.source.getLineNumber, n.source.toString)).mkString(sep)
-  }
-
   def mkUserLevelString(nodes: Set[DependencyAnalysisNode], sep: String = "\n"): String = {
-    mkString(from(nodes), sep)
+    from(nodes).toList.sortBy(n => (n.source.getLineNumber, n.source.toString)).mkString(sep)
   }
 
   implicit class SetNodeOps(private val left: Set[UserLevelDependencyAnalysisNode]) extends AnyVal {
@@ -80,7 +56,6 @@ case class UserLevelDependencyAnalysisNode(source: AnalysisSourceInfo, lowerLeve
   override def toString: String = source.toString
 
   def groupingCondition: (String, Position) = (source.toString, position)
-
 
 }
 

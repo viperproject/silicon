@@ -11,6 +11,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}

@@ -1,6 +1,7 @@
-package viper.silicon.dependencyAnalysis
+package viper.silicon.dependencyAnalysis.graphInterpretation
 
 import dependencyAnalysis.UserLevelDependencyAnalysisNode
+import viper.silicon.dependencyAnalysis._
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.Verifier
 import viper.silver.ast

@@ -10,6 +10,7 @@ import com.typesafe.scalalogging.Logger
 import viper.silicon.Map
 import viper.silicon.decider.Decider
 import viper.silicon.dependencyAnalysis._
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}

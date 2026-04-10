@@ -1,6 +1,6 @@
 package viper.silicon.tests
 
-import dependencyAnalysis.DependencyAnalysisPruningSupporter
+import dependencyAnalysis.graphInterpretation.{DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
 import viper.silicon.dependencyAnalysis._
 import viper.silver.ast.Program
 import viper.silver.verifier
