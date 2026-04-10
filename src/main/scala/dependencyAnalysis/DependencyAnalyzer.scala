@@ -137,6 +137,8 @@ object DependencyAnalyzer {
 class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   protected var proofCoverage: Double = 0.0
 
+	protected var customMergeDependencies: Set[(Set[DependencyAnalysisMergeInfo], Set[DependencyAnalysisMergeInfo])] = Set.empty
+
   override def getMember: Option[ast.Member] = Some(member)
 
   override def getNodes: Iterable[DependencyAnalysisNode] = dependencyGraph.getNodes
@@ -259,11 +261,18 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
   }
 
 	override def addCustomDependenciesBetweenMergeInfos(sourceExps: Seq[Exp], targetExps: Seq[Exp]): Unit = {
-		val sourceMergeInfos = sourceExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge)
-		val targetMergeInfos = targetExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge)
-		val sourceNodes = getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
-		val targetNodes = getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
-		dependencyGraph.addEdges(sourceNodes, targetNodes)
+		val sourceMergeInfos = sourceExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge).toSet
+		val targetMergeInfos = targetExps.flatMap(_.info.getUniqueInfo[DependencyAnalysisMergeInfo]).filter(_.isMerge).toSet
+
+		customMergeDependencies = Set((sourceMergeInfos, targetMergeInfos)) ++ customMergeDependencies
+	}
+
+	protected def addCustomMergeDependencies(): Unit = {
+		customMergeDependencies.foreach{ case (sourceMergeInfos, targetMergeInfos) =>
+			val sourceNodes = getNodes.filter(node => sourceMergeInfos.contains(node.mergeInfo)).map(_.id)
+			val targetNodes = getNodes.filter(node => targetMergeInfos.contains(node.mergeInfo)).map(_.id)
+			dependencyGraph.addEdges(sourceNodes, targetNodes)
+		}
 	}
 
   /**
@@ -291,6 +300,8 @@ class DefaultDependencyAnalyzer(member: ast.Member) extends DependencyAnalyzer {
       val notChecks = nodes.filter(n => !n.isInstanceOf[SimpleCheckNode])
       mergedGraph.addEdges(checks.map(_.id), notChecks.map(_.id)) // TODO ake: why do we need this?
     }
+
+		addCustomMergeDependencies()
   }
 
   /**

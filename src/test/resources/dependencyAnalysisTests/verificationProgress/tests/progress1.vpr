@@ -1,0 +1,34 @@
+// spec quality: 5/6
+// proof quality (Peter): 3/6
+// proof quality (Lea): 4.464 / 6
+// progress (Peter): 0.416
+// progress (Lea): 0.620
+
+method progressTest(a: Int, b: Int) returns (res: Int)
+    requires a > 0
+    ensures res == a + b
+    ensures res > 0
+{
+    assume b >= 0
+    res := a + b
+}
+
+method client()
+{
+    var a: Int, b: Int, res: Int
+    assume a > 0
+    assume b > 0
+
+    res := progressTest(a, b)
+
+    var a2: Int, b2: Int, res2: Int
+
+    a2 := 1
+
+    a2 := 10
+    b2 := 10
+
+    res2 := progressTest(a2, b2)
+
+    assert res2 == 20
+}

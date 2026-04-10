@@ -12,8 +12,8 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	private val dependencyGraph = interpreter.getGraph
 	private lazy val sourceToAssertionNodesMap: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = interpreter.getNonInternalAssertionNodes.groupBy(_.sourceInfo)
 
-	def computeVerificationProgress(): (Double, Double)  = {
-		computeVerificationProgressOptimized()
+	def computeVerificationProgress(enableDebugging: Boolean=false): (Double, Double)  = {
+		computeVerificationProgressOptimized(enableDebugging)
 	}
 
 
@@ -142,7 +142,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 
 		if(enableDebugOutput)
 			println(
-				s"fullyVerifiedAssertions:\n\t${fullyVerifiedAssertions.mkString("\n\t")}" +
+				s"fullyVerifiedAssertions:\n\t${fullyVerifiedAssertions.mkString("\n\t")}\n" +
 				s"assertionQualitiesSum:\n\t${assertionQualities.mkString("\n\t")}"
 			)
 
@@ -167,7 +167,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		val coveredSourceCodeNodes = coveredNodes.map(_.source).intersect(allSourceCodeNodes)
 		if(enableDebugOutput)
 		    println(
-					s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}" +
+					s"Covered Source Code:\n\t${coveredSourceCodeNodes.toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}\n" +
 					s"Uncovered Source Code:\n\t${allSourceCodeNodes.diff(coveredSourceCodeNodes).toList.sortBy(n => (n.getLineNumber, n.toString())).mkString("\n\t")}"
 				)
 

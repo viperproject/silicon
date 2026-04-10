@@ -100,7 +100,7 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 
 	def getNonInternalAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] = nodes filter (node =>
 		(node.isInstanceOf[GeneralAssumptionNode] && !AssumptionType.internalTypes.contains(node.assumptionType))
-			|| AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty // postconditions act as assumptions for callers
+			|| AssumptionType.postconditionTypes.contains(node.assumptionType) || node.joinInfos.nonEmpty // TODO ake: review
 		)
 
 	def getExplicitAssumptionNodes: Set[DependencyAnalysisNode] = getNonInternalAssumptionNodes filter (node =>

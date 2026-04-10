@@ -24,7 +24,7 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{AnnotationInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, LocalVarWithVersion, NoDependencyAnalysisMerge, SimpleDependencyAnalysisMerge, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, DependencyAnalysisMergeInfo, EdgeType, EvalStackDependencyAnalysisJoin, JoinType, LocalVarWithVersion, NoDependencyAnalysisMerge, SimpleDependencyAnalysisMerge, WeightedQuantifier}
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
 import viper.silver.utility.Common.Rational
@@ -608,8 +608,9 @@ object evaluator extends EvaluationRules {
 					 */
 					case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
 				})
-				val presWithDAInfo = SimpleDependencyAnalysisMerge.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts))
-				val eArgsWithDAInfO = SimpleDependencyAnalysisMerge.attachExpMergeInfo(eArgs)
+				val fappSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(fapp)
+				val presWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(pres.flatMap(_.topLevelConjuncts), Some(fappSourceInfo))
+				val eArgsWithDAInfO = DependencyAnalysisMergeInfo.attachExpMergeInfo(eArgs, None)
         evals2(s, eArgsWithDAInfO, Nil, _ => pve, v, analysisInfos)((s1, tArgs, eArgsNew, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
@@ -691,7 +692,7 @@ object evaluator extends EvaluationRules {
               val preExp = Option.when(withExp)({
                 DebugExp.createInstance(Some(s"precondition of ${func.name}(${eArgsNew.get.mkString(", ")}) holds"), None, None, InsertionOrderedSet.empty)
               })
-              v3.decider.assume(preFApp, preExp, precondAnalysisInfos)
+              v3.decider.assume(preFApp, preExp, analysisInfos)
               val funcAnn = func.info.getUniqueInfo[AnnotationInfo]
               val tFApp = funcAnn match {
                 case Some(a) if a.values.contains("opaque") =>
@@ -724,7 +725,7 @@ object evaluator extends EvaluationRules {
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, Option.when(withExp)(eArgs), v1, analysisInfos))((s6, r, v4)
               => {
 						v4.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo,
-							Seq(SimpleDependencyAnalysisMerge.attachExpMergeInfo(fapp), SimpleDependencyAnalysisMerge.attachExpMergeInfo(fapp, analysisInfos.getSourceInfo)))
+							Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, None), DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getSourceInfo, None)))
 						Q(s6, r._1, r._2, v4)
 					})})
 

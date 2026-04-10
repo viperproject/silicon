@@ -70,7 +70,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
         case "downdep" => handleDependentsQuery(inputParts.tail.toSet)
         case "coverage" | "cov" => handleProofCoverageQuery(inputParts.tail)
         case "covlines" | "covl" => handleProofCoverageLineQuery(inputParts.tail)
-        case "progress" | "prog" => handleVerificationProgressQuery()
+        case "progress" | "prog" => handleVerificationProgressQuery(inputParts.tail)
         case "guidance" | "guide" => handleVerificationGuidanceQuery()
         case "prune" => handlePruningRequest(inputParts.tail)
         case _ => extensions.foreach(_.visit(inputParts))
@@ -125,9 +125,10 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     println("Done.")
   }
 
-  private def handleVerificationProgressQuery(): Unit = {
+  private def handleVerificationProgressQuery(inputs: Seq[String]): Unit = {
+		val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
-    val ((optProgressPeter, optProgressLea), optTime) = measureTime(progressSupporter.computeVerificationProgress())
+    val ((optProgressPeter, optProgressLea), optTime) = measureTime(progressSupporter.computeVerificationProgress(enableDebugging))
 
     println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
     println(s"Finished in ${optTime}ms")
