@@ -26,7 +26,7 @@ import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
-import viper.silicon.supporters.{AnnotationSupporter, DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, PredicateData}
+import supporters.{AnnotationSupporter, BenchmarkMetrics, DefaultDomainsContributor, DefaultMapsContributor, DefaultMultisetsContributor, DefaultPredicateVerificationUnitProvider, DefaultSequencesContributor, DefaultSetsContributor, MagicWandSnapFunctionsContributor, MemberKind, PredicateData}
 import viper.silicon.supporters.qps._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.utils.Counter
@@ -36,6 +36,9 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.frontend.FrontendStateCache
 import viper.silver.reporter._
 import viper.silver.verifier.VerifierWarning
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -222,6 +225,7 @@ class DefaultMainVerifier(config: Config,
      *       Otherwise Set will be used internally and some error messages will be lost.
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
+      BenchmarkMetrics.registerMember(function.name, MemberKind.Function, function.isAbstract)
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
@@ -233,12 +237,14 @@ class DefaultMainVerifier(config: Config,
           throw e
       }
       val elapsed = System.currentTimeMillis() - startTime
+      BenchmarkMetrics.registerVerificationTime(function.name, elapsed)
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       setErrorScope(results, function)
     })
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
+      BenchmarkMetrics.registerMember(predicate.name, MemberKind.Predicate, predicate.isAbstract)
       val startTime = System.currentTimeMillis()
       var results: Seq[VerificationResult] = null
       try {
@@ -250,6 +256,7 @@ class DefaultMainVerifier(config: Config,
           throw e
       }
       val elapsed = System.currentTimeMillis() - startTime
+      BenchmarkMetrics.registerVerificationTime(predicate.name, elapsed)
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       setErrorScope(results, predicate)
@@ -270,6 +277,7 @@ class DefaultMainVerifier(config: Config,
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
+        BenchmarkMetrics.registerMember(method.name, MemberKind.Method, method.body.isEmpty)
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
           Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
@@ -285,6 +293,7 @@ class DefaultMainVerifier(config: Config,
               throw e
           }
           val elapsed = System.currentTimeMillis() - startTime
+          BenchmarkMetrics.registerVerificationTime(method.name, elapsed)
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
           logger debug s"Silicon finished verification of method `${method.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -316,6 +325,13 @@ class DefaultMainVerifier(config: Config,
       })
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
+
+    if (config.enableTempDirectory()) {
+      val f = new java.io.File(config.tempDirectory(), "perf_data.csv")
+      f.createNewFile()
+      val perfData : String = BenchmarkMetrics.toCSV()
+      Files.write(f.toPath, perfData.getBytes(StandardCharsets.UTF_8))
+    }
 
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(

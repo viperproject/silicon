@@ -124,6 +124,8 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
                   produce(s1, toSf(snap), body, err, v)((s2, v2) => {
+                    // PredicateVerificationMetrics.incPath(predicate.name)
+                    BenchmarkMetrics.incPaths(predicate.name)
                     val branchConds = v2.decider.pcs.branchConditions.reverse
                     val branchCondExps = v2.decider.pcs.branchConditionExps.reverse
                     assert(branchConds.length == branchCondExps.length)
