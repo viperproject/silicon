@@ -237,7 +237,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
       /* Write proof-query CSV if requested */
       config.recordProofQueries.toOption.foreach { path =>
-        val header = "isAssert,member,file,line,column,kind,durationMs,succeeded"
+        val header = "isAssert,member,file,line,column,kind,durationMs,succeeded,description"
         val rows = ProofQueryCollector.records.map { r =>
           val (file, line, col) = r.pos match {
             case sp: viper.silver.ast.AbstractSourcePosition =>
@@ -245,7 +245,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
             case _ => ("?", "?", "?")
           }
           Seq(r.isAssert, r.member.getOrElse("?"), file, line, col,
-              r.kind, "%.3f".format(r.durationMs), r.succeeded).mkString(",")
+              r.kind, "%.3f".format(r.durationMs), r.succeeded,
+              r.description.getOrElse("")).mkString(",")
         }
         java.nio.file.Files.write(
           java.nio.file.Paths.get(path),

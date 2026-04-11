@@ -52,7 +52,8 @@ trait Decider {
 
   def checkSmoke(isAssert: Boolean = false,
                  pos: ast.Position = ast.NoPosition,
-                 member: Option[String] = None): Boolean
+                 member: Option[String] = None,
+                 description: Option[String] = None): Boolean
 
   def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
   def setPathConditionMark(): Mark
@@ -73,7 +74,8 @@ trait Decider {
   def check(t: Term, timeout: Int,
             kind: ProofQueryKind = ProofQueryKind.Consistency,
             pos: ast.Position = ast.NoPosition,
-            member: Option[String] = None): Boolean
+            member: Option[String] = None,
+            description: Option[String] = None): Boolean
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
@@ -83,7 +85,8 @@ trait Decider {
              timeout: Option[Int] = None,
              kind: ProofQueryKind = ProofQueryKind.Consistency,
              pos: ast.Position = ast.NoPosition,
-             member: Option[String] = None
+             member: Option[String] = None,
+             description: Option[String] = None
             )(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
@@ -374,36 +377,40 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def checkSmoke(isAssert: Boolean = false,
                    pos: ast.Position = ast.NoPosition,
-                   member: Option[String] = None): Boolean = {
+                   member: Option[String] = None,
+                   description: Option[String] = None): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
       val t0  = System.nanoTime()
       val res = prover.check(timeout) == Unsat
       val dur = (System.nanoTime() - t0) / 1e6
       if (Verifier.config.recordProofQueries.isDefined)
         ProofQueryCollector.record(ProofQueryRecord(
-          isAssert   = false,
-          member     = member,
-          pos        = pos,
-          kind       = ProofQueryKind.PathInfeasibility,
-          durationMs = dur,
-          succeeded  = res))
+          isAssert    = false,
+          member      = member,
+          pos         = pos,
+          kind        = ProofQueryKind.PathInfeasibility,
+          durationMs  = dur,
+          succeeded   = res,
+          description = description))
       res
     }
 
     def check(t: Term, timeout: Int,
               kind: ProofQueryKind = ProofQueryKind.Consistency,
               pos: ast.Position = ast.NoPosition,
-              member: Option[String] = None): Boolean =
-      deciderAssert(t, Some(timeout), kind, pos, member, isAssert = false)
+              member: Option[String] = None,
+              description: Option[String] = None): Boolean =
+      deciderAssert(t, Some(timeout), kind, pos, member, description, isAssert = false)
 
     def assert(t: Term,
                timeout: Option[Int] = Verifier.config.assertTimeout.toOption,
                kind: ProofQueryKind = ProofQueryKind.Consistency,
                pos: ast.Position = ast.NoPosition,
-               member: Option[String] = None
+               member: Option[String] = None,
+               description: Option[String] = None
               )(Q: Boolean => VerificationResult): VerificationResult = {
 
-      val success = deciderAssert(t, timeout, kind, pos, member, isAssert = true)
+      val success = deciderAssert(t, timeout, kind, pos, member, description, isAssert = true)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -421,6 +428,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
                                kind: ProofQueryKind = ProofQueryKind.Consistency,
                                pos: ast.Position = ast.NoPosition,
                                member: Option[String] = None,
+                               description: Option[String] = None,
                                isAssert: Boolean = true) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
@@ -432,12 +440,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if (Verifier.config.recordProofQueries.isDefined)
         ProofQueryCollector.record(ProofQueryRecord(
-          isAssert   = isAssert,
-          member     = member,
-          pos        = pos,
-          kind       = kind,
-          durationMs = durMs,
-          succeeded  = result))
+          isAssert    = isAssert,
+          member      = member,
+          pos         = pos,
+          kind        = kind,
+          durationMs  = durMs,
+          succeeded   = result,
+          description = description))
 
       symbExLog.closeScope(sepIdentifier)
       result

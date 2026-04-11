@@ -24,6 +24,8 @@ import scala.jdk.CollectionConverters._
  * @param durationMs Wall-clock duration in milliseconds (includes prover call only, not
  *                   path-condition trivial-check short-circuit).
  * @param succeeded  Whether the query returned true / Unsat.
+ * @param description Optional free-text description of the specific proof obligation,
+ *                    populated on demand at call sites where extra clarity is useful.
  */
 case class ProofQueryRecord(
   isAssert:    Boolean,
@@ -31,7 +33,8 @@ case class ProofQueryRecord(
   pos:         ast.Position,
   kind:        ProofQueryKind,
   durationMs:  Double,
-  succeeded:   Boolean
+  succeeded:   Boolean,
+  description: Option[String] = None
 )
 
 /**
