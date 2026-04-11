@@ -156,7 +156,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                               (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
-    val initialConsumptionResult = ConsumptionResult(pLoss, pLossExp, qvars, v, Verifier.config.checkTimeout())
+    val initialConsumptionResult = ConsumptionResult(pLoss, pLossExp, qvars, v, Verifier.config.checkTimeout(), s.currentMember.map(_.name))
       /* TODO: Introduce a dedicated timeout for the permission check performed by ConsumptionResult,
        *       instead of using checkTimeout. Reason: checkTimeout is intended for checks that are
        *       optimisations, e.g. detecting if a chunk provided no permissions or if a branch is

@@ -390,7 +390,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val allChunks = otherChunks ++ newChunks
         // TODO: Since no permissions were gained, I don't see why the PropertyInterpreter would yield any new assumptions.
         //       See if it can be removed here.
-        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v, s.currentMember.map(_.name))
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))

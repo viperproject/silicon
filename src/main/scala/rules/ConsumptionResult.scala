@@ -28,13 +28,14 @@ private case class Incomplete(permsNeeded: Term, permsNeededExp: Option[ast.Exp]
 }
 
 object ConsumptionResult {
-  def apply(term: Term, exp: Option[ast.Exp], qvars: Seq[Var],  v: Verifier, timeout: Int): ConsumptionResult = {
+  def apply(term: Term, exp: Option[ast.Exp], qvars: Seq[Var], v: Verifier, timeout: Int,
+            member: Option[String] = None): ConsumptionResult = {
     val toCheck = if (qvars.isEmpty) {
       IsNonPositive(term)
     } else {
       Forall(qvars, IsNonPositive(term), Seq())
     }
-    if (v.decider.check(toCheck, timeout, kind = ProofQueryKind.Heap))
+    if (v.decider.check(toCheck, timeout, kind = ProofQueryKind.Heap, member = member))
       Complete()
     else
       Incomplete(term, exp)

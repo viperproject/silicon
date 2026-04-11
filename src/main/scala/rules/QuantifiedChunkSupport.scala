@@ -240,7 +240,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
                                   : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
 
-  def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk]
+  def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, member: Option[String] = None): Option[QuantifiedChunk]
 
   /** Merge the snapshots of two quantified heap chunks that denote the same field locations
    *
@@ -1052,7 +1052,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val s1 = if (mergeAndTrigger) {
       val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
-      val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
+      val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v, s.currentMember.map(_.name))
       val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
       val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
       pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
@@ -1169,7 +1169,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
-          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
+          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v, s.currentMember.map(_.name))
         val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
             (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
           PermTimes(tPerm, s.permissionScalingFactor)
@@ -1380,7 +1380,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         heuristics
       case None =>
         quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(arguments,
-          quantifiedChunkSupporter.extractHints(None, arguments), v)
+          quantifiedChunkSupporter.extractHints(None, arguments), v, s.currentMember.map(_.name))
     }
 
     if (s.exhaleExt) {
@@ -1974,7 +1974,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       matchingChunks ++ otherChunks
     }
 
-  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, member: Option[String] = None): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
         val qvarsAndInverses = qfc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qfc.invs.get.additionalArguments.toSeq ++ qfc.quantifiedVars)))
@@ -2016,7 +2016,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val equalityCond = And(cond.replace(chunk.quantifiedVars, singletonArguments),
                 cCond.replace(ch.quantifiedVars, cSingletonArguments))
               val result = v.decider.check(And(equalityCond, equalityTerm), Verifier.config.checkTimeout(),
-                kind = ProofQueryKind.Heap)
+                kind = ProofQueryKind.Heap, member = member)
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Chunks alias", true))
@@ -2047,7 +2047,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val secondReplaced = p._2.replace(cQvars, quantVars)
               val equalityTerm = SimplifyingForall(quantVars, And(Seq(p._1 === secondReplaced, cond === condReplaced)), Seq())
               val result = v.decider.check(equalityTerm, Verifier.config.checkTimeout(),
-                kind = ProofQueryKind.Heap)
+                kind = ProofQueryKind.Heap, member = member)
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Chunks alias", true))
@@ -2113,7 +2113,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     (fr2, sm, Forall(qVars, smDef, triggers))
   }
 
-  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier)
+  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier,
+                               member: Option[String] = None)
                                : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristics that looks for quantified chunks that have the same shape (as in, the same number and types of
     // quantified variables) and identical receiver terms.
@@ -2140,7 +2141,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               if (cQvars.length == quantVars.length && cQvars.zip(quantVars).forall(vars => vars._1.sort == vars._2.sort)) {
                 val secondReplaced = p._2.replace(cQvars, quantVars)
                 v.decider.check(SimplifyingForall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout(),
-                  kind = ProofQueryKind.Heap)
+                  kind = ProofQueryKind.Heap, member = member)
               } else {
                 false
               }
@@ -2156,7 +2157,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier)
+  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier,
+                                       member: Option[String] = None)
                                        : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristic that emulates greedy Silicon behavior for consuming single-receiver permissions.
     // First:  Find singleton chunks that have the same receiver syntactically.
@@ -2174,7 +2176,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val greedyMatch = chunks.find(c => c.singletonArguments match {
           case Some(args) if args.length == receiver.length =>
             args.zip(receiver).forall(ts => v.decider.check(ts._1 === ts._2, Verifier.config.checkTimeout(),
-              kind = ProofQueryKind.Heap))
+              kind = ProofQueryKind.Heap, member = member))
           case _ =>
             false
         }).toSeq

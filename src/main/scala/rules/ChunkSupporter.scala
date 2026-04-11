@@ -164,7 +164,7 @@ object chunkSupporter extends ChunkSupportRules {
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
 
     def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap): Unit = {
-      val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
+      val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v, s.currentMember.map(_.name))
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties(s.mayAssumeUpperBounds))
       pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
@@ -192,7 +192,7 @@ object chunkSupporter extends ChunkSupportRules {
             assumeProperties(newChunk, newHeap)
           }
           val remainingExp = permsExp.map(pe => ast.PermSub(pe, toTakeExp.get)(pe.pos, pe.info, pe.errT))
-          (ConsumptionResult(PermMinus(perms, toTake), remainingExp, Seq(), v, 0), s, newHeap, takenChunk)
+          (ConsumptionResult(PermMinus(perms, toTake), remainingExp, Seq(), v, 0, s.currentMember.map(_.name)), s, newHeap, takenChunk)
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout(),
                               kind = ProofQueryKind.Heap, member = s.currentMember.map(_.name))) {
