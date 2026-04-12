@@ -725,7 +725,7 @@ object evaluator extends EvaluationRules {
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, Option.when(withExp)(eArgs), v1, analysisInfos))((s6, r, v4)
               => {
 						v4.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo,
-							Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, None), DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getSourceInfo, None)))
+							Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
 						Q(s6, r._1, r._2, v4)
 					})})
 
@@ -828,7 +828,7 @@ object evaluator extends EvaluationRules {
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
-        consume(s, eAss, false, pve, v, analysisInfos /* TODO ake: explicit assertion? */)((s2, _, v2) => {
+        consume(s, eAss, false, pve, v, analysisInfos )((s2, _, v2) => {
           val s3 = s2.copy(g = s.g, h = s.h)
           eval(s3, eIn, pve, v2, analysisInfos)(Q)
         })

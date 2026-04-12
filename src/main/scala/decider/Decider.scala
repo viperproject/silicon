@@ -358,23 +358,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       }
     }
 
-//    private def pushAnalysisSourceInfo(sourceInfo: AnalysisSourceInfo, info: ast.Info, dependencyType: Option[DependencyType]): Unit = {
-//      analysisSourceInfoStack.addAnalysisSourceInfo(sourceInfo, dependencyType.getOrElse(analysisSourceInfoStack.getDependencyType))
-      // TODO ake: frontend join
-//      if (info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].isDefined) {
-//        // add assertions and assumptions nodes that can be used for a graph join
-//        val joinNodeInfo = info.getUniqueInfo[DependencyAnalysisJoinNodeInfo].get
-//        val currentTopLevelSource = analysisSourceInfoStack.getFullSourceInfo
-//        val assertionNode = joinNodeInfo.getAssertionNode(currentTopLevelSource, analysisSourceInfoStack.getDependencyType.assertionType)
-//        val assumptionNode = joinNodeInfo.getAssumptionNode(currentTopLevelSource)
-//        dependencyAnalyzer.addAssertionNode(assertionNode)
-//        dependencyAnalyzer.addAssumptionNode(assumptionNode)
-//        dependencyAnalyzer.addDependency(Some(assumptionNode.id), Some(assertionNode.id))
-//      }
-//    }
-
-
-
     def assume(t: Term, e: Option[ast.Exp], finalExp: Option[ast.Exp], analysisInfos: DependencyAnalysisInfos): Unit = {
       if (finalExp.isDefined) {
         assume(assumptions=InsertionOrderedSet((t, Some(DebugExp.createInstance(e.get, finalExp.get)))), enforceAssumption = false, isDefinition = false, analysisInfos)
