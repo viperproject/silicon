@@ -35,7 +35,8 @@ object ConsumptionResult {
     } else {
       Forall(qvars, IsNonPositive(term), Seq())
     }
-    if (v.decider.check(toCheck, timeout, kind = ProofQueryKind.Heap, member = member))
+    if (v.decider.check(toCheck, timeout, kind = ProofQueryKind.Heap, member = member,
+                        pos = exp.map(_.pos).getOrElse(ast.NoPosition)))
       Complete()
     else
       Incomplete(term, exp)
