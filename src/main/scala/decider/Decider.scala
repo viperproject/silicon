@@ -494,7 +494,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //        THIS WOULD BE UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
 //        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
-        pcs.setCurrentInfeasibilityNode(checkNode.map(_.id))
+        pcs.setCurrentInfeasibilityNode(infeasibleNodeId)
       }else if(isAssert){
         checkNode foreach (node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode))
       }

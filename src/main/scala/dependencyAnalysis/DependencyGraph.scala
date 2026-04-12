@@ -207,7 +207,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
       val curr = queue.head
       val newVisits = allEdges.getOrElse(curr, Set()).diff(infeasibilityNodeIds)
       visited = visited ++ Set(curr)
-      queue = queue.tail ++ (newVisits filter (!visited.contains(_)))
+      queue = queue.tail ++ newVisits.diff(visited)
     }
     visited
   }
