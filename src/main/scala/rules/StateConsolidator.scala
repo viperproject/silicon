@@ -78,7 +78,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
           val roundSepIdentifier = v.symbExLog.openScope(roundLog)
 
-          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v)
+          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, s.functionRecorderQuantifiedVariables().map(_._1), v, s.currentMember.map(_.name))
 
           snapEqs foreach (t => v.decider.assume(t, Option.when(withExp)(DebugExp.createInstance("Snapshot Equations", true))))
 
@@ -93,7 +93,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         } while (continue)
 
 
-        val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
+        val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v, s.currentMember.map(_.name))
 
         mergedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
@@ -130,11 +130,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   def merge(fr1: FunctionRecorder, s: State, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(mergeLog)
-    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, s.functionRecorderQuantifiedVariables().map(_._1), v)
+    val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, h.values.toSeq, newH.values.toSeq, s.functionRecorderQuantifiedVariables().map(_._1), v, s.currentMember.map(_.name))
 
     v.decider.assume(snapEqs, Option.when(withExp)(DebugExp.createInstance("Snapshot", isInternal_ = true)), enforceAssumption = false)
 
-    val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
+    val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v, s.currentMember.map(_.name))
     newlyAddedChunks.filter(_.isInstanceOf[BasicChunk]) foreach { case ch: BasicChunk =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
@@ -149,7 +149,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                           destChunks: Seq[Chunk],
                           newChunks: Seq[Chunk],
                           qvars: Seq[Var],
-                          v: Verifier)
+                          v: Verifier,
+                          member: Option[String] = None)
                          : (FunctionRecorder,
                             Seq[Chunk],
                             Seq[Chunk],
@@ -169,7 +170,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
        *           sequence of destination chunks
        */
 
-      findMatchingChunk(accMergedChunks, nextChunk, v) match {
+      findMatchingChunk(accMergedChunks, nextChunk, v, member) match {
         case Some(ch) =>
           mergeChunks(fr1, ch, nextChunk, qvars, v) match {
             case Some((fr2, newChunk, snapEq)) =>
@@ -185,11 +186,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     result
   }
 
-  private def findMatchingChunk(chunks: Iterable[Chunk], chunk: Chunk, v: Verifier): Option[Chunk] = {
+  private def findMatchingChunk(chunks: Iterable[Chunk], chunk: Chunk, v: Verifier, member: Option[String] = None): Option[Chunk] = {
     chunk match {
       case chunk: BasicChunk =>
-        chunkSupporter.findChunk[BasicChunk](chunks, chunk.id, chunk.args, v)
-      case chunk: QuantifiedChunk => quantifiedChunkSupporter.findChunk(chunks, chunk, v)
+        chunkSupporter.findChunk[BasicChunk](chunks, chunk.id, chunk.args, v, member = member)
+      case chunk: QuantifiedChunk => quantifiedChunkSupporter.findChunk(chunks, chunk, v, member)
       case _ => None
     }
   }

@@ -19,7 +19,7 @@ import viper.silver.reporter._
 import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
-import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
+import viper.silicon.reporting.{MultiRunRecorders, ProofQueryCollector, condenseToViperResult}
 import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
@@ -234,6 +234,27 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       }
 
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
+
+      /* Write proof-query CSV if requested */
+      config.recordProofQueries.toOption.foreach { path =>
+        val header = "isAssert,member,file,line,column,kind,durationMs,succeeded,description"
+        val rows = ProofQueryCollector.records.map { r =>
+          val (file, line, col) = r.pos match {
+            case sp: viper.silver.ast.AbstractSourcePosition =>
+              (sp.file.toString, sp.line.toString, sp.column.toString)
+            case _ => ("?", "?", "?")
+          }
+          Seq(r.isAssert, r.member.getOrElse("?"), file, line, col,
+              r.kind, "%.3f".format(r.durationMs), r.succeeded,
+              r.description.getOrElse("")).mkString(",")
+        }
+        java.nio.file.Files.write(
+          java.nio.file.Paths.get(path),
+          (header +: rows).mkString("\n").getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        )
+        ProofQueryCollector.clear()
+      }
+
       result.get
     }
   }

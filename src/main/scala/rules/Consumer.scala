@@ -14,6 +14,7 @@ import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssert
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -413,7 +414,10 @@ object consumer extends ConsumptionRules {
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
-        v2.decider.assert(termToAssert) {
+        v2.decider.assert(termToAssert,
+                          kind = ProofQueryKind.FunctionalCorrectness,
+                          pos = e.pos,
+                          member = s3.currentMember.map(_.name)) {
           case true =>
             v2.decider.assume(t, Option.when(withExp)(e), eNew)
             QS(s3, v2)

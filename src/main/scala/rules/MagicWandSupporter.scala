@@ -11,6 +11,7 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -155,7 +156,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                               (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
-    val initialConsumptionResult = ConsumptionResult(pLoss, pLossExp, qvars, v, Verifier.config.checkTimeout())
+    val initialConsumptionResult = ConsumptionResult(pLoss, pLossExp, qvars, v, Verifier.config.checkTimeout(), s.currentMember.map(_.name))
       /* TODO: Introduce a dedicated timeout for the permission check performed by ConsumptionResult,
        *       instead of using checkTimeout. Reason: checkTimeout is intended for checks that are
        *       optimisations, e.g. detecting if a chunk provided no permissions or if a branch is
@@ -196,7 +197,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
              * from heap, i.e. that tEq does not result in already having the required permissions before
              * consuming from heap.
              */
-            if (v.decider.checkSmoke()) {
+            if (v.decider.checkSmoke(member = sOut.currentMember.map(_.name))) {
               (Complete(), sOut, h +: hps, cch +: cchs)
             } else {
               (success, sOut, h +: hps, cch +: cchs)

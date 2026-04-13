@@ -14,6 +14,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -160,7 +161,9 @@ object producer extends ProductionRules {
           // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
           // This should never happen if we're in a reachable state, so here we check for that
           // (without timeout, since there is no fallback) and stop verifying the current branch.
-          case _: IllegalArgumentException if v.decider.check(False, Verifier.config.assertTimeout.getOrElse(0)) =>
+          case _: IllegalArgumentException if v.decider.check(False, Verifier.config.assertTimeout.getOrElse(0),
+                                                               kind = ProofQueryKind.PathInfeasibility,
+                                                               member = s.currentMember.map(_.name)) =>
             Unreachable()
         }
 

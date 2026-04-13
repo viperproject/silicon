@@ -13,6 +13,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider._
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
+import viper.silicon.reporting.{ProofQueryCollector, ProofQueryRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Term, _}
 import viper.silicon.utils.ast.{extractPTypeFromExp, simplifyVariableName}
@@ -49,7 +50,10 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(isAssert: Boolean = false): Boolean
+  def checkSmoke(isAssert: Boolean = false,
+                 pos: ast.Position = ast.NoPosition,
+                 member: Option[String] = None,
+                 description: Option[String] = None): Boolean
 
   def setCurrentBranchCondition(t: Term, te: (ast.Exp, Option[ast.Exp])): Unit
   def setPathConditionMark(): Mark
@@ -67,13 +71,23 @@ trait Decider {
   def assume(assumptions: InsertionOrderedSet[(Term, Option[DebugExp])], enforceAssumption: Boolean = false, isDefinition: Boolean = false): Unit
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
 
-  def check(t: Term, timeout: Int): Boolean
+  def check(t: Term, timeout: Int,
+            kind: ProofQueryKind = ProofQueryKind.Consistency,
+            pos: ast.Position = ast.NoPosition,
+            member: Option[String] = None,
+            description: Option[String] = None): Boolean
 
   /* TODO: Consider changing assert such that
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assert(t: Term,
+             timeout: Option[Int] = None,
+             kind: ProofQueryKind = ProofQueryKind.Consistency,
+             pos: ast.Position = ast.NoPosition,
+             member: Option[String] = None,
+             description: Option[String] = None
+            )(Q: Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort, ptype: Option[PType]): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -361,18 +375,42 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(isAssert: Boolean = false): Boolean = {
+    def checkSmoke(isAssert: Boolean = false,
+                   pos: ast.Position = ast.NoPosition,
+                   member: Option[String] = None,
+                   description: Option[String] = None): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      prover.check(timeout) == Unsat
+      val t0  = System.nanoTime()
+      val res = prover.check(timeout) == Unsat
+      val dur = (System.nanoTime() - t0) / 1e6
+      if (Verifier.config.recordProofQueries.isDefined)
+        ProofQueryCollector.record(ProofQueryRecord(
+          isAssert    = false,
+          member      = member,
+          pos         = pos,
+          kind        = ProofQueryKind.PathInfeasibility,
+          durationMs  = dur,
+          succeeded   = res,
+          description = description))
+      res
     }
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
+    def check(t: Term, timeout: Int,
+              kind: ProofQueryKind = ProofQueryKind.Consistency,
+              pos: ast.Position = ast.NoPosition,
+              member: Option[String] = None,
+              description: Option[String] = None): Boolean =
+      deciderAssert(t, Some(timeout), kind, pos, member, description, isAssert = false)
 
-    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
-              (Q: Boolean => VerificationResult)
-              : VerificationResult = {
+    def assert(t: Term,
+               timeout: Option[Int] = Verifier.config.assertTimeout.toOption,
+               kind: ProofQueryKind = ProofQueryKind.Consistency,
+               pos: ast.Position = ast.NoPosition,
+               member: Option[String] = None,
+               description: Option[String] = None
+              )(Q: Boolean => VerificationResult): VerificationResult = {
 
-      val success = deciderAssert(t, timeout)
+      val success = deciderAssert(t, timeout, kind, pos, member, description, isAssert = true)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -386,12 +424,29 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, timeout: Option[Int]) = {
+    private def deciderAssert(t: Term, timeout: Option[Int],
+                               kind: ProofQueryKind = ProofQueryKind.Consistency,
+                               pos: ast.Position = ast.NoPosition,
+                               member: Option[String] = None,
+                               description: Option[String] = None,
+                               isAssert: Boolean = true) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
-      val asserted = isKnownToBeTrue(t)
-      val result = asserted || proverAssert(t, timeout)
+      val alreadyKnown = isKnownToBeTrue(t)
+      val t0     = System.nanoTime()
+      val result = alreadyKnown || proverAssert(t, timeout)
+      val durMs  = (System.nanoTime() - t0) / 1e6
+
+      if (Verifier.config.recordProofQueries.isDefined && !alreadyKnown)
+        ProofQueryCollector.record(ProofQueryRecord(
+          isAssert    = isAssert,
+          member      = member,
+          pos         = pos,
+          kind        = kind,
+          durationMs  = durMs,
+          succeeded   = result,
+          description = description))
 
       symbExLog.closeScope(sepIdentifier)
       result
