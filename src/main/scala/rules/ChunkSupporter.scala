@@ -55,7 +55,9 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (chunks: Iterable[Chunk],
                 id: ChunkIdentifer,
                 args: Iterable[Term],
-                v: Verifier)
+                v: Verifier,
+                member: Option[String] = None,
+                pos: ast.Position = ast.NoPosition)
                : Option[CH]
 
   def findChunksWithID[CH <: NonQuantifiedChunk: ClassTag]
@@ -170,7 +172,7 @@ object chunkSupporter extends ChunkSupportRules {
       pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
     }
 
-    findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+    findChunk[NonQuantifiedChunk](h.values, id, args, v, member = s.currentMember.map(_.name)) match {
       case Some(ch) =>
         if (s.assertReadAccessOnly) {
           if (v.decider.check(Implies(IsPositive(perms), IsPositive(ch.perm)), Verifier.config.assertTimeout.getOrElse(0),
@@ -258,7 +260,7 @@ object chunkSupporter extends ChunkSupportRules {
                           : VerificationResult = {
 
     val id = ChunkIdentifier(resource, s.program)
-    val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
+    val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v, member = s.currentMember.map(_.name), pos = resource.pos)
     findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.assertTimeout.getOrElse(0),
                                        kind = ProofQueryKind.Heap, pos = resource.pos,
@@ -280,10 +282,12 @@ object chunkSupporter extends ChunkSupportRules {
                (chunks: Iterable[Chunk],
                 id: ChunkIdentifer,
                 args: Iterable[Term],
-                v: Verifier)
+                v: Verifier,
+                member: Option[String] = None,
+                pos: ast.Position = ast.NoPosition)
                : Option[CH] = {
     val relevantChunks = findChunksWithID[CH](chunks, id)
-    findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v)
+    findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v, member, pos)
   }
 
   def findChunksWithID[CH <: NonQuantifiedChunk: ClassTag](chunks: Iterable[Chunk], id: ChunkIdentifer): Iterable[CH] = {
@@ -320,9 +324,12 @@ object chunkSupporter extends ChunkSupportRules {
     chunks find (ch => ch.args == args)
   }
 
-  private def findChunkWithProver[CH <: NonQuantifiedChunk](chunks: Iterable[CH], args: Iterable[Term], v: Verifier) = {
+  private def findChunkWithProver[CH <: NonQuantifiedChunk](chunks: Iterable[CH], args: Iterable[Term], v: Verifier,
+                                                            member: Option[String] = None,
+                                                            pos: ast.Position = ast.NoPosition) = {
     chunks find (ch =>
       args.size == ch.args.size &&
-      v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout()))
+      v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout(),
+                      kind = ProofQueryKind.Heap, member = member, pos = pos))
   }
 }
