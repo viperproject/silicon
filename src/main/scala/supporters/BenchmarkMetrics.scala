@@ -47,12 +47,12 @@ object BenchmarkMetrics {
 
   def toCSV() : String = {
     val sb = new StringBuilder()
-    sb.append("name, kind, abstract?, terminal branches, verification time (s)\n")
+    sb.append("name, kind, abstract?, terminal branches, verification time (ms)\n")
     memberKind.foreach { case (name, kind) =>
       val isAbstract = isAbs(name)
       val branches = branchesCount(name)
-      val duration = verificationTime(name) / 1000
-      sb.append(s"$name, $kind, $isAbstract, $branches, $duration\n")
+      val duration = verificationTime(name)
+      sb.append(f"$name, $kind, $isAbstract, $branches, $duration\n")
     }
     sb.toString()
   }
