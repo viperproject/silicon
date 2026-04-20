@@ -185,7 +185,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val (relevantChunks, otherChunks) =
         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(field.name))
       val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v)
+      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v, s.currentMember.map(_.name), ass.pos)
       val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v)
       v.decider.clearModel()
       val result = quantifiedChunkSupporter.removePermissions(
