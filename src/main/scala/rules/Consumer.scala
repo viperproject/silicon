@@ -417,7 +417,8 @@ object consumer extends ConsumptionRules {
         v2.decider.assert(termToAssert,
                           kind = ProofQueryKind.FunctionalCorrectness,
                           pos = e.pos,
-                          member = s3.currentMember.map(_.name)) {
+                          member = s3.currentMember.map(_.name),
+                          description = Some("user assertion holds")) {
           case true =>
             v2.decider.assume(t, Option.when(withExp)(e), eNew)
             QS(s3, v2)

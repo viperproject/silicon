@@ -36,7 +36,8 @@ object ConsumptionResult {
       Forall(qvars, IsNonPositive(term), Seq())
     }
     if (v.decider.check(toCheck, timeout, kind = ProofQueryKind.Heap, member = member,
-                        pos = exp.map(_.pos).getOrElse(ast.NoPosition)))
+                        pos = exp.map(_.pos).getOrElse(ast.NoPosition),
+                        description = Some("permission fully consumed")))
       Complete()
     else
       Incomplete(term, exp)

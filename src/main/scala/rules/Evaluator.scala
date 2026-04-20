@@ -562,7 +562,8 @@ object evaluator extends EvaluationRules {
             Q(s2, tQuant, eQuantNew, v1)
           case (s1, _, _, _, _, None, v1) =>
             // This should not happen unless the current path is dead.
-            if (v1.decider.checkSmoke(true, pos = sourceQuant.pos, member = s1.currentMember.map(_.name))) {
+            if (v1.decider.checkSmoke(true, pos = sourceQuant.pos, member = s1.currentMember.map(_.name),
+                                      description = Some("smoke check: quantifier body"))) {
               Unreachable()
             } else {
               createFailure(pve.dueTo(InternalReason(sourceQuant, "Quantifier evaluation failed.")), v1, s1, "quantifier could be evaluated")
@@ -695,7 +696,8 @@ object evaluator extends EvaluationRules {
               v2.decider.assert(IsPositive(tPerm), // TODO: Replace with permissionSupporter.assertNotNegative
                                 kind = ProofQueryKind.Heap,
                                 pos = ePerm.map(_.pos).getOrElse(ast.NoPosition),
-                                member = s2.currentMember.map(_.name)) {
+                                member = s2.currentMember.map(_.name),
+                                description = Some("perm expression: non-negative")) {
                 case true =>
                   joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
@@ -800,11 +802,13 @@ object evaluator extends EvaluationRules {
           } else {
             v1.decider.assert(AtLeast(t1, IntLiteral(0)),
                               kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                              member = s1.currentMember.map(_.name)) {
+                              member = s1.currentMember.map(_.name),
+                              description = Some("sequence index non-negative")) {
               case true =>
                 v1.decider.assert(Less(t1, SeqLength(t0)),
                                   kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                                  member = s1.currentMember.map(_.name)) {
+                                  member = s1.currentMember.map(_.name),
+                                  description = Some("sequence index < length")) {
                   case true =>
                     Q(s1, SeqAt(t0, t1), eNew, v1)
                   case false =>
@@ -826,7 +830,8 @@ object evaluator extends EvaluationRules {
                   val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
                   v1.decider.assert(Less(t1, SeqLength(t0)),
                                     kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                                    member = s1.currentMember.map(_.name)) {
+                                    member = s1.currentMember.map(_.name),
+                                    description = Some("sequence index < length (retry)")) {
                     case true =>
                       failure1 combine Q(s1, SeqAt(t0, t1), eNew, v1)
                     case false =>
@@ -859,12 +864,14 @@ object evaluator extends EvaluationRules {
             val assertExpNew = Option.when(withExp)(ast.GeCmp(esNew.get(1), ast.IntLit(0)())(e1.pos, e1.info, e1.errT))
             v1.decider.assert(AtLeast(t1, IntLiteral(0)),
                               kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                              member = s1.currentMember.map(_.name)) {
+                              member = s1.currentMember.map(_.name),
+                              description = Some("sequence update index non-negative")) {
               case true =>
                 val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
                 v1.decider.assert(Less(t1, SeqLength(t0)),
                                   kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                                  member = s1.currentMember.map(_.name)) {
+                                  member = s1.currentMember.map(_.name),
+                                  description = Some("sequence update index < length")) {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                   case false =>
@@ -883,7 +890,8 @@ object evaluator extends EvaluationRules {
                   val assertExp2New = Option.when(withExp)(ast.LtCmp(esNew.get(1), ast.SeqLength(esNew.get(0))())(e1.pos, e1.info, e1.errT))
                   v1.decider.assert(Less(t1, SeqLength(t0)),
                                     kind = ProofQueryKind.FunctionalCorrectness, pos = e1.pos,
-                                    member = s1.currentMember.map(_.name)) {
+                                    member = s1.currentMember.map(_.name),
+                                    description = Some("sequence update index < length (retry)")) {
                     case true =>
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), eNew, v1)
                     case false =>
@@ -1004,7 +1012,8 @@ object evaluator extends EvaluationRules {
             v1.decider.assert(SetIn(keyT, MapDomain(baseT)),
                               kind = ProofQueryKind.FunctionalCorrectness,
                               pos = ml.pos,
-                              member = s1.currentMember.map(_.name)) {
+                              member = s1.currentMember.map(_.name),
+                              description = Some("map key in domain")) {
               case true => Q(s1, MapLookup(baseT, keyT), eNew, v1)
               case false =>
                 val assertExp = Option.when(withExp)(ast.MapContains(key, base)(ml.pos, ml.info, ml.errT))
@@ -1236,7 +1245,8 @@ object evaluator extends EvaluationRules {
     v.decider.assert(tDivisor !== tZero,
                      kind = ProofQueryKind.FunctionalCorrectness,
                      pos = eDivisor.pos,
-                     member = s.currentMember.map(_.name)) {
+                     member = s.currentMember.map(_.name),
+                     description = Some("non-zero divisor")) {
       case true => Q(s, t, v)
       case false =>
         val (notZeroExp, notZeroExpNew) = if (withExp) {
