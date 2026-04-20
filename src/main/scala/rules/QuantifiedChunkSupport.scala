@@ -11,6 +11,7 @@ import viper.silicon.debugger.DebugExp
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.interfaces.state._
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
@@ -239,7 +240,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
                                   : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
 
-  def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk]
+  def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, member: Option[String] = None): Option[QuantifiedChunk]
 
   /** Merge the snapshots of two quantified heap chunks that denote the same field locations
    *
@@ -919,7 +920,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegImplicationExp = eCond.map(c => ast.Implies(c, ast.PermGeCmp(ePerm.get, ast.NoPerm()())())(c.pos, c.info, c.errT))
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm) {
+    v.decider.assert(nonNegTerm,
+                     kind = ProofQueryKind.Consistency, pos = forall.pos,
+                     member = s.currentMember.map(_.name),
+                     description = Some("QP non-negative permission (produce)")) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -941,7 +945,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.prover.comment(comment)
         val completeReceiverInjectivityCheck = Implies(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program),
           receiverInjectivityCheck)
-        v.decider.assert(completeReceiverInjectivityCheck) {
+        v.decider.assert(completeReceiverInjectivityCheck,
+                         kind = ProofQueryKind.Consistency, pos = forall.pos,
+                         member = s.currentMember.map(_.name),
+                         description = Some("QP receiver injectivity (produce)")) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
@@ -1047,7 +1054,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val s1 = if (mergeAndTrigger) {
       val (fr1, h1) = v.stateConsolidator(s).merge(s.functionRecorder, s, s.h, Heap(Seq(ch)), v)
 
-      val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
+      val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v, s.currentMember.map(_.name))
       val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
       val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties(s.mayAssumeUpperBounds))
       pcs.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
@@ -1158,11 +1165,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     val nonNegExp = qvarExps.map(qv => ast.Forall(qv, Nil, nonNegImplicationExp.get)())
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(nonNegTerm) {
+    v.decider.assert(nonNegTerm,
+                     kind = ProofQueryKind.Consistency, pos = resource.pos,
+                     member = s.currentMember.map(_.name),
+                     description = Some("QP non-negative permission (consume)")) {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
-          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v)
+          qpAppChunkOrderHeuristics(inverseFunctions.invertibles, qvars, hints, v, s.currentMember.map(_.name), pos = resource.pos)
         val loss = if (!Verifier.config.unsafeWildcardOptimization() ||
             (resource.isInstanceOf[ast.Location] && s.permLocations.contains(resource.asInstanceOf[ast.Location])))
           PermTimes(tPerm, s.permissionScalingFactor)
@@ -1194,7 +1204,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
         val completeReceiverInjectivityCheck = Implies(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), receiverInjectivityCheck)
-        v.decider.assert(completeReceiverInjectivityCheck) {
+        v.decider.assert(completeReceiverInjectivityCheck,
+                         kind = ProofQueryKind.Consistency, pos = resource.pos,
+                         member = s.currentMember.map(_.name),
+                         description = Some("QP receiver injectivity (consume)")) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
@@ -1371,7 +1384,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         heuristics
       case None =>
         quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(arguments,
-          quantifiedChunkSupporter.extractHints(None, arguments), v)
+          quantifiedChunkSupporter.extractHints(None, arguments), v, s.currentMember.map(_.name), pos = resourceAccess.pos)
     }
 
     if (s.exhaleExt) {
@@ -1499,7 +1512,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     // final check
     val result =
-      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */ )
+      if (v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), /* This check is a must-check, i.e. an assert */
+                          kind = ProofQueryKind.Heap, pos = permsExp.map(_.pos).getOrElse(ast.NoPosition),
+                          member = s.currentMember.map(_.name),
+                          description = Some("QP took enough permission")))
         Complete()
       else
         Incomplete(PermMinus(permsAvailable, perms), permsAvailableExp.map(pa => ast.PermSub(pa, permsExp.get)()))
@@ -1608,10 +1624,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             remainingChunks :+ ithChunk.permMinus(ithPTaken, ithPTakenExp)
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
-          val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
+          val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout(),
+            kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+            description = Some("QP chunk depleted"))
           if (!chunkDepleted) {
             val unusedCheck = Forall(codomainQVars, ithPTaken === NoPerm, Nil)
-            val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout())
+            val chunkUnused = v.decider.check(unusedCheck, Verifier.config.checkTimeout(),
+              kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+              description = Some("QP chunk unused"))
             if (chunkUnused) {
               remainingChunks = remainingChunks :+ ithChunk
             } else {
@@ -1630,7 +1650,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm), Nil)
 
         v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
-        success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
+        success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout(),
+                                      kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+                                      description = Some("QP took enough (after split)"))) {
           Complete()
         } else {
           Incomplete(ithPNeeded, ithPNeededExp)
@@ -1640,7 +1662,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     v.decider.prover.comment("Final check if taken enough permissions")
     success =
-      if (success.isComplete || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0)) /* This check is a must-check, i.e. an assert */)
+      if (success.isComplete || v.decider.check(tookEnoughCheck, Verifier.config.assertTimeout.getOrElse(0), /* This check is a must-check, i.e. an assert */
+                                                 kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+                                                 description = Some("QP took enough (final)")))
         Complete()
       else
         success
@@ -1959,7 +1983,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       matchingChunks ++ otherChunks
     }
 
-  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier): Option[QuantifiedChunk] = {
+  override def findChunk(chunks: Iterable[Chunk], chunk: QuantifiedChunk, v: Verifier, member: Option[String] = None): Option[QuantifiedChunk] = {
     val lr = chunk match {
       case qfc: QuantifiedFieldChunk if qfc.invs.isDefined =>
         val qvarsAndInverses = qfc.invs.get.qvarsToInverses.map(qvi => (qvi._1, App(qvi._2, qfc.invs.get.additionalArguments.toSeq ++ qfc.quantifiedVars)))
@@ -2000,7 +2024,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               // Hence, we need to compare the conditions for equality in addition to verifying that the receivers match.
               val equalityCond = And(cond.replace(chunk.quantifiedVars, singletonArguments),
                 cCond.replace(ch.quantifiedVars, cSingletonArguments))
-              val result = v.decider.check(And(equalityCond, equalityTerm), Verifier.config.checkTimeout())
+              val result = v.decider.check(And(equalityCond, equalityTerm), Verifier.config.checkTimeout(),
+                kind = ProofQueryKind.Heap, member = member,
+                description = Some("QP singleton chunk alias"))
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Chunks alias", true))
@@ -2030,7 +2056,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val condReplaced = cCond.replace(cQvars, quantVars)
               val secondReplaced = p._2.replace(cQvars, quantVars)
               val equalityTerm = SimplifyingForall(quantVars, And(Seq(p._1 === secondReplaced, cond === condReplaced)), Seq())
-              val result = v.decider.check(equalityTerm, Verifier.config.checkTimeout())
+              val result = v.decider.check(equalityTerm, Verifier.config.checkTimeout(),
+                kind = ProofQueryKind.Heap, member = member,
+                description = Some("QP invertible chunk alias"))
               if (result) {
                 // Learn the equality
                 val debugExp = Option.when(withExp)(DebugExp.createInstance("Chunks alias", true))
@@ -2096,7 +2124,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     (fr2, sm, Forall(qVars, smDef, triggers))
   }
 
-  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier)
+  def qpAppChunkOrderHeuristics(receiverTerms: Seq[Term], quantVars: Seq[Var], hints: Seq[Term], v: Verifier,
+                               member: Option[String] = None, pos: ast.Position = ast.NoPosition)
                                : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristics that looks for quantified chunks that have the same shape (as in, the same number and types of
     // quantified variables) and identical receiver terms.
@@ -2122,7 +2151,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             receiverTerms.zip(cInvertibles).forall(p => {
               if (cQvars.length == quantVars.length && cQvars.zip(quantVars).forall(vars => vars._1.sort == vars._2.sort)) {
                 val secondReplaced = p._2.replace(cQvars, quantVars)
-                v.decider.check(SimplifyingForall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout())
+                v.decider.check(SimplifyingForall(quantVars, p._1 === secondReplaced, Seq()), Verifier.config.checkTimeout(),
+                  kind = ProofQueryKind.Heap, member = member, pos = pos,
+                  description = Some("QP receiver forall match"))
               } else {
                 false
               }
@@ -2138,7 +2169,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
   }
 
-  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier)
+  def singleReceiverChunkOrderHeuristic(receiver: Seq[Term], hints: Seq[Term], v: Verifier,
+                                       member: Option[String] = None, pos: ast.Position = ast.NoPosition)
                                        : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] = {
     // Heuristic that emulates greedy Silicon behavior for consuming single-receiver permissions.
     // First:  Find singleton chunks that have the same receiver syntactically.
@@ -2155,7 +2187,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       } else {
         val greedyMatch = chunks.find(c => c.singletonArguments match {
           case Some(args) if args.length == receiver.length =>
-            args.zip(receiver).forall(ts => v.decider.check(ts._1 === ts._2, Verifier.config.checkTimeout()))
+            args.zip(receiver).forall(ts => v.decider.check(ts._1 === ts._2, Verifier.config.checkTimeout(),
+              kind = ProofQueryKind.Heap, member = member, pos = pos,
+              description = Some("QP singleton arg equality")))
           case _ =>
             false
         }).toSeq

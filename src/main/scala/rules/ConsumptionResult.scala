@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.state.terms.{Forall, Term, Var}
 import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silver.ast
@@ -27,13 +28,16 @@ private case class Incomplete(permsNeeded: Term, permsNeededExp: Option[ast.Exp]
 }
 
 object ConsumptionResult {
-  def apply(term: Term, exp: Option[ast.Exp], qvars: Seq[Var],  v: Verifier, timeout: Int): ConsumptionResult = {
+  def apply(term: Term, exp: Option[ast.Exp], qvars: Seq[Var], v: Verifier, timeout: Int,
+            member: Option[String] = None): ConsumptionResult = {
     val toCheck = if (qvars.isEmpty) {
       IsNonPositive(term)
     } else {
       Forall(qvars, IsNonPositive(term), Seq())
     }
-    if (v.decider.check(toCheck, timeout))
+    if (v.decider.check(toCheck, timeout, kind = ProofQueryKind.Heap, member = member,
+                        pos = exp.map(_.pos).getOrElse(ast.NoPosition),
+                        description = Some("permission fully consumed")))
       Complete()
     else
       Incomplete(term, exp)

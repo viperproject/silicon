@@ -10,6 +10,7 @@ import viper.silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.havocSupporter.{HavocHelperData, HavocOneData, HavocallData}
@@ -184,7 +185,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val (relevantChunks, otherChunks) =
         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(field.name))
       val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v)
+      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v, s.currentMember.map(_.name), ass.pos)
       val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v)
       v.decider.clearModel()
       val result = quantifiedChunkSupporter.removePermissions(
@@ -333,7 +334,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             Q(s2, fvfLookup, v)
           } else {
             val toAssert = IsPositive(totalPermissions.replace(`?r`, tRcvr))
-            v.decider.assert(toAssert) {
+            v.decider.assert(toAssert,
+                             kind = ProofQueryKind.Heap,
+                             pos = fa.pos,
+                             member = s.currentMember.map(_.name),
+                             description = Some("heap property holds")) {
               case false =>
                 createFailure(ve, v, s, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
               case true =>
@@ -384,7 +389,11 @@ class DefaultHeapSupportRules extends HeapSupportRules {
               }
               (Implies(lhs, IsPositive(totalPerms)), Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)(fa.pos, fa.info, fa.errT))(fa.pos, fa.info, fa.errT)), s3)
             }
-          v.decider.assert(permCheck) {
+          v.decider.assert(permCheck,
+                           kind = ProofQueryKind.Heap,
+                           pos = fa.pos,
+                           member = s3.currentMember.map(_.name),
+                           description = Some("heap permission consistency")) {
             case false =>
               createFailure(ve, v, s3, permCheck, permCheckExp)
             case true =>

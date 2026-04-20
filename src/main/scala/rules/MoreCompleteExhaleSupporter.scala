@@ -9,6 +9,7 @@ package viper.silicon.rules
 import viper.silicon.debugger.DebugExp
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
@@ -120,8 +121,11 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                 case None =>
                   // We have not yet checked for a definite alias
                   val id = ChunkIdentifier(resource, s.program)
-                  val potentialAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
-                  potentialAlias.filter(c => v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout())).map(_.snap)
+                  val potentialAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v,
+                    member = s.currentMember.map(_.name), pos = resource.pos)
+                  potentialAlias.filter(c => v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout(),
+                    kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+                    description = Some("MCE definite alias permission"))).map(_.snap)
                 case Some(v) =>
                   // We have checked for a definite alias and may or may not have found one.
                   v
@@ -166,7 +170,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     if (relevantChunks.size == 1 &&  !Verifier.config.counterexample.isDefined) {
       val chunk = relevantChunks.head
       val argsEqual = And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 })
-      if (v.decider.check(argsEqual, Verifier.config.checkTimeout())) {
+      if (v.decider.check(argsEqual, Verifier.config.checkTimeout(),
+                          kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+                          description = Some("MCE argument equality"))) {
         return Q(s, chunk.snap, chunk.perm, chunk.permExp, v)
       }
     }
@@ -203,7 +209,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     if (relevantChunks.isEmpty) {
-      if (v.decider.checkSmoke(true)) {
+      if (v.decider.checkSmoke(true, pos = resource.pos, member = s.currentMember.map(_.name),
+                               description = Some("MCE smoke check"))) {
         if (s.isInPackage) {
           val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
           Q(s, snap, v)
@@ -215,7 +222,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
-        v.decider.assert(IsPositive(permSum)) {
+        v.decider.assert(IsPositive(permSum),
+                         kind = ProofQueryKind.Heap, pos = resource.pos,
+                         member = s1.currentMember.map(_.name),
+                         description = Some("MCE total permission positive")) {
           case true =>
             Q(s1, snap, v1)
           case false =>
@@ -260,7 +270,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (returnSnap) {
       summarise(s, relevantChunks, resource, args, argsExp, None, v)((s1, snap, permSum, permSumExp, v1) =>
-        v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum))) {
+        v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum)),
+                         kind = ProofQueryKind.Heap, pos = resource.pos,
+                         member = s1.currentMember.map(_.name),
+                         description = Some("MCE read: total perm positive (w/ snap)")) {
           case true =>
             Q(s1, h, Some(snap), v1)
           case false =>
@@ -268,7 +281,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         })
     } else {
       val (s1, permSum, permSumExp) = permSummariseOnly(s, relevantChunks, resource, args, argsExp)
-      v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum))) {
+      v.decider.assert(Implies(IsPositive(perm), IsPositive(permSum)),
+                       kind = ProofQueryKind.Heap, pos = resource.pos,
+                       member = s1.currentMember.map(_.name),
+                       description = Some("MCE read: total perm positive (no snap)")) {
         case true =>
           Q(s1, h, None, v)
         case false =>
@@ -300,7 +316,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      v.decider.assert(perms === NoPerm) {
+      v.decider.assert(perms === NoPerm,
+                       kind = ProofQueryKind.Heap, pos = resource.pos,
+                       member = s.currentMember.map(_.name),
+                       description = Some("MCE read unneeded")) {
         case true => Q(s, h, None, v)
         case false => createFailure(ve, v, s, perms === NoPerm, permsExp.map(pe => ast.EqCmp(pe, ast.NoPerm()())(pe.pos, pe.info, pe.errT)))
       }
@@ -317,8 +336,11 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val newChunks = ListBuffer[NonQuantifiedChunk]()
         var moreNeeded = true
 
-        val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v).filter(c =>
-          v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout())
+        val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v,
+          member = s.currentMember.map(_.name), pos = resource.pos).filter(c =>
+          v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout(),
+            kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+            description = Some("MCE candidate has permission"))
         )
 
         val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
@@ -363,11 +385,15 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             pNeeded = PermMinus(pNeeded, pTaken)
             pNeededExp = permsExp.map(pe => ast.PermSub(pNeededExp.get, pTakenExp.get)(pe.pos, pe.info, pe.errT))
 
-            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
+            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout(),
+                                 kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+                                 description = Some("MCE chunk depleted (split)"))) {
               newChunks.append(newChunk)
             }
 
-            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout())
+            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout(),
+                                          kind = ProofQueryKind.Heap, pos = resource.pos, member = s.currentMember.map(_.name),
+                                          description = Some("MCE enough taken (split)"))
           } else {
             newChunks.append(ch)
           }
@@ -376,7 +402,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val allChunks = otherChunks ++ newChunks
         // TODO: Since no permissions were gained, I don't see why the PropertyInterpreter would yield any new assumptions.
         //       See if it can be removed here.
-        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v, s.currentMember.map(_.name))
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
@@ -390,7 +416,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         if (returnSnap) {
           summarise(s0, relevantChunks.toSeq, resource, args, argsExp, Some(definiteAlias.map(_.snap)), v)((s1, snap, _, _, v1) => {
-            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
+            val condSnap = Some(if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout(),
+                                                    kind = ProofQueryKind.Heap, pos = resource.pos,
+                                                    member = s1.currentMember.map(_.name),
+                                                    description = Some("MCE snap condition positive"))) {
               snap
             } else {
               Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
@@ -398,7 +427,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s1, newHeap, condSnap, v1)
           } else {
-            v1.decider.assert(pNeeded === NoPerm) {
+            v1.decider.assert(pNeeded === NoPerm,
+                              kind = ProofQueryKind.Heap, pos = resource.pos,
+                              member = s1.currentMember.map(_.name),
+                              description = Some("MCE sufficient permission (split)")) {
               case true =>
                 Q(s1, newHeap, condSnap, v1)
               case false =>
@@ -410,7 +442,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s0, newHeap, None, v)
           } else {
-            v.decider.assert(pNeeded === NoPerm) {
+            v.decider.assert(pNeeded === NoPerm,
+                             kind = ProofQueryKind.Heap, pos = resource.pos,
+                             member = s0.currentMember.map(_.name),
+                             description = Some("MCE sufficient permission")) {
               case true =>
                 Q(s0, newHeap, None, v)
               case false =>
@@ -490,7 +525,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     val s1 = s.copy(functionRecorder = newFr)
 
-    v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm)) {
+    v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm),
+                     kind = ProofQueryKind.Heap, pos = resource.pos,
+                     member = s.currentMember.map(_.name),
+                     description = Some("MCE took some permission")) {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
         v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))

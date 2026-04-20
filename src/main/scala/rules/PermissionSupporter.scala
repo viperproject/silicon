@@ -9,6 +9,7 @@ package viper.silicon.rules
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Term, Var, perms}
 import viper.silicon.verifier.Verifier
@@ -23,7 +24,11 @@ object permissionSupporter extends SymbolicExecutionRules {
       case k: Var if s.constrainableARPs.contains(k) =>
         Q(s, v)
       case _ =>
-        v.decider.assert(perms.IsNonNegative(tPerm)) {
+        v.decider.assert(perms.IsNonNegative(tPerm),
+                         kind = ProofQueryKind.Consistency,
+                         pos = ePerm.pos,
+                         member = s.currentMember.map(_.name),
+                         description = Some("permission amount is non-negative")) {
           case true => Q(s, v)
           case false =>
             val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
@@ -40,7 +45,11 @@ object permissionSupporter extends SymbolicExecutionRules {
       case k: Var if s.constrainableARPs.contains(k) =>
         Q(s, v)
       case _ =>
-        v.decider.assert(perms.IsPositive(tPerm)) {
+        v.decider.assert(perms.IsPositive(tPerm),
+                         kind = ProofQueryKind.Consistency,
+                         pos = ePerm.pos,
+                         member = s.currentMember.map(_.name),
+                         description = Some("permission amount is positive")) {
           case true => Q(s, v)
           case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), Option.when(withExp)(perms.IsPositive(ePerm)()))
         }

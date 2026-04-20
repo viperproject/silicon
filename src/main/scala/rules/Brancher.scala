@@ -10,6 +10,7 @@ import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
@@ -59,13 +60,21 @@ object brancher extends BranchingRules {
     /* True if the then-branch is to be explored */
     val executeThenBranch = (
          skipPathFeasibilityCheck
-      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(),
+                          kind = ProofQueryKind.PathInfeasibility,
+                          pos = conditionExp._1.pos,
+                          member = s.currentMember.map(_.name),
+                          description = Some("else-branch feasibility")))
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
-      || !v.decider.check(condition, Verifier.config.checkTimeout()))
+      || !v.decider.check(condition, Verifier.config.checkTimeout(),
+                          kind = ProofQueryKind.PathInfeasibility,
+                          pos = conditionExp._1.pos,
+                          member = s.currentMember.map(_.name),
+                          description = Some("then-branch feasibility")))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 

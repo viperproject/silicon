@@ -19,6 +19,7 @@ import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.ProofQueryKind
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -278,7 +279,8 @@ object executor extends ExecutionRules {
                         v2.decider.declareAndRecordAsFreshMacros(fm1.filter(!v2.decider.freshMacros.contains(_)))  /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions, Option.when(withExp)(DebugExp.createInstance("Loop invariant", pcs.assumptionExps)), false)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                        if (v2.decider.checkSmoke())
+                        if (v2.decider.checkSmoke(member = s3.currentMember.map(_.name),
+                                                  description = Some("smoke check: post-statement")))
                           Success()
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
@@ -432,7 +434,8 @@ object executor extends ExecutionRules {
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-          if (v1.decider.checkSmoke(true))
+          if (v1.decider.checkSmoke(true, pos = assert.pos, member = s1.currentMember.map(_.name),
+                                    description = Some("smoke check: assert statement")))
             QS(s1.copy(h = s.h), v1)
           else
             createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, False, true, Option.when(withExp)(a))

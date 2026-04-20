@@ -691,6 +691,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val recordProofQueries: ScallopOption[String] = opt[String]("recordProofQueries",
+    descr = "Path to a CSV file to which SMT query statistics (kind, member, source position, duration) are written at the end of verification",
+    default = None,
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
