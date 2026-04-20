@@ -72,7 +72,7 @@ trait Decider {
   def assume(terms: Iterable[Term], debugExp: Option[DebugExp], enforceAssumption: Boolean): Unit
 
   def check(t: Term, timeout: Int,
-            kind: ProofQueryKind = ProofQueryKind.Consistency,
+            kind: ProofQueryKind,
             pos: ast.Position = ast.NoPosition,
             member: Option[String] = None,
             description: Option[String] = None): Boolean
@@ -82,8 +82,8 @@ trait Decider {
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
   def assert(t: Term,
+             kind: ProofQueryKind,
              timeout: Option[Int] = None,
-             kind: ProofQueryKind = ProofQueryKind.Consistency,
              pos: ast.Position = ast.NoPosition,
              member: Option[String] = None,
              description: Option[String] = None
@@ -396,15 +396,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def check(t: Term, timeout: Int,
-              kind: ProofQueryKind = ProofQueryKind.Consistency,
+              kind: ProofQueryKind,
               pos: ast.Position = ast.NoPosition,
               member: Option[String] = None,
               description: Option[String] = None): Boolean =
       deciderAssert(t, Some(timeout), kind, pos, member, description, isAssert = false)
 
     def assert(t: Term,
+               kind: ProofQueryKind,
                timeout: Option[Int] = Verifier.config.assertTimeout.toOption,
-               kind: ProofQueryKind = ProofQueryKind.Consistency,
                pos: ast.Position = ast.NoPosition,
                member: Option[String] = None,
                description: Option[String] = None
@@ -425,7 +425,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def deciderAssert(t: Term, timeout: Option[Int],
-                               kind: ProofQueryKind = ProofQueryKind.Consistency,
+                               kind: ProofQueryKind,
                                pos: ast.Position = ast.NoPosition,
                                member: Option[String] = None,
                                description: Option[String] = None,
