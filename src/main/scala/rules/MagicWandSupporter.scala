@@ -197,7 +197,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
              * from heap, i.e. that tEq does not result in already having the required permissions before
              * consuming from heap.
              */
-            if (v.decider.checkSmoke(member = sOut.currentMember.map(_.name))) {
+            if (v.decider.checkSmoke(member = sOut.currentMember.map(_.name),
+                                     description = Some("smoke check: magic wand"))) {
               (Complete(), sOut, h +: hps, cch +: cchs)
             } else {
               (success, sOut, h +: hps, cch +: cchs)

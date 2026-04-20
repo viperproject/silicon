@@ -27,7 +27,8 @@ object permissionSupporter extends SymbolicExecutionRules {
         v.decider.assert(perms.IsNonNegative(tPerm),
                          kind = ProofQueryKind.Consistency,
                          pos = ePerm.pos,
-                         member = s.currentMember.map(_.name)) {
+                         member = s.currentMember.map(_.name),
+                         description = Some("permission amount is non-negative")) {
           case true => Q(s, v)
           case false =>
             val assertExp = ePermNew.map(ep => perms.IsNonNegative(ep)(ep.pos, ep.info, ep.errT))
@@ -47,7 +48,8 @@ object permissionSupporter extends SymbolicExecutionRules {
         v.decider.assert(perms.IsPositive(tPerm),
                          kind = ProofQueryKind.Consistency,
                          pos = ePerm.pos,
-                         member = s.currentMember.map(_.name)) {
+                         member = s.currentMember.map(_.name),
+                         description = Some("permission amount is positive")) {
           case true => Q(s, v)
           case false => createFailure(pve dueTo NonPositivePermission(ePerm), v, s, perms.IsPositive(tPerm), Option.when(withExp)(perms.IsPositive(ePerm)()))
         }

@@ -163,7 +163,8 @@ object producer extends ProductionRules {
           // (without timeout, since there is no fallback) and stop verifying the current branch.
           case _: IllegalArgumentException if v.decider.check(False, Verifier.config.assertTimeout.getOrElse(0),
                                                                kind = ProofQueryKind.PathInfeasibility,
-                                                               member = s.currentMember.map(_.name)) =>
+                                                               member = s.currentMember.map(_.name),
+                                                               description = Some("path infeasibility (produce exception)")) =>
             Unreachable()
         }
 

@@ -124,7 +124,8 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.assert(receiverInjectivityCheck,
                          kind = ProofQueryKind.Consistency,
                          pos = havocall.pos,
-                         member = s.currentMember.map(_.name)) {
+                         member = s.currentMember.map(_.name),
+                         description = Some("havoc receiver injectivity")) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
           case true =>
             // Generate the inverse axioms

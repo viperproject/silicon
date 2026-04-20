@@ -189,7 +189,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   private def findMatchingChunk(chunks: Iterable[Chunk], chunk: Chunk, v: Verifier, member: Option[String] = None): Option[Chunk] = {
     chunk match {
       case chunk: BasicChunk =>
-        chunkSupporter.findChunk[BasicChunk](chunks, chunk.id, chunk.args, v)
+        chunkSupporter.findChunk[BasicChunk](chunks, chunk.id, chunk.args, v, member = member)
       case chunk: QuantifiedChunk => quantifiedChunkSupporter.findChunk(chunks, chunk, v, member)
       case _ => None
     }

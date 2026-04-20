@@ -185,7 +185,7 @@ class DefaultHeapSupportRules extends HeapSupportRules {
       val (relevantChunks, otherChunks) =
         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(field.name))
       val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v)
+      val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v, s.currentMember.map(_.name), ass.pos)
       val s2 = triggerResourceIfNeeded(s, ass.lhs, Seq(tRcvr), eRcvrNew.map(Seq(_)), v)
       v.decider.clearModel()
       val result = quantifiedChunkSupporter.removePermissions(
@@ -337,7 +337,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
             v.decider.assert(toAssert,
                              kind = ProofQueryKind.Heap,
                              pos = fa.pos,
-                             member = s.currentMember.map(_.name)) {
+                             member = s.currentMember.map(_.name),
+                             description = Some("heap property holds")) {
               case false =>
                 createFailure(ve, v, s, toAssert, Option.when(withExp)(perms.IsPositive(ast.CurrentPerm(fa)())()))
               case true =>
@@ -391,7 +392,8 @@ class DefaultHeapSupportRules extends HeapSupportRules {
           v.decider.assert(permCheck,
                            kind = ProofQueryKind.Heap,
                            pos = fa.pos,
-                           member = s3.currentMember.map(_.name)) {
+                           member = s3.currentMember.map(_.name),
+                           description = Some("heap permission consistency")) {
             case false =>
               createFailure(ve, v, s3, permCheck, permCheckExp)
             case true =>

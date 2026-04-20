@@ -63,7 +63,8 @@ object brancher extends BranchingRules {
       || !v.decider.check(negatedCondition, Verifier.config.checkTimeout(),
                           kind = ProofQueryKind.PathInfeasibility,
                           pos = conditionExp._1.pos,
-                          member = s.currentMember.map(_.name)))
+                          member = s.currentMember.map(_.name),
+                          description = Some("else-branch feasibility")))
 
     /* False if the then-branch is to be explored */
     val executeElseBranch = (
@@ -72,7 +73,8 @@ object brancher extends BranchingRules {
       || !v.decider.check(condition, Verifier.config.checkTimeout(),
                           kind = ProofQueryKind.PathInfeasibility,
                           pos = conditionExp._1.pos,
-                          member = s.currentMember.map(_.name)))
+                          member = s.currentMember.map(_.name),
+                          description = Some("then-branch feasibility")))
 
     val parallelizeElseBranch = s.parallelizeBranches && executeThenBranch && executeElseBranch
 
