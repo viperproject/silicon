@@ -69,28 +69,35 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 		getNonInternalAssumptionNodes.filter(node => result.contains(node.id))
 	}
 
-	def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+	private def getAllDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {
 		val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
 		val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze ++ allDependenciesUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
-		(allDependenciesUpwards ++ allDependenciesDownwards) flatMap nonInternalAssumptionNodesMap.get
+		allDependenciesUpwards ++ allDependenciesDownwards
+	}
+
+	def getAllNonInternalDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
+		getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes) flatMap nonInternalAssumptionNodesMap.get
 	}
 
 	def getAllExplicitDependencies(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-		val allDependenciesUpwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
-		val allDependenciesDownwards = dependencyGraph.getAllDependencies(nodeIdsToAnalyze ++ allDependenciesUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
-		getExplicitAssumptionNodes.filter(node => (allDependenciesUpwards ++ allDependenciesDownwards).contains(node.id))
+		val allDeps = getAllDependencies(nodeIdsToAnalyze, includeInfeasibilityNodes)
+		getExplicitAssumptionNodes.filter(node => allDeps.contains(node.id))
+	}
+
+	private def getAllDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true) = {
+		val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
+		val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze ++ allDependentsDownwards, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
+		allDependentsUpwards ++ allDependentsDownwards
 	}
 
 	def getAllNonInternalDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-		val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
-		val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze ++ allDependentsUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
-		getNonInternalAssertionNodes.filter(node => (allDependentsUpwards ++ allDependentsDownwards).contains(node.id))
+		val allDeps = getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
+		getNonInternalAssertionNodes.filter(node => allDeps.contains(node.id))
 	}
 
 	def getAllExplicitDependents(nodeIdsToAnalyze: Set[Int], includeInfeasibilityNodes: Boolean = true): Set[DependencyAnalysisNode] = {
-		val allDependentsUpwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes, includeUpwardEdges = true, includeDownwardEdges = false)
-		val allDependentsDownwards = dependencyGraph.getAllDependents(nodeIdsToAnalyze ++ allDependentsUpwards, includeInfeasibilityNodes, includeUpwardEdges = false, includeDownwardEdges = true)
-		getExplicitAssertionNodes.filter(node => (allDependentsUpwards ++ allDependentsDownwards).contains(node.id))
+		val allDeps = getAllDependents(nodeIdsToAnalyze, includeInfeasibilityNodes)
+		getExplicitAssertionNodes.filter(node => allDeps.contains(node.id))
 	}
 
 	def getNonInternalAssumptionNodes: Set[DependencyAnalysisNode] = nonInternalAssumptionNodesMap.values.toSet
