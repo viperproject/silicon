@@ -17,6 +17,9 @@ object DATraversalMode extends Enumeration {
 }
 
 class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter {
+	val pruningSupporter: DependencyAnalysisPruningSupporter[T] = new DependencyAnalysisPruningSupporter[T](this)
+	val progressSupporter: DependencyAnalysisProgressSupporter[T] = new DependencyAnalysisProgressSupporter[T](this)
+
 
 	def getGraph: ReadOnlyDependencyGraph[T] = dependencyGraph
 

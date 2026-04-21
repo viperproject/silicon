@@ -2,7 +2,7 @@ package viper.silicon.dependencyAnalysis.cliTool
 
 import dependencyAnalysis.cliTool.{AbstractDependencyAnalysisCliTool, DependencyAnalysisCliToolExtension}
 import viper.silicon.dependencyAnalysis._
-import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyAnalysisPruningSupporter, DependencyGraphInterpreter}
+import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyGraphInterpreter}
 import viper.silicon.interfaces.Failure
 import viper.silver.ast
 import viper.silver.ast.Method
@@ -17,9 +17,6 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 		new DebugDependencyAnalysisCliExtension(fullGraphInterpreter),
 		new BenchmarkDependencyAnalysisCliExtension(fullGraphInterpreter, program)
 	)
-
-	lazy val progressSupporter = new DependencyAnalysisProgressSupporter[Final](fullGraphInterpreter)
-	lazy val pruningSupporter = new DependencyAnalysisPruningSupporter[Final](fullGraphInterpreter)
 
   private val infoString = "Enter " +
     "\n\t'dep [line numbers]' to print all dependencies of the given line numbers or" +
@@ -128,7 +125,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
   private def handleVerificationProgressQuery(inputs: Seq[String]): Unit = {
 		val enableDebugging = inputs.nonEmpty && inputs.head.equals("debug")
 
-    val ((optProgressPeter, optProgressLea), optTime) = measureTime(progressSupporter.computeVerificationProgress(enableDebugging))
+    val ((optProgressPeter, optProgressLea), optTime) = measureTime(fullGraphInterpreter.progressSupporter.computeVerificationProgress(enableDebugging))
 
     println(s"Peter: $optProgressPeter; Lea: $optProgressLea")
     println(s"Finished in ${optTime}ms")
@@ -174,13 +171,13 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
     println("exportFileName: ")
     val exportFileName = readLine()
     val queriedNodes = getQueriedNodesFromInput(inputs.toSet)
-		pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
+		fullGraphInterpreter.pruningSupporter.pruneProgramAndExport(queriedNodes, program, exportFileName)
     println("Done.")
   }
 
   private def handleVerificationGuidanceQuery(): Unit = {
 
-    val assumptionRanking = progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
+    val assumptionRanking = fullGraphInterpreter.progressSupporter.computeAssumptionRanking().filter(_._2 > 0.0)
     println(s"Assumptions/unverified assertions and the number of dependents:\n\t${assumptionRanking.mkString("\n\t")}\n")
 
     println("Uncovered source code per method: ")
