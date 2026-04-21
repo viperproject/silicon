@@ -574,6 +574,13 @@ object evaluator extends EvaluationRules {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fapp.pos)
+
+          val funcAppNew = eArgsNew.map(args => ast.FuncApp(funcName, args)(fapp.pos, fapp.info, fapp.typ, fapp.errT))
+          val joinExp = Option.when(withExp)({
+            if (s1.isEvalInOld || func.pres.forall(_.isPure)) funcAppNew.get
+            else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
+          })
+
           val s1a = if (Verifier.config.enableDebugging()) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> s1.h)) else s1
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -670,7 +677,6 @@ object evaluator extends EvaluationRules {
                                smDomainNeeded = s2.smDomainNeeded,
                                moreJoins = s2.moreJoins,
                                assertReadAccessOnly = s2.assertReadAccessOnly)
-              val funcAppNew = eArgsNew.map(args => ast.FuncApp(funcName, args)(fapp.pos, fapp.info, fapp.typ, fapp.errT))
               val funcAppNewOld = Option.when(withExp)({
                 if (s5.isEvalInOld || pres.forall(_.isPure)) funcAppNew.get
                 else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
@@ -679,10 +685,11 @@ object evaluator extends EvaluationRules {
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
              */
-            })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, Option.when(withExp)(eArgs), v1))((s6, r, v4)
-              => Q(s6, r._1, r._2, v4))})
+            })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, joinExp, v1))((s6, r, v4)
+              => Q(s6, r._1, r._2, v4))
+        })
 
-      case ast.Unfolding(
+      case uf@ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
 
@@ -690,10 +697,19 @@ object evaluator extends EvaluationRules {
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           v.decider.startDebugSubExp()
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
-            eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) =>
+            eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) => {
+              val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, uf.pos)
+
+              val unfoldingNew = eArgsNew.map(args => uf.copy(acc = acc.copy(loc = pa.copy(args = args)(pa.pos, pa.info, pa.errT),
+                permExp = Some(ePermNew.get))(acc.pos, acc.info, acc.errT))(uf.pos, uf.info, uf.errT))
+              val joinExp = Option.when(withExp)({
+                if (s1.isEvalInOld) unfoldingNew.get
+                else ast.DebugLabelledOld(unfoldingNew.get, debugLabel)(uf.pos, uf.info, uf.errT)
+              })
+              val s2a = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> s2.h)) else s2
               v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
-                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
+                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2a, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
                                .copy(recordVisited = true)
                       /* [2014-12-10 Malte] The commented code should replace the code following
@@ -754,26 +770,32 @@ object evaluator extends EvaluationRules {
                           eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
                       }
                     })
-                  })(join(eIn.typ, "joined_unfolding", s2.relevantQuantifiedVariables.map(_._1),
-                    Option.when(withExp)(s2.relevantQuantifiedVariables.map(_._2.get)), v2))((s12, r12, v7)
+                  })(join(eIn.typ, "joined_unfolding", s2a.relevantQuantifiedVariables.map(_._1),
+                    joinExp, v2))((s12, r12, v7)
                     => {
                     v7.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
                     Q(s12, r12._1, r12._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
-                  createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}))
+                  createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2a, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
           val newFuncRec = s.functionRecorder.recordFreshSnapshot(unknownValue.applicable.asInstanceOf[Function])
           Q(s.copy(functionRecorder = newFuncRec), unknownValue, Option.when(withExp)(ast.LocalVarWithVersion("unknownValue", eIn.typ)(eIn.pos, eIn.info, eIn.errT)), v)
         }
 
-      case ast.Applying(wand, eIn) =>
-        joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v)((s1, v1, QB) =>
+      case apl@ast.Applying(wand, eIn) =>
+        val (debugHeapName, debugLabel) = v.getDebugOldLabel(s, apl.pos)
+        val joinExp = Option.when(withExp)({
+          if (s.isEvalInOld) apl
+          else ast.DebugLabelledOld(apl, debugLabel)(apl.pos, apl.info, apl.errT)
+        })
+        val sa = if (Verifier.config.enableDebugging()) s.copy(oldHeaps = s.oldHeaps + (debugHeapName -> s.h)) else s
+        joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](sa, v)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) => QB(s3, (t, eInNew), v3))
         }))(join(eIn.typ, "joined_applying", s.relevantQuantifiedVariables.map(_._1),
-          Option.when(withExp)(s.relevantQuantifiedVariables.map(_._2.get)), v))((s4, r4, v4)
+          joinExp, v))((s4, r4, v4)
           => Q(s4, r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
@@ -1379,7 +1401,7 @@ object evaluator extends EvaluationRules {
   private def join(joinType: ast.Type,
                    joinFunctionName: String,
                    joinFunctionArgs: Seq[Term],
-                   joinFunctionArgsExp: Option[Seq[ast.Exp]],
+                   joinedExp: Option[ast.Exp],
                    v: Verifier)
                   (entries: Seq[JoinDataEntry[(Term, Option[ast.Exp])]])
                   : (State, (Term, Option[ast.Exp])) = {
@@ -1397,12 +1419,11 @@ object evaluator extends EvaluationRules {
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
         val joinSymbol = v.decider.fresh(joinFunctionName, quantifiedVarsSorts, joinSort)
         val joinTerm = App(joinSymbol, joinFunctionArgs)
-        val joinExp = joinFunctionArgsExp.map(jfa => ast.FuncApp(joinFunctionName, jfa)(ast.NoPosition, ast.NoInfo, joinType, ast.NoTrafos))
 
         val joinDefEqs: Seq[(Term, Option[ast.Exp], Option[ast.Exp])] = entries map (entry =>
           (Implies(And(entry.pathConditions.branchConditions), BuiltinEquals(joinTerm, entry.data._1)),
-          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._1)), ast.EqCmp(joinExp.get, entry.data._2.get)())()),
-          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._2.get)), ast.EqCmp(joinExp.get, entry.data._2.get)())())))
+          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._1)), ast.EqCmp(joinedExp.get, entry.data._2.get)())()),
+          Option.when(withExp)(ast.Implies(BigAnd(entry.pathConditions.branchConditionExps.map(bc => bc._2.get)), ast.EqCmp(joinedExp.get, entry.data._2.get)())())))
 
 
         var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
@@ -1410,7 +1431,7 @@ object evaluator extends EvaluationRules {
 
         joinDefEqs foreach { case (t, exp, expNew) => v.decider.assume(t, exp, expNew)}
 
-        (sJoined, (joinTerm, joinExp))
+        (sJoined, (joinTerm, joinedExp))
     }
   }
 
