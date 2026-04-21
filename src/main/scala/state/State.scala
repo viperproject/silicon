@@ -84,11 +84,6 @@ final case class State(g: Store = Store(),
                        moreCompleteExhale: Boolean = false,
                        moreJoins: JoinMode = JoinMode.Off)
     extends Mergeable[State] {
-  if (oldHeaps.contains("debug@2") || oldHeaps.contains("debug@3")) {
-    //println("+++")
-  }else{
-    //print("---")
-  }
 
   val isMethodVerification: Boolean = {
     // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
