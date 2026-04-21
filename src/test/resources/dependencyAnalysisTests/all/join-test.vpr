@@ -1,0 +1,66 @@
+method foo(n: Int) returns (res: Int)
+    requires n > 0
+    ensures res > 0
+{
+    res := n
+    var a: Int
+    a := 10 / res
+    while(true)
+        invariant res > 0
+    {
+        res := foo(res)
+    }
+}
+
+method bar(n: Int) returns (res: Int)
+    requires n > 0
+    ensures res > 0
+{
+    res := n
+}
+
+method barClient(n: Int) returns (res: Int)
+    requires n > 0
+{
+    res := bar(n)
+}
+
+method client()
+{
+    var n: Int
+    n := 1
+    while(n < 100)
+        invariant n > 0
+    {
+        n := n + 1
+        n := bar(n)
+    }
+    assert n > 0
+}
+
+method recWrapped(n: Int) returns (res: Int)
+    requires n >= 0
+    ensures res >= 0
+{
+    res := rec(n)
+}
+
+
+method rec(n: Int) returns (res: Int)
+    requires n >= 0
+    ensures res >= 0
+{
+    var i: Int
+    i := 0
+    res := 0
+    while(i < n)
+        invariant res >= 0
+        invariant i >= 0
+        invariant i <= n
+    {
+        var tmp: Int
+        tmp := recWrapped(n)
+        res := res + tmp
+        i := i + 1
+    }
+}
