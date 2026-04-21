@@ -101,6 +101,7 @@ trait DependencyAnalysisTestFramework {
 
       val crucialNodes = relevantNodes ++ dependencies
       val (newProgram, pruningFactor) = pruningSupporter.getPrunedProgram(crucialNodes, program)
+			resetBaselineFrontend()
       val result = baselineFrontend.verifier.verify(newProgram)
       if(EXPORT_PRUNED_PROGRAMS) exportPrunedProgram(exportFileName, newProgram, pruningFactor, result)
       assert(!result.isInstanceOf[verifier.Failure], s"Failed to verify new program. ${result.transformedResult()}\n${newProgram.toString()}")
@@ -166,6 +167,7 @@ trait DependencyAnalysisTestFramework {
 
     protected def pruneAndVerify(crucialNodes: Set[DependencyAnalysisNode]): Boolean = {
       val (newProgram, _) = pruningSupporter.getPrunedProgram(crucialNodes, program)
+			resetBaselineFrontend()
       val result = baselineFrontend.verifier.verify(newProgram)
       !result.isInstanceOf[verifier.Failure]
     }
