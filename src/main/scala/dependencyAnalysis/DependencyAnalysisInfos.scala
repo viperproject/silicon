@@ -1,5 +1,6 @@
 package viper.silicon.dependencyAnalysis
 
+import viper.silicon.SiliconRunner
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast._
@@ -48,13 +49,42 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 		this.copy(sourceInfos = source +: sourceInfos)
   }
 
-  def getSourceInfo: AnalysisSourceInfo =
-		sourceInfos.headOption.getOrElse(nodes.headOption.map(AnalysisSourceInfo.createAnalysisSourceInfo).getOrElse(StringAnalysisSourceInfo("Unknown", NoPosition)))
+	private def getNodeInfo(n: ast.Node): String = {
+		n match {
+			case np: Positioned =>
+				s"${n.toString()} (${np.pos})"
+			case _ =>
+				s"${n.toString()} (???)"
+		}
+	}
 
-  def getDependencyType: DependencyType =
-		dependencyTypes.headOption.map(_.dependencyType).getOrElse(DependencyType.make(AssumptionType.Unknown))
+	private def getDebugInfo: String = {
+		val sourceInfo = sourceInfos.headOption.map("source info: " + _.toString + " ").getOrElse("")
+		val nodeInfo = if(nodes.nonEmpty) "nodes: " + nodes.map(getNodeInfo).mkString(", ") else ""
+		s"$sourceInfo$nodeInfo"
+	}
 
-  def getMergeInfo: DependencyAnalysisMergeInfo = mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
+  def getSourceInfo: AnalysisSourceInfo = {
+		val sourceInfoOpt = sourceInfos.headOption
+		if(sourceInfoOpt.isDefined){
+			sourceInfoOpt.get
+		}else{
+			SiliconRunner.logger.warn(s"WARN: Missing source info for $getDebugInfo")
+			nodes.headOption.map(AnalysisSourceInfo.createAnalysisSourceInfo).getOrElse(StringAnalysisSourceInfo("Unknown", NoPosition))
+		}
+	}
+
+	def getDependencyType: DependencyType = {
+		val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
+		if(dependencyTypeOpt.isDefined) {
+			dependencyTypeOpt.get
+		}else {
+			SiliconRunner.logger.warn(s"WARN: Missing dependency type for $getDebugInfo")
+			DependencyType.make(AssumptionType.Unknown)
+		}
+	}
+
+	def getMergeInfo: DependencyAnalysisMergeInfo = mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
 
   def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
     joinInfos.map {
