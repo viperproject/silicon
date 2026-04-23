@@ -140,21 +140,23 @@ class FunctionData(val programFunction: ast.Function,
   val preconditionFunctionApplication = App(preconditionFunction, `?s` +: formalArgs.values.toSeq)
 
 
-  private val bodyAnalysisInfos: DependencyAnalysisInfos = if(programFunction.body.isDefined)
-    DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(programFunction.body.get.info, programFunction.body.get)
-      .withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
-  else DependencyAnalysisInfos.create("unverified function body", DependencyType.Internal)
+  private val bodyAnalysisInfos: DependencyAnalysisInfos =
+		if(programFunction.body.isDefined)
+			DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(programFunction.body.get.info, programFunction.body.get)
+				.withJoinInfo(SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(programFunction.body.get), JoinType.Sink, EdgeType.Down))
+				.withEnabled(isAnalysisEnabled)
+		else DependencyAnalysisInfos.create("unverified function body", DependencyType.Internal).withEnabled(isAnalysisEnabled)
 
 
   val limitedAxiom: (Quantification, DependencyAnalysisInfos) =
     (Forall(arguments,
            BuiltinEquals(limitedFunctionApplication, functionApplication),
            Trigger(functionApplication)),
-      DependencyAnalysisInfos.create("Limited Axiom", DependencyType.Internal))
+      DependencyAnalysisInfos.create("Limited Axiom", DependencyType.Internal).withEnabled(isAnalysisEnabled))
 
   val triggerAxiom: (Quantification, DependencyAnalysisInfos) =
     (Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication)),
-      DependencyAnalysisInfos.create("Trigger Axiom", DependencyType.Trigger))
+      DependencyAnalysisInfos.create("Trigger Axiom", DependencyType.Trigger).withEnabled(isAnalysisEnabled))
 
 
   /*
@@ -243,7 +245,7 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
 
       def wrapBody(body: Term): Term = Let(toMap(bodyBindings), body)
-      val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos
+      val analysisInfos = DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.withEnabled(isAnalysisEnabled)
 
       if(isAnalysisEnabled){
         (Forall(arguments, wrapBody(And(generateNestedDefinitionalAxioms)), Trigger(limitedFunctionApplication)), bodyAnalysisInfos) +:
@@ -345,7 +347,7 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
       bodies.map(b => (Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))),
-        DependencyAnalysisInfos.create("postPreconditionPropagationAxiom", DependencyType.Internal))) // TODO ake
+        DependencyAnalysisInfos.create("postPreconditionPropagationAxiom", DependencyType.Internal).withEnabled(isAnalysisEnabled)))
     } else Seq()
     postPreconditions
   }

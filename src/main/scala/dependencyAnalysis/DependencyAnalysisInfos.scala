@@ -10,7 +10,7 @@ import viper.silver.dependencyAnalysis._
  * Stores all information about the currently evaluated statement/expression such that the dependency analysis can
  * correctly add nodes and edges to the graph.
  */
-case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node]) {
+case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = true) {
 
   def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
 		if(!Verifier.config.enableDependencyAnalysis()) return this
@@ -104,6 +104,8 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 
 		this.copy(joinInfos = joinInfo +: joinInfos)
 	}
+
+	def withEnabled(analysisEnabled: Boolean): DependencyAnalysisInfos = this.copy(analysisEnabled=analysisEnabled)
 }
 
 object DependencyAnalysisInfos {
@@ -124,10 +126,3 @@ object DependencyAnalysisInfos {
 	def createUnique(infoString: String, dependencyType: DependencyType): DependencyAnalysisInfos =
 		create(StringAnalysisSourceInfo(s"$infoString-${DependencyGraphHelper.nextId()}", NoPosition), dependencyType)
 }
-
-
-
-
-class CustomDependencyAnalysisNode(description: String, sourceInfoOpt: Option[AnalysisSourceInfo], dependencyTypeOpt: Option[DependencyType],
-                                   createAssertionNode: Boolean, createAssumptionNode: Boolean,
-                                   mergeInfoOpt: Option[DependencyAnalysisMergeInfo], joinInfoOpt: Option[DependencyAnalysisJoinInfo])

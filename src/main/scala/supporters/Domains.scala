@@ -16,8 +16,6 @@ import viper.silicon.state.{FunctionPreconditionTransformer, SymbolConverter, te
 import viper.silicon.toMap
 import viper.silver.ast
 import viper.silver.ast.NamedDomainAxiom
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType}
-import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]
@@ -107,7 +105,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
         val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         val tAxPres = FunctionPreconditionTransformer.transform(tAx, program)
         val enableAnalysis = DependencyAnalyzer.extractEnableAnalysisFromInfo(axiom.info).getOrElse(isAnalysisForDomainEnabled)
-        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(axiom.exp.info, axiom.exp)))
+        collectedAxioms = collectedAxioms.incl((terms.And(tAxPres, tAx), DependencyAnalysisInfos.DefaultDependencyAnalysisInfos.addInfo(axiom.exp.info, axiom.exp).withEnabled(enableAnalysis)))
       })
     })
   }

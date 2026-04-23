@@ -724,8 +724,7 @@ object evaluator extends EvaluationRules {
              */
             })(join(func.typ, s"joined_${func.name}", joinFunctionArgs, Option.when(withExp)(eArgs), v1, analysisInfos))((s6, r, v4)
               => {
-						v4.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo,
-							Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
+						if(v4.decider.isDependencyAnalysisEnabled) v4.decider.dependencyAnalyzer.addCustomDependenciesBetweenMergeInfos(presWithDAInfo, Seq(DependencyAnalysisMergeInfo.attachExpMergeInfo(fapp, analysisInfos.getMergeInfo)))
 						Q(s6, r._1, r._2, v4)
 					})})
 

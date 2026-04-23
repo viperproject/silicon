@@ -15,8 +15,6 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, DependencyType}
 import viper.silver.verifier.Model
 
 sealed abstract class Result
@@ -47,8 +45,12 @@ trait ProverLike {
     if(Verifier.config.enableDependencyAnalysis()){
       axioms.foreach(axiom => {
         val analysisInfos = axiom._2
-        val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisInfos)
-        assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
+				if(analysisInfos.analysisEnabled){
+					val id = preambleDependencyAnalyzer.addAxiom(axiom._1, analysisInfos)
+					assume(axiom._1, DependencyAnalyzer.createAxiomLabel(id))
+				}else {
+					assume(axiom._1)
+				}
       })
     } else{
       axioms.foreach(t => assume(t._1))
