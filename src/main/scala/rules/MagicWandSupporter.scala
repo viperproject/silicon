@@ -394,7 +394,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         // Execute proof script, i.e. the part written after the magic wand wrapped by curly braces.
         // The proof script should transform the current state such that we can consume the wand's RHS.
-        println(s"WIll execute proof script in $s2 with ${s2.doAbduction}")
+        // Execute proof script, i.e. the part written after the magic wand wrapped by curly braces.
+        // The proof script should transform the current state such that we can consume the wand's RHS.
         executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
           // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
           // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
@@ -406,6 +407,31 @@ object magicWandSupporter extends SymbolicExecutionRules {
             createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps, doAbduction = s.doAbduction), freshSnapRoot, snapRhs.get, v3)
           })
         })
+        // We attempt executing the stmts one by one, this way if we fail for an assertion we will capture it and
+        // produce it?
+        /*def execStmtsWithAbd(stmts: Seq[Stmt], s: State, v: Verifier)(Q: (State, Verifier) => VerificationResult): VerificationResult = {
+          stmts match {
+            case Nil => Q(s, v)
+            case stmt +: rest =>
+              println(s"Will execute $stmt")
+              println(s"Before stmt: \n${s.reserveHeaps.zipWithIndex.map { case (h, i) => s"[$i] ${h.values.mkString(", ")}" }.mkString("\n")}")
+              executor.exec(s.copy(doAbduction = true), stmt, v) { (s1, v1) =>
+                println(s"After stmt: \n${s1.reserveHeaps.zipWithIndex.map { case (h, i) => s"[$i] ${h.values.mkString(", ")}" }.mkString("\n")}")
+                execStmtsWithAbd(rest, s1, v1)(Q)
+              }
+          }
+        }*/
+        /*execStmtsWithAbd(proofScript.ss, s2, v2)((proofScriptState, proofScriptVerifier) => {
+          // Consume the wand's RHS and produce a snapshot which records all the values of variables on the RHS.
+          // This part indirectly calls the methods `this.transfer` and `this.consumeFromMultipleHeaps`.
+          consume(
+            proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail),
+            wand.right, true, pve, proofScriptVerifier
+          )((s3, snapRhs, v3) => {
+
+            createWandChunkAndRecordResults(s3.copy(exhaleExt = false, oldHeaps = s.oldHeaps, doAbduction = s.doAbduction), freshSnapRoot, snapRhs.get, v3)
+          })
+        })*/
       })
     })
 

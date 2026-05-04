@@ -40,6 +40,28 @@ final case class State(g: Store = Store(),
 
                        // Needed for tracking in fractional abduction
                        abdPermScalingFactorExp: ast.Exp = ast.FullPerm()(),
+                       // This we need for a tricky problem:
+                       //   When we try to package a wand like pkg X --* Y { unfold U fold F }
+                       //   And to fold F we need an assertion that we previously (when producing X in the state)
+                       //   produced into the state
+                       //   and this assertion needs some permissions that are obtained by unfolding U
+                       //   then we must track that we can produce this assertion while executing the pkg script
+                       //   We needed this because the pkg script was executed as one singular cfg
+                       //   We must "remember" that we can produce it
+                       // OUTDATED BECAUSE I [amherz] modified package to execute stmt by stmt
+                       // produceableAssertions: Seq[ast.Exp] = Seq.empty,
+
+                       // We need to keep track of the predicate that we are reserved and of what we have produced while reserved
+                       // it. This way, if we fold nodes(curr.next) by folding away curr.next.prev, we will not try to unfold it when
+                       // trying to abduce curr.next.prev again.
+                       // The same thing happens th eother way around: if we produce curr.next.prev
+                       reservedForFoldUnfold: Seq[(ast.Exp, Seq[ast.Exp])] = Seq.empty,
+                       // A similar problem as above can rise when checking invariants as well
+                       // If we need an invariant nodes(curr
+                       reservedForInvariants: Seq[ast.Exp] = Seq.empty,
+                       // Here we store the LHS of a wand we might be trying to package in abstraction, we need to
+                       // not unfold it if we're looking for a field. Would this ever happen in practice?
+                       packaging: Option[ast.Exp] = None,
 
                        recordVisited: Boolean = false,
                        visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
@@ -176,7 +198,7 @@ object State {
                  parallelizeBranches1,
                  doAbduction1,
                  abductionResults1,
-                 abdPermScalingFactorExp1,
+                 abdPermScalingFactorExp1, reservedForUnfold1, reservedForInvariants1, packaging1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
                  constrainableARPs1,
@@ -204,7 +226,7 @@ object State {
                      `parallelizeBranches1`,
                       `doAbduction1`,
                       `abductionResults1`,
-                      `abdPermScalingFactorExp1`,
+                      `abdPermScalingFactorExp1`, `reservedForUnfold1`, `reservedForInvariants1`, `packaging1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
                      constrainableARPs2,
@@ -338,7 +360,7 @@ object State {
       parallelizeBranches1,
       doAbduction1,
       abductionResults1,
-      abdPermScalingFactorExp1,
+      abdPermScalingFactorExp1, reservedForUnfold1, reservedForInvariants1, packaging1,
       recordVisited1, visited1,
       methodCfg1, invariantContexts1,
       constrainableARPs1,
@@ -365,7 +387,7 @@ object State {
           `parallelizeBranches1`,
           `doAbduction1`,
           `abductionResults1`,
-          `abdPermScalingFactorExp1`,
+          `abdPermScalingFactorExp1`, `reservedForUnfold1`, `reservedForInvariants1`, `packaging1`,
           `recordVisited1`, `visited1`,
           `methodCfg1`, invariantContexts2,
           constrainableARPs2,
