@@ -407,9 +407,12 @@ object executor extends ExecutionRules {
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
         addFieldPerms(s, fields, v)((s0, v0) => {
+          val heapParent = HeapParent(v.getDebugHeapLabel(state), Left(stmt))
           val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
-          val (debugHeapName, _) = v.getDebugOldLabel(s1, stmt.pos, Some(magicWandSupporter.getEvalHeap(s1)))
-          val s2 = if (withExp) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1))) else s1
+          val debugHeapName = v.getDebugHeapLabel(s1, Some(magicWandSupporter.getEvalHeap(s1)))
+          val s2 = if (withExp) s1.copy(
+            oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1)),
+            oldHeapParents = s1.oldHeapParents + (debugHeapName -> heapParent)) else s1
           v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
           Q(s2, v0)
         })

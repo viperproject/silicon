@@ -64,16 +64,21 @@ trait Verifier {
       case column: ast.HasLineColumn => s"l:${column.line}.${column.column}"
       case _ => s"l:unknown"
     }
+    val heapLabel = getDebugHeapLabel(s, h)
+    (heapLabel, s"$heapLabel#$posString")
+  }
+
+  def getDebugHeapLabel(s: State, h: Option[Heap] = None): String = {
     val heap = h match {
       case Some(heap) => heap
       case None => s.h
     }
-    val equalHeaps = s.oldHeaps.filter(h => h._1.startsWith("debug@") && h._2.equals(heap)).keys
+    val equalHeaps = s.oldHeaps.filter(h => (h._1.startsWith("debug@") || h._1.equals("old")) && h._2.equals(heap)).keys
     if (equalHeaps.nonEmpty){
-      (equalHeaps.head, s"${equalHeaps.head}#$posString")
+      equalHeaps.head
     } else {
       val counter = debugHeapCounter.getAndIncrement()
-      (s"debug@$counter", s"debug@$counter#$posString")
+      s"debug@$counter"
     }
   }
 }
