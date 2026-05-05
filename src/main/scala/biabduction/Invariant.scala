@@ -188,9 +188,9 @@ object LoopInvariantSolver {
         }))
 
         //if (loopConExp == loopCons.head) {
-          // println("-------------------------------------------------------------------")
-          // println("New state:\n    " + newState.mkString("\n    "))
-          // println("-------------------------------------------------------------------")
+          println("-------------------------------------------------------------------")
+          println("New state:\n    " + newState.mkString("\n    "))
+          println("-------------------------------------------------------------------")
         //}
 
         val accs = loopHead.invs.flatMap(_.topLevelConjuncts).collect {
@@ -219,9 +219,9 @@ object LoopInvariantSolver {
               val newPreAbstraction = newPreAbstraction0.map(e => preTran.transformExp(e, strict = false).get) //++ chunks.values
 
               //if (loopConExp == loopCons.head) {
-                // println("-------------------------------------------------------------------")
-                // println("New pre abstraction:\n    " + newPreAbstraction.mkString("\n    "))
-                // println("-------------------------------------------------------------------")
+                println("-------------------------------------------------------------------")
+                println("New pre abstraction:\n    " + newPreAbstraction.mkString("\n    "))
+                println("-------------------------------------------------------------------")
               //}
 
               // Consolidate the framing successes
@@ -244,9 +244,9 @@ object LoopInvariantSolver {
 
                 val newPostAbstraction = postAbstraction0.map(e => postTran.transformExp(e, strict = false).get)
                 //if (loopConExp == loopCons.head) {
-                  // println("-------------------------------------------------------------------")
-                  // println("New post abstraction:\n    " + newPostAbstraction.mkString("\n    "))
-                  // println("-------------------------------------------------------------------")
+                  println("-------------------------------------------------------------------")
+                  println("New post abstraction:\n    " + newPostAbstraction.mkString("\n    "))
+                  println("-------------------------------------------------------------------")
                 //}
 
                 // If the pushed forward abstraction is the same as the previous one, we are done
@@ -256,9 +256,9 @@ object LoopInvariantSolver {
                   // println(s"Will compute invariants form $newPreAbstraction and $newPostAbstraction")
                   val res = getInvariants(newPreAbstraction, newPostAbstraction, loopConExp, existingInvs, sPostAbs, vPostAbs)
                   //if (loopConExp == loopCons.head) {
-                    // println("-------------------------------------------------------------------")
-                    // println("Invariants:\n    " + res.mkString("\n    "))
-                    // println("-------------------------------------------------------------------")
+                    println("-------------------------------------------------------------------")
+                    println("Invariants:\n    " + res.mkString("\n    "))
+                    println("-------------------------------------------------------------------")
                   //}
                   Success(Some(LoopInvariantSuccess(sPostAbs, vPostAbs, invs = res, loop, vPostAbs.decider.pcs.duplicate())))
                 } else {
