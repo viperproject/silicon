@@ -254,7 +254,8 @@ object LoopInvariantSolver {
 
                   val existingInvs = loop.invs
                   // println(s"Will compute invariants form $newPreAbstraction and $newPostAbstraction")
-                  val res = getInvariants(newPreAbstraction, newPostAbstraction, loopConExp, existingInvs, sPostAbs, vPostAbs)
+                  // Need to distinct otherwise we get some weird duplication
+                  val res = getInvariants(newPreAbstraction, newPostAbstraction, loopConExp, existingInvs, sPostAbs, vPostAbs).distinctBy(_.toString)
                   //if (loopConExp == loopCons.head) {
                     println("-------------------------------------------------------------------")
                     println("Invariants:\n    " + res.mkString("\n    "))

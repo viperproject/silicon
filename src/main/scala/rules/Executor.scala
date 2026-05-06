@@ -301,9 +301,6 @@ object executor extends ExecutionRules {
                 }
                 // We need the distinct here because there is some duplication of existing Invariants otherwise
                 val invs = abductionUtils.sortExps(foundInvs ++ existingInvs).distinctBy(_.toString)
-                println(s"foundInvs: $foundInvs")
-                println(s"existingInvs: $existingInvs")
-                println(s"before distinct: $invs")
 
                 type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
                 var phase1data: Vector[PhaseData] = Vector.empty
