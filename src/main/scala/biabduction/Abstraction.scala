@@ -260,7 +260,7 @@ object AbstractionPackage extends AbstractionRule {
     findWand(q.s.h.values.toSeq, q) {
       // case None => Q(None)
       case Some(wand)  =>
-        // // println(s"Will attempt asserting $wand")
+        println(s"Will attempt asserting $wand")
         // Asserting the wand might fail: The fact that we can attempt packaging it does nto imply that packaging
         // it will succees
         executionFlowController.tryOrElse0(q.s, q.v) { (s1, v1, T) =>
@@ -272,7 +272,7 @@ object AbstractionPackage extends AbstractionRule {
             Q(Some(q.copy(s = s1a, v = v1a)))
         } {
           f =>
-            // // println(s"Failed to assert wand $wand with $f")
+            println(s"Failed to assert wand $wand with $f")
             Q(None)
         }
         /*executor.exec(q.s, Assert(wand)(), q.v) {

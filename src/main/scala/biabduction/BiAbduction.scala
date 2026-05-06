@@ -5,7 +5,7 @@ import viper.silicon.biabduction.abductionUtils.pve
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.rules.chunkSupporter.findChunk
+import viper.silicon.rules.chunkSupporter.{findChunk, findChunksWithID}
 import viper.silicon.rules.consumer.consumes
 import viper.silicon.rules.evaluator.eval
 import viper.silicon.rules.{evaluator, executionFlowController, executor, producer}
@@ -295,9 +295,9 @@ object BiAbductionSolver {
             case _ => qFold
           }
 
-          // println(s"abdGoal $abdGoal due to $f \nin h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
-          // println(s"Reserved 4 Unfold: ${qInvariant.s.reservedForFoldUnfold}")
-          // println(s"Reserved 4 Invariants: ${qInvariant.s.reservedForInvariants}")
+          println(s"abdGoal $abdGoal due to $f \nin h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
+          println(s"Reserved 4 Unfold: ${qInvariant.s.reservedForFoldUnfold}")
+          println(s"Reserved 4 Invariants: ${qInvariant.s.reservedForInvariants}")
           //// println(s"and v:\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
           // NOTE: Without fractional permissions, the comment below is true
           // With fractional permissions, we HAVE to start with rule one because if we hold a fraction smaller
@@ -307,7 +307,7 @@ object BiAbductionSolver {
           // This allows us to fold on null references multiple times, as is required for e.g. trees.
           AbductionApplier.applyRules(qInvariant, currentRule = 1) {
             q1 =>
-              //// println(s"Completed abduction with state: \n\t${q1.s.h.values.mkString("\n\t")}")
+              // println(s"Completed abduction with state: \n\t${q1.s.h.values.mkString("\n\t")}")
               if (q1.goal.isEmpty) {
                 val newState = q1.foundState.reverse
                 val newStmts = q1.foundStmts
@@ -319,14 +319,14 @@ object BiAbductionSolver {
                   val newChunks = newState.collect { case (_, c: Some[BasicChunk]) => c.get }
                   //val newOldHeaps = q1.s.oldHeaps.map { case (label, heap) => (label, heap + Heap(newChunks)) }
                   //val s1 = q1.s.copy(oldHeaps = newOldHeaps)
-                  // println(s"ABDUCTION TERMINATED IN \n\t\t${q1.s.h.values.mkString("\n\t\t")}")
-                  // println(s"\twith g: \n\t\t${q1.s.g.values.mkString("\n\t\t")}")
+                  println(s"ABDUCTION TERMINATED IN \n\t\t${q1.s.h.values.mkString("\n\t\t")}")
+                  println(s"\twith g: \n\t\t${q1.s.g.values.mkString("\n\t\t")}")
                   // // println(s"\twith v: \n\t\t${q1.v.decider.pcs.assumptions.mkString("\n\t\t")}")
-                  // println(s"\tWITH STATE ${newState}")
-                  // println(s"\tWITH STATEMENTS ${newStmts}")
-                  // println(s"\tAND RESERVED ${q1.s.reservedForFoldUnfold} ${q1.s.reservedForInvariants}")
+                  println(s"\tWITH STATE ${newState}")
+                  println(s"\tWITH STATEMENTS ${newStmts}")
+                  println(s"\tAND RESERVED ${q1.s.reservedForFoldUnfold} ${q1.s.reservedForInvariants}")
                   val fieldChunks = newState.collect { case (fa: FieldAccessPredicate, c) => (c.get, fa.loc) }.toMap
-                  // println(s"\tFIELDCHUNKS: $fieldChunks")
+                  println(s"\tFIELDCHUNKS: $fieldChunks")
                   // If the abduction question was a fold, we must clean up the reserved stack
                   /*val q2 = f.message.offendingNode match {
                     case _: Fold =>
@@ -983,26 +983,33 @@ object abductionUtils {
   }
 
   def permsTo(loc: LocationAccess, s: State, v: Verifier, lostAccesses: Map[Exp, Term])
-                       (Q: Option[Exp] => VerificationResult) = {
+             (Q: Option[Exp] => VerificationResult) = {
     val arg = loc match {
       case FieldAccess(rcv, _) => rcv
       case PredicateAccess(args, _) => args.head
     }
-
+    val varTran = VarTransformer(s, v, s.g.values, s.h)
     safeEval(arg, s, v, lostAccesses) { (s2, terms, v2) =>
       terms match {
         case Some(term) =>
           val resource = loc.res(s2.program)
           val id = ChunkIdentifier(resource, s2.program)
-          val chunkOpt = findChunk[BasicChunk](s2.h.values, id, Seq(term), v2)
-          chunkOpt match {
-            case None => Q(Some(NoPerm()()))
-            case Some(chunk) =>
-              val varTran = VarTransformer(s, v, s.g.values, s.h)
-              // TODO: Maybe here transform the permTerm?
-              Q(varTran.transformTerm(chunk.perm))
-          }
-        case None => Q(Some(NoPerm()()))
+          val h = s2.partiallyConsumedHeap.getOrElse(s2.h)
+          val chs = findChunksWithID[BasicChunk](h.values, id)
+          val currentPermAmount =
+            chs.foldLeft(NoPerm()(): Exp)((q, ch) => {
+              val definitelyEqual = ch.args.zip(Seq(term)).forall {
+                case (a1, a2) => v2.decider.check(a1 === a2, Verifier.config.checkTimeout())
+              }
+              if (definitelyEqual) {
+                val varTran = VarTransformer(s, v, s.g.values, s.h)
+                PermAdd(q, varTran.transformTerm(ch.perm).getOrElse(NoPerm()()))()
+              } else q
+            })
+          val rationalPerm = asRational(Some(currentPermAmount))
+          Q(Some(FractionalPerm(IntLit(rationalPerm.numerator)(), IntLit(rationalPerm.denominator)())()))
+        case None =>
+          Q(Some(NoPerm()()))
       }
     }
   }

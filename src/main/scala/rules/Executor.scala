@@ -299,7 +299,11 @@ object executor extends ExecutionRules {
                     (allInvs, Success(Some(LoopInvariantSuccess(s, v, allInvs, invSucs.head.loop, v.decider.pcs.duplicate()))))
                   case Seq() if !s.doAbduction => (Seq(), Success())
                 }
-                val invs = abductionUtils.sortExps(foundInvs ++ existingInvs)
+                // We need the distinct here because there is some duplication of existing Invariants otherwise
+                val invs = abductionUtils.sortExps(foundInvs ++ existingInvs).distinctBy(_.toString)
+                println(s"foundInvs: $foundInvs")
+                println(s"existingInvs: $existingInvs")
+                println(s"before distinct: $invs")
 
                 type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
                 var phase1data: Vector[PhaseData] = Vector.empty
@@ -317,6 +321,7 @@ object executor extends ExecutionRules {
 
                 val con = executionFlowController.locally(s, v) ((s0, v0) => {
                   v0.decider.prover.comment("Loop head block: Establish invariant")
+                  println(s"1) Will check invs $invs")
                   checkInvariants(s0, v0, invs, condition, stateAllowed = true)((sLeftover, v1) => {
                     v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                     phase1data.foldLeft(Success(): VerificationResult) {
@@ -348,6 +353,7 @@ object executor extends ExecutionRules {
                                   // relying on the reentry of the loop head, as this will not have the found invariants
                                   // Existing invariants may be required for framing and stuff, so we produce them again first
                                   producer.produces(s6, freshSnap, existingInvs, ContractNotWellformed, v6) { (s7, v7) =>
+                                    println(s"2) Will check invs $foundInvs")
                                     checkInvariants(s7, v7, foundInvs, endStmt, stateAllowed = false)((_, _) => Success())
                                   }
                                 }
@@ -374,6 +380,7 @@ object executor extends ExecutionRules {
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             // TODO If we reach this from the invariant generation, then state is OK. If from the final loop checking, it is not!
+            println(s"3) Will check invs $existingInvs")
             checkInvariants(s, v, existingInvs, endStmt, stateAllowed = true)(Q)
         }
     }
@@ -385,15 +392,17 @@ object executor extends ExecutionRules {
     } else {
       executionFlowController.tryOrElse1[Option[Term]](s, v) {
         (s1, v1, QS) =>
+          println(s"Will attempt consuming invariant $invs")
           consumes(s1, invs, false, LoopInvariantNotPreserved, v1)(QS)
       } {
         (s2, _, v2) =>
           Q(s2, v2)
       } {
         f =>
-        BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(location)) { (s3, v3) =>
-          checkInvariants(s3, v3, invs, location, stateAllowed)(Q)
-        }
+          println(s"Failed to consume invariant")
+          BiAbductionSolver.solveAbductionForError(s, v, f, stateAllowed, Some(location)) { (s3, v3) =>
+            checkInvariants(s3, v3, invs, location, stateAllowed)(Q)
+          }
       }
     }
   }

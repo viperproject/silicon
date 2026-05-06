@@ -68,14 +68,14 @@ object AbductionBase extends AbductionRule {
         abductionUtils.permsTo(loc, q.s, q.v, q.lostAccesses) {
           // If we have fullperm, we can just remove the goal
           case Some(_: FullPerm) =>
-            // println(s"we have full perm to $loc")
+            println(s"we have full perm to $loc")
             Q(Some(q.copy(goal = g1)))
           // No perm, keep going
           case Some(_: NoPerm) =>
+            println(s"we have no perm to $loc")
             Q(None)
-          // If we have a fraction, we can subtract that fraction from the goal and keep going
           case Some(permH: FractionalPerm) =>
-
+            println(s"we have enough perm to $loc ($permH)")
             // pH >= pG, we can just remove the goal
             val varTrans = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
             if (q.v.decider.check(terms.AtLeast(varTrans.permExpToTerm(permH), varTrans.permExpToTerm(permG)), Verifier.config.checkTimeout())) {
@@ -120,9 +120,11 @@ object AbductionBase extends AbductionRule {
             }
           // This means we can't determine what the perms are
           case None =>
+            println(s"Can't determine perms")
             Q(None)
           // This should hopefully never happen?
-          case _ =>
+          case e =>
+            println(s"xdddd $e")
             Q(None)
         }
     }
@@ -692,7 +694,7 @@ object AbductionPackage extends AbductionRule {
                       val lv = tran.transformExp(e, strict = false)
                       lv.get
                   }
-                  // println(s"AbdPackage -- Will try packaging $wand with $script")
+                  println(s"AbdPackage -- Will try packaging $wand with $script")
                   // println(s"in h:\n\t${sPack.h.values.mkString("\n\t")}\nand g:\n\t${sPack.g.values.mkString("\n\t")}")
                   // // println(s"and v:\n\t${v1.decider.pcs.assumptions.mkString("\n\t")}")
                   val aliasedWand = abductionUtils.transformWithAliasing(wand, q).asInstanceOf[MagicWand]
@@ -707,12 +709,12 @@ object AbductionPackage extends AbductionRule {
                       val g1 = q.goal.filterNot(_ == wand)
                       val finalStmts = q.foundStmts :+ Package(aliasedWand, script)()
                       val finalState = q.foundState ++ state
-                      // println(s"AbdPackage -- Packaged wand from ${sPack.h.values.mkString("\n\t")} to \n\t${s2.reserveHeaps.head.+(wandChunk).values.mkString("\n\t")}")
+                      println(s"AbdPackage -- Packaged wand from ${sPack.h.values.mkString("\n\t")} to \n\t${s2.reserveHeaps.head.+(wandChunk).values.mkString("\n\t")}")
                       Q(Some(q.copy(s = s2.copy(h = s2.reserveHeaps.head.+(wandChunk), packaging = None)
                         , v = v2, goal = g1, foundStmts = finalStmts, foundState = finalState)))
                   } {
                     f =>
-                      // println(s"AbdPackage -- Failed packaging wand with $f")
+                      println(s"AbdPackage -- Failed packaging wand with $f")
                       Q(None)
                   }
                   /*magicWandSupporter.packageWand(sPack, aliasedWand, script, pve, v1) {
