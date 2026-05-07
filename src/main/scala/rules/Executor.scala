@@ -577,7 +577,7 @@ object executor extends ExecutionRules {
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   val s5 = if (withExp)
-                    v4.recordOldHeap(s4, s.h, unfold, And(v4.decider.pcs.branchConditions))
+                    v4.recordOldHeap(s4, s.h, unfold, v4.decider.pcs)
                   else s4
                   Q(s5, v4)
                 })
@@ -616,7 +616,7 @@ object executor extends ExecutionRules {
               case _ => s2
             }
 
-            val s4 = if (withExp) v1.recordOldHeap(s3, s.h, pckg, And(v1.decider.pcs.branchConditions)) else s3
+            val s4 = if (withExp) v1.recordOldHeap(s3, s.h, pckg, v1.decider.pcs) else s3
 
             continuation(s4.copy(isInPackage = s.isInPackage), v1)
           })

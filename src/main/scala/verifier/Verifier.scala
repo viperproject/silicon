@@ -7,7 +7,7 @@
 package viper.silicon.verifier
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.decider.Decider
+import viper.silicon.decider.{Decider, PathConditionStack}
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, Term, TriggerGenerator}
 import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter, magicWandSupporter}
@@ -86,25 +86,36 @@ trait Verifier {
     recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), None)
   }
 
-  def recordOldHeap(s: State, parent: Heap, cause: ast.Stmt, branch: Term): State = {
-    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), Some(branch))
+  def recordOldHeap(s: State, parent: Heap, cause: ast.Stmt, oldPCS: PathConditionStack): State = {
+    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), Some(oldPCS))
   }
 
   def recordOldHeap(s: State, parent: Heap, cause: ast.Exp): State = {
     recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None)
   }
 
-  def recordOldHeap(s: State, parent: Heap, cause: ast.Exp, branch: Term): State = {
-    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), Some(branch))
+  def recordOldHeap(s: State, parent: Heap, cause: ast.Exp, oldPCS: PathConditionStack): State = {
+    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), Some(oldPCS))
   }
 
-  def recordOldHeap(s: State, heap: Heap, parent: Heap, cause: Either[ast.Stmt, ast.Exp], branch: Option[Term]): State = {
+  def recordOldHeap(s: State, heap: Heap, parent: Heap,
+                    cause: Either[ast.Stmt, ast.Exp],
+                    oldPCS: Option[PathConditionStack]): State = {
     val childLabel = getDebugHeapLabel(s, Some(heap))
     val oldHeapParents2 = if (s.oldHeapParents.contains(childLabel))
       s.oldHeapParents
     else {
       val parentLabel = getDebugHeapLabel(s, Some(parent))
-      val heapParent = HeapParent(parentLabel, cause, branch)
+      val newBranchConds = oldPCS match {
+        case None => Seq()
+        case Some(pcs) =>
+          def zipConds(pcs2: PathConditionStack): Seq[(ast.Exp, Term)] =
+            pcs2.branchConditionExps.map(bc => bc._1).zip(pcs2.branchConditions)
+          val currentBranchConds = zipConds(decider.pcs)
+          val oldBranchConds = zipConds(pcs)
+          currentBranchConds.filterNot(oldBranchConds.contains(_))
+      }
+      val heapParent = HeapParent(parentLabel, cause, newBranchConds)
       s.oldHeapParents + (childLabel -> heapParent)
     }
 

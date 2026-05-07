@@ -190,10 +190,11 @@ final case class State(g: Store = Store(),
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
 
-case class HeapParent(parentLabel: String, cause: Either[ast.Stmt, ast.Exp], branchCond: Option[Term] = None) {
+case class HeapParent(parentLabel: String, cause: Either[ast.Stmt, ast.Exp], branchConds: Seq[(ast.Exp, Term)] = List()) {
   lazy val asStrings: (String, String, Option[String]) = {
     val causeString = cause.fold(_.toString(), _.toString.split(" in ").head)
-    (parentLabel, causeString, branchCond.map(_.toString))
+    val branchString = if (branchConds.isEmpty) None else Some(branchConds.map(et => et._1).mkString(", "))
+    (parentLabel, causeString, branchString)
   }
 }
 
