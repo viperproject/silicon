@@ -796,14 +796,26 @@ object abductionUtils {
       case e => e
     }
 
+    def clampPerm(permSum: Exp): Exp = {
+      try {
+        val r = asRational(Some(permSum))
+        if (r > Rational(1, 1)) asPerm(Rational(1, 1))
+        else asPerm(r)
+      } catch {
+        case _: IllegalStateException => permSum
+      }
+    }
+
     expressions.groupBy(normalizePermissions).values.map { group =>
       if (group.size == 1) {
         group.head
       } else {
         val ap = group.head
-        val permSum = group
-          .map(extractPerm)
-          .reduceLeft((p1, p2) => PermAdd(p1, p2)(p1.pos, p1.info, p1.errT))
+        val permSum = clampPerm(
+          group
+            .map(extractPerm)
+            .reduceLeft((p1, p2) => PermAdd(p1, p2)(p1.pos, p1.info, p1.errT))
+        )
 
         ap match {
           case fap: FieldAccessPredicate =>
@@ -988,7 +1000,7 @@ object abductionUtils {
       case FieldAccess(rcv, _) => rcv
       case PredicateAccess(args, _) => args.head
     }
-    val varTran = VarTransformer(s, v, s.g.values, s.h)
+
     safeEval(arg, s, v, lostAccesses) { (s2, terms, v2) =>
       terms match {
         case Some(term) =>

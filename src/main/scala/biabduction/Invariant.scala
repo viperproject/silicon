@@ -176,10 +176,10 @@ object LoopInvariantSolver {
         val preState = s.copy(h = q.preHeap)
         val preTran = VarTransformer(preState, v, preLoopVars, preState.h)
         // We need to normalize the state otherwise we might have fragmented chunks
-        // println(s"FULL ABDRESES: - ${abductionUtils.getAbductionSuccesses(nonf).reverse.mkString("\n- ")}")
-        // println(s"ACTUAL ABDRESES: - ${abdReses.mkString("\n- ")}")
-        // println(s"ABDRESES PRE: ${abdReses.flatMap(abd => abd.getPreconditions(preLoopVars, s.h, Seq(), newMatches).get)}")
-        // println(s"ABDRESFRAME: - ${abductionUtils.getFramingSuccesses(nonf).mkString("\n- ")}")
+        println(s"FULL ABDRESES: - ${abductionUtils.getAbductionSuccesses(nonf).reverse.mkString("\n- ")}")
+        println(s"ACTUAL ABDRESES: - ${abdReses.mkString("\n- ")}")
+        println(s"ABDRESES PRE: ${abdReses.flatMap(abd => abd.getPreconditions(preLoopVars, s.h, Seq(), newMatches).get)}")
+        println(s"ABDRESFRAME: - ${abductionUtils.getFramingSuccesses(nonf).mkString("\n- ")}")
         val newStateOpt = abductionUtils.normalizePreconditions(abdReses.flatMap(abd => abd.getPreconditions(preLoopVars, s.h, Seq(), newMatches).get), s, v)
         // println(s"NEWSTATEOPT: $newStateOpt")
         // We still need to remove the current loop condition
