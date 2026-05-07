@@ -334,6 +334,7 @@ object executor extends ExecutionRules {
     val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
+    val oldPCS = v.decider.pcs.duplicate()
 
     /* For debugging-purposes only */
     stmt match {
@@ -556,7 +557,7 @@ object executor extends ExecutionRules {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
-                  val s5 = if (withExp) v4.recordOldHeap(s4, s.h, fold) else s4
+                  val s5 = if (withExp) v4.recordOldHeap(s4, s.h, fold, oldPCS) else s4
                   Q(s5, v4)
                 }
               )})))
@@ -577,7 +578,7 @@ object executor extends ExecutionRules {
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   val s5 = if (withExp)
-                    v4.recordOldHeap(s4, s.h, unfold, v4.decider.pcs)
+                    v4.recordOldHeap(s4, s.h, unfold, oldPCS)
                   else s4
                   Q(s5, v4)
                 })
@@ -616,7 +617,7 @@ object executor extends ExecutionRules {
               case _ => s2
             }
 
-            val s4 = if (withExp) v1.recordOldHeap(s3, s.h, pckg, v1.decider.pcs) else s3
+            val s4 = if (withExp) v1.recordOldHeap(s3, s.h, pckg, oldPCS) else s3
 
             continuation(s4.copy(isInPackage = s.isInPackage), v1)
           })

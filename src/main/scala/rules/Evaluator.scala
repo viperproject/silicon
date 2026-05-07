@@ -146,6 +146,8 @@ object evaluator extends EvaluationRules {
                      (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                      : VerificationResult = {
     val eOpt = Option.when(withExp)(e)
+    val oldPCS = v.decider.pcs.duplicate()
+
     val resultTerm = e match {
       case _: ast.TrueLit => Q(s, True, eOpt, v)
       case _: ast.FalseLit => Q(s, False, eOpt, v)
@@ -750,7 +752,7 @@ object evaluator extends EvaluationRules {
                             constrainableARPs = s1.constrainableARPs)
                             .decCycleCounter(predicate)
                           val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                          val s11 = if (withExp) v5.recordOldHeap(s10, s1.h, uf, v4.decider.pcs) else s10
+                          val s11 = if (withExp) v5.recordOldHeap(s10, s1.h, uf, oldPCS) else s10
                           eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
@@ -763,7 +765,7 @@ object evaluator extends EvaluationRules {
                                            constrainableARPs = s1.constrainableARPs)
                                      .decCycleCounter(predicate)
                           val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                          val s11 = if (withExp) v5.recordOldHeap(s10, s1.h, uf, v4.decider.pcs) else s10
+                          val s11 = if (withExp) v5.recordOldHeap(s10, s1.h, uf, oldPCS) else s10
                           eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
                       }
                     })
@@ -782,7 +784,6 @@ object evaluator extends EvaluationRules {
         }
 
       case apl@ast.Applying(wand, eIn) =>
-        val oldPcs = v.decider.pcs.duplicate()
         val (_, debugLabel) = v.getDebugOldLabel(s, apl.pos)
         val joinExp = Option.when(withExp)({
           if (s.isEvalInOld) apl
@@ -791,7 +792,7 @@ object evaluator extends EvaluationRules {
         joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) => {
-              val s4 = if (withExp) v1.recordOldHeap(s3, s.h, apl, oldPcs) else s3
+              val s4 = if (withExp) v1.recordOldHeap(s3, s.h, apl, oldPCS) else s3
               QB(s4, (t, eInNew), v3)
             })
         }))(join(eIn.typ, "joined_applying", s.relevantQuantifiedVariables.map(_._1),
