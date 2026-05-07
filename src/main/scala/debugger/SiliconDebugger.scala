@@ -54,19 +54,33 @@ case class ProofObligation(s: State,
       }) +
       s"\n\t\t${originalErrorReason.readableMessage}\n\n"
 
-  private def stateString: String = {
-    val storeString = if (printConfig.printInternalTermRepresentation)
+  private def storeString: String = {
+    if (printConfig.printInternalTermRepresentation)
       s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._1}").mkString("\n\t\t")}\n\n"
     else
       s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\n"
+  }
 
+  private def heapString: String = {
     def heapToString(h: Heap): String = h.values.map(chunkString).mkString("\n\t\t")
-    val heapString = if (printConfig.printOldHeaps)
-      s"Current Heap:\n\t\t${heapToString(s.h)}\n\n" + s.oldHeaps.map {case (k, v) => s"Heap $k:\n\t\t${heapToString(v)}\n\n"}.mkString("")
-    else
-      s"Heap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
 
-    storeString + heapString
+    if (!printConfig.printOldHeaps)
+      s"Heap:\n\t\t${s.h.values.map(chunkString).mkString("\n\t\t")}\n\n"
+    else {
+      def oldHeapDescriptor(label: String): String = {
+        if (!s.oldHeapParents.contains(label))
+          s"Heap $label:\n"
+        else {
+          val (parentLabel, cause, branch) = s.oldHeapParents(label).asStrings
+          val condString = branch.map(" under condition: " + _).getOrElse("")
+          s"Heap $label:\n\tParent: $parentLabel\n" +
+            s"\tCause: $cause$condString\n"
+        }
+      }
+      s"Current Heap:\n\t\t${heapToString(s.h)}\n\n" + s.oldHeaps.map {
+        case (k, v) => s"${oldHeapDescriptor(k)}\t\t${heapToString(v)}\n\n"
+      }.mkString("")
+    }
   }
 
   private def branchConditionString: String = {
@@ -166,7 +180,8 @@ case class ProofObligation(s: State,
   }
 
   override def toString: String = {
-    "\n" + originalErrorInfo + branchConditionString + stateString + axiomsString + declarationsString + assumptionString + assertionString
+    "\n" + originalErrorInfo + branchConditionString + storeString + heapString +
+      axiomsString + declarationsString + assumptionString + assertionString
   }
 }
 

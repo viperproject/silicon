@@ -352,7 +352,12 @@ object executor extends ExecutionRules {
         execs(s, stmts, v)(Q)
 
       case ast.Label(name, _) =>
-        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
+        val s1 = if (withExp) {
+          val currLabel = v.getDebugHeapLabel(s)
+          val parent = s.oldHeapParents(currLabel) // Key should always be there for the heap created before the Label
+          s.copy(oldHeaps = (s.oldHeaps - currLabel) + (name -> s.h),
+            oldHeapParents = (s.oldHeapParents - currLabel) + (name -> parent))
+        } else s
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>
@@ -377,7 +382,9 @@ object executor extends ExecutionRules {
         eval(s, eRcvr, pve, v)((s1, tRcvr, eRcvrNew, v1) => {
           eval(s1, rhs, pve, v1)((s2, tRhs, eRhsNew, v2) => {
             val (tSnap, _) = ssaifyRhs(tRhs, rhs, eRhsNew, field.name, field.typ, v2, s2)
-            v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)(Q)
+            v2.heapSupporter.execFieldAssign(s2, ass, tRcvr, eRcvrNew, tSnap, eRhsNew, pve, v2)((s1, v1) => {
+              val s2 = if (withExp) v1.recordOldHeap(s1, s.h, ass) else s1
+              Q(s2, v1)})
           })
         })
 
@@ -407,12 +414,8 @@ object executor extends ExecutionRules {
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val esNew = eRcvrNew.map(rcvr => BigAnd(viper.silicon.state.utils.computeReferenceDisjointnessesExp(s, rcvr)))
         addFieldPerms(s, fields, v)((s0, v0) => {
-          val heapParent = HeapParent(v.getDebugHeapLabel(state), Left(stmt))
           val s1 = s0.copy(g = s0.g + (x, (tRcvr, eRcvrNew)))
-          val debugHeapName = v.getDebugHeapLabel(s1, Some(magicWandSupporter.getEvalHeap(s1)))
-          val s2 = if (withExp) s1.copy(
-            oldHeaps = s1.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s1)),
-            oldHeapParents = s1.oldHeapParents + (debugHeapName -> heapParent)) else s1
+          val s2 = if (withExp) v0.recordOldHeap(s1, s.h, stmt) else s1
           v0.decider.assume(ts, Option.when(withExp)(DebugExp.createInstance(Some("Reference Disjointness"), esNew, esNew, InsertionOrderedSet.empty)), enforceAssumption = false)
           Q(s2, v0)
         })
@@ -424,13 +427,15 @@ object executor extends ExecutionRules {
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            Q(s1, v1)})
+            val s2 = if (withExp) v1.recordOldHeap(s1, s.h, inhale) else s1
+            Q(s2, v1)})
       }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v)((s1, _, v1) =>
-          Q(s1, v1))
+        consume(s, a, false, pve, v)((s1, _, v1) => {
+          val s2 = if (withExp) v1.recordOldHeap(s1, s.h, exhale) else s1
+          Q(s2, v1)})
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
@@ -550,7 +555,8 @@ object executor extends ExecutionRules {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
-                  Q(s4, v4)
+                  val s5 = if (withExp) v4.recordOldHeap(s4, s.h, fold) else s4
+                  Q(s5, v4)
                 }
               )})))
 
@@ -569,7 +575,10 @@ object executor extends ExecutionRules {
               predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
-                  Q(s4, v4)
+                  val s5 = if (withExp)
+                    v4.recordOldHeap(s4, s.h, unfold, And(v4.decider.pcs.branchConditions))
+                  else s4
+                  Q(s5, v4)
                 })
             })
           }))
@@ -606,12 +615,16 @@ object executor extends ExecutionRules {
               case _ => s2
             }
 
-            continuation(s3.copy(isInPackage = s.isInPackage), v1)
+            val s4 = if (withExp) v1.recordOldHeap(s3, s.h, pckg, And(v1.decider.pcs.branchConditions)) else s3
+
+            continuation(s4.copy(isInPackage = s.isInPackage), v1)
           })
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        magicWandSupporter.applyWand(s, e, pve, v)(Q)
+        magicWandSupporter.applyWand(s, e, pve, v)((s1, v1) => {
+          val s2 = if (withExp) v1.recordOldHeap(s1, s.h, apply) else s1
+          Q(s2, v1)})
 
       case havoc: ast.Quasihavoc =>
         havocSupporter.execHavoc(havoc, v, s)(Q)

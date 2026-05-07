@@ -204,15 +204,12 @@ object evaluator extends EvaluationRules {
 
           val ve = pve dueTo InsufficientPermission(fa)
           v.heapSupporter.evalFieldAccess(s1, fa, tRcvr, eRcvr, ve, v1)((s2, snap, v2) => {
-            val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, fa.pos, Some(magicWandSupporter.getEvalHeap(s2)))
+            val (_, debugLabel) = v1.getDebugOldLabel(s2, fa.pos, Some(magicWandSupporter.getEvalHeap(s2)))
             val newFa = Option.when(withExp)({
               if (s1.isEvalInOld) ast.FieldAccess(eRcvr.get, fa.field)(fa.pos, fa.info, fa.errT)
               else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugLabel)(fa.pos, fa.info, fa.errT)
             })
-            val s3 = if (Verifier.config.enableDebugging() && !s2.isEvalInOld)
-              s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> magicWandSupporter.getEvalHeap(s2)))
-            else s2
-            Q(s3, snap, newFa, v2)
+            Q(s2, snap, newFa, v2)
           })
         })
 
@@ -581,7 +578,6 @@ object evaluator extends EvaluationRules {
             else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
           })
 
-          val s1a = if (Verifier.config.enableDebugging()) s1.copy(oldHeaps = s1.oldHeaps + (debugHeapName -> s1.h)) else s1
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
            *       in an expression that is used as a function argument?
@@ -592,7 +588,7 @@ object evaluator extends EvaluationRules {
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1)((s2, v2, QB) => {
+          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1)((s2, v2, QB) => {
             val pres = func.pres.map(_.transform {
               /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
                * for Carbon issue #210, fail if the subsequent code that strips out triggers from
@@ -706,10 +702,9 @@ object evaluator extends EvaluationRules {
                 if (s1.isEvalInOld) unfoldingNew.get
                 else ast.DebugLabelledOld(unfoldingNew.get, debugLabel)(uf.pos, uf.info, uf.errT)
               })
-              val s2a = if (Verifier.config.enableDebugging()) s2.copy(oldHeaps = s2.oldHeaps + (debugHeapName -> s2.h)) else s2
               v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
-                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2a, v2)((s3, v3, QB) => {
+                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
                                .copy(recordVisited = true)
                       /* [2014-12-10 Malte] The commented code should replace the code following
@@ -755,7 +750,8 @@ object evaluator extends EvaluationRules {
                             constrainableARPs = s1.constrainableARPs)
                             .decCycleCounter(predicate)
                           val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                          eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
+                          val s11 = if (withExp) v5.recordOldHeap(s10, s1.h, uf, And(v4.decider.pcs.branchConditions)) else s10
+                          eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))
                         })
                       } else {
                         produce(s7a, toSf(snap.get), body, pve, v4)((s8, v5) => {
@@ -767,17 +763,18 @@ object evaluator extends EvaluationRules {
                                            constrainableARPs = s1.constrainableARPs)
                                      .decCycleCounter(predicate)
                           val s10 = v5.stateConsolidator(s9).consolidateOptionally(s9, v5)
-                          eval(s10, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
+                          val s11 = if (withExp) v5.recordOldHeap(s10, s1.h, uf, And(v4.decider.pcs.branchConditions)) else s10
+                          eval(s11, eIn, pve, v5)((s9, t9, e9, v9) => QB(s9, (t9, e9), v9))})
                       }
                     })
-                  })(join(eIn.typ, "joined_unfolding", s2a.relevantQuantifiedVariables.map(_._1),
+                  })(join(eIn.typ, "joined_unfolding", s2.relevantQuantifiedVariables.map(_._1),
                     joinExp, v2))((s12, r12, v7)
                     => {
                     v7.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
                     Q(s12, r12._1, r12._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
-                  createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2a, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}}))
+                  createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables.map(_._1))
           val newFuncRec = s.functionRecorder.recordFreshSnapshot(unknownValue.applicable.asInstanceOf[Function])
@@ -790,7 +787,10 @@ object evaluator extends EvaluationRules {
           if (s.isEvalInOld) apl
           else ast.DebugLabelledOld(apl, debugLabel)(apl.pos, apl.info, apl.errT)
         })
-        val sa = if (Verifier.config.enableDebugging()) s.copy(oldHeaps = s.oldHeaps + (debugHeapName -> s.h)) else s
+        val sa = if (Verifier.config.enableDebugging())
+          s.copy(oldHeaps = s.oldHeaps + (debugHeapName -> s.h),
+                 oldHeapParents = s.oldHeapParents + (debugHeapName -> HeapParent(v.getDebugHeapLabel(s), Right(apl))))
+        else s
         joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](sa, v)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) => QB(s3, (t, eInNew), v3))
@@ -1185,6 +1185,7 @@ object evaluator extends EvaluationRules {
       }
       val s4 = s3.copy(h = s.h,
                        oldHeaps = s3.oldHeaps + (label -> s3.h),
+                       oldHeapParents = s3.oldHeapParents + (label -> HeapParent(label, Right(e))),
                        partiallyConsumedHeap = s.partiallyConsumedHeap,
                        possibleTriggers = newPossibleTriggers,
                        isEvalInOld = s.isEvalInOld)

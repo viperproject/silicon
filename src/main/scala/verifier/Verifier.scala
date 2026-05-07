@@ -9,9 +9,9 @@ package viper.silicon.verifier
 import com.typesafe.scalalogging.Logger
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
-import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
-import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter}
-import viper.silicon.state.{Heap, IdentifierFactory, State, SymbolConverter}
+import viper.silicon.state.terms.{AxiomRewriter, Term, TriggerGenerator}
+import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter, magicWandSupporter}
+import viper.silicon.state.{Heap, HeapParent, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silicon.Config
@@ -80,6 +80,35 @@ trait Verifier {
       val counter = debugHeapCounter.getAndIncrement()
       s"debug@$counter"
     }
+  }
+
+  def recordOldHeap(s: State, parent: Heap, cause: ast.Stmt): State = {
+    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), None)
+  }
+
+  def recordOldHeap(s: State, parent: Heap, cause: ast.Stmt, branch: Term): State = {
+    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), Some(branch))
+  }
+
+  def recordOldHeap(s: State, parent: Heap, cause: ast.Exp): State = {
+    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None)
+  }
+
+  def recordOldHeap(s: State, parent: Heap, cause: ast.Exp, branch: Term): State = {
+    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), Some(branch))
+  }
+
+  def recordOldHeap(s: State, heap: Heap, parent: Heap, cause: Either[ast.Stmt, ast.Exp], branch: Option[Term]): State = {
+    val childLabel = getDebugHeapLabel(s, Some(heap))
+    val oldHeapParents2 = if (s.oldHeapParents.contains(childLabel))
+      s.oldHeapParents
+    else {
+      val parentLabel = getDebugHeapLabel(s, Some(parent))
+      val heapParent = HeapParent(parentLabel, cause, branch)
+      s.oldHeapParents + (childLabel -> heapParent)
+    }
+
+    s.copy(oldHeaps = s.oldHeaps + (childLabel -> heap), oldHeapParents = oldHeapParents2)
   }
 }
 
