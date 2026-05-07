@@ -83,11 +83,14 @@ case class ProofObligation(s: State,
     }
   }
 
+  private def simplify[N <: Node](n: N): N = Simplifier.simplify(n, assumeWelldefinedness = true)
+
   private def branchConditionString: String = {
     if (printConfig.printInternalTermRepresentation)
       s"Branch Conditions:\n\t\t${branchConditions.filter(bc => bc != True).mkString("\n\t\t")}\n\n"
     else
-      s"Branch Conditions:\n\t\t${branchConditionExps.map(bc => Simplifier.simplify(bc._2, true)).filter(bc => bc != ast.TrueLit()()).mkString("\n\t\t")}\n\n"
+      s"Branch Conditions:\n\t\t${branchConditionExps.map(bc => simplify(bc._2))
+        .filter(bc => bc != ast.TrueLit()()).mkString("\n\t\t")}\n\n"
   }
 
   private def chunkString(c: Chunk): String = {
@@ -96,51 +99,51 @@ case class ProofObligation(s: State,
     val res = c match {
       case bc: BasicChunk =>
         val snapExpString = bc.snapExp match {
-          case Some(e) => s" -> ${Simplifier.simplify(e, true)}"
+          case Some(e) => s" -> ${simplify(e)}"
           case _ => ""
         }
         bc.resourceID match {
-          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${Simplifier.simplify(bc.permExp.get, true)})$snapExpString"
-          case PredicateID => s"acc(${bc.id}(${bc.argsExp.mkString(", ")}), ${Simplifier.simplify(bc.permExp.get, true)})"
+          case FieldID => s"acc(${bc.argsExp.get.head}.${bc.id}, ${simplify(bc.permExp.get)})$snapExpString"
+          case PredicateID => s"acc(${bc.id}(${bc.argsExp.mkString(", ")}), ${simplify(bc.permExp.get)})"
         }
       case mwc: MagicWandChunk =>
         val shape = mwc.id.ghostFreeWand
         val expBindings = mwc.bindings.map(b => b._1 -> b._2._2.get)
         val instantiated = shape.replace(expBindings)
-        s"acc(${instantiated.toString}, ${Simplifier.simplify(mwc.permExp.get, true)})"
+        s"acc(${instantiated.toString}, ${simplify(mwc.permExp.get)})"
       case qfc: QuantifiedFieldChunk =>
         if (qfc.singletonRcvrExp.isDefined) {
-          val receiver = Simplifier.simplify(qfc.singletonRcvrExp.get, true)
-          val perm = Simplifier.simplify(qfc.permExp.get.replace(qfc.quantifiedVarExps.get.head.localVar, receiver), true)
-          s"acc(${receiver}.${qfc.id}, ${perm})"
+          val receiver = simplify(qfc.singletonRcvrExp.get)
+          val perm = simplify(qfc.permExp.get.replace(qfc.quantifiedVarExps.get.head.localVar, receiver))
+          s"acc($receiver.${qfc.id}, $perm)"
         } else {
           val varsString = qfc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
           val qvarsString = "forall " + qfc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
-          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qfc.quantifiedVarExps.get.head.name}.${qfc.id}, ${Simplifier.simplify(qfc.permExp.get, true)})"
+          val varsEqualString = qfc.quantifiedVarExps.get.zip(qfc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${simplify(v._2)}").mkString(" && ")
+          s"forall $varsString :: $qvarsString :: $varsEqualString ==> acc(${qfc.quantifiedVarExps.get.head.name}.${qfc.id}, ${simplify(qfc.permExp.get)})"
         }
       case qpc: QuantifiedPredicateChunk =>
         if (qpc.singletonArgExps.isDefined) {
-          s"acc(${qpc.id}(${qpc.singletonArgExps.get.map(e => Simplifier.simplify(e, true)).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
+          s"acc(${qpc.id}(${qpc.singletonArgExps.get.map(e => simplify(e)).mkString(", ")}), ${simplify(qpc.permExp.get)})"
         } else {
           val varsString = qpc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
           val qvarsString = "forall " + qpc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qpc.quantifiedVarExps.get.zip(qpc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
-          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${qpc.id}(${qpc.quantifiedVarExps.get.map(_.name).mkString(", ")}), ${Simplifier.simplify(qpc.permExp.get, true)})"
+          val varsEqualString = qpc.quantifiedVarExps.get.zip(qpc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${simplify(v._2)}").mkString(" && ")
+          s"forall $varsString :: $qvarsString :: $varsEqualString ==> acc(${qpc.id}(${qpc.quantifiedVarExps.get.map(_.name).mkString(", ")}), ${simplify(qpc.permExp.get)})"
         }
       case qwc: QuantifiedMagicWandChunk =>
         val shape = qwc.id.ghostFreeWand
         if (qwc.singletonArgExps.isDefined) {
-          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.singletonArgExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
-          val permReplaced = Simplifier.simplify(qwc.permExp.get.replace(qwc.quantifiedVarExps.get.zip(qwc.singletonArgExps.get).map(e => e._1.localVar -> e._2).toMap), true)
+          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.singletonArgExps.get).map(e => e._1 -> simplify(e._2)).toMap)
+          val permReplaced = simplify(qwc.permExp.get.replace(qwc.quantifiedVarExps.get.zip(qwc.singletonArgExps.get).map(e => e._1.localVar -> e._2).toMap))
 
-          s"acc(${instantiated.toString}, ${permReplaced})"
+          s"acc(${instantiated.toString}, $permReplaced)"
         } else{
           val varsString = qwc.quantifiedVarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
           val qvarsString = "forall " + qwc.invs.get.qvarExps.get.map(v => s"${v.name}: ${v.typ}").mkString(", ")
-          val varsEqualString = qwc.quantifiedVarExps.get.zip(qwc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${Simplifier.simplify(v._2, true)}").mkString(" && ")
-          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.invs.get.invertibleExps.get).map(e => e._1 -> Simplifier.simplify(e._2, true)).toMap)
-          s"forall ${varsString} :: ${qvarsString} :: ${varsEqualString} ==> acc(${instantiated}, ${Simplifier.simplify(qwc.permExp.get, true)})"
+          val varsEqualString = qwc.quantifiedVarExps.get.zip(qwc.invs.get.invertibleExps.get).map(v => s"${v._1.name} == ${simplify(v._2)}").mkString(" && ")
+          val instantiated = shape.replace(shape.subexpressionsToEvaluate(s.program).zip(qwc.invs.get.invertibleExps.get).map(e => e._1 -> simplify(e._2)).toMap)
+          s"forall $varsString :: $qvarsString :: $varsEqualString ==> acc($instantiated, ${simplify(qwc.permExp.get)})"
         }
     }
     res
@@ -321,10 +324,10 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
             obl = removeAssumptions(obl)
             println(s"Current obligation:\n$obl")
           case "af" | "assume" | "add free assumption" =>
-            obl = addAssumptions(obl, true)
+            obl = addAssumptions(obl, free = true)
             println(s"Current obligation:\n$obl")
           case "ap" | "assert" | "add and prove assumption" =>
-            obl = addAssumptions(obl, false)
+            obl = addAssumptions(obl, free = false)
             println(s"Current obligation:\n$obl")
           //case "ass" | "assertion" | "set assertion" =>
           //  obl = chooseAssertion(obl)
@@ -382,7 +385,7 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
     }
   }
 
-  private def showAssumptions(obl: ProofObligation) = {
+  private def showAssumptions(obl: ProofObligation): Unit = {
     println(s"Enter the assumption you want to zoom in on:")
     val userInput = readLine()
     val indexOpt = userInput.trim.toIntOption
@@ -585,12 +588,9 @@ class SiliconDebugger(verificationResults: List[VerificationResult],
       case "false" | "0" | "f" => obl.printConfig.printOldHeaps = false
       case _ =>
     }
-
-    //println(s"Enter the new value for nodeToHierarchyLevelMap:")
-    //obl.printConfig.addHierarchyLevelForId(readLine())
   }
 
-  private def printSingleAssumption(obl: ProofObligation): Unit={
+  private def printSingleAssumption(obl: ProofObligation): Unit = {
     println(s"Enter the id of the assumption that should be printed:")
     val userInput = readLine()
     userInput.toIntOption match {

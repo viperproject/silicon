@@ -46,7 +46,7 @@ trait Verifier {
 
   val errorsReportedSoFar = new AtomicInteger(0);
 
-  var debugHeapCounter = new AtomicInteger(0);
+  private val debugHeapCounter = new AtomicInteger(0);
 
   def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > errorsReportedSoFar.get()
     || Verifier.config.numberOfErrorsToReport() == 0);
