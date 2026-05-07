@@ -75,10 +75,10 @@ object AbductionBase extends AbductionRule {
             println(s"we have no perm to $loc")
             Q(None)
           case Some(permH: FractionalPerm) =>
-            println(s"we have enough perm to $loc ($permH)")
             // pH >= pG, we can just remove the goal
             val varTrans = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
             if (q.v.decider.check(terms.AtLeast(varTrans.permExpToTerm(permH), varTrans.permExpToTerm(permG)), Verifier.config.checkTimeout())) {
+              println(s"we have enough perm to $loc ($permH)")
               Q(Some(q.copy(goal = g1)))
             }
             // pH < pG, reduce the goal and keep going

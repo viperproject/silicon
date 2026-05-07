@@ -269,6 +269,7 @@ object AbstractionPackage extends AbstractionRule {
           }
         } {
           (s1a, v1a) =>
+            println(s"Wand $wand succesfully asserted")
             Q(Some(q.copy(s = s1a, v = v1a)))
         } {
           f =>
