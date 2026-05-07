@@ -541,8 +541,9 @@ object executor extends ExecutionRules {
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
+              val s7 = if (withExp) v3.recordOldHeap(s6, s.h, call) else s6
               v3.symbExLog.closeScope(sepIdentifier)
-              Q(s6, v3)})})})
+              Q(s7, v3)})})})
 
       case fold @ ast.Fold(pap @ ast.PredicateAccessPredicate(predAcc @ ast.PredicateAccess(eArgs, predicateName), _)) =>
         assert(s.constrainableARPs.isEmpty)
