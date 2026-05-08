@@ -450,7 +450,8 @@ object executor extends ExecutionRules {
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s, a, false, pve, v, analysisInfos)((s1, _, v1) =>
+				val analysisInfos1 = if(a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+				consume(s, a, false, pve, v, analysisInfos1)((s1, _, v1) =>
           Q(s1, v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
@@ -471,14 +472,17 @@ object executor extends ExecutionRules {
         )
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
-        val r =
-          consume(s, a, false, AssertFailed(assert), v, analysisInfos)((_, _, _) =>
+				val analysisInfos1 = if(a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
+				val r =
+          consume(s, a, false, AssertFailed(assert), v, analysisInfos1)((_, _, _) =>
             Success())
 
         r combine Q(s, v)
 
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
+
+				val analysisInfos1 = if(a.topLevelConjuncts.size > 1) analysisInfos.copy(sourceInfos = List.empty) else analysisInfos // needed to ensure that each top-level conjunct gets a dedicated assertion node
 
         if (s.exhaleExt) {
           Predef.assert(s.h.values.isEmpty)
@@ -488,11 +492,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, false, pve, v, analysisInfos)((s2, _, v1) => {
+          consume(s, a, false, pve, v, analysisInfos1)((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, false, pve, v, analysisInfos)((s1, _, v1) => {
+          consume(s, a, false, pve, v, analysisInfos1)((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
