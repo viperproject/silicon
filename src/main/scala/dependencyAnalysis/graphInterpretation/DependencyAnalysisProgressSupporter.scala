@@ -109,7 +109,10 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 		(numDepsTotal - explicitDeps.size).toDouble / numDepsTotal.toDouble
 	}
 
-	private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = sourceToAssertionNodesMap.filter(ass => ass._2.map(_.assumptionType).intersect(AssumptionType.importedTypes).isEmpty)
+	private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = {
+		val excludedAssertionTypes = AssumptionType.importedTypes ++ Set(AssumptionType.Precondition)
+		sourceToAssertionNodesMap.filter(ass => ass._2.map(_.assumptionType).intersect(excludedAssertionTypes).isEmpty)
+	}
 
 	/**
 	 * @return the verification progress of the entire program.
@@ -188,7 +191,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	 * @return a list of assumption nodes ordered by their impact on proof quality.
 	 */
 	def computeAssumptionRanking(): List[(String, Double)] = {
-		val allAssertions = interpreter.toUserLevelNodes(interpreter.getNonInternalAssertionNodes).filter(ass => ass.assertionTypes.intersect(AssumptionType.importedTypes).isEmpty)
+		val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
 
 		val relevantDependenciesPerAssertion = allAssertions
 			.map(ass => (ass, interpreter.toUserLevelNodes(interpreter.getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass)))).toMap
@@ -217,7 +220,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	 * Prints all uncovered source code statements and returns the number of uncovered source code statements.
 	 */
 	def computeUncoveredStatements(): Int = {
-		val allAssertions = interpreter.toUserLevelNodes(interpreter.getNonInternalAssertionNodes)
+		val allAssertions = interpreter.toUserLevelNodes(getAssertionsRelevantForProgress.values.flatten)
 		val allDependencies = allAssertions.flatMap(ass => interpreter.toUserLevelNodes(interpreter.getAllNonInternalDependencies(ass.lowerLevelNodes.map(_.id))).diffBySource(Set(ass))).getSourceSet()
 
 		val explicitAssertions = interpreter.toUserLevelNodes(interpreter.getExplicitAssertionNodes)
