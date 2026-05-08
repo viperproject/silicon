@@ -479,10 +479,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(analysisInfos: DependencyAnalysisInfos, isAssert: Boolean=false): Boolean = {
-      if(isPathInfeasible) return true
 
       val checkNode = dependencyAnalyzer.createAssertOrCheckNode(False, analysisInfos, !isAssert)
       val label = DependencyAnalyzer.createAssertionLabel(checkNode.map(_.id))
+
+			if(isPathInfeasible) {
+				checkNode foreach dependencyAnalyzer.addAssertionNode
+				dependencyAnalyzer.addDependency(pcs.getCurrentInfeasibilityNode, checkNode.map(_.id))
+				return true
+			}
 
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
       val result = prover.check(timeout, label) == Unsat

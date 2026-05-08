@@ -23,7 +23,6 @@ import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silver.ast
-import viper.silver.ast.utility.Expressions
 import viper.silver.ast.{AnnotationInfo, LocalVarWithVersion, WeightedQuantifier}
 import viper.silver.dependencyAnalysis._
 import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
@@ -99,20 +98,6 @@ object evaluator extends EvaluationRules {
   def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, analysisInfos: DependencyAnalysisInfos)
            (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
            : VerificationResult = {
-
-    if(v.decider.isPathInfeasible){
-//      FIXME ake: infeasible paths
-//      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(e, s.program)
-//      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssumption(True, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getAssumptionType, isJoinNode=true))
-
-      if(!Expressions.isKnownWellDefined(e, Some(s.program))){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
-      }
-      val sort = v.symbolConverter.toSort(e.typ)
-      val newVar = v.decider.fresh(sort, None) // just make sure the returned term typechecks
-      return Q(s, newVar, None, v)
-    }
-
 
     /* For debugging only */
     e match {

@@ -21,7 +21,6 @@ import viper.silicon.utils.ast.{BigAnd, extractPTypeFromExp, simplifyVariableNam
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.Literal
-import viper.silver.ast.utility.Statements
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.{ConditionalEdge, StatementBlock}
@@ -353,20 +352,6 @@ object executor extends ExecutionRules {
            (continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
 
-    if(v.decider.isPathInfeasible){
-      // FIXME ake: infeasbile path
-//      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(stmt, state.program)
-//      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
-
-      if(Statements.hasProofObligations(stmt, state.program)){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos)
-      }
-      if(Statements.introducesSmtAssumptions(stmt)){
-        v.decider.dependencyAnalyzer.addAssumption(True, analysisInfos)
-      }
-      return continuation(state, v)
-    }
-
     val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
@@ -583,7 +568,9 @@ object executor extends ExecutionRules {
           val s2 = s1.copy(g = Store(fargs.zip(argsFreshVar)),
                            recordVisited = true)
 
-					val presWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+
+					val presWithDAInfo = if(!v1.decider.isDependencyAnalysisEnabled) meth.pres else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.pres.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+
           consumes(s2, presWithDAInfo, false, _ => pvePre, v1, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Source, EdgeType.Up)))((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
@@ -592,7 +579,7 @@ object executor extends ExecutionRules {
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
 
-						val postsWithDAInfo = DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
+						val postsWithDAInfo = if(!v1.decider.isDependencyAnalysisEnabled) meth.posts else DependencyAnalysisMergeInfo.attachExpMergeInfo(meth.posts.flatMap(_.topLevelConjuncts), Some(analysisInfos.getSourceInfo))
             produces(s4, freshSnap, postsWithDAInfo, _ => pveCallTransformed, v2, analysisInfos.withJoinInfo(EvalStackDependencyAnalysisJoin(JoinType.Sink, EdgeType.Down)))((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)

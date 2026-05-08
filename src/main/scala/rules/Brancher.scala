@@ -15,7 +15,6 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.utility.Expressions
 import viper.silver.dependencyAnalysis.{DependencyType, NoDependencyAnalysisMerge}
 import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
@@ -48,12 +47,6 @@ object brancher extends BranchingRules {
 
     if(v.decider.isPathInfeasible){
       val analysisInfos1 = v.decider.handleAndGetUpdatedAnalysisInfos(analysisInfos, conditionExp._1.info, conditionExp._1)
-// FIXME ake: infeasible path
-      //      val assertionNodesForJoin = DependencyAnalyzer.extractAssertionsForJoin(conditionExp._1, s.program)
-//      assertionNodesForJoin.foreach(n => v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, CompositeAnalysisSourceInfo(v.decider.analysisSourceInfoStack.getFullSourceInfo, AnalysisSourceInfo.createAnalysisSourceInfo(n)), v.decider.analysisSourceInfoStack.getDependencyType, isJoinNode=true))
-      if(!Expressions.isKnownWellDefined(conditionExp._1, Some(s.program))){
-        v.decider.dependencyAnalyzer.addAssertionWithDepToInfeasNode(v.decider.pcs.getCurrentInfeasibilityNode, analysisInfos1)
-      }
       v.decider.dependencyAnalyzer.addAssumption(condition, analysisInfos1)
       return fThen(s, v).combine(fElse(s, v))
     }
