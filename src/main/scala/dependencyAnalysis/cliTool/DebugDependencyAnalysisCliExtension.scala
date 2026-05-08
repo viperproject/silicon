@@ -10,6 +10,7 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
 	override val name: String = "Debug Features"
 	override val commands: List[DependencyAnalysisCliCommand] = List(
 																																new AssumptionTypesCommand,
+																																new AssertionTypesCommand,
 																																new LowLevelNodesCommand
 																															)
 
@@ -31,6 +32,27 @@ class DebugDependencyAnalysisCliExtension(override val interpreter: DependencyGr
 			getAssumptionTypesPerNode(interpreter.getAssumptionNodes)
 
 		def getAssumptionTypesPerNode(nodes: Set[DependencyAnalysisNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+			nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
+	}
+
+	class AssertionTypesCommand extends DependencyAnalysisCliCommand {
+		override val cmdName: String = "assertionTypes"
+		override val cmd: Seq[String] => Unit = { inputs =>
+			if(inputs.isEmpty)
+				println(getAssertionTypesPerNode().mkString("\n"))
+			else
+				inputs.flatMap(_.toIntOption).foreach(i => println(s"$i: ${getAssertionTypesByLine(i)}"))
+		}
+		override val description: String = s"'$cmdName [line numbers]' to print the assertion types of all nodes or just the provided lines"
+
+		def getAssertionTypesByLine(line: Int): Set[AssumptionType] = {
+			interpreter.getNodesByLine(line).filter(_.isInstanceOf[GeneralAssertionNode]).map(_.assumptionType)
+		}
+
+		def getAssertionTypesPerNode(): Map[AnalysisSourceInfo, Set[AssumptionType]] =
+			getAssertionTypesPerNode(interpreter.getAssertionNodes)
+
+		def getAssertionTypesPerNode(nodes: Set[DependencyAnalysisNode]): Map[AnalysisSourceInfo, Set[AssumptionType]] =
 			nodes.groupBy(_.sourceInfo).view.mapValues(_.map(_.assumptionType)).toMap
 	}
 
