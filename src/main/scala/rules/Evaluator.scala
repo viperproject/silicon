@@ -1339,6 +1339,7 @@ object evaluator extends EvaluationRules {
     val preMark = v.decider.setPathConditionMark()
     var pcDelta = InsertionOrderedSet.empty[Term]
     var pcDeltaExp = InsertionOrderedSet.empty[DebugExp]
+    var functionRecorder = s.functionRecorder
 
     /* TODO: Evaluate as many remaining expressions as possible, i.e. don't
      *       stop if evaluating one fails
@@ -1373,10 +1374,11 @@ object evaluator extends EvaluationRules {
      */
 
     val r =
-      evals(s.copy(triggerExp = true), remainingTriggerExpressions, _ => pve, v)((_, remainingTriggerTerms, _, v1) => {
+      evals(s.copy(triggerExp = true), remainingTriggerExpressions, _ => pve, v)((s1, remainingTriggerTerms, _, v1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         pcDeltaExp = v1.decider.pcs.after(preMark).assumptionExps
+        functionRecorder = s1.functionRecorder
         Success()})
 
     // Remove all assumptions resulting from evaluating the trigger.
@@ -1389,7 +1391,7 @@ object evaluator extends EvaluationRules {
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta, Option.when(withExp)(DebugExp.createInstance("pcDeltaExp", children = pcDeltaExp)), enforceAssumption = false)
-        Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
+        Q(s.copy(functionRecorder = functionRecorder), cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringVerification(Seq(
