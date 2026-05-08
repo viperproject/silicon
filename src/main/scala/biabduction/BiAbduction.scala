@@ -405,13 +405,14 @@ object BiAbductionSolver {
     val abdReses = abductionUtils.getAbductionSuccesses(nf)
     val newMatches = abdReses.flatMap(_.newFieldChunks).toMap
     val abdCases = abdReses.groupBy(res => (res.trigger.get.pos, res.stmts, res.state.map({ case (e, _) => e })))
-    /*// println(s"abdCases:")
+    //
+    println(s"abdCases:")
     abdCases.foreach { case (key, values) =>
-      // println(s"----------")
-      // println(s"$key")
-      values.foreach(v => // println(s"$v [${v.pcs.branchConditions}]"))
-      // println(s"----------")
-    }*/
+      println(s"----------")
+      println(s"$key")
+      values.foreach(v => println(s"$v [${v.pcs.branchConditions}]"))
+      println(s"----------")
+    }
     // Try to join by bc terms
     val joinedCases = abdCases.map {
       case (_, reses) =>
@@ -437,7 +438,10 @@ object BiAbductionSolver {
     abdReses.reverse.foldLeft[Option[Method]](Some(m)) { (mOpt, res) =>
       mOpt match {
         case Some(m1) if joinedCases.contains(res) =>
-          addToMethod(m1, Seq(joinedCases(res)), newMatches, res)
+          addToMethod(m1, Seq(joinedCases(res)), newMatches, res) match {
+            case Some(m2) => Some(m2)
+            case None => mOpt
+          }
         case _ => mOpt
       }
     }
@@ -1075,14 +1079,14 @@ object abductionUtils {
           Q(accumulated.reverse)
 
         case (fap@FieldAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
-          go(tail, abductionUtils.accWithPerm(fap, Some(FractionalPerm(IntLit(1)(), IntLit(4)())())) :: accumulated)
+          go(tail, abductionUtils.accWithPerm(fap, Some(FractionalPerm(IntLit(1)(), IntLit(1)())())) :: accumulated)
         /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
           val perm = permOpt.getOrElse(FullPerm()())
           go(tail, abductionUtils.accWithPerm(fap, Some(perm)) :: accumulated)
         }*/
 
         case (pap@PredicateAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
-          go(tail, abductionUtils.accWithPerm(pap, Some(FractionalPerm(IntLit(1)(), IntLit(4)())())) :: accumulated)
+          go(tail, abductionUtils.accWithPerm(pap, Some(FractionalPerm(IntLit(1)(), IntLit(1)())())) :: accumulated)
         /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
           val perm = permOpt.getOrElse(FullPerm()())
           go(tail, abductionUtils.accWithPerm(pap, Some(perm)) :: accumulated)

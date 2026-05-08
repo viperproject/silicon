@@ -244,9 +244,14 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
         case (_, None) => None
         case (None, _) => None
       }
+      // Delay this case as much as possible as it is expensive
+      case t if matches.exists { case (key, _) => key.sort == t.sort && v.decider.check(key === t, Verifier.config.checkTimeout()) } =>
+        matches.collectFirst {
+          case (key, value) if key.sort == t.sort && v.decider.check(key === t, Verifier.config.checkTimeout()) => value
+        }
       case e =>
-        // println(s"ERROR IN TRASNFORMTERM: Unsupported operand ${e}:${e.getClass}")
-        // println(s"\tmatches is \n\t${matches.mkString("\n\t")}")
+        println(s"ERROR IN TRASNFORMTERM: Unsupported operand ${e}:${e.getClass}")
+        println(s"\tmatches is \n\t${matches.mkString("\n\t")}")
         None
     }).map(abductionUtils.simplifyPermission)
 
