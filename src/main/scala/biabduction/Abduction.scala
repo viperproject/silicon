@@ -271,9 +271,15 @@ object AbductionFold extends AbductionRule {
                     reservedForFoldUnfold = s1.reservedForFoldUnfold filter {
                       case (exp, _) => exp != fold.acc
                     })
+                  // Then, if we folded but we're not done (we're inside a nested fold, for example) we need to reserve
+                  // the thing we just folded so that it does not get unfolded
+                  val s2ReserveForFoldUnfold = if (sFoldSucceeded.reservedForFoldUnfold.nonEmpty)
+                    sFoldSucceeded.copy(reservedForFoldUnfold =
+                      q.s.reservedForFoldUnfold.init :+ (q.s.reservedForFoldUnfold.last._1, q.s.reservedForFoldUnfold.last._2 :+ fold.acc)
+                    ) else sFoldSucceeded
                   // // println(s"Updated stack is $updatedStack")
                   // If the abduction question was a fold, we must clean up the reserved stack
-                  val q2 = q.copy(s = sFoldSucceeded, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
+                  val q2 = q.copy(s = s2ReserveForFoldUnfold, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
                   Q(Some(q2))
               } {
                 // Fold failed
@@ -767,7 +773,7 @@ object AbductionMissing extends AbductionRule {
                 case (c, loc) =>
                   locs.get(loc).map(l => (l, Some(c)))
               }
-            val s2ReserveForFoldUnfold = if (s2.reservedForFoldUnfold.nonEmpty )
+            val s2ReserveForFoldUnfold = if (s2.reservedForFoldUnfold.nonEmpty)
               s2.copy(reservedForFoldUnfold =
                 q.s.reservedForFoldUnfold.init :+ (q.s.reservedForFoldUnfold.last._1, q.s.reservedForFoldUnfold.last._2 ++ cAccs)
               ) else s2
