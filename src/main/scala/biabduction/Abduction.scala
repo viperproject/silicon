@@ -775,7 +775,7 @@ object AbductionMissing extends AbductionRule {
               }
             val s2ReserveForFoldUnfold = if (s2.reservedForFoldUnfold.nonEmpty)
               s2.copy(reservedForFoldUnfold =
-                q.s.reservedForFoldUnfold.init :+ (q.s.reservedForFoldUnfold.last._1, q.s.reservedForFoldUnfold.last._2 ++ cAccs)
+                q.s.reservedForFoldUnfold.init :+ (q.s.reservedForFoldUnfold.last._1, q.s.reservedForFoldUnfold.last._2 ++ accs)
               ) else s2
             Q(Some(q.copy(s = s2ReserveForFoldUnfold, v = v1, goal = g1, foundState = q.foundState ++ newState)))
           }
