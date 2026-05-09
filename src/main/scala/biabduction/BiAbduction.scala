@@ -288,16 +288,16 @@ object BiAbductionSolver {
             case _ => q
           }
           // We also need to check if we're failing because of an invariant and, if yes, save it
-          val qInvariant = f.message match {
+          /*val qInvariant = f.message match {
             case LoopInvariantNotPreserved(invariant, _, _) =>
               val predAccesses: Seq[Exp] = invariant.collect { case pap: PredicateAccessPredicate => pap }.toSeq
               qFold.copy(s = qFold.s.copy(reservedForInvariants = qFold.s.reservedForInvariants ++ predAccesses))
             case _ => qFold
-          }
+          }*/
 
           println(s"abdGoal $abdGoal due to $f \nin h:\n\t${s.h.values.mkString("\n\t")}\nand g:\n\t${s.g.values.mkString("\n\t")}")
-          println(s"Reserved 4 Unfold: ${qInvariant.s.reservedForFoldUnfold}")
-          println(s"Reserved 4 Invariants: ${qInvariant.s.reservedForInvariants}")
+          println(s"Reserved 4 Unfold: ${qFold.s.reservedForFoldUnfold}")
+          println(s"Reserved 4 Invariants: ${qFold.s.reservedForInvariants}")
           //// println(s"and v:\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
           // NOTE: Without fractional permissions, the comment below is true
           // With fractional permissions, we HAVE to start with rule one because if we hold a fraction smaller
@@ -305,7 +305,7 @@ object BiAbductionSolver {
           //
           // We skip the first rule because we know that an error occured, so we cannot be done
           // This allows us to fold on null references multiple times, as is required for e.g. trees.
-          AbductionApplier.applyRules(qInvariant, currentRule = 1) {
+          AbductionApplier.applyRules(qFold, currentRule = 1) {
             q1 =>
               // println(s"Completed abduction with state: \n\t${q1.s.h.values.mkString("\n\t")}")
               if (q1.goal.isEmpty) {
@@ -1023,7 +1023,12 @@ object abductionUtils {
               } else q
             })
           val rationalPerm = asRational(Some(currentPermAmount))
-          Q(Some(FractionalPerm(IntLit(rationalPerm.numerator)(), IntLit(rationalPerm.denominator)())()))
+          if (rationalPerm == Rational(0, 1)) {
+            Q(Some(NoPerm()()))
+          }
+          else {
+            Q(Some(FractionalPerm(IntLit(rationalPerm.numerator)(), IntLit(rationalPerm.denominator)())()))
+          }
         case None =>
           Q(Some(NoPerm()()))
       }

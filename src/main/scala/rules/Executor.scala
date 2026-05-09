@@ -734,10 +734,10 @@ object executor extends ExecutionRules {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
               predicateSupporter.fold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pveFoldTransformed, v3)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
-                  val s5 = s4.copy(reservedForFoldUnfold =
+                  /*val s5 = s4.copy(reservedForFoldUnfold =
                     s4.reservedForFoldUnfold.filterNot { case (exp, _) => exp == pap }
-                  )
-                  Q(s5, v4)
+                  )*/
+                  Q(s4, v4)
                 }
               )})))
 

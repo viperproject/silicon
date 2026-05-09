@@ -8,6 +8,7 @@ import viper.silicon.state._
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast._
+import viper.silver.utility.Common.Rational
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -24,8 +25,6 @@ case class AbstractionQuestion(s: State, v: Verifier) {
   val predPermMap = abductionUtils.buildPredicatePermissionsMap(s, v)
 
   def varTran: VarTransformer = VarTransformer(s, v, s.g.values, s.h)
-  // This is probably very wrong?
-  def emptyState = State(program= s.program, currentMember= s.currentMember, predicateData= s.predicateData, functionData= s.functionData)
 }
 
 trait AbstractionRule extends BiAbductionRule[AbstractionQuestion] {}
@@ -60,56 +59,53 @@ object AbstractionFold extends AbstractionRule {
           acc
         case _ => None
       }
-      // // println(s"Reason is $reason")
+      println(s"Reason is $reason")
       reason match {
         // We ONLY want to reattempt fold if we're missing a field
         // TODO: This should NOT be a field of a recursive predicate
         case Some(acc: FieldAccessPredicate) =>
-          abductionUtils.permsTo(acc.loc, currentQ.s, currentQ.v, Map.empty) { permH =>
-
-            permH match {
-              // We only reattempt the fold if we have some permissions to the other field
-              case Some(np: NoPerm) =>
-                // // println(s"Will check rest 1 $rest")
-                checkChunks(rest, q)(Q)
-              case Some(p) =>
-                // // println(s"Will reattempt fold due to having $p to ${acc.loc}")
-                val newPerm = abductionUtils.clampSubPerm(acc.permExp, permH)
-                val toProd  = abductionUtils.accWithPerm(acc, Some(newPerm))
-                producer.produce(currentQ.s, freshSnap, toProd, pve, currentQ.v) { (s1p, v1p) =>
-                  executionFlowController.tryOrElse0(s1p, v1p) {
-                    (s1, v1, T) =>
-                      val permToFold = fold.acc.permExp.getOrElse(FullPerm()())
-                      executor.exec(s1.copy(abdPermScalingFactorExp = permToFold), fold, v1, None, abdStateAllowed = false)((s1a, v1a) => {
-                        T(s1a, v1a)
+          abductionUtils.permsTo(acc.loc, currentQ.s, currentQ.v, Map.empty) {
+            // We only reattempt the fold if we have some permissions to the other field
+            case Some(_: NoPerm) =>
+              println(s"Will check rest 1 $rest")
+              checkChunks(rest, q)(Q)
+            case permH@Some(p) =>
+              println(s"Will reattempt fold due to having $p to ${acc.loc} (${abductionUtils.asRational(Some(p)) == Rational(0, 1)})")
+              val newPerm = abductionUtils.clampSubPerm(acc.permExp, permH)
+              val toProd = abductionUtils.accWithPerm(acc, Some(newPerm))
+              producer.produce(currentQ.s, freshSnap, toProd, pve, currentQ.v) { (s1p, v1p) =>
+                executionFlowController.tryOrElse0(s1p, v1p) {
+                  (s1, v1, T) =>
+                    val permToFold = fold.acc.permExp.getOrElse(FullPerm()())
+                    executor.exec(s1.copy(abdPermScalingFactorExp = permToFold), fold, v1, None, abdStateAllowed = false)((s1a, v1a) => {
+                      T(s1a, v1a)
+                    })
+                } {
+                  (s2, v2) =>
+                    val sFoldSucceeded = s2.copy(
+                      abdPermScalingFactorExp = FullPerm()(),
+                      reservedForFoldUnfold = s2.reservedForFoldUnfold filter {
+                        case (exp, _) => exp != fold.acc
                       })
-                  } {
-                    (s2, v2) =>
-                      val sFoldSucceeded = s2.copy(
-                        abdPermScalingFactorExp = FullPerm()(),
-                        reservedForFoldUnfold = s2.reservedForFoldUnfold filter {
-                          case (exp, _) => exp != fold.acc
-                        })
-                      Q(Some(currentQ.copy(s = sFoldSucceeded, v = v2)))
-                  } {
-                    f2 => retryFold(fold, currentQ.copy(s = s1p, v = v1p), f2, rest)
-                  }
+                    Q(Some(currentQ.copy(s = sFoldSucceeded, v = v2)))
+                } {
+                  f2 => retryFold(fold, currentQ.copy(s = s1p, v = v1p), f2, rest)
                 }
-              case _ =>
-                // // println(s"Will check rest 2")
-                checkChunks(rest, q)(Q)
-            }
+              }
+            case _ =>
+              println(s"Will check rest 2")
+              checkChunks(rest, q)(Q)
           }
         case _ =>
           // Failure was not due to insufficient permissions to a field, give up and check rest
-          // // println(s"Will check rest 3")
+          println(s"Will check rest 3")
           checkChunks(rest, q)(Q)
       }
     }
 
     chunks match {
       case _ if chunks.isEmpty =>
-        // // println(s"Chunks is empty")
+        println(s"Chunks is empty")
         Q(None)
       case (chunk, pred) +: rest =>
         q.varTran.transformTerm(chunk.args.head) match {
@@ -137,7 +133,7 @@ object AbstractionFold extends AbstractionRule {
                 FullPerm()(), q.v, q.varTran)
             }
             val fold = Fold(PredicateAccessPredicate(PredicateAccess(Seq(eArgs), pred.name)(), Some(permToFold))())()
-            // // println(s"Will attempt folding $fold")
+            println(s"Will attempt folding $fold")
             executionFlowController.tryOrElse0(q.s, q.v) {
               (s1, v1, T) =>
                 executor.exec(s1.copy(abdPermScalingFactorExp = permToFold), fold, v1, None, abdStateAllowed = false)((s1a, v1a) => {
@@ -155,7 +151,7 @@ object AbstractionFold extends AbstractionRule {
                   reservedForFoldUnfold = s2.reservedForFoldUnfold filter {
                     case (exp, _) => exp != fold.acc
                   })
-                // // println(s"Folding succeeded with s \n\t${sFoldSucceeded.h.values.mkString("\n\t")}")
+                println(s"Folding succeeded with s \n\t${sFoldSucceeded.h.values.mkString("\n\t")}")
                 Q(Some(q.copy(s = sFoldSucceeded, v = v2)))
             } {
               f =>
@@ -164,7 +160,7 @@ object AbstractionFold extends AbstractionRule {
                 // we can just add the field and keep going
                 // If we have acc(x.next, 1/1) && acc(x.data, 1/4), then it just means that x.data was never accesses
                 // for write permissions BUT we can just over-approximate and add them
-                // // println(s"Will retry fold because of $f")
+                println(s"Will retry fold because of $f")
                 // checkChunks(rest, q)(Q)
                 retryFold(fold, q.copy(s = q.s.copy(abdPermScalingFactorExp = permToFold)), f, rest)
             }
@@ -187,7 +183,7 @@ object AbstractionFold extends AbstractionRule {
           Verifier.config.checkTimeout()
         )
       }
-    // // println(s"Candidate Chunks $candChunks")
+    // println(s"Candidate Chunks $candChunks")
 
     checkChunks(candChunks, q)(Q)
   }
@@ -310,7 +306,7 @@ object AbstractionApply extends AbstractionRule {
   override def apply(q: AbstractionQuestion)(Q: Option[AbstractionQuestion] => VerificationResult): VerificationResult = {
     val wands = q.s.h.values.collect { case wand: MagicWandChunk => q.varTran.transformChunk(wand) }.collect { case Some(wand: MagicWand) => wand }
     val targets = q.s.h.values.collect { case c: BasicChunk => q.varTran.transformChunk(c) }.collect { case Some(exp) => exp }.toSeq
-    // // println(s"Will try apply rule with wands $wands and targets $targets")
+    println(s"Will try apply rule with wands $wands and targets $targets")
     wands.collectFirst {
       case wand if targets.exists(target => abductionUtils.expMatchWithPermissions(wand.left, target, q.v, q.varTran)) => wand
     } match {
