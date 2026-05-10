@@ -221,7 +221,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val pres = function.pres
       val posts = function.posts
       val argsStore = data.formalArgs map {
-        case (localVar, t) => (localVar, (t, Option.when(evaluator.withExp)(LocalVarWithVersion(simplifyVariableName(t.id.name), localVar.typ)(localVar.pos, localVar.info, localVar.errT))))
+        case (localVar, t) => (localVar, (t, Option.when(evaluator.debugOn)(LocalVarWithVersion(simplifyVariableName(t.id.name), localVar.typ)(localVar.pos, localVar.info, localVar.errT))))
       }
       val g = Store(argsStore + (function.result -> (data.formalResult, data.valFormalResultExp)))
       val s = sInit.copy(g = g, h = v.heapSupporter.getEmptyHeap(sInit.program), oldHeaps = OldHeaps())
@@ -234,7 +234,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
           val relevantPathConditionStack = decider.pcs.after(preMark)
           phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.branchConditionExps,
-            relevantPathConditionStack.assumptions, Option.when(evaluator.withExp)(relevantPathConditionStack.assumptionExps))
+            relevantPathConditionStack.assumptions, Option.when(evaluator.debugOn)(relevantPathConditionStack.assumptionExps))
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
@@ -260,7 +260,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val postconditionViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
 
       var recorders: Seq[FunctionRecorder] = Vector.empty
-      val wExp = evaluator.withExp
+      val wExp = evaluator.debugOn
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult

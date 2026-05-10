@@ -14,11 +14,12 @@ import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{State, Store}
+import viper.silicon.state.{DebugHeap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 import viper.silicon.Map
+import viper.silver.ast.MethodCall
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -85,7 +86,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
-            (  executionFlowController.locally(s2a, v2)((s3, v3) => {
+            val s2b = if (producer.debugOn) {
+              val dummyStmt = MethodCall(method, Seq(), Seq())()
+              val branchConds = v2.decider.pcs.branchConditionExps.map(bc => bc._1).zip(v2.decider.pcs.branchConditions)
+              val initDebugHeap = DebugHeap(s2.h, Verifier.PRE_STATE_LABEL, Left(dummyStmt), None, branchConds)
+              s2a.copy(debugOldHeaps = s2a.debugOldHeaps + (Verifier.PRE_STATE_LABEL -> initDebugHeap))
+            } else s2a
+            (  executionFlowController.locally(s2b, v2)((s3, v3) => {
                   val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
@@ -93,7 +100,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
-               executionFlowController.locally(s2a, v2)((s3, v3) =>  {
+               executionFlowController.locally(s2b, v2)((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) =>
                     consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})

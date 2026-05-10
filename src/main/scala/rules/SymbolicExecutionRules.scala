@@ -17,30 +17,30 @@ import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
-  lazy val withExp = Verifier.config.enableDebugging()
+  lazy val debugOn: Boolean = Verifier.config.enableDebugging()
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertDescription: String, generateNewModel: Boolean): Failure = {
-    createFailure(ve, v, s, failedAssert, Option.when(withExp)(DebugExp.createInstance(failedAssertDescription)), generateNewModel)
+    createFailure(ve, v, s, failedAssert, Option.when(debugOn)(DebugExp.createInstance(failedAssertDescription)), generateNewModel)
   }
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertDescription: String): Failure = {
-    createFailure(ve, v, s, failedAssert, Option.when(withExp)(DebugExp.createInstance(failedAssertDescription)), false)
+    createFailure(ve, v, s, failedAssert, Option.when(debugOn)(DebugExp.createInstance(failedAssertDescription)), false)
   }
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, missingTermDescription: String): Failure = {
-    createFailure(ve, v, s, False, Option.when(withExp)(DebugExp.createInstance(s"Asserted term for '$missingTermDescription' not available, substituting false.")), false)
+    createFailure(ve, v, s, False, Option.when(debugOn)(DebugExp.createInstance(s"Asserted term for '$missingTermDescription' not available, substituting false.")), false)
   }
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, missingTermDescription: String, generateNewModel: Boolean): Failure = {
-    createFailure(ve, v, s, False, Option.when(withExp)(DebugExp.createInstance(s"Asserted term for '$missingTermDescription' not available, substituting false.")), generateNewModel)
+    createFailure(ve, v, s, False, Option.when(debugOn)(DebugExp.createInstance(s"Asserted term for '$missingTermDescription' not available, substituting false.")), generateNewModel)
   }
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: Option[ast.Exp]): Failure = {
-    createFailure(ve, v, s, failedAssert, Option.when(withExp)(DebugExp.createInstance(failedAssertExp, failedAssertExp)), false)
+    createFailure(ve, v, s, failedAssert, Option.when(debugOn)(DebugExp.createInstance(failedAssertExp, failedAssertExp)), false)
   }
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, generateNewModel: Boolean, failedAssertExp: Option[ast.Exp]): Failure = {
-    createFailure(ve, v, s, failedAssert, Option.when(withExp)(DebugExp.createInstance(failedAssertExp, failedAssertExp)), generateNewModel)
+    createFailure(ve, v, s, failedAssert, Option.when(debugOn)(DebugExp.createInstance(failedAssertExp, failedAssertExp)), generateNewModel)
   }
 
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, failedAssert: Term, failedAssertExp: Option[DebugExp], generateNewModel: Boolean): Failure = {

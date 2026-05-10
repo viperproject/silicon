@@ -213,6 +213,20 @@ object producer extends ProductionRules {
     val Q: (State, Verifier) => VerificationResult = (state, verifier) =>
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
+    lazy val aIsFinal = s.intermediateHeapCause match {
+      case Some(ast.Inhale(exp)) => exp == a
+      case Some(ast.Fold(acc)) => acc.loc.predicateBody(s.program, Set()).contains(a) // Not clear if empty scope is correct here
+      case Some(ast.Unfold(acc)) => acc.loc.predicateBody(s.program, Set()).contains(a)
+      case Some(ast.Apply(exp)) => exp == a
+      case _ => false
+    }
+    def maybeRecordHeap(st: State): State = {
+      if (debugOn && s.recordIntermediateHeaps) {
+        if (aIsFinal) v.recordDebugHeap(st, s.h, s.intermediateHeapCause.get)
+        else v.recordDebugHeap(st, s.h, s.intermediateHeapCause.get, a, v.decider.pcs)
+      } else st
+    }
+
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
@@ -227,7 +241,7 @@ object producer extends ProductionRules {
                 QB(s3, null, v3)
               }),
               (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))
+                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)))
                 /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -258,7 +272,7 @@ object producer extends ProductionRules {
               Q(s3, v3)
             }),
             (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true)))
+                v2.decider.assume(sf(sorts.Snap, v2) === Unit, Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true)))
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -330,7 +344,9 @@ object producer extends ProductionRules {
               else
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val gainExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
-              v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2)(Q)
+              v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2)((s3, v3) => {
+                val s3a = maybeRecordHeap(s3)
+                Q(s3a, v3)})
             })))
 
 
@@ -339,7 +355,7 @@ object producer extends ProductionRules {
         val resAcc = accPred.loc
         val eArgs = resAcc.args(s.program)
         val tFormalArgs = s.getFormalArgVars(resource, v)
-        val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
+        val eFormalArgs = Option.when(debugOn)(s.getFormalArgDecls(resource))
         val ePerm = accPred.perm
         val qid =
           accPred match {
@@ -360,9 +376,12 @@ object producer extends ProductionRules {
             v1.heapSupporter.produceQuantified(s1a, sf, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals,
               auxExps.map(_._1), auxExps.map(_._2), tCond, eCondNew.map(_.head), tArgs, permArgs.map(_.tail), tPerm, permArgs.map(_.head), pve, NegativePermission(ePerm),
               QPAssertionNotInjective(resAcc), v1)((s2, v2) => {
-              Q(s2.copy(functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa)), v2)
+              val s2a = maybeRecordHeap(s2)
+              Q(s2a.copy(functionRecorder = s2a.functionRecorder.leaveQuantifiedExp(qpa)), v2)
             })
-          case (s1, _, _, _, _, None, v1) => Q(s1.copy(constrainableARPs = s.constrainableARPs), v1)
+          case (s1, _, _, _, _, None, v1) =>
+            val s1a = maybeRecordHeap(s1)
+            Q(s1a.copy(constrainableARPs = s.constrainableARPs), v1)
         }
 
       case _: ast.InhaleExhaleExp =>
@@ -371,9 +390,9 @@ object producer extends ProductionRules {
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
         v.decider.assume(sf(sorts.Snap, v) === Unit,
-          Option.when(withExp)(DebugExp.createInstance("Empty snapshot", true))) /* TODO: See comment for case ast.Implies above */
+          Option.when(debugOn)(DebugExp.createInstance("Empty snapshot", true))) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, aNew, v1) => {
-          v1.decider.assume(t, Option.when(withExp)(a), aNew)
+          v1.decider.assume(t, Option.when(debugOn)(a), aNew)
           Q(s1, v1)})
     }
 

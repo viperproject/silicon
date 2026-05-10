@@ -45,12 +45,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       /* Cache miss */
     }
     var permissionSum: Term = NoPerm
-    var permissionSumExp: Option[ast.Exp] = Option.when(withExp)(ast.NoPerm()())
+    var permissionSumExp: Option[ast.Exp] = Option.when(debugOn)(ast.NoPerm()())
     relevantChunks.foreach(ch => {
       val argumentEqualities =
         And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
       val argumentEqualitiesExp =
-        Option.when(withExp)(BigAnd(ch.argsExp.get.zip(argsExp.get).map { case (e1, e2) => ast.EqCmp(e1, e2)() }))
+        Option.when(debugOn)(BigAnd(ch.argsExp.get.zip(argsExp.get).map { case (e1, e2) => ast.EqCmp(e1, e2)() }))
 
       permissionSum =
         PermPlus(permissionSum, Ite(argumentEqualities, ch.perm, NoPerm))
@@ -172,7 +172,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     }
 
     val (s1, taggedSnap, snapDefs, permSum, permSumExp) = summariseOnly(s, relevantChunks, resource, args, argsExp, knownValue, v)
-    v.decider.assumeDefinition(And(snapDefs), Option.when(withExp)(DebugExp.createInstance("Snapshot", true)))
+    v.decider.assumeDefinition(And(snapDefs), Option.when(debugOn)(DebugExp.createInstance("Snapshot", true)))
     //    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
     val s2 =
@@ -205,7 +205,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     if (relevantChunks.isEmpty) {
       if (v.decider.checkSmoke(true)) {
         if (s.isInPackage) {
-          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
           Q(s, snap, v)
         } else {
           Success() // TODO: Mark branch as dead?
@@ -380,7 +380,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
           val pathCond = interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties(s.mayAssumeUpperBounds))
-          pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+          pathCond.foreach(p => v.decider.assume(p._1, Option.when(debugOn)(DebugExp.createInstance(p._2, p._2))))
         }
         val newHeap = Heap(allChunks)
 
@@ -438,9 +438,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     v.decider.startDebugSubExp()
 
     var totalPermSum: Term = NoPerm
-    var totalPermSumExp: Option[ast.Exp] = Option.when(withExp)(ast.NoPerm()())
+    var totalPermSumExp: Option[ast.Exp] = Option.when(debugOn)(ast.NoPerm()())
     var totalPermTaken: Term = NoPerm
-    var totalPermTakenExp: Option[ast.Exp] = Option.when(withExp)(ast.NoPerm()())
+    var totalPermTakenExp: Option[ast.Exp] = Option.when(debugOn)(ast.NoPerm()())
     var newFr = s.functionRecorder
 
 
@@ -468,7 +468,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             ast.Implies(ast.Not(eqExp.get)(), ast.EqCmp(permTakenExp.get, ast.NoPerm()())())(pe.pos, pe.info, pe.errT))))
 
 
-        v.decider.assume(constraint, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
+        v.decider.assume(constraint, Option.when(debugOn)(DebugExp.createInstance(constraintExp, constraintExp)))
 
         newFr = newFr.recordPathSymbol(permTaken.applicable.asInstanceOf[Function]).recordConstraint(constraint)
 
@@ -493,7 +493,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     v.decider.assert(Implies(PermLess(NoPerm, perms), totalPermTaken !== NoPerm)) {
       case true =>
         val constraintExp = permsExp.map(pe => ast.EqCmp(pe, totalPermTakenExp.get)())
-        v.decider.assume(perms === totalPermTaken, Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
+        v.decider.assume(perms === totalPermTaken, Option.when(debugOn)(DebugExp.createInstance(constraintExp, constraintExp)))
         if (returnSnap) {
           summarise(s1, relevantChunks.toSeq, resource, args, argsExp, None, v)((s2, snap, _, _, v1) =>
             Q(s2, updatedChunks, Some(snap), v1))
@@ -529,7 +529,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           val eq = freeReceiver === chunk.args.head /* For field chunks, the receiver is the only argument */
           PermPlus(permSum, Ite(eq, chunk.perm, NoPerm))
         }
-      val permissionSumExp = Option.when(withExp)(relevantChunks.foldLeft(ast.NoPerm()(): ast.Exp) { case (permSumExp, chunk) =>
+      val permissionSumExp = Option.when(debugOn)(relevantChunks.foldLeft(ast.NoPerm()(): ast.Exp) { case (permSumExp, chunk) =>
         val eq = ast.EqCmp(freeReceiverExp, chunk.argsExp.get.head)() /* For field chunks, the receiver is the only argument */
         ast.PermAdd(permSumExp, ast.CondExp(eq, chunk.permExp.get, ast.NoPerm()())())()
       })

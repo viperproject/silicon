@@ -11,7 +11,7 @@ import viper.silicon.decider.{Decider, PathConditionStack}
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, Term, TriggerGenerator}
 import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter, magicWandSupporter}
-import viper.silicon.state.{Heap, HeapParent, IdentifierFactory, State, SymbolConverter}
+import viper.silicon.state.{DebugHeap, Heap, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silicon.Config
@@ -73,7 +73,7 @@ trait Verifier {
       case Some(heap) => heap
       case None => s.h
     }
-    val equalHeaps = s.oldHeaps.filter(h => (h._1.startsWith("debug@") || h._1.equals("old")) && h._2.equals(heap)).keys
+    val equalHeaps = s.debugOldHeaps.filter(dh => dh._2.heap.equals(heap)).keys
     if (equalHeaps.nonEmpty){
       equalHeaps.head
     } else {
@@ -82,28 +82,34 @@ trait Verifier {
     }
   }
 
-  def recordOldHeap(s: State, parent: Heap, cause: ast.Stmt): State = {
-    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), None)
+  def recordDebugHeap(s: State, parent: Heap, cause: ast.Stmt): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), None, None)
   }
 
-  def recordOldHeap(s: State, parent: Heap, cause: ast.Stmt, oldPCS: PathConditionStack): State = {
-    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), Some(oldPCS))
+  def recordDebugHeap(s: State, parent: Heap, cause: ast.Stmt, oldPCS: PathConditionStack): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), None, Some(oldPCS))
   }
 
-  def recordOldHeap(s: State, parent: Heap, cause: ast.Exp): State = {
-    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None)
+  def recordDebugHeap(s: State, parent: Heap, cause: ast.Stmt,
+                      intermediateCause: ast.Exp, oldPCS: PathConditionStack): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), Some(intermediateCause), Some(oldPCS))
   }
 
-  def recordOldHeap(s: State, parent: Heap, cause: ast.Exp, oldPCS: PathConditionStack): State = {
-    recordOldHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), Some(oldPCS))
+  def recordDebugHeap(s: State, parent: Heap, cause: ast.Exp): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None, None)
   }
 
-  def recordOldHeap(s: State, heap: Heap, parent: Heap,
-                    cause: Either[ast.Stmt, ast.Exp],
-                    oldPCS: Option[PathConditionStack]): State = {
-    val childLabel = getDebugHeapLabel(s, Some(heap))
-    val oldHeapParents2 = if (s.oldHeapParents.contains(childLabel))
-      s.oldHeapParents
+  def recordDebugHeap(s: State, parent: Heap, cause: ast.Exp, oldPCS: PathConditionStack): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None, Some(oldPCS))
+  }
+
+  def recordDebugHeap(s: State, heap: Heap, parent: Heap,
+                      cause: Either[ast.Stmt, ast.Exp],
+                      intermediateCause: Option[ast.Exp],
+                      oldPCS: Option[PathConditionStack]): State = {
+    val heapLabel = getDebugHeapLabel(s, Some(heap))
+    if (s.debugOldHeaps.contains(heapLabel))
+      s // Don't overwrite parents if we return to a heap
     else {
       val parentLabel = getDebugHeapLabel(s, Some(parent))
       val newBranchConds = oldPCS match {
@@ -115,11 +121,9 @@ trait Verifier {
           val oldBranchConds = zipConds(pcs)
           currentBranchConds.filterNot(oldBranchConds.contains(_))
       }
-      val heapParent = HeapParent(parentLabel, cause, newBranchConds)
-      s.oldHeapParents + (childLabel -> heapParent)
+      val debugHeap = DebugHeap(heap, parentLabel, cause, intermediateCause, newBranchConds)
+      s.copy(debugOldHeaps = s.debugOldHeaps + (heapLabel -> debugHeap))
     }
-
-    s.copy(oldHeaps = s.oldHeaps + (childLabel -> heap), oldHeapParents = oldHeapParents2)
   }
 }
 
