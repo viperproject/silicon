@@ -68,17 +68,17 @@ object AbductionBase extends AbductionRule {
         abductionUtils.permsTo(loc, q.s, q.v, q.lostAccesses) {
           // If we have fullperm, we can just remove the goal
           case Some(_: FullPerm) =>
-            println(s"we have full perm to $loc")
+            // println(s"we have full perm to $loc")
             Q(Some(q.copy(goal = g1)))
           // No perm, keep going
           case Some(_: NoPerm) =>
-            println(s"we have no perm to $loc")
+            // println(s"we have no perm to $loc")
             Q(None)
           case Some(permH: FractionalPerm) =>
             // pH >= pG, we can just remove the goal
             val varTrans = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
             if (q.v.decider.check(terms.AtLeast(varTrans.permExpToTerm(permH), varTrans.permExpToTerm(permG)), Verifier.config.checkTimeout())) {
-              println(s"we have enough perm to $loc ($permH)")
+              // println(s"we have enough perm to $loc ($permH)")
               Q(Some(q.copy(goal = g1)))
             }
             // pH < pG, reduce the goal and keep going
@@ -120,11 +120,11 @@ object AbductionBase extends AbductionRule {
             }
           // This means we can't determine what the perms are
           case None =>
-            println(s"Can't determine perms")
+            // println(s"Can't determine perms")
             Q(None)
           // This should hopefully never happen?
           case e =>
-            println(s"xdddd $e")
+            // println(s"xdddd $e")
             Q(None)
         }
     }
@@ -156,12 +156,12 @@ object AbductionFoldBase extends AbductionRule {
           case Some(cond) =>
             val g1 = q.goal.filterNot(_ == a)
             val concCond = cond.transform { case lv: AbstractLocalVar if lv == pred.formalArgs.head.localVar => a.loc.args.head }
-            //println(s"will eval cond $concCond")
+            //// println(s"will eval cond $concCond")
             abductionUtils.safeEval(concCond, q.s, q.v, q.lostAccesses) {
               case (s1, Some(term), v1) =>
-                //println(s"eval'd to $term")
+                //// println(s"eval'd to $term")
                 if (v1.decider.check(term, Verifier.config.checkTimeout())) {
-                  //println(s"FALSE")
+                  //// println(s"FALSE")
                   abductionUtils.safeEval(a.loc.args.head, q.s, q.v, q.lostAccesses) {
                     case (s2, Some(t), v2) =>
                       val wildcards = s2.constrainableARPs -- s1.constrainableARPs
@@ -176,7 +176,7 @@ object AbductionFoldBase extends AbductionRule {
                       }
                   }
                 } else {
-                  //println(s"TRUE")
+                  //// println(s"TRUE")
                   apply(q.copy(goal = g1)) {
                     case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
                     case None => Q(None)
@@ -204,13 +204,13 @@ object AbductionFold extends AbductionRule {
     locs match {
       case Seq() => Q(None)
       case loc +: rest =>
-        println(s"AbdFold -- Will check chunk for $loc")
+        // println(s"AbdFold -- Will check chunk for $loc")
         abductionUtils.checkChunk(loc, q.s, q.v, q.lostAccesses) {
           case Some(chunk) =>
-            println(s"\tFound chunk $chunk")
+            // println(s"\tFound chunk $chunk")
             Q(Some(loc, chunk))
           case None =>
-            println(s"\tChunk not found")
+            // println(s"\tChunk not found")
             findFirstFieldChunk(rest, q)(Q)
         }
     }
@@ -229,7 +229,7 @@ object AbductionFold extends AbductionRule {
         val fieldsM = predFieldsCache.getOrElseUpdate((pred, a), abductionUtils.fieldsMap(pred, a))
         val fields: Seq[FieldAccess] = fieldsM.keys.toSeq
 
-        println(s"Will check fields $fields")
+        // println(s"Will check fields $fields")
         findFirstFieldChunk(fields, q) {
           case Some((field, chunk)) =>
             val shouldSkipForInvariant = q.s.reservedForInvariants.exists {
@@ -246,7 +246,7 @@ object AbductionFold extends AbductionRule {
             }
 
             if (shouldSkipForInvariant || shouldSkipForFoldUnfold) {
-              println(s"AbdFold -- Skipping fold of $a because field $field is reserved")
+              // println(s"AbdFold -- Skipping fold of $a because field $field is reserved")
               apply(q.copy(goal = g1)) {
                 case Some(q2) => Q(Some(q2.copy(goal = a +: q2.goal)))
                 case None => Q(None)
@@ -254,7 +254,7 @@ object AbductionFold extends AbductionRule {
             } else {
               val foldS = q.s.copy(abdPermScalingFactorExp = a.perm)
               val fold = Fold(a)()
-              println(s"AbdFold -- Will attempt fold $fold triggered by $field ($chunk)")
+              // println(s"AbdFold -- Will attempt fold $fold triggered by $field ($chunk)")
               executionFlowController.tryOrElse0(foldS, q.v) {
                 (s1, v1, T) =>
                   executor.exec(s1, fold, v1, q.trigger, q.stateAllowed) { (s2, v2) =>
@@ -262,7 +262,7 @@ object AbductionFold extends AbductionRule {
                   }
               } {
                 (s1, v1) =>
-                  println(s"Successfully folded $fold (${q.s.reservedForFoldUnfold})")
+                  // println(s"Successfully folded $fold (${q.s.reservedForFoldUnfold})")
                   val lost = q.lostAccesses + (field -> SortWrapper(chunk.snap, chunk.snap.sort))
                   // If we succeeded a fold we can remove (fold, _) from our stack.
                   // Ideally it will always be at the top of the stack, but I am not 100% sure so I filter,
@@ -277,7 +277,7 @@ object AbductionFold extends AbductionRule {
                     sFoldSucceeded.copy(reservedForFoldUnfold =
                       q.s.reservedForFoldUnfold.init :+ (q.s.reservedForFoldUnfold.last._1, q.s.reservedForFoldUnfold.last._2 :+ fold.acc)
                     ) else sFoldSucceeded
-                  // println(s"Updated stack is $updatedStack")
+                  // // println(s"Updated stack is $updatedStack")
                   // If the abduction question was a fold, we must clean up the reserved stack
                   val q2 = q.copy(s = s2ReserveForFoldUnfold, v = v1, foundStmts = q.foundStmts :+ fold, lostAccesses = lost, goal = g1)
                   Q(Some(q2))
@@ -309,23 +309,23 @@ object AbductionUnfold extends AbductionRule {
           .filter(_.predicateName == pred.predicateName)
 
         if (allPreds.isEmpty) {
-          println(s"\tfalse! (allpreds empty)")
+          // println(s"\tfalse! (allpreds empty)")
           Q(false)
         } else {
           // Check if any predicate contained in the wand is the one we're attempting to unfold
           def checkAny(remaining: Seq[PredicateAccess]): VerificationResult = {
             remaining match {
               case Seq() =>
-                println(s"\tfalse! (remaining empty)")
+                // println(s"\tfalse! (remaining empty)")
                 Q(false)
               case loc +: rest =>
-                println(s"\tWill check loc $loc (${loc.args.head} == ${pred.args.head})")
+                // println(s"\tWill check loc $loc (${loc.args.head} == ${pred.args.head})")
                 abductionUtils.safeEval(loc.args.head, q.s, q.v, q.lostAccesses) { (s1, t1, v1) =>
                   abductionUtils.safeEval(pred.args.head, s1, v1, q.lostAccesses) { (_, t2, v2) =>
-                    println(s"Which is $t1 == $t2")
+                    // println(s"Which is $t1 == $t2")
                     (t1, t2) match {
                       case (Some(t1v), Some(t2v)) if t1v == t2v || v2.decider.check(terms.Equals(t1v, t2v), Verifier.config.checkTimeout()) =>
-                        println(s"\ttrue!")
+                        // println(s"\ttrue!")
                         Q(true)
                       case _ => checkAny(rest)
                     }
@@ -333,11 +333,11 @@ object AbductionUnfold extends AbductionRule {
                 }
             }
           }
-          println(s"Will check allPreds $allPreds from $exp")
+          // println(s"Will check allPreds $allPreds from $exp")
           checkAny(allPreds.toSeq)
         }
       case _ =>
-        println(s"Packaging not an exp: ${q.s.packaging}")
+        // println(s"Packaging not an exp: ${q.s.packaging}")
         Q(false)
     }
   }
@@ -353,7 +353,7 @@ object AbductionUnfold extends AbductionRule {
           case Some(predChunk) =>
             // We need to make sure that we do not unfold stuff that we do not want to
             val currPap = PredicateAccessPredicate(pred, Some(q.s.abdPermScalingFactorExp))()
-            println(s"AbdUnfold -- Found chunk $predChunk for pred $pred ($currPap == ${q.s.reservedForFoldUnfold})")
+            // println(s"AbdUnfold -- Found chunk $predChunk for pred $pred ($currPap == ${q.s.reservedForFoldUnfold})")
 
             // Check if this predicate is reserved because we're currently folding it (to avoid infinite unfold/fold loop)
             val shouldSkip = q.s.reservedForFoldUnfold.lastOption.exists {
@@ -378,19 +378,19 @@ object AbductionUnfold extends AbductionRule {
             }
 
             if (shouldSkip || shouldSkipInvariant || shouldSkipSamePred) {
-              println(s"AbdUnfold -- Skipping $currPap to avoid re-unfolding${if (shouldSkipInvariant) " (invariant)" else if (shouldSkipSamePred) " same predicate" else ""}")
+              // println(s"AbdUnfold -- Skipping $currPap to avoid re-unfolding${if (shouldSkipInvariant) " (invariant)" else if (shouldSkipSamePred) " same predicate" else ""}")
               Q(None)
             } else {
-              println(s"AbdUnfold -- Check passed with ($currPap == ${q.s.reservedForFoldUnfold})")
-              //println(s"AbdUnfold -- We're packaging wand with left ${q.s.packaging}")
+              // println(s"AbdUnfold -- Check passed with ($currPap == ${q.s.reservedForFoldUnfold})")
+              //// println(s"AbdUnfold -- We're packaging wand with left ${q.s.packaging}")
               // We do not ever want to unfold the LHS of a wand when we're trying to infer the RHS
               // We also do not want to unfold any fraction of the RHS that might already be in the state
               checkUnfoldingWand(q, pred) {
                 case true =>
-                  println(s"AbdUnfold -- Will not unfold LHS")
+                  // println(s"AbdUnfold -- Will not unfold LHS")
                   Q(None)
                 case false =>
-                  // println(s"AbdUnfold -- Will unfold because (${q.s.packaging}:${q.s.packaging.getClass} & $pred)")
+                  // // println(s"AbdUnfold -- Will unfold because (${q.s.packaging}:${q.s.packaging.getClass} & $pred)")
                   val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
                   val bcsBefore = q.v.decider.pcs.branchConditions
                   var failedBranches: Seq[silicon.Stack[Term]] = Seq()
@@ -489,9 +489,9 @@ object AbductionUnfold extends AbductionRule {
         }
 
         val preds = abductionUtils.getContainingPredicates(a.loc, q.s.program).filter(abductionUtils.isValidPredicate)
-        // println(s"AbdUnfold -- preds $preds")
+        // // println(s"AbdUnfold -- preds $preds")
         val predAccs = preds.map { pred => PredicateAccess(Seq(a.loc.rcv), pred)(NoPosition, NoInfo, NoTrafos) }
-        println(s"AbdUnfold -- predAccs $predAccs")
+        // println(s"AbdUnfold -- predAccs $predAccs")
         // val varTrans = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
         // val pG = varTrans.permExpToTerm(a.permExp.getOrElse(FullPerm()()), q.v).getOrElse(terms.FullPerm)
         checkPredicates(predAccs, q, a.loc) {
@@ -500,9 +500,9 @@ object AbductionUnfold extends AbductionRule {
             produces(q.s, freshSnap, conds, _ => pve, q.v)((s1, v1) => {
               val wildcards = q.s.constrainableARPs -- q.s.constrainableARPs
               predicateSupporter.unfold(s1, pred.loc(q.s.program), predChunk.args.toList, None, p, None, wildcards, pve, v1, pred) { (s2, v2) =>
-                println(s"Abdunfold -- Unfolded $pred \n\tFolding: ${q.s.reservedForFoldUnfold})\n\tGoal: ${q.goal}, Trigger: ${q.trigger}:${q.trigger.getClass}")
-                println(s"AbdUnfold -- Unfolded from \n\t${s1.h.values.mkString("\n\t")}\nto\n\t${s2.h.values.mkString("\n\t")}")
-                // println(s"with assumptions: \n\t${v2.decider.pcs.assumptions.mkString("\n\t")}")
+                // println(s"Abdunfold -- Unfolded $pred \n\tFolding: ${q.s.reservedForFoldUnfold})\n\tGoal: ${q.goal}, Trigger: ${q.trigger}:${q.trigger.getClass}")
+                // println(s"AbdUnfold -- Unfolded from \n\t${s1.h.values.mkString("\n\t")}\nto\n\t${s2.h.values.mkString("\n\t")}")
+                // // println(s"with assumptions: \n\t${v2.decider.pcs.assumptions.mkString("\n\t")}")
                   val varTrans2 = VarTransformer(s2, v2, s2.g.values, s2.h)
                   Q(Some(q.copy(s = s2, v = v2, foundStmts = q.foundStmts :+ Unfold(PredicateAccessPredicate(pred, varTrans2.transformTerm(p))())(),
                     foundState = q.foundState ++ conds.map(c => c -> None))))
@@ -521,17 +521,17 @@ object AbductionApply extends AbductionRule {
       case Some(g) =>
         val goalWand = abductionUtils.transformWithAliasing(MagicWand(TrueLit()(), g)(), q).asInstanceOf[MagicWand]
         val goalStructure = abductionUtils.correctStructure(goalWand.structure(q.s.program))
-        /*println(s"goalStructure: $goalStructure")*/
+        /*// println(s"goalStructure: $goalStructure")*/
         // We drop the first element, because it is the true lit of the lhs
         val subexps = goalWand.subexpressionsToEvaluate(q.s.program).tail
-        /*println(s"goalWand: $goalWand | subexps: $subexps")*/
+        /*// println(s"goalWand: $goalWand | subexps: $subexps")*/
         val varTran = VarTransformer(q.s, q.v, q.s.g.values, q.s.h)
         val aliasedWand = abductionUtils.transformWithAliasing(goalWand, q)
-        /*println(s"aliasedWand $aliasedWand")*/
+        /*// println(s"aliasedWand $aliasedWand")*/
         // If the args of the magic wand chunk match the evaluated subexpressions, then the right hand of the magic wand
         // chunk is our goal, so the rule can be applied
         evals(q.s, subexps, _ => pve, q.v)((s1, args, _, v1) => {
-          /*println(s"args is $args")*/
+          /*// println(s"args is $args")*/
           val varTrans1 = VarTransformer(s1, v1, s1.g.values, s1.h)
           val matchingWand = s1.h.values.collect {
             // If the wand in the state contains our goal in the right-hand-side, then we would like to apply the wand
@@ -544,9 +544,9 @@ object AbductionApply extends AbductionRule {
               // If we find a matching wand, we have to find an expression representing the left hand side of the wand
               val lhsTerms = m.args.dropRight(args.length)
               val lhsArgs = lhsTerms.map(varTrans1.transformTerm)
-              /*println(s"correctedStructure: ${abductionUtils.correctStructure(m.id.ghostFreeWand.structure(s1.program))}")
-              println(s"lhsTerms: $lhsTerms")
-              println(s"lhsArgs: $lhsArgs")*/
+              /*// println(s"correctedStructure: ${abductionUtils.correctStructure(m.id.ghostFreeWand.structure(s1.program))}")
+              // println(s"lhsTerms: $lhsTerms")
+              // println(s"lhsArgs: $lhsArgs")*/
               if (lhsArgs.contains(None)) {
                 None
               } else {
@@ -558,17 +558,17 @@ object AbductionApply extends AbductionRule {
                 Some(wand)
               }
             case m: MagicWandChunk =>
-              /*println(s"\t${m.args.takeRight(args.length).filter(!_.isInstanceOf[Permissions]).map(varTrans1.transformTerm)}")
-              println(s"\t===")
-              println(s"\t${args.filter(!_.isInstanceOf[Permissions]).map(varTrans1.transformTerm)}")
+              /*// println(s"\t${m.args.takeRight(args.length).filter(!_.isInstanceOf[Permissions]).map(varTrans1.transformTerm)}")
+              // println(s"\t===")
+              // println(s"\t${args.filter(!_.isInstanceOf[Permissions]).map(varTrans1.transformTerm)}")
               val lhsTerms = m.args.dropRight(args.length)
               val lhsArgs = lhsTerms.map(varTrans1.transformTerm)
-              println(s"correctedStructure: ${abductionUtils.correctStructure(m.id.ghostFreeWand.structure(s1.program))}")
-              println(s"lhsTerms: $lhsTerms")
-              println(s"lhsArgs: $lhsArgs")*/
+              // println(s"correctedStructure: ${abductionUtils.correctStructure(m.id.ghostFreeWand.structure(s1.program))}")
+              // println(s"lhsTerms: $lhsTerms")
+              // println(s"lhsArgs: $lhsArgs")*/
               None
           }.collectFirst { case c if c.isDefined => c.get }
-          println(s"AbdApply -- MatchingWand: $matchingWand")
+          // println(s"AbdApply -- MatchingWand: $matchingWand")
           matchingWand match {
             case Some(wand) =>
               val q1 = q.copy(goal = Seq(wand.left))
@@ -584,7 +584,7 @@ object AbductionApply extends AbductionRule {
                     val stmts: Seq[Stmt] = ((q.foundStmts :+ Apply(wand)()) ++ lhsRes.foundStmts)//.distinct // TODO there is a weird duplication here sometimes
                     val state = q.foundState ++ lhsRes.foundState
                     val lost = q.lostAccesses ++ lhsRes.lostAccesses
-                    println(s"AbdApply -- Applied wand $wand")
+                    // println(s"AbdApply -- Applied wand $wand")
                     Q(Some(AbductionQuestion(s2, v2, g1, lost, state, stmts, q.trigger, q.stateAllowed)))
                   }
                 }
@@ -619,7 +619,7 @@ object AbductionPackage extends AbductionRule {
           // In case we fail to abductively asser the LHS because of an assertion, we try to simply produce it
           // and reattempt the fold
           case AssertionFalse(assertion) =>
-            /*println(s"Asserting LHS failed with ${f.message.reason}, we're packaging " +
+            /*// println(s"Asserting LHS failed with ${f.message.reason}, we're packaging " +
               s"${s.packaging}, will reattempt in \n\t${s.h.values.mkString("\n\t")}")*/
             producer.produce(s, freshSnap, assertion, pve, v) { (s1r, v1r) =>
               assertLHS(s1r, v1r, wand, q)(Q)
@@ -638,9 +638,9 @@ object AbductionPackage extends AbductionRule {
           // predicates that are part of the RHS when inferring the LHS and vice-versa
           val sReservedWand = q.s.copy(packaging = Some(wand))
           executionFlowController.locally(sReservedWand, q.v) { (s1, v1) =>
-            println(s"AbdPackage -- Will attempt asserting LHS")
+            // println(s"AbdPackage -- Will attempt asserting LHS")
             assertLHS(s1, v1, wand, q) { (s2, v2) =>
-              println(s"AbdPackage -- Succesfully asserted ${wand.left}, packaging ${q.s.packaging}")
+              // println(s"AbdPackage -- Succesfully asserted ${wand.left}, packaging ${q.s.packaging}")
               // We need to make sure we do not try producing a value constraint when inferring the RHS
               val packQ = q.copy(s = s2, v = v2, goal = wand.right.topLevelConjuncts)
               AbductionApplier.applyRules(packQ) { packRes =>
@@ -657,34 +657,34 @@ object AbductionPackage extends AbductionRule {
             }
           } match {
             case fail: FatalResult =>
-              println(s"AbdPackage -- FAILED WITH $fail")
+              // println(s"AbdPackage -- FAILED WITH $fail")
               Q(None)
             case suc: NonFatalResult =>
               val abdRes = abductionUtils.getAbductionSuccesses(suc)
-              println(s"AbdPackage -- abdRes:")
-              // abdRes.foreach(x => println(s"\t - $x \n\t\t[${x.trigger}] [${x.v.decider.pcs.branchConditions}]"))
+              // println(s"AbdPackage -- abdRes:")
+              // abdRes.foreach(x => // println(s"\t - $x \n\t\t[${x.trigger}] [${x.v.decider.pcs.branchConditions}]"))
               // We need to filter out those abdRes that come from asserting the LHS of the wand
               //    And then pick a branch to keep if there are multiples that are all correct
               val picked = abductionUtils.pickBranch(abdRes).filter(res => res.trigger != Some(Assert(wand.left)()))
-              println(s"Picked")
-              // picked.foreach(x => println(s"\t - $x"))
+              // println(s"Picked")
+              // picked.foreach(x => // println(s"\t - $x"))
 
               val truelit = abductionUtils.pickBranch(abdRes).filter( res => res.trigger match {
                 case Some(TrueLit()) => true
                 case _ => false
               })
-              println(s"truelit")
-              // truelit.foreach(x => println(s"\t - $x"))
+              // println(s"truelit")
+              // truelit.foreach(x => // println(s"\t - $x"))
 
               val stmts = truelit.flatMap(_.stmts).reverse
               val state = picked.flatMap(_.state).reverse
               val assertions = picked.flatMap(_.assertions)
-              println(s"State: \n\t${state.mkString("\n\t")}")
-              println(s"Before prod \n\t${sReservedWand.h.values.mkString("\n\t")}")
+              // println(s"State: \n\t${state.mkString("\n\t")}")
+              // println(s"Before prod \n\t${sReservedWand.h.values.mkString("\n\t")}")
               // val produceableAssertions = abdRes.flatMap(res => res.s.produceableAssertions).distinct
               // .copy(produceableAssertions = produceableAssertions)
               produces(sReservedWand, freshSnap, state.map(_._1) ++ assertions, _ => pve, q.v) { (s1, v1) =>
-                println(s"After prod \n\t${s1.h.values.mkString("\n\t")}")
+                // println(s"After prod \n\t${s1.h.values.mkString("\n\t")}")
                 val locs: Seq[LocationAccess] = state.map {
                   case (p: FieldAccessPredicate, _) => p.loc
                   case (p: PredicateAccessPredicate, _) => p.loc
@@ -700,11 +700,11 @@ object AbductionPackage extends AbductionRule {
                       val lv = tran.transformExp(e, strict = false)
                       lv.get
                   }
-                  println(s"AbdPackage -- Will try packaging $wand with $script")
-                  println(s"in h:\n\t${sPack.h.values.mkString("\n\t")}\nand g:\n\t${sPack.g.values.mkString("\n\t")}")
-                  // println(s"and v:\n\t${v1.decider.pcs.assumptions.mkString("\n\t")}")
+                  // println(s"AbdPackage -- Will try packaging $wand with $script")
+                  // println(s"in h:\n\t${sPack.h.values.mkString("\n\t")}\nand g:\n\t${sPack.g.values.mkString("\n\t")}")
+                  // // println(s"and v:\n\t${v1.decider.pcs.assumptions.mkString("\n\t")}")
                   val aliasedWand = abductionUtils.transformWithAliasing(wand, q).asInstanceOf[MagicWand]
-                  println(s"Aliased wand is $aliasedWand")
+                  // println(s"Aliased wand is $aliasedWand")
                   // Because we produce asssertions when packaging the wand, it might happen that we fail to package
                   // the wand because the assertion does not hold. In that case, we fail
                   executionFlowController.tryOrElse1[Chunk](sPack, v1) {
@@ -715,12 +715,12 @@ object AbductionPackage extends AbductionRule {
                       val g1 = q.goal.filterNot(_ == wand)
                       val finalStmts = q.foundStmts :+ Package(aliasedWand, script)()
                       val finalState = q.foundState ++ state
-                      println(s"AbdPackage -- Packaged wand from ${sPack.h.values.mkString("\n\t")} to \n\t${s2.reserveHeaps.head.+(wandChunk).values.mkString("\n\t")}")
+                      // println(s"AbdPackage -- Packaged wand from ${sPack.h.values.mkString("\n\t")} to \n\t${s2.reserveHeaps.head.+(wandChunk).values.mkString("\n\t")}")
                       Q(Some(q.copy(s = s2.copy(h = s2.reserveHeaps.head.+(wandChunk), packaging = None)
                         , v = v2, goal = g1, foundStmts = finalStmts, foundState = finalState)))
                   } {
                     f =>
-                      println(s"AbdPackage -- Failed packaging wand with $f")
+                      // println(s"AbdPackage -- Failed packaging wand with $f")
                       Q(None)
                   }
                   /*magicWandSupporter.packageWand(sPack, aliasedWand, script, pve, v1) {
@@ -728,7 +728,7 @@ object AbductionPackage extends AbductionRule {
                       val g1 = q.goal.filterNot(_ == wand)
                       val finalStmts = q.foundStmts :+ Package(aliasedWand, script)()
                       val finalState = q.foundState ++ state
-                      println(s"AbdPackage -- Packaged wand from ${sPack.h.values.mkString("\n\t")} to \n\t${s2.reserveHeaps.head.+(wandChunk).values.mkString("\n\t")}")
+                      // println(s"AbdPackage -- Packaged wand from ${sPack.h.values.mkString("\n\t")} to \n\t${s2.reserveHeaps.head.+(wandChunk).values.mkString("\n\t")}")
                       Q(Some(q.copy(s = s2.copy(h = s2.reserveHeaps.head.+(wandChunk), packaging = None)
                         , v = v2, goal = g1, foundStmts = finalStmts, foundState = finalState)))
                   }*/

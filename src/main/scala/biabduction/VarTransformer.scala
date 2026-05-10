@@ -40,10 +40,10 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
     }
 
     // TODO: Should probably exclude null
-    /*// println(s"\t\t s.h(): \n\t\t\t${s.h.values.mkString("\n\t\t\t")}")
-    // println(s"\t\t s.g(): \n\t\t\t${s.g.values.mkString("\n\t\t\t")}")
-    // println(s"\t\t s.g: ${s.g.values.values.map { case (t1, _) => t1 }}")
-    // println(s"\t\t s.h: ${s.h.values.collect {
+    /*// // println(s"\t\t s.h(): \n\t\t\t${s.h.values.mkString("\n\t\t\t")}")
+    // // println(s"\t\t s.g(): \n\t\t\t${s.g.values.mkString("\n\t\t\t")}")
+    // // println(s"\t\t s.g: ${s.g.values.values.map { case (t1, _) => t1 }}")
+    // // println(s"\t\t s.h: ${s.h.values.collect {
       case c: BasicChunk if c.resourceID == FieldID => Seq(c.args.head, c.snap)
       case c: BasicChunk if c.resourceID == PredicateID => c.args ++ extractSnapTerms(c.snap)
     }.flatten}")*/
@@ -60,17 +60,17 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
     // The symbolic values of the target vars in the store. Everything else is an attempt to match things to these terms
     //val targetMap: Map[Term, AbstractLocalVar] = targets.view.map(localVar => s.g.get(localVar).get -> localVar).toMap
     val directPrefTargets = prefVars.map{case (lv, (t, _)) => t -> lv} //++ Map(terms.Null -> ast.NullLit()())
-    /*// println(s"\tdirectPrefTargets: $directPrefTargets")*/
+    /*// // println(s"\tdirectPrefTargets: $directPrefTargets")*/
     val directTargets = directPrefTargets ++ otherVars.map{case (lv, (t, _)) => t -> lv}.filter { case (t, _) => !directPrefTargets.contains(t) }
-    /*// println(s"\tdirectTargets: $directTargets")*/
+    /*// // println(s"\tdirectTargets: $directTargets")*/
     val directAliases = allTerms.map { t =>
       t -> directTargets.collectFirst { case (t1, e) if t.sort == t1.sort && v.decider.check(BuiltinEquals(t, t1), Verifier.config.checkTimeout()) => e }
     }.collect { case (t2, Some(e)) => t2 -> e }.toMap
-    /*// println(s"\tdirectAliases: $directAliases")*/
+    /*// // println(s"\tdirectAliases: $directAliases")*/
     val chunksToResolve = targetHeap.values.collect { case c: BasicChunk
       if c.resourceID == FieldID && !(directAliases.contains(c.args.head) && directAliases.contains(c.snap)) && c.snap != Null => c
     }.toSeq
-    /*// println(s"\tchunksToResolve: $chunksToResolve")*/
+    /*// // println(s"\tchunksToResolve: $chunksToResolve")*/
 
     resolveChunks(directAliases, chunksToResolve, allTerms.filter(!directAliases.contains(_)))
   }
@@ -250,8 +250,8 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           case (key, value) if key.sort == t.sort && v.decider.check(key === t, Verifier.config.checkTimeout()) => value
         }*/
       case e =>
-        println(s"ERROR IN TRASNFORMTERM: Unsupported operand ${e}:${e.getClass}")
-        println(s"\tmatches is \n\t${matches.mkString("\n\t")}")
+        // println(s"ERROR IN TRASNFORMTERM: Unsupported operand ${e}:${e.getClass}")
+        // println(s"\tmatches is \n\t${matches.mkString("\n\t")}")
         None
     }).map(abductionUtils.simplifyPermission)
 
@@ -330,7 +330,7 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
           ast.FieldAccessPredicate(ast.FieldAccess(newRcv, fa.field)(), perm)()
         case fa@ast.FieldAccess(target, field) =>
 
-          // println(s"Will attempt transforming $fa")
+          // // println(s"Will attempt transforming $fa")
 
           if (onlyInner && target.isInstanceOf[ast.FieldAccess]) {
             val rvcExp = transformExp(target)
@@ -341,19 +341,19 @@ case class VarTransformer(s: State, v: Verifier, prefVars: Map[ast.AbstractLocal
                 val existingChunkTerm = transformTerm(term)
                 existingChunkTerm match {
                   case Some(nfa: ast.FieldAccess) =>
-                    // println(s"Done $nfa")
+                    // // println(s"Done $nfa")
                     nfa
 
                   case Some(ast.NullLit()) | Some(ast.LocalVar(_, _)) | None =>
-                    // println(s"Will try transforming target $target")
+                    // // println(s"Will try transforming target $target")
                     val rvcExp = transformExp(target)
-                    // println(s"Done $rvcExp")
+                    // // println(s"Done $rvcExp")
                     ast.FieldAccess(rvcExp.get, field)()
                 }
               case None =>
-                // println(s"Will recurse")
+                // // println(s"Will recurse")
                 val rvcExp = transformExp(target)
-                // println(s"Done $rvcExp")
+                // // println(s"Done $rvcExp")
                 ast.FieldAccess(rvcExp.get, field)()
             }
           }
