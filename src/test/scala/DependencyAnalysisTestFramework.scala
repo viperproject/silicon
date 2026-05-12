@@ -62,9 +62,9 @@ trait DependencyAnalysisTestFramework {
     fe
   }
 
-  def resetFrontend(): Unit = {
+  def resetFrontend(additionalArguments: Seq[String] = Seq.empty): Unit = {
     frontend.verifier.stop()
-    frontend = createFrontend(analysisCommandLineArguments)
+    frontend = createFrontend(analysisCommandLineArguments ++ additionalArguments)
   }
 
   var baselineFrontend: SiliconFrontend = createFrontend(baseCommandLineArguments)
@@ -111,69 +111,6 @@ trait DependencyAnalysisTestFramework {
       val writer = new PrintWriter(exportFileName)
       writer.println("// test result: " + !result.isInstanceOf[verifier.Failure])
       writer.println("// pruning factor: " + pruningFactor)
-      writer.println(newProgram.toString())
-      writer.close()
-    }
-  }
-
-  class PrecisionEvaluation(filePrefix: String, fileName: String, program: Program, fullGraphInterpreter: DependencyGraphInterpreter[Final]) {
-		lazy val pruningSupporter = new DependencyAnalysisPruningSupporter(fullGraphInterpreter)
-    protected val folderName = s"src/test/resources/precision_groundTruths/$filePrefix"
-
-    def execute(): Unit = {
-      Paths.get(folderName).toFile.mkdirs()
-      val triggerNodeLines = fullGraphInterpreter.getNodes.filter(node => node.getUserLevelRepresentation.contains("@trigger()")).flatMap(_.sourceInfo.getLineNumber)
-      var id: Int = 0
-      // TODO ake: it would be better to work with position string instead of line numbers
-      fullGraphInterpreter.getExplicitAssertionNodes flatMap (_.sourceInfo.getLineNumber) foreach {line =>
-        evaluatePrecision(Set(line) ++ triggerNodeLines)
-        resetBaselineFrontend()
-        id += 1
-      }
-    }
-
-    protected def evaluatePrecision(relevantLines: Set[Int]): Unit = {
-      val relevantNodes = relevantLines.flatMap(line => fullGraphInterpreter.getNodesByLine(line))
-      val sourceInfos = relevantNodes.groupBy(_.sourceInfo).keySet
-      println(s"Evaluating precision of\n\t${sourceInfos.mkString("\n\t")}")
-
-      val reportedDependencies = fullGraphInterpreter.getAllNonInternalDependencies(relevantNodes.map(_.id)).diff(relevantNodes)
-      val verifies = pruneAndVerify(reportedDependencies ++ relevantNodes)
-      if(!verifies) {
-        println("Unsound. The program pruned with respect to all reported dependencies does not verify!")
-        return
-      }
-
-      var minNumDeps = reportedDependencies.size
-      var bestDepSet = reportedDependencies
-
-      for(currDepSubset <- reportedDependencies.subsets()){
-        if(currDepSubset.size < minNumDeps){
-          println(currDepSubset.size)
-          val verifies = pruneAndVerify(currDepSubset ++ relevantNodes)
-          if(verifies){
-            minNumDeps = currDepSubset.size
-            bestDepSet = currDepSubset
-          }
-        }
-      }
-
-      val (minProgram, _) = pruningSupporter.getPrunedProgram(bestDepSet ++ relevantNodes, program)
-
-      exportPrunedProgram(s"${fileName}_${relevantLines.mkString("_")}.vpr", minProgram)
-      val precision = minNumDeps.toDouble / reportedDependencies.size
-      println(s"Precision: $minNumDeps / ${reportedDependencies.size}=$precision")
-    }
-
-    protected def pruneAndVerify(crucialNodes: Set[DependencyAnalysisNode]): Boolean = {
-      val (newProgram, _) = pruningSupporter.getPrunedProgram(crucialNodes, program)
-			resetBaselineFrontend()
-      val result = baselineFrontend.verifier.verify(newProgram)
-      !result.isInstanceOf[verifier.Failure]
-    }
-
-    protected def exportPrunedProgram(exportFileName: String, newProgram: Program): Unit = {
-      val writer = new PrintWriter(folderName + "/" + exportFileName)
       writer.println(newProgram.toString())
       writer.close()
     }
@@ -302,7 +239,5 @@ trait DependencyAnalysisTestFramework {
 
     protected def getTestIrrelevantAssumptionNodes(nodes: Set[DependencyAnalysisNode]): Set[DependencyAnalysisNode] =
       nodes.filter(_.sourceInfo.toString.contains("@" + irrelevantKeyword + "("))
-
   }
-
 }
