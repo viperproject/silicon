@@ -98,7 +98,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
   }
 
   private def handleProofCoverageLineQuery(memberNames: Seq[String]): Unit = {
-    if(memberNames.isEmpty) return // TODO ake: invalid input handling
+    if(memberNames.isEmpty) return
 
     println("Proof Coverage")
     val lines = memberNames.tail.flatMap(_.toIntOption)

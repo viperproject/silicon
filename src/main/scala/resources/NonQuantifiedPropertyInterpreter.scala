@@ -122,7 +122,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                                     otherwise: PropertyExpression[K],
                                     info: Info): (Term, Option[ast.Exp]) = {
     val conditionTerm = buildPathCondition(condition, info)._1
-    if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout(), DependencyAnalysisInfos.create("property interpreter", DependencyType.Internal) /* TODO ake */)) {
+    if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout(), DependencyAnalysisInfos.create(s"property interpreter: ${conditionTerm.toString}", DependencyType.Internal))) {
       val (t, e) = buildPathCondition(thenDo, info)
       (verifier.decider.wrapWithDependencyAnalysisLabel(t, Set.empty, Set(conditionTerm)), e) // TODO ake: causes imprecision!
     } else {

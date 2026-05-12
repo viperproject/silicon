@@ -12,8 +12,10 @@ import viper.silver.dependencyAnalysis._
  */
 case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], dependencyTypes: List[DependencyTypeInfo], mergeInfos: List[DependencyAnalysisMergeInfo], joinInfos: List[DependencyAnalysisJoinInfo], nodes: List[ast.Node], analysisEnabled: Boolean = true) {
 
+	private def isAnalysisEnabled = Verifier.config.enableDependencyAnalysis() && analysisEnabled
+
   def addInfo(info: ast.Info, node: ast.Node): DependencyAnalysisInfos = {
-		if(!Verifier.config.enableDependencyAnalysis()) return this
+		if(!isAnalysisEnabled) return this
 
     val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
     val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
@@ -23,7 +25,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   }
 
   def addInfo(info: ast.Info): DependencyAnalysisInfos = {
-		if(!Verifier.config.enableDependencyAnalysis()) return this
+		if(!isAnalysisEnabled) return this
 
     val newSourceInfos = sourceInfos ++ info.getUniqueInfo[AnalysisSourceInfo].toList
     val newDependencyInfos = dependencyTypes ++ info.getUniqueInfo[DependencyTypeInfo].toList
@@ -33,18 +35,18 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   }
 
   def addInfo(infoString: String, pos: ast.Position, dependencyType: DependencyType): DependencyAnalysisInfos = {
-		if(!Verifier.config.enableDependencyAnalysis()) return this
+		if(!isAnalysisEnabled) return this
 		this.copy(sourceInfos = sourceInfos ++ List(StringAnalysisSourceInfo(infoString, pos)), dependencyTypes = dependencyTypes ++ List(DependencyTypeInfo(dependencyType)))
 	}
 
 	def withDependencyType(dependencyType: DependencyType): DependencyAnalysisInfos = {
-		if(!Verifier.config.enableDependencyAnalysis()) return this
+		if(!isAnalysisEnabled) return this
 
 		this.copy(dependencyTypes = DependencyTypeInfo(dependencyType) +: dependencyTypes)
   }
 
   def withSource(source: AnalysisSourceInfo): DependencyAnalysisInfos = {
-		if(!Verifier.config.enableDependencyAnalysis()) return this
+		if(!isAnalysisEnabled) return this
 
 		this.copy(sourceInfos = source +: sourceInfos)
   }
@@ -65,6 +67,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 	}
 
   def getSourceInfo: AnalysisSourceInfo = {
+		if(!isAnalysisEnabled) return StringAnalysisSourceInfo("Unknown", NoPosition)
 		val sourceInfoOpt = sourceInfos.headOption
 		if(sourceInfoOpt.isDefined){
 			sourceInfoOpt.get
@@ -75,6 +78,7 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 	}
 
 	def getDependencyType: DependencyType = {
+		if(!isAnalysisEnabled) return DependencyType.make(AssumptionType.Unknown)
 		val dependencyTypeOpt = dependencyTypes.headOption.map(_.dependencyType)
 		if(dependencyTypeOpt.isDefined) {
 			dependencyTypeOpt.get
@@ -84,9 +88,13 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
 		}
 	}
 
-	def getMergeInfo: DependencyAnalysisMergeInfo = mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
+	def getMergeInfo: DependencyAnalysisMergeInfo = {
+		if(!isAnalysisEnabled) return NoDependencyAnalysisMerge()
+		mergeInfos.headOption.getOrElse(SimpleDependencyAnalysisMerge(getSourceInfo))
+	}
 
   def getJoinInfo: List[SimpleDependencyAnalysisJoin] = {
+		if(!isAnalysisEnabled) return List.empty
     joinInfos.map {
 			case EvalStackDependencyAnalysisJoin(joinType, edgeType) => SimpleDependencyAnalysisJoin(sourceInfos.last, joinType, edgeType)
 			case a: SimpleDependencyAnalysisJoin => a
@@ -94,13 +102,13 @@ case class DependencyAnalysisInfos(sourceInfos: List[AnalysisSourceInfo], depend
   }
 
   def withMergeInfo(mergeInfo: DependencyAnalysisMergeInfo): DependencyAnalysisInfos = {
-		if(!Verifier.config.enableDependencyAnalysis()) return this
+		if(!isAnalysisEnabled) return this
 
 		this.copy(mergeInfos = mergeInfo +: mergeInfos)
 	}
 
 	def withJoinInfo(joinInfo: DependencyAnalysisJoinInfo): DependencyAnalysisInfos = {
-		if(!Verifier.config.enableDependencyAnalysis()) return this
+		if(!isAnalysisEnabled) return this
 
 		this.copy(joinInfos = joinInfo +: joinInfos)
 	}
