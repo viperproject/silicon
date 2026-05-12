@@ -195,19 +195,8 @@ object consumer extends ConsumptionRules {
     v.logger.debug("h = " + v.stateFormatter.format(h))
     if (s.reserveHeaps.nonEmpty)
       v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
-    lazy val aIsFinal = s.intermediateHeapCause match {
-      case Some(ast.Inhale(exp)) => exp == a
-      case Some(ast.Fold(acc)) => acc.loc.predicateBody(s.program, Set()).contains(a) // Not clear if empty scope is correct here
-      case Some(ast.Unfold(acc)) => acc.loc.predicateBody(s.program, Set()).contains(a)
-      case Some(ast.Apply(exp)) => exp == a
-      case _ => false
-    }
-    def maybeRecordHeap(st: State): State = {
-      if (debugOn && s.recordIntermediateHeaps) {
-        if (aIsFinal) v.recordDebugHeap(st, s.h, s.intermediateHeapCause.get)
-        else v.recordDebugHeap(st, s.h, s.intermediateHeapCause.get, a, v.decider.pcs)
-      } else st
-    }
+    lazy val oldHeap = magicWandSupporter.getEvalHeap(s)
+    lazy val oldPCS = v.decider.pcs.duplicate()
 
     val consumed = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
@@ -268,7 +257,10 @@ object consumer extends ConsumptionRules {
               v2.heapSupporter.consumeSingle(s3, h, accPred.loc, tArgs, eArgsNew, loss, lossExp, returnSnap, pve, v2)((s4, h4, snap, v4) => {
                 val s5 = s4.copy(constrainableARPs = s.constrainableARPs,
                                  partiallyConsumedHeap = Some(h4))
-                val s6 = maybeRecordHeap(s5)
+                val s6 = if (debugOn && s.recordIntermediateHeaps)
+                  v4.recordDebugHeap(s5, h4, oldHeap, s.intermediateHeapCause.get, Some(accPred), Some(oldPCS))
+                  // v4.recordDebugHeap(s5, oldHeap, s.intermediateHeapCause.get, accPred, oldPCS)
+                else s5
                 Q(s6, h4, snap, v4)
               })
             })))
@@ -326,11 +318,15 @@ object consumer extends ConsumptionRules {
               insufficientPermissionReason = insuffReason,
               v1)((s2, h2, snap, v2) => {
               val s3 = s2.copy(constrainableARPs = s.constrainableARPs, functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa))
-              val s4 = maybeRecordHeap(s3)
+              val s4 = if (debugOn && s.recordIntermediateHeaps)
+                v2.recordDebugHeap(s3, oldHeap, s.intermediateHeapCause.get, a, oldPCS)
+              else s3
               Q(s4, h2, snap, v2)
             })
           case (s1, _, _, _, _, None, v1) =>
-            val s2 = maybeRecordHeap(s1)
+            val s2 = if (debugOn && s.recordIntermediateHeaps)
+              v1.recordDebugHeap(s1, oldHeap, s.intermediateHeapCause.get, a, oldPCS)
+            else s1
             Q(s2, h, if (returnSnap) Some(Unit) else None, v1)
         }
 

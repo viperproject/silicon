@@ -334,7 +334,7 @@ object executor extends ExecutionRules {
     val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
-    val oldPCS = v.decider.pcs.duplicate()
+    lazy val oldPCS = v.decider.pcs.duplicate()
 
     /* For debugging-purposes only */
     stmt match {
@@ -426,15 +426,17 @@ object executor extends ExecutionRules {
           /* We're done */
           Success()
         case _ =>
-          produce(s.copy(intermediateHeapCause = Some(inhale)), freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
+          val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(inhale))) else s
+          produce(s1, freshSnap, a, InhaleFailed(inhale), v)((s2, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            Q(s1.copy(intermediateHeapCause = None), v1)})
+            Q(s2.copy(intermediateHeapCause = None), v1)})
       }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(s.copy(intermediateHeapCause = Some(exhale)), a, false, pve, v)((s1, _, v1) =>
-          Q(s1.copy(intermediateHeapCause = None), v1))
+        val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(exhale))) else s
+        consume(s1, a, false, pve, v)((s2, _, v1) =>
+          Q(s2.copy(intermediateHeapCause = None), v1))
 
       case assert @ ast.Assert(a: ast.FalseLit) if !s.isInPackage =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
@@ -510,7 +512,9 @@ object executor extends ExecutionRules {
         val sepIdentifier = v.symbExLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
         val paramId = v.symbExLog.openScope(paramLog)
-        evals(s, eArgs, _ => pveCall, v)((s1, tArgs, eArgsNew, v1) => {
+        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(call))) else s
+
+        evals(s0, eArgs, _ => pveCall, v)((s1, tArgs, eArgsNew, v1) => {
           v1.symbExLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
@@ -532,8 +536,7 @@ object executor extends ExecutionRules {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts,
-                             oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)),
-                             intermediateHeapCause = Some(call))
+                             oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produces(s4, freshSnap, meth.posts, _ => pveCallTransformed, v2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
@@ -551,12 +554,12 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val pve = FoldFailed(fold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(fold))) else s
+        evals(s0, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (debugOn) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              val s3a = s3.copy(intermediateHeapCause = Some(fold))
-              predicateSupporter.fold(s3a, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
+              predicateSupporter.fold(s3, predAcc, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3)((s4, v4) => {
                   v3.decider.finishDebugSubExp(s"folded ${predAcc.toString}")
                   Q(s4.copy(intermediateHeapCause = None), v4)
                 }
@@ -568,14 +571,14 @@ object executor extends ExecutionRules {
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
+        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(unfold))) else s
+        evals(s0, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
             val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2)
 
             permissionSupporter.assertPositive(s2a, tPerm, if (debugOn) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
               val wildcards = s3.constrainableARPs -- s1.constrainableARPs
-              val s3a = s3.copy(intermediateHeapCause = Some(unfold))
-              predicateSupporter.unfold(s3a, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
+              predicateSupporter.unfold(s3, predicate, tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v3, pa)(
                 (s4, v4) => {
                   v2.decider.finishDebugSubExp(s"unfolded ${pa.toString}")
                   Q(s4.copy(intermediateHeapCause = None), v4)
@@ -622,9 +625,9 @@ object executor extends ExecutionRules {
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        magicWandSupporter.applyWand(s, e, pve, v)((s1, v1) => {
-          val s2 = if (debugOn) v1.recordDebugHeap(s1, s.h, apply) else s1
-          Q(s2, v1)})
+        val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(apply))) else s
+        magicWandSupporter.applyWand(s1, e, pve, v)((s2, v1) =>
+          Q(s2.copy(intermediateHeapCause = None), v1))
 
       case havoc: ast.Quasihavoc =>
         havocSupporter.execHavoc(havoc, v, s)(Q)

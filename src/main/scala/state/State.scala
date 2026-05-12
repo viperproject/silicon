@@ -34,7 +34,7 @@ final case class State(g: Store = Store(),
                        functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
                        debugOldHeaps: DebugOldHeaps = Map.empty,
-                       intermediateHeapCause: Option[ast.Stmt] = None,
+                       intermediateHeapCause: Option[Either[ast.Stmt, ast.Exp]] = None,
 
                        parallelizeBranches: Boolean = false,
 

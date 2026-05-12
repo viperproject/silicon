@@ -90,17 +90,17 @@ trait Verifier {
     recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), None, Some(oldPCS))
   }
 
-  def recordDebugHeap(s: State, parent: Heap, cause: ast.Stmt,
-                      intermediateCause: ast.Exp, oldPCS: PathConditionStack): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), Some(intermediateCause), Some(oldPCS))
-  }
-
   def recordDebugHeap(s: State, parent: Heap, cause: ast.Exp): State = {
     recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None, None)
   }
 
   def recordDebugHeap(s: State, parent: Heap, cause: ast.Exp, oldPCS: PathConditionStack): State = {
     recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None, Some(oldPCS))
+  }
+
+  def recordDebugHeap(s: State, parent: Heap, cause: Either[ast.Stmt, ast.Exp],
+                      intermediateCause: ast.Exp, oldPCS: PathConditionStack): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, cause, Some(intermediateCause), Some(oldPCS))
   }
 
   def recordDebugHeap(s: State, heap: Heap, parent: Heap,

@@ -65,15 +65,16 @@ case class ProofObligation(s: State,
       h.values.map(c => s"\t\t${chunkString(c)}\n").mkString("")
     else "\t\t(Empty heap)\n"
     def debugHeapString(label: String, debugHeap: DebugHeap): String = {
+      val condString = if (debugHeap.branchConds.nonEmpty)
+        "\tUnder condition: " + debugHeap.branchConds.map(bc => bc._1.toString).mkString(", ") + "\n"
+      else ""
       val causeString = "\"" + debugHeap.cause.fold(_.toString(), _.toString.split(" in ").dropRight(1).mkString(", ")) + "\""
       val causeString2 = if (debugHeap.intermediateCause.isDefined)
         "\"" + debugHeap.intermediateCause.get.toString + "\" during " + causeString
       else causeString
-      val condString = if (debugHeap.branchConds.nonEmpty)
-        " under condition: " + debugHeap.branchConds.map(bc => bc._1.toString).mkString(", ")
-      else ""
       s"Heap $label:\n" +
         s"\tParent: ${debugHeap.parentLabel}\n" +
+        condString +
         s"\tCause: $causeString2$condString\n" +
         heapToString(debugHeap.heap) + "\n"
     }

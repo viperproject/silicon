@@ -212,20 +212,8 @@ object producer extends ProductionRules {
 
     val Q: (State, Verifier) => VerificationResult = (state, verifier) =>
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
-
-    lazy val aIsFinal = s.intermediateHeapCause match {
-      case Some(ast.Inhale(exp)) => exp == a
-      case Some(ast.Fold(acc)) => acc.loc.predicateBody(s.program, Set()).contains(a) // Not clear if empty scope is correct here
-      case Some(ast.Unfold(acc)) => acc.loc.predicateBody(s.program, Set()).contains(a)
-      case Some(ast.Apply(exp)) => exp == a
-      case _ => false
-    }
-    def maybeRecordHeap(st: State): State = {
-      if (debugOn && s.recordIntermediateHeaps) {
-        if (aIsFinal) v.recordDebugHeap(st, s.h, s.intermediateHeapCause.get)
-        else v.recordDebugHeap(st, s.h, s.intermediateHeapCause.get, a, v.decider.pcs)
-      } else st
-    }
+    lazy val oldHeap = magicWandSupporter.getEvalHeap(s)
+    lazy val oldPCS = v.decider.pcs.duplicate()
 
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure && s.moreJoins.id >= JoinMode.Impure.id =>
@@ -345,7 +333,9 @@ object producer extends ProductionRules {
                 WildcardSimplifyingPermTimes(tPerm, s2.permissionScalingFactor)
               val gainExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
               v2.heapSupporter.produceSingle(s2, resource, tArgs, eArgsNew, snap, None, gain, gainExp, pve, true, v2)((s3, v3) => {
-                val s3a = maybeRecordHeap(s3)
+                val s3a = if (debugOn && s.recordIntermediateHeaps)
+                  v3.recordDebugHeap(s3, oldHeap, s.intermediateHeapCause.get, accPred, oldPCS)
+                else s3
                 Q(s3a, v3)})
             })))
 
@@ -376,11 +366,15 @@ object producer extends ProductionRules {
             v1.heapSupporter.produceQuantified(s1a, sf, forall, resource, qvars, qvarExps, tFormalArgs, eFormalArgs, qid, optTrigger, tTriggers, auxGlobals, auxNonGlobals,
               auxExps.map(_._1), auxExps.map(_._2), tCond, eCondNew.map(_.head), tArgs, permArgs.map(_.tail), tPerm, permArgs.map(_.head), pve, NegativePermission(ePerm),
               QPAssertionNotInjective(resAcc), v1)((s2, v2) => {
-              val s2a = maybeRecordHeap(s2)
+              val s2a = if (debugOn && s.recordIntermediateHeaps)
+                v2.recordDebugHeap(s2, oldHeap, s.intermediateHeapCause.get, a, oldPCS)
+              else s2
               Q(s2a.copy(functionRecorder = s2a.functionRecorder.leaveQuantifiedExp(qpa)), v2)
             })
           case (s1, _, _, _, _, None, v1) =>
-            val s1a = maybeRecordHeap(s1)
+            val s1a = if (debugOn && s.recordIntermediateHeaps)
+              v1.recordDebugHeap(s1, oldHeap, s.intermediateHeapCause.get, a, oldPCS)
+            else s1
             Q(s1a.copy(constrainableARPs = s.constrainableARPs), v1)
         }
 

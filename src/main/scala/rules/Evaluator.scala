@@ -146,7 +146,7 @@ object evaluator extends EvaluationRules {
                      (Q: (State, Term, Option[ast.Exp], Verifier) => VerificationResult)
                      : VerificationResult = {
     val eOpt = Option.when(debugOn)(e)
-    val oldPCS = v.decider.pcs.duplicate()
+    lazy val oldPCS = v.decider.pcs.duplicate()
 
     val resultTerm = e match {
       case _: ast.TrueLit => Q(s, True, eOpt, v)
@@ -696,7 +696,8 @@ object evaluator extends EvaluationRules {
           v.decider.startDebugSubExp()
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
             eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) => {
-              val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s2, uf.pos)
+              val (_, debugLabel) = v1.getDebugOldLabel(s2, uf.pos)
+              val s2a = if (debugOn) s2.copy(intermediateHeapCause = Some(Right(uf))) else s2
 
               val unfoldingNew = eArgsNew.map(args => uf.copy(acc = acc.copy(loc = pa.copy(args = args)(pa.pos, pa.info, pa.errT),
                 permExp = Some(ePermNew.get))(acc.pos, acc.info, acc.errT))(uf.pos, uf.info, uf.errT))
@@ -706,7 +707,7 @@ object evaluator extends EvaluationRules {
               })
               v2.decider.assert(IsPositive(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
-                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2, v2)((s3, v3, QB) => {
+                  joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s2a, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
                                .copy(recordVisited = true)
                       /* [2014-12-10 Malte] The commented code should replace the code following
