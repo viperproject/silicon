@@ -1084,14 +1084,14 @@ object abductionUtils {
           Q(accumulated.reverse)
 
         case (fap@FieldAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
-          go(tail, abductionUtils.accWithPerm(fap, Some(FractionalPerm(IntLit(1)(), IntLit(4)())())) :: accumulated)
+          go(tail, abductionUtils.accWithPerm(fap, Some(FractionalPerm(IntLit(1)(), IntLit(1)())())) :: accumulated)
         /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
           val perm = permOpt.getOrElse(FullPerm()())
           go(tail, abductionUtils.accWithPerm(fap, Some(perm)) :: accumulated)
         }*/
 
         case (pap@PredicateAccessPredicate(_, Some(WildcardPerm()))) :: tail =>
-          go(tail, abductionUtils.accWithPerm(pap, Some(FractionalPerm(IntLit(1)(), IntLit(4)())())) :: accumulated)
+          go(tail, abductionUtils.accWithPerm(pap, Some(FractionalPerm(IntLit(1)(), IntLit(1)())())) :: accumulated)
         /*findMinPerm(loc, q.s, q.v, q.lostAccesses) { permOpt =>
           val perm = permOpt.getOrElse(FullPerm()())
           go(tail, abductionUtils.accWithPerm(pap, Some(perm)) :: accumulated)
