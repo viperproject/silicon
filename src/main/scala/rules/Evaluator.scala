@@ -1154,7 +1154,7 @@ object evaluator extends EvaluationRules {
                          : VerificationResult = {
 
     joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v, analysisInfos)((s1, v1, QB) =>
-      brancher.branch(s1.copy(parallelizeBranches = false), tLhs, eLhs, v1, analysisInfos.withDependencyType(DependencyType.Internal), fromShortCircuitingAnd = fromShortCircuitingAnd)(
+      brancher.branch(s1.copy(parallelizeBranches = false), tLhs, eLhs, v1, analysisInfos, fromShortCircuitingAnd = fromShortCircuitingAnd)(
         (s2, v2) => eval(s2.copy(parallelizeBranches = s1.parallelizeBranches), eRhs, pve, v2, analysisInfos)((s2, tRhs, eRhsNew, v2) => QB(s2, (tRhs, eRhsNew), v2)),
         (s2, v2) => QB(s2.copy(parallelizeBranches = s1.parallelizeBranches), (True, Option.when(withExp)(ast.TrueLit()())), v2))
     )(entries => {
