@@ -131,9 +131,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                     val formals = method.formalArgs.map(_.localVar) ++ method.formalReturns.map(_.localVar)
                     val vars = s4.g.values.collect { case (var2, t) if formals.contains(var2) => (var2, t) }
                     val tra = VarTransformer(s4, v4, vars, s4.h)
-                    // // println(s"WILL SOLVE FRAMING NOW")
-                    // // println(s"in H\n\t${s4.h.values.mkString("\n\t")}")
-                    // // println(s"and V\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
+                    // println(s"WILL SOLVE FRAMING NOW")
+                    // println(s"in H\n\t${s4.h.values.mkString("\n\t")}")
+                    // println(s"and V\n\t${v.decider.pcs.assumptions.mkString("\n\t")}")
                     solveFraming(s4, v4, postViolated, tra, abductionUtils.dummyEndStmt, posts, stateAllowed = true) {
                       frame => Success(Some(frame.copy(s = s4, v = v4))
                       )
@@ -145,7 +145,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
                 }
                 }
               })
-              //// // println("ex", ex)
+              //// println("ex", ex)
               wfc && ex
             }
           }{
@@ -178,11 +178,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent {
           case suc: NonFatalResult if method.body.isDefined =>
             val abdFails = abductionUtils.getAbductionFailures(suc)
             val mFail = abdFails.foldLeft(method) { case (m1, fail) => fail.addToMethod(m1) }
-            // println(s"mFail $mFail")
+            println(s"mFail $mFail")
             val mAbd = resolveAbductionResults(mFail, suc)
-            // println(s"mAbd $mAbd")
+            println(s"mAbd $mAbd")
             val mInv = mAbd.flatMap(m2 => resolveLoopInvResults(m2, suc))
-            // println(s"mInv $mInv")
+            println(s"mInv $mInv")
             val mFrame = mInv.flatMap(someM => resolveFramingResults(someM, suc))
 
             mFrame match {
