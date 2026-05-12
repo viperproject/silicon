@@ -110,7 +110,7 @@ class DependencyAnalysisProgressSupporter[T <: DependencyGraphState](interpreter
 	}
 
 	private def getAssertionsRelevantForProgress: Map[AnalysisSourceInfo, Set[DependencyAnalysisNode]] = {
-		val excludedAssertionTypes = AssumptionType.importedTypes ++ Set(AssumptionType.Precondition)
+		val excludedAssertionTypes = AssumptionType.importedTypes ++ AssumptionType.preconditionTypes
 		sourceToAssertionNodesMap.filter(ass => ass._2.map(_.assumptionType).intersect(excludedAssertionTypes).isEmpty)
 	}
 

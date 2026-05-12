@@ -252,8 +252,7 @@ class DependencyGraph[T <: DependencyGraphState] extends ReadOnlyDependencyGraph
 	 */
   def removeInternalNodes(): Unit = {
     def filterCriteria(n: DependencyAnalysisNode) = {
-			AssumptionType.internalTypes.contains(n.assumptionType) && !AssumptionType.CustomInternal.equals(n.assumptionType) &&
-				!n.isInstanceOf[InfeasibilityNode]
+			AssumptionType.internalTypes.contains(n.assumptionType) && !n.isInstanceOf[InfeasibilityNode]
 		}
 
     assumptionNodes filter filterCriteria foreach removeAllEdgesForNode
