@@ -251,15 +251,37 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //val commentRecord = new CommentRecord("push", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
       pathConditions.pushScope()
+      val t0 = System.nanoTime()
       _prover.push(timeout = Verifier.config.pushTimeout.toOption)
+      val durMs = (System.nanoTime() - t0) / 1e6
+      if (Verifier.config.recordProofQueries.isDefined)
+        ProofQueryCollector.record(ProofQueryRecord(
+          kind        = QueryKind.Push,
+          member      = None,
+          pos         = ast.NoPosition,
+          category    = ProofQueryKind.Unknown,
+          durationMs  = durMs,
+          succeeded   = true,
+          description = None))
       //symbExLog.closeScope(sepIdentifier)
     }
 
     def popScope(): Unit = {
       //val commentRecord = new CommentRecord("pop", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
+      val t0 = System.nanoTime()
       _prover.pop()
+      val durMs = (System.nanoTime() - t0) / 1e6
       pathConditions.popScope()
+      if (Verifier.config.recordProofQueries.isDefined)
+        ProofQueryCollector.record(ProofQueryRecord(
+          kind        = QueryKind.Pop,
+          member      = None,
+          pos         = ast.NoPosition,
+          category    = ProofQueryKind.Unknown,
+          durationMs  = durMs,
+          succeeded   = true,
+          description = None))
       //symbExLog.closeScope(sepIdentifier)
     }
 
@@ -385,10 +407,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val dur = (System.nanoTime() - t0) / 1e6
       if (Verifier.config.recordProofQueries.isDefined)
         ProofQueryCollector.record(ProofQueryRecord(
-          isAssert    = false,
+          kind        = QueryKind.Check,
           member      = member,
           pos         = pos,
-          kind        = ProofQueryKind.PathInfeasibility,
+          category    = ProofQueryKind.PathInfeasibility,
           durationMs  = dur,
           succeeded   = res,
           description = description))
@@ -400,7 +422,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
               pos: ast.Position = ast.NoPosition,
               member: Option[String] = None,
               description: Option[String] = None): Boolean =
-      deciderAssert(t, Some(timeout), kind, pos, member, description, isAssert = false)
+      deciderAssert(t, Some(timeout), kind, pos, member, description, queryKind = QueryKind.Check)
 
     def assert(t: Term,
                kind: ProofQueryKind,
@@ -410,7 +432,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
                description: Option[String] = None
               )(Q: Boolean => VerificationResult): VerificationResult = {
 
-      val success = deciderAssert(t, timeout, kind, pos, member, description, isAssert = true)
+      val success = deciderAssert(t, timeout, kind, pos, member, description, queryKind = QueryKind.Assert)
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -429,7 +451,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
                                pos: ast.Position = ast.NoPosition,
                                member: Option[String] = None,
                                description: Option[String] = None,
-                               isAssert: Boolean = true) = {
+                               queryKind: QueryKind = QueryKind.Assert) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
@@ -440,10 +462,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       if (Verifier.config.recordProofQueries.isDefined && !alreadyKnown)
         ProofQueryCollector.record(ProofQueryRecord(
-          isAssert    = isAssert,
+          kind        = queryKind,
           member      = member,
           pos         = pos,
-          kind        = kind,
+          category    = kind,
           durationMs  = durMs,
           succeeded   = result,
           description = description))
