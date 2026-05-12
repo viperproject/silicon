@@ -20,9 +20,9 @@ import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
+import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
-import viper.silicon.supporters._
 import viper.silicon.utils.Counter
 import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
@@ -94,8 +94,6 @@ class DefaultMainVerifier(config: Config,
     _verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
-
-  var dependencyAnalysisResult: Option[DependencyAnalysisResult] = None
 
   /* Lifetime */
 
@@ -660,7 +658,6 @@ class DefaultMainVerifier(config: Config,
 
     // TODO ake: make sure we can access the name of frontend programs (instead of naming it "joined")
     val result = DependencyAnalysisResult(inputFile.map(_.replaceAll("\\\\", "_").replaceAll("/", "_").replaceAll(".vpr", "")).getOrElse("joined"), program, dependencyGraphInterpreters.toSet)
-    dependencyAnalysisResult = Some(result)
 
     if (Verifier.config.dependencyAnalysisExportPath.isDefined) {
       result.getFullDependencyGraphInterpreter.exportGraph(program)

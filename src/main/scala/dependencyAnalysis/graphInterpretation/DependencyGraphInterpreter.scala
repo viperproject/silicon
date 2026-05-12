@@ -6,7 +6,7 @@ import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Program
-import viper.silver.dependencyAnalysis.{AbstractDependencyGraphInterpreter, AssumptionType, JoinType}
+import viper.silver.dependencyAnalysis.{AssumptionType, JoinType}
 
 import java.io.PrintWriter
 import java.nio.file.Paths
@@ -16,7 +16,7 @@ object DATraversalMode extends Enumeration {
   val Upwards, Downwards = Value
 }
 
-class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) extends AbstractDependencyGraphInterpreter {
+class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, dependencyGraph: ReadOnlyDependencyGraph[T], errors: List[Failure], member: Option[ast.Member]=None) {
 	val pruningSupporter: DependencyAnalysisPruningSupporter[T] = new DependencyAnalysisPruningSupporter[T](this)
 	val progressSupporter: DependencyAnalysisProgressSupporter[T] = new DependencyAnalysisProgressSupporter[T](this)
 

@@ -2,14 +2,12 @@ package viper.silicon.dependencyAnalysis
 
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silver.ast.Program
-import viper.silver.dependencyAnalysis.AbstractDependencyAnalysisResult
 
-case class DependencyAnalysisResult(programName: String, program: Program, dependencyGraphInterpreters: Set[DependencyGraphInterpreter[IntraProcedural]])
-  extends AbstractDependencyAnalysisResult(programName, program, dependencyGraphInterpreters){
+case class DependencyAnalysisResult(programName: String, program: Program, dependencyGraphInterpreters: Set[DependencyGraphInterpreter[IntraProcedural]]){
 
   protected lazy val fullDependencyGraphInterpreter: DependencyGraphInterpreter[Final] =
     DependencyAnalyzer.joinGraphsAndGetInterpreter(programName, dependencyGraphInterpreters)
 
-  override def getFullDependencyGraphInterpreter: DependencyGraphInterpreter[Final] = fullDependencyGraphInterpreter
+  def getFullDependencyGraphInterpreter: DependencyGraphInterpreter[Final] = fullDependencyGraphInterpreter
 
 }
