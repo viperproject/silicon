@@ -165,5 +165,3 @@ class DependencyGraphInterpreter[T <: DependencyGraphState](name: String, depend
 		(proofCoverage, uncoveredUserLevelNodes.map(_.toString))
 	}
 }
-
-

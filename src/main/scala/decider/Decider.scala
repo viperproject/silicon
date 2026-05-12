@@ -318,7 +318,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if(!isDependencyAnalysisEnabled)
         return buildChunk(perm)
 
-      val labelNodeOpt = getOrCreateAnalysisLabelNode() // if(createLabel) getOrCreateAnalysisLabelNode() else getOrCreateAnalysisLabelNode(sourceChunks)
+      val labelNodeOpt = getOrCreateAnalysisLabelNode()
 
       if(isExhale)
         dependencyAnalyzer.registerExhaleChunk(sourceChunks, buildChunk, perm, labelNodeOpt, analysisInfo)
@@ -331,10 +331,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if(!isDependencyAnalysisEnabled)
         return None
 
-//      if(sourceChunks.size == 1 && sourceTerms.isEmpty){
-//        val chunkInhaleNode = dependencyAnalyzer.getChunkNode(sourceChunks.head)
-//        return chunkInhaleNode.map(_.labelNode)
-//      }
       val (label, _) = fresh(ast.LocalVar(DependencyAnalyzer.analysisLabelName, ast.Bool)())
       val labelNode = dependencyAnalyzer.createLabelNode(label, sourceChunks, sourceTerms)
       val smtLabel = DependencyAnalyzer.createAssumptionLabel(labelNode.map(_.id))
@@ -496,7 +492,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         checkNode foreach dependencyAnalyzer.addAssertionNode
         dependencyAnalyzer.processUnsatCoreAndAddDependencies(prover.getLastUnsatCore, label)
         val infeasibleNodeId = dependencyAnalyzer.addInfeasibilityNode(!isAssert, analysisInfos)
-//        THIS WOULD BE UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
+//        Adding the following line would be UNSOUND! Unsoundness is introduced when infeasibility is introduced while executing a package statements and pontentially in other cases as well.
 //        assumeWithoutSmokeChecks(InsertionOrderedSet((False, DependencyAnalyzer.createAssumptionLabel(infeasibleNodeId))))
         dependencyAnalyzer.addDependency(checkNode.map(_.id), infeasibleNodeId)
         pcs.setCurrentInfeasibilityNode(infeasibleNodeId)
@@ -564,10 +560,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if(result) {
         assertNode foreach dependencyAnalyzer.addAssertionNode
       }
-//      }else if(!isCheck){
-//        // An assertion only truly fails once state.retryLevel == 0. Instead of here, we add AssertFailedNodes at the caller-side.
-//        assertNode foreach {node => dependencyAnalyzer.addAssertionNode(node.getAssertFailedNode())}
-//      }
 
       symbExLog.closeScope(sepIdentifier)
       (result, assertNode)

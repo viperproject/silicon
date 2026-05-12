@@ -6,15 +6,16 @@
 
 package viper.silicon
 
-import java.nio.file.{Files, Path, Paths}
-import scala.collection.immutable.ArraySeq
-import scala.util.matching.Regex
-import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.JoinMode.JoinMode
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
 import viper.silver.frontend.SilFrontendConfig
+
+import java.nio.file.{Files, Path, Paths}
+import scala.collection.immutable.ArraySeq
+import scala.util.Properties._
+import scala.util.matching.Regex
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   import Config._
@@ -729,18 +730,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
     descr = "Enables UNSAT cores",
-    default = Some(false),
-    noshort = true
-  )
-
-  val dependencyAnalysisPostProcessingMode: ScallopOption[Int] = opt[Int]("dependencyAnalysisPostProcessingMode",
-    descr = "Postprocessing mode: 0=default, 1=disable memory footprint optimizations, 2=disable joining of graphs and all of 1 (does not compute dependencies between methods), 3=disable transitive edges and all of 2 (UNSOUND)",
-    default = Some(0),
-    noshort = false
-  )
-
-  val enableDependencyAnalysisProfiling: ScallopOption[Boolean] = opt[Boolean]("enableDependencyAnalysisProfiling",
-    descr = "Measures runtime of different parts of the dependency analysis",
     default = Some(false),
     noshort = true
   )
