@@ -122,7 +122,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
         case Some(body) =>
           /*    locallyXXX {
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
-          &&*/  executionFlowController.locally(s, v)((s1, _) => {
+          &&*/  executionFlowController.locally(s, v, description = Some("predicate: body production"))((s1, _) => {
                   produce(s1, toSf(snap), body, err, v)((s2, v2) => {
                     // PredicateVerificationMetrics.incPath(predicate.name)
                     BenchmarkMetrics.incPaths(predicate.name)

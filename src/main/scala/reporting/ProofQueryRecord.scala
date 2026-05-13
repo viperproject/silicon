@@ -7,31 +7,35 @@
 package viper.silicon.reporting
 
 import viper.silver.ast
-import viper.silicon.interfaces.decider.ProofQueryKind
+import viper.silicon.interfaces.decider.{ProofQueryKind, QueryKind}
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._
 
 /**
- * One recorded SMT query (assert or check) with contextual information.
+ * One recorded solver interaction (assert, check, push, or pop) with contextual information.
  *
- * @param isAssert   true  = emitted from [[viper.silicon.decider.Decider#assert]],
- *                   false = emitted from [[viper.silicon.decider.Decider#check]] or
- *                           [[viper.silicon.decider.Decider#checkSmoke]].
+ * @param kind       Which solver interaction this is — assert, check, push, or pop. See [[QueryKind]].
+ *                   `assert` is emitted from [[viper.silicon.decider.Decider#assert]];
+ *                   `check` from [[viper.silicon.decider.Decider#check]] or
+ *                   [[viper.silicon.decider.Decider#checkSmoke]];
+ *                   `push`/`pop` from [[viper.silicon.decider.Decider#pushScope]] /
+ *                   [[viper.silicon.decider.Decider#popScope]].
  * @param member     Name of the program member (method/function/predicate/domain) whose
  *                   verification triggered this query, if known.
  * @param pos        Source position of the proof obligation.
- * @param kind       Category of the query (see [[ProofQueryKind]]).
+ * @param category   Category of the query (see [[ProofQueryKind]]) — e.g. PathInfeasibility for
+ *                   smoke checks, FunctionalCorrectness for user assertions, etc.
  * @param durationMs Wall-clock duration in milliseconds (includes prover call only, not
  *                   path-condition trivial-check short-circuit).
- * @param succeeded  Whether the query returned true / Unsat.
+ * @param succeeded  Whether the query returned true / Unsat. Always true for push/pop.
  * @param description Optional free-text description of the specific proof obligation,
  *                    populated on demand at call sites where extra clarity is useful.
  */
 case class ProofQueryRecord(
-  isAssert:    Boolean,
+  kind:        QueryKind,
   member:      Option[String],
   pos:         ast.Position,
-  kind:        ProofQueryKind,
+  category:    ProofQueryKind,
   durationMs:  Double,
   succeeded:   Boolean,
   description: Option[String] = None

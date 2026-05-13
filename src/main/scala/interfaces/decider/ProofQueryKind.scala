@@ -33,4 +33,8 @@ object ProofQueryKind {
   /** (f) Unknown: used when the purpose of the query does not clearly fall into any of the
    *  above categories, or has not yet been classified. */
   case object Unknown extends ProofQueryKind
+
+  /** (g) Scope-management operations: push and pop of the prover assertion stack
+   *  used to bound the scope of branch assumptions, contract checks, etc. */
+  case object ScopeManagement extends ProofQueryKind
 }

@@ -54,7 +54,7 @@ object joiner extends JoiningRules {
     val joiningRecord = new JoiningRecord(s, v.decider.pcs)
     val uidJoin = v.symbExLog.openScope(joiningRecord)
 
-    executionFlowController.locally(s, v)((s1, v1) => {
+    executionFlowController.locally(s, v, description = Some("join-point coordination"))((s1, v1) => {
       val preMark = v1.decider.setPathConditionMark()
       val s2 = s1.copy(underJoin = true)
 

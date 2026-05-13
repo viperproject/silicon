@@ -81,11 +81,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
-        executionFlowController.locally(s, v)((s1, v1) => {
+        executionFlowController.locally(s, v, description = Some("method: precondition production and body verification"))((s1, v1) => {
           produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
-            (  executionFlowController.locally(s2a, v2)((s3, v3) => {
+            (  executionFlowController.locally(s2a, v2, description = Some("method: postcondition well-formedness"))((s3, v3) => {
                   val s4 = s3.copy(h = v3.heapSupporter.getEmptyHeap(s3.program))
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = symbExLog.openScope(impLog)
@@ -93,7 +93,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
-               executionFlowController.locally(s2a, v2)((s3, v3) =>  {
+               executionFlowController.locally(s2a, v2, description = Some("method: body execution and postcondition check"))((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) => {
                     BenchmarkMetrics.incPaths(method.name)
                     consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
