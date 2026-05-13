@@ -20,7 +20,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 		val tests = userLevelNodes.toList map testUserLevelNode
 		val numExecutedTests = tests.count(_.isDefined)
 		val numPassedTests = tests.count(_.getOrElse(false))
-		println(s"Passed $numPassedTests/$numExecutedTests tests.")
+		println(s"Node type tests: Passed $numPassedTests/$numExecutedTests tests.")
 		assert(numPassedTests == numExecutedTests, s"Node type test failed. Only $numPassedTests/$numExecutedTests tests passed.")
 	}
 
@@ -62,7 +62,7 @@ class DependencyGraphTestSupporter(interpreter: DependencyGraphInterpreter[Final
 		val testResults = UserLevelDependencyAnalysisNode.from(interpreter.getNonInternalAssertionNodes).toList map testDependencies
 		val numExecutedTests = testResults.count(_.isDefined)
 		val numPassedTests = testResults.count(_.getOrElse(false))
-		println(s"Passed $numPassedTests/$numExecutedTests tests.")
+		println(s"Dependency tests: Passed $numPassedTests/$numExecutedTests tests.")
 		assert(numPassedTests == numExecutedTests, s"Dependency test failed. Only $numPassedTests/$numExecutedTests tests passed.")
 	}
 

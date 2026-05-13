@@ -835,9 +835,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   }
 
 	validateOpt(executeDependencyAnalysisTests, enableDependencyAnalysis) {
-		case (None, _) => Right(())
-		case (Some(_), Some(true)) => Right(())
-		case (Some(_), Some(false)) =>
+		case (Some(false), _) => Right(())
+		case (_, Some(true)) => Right(())
+		case (_, _) =>
 			Left(s"Option ${executeDependencyAnalysisTests.name} requires option ${enableDependencyAnalysis.name}")
 	}
 
