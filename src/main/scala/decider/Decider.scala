@@ -47,8 +47,8 @@ trait Decider {
 
   def debugVariableTypes: Map[String, PType]
 
-  def pushScope(): Unit
-  def popScope(): Unit
+  def pushScope(member: Option[String] = None, description: Option[String] = None): Unit
+  def popScope(member: Option[String] = None, description: Option[String] = None): Unit
 
   def checkSmoke(isAssert: Boolean = false,
                  pos: ast.Position = ast.NoPosition,
@@ -247,7 +247,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Assumption scope handling */
 
-    def pushScope(): Unit = {
+    def pushScope(member: Option[String] = None, description: Option[String] = None): Unit = {
       //val commentRecord = new CommentRecord("push", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
       pathConditions.pushScope()
@@ -257,16 +257,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (Verifier.config.recordProofQueries.isDefined)
         ProofQueryCollector.record(ProofQueryRecord(
           kind        = QueryKind.Push,
-          member      = None,
+          member      = member,
           pos         = ast.NoPosition,
-          category    = ProofQueryKind.Unknown,
+          category    = ProofQueryKind.ScopeManagement,
           durationMs  = durMs,
           succeeded   = true,
-          description = None))
+          description = description))
       //symbExLog.closeScope(sepIdentifier)
     }
 
-    def popScope(): Unit = {
+    def popScope(member: Option[String] = None, description: Option[String] = None): Unit = {
       //val commentRecord = new CommentRecord("pop", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
       val t0 = System.nanoTime()
@@ -276,12 +276,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       if (Verifier.config.recordProofQueries.isDefined)
         ProofQueryCollector.record(ProofQueryRecord(
           kind        = QueryKind.Pop,
-          member      = None,
+          member      = member,
           pos         = ast.NoPosition,
-          category    = ProofQueryKind.Unknown,
+          category    = ProofQueryKind.ScopeManagement,
           durationMs  = durMs,
           succeeded   = true,
-          description = None))
+          description = description))
       //symbExLog.closeScope(sepIdentifier)
     }
 

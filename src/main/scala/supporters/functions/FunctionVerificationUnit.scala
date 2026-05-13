@@ -229,7 +229,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val result = executionFlowController.locally(s, v)((s0, _) => {
+      val result = executionFlowController.locally(s, v, description = Some("function: precondition and postcondition production"))((s0, _) => {
         val preMark = decider.setPathConditionMark()
         produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
           val relevantPathConditionStack = decider.pcs.after(preMark)
@@ -264,7 +264,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, Phase1Data(sPre, bcsPre, bcsPreExp, pcsPre, pcsPreExp)) =>
-          intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
+          intermediateResult && executionFlowController.locally(sPre, v, description = Some("function: body evaluation and postcondition check"))((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre), (BigAnd(bcsPreExp.map(_._1)), Option.when(wExp)(BigAnd(bcsPreExp.map(_._2.get)))))
             decider.assume(pcsPre, Option.when(wExp)(DebugExp.createInstance(s"precondition of ${function.name}", pcsPreExp.get)), enforceAssumption = false)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
