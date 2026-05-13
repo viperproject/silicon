@@ -1,8 +1,7 @@
-package dependencyAnalysis.cliTool
+package viper.silicon.dependencyAnalysis.cliTool
 
-import dependencyAnalysis.UserLevelDependencyAnalysisNode
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, Final}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, Final, UserLevelDependencyAnalysisNode}
 
 trait AbstractDependencyAnalysisCliTool {
 	val interpreter: DependencyGraphInterpreter[Final]

@@ -170,7 +170,7 @@ trait DependencyAnalysisTestFramework {
         extractSourceLine(analysisNode.sourceInfo.getPosition) == pos &&
           assumptionType.forall(_.equals(analysisNode.assumptionType))
       })
-      Option.when(!nodeExists)(s"Missing analysis node:\n${node.toString}\n$pos")
+      Option.when(!nodeExists)(s"Missing analysis node or wrong assumption type at line $pos: ${node.toString.replaceAll("\n", " ")}")
     }
 
     protected def extractSourceLine(pos: ast.Position): Int = {
@@ -184,7 +184,7 @@ trait DependencyAnalysisTestFramework {
       val assumptionNodes = getTestAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes) ++ getTestIrrelevantAssumptionNodes(dependencyGraphInterpreter.getNonInternalAssumptionNodes)
       val assertionNodes = getTestAssertionNodes(dependencyGraphInterpreter.getNonInternalAssertionNodes)
       if (assumptionNodes.nonEmpty && assertionNodes.isEmpty)
-        Seq(s"Missing testAssertion for member: ${dependencyGraphInterpreter.getName}")
+        Seq(s"Missing testAssertion for ${dependencyGraphInterpreter.getName}")
       else
         Seq.empty
     }

@@ -1,6 +1,5 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
-import dependencyAnalysis.cliTool.{DependencyAnalysisCliCommand, DependencyAnalysisCliToolExtension}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
 import viper.silver.dependencyAnalysis.AnalysisSourceInfo

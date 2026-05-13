@@ -728,6 +728,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+	val executeDependencyAnalysisTests: ScallopOption[Boolean] = opt[Boolean]("executeDependencyAnalysisTests",
+		descr = "Automatically executes dependency analysis tests",
+		default = Some(false),
+		noshort = true
+	)
+
   val enableUnsatCores: ScallopOption[Boolean] = opt[Boolean]("enableUnsatCores",
     descr = "Enables UNSAT cores",
     default = Some(false),
@@ -827,6 +833,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case (Some(_), Some(false)) =>
       Left(s"Option ${dependencyAnalysisExportPath.name} requires option ${enableDependencyAnalysis.name}")
   }
+
+	validateOpt(executeDependencyAnalysisTests, enableDependencyAnalysis) {
+		case (None, _) => Right(())
+		case (Some(_), Some(true)) => Right(())
+		case (Some(_), Some(false)) =>
+			Left(s"Option ${executeDependencyAnalysisTests.name} requires option ${enableDependencyAnalysis.name}")
+	}
 
   validateOpt(startDependencyAnalysisTool, enableDependencyAnalysis) {
     case (Some(false), _) => Right(())

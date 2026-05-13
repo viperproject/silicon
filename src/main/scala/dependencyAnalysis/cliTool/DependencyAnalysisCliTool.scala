@@ -1,6 +1,5 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
-import dependencyAnalysis.cliTool.{AbstractDependencyAnalysisCliTool, DependencyAnalysisCliToolExtension}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.{DependencyAnalysisProgressSupporter, DependencyGraphInterpreter}
 import viper.silicon.interfaces.Failure
@@ -16,6 +15,7 @@ class DependencyAnalysisCliTool(fullGraphInterpreter: DependencyGraphInterpreter
 
 	val extensions: List[DependencyAnalysisCliToolExtension] = List(
 		new DebugDependencyAnalysisCliExtension(fullGraphInterpreter),
+		new TestDependencyAnalysisCliExtension(fullGraphInterpreter),
 		new BenchmarkDependencyAnalysisCliExtension(fullGraphInterpreter, program)
 	)
 

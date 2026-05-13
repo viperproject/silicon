@@ -13,6 +13,7 @@ import viper.silicon.debugger.SiliconDebugger
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.cliTool.DependencyAnalysisCliTool
+import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphTestSupporter
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
@@ -675,6 +676,12 @@ class DefaultMainVerifier(config: Config,
       val exportFileName = Verifier.config.computeVerificationProgressFileName()
       commandLineTool.handleVerificationProgressQuery(Seq.empty, Some(exportFileName))
     }
+
+		if (Verifier.config.executeDependencyAnalysisTests()) {
+			val testSupporter = new DependencyGraphTestSupporter(result.getFullDependencyGraphInterpreter)
+			testSupporter.testDependencies()
+			testSupporter.testNodeTypes()
+		}
 
     if (Verifier.config.startDependencyAnalysisTool()) {
       val commandLineTool = new DependencyAnalysisCliTool(result.getFullDependencyGraphInterpreter, dependencyGraphInterpreters, program, verificationErrors)

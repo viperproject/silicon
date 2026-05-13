@@ -1,6 +1,5 @@
 package viper.silicon.dependencyAnalysis.graphInterpretation
 
-import dependencyAnalysis.{CompactUserLevelDependencyAnalysisNode, UserLevelDependencyAnalysisNode}
 import viper.silicon.dependencyAnalysis._
 import viper.silicon.dependencyAnalysis.graphInterpretation.DATraversalMode.DATraversalMode
 import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType}

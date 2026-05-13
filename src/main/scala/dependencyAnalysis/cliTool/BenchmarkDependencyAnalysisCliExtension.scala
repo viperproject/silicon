@@ -1,9 +1,7 @@
 package viper.silicon.dependencyAnalysis.cliTool
 
-import dependencyAnalysis.UserLevelDependencyAnalysisNode
-import dependencyAnalysis.cliTool.{DependencyAnalysisCliCommand, DependencyAnalysisCliToolExtension}
 import viper.silicon.dependencyAnalysis.graphInterpretation.DependencyGraphInterpreter
-import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, Final}
+import viper.silicon.dependencyAnalysis.{DependencyAnalysisNode, Final, UserLevelDependencyAnalysisNode}
 import viper.silver.ast
 import viper.silver.ast.{AnnotationInfo, AnonymousDomainAxiom, Assume, Goto, If, Inhale, Label, LocalVarDeclStmt, MakeInfoPair, NamedDomainAxiom, Package, Seqn, While}
 

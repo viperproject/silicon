@@ -1,6 +1,5 @@
-package dependencyAnalysis
+package viper.silicon.dependencyAnalysis
 
-import viper.silicon.dependencyAnalysis._
 import viper.silicon.state.terms.{And, Term}
 import viper.silver.ast.Position
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
