@@ -118,7 +118,7 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
-        val injectivityDebugExp = Option.when(withExp)(DebugExp.createInstance("QP receiver injectivity check is well-defined", true))
+        val injectivityDebugExp = Option.when(debugOn)(DebugExp.createInstance("QP receiver injectivity check is well-defined", true))
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program), injectivityDebugExp)
         v.decider.assert(receiverInjectivityCheck) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1, receiverInjectivityCheck, "QP receiver injective")
@@ -133,7 +133,7 @@ object havocSupporter extends SymbolicExecutionRules {
               codomainQVars = codomainQVars,
               codomainQVarExps = codomainQVarsExp,
               additionalInvArgs = Seq(), // There are no additional quantified vars
-              additionalInvArgExps = Option.when(withExp)(Seq()),
+              additionalInvArgExps = Option.when(debugOn)(Seq()),
               stateQVars = Seq(),
               userProvidedTriggers = None,
               qidPrefix = qid,
@@ -141,7 +141,7 @@ object havocSupporter extends SymbolicExecutionRules {
             )
             val comment = "Definitional axioms for havocall inverse functions"
             v.decider.prover.comment(comment)
-            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(withExp)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
+            v.decider.assume(inverseFunctions.definitionalAxioms, Option.when(debugOn)(DebugExp.createInstance(comment, isInternal_ = true)), enforceAssumption = false)
 
             // Call the havoc helper function, which returns a new heap, which is
             // partially havocked. Since we are executing a Havocall statement, we wrap
@@ -165,6 +165,6 @@ object havocSupporter extends SymbolicExecutionRules {
 
   // Get the variables that we must quantify over for each resource type
   private def getCodomainQVars(s: State, eRsc: ast.Resource, v: Verifier): (Seq[Var], Option[Seq[ast.LocalVarDecl]]) = {
-    (s.getFormalArgVars(eRsc, v), Option.when(withExp)(s.getFormalArgDecls(eRsc)))
+    (s.getFormalArgVars(eRsc, v), Option.when(debugOn)(s.getFormalArgDecls(eRsc)))
   }
 }

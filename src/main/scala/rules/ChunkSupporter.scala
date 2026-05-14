@@ -91,7 +91,7 @@ object chunkSupporter extends ChunkSupportRules {
            * registered with the function recorder. However, since nothing was consumed,
            * returning the unit snapshot seems more appropriate.
            */
-          val fresh = v2.decider.fresh(sorts.Snap, Option.when(withExp)(PUnknown()))
+          val fresh = v2.decider.fresh(sorts.Snap, Option.when(debugOn)(PUnknown()))
           val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
           Q(s3, h2, Some(fresh), v2)
         case None => Q(s2, h2, None, v2)
@@ -164,7 +164,7 @@ object chunkSupporter extends ChunkSupportRules {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       val pathCond = interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties(s.mayAssumeUpperBounds))
-      pathCond.foreach(p => v.decider.assume(p._1, Option.when(withExp)(DebugExp.createInstance(p._2, p._2))))
+      pathCond.foreach(p => v.decider.assume(p._1, Option.when(debugOn)(DebugExp.createInstance(p._2, p._2))))
     }
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
@@ -191,7 +191,7 @@ object chunkSupporter extends ChunkSupportRules {
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             val constraintExp = permsExp.map(pe => ast.PermLtCmp(pe, ch.permExp.get)(pe.pos, pe.info, pe.errT))
-            v.decider.assume(PermLess(perms, ch.perm), Option.when(withExp)(DebugExp.createInstance(constraintExp, constraintExp)))
+            v.decider.assume(PermLess(perms, ch.perm), Option.when(debugOn)(DebugExp.createInstance(constraintExp, constraintExp)))
             val newPermExp = permsExp.map(pe => ast.PermSub(ch.permExp.get, pe)(pe.pos, pe.info, pe.errT))
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms), newPermExp)
             val takenChunk = ch.withPerm(perms, permsExp)
@@ -257,7 +257,7 @@ object chunkSupporter extends ChunkSupportRules {
         Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke(true) =>
         if (s.isInPackage) {
-          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(withExp)(PUnknown()))
+          val snap = v.decider.fresh(v.snapshotSupporter.optimalSnapshotSort(resource, s, v), Option.when(debugOn)(PUnknown()))
           Q(s, snap, v)
         } else {
           Success() // TODO: Mark branch as dead?

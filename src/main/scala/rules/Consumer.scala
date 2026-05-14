@@ -253,9 +253,9 @@ object consumer extends ConsumptionRules {
               val lossExp = ePermNew.map(p => ast.PermMul(p, s2.permissionScalingFactorExp.get)(p.pos, p.info, p.errT))
               val s3 = v2.heapSupporter.triggerResourceIfNeeded(s2, accPred.loc, tArgs, eArgsNew, v2)
               v2.heapSupporter.consumeSingle(s3, h, accPred.loc, tArgs, eArgsNew, loss, lossExp, returnSnap, pve, v2)((s4, h4, snap, v4) => {
-                val s5 = s4.copy(constrainableARPs = s.constrainableARPs,
+                val s4a = s4.copy(constrainableARPs = s.constrainableARPs,
                                  partiallyConsumedHeap = Some(h4))
-                Q(s5, h4, snap, v4)
+                Q(s4a, h4, snap, v4)
               })
             })))
 
@@ -277,7 +277,7 @@ object consumer extends ConsumptionRules {
           }
         val resource = resAcc.res(s.program)
         val tFormalArgs = s.getFormalArgVars(resource, v)
-        val eFormalArgs = Option.when(withExp)(s.getFormalArgDecls(resource))
+        val eFormalArgs = Option.when(debugOn)(s.getFormalArgDecls(resource))
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -311,10 +311,11 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(resAcc),
               insufficientPermissionReason = insuffReason,
               v1)((s2, h2, snap, v2) => {
-              val s3 = s2.copy(constrainableARPs = s.constrainableARPs, functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa))
-              Q(s3, h2, snap, v2)
+              val s2a = s2.copy(constrainableARPs = s.constrainableARPs, functionRecorder = s2.functionRecorder.leaveQuantifiedExp(qpa))
+              Q(s2a, h2, snap, v2)
             })
-          case (s1, _, _, _, _, None, v1) => Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
+          case (s1, _, _, _, _, None, v1) =>
+            Q(s1, h, if (returnSnap) Some(Unit) else None, v1)
         }
 
       case let: ast.Let if !let.isPure =>
@@ -364,8 +365,8 @@ object consumer extends ConsumptionRules {
           case Seq(entry1, entry2) => // Both branches are alive
             val mergedData = (
               State.mergeHeap(
-                entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
-                entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(withExp)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
+                entry1.data._1, And(entry1.pathConditions.branchConditions), Option.when(debugOn)(BigAnd(entry1.pathConditions.branchConditionExps.map(_._2.get))),
+                entry2.data._1, And(entry2.pathConditions.branchConditions), Option.when(debugOn)(BigAnd(entry2.pathConditions.branchConditionExps.map(_._2.get))),
               ),
               // Assume that entry1.pcs is inverse of entry2.pcs
               (entry1.data._2, entry2.data._2) match {
@@ -409,18 +410,18 @@ object consumer extends ConsumptionRules {
         val termToAssert = t match {
           case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
             val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
-            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Option.when(withExp)(e), eNew)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight), Option.when(debugOn)(e), eNew)
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
         v2.decider.assert(termToAssert) {
           case true =>
-            v2.decider.assume(t, Option.when(withExp)(e), eNew)
+            v2.decider.assume(t, Option.when(debugOn)(e), eNew)
             QS(s3, v2)
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3, termToAssert, eNew)
             if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
-              v2.decider.assume(t, Option.when(withExp)(e), eNew)
+              v2.decider.assume(t, Option.when(debugOn)(e), eNew)
               failure combine QS(s3, v2)
             } else failure}})
     })((s4, v4) => {

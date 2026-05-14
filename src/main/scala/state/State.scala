@@ -12,9 +12,9 @@ import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
 import viper.silicon.interfaces.state.GeneralChunk
-import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.State.{DebugOldHeaps, OldHeaps}
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.terms.predef.`?r`
@@ -33,6 +33,9 @@ final case class State(g: Store = Store(),
                        predicateData: Map[String, PredicateData],
                        functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
+                       debugOldHeaps: DebugOldHeaps = Map.empty,
+                       // (parentLabel, cause, oldPCS) if an operation might cause intermediate heaps
+                       intermediateHeapCause: Option[(String, HeapCause, PathConditionStack)] = None,
 
                        parallelizeBranches: Boolean = false,
 
@@ -132,6 +135,8 @@ final case class State(g: Store = Store(),
 
   val isLastRetry: Boolean = retryLevel == 0
 
+  val recordIntermediateHeaps: Boolean = intermediateHeapCause.isDefined
+
   def incCycleCounter(m: ast.Predicate) =
     if (recordVisited) copy(visited = m :: visited)
     else this
@@ -189,8 +194,21 @@ final case class State(g: Store = Store(),
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
 
+sealed trait HeapCause
+case class InhalePre() extends HeapCause
+case class ExhalePost() extends HeapCause
+case class ExecStmt(stmt: ast.Stmt) extends HeapCause
+case class EvalExp(exp: ast.Exp) extends HeapCause
+
+case class DebugHeap(heap: Heap,
+                     parentLabel: String,
+                     cause: HeapCause,
+                     intermediateCause: Option[ast.Exp],
+                     branchConds: Seq[(ast.Exp, Term)])
+
 object State {
   type OldHeaps = Map[String, Heap]
+  type DebugOldHeaps = Map[String, DebugHeap]
   val OldHeaps = Map
 
   def merge(s1: State, s2: State): State = {
@@ -200,6 +218,8 @@ object State {
                  predicateData,
                  functionData,
                  oldHeaps1,
+                 debugOldHeaps1,
+                 recordIntermediateHeaps,
                  parallelizeBranches1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
@@ -225,6 +245,8 @@ object State {
                      `program`, `member`,
                      `predicateData`, `functionData`,
                      oldHeaps2,
+                     debugOldHeaps2,
+                     `recordIntermediateHeaps`,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
@@ -245,6 +267,7 @@ object State {
                      moreCompleteExhale2, `moreJoins`) =>
 
             val oldHeaps3 = oldHeaps1 ++ oldHeaps2
+            val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -263,6 +286,7 @@ object State {
               .map({ case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct })
 
             s1.copy(oldHeaps = oldHeaps3,
+                    debugOldHeaps = debugOldHeaps3,
                     functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
@@ -358,6 +382,8 @@ object State {
       case State(g1, h1, program, member,
       predicateData, functionData,
       oldHeaps1,
+      debugOldHeaps1,
+      recordIntermediateHeaps,
       parallelizeBranches1,
       recordVisited1, visited1,
       methodCfg1, invariantContexts1,
@@ -382,6 +408,8 @@ object State {
           case State(g2, h2, `program`, `member`,
           `predicateData`, `functionData`,
           oldHeaps2,
+          debugOldHeaps2,
+          `recordIntermediateHeaps`,
           `parallelizeBranches1`,
           `recordVisited1`, `visited1`,
           `methodCfg1`, invariantContexts2,
@@ -453,6 +481,8 @@ object State {
               Some(mergeHeap(heap1, cond1._1, cond1._2, heap2, cond2._1, cond2._2))
             }))
 
+            val debugOldHeaps3 = debugOldHeaps1 ++ debugOldHeaps2
+
             assert(invariantContexts1.length == invariantContexts2.length)
             val invariantContexts3 = invariantContexts1
               .zip(invariantContexts2)
@@ -483,6 +513,7 @@ object State {
                              g = g3,
                              h = h3,
                              oldHeaps = oldHeaps3,
+                             debugOldHeaps = debugOldHeaps3,
                              partiallyConsumedHeap = partiallyConsumedHeap3,
                              smDomainNeeded = smDomainNeeded3,
                              invariantContexts = invariantContexts3,
