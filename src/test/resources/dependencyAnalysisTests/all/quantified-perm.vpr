@@ -4,42 +4,21 @@ field second : Ref
 
 
 
-method quantifiedWritePerm(nodes: Set[Ref], x: Ref)
-  requires @irrelevant("Precondition")(forall n:Ref :: { n.first } n in nodes ==>
-    acc(n.first) && 
-    (n.first != null ==> n.first in nodes))
-  requires @dependency("Precondition")(forall n:Ref :: { n.second } n in nodes ==>
-    acc(n.second) && 
-    (n.second != null ==> n.second in nodes))
-  requires @dependency("Precondition")(x in nodes)
-{
-  var y : Ref
-  if(@dependency("PathCondition")(x.second != null)) {
-    @dependency("SourceCode")
-    y := x.second // permissions covered by preconditions
-    @dependency("SourceCode")
-    y.second := y
-    @testAssertion("Explicit")
-    assert x.second.second == x.second
-  }
-}
-
 method quantifiedSum(nodes: Set[Ref], x: Ref)
-  requires @dependency("Precondition")(forall n:Ref :: { n.first } n in nodes ==>
-    acc(n.first) && 
+  requires @dependencyInfo("assumptionType:Precondition, label:L15")(forall n:Ref :: { n.first } n in nodes ==>
+    acc(n.first) &&
     (n.first != null ==> n.first in nodes))
-  requires @dependency("Precondition")(forall n:Ref :: { n.f } n in nodes ==>
+  requires @dependencyInfo("assumptionType:Precondition, label:L18")(forall n:Ref :: { n.f } n in nodes ==>
     acc(n.f) && 0 <= n.f && n.f <= 100)
-  requires @dependency("Precondition")(x in nodes)
+  requires @dependencyInfo("assumptionType:Precondition, label:L20")((x in nodes))
 {
   var a: Int
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L21")
   a := x.f
-  if(@dependency("PathCondition")(x.first != null)) {
-    @dependency("SourceCode")
+  if(@dependencyInfo("assumptionType:PathCondition, label:L22")((x.first != null))) {
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L23, expectedDependencies:[L20,L15,L18,L22]")
     a := a + x.first.f
   }
-  @testAssertion("Explicit")
+  @dependencyInfo("assertionType:Explicit, label:L24, expectedDependencies:[L21,L23,L20,L15,L18,L22]")
   assert a >= 0
 }
-

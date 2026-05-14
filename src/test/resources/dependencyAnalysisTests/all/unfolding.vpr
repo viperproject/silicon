@@ -6,12 +6,15 @@ predicate pred(x: Ref)
 }
 
  method foo(x: Ref) returns(res: Int)
-   requires  pred(x)
-   ensures  pred(x)
-   ensures res > 0
+   requires  @dependencyInfo("assumptionType:Precondition, label:L3, expectedDependencies:[L9,L10,L11]")((pred(x)))
+   ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L4, expectedDependencies:[L9,L10,L11,L3,L6,L8]")((pred(x)))
+   ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L5, expectedDependencies:[L9,L10,L11,L3,L6,L7]")((res > 0))
   {
+   @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L6, expectedDependencies:[L9,L10,L11,L3]")
    unfold  pred(x)
+   @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L7, expectedDependencies:[L9,L10,L11,L3,L6]")
    res := x.f
+   @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L8, expectedDependencies:[L9,L10,L11,L3,L6]")
    fold  pred(x)
   }
 
@@ -19,42 +22,20 @@ predicate pred(x: Ref)
 method client1(x: Ref)
 {
   var b: Int
-  @dependency("Explicit")
-  inhale acc(x.f)
-  @dependency("Explicit")
-  inhale x.f > 0
-  @dependency("Rewrite")
+  inhale @dependencyInfo("assumptionType:Explicit, label:L9")((acc(x.f)))
+  inhale @dependencyInfo("assumptionType:Explicit, assertionType:Implicit, label:L10, expectedDependencies:[L9]")((x.f > 0))
+  @dependencyInfo("assumptionType:Rewrite, assertionType:Rewrite, label:L11, expectedDependencies:[L9,L10]")
   fold pred(x)
 
-  @dependency("MethodCall")
+  @dependencyInfo("assumptionType:MethodCall, label:L12, expectedDependencies:[L9,L10,L11]")
   b := foo(x)
 
-  @irrelevant("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L13, expectedDependencies:[L9,L10,L11,L3,L6,L8,L12]")
   b := unfolding pred(x) in x.f
 
-  @irrelevant()
+  @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L9,L10,L11,L3,L6,L8,L12,L13]")
   assert b > 0
 
-  @testAssertion("Explicit")
+  @dependencyInfo("assertionType:Explicit, label:L15, expectedDependencies:[L9,L10,L11,L3,L6,L8,L12]")
   exhale pred(x)
  }
-
- method client2(x: Ref)
- {
-   var b: Int
-   @dependency("Explicit")
-   inhale acc(x.f)
-   @dependency("Explicit")
-   inhale x.f > 0
-   @dependency("Rewrite")
-   fold pred(x)
-
-   @dependency("SourceCode")
-   b := foo(x)
-
-   @dependency("SourceCode")
-   b := unfolding pred(x) in x.f
-
-   @testAssertion("Explicit")
-   assert b > 0
-  }

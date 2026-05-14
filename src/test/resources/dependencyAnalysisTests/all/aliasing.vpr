@@ -2,67 +2,47 @@ field f: Int
 
 
 method maybeAlias(a: Ref, b: Ref, c: Bool, n: Int)
-    requires @dependency("Precondition")(acc(a.f, 1/2))
-    requires @dependency("Precondition")(acc(b.f, 1/2))
-    requires @dependency("Precondition")(c ==> a == b)
-    requires @irrelevant("Precondition")(a.f > 0 && n > 0 && b.f >= 0)
-    requires @irrelevant("Precondition")(a.f < 100)
-    requires @irrelevant("Precondition")(!c ==> a.f < b.f)
+    requires @dependencyInfo("assumptionType:Precondition, label:L2")((acc(a.f, 1/2)))
+    requires @dependencyInfo("assumptionType:Precondition, label:L3")((acc(b.f, 1/2)))
+    requires @dependencyInfo("assumptionType:Precondition, label:L4")((c ==> a == b))
+    requires @dependencyInfo("assumptionType:Precondition, label:L5")((a.f > 0 && n > 0 && b.f >= 0))
+    requires @dependencyInfo("assumptionType:Precondition, label:L6")((a.f < 100))
+    requires @dependencyInfo("assumptionType:Precondition, label:L7")((!c ==> a.f < b.f))
 {
-    if(@dependency("PathCondition")(c)){
-        @testAssertion("Implicit")
+    if(@dependencyInfo("assumptionType:PathCondition, label:L8")(c)){
+        @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L9, expectedDependencies:[L2,L3,L4,L8]")
         a.f := n + 1
     }
 }
 
 method aliasing1(x: Ref, n: Int)
-  requires @dependency("Precondition")(acc(x.f))
-  requires @irrelevant("Precondition")(n > 0)
-  requires @irrelevant("Precondition")(x.f > n)
+  requires @dependencyInfo("assumptionType:Precondition, label:L10")((acc(x.f)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L11")((n > 0))
+  requires @dependencyInfo("assumptionType:Precondition, label:L12")((x.f > n))
 {
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L13")
   x.f := n + 1
 
   var y: Ref
-  @dependency("SourceCode")
+
+  @dependencyInfo("assumptionType:SourceCode, label:L14")
   y := x
 
-  @testAssertion("Explicit")
+  @dependencyInfo("assertionType:Explicit, label:L15, expectedDependencies:[L10,L13,L14]")
   assert y.f > n
 }
 
 
 method aliasing2(x: Ref, y: Ref, n: Int)
-  requires @dependency("Precondition")(acc(x.f, 1/2))
-  requires @dependency("Precondition")(acc(y.f, 1/2))
-  requires @irrelevant("Precondition")(n > 0)
-  requires @irrelevant("Precondition")(x.f > n)
+  requires @dependencyInfo("assumptionType:Precondition, label:L16")((acc(x.f, 1/2)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L17")((acc(y.f, 1/2)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L18")((n > 0))
+  requires @dependencyInfo("assumptionType:Precondition, label:L19")((x.f > n))
 {
-  if(@dependency("PathCondition")(x == y)){
-    @testAssertion("Implicit")
+  if(@dependencyInfo("assumptionType:PathCondition, label:L20")((x == y))){
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L21, expectedDependencies:[L16,L17,L20]")
     x.f := n + 1
   }
-}
-
-method alias1(a: Ref, b: Ref, c: Ref)
-    requires @dependency("Precondition")(acc(a.f))
-    requires  @irrelevant("Explicit")(acc(b.f))
-{
-    var x: Int
-    if (@dependency("PathCondition")(c == a)) {
-        @dependency("SourceCode")
-        x := c.f
-    }
-    if(@dependency("PathCondition")(c == b)) {
-        @irrelevant("SourceCode")
-        x := c.f
-    }
-
-    @dependency("Explicit")
-    assume a == c
-
-    @testAssertion("Explicit")
-    assert x == a.f
 }
 
 

@@ -1,12 +1,13 @@
 field f: Int
 
 method sum(x: Int, y: Int) returns(res: Int)
-  requires x >= 0
-  requires y >= 0
-  ensures res == x + y
-  ensures res > 100
+  requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L15]")(x >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L3, expectedDependencies:[L15,L17]")(y >= 0)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L4, expectedDependencies:[L7]")(res == x + y)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L5, expectedDependencies:[L6,L3,L7,L15,L17]")(res > 100)
 {
- assume x > 100
+ assume @dependencyInfo("assumptionType:Explicit, label:L6")(x > 100)
+ @dependencyInfo("assumptionType:SourceCode, label:L7")
  res := x + y
 }
 
@@ -14,9 +15,8 @@ method divBy0()
 {
     var x: Int
     var y: Int
-    @dependency("Explicit")
-    assume y > 0
-    @testAssertion("Implicit")
+    assume @dependencyInfo("assumptionType:Explicit, label:L8")(y > 0)
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L9, expectedDependencies:[L8]")
     x := x/y
 }
 
@@ -24,42 +24,35 @@ method basic()
 {
     var x: Int
     var y: Int
-    @irrelevant("Explicit")
-    assume x > 0
-    @dependency("Explicit")
-    assume y > 0
-    @dependency("Explicit")
-    assume y < x
-    @dependency("SourceCode")
+    assume @dependencyInfo("assumptionType:Explicit, label:L10")(x > 0)
+    assume @dependencyInfo("assumptionType:Explicit, label:L11")(y > 0)
+    assume @dependencyInfo("assumptionType:Explicit, label:L12")(y < x)
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L13")
     x := x/y
-    @testAssertion("Explicit")
+    @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L11,L12,L13]")
     assert x >= 1
 }
 
 
 method sumClient(x: Int, y: Int)
 {
-  @dependency("Explicit")
-  assume x >= 0
-  @dependency("Explicit")
-  assume y >= 0
-  @dependency("Explicit")
-  assume x < y
+  assume @dependencyInfo("assumptionType:Explicit, label:L15")(x >= 0)
+  assume @dependencyInfo("assumptionType:Explicit, label:L17")(x < y)
   var n: Int
-  @dependency("MethodCall")
+  @dependencyInfo("assumptionType:MethodCall,assertionType:MethodCall, label:L18, expectedDependencies:[L15,L17]")
   n := sum(x, y)
 
   // the following stmt reports dependency on n := sum(x, y) because (x < y && n == x + y && n > 100 ==> y != 0)
   // although you could also prove it via (0 <= x && x < y ==> y != 0)
   var n2: Int
   var arg1: Int
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode,assertionType:SourceCode, label:L19, expectedDependencies:[L15,L17]")
   arg1 := x/y
-  @dependency("MethodCall")
+  @dependencyInfo("assumptionType:MethodCall,assertionType:MethodCall, label:L20, expectedDependencies:[L15,L17,L19]")
   n2 := sum(arg1, y)
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, label:L21")
   n := n + n2
 
-  @testAssertion("Explicit")
+  @dependencyInfo("assertionType:Explicit, label:L22, expectedDependencies:[L15,L17,L18,L19,L20,L21,L4,L7]")
   assert n >= x + 2*y
 }

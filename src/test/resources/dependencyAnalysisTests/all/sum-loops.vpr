@@ -1,76 +1,48 @@
 field f: Int
 
 method sum(n: Int) returns (res: Int)
-  requires @dependency("Precondition")(0 <= n)
-  ensures  res == n * (n + 1) / 2
+  requires @dependencyInfo("assumptionType:Precondition, label:L2")((0 <= n))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L3, expectedDependencies:[L6,L8,L4,L5,L7,L9,L10]")(res == n * (n + 1) / 2)
 {
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, label:L4")
   res := 0
   var i: Int
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, label:L5")
   i := 0;
-  while(@dependency("PathCondition")(i <= n))
-    invariant @dependency("LoopInvariant")(i <= (n + 1))
-    invariant @dependency("LoopInvariant")(res == (i - 1) * i / 2)
+  while(@dependencyInfo("assumptionType:PathCondition, label:L6")((i <= n)))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L7, expectedDependencies:[L2,L5,L6,L10]")((i <= (n + 1)))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L8, expectedDependencies:[L4,L5,L9,L10]")((res == (i - 1) * i / 2))
   {
-    @dependency("SourceCode")
+    @dependencyInfo("assumptionType:SourceCode, label:L9")
     res := res + i
-    @dependency("SourceCode")
+    @dependencyInfo("assumptionType:SourceCode, label:L10")
     i := i + 1
   }
 
-  @testAssertion("Explicit")
+  @dependencyInfo("assertionType:Explicit, label:L11, expectedDependencies:[L6,L8,L4,L5,L9,L10]")
   assert res == n * (n + 1) / 2
 }
 
 
 method sumPerm1(n: Int, res: Ref)
-  requires @dependency("Precondition")(acc(res.f))
-  requires @dependency("Precondition")(0 <= n)
-  ensures acc(res.f)
-  ensures  res.f == n * (n + 1) / 2
+  requires @dependencyInfo("assumptionType:Precondition, label:L12")((acc(res.f)))
+  requires @dependencyInfo("assumptionType:Precondition, label:L13")((0 <= n))
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L14, expectedDependencies:[L12,L19]")(acc(res.f))
+  ensures  @dependencyInfo("assertionType:ImplicitPostcondition, label:L15, expectedDependencies:[L12,L19,L16,L17,L22,L23,L18,L20,L21]")(res.f == n * (n + 1) / 2)
 {
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L16, expectedDependencies:[L12]")
   res.f := 0
   var i: Int
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, label:L17")
   i := 0
-  while(@dependency("PathCondition")(i <= n))
-    invariant @dependency("LoopInvariant")(acc(res.f))
-    invariant @dependency("LoopInvariant")(i <= (n + 1))
-    invariant @dependency("LoopInvariant")(res.f == (i - 1) * i / 2)
+  while(@dependencyInfo("assumptionType:PathCondition, label:L18")((i <= n)))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L19, expectedDependencies:[L12]")((acc(res.f)))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L20, expectedDependencies:[L13,L17,L18,L23]")((i <= (n + 1)))
+    invariant @dependencyInfo("assumptionType:LoopInvariant, assertionType:LoopInvariant, label:L21, expectedDependencies:[L12,L19,L16,L17,L22,L23]")((res.f == (i - 1) * i / 2))
   {
-    @dependency("SourceCode")
+    @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L22, expectedDependencies:[L12]")
     res.f := res.f + i
-    @dependency("SourceCode")
+    @dependencyInfo("assumptionType:SourceCode, label:L23")
     i := i + 1
   }
-
-  @testAssertion("Explicit")
-  assert res.f == n * (n + 1) / 2
-}
-
-method sumPerm2(n: Int, res: Ref)
-  requires @dependency("Precondition")(acc(res.f))
-  requires @irrelevant("Precondition")(0 <= n)
-  ensures acc(res.f)
-{
-  @irrelevant("SourceCode")
-  res.f := 0
-  var i: Int
-  @irrelevant("SourceCode")
-  i := 0;
-  while(@irrelevant("PathCondition")(i <= n))
-    invariant @dependency("LoopInvariant")(acc(res.f))
-    invariant @irrelevant("LoopInvariant")(i <= (n + 1))
-    invariant @irrelevant("LoopInvariant")(res.f == (i - 1) * i / 2)
-  {
-    @irrelevant("SourceCode")
-    res.f := res.f + i
-    @irrelevant("SourceCode")
-    i := i + 1
-  }
-
-  @testAssertion("Implicit") // only check permission flow
-  res.f := 5
 }

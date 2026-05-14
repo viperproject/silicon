@@ -1,48 +1,31 @@
 
 method sequenceUpdate(xs: Seq[Int], ys: Seq[Int]) returns (res: Seq[Int])
-  requires @dependency("Precondition")(|xs| > 5)
-  requires @irrelevant("Precondition")(|ys| > 3)
+  requires @dependencyInfo("assumptionType:Precondition, label:L1")((|xs| > 5))
+  requires @dependencyInfo("assumptionType:Precondition, label:L2")((|ys| > 3))
 {
-  @irrelevant("Explicit")
-  inhale forall x: Int :: x in xs ==> x > 0
-  @irrelevant("Explicit")
-  inhale forall y: Int :: y in ys ==> y >= 0
+  inhale @dependencyInfo("assumptionType:Explicit, label:L3")(forall x: Int :: x in xs ==> x > 0)
+  inhale @dependencyInfo("assumptionType:Explicit, label:L4")(forall y: Int :: y in ys ==> y >= 0)
 
-  @dependency("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, assertionType:SourceCode, label:L5, expectedDependencies:[L1]")
   res := xs[0 := 1]
 
-  @testAssertion("Explicit")
+  @dependencyInfo("assertionType:Explicit, label:L6, expectedDependencies:[L5,L1]")
   assert res[0] == 1
-}
 
-method sequence1(xs: Seq[Int], ys: Seq[Int]) returns (res: Seq[Int])
-  requires @dependency("Precondition")(|xs| > 5)
-  requires @irrelevant("Precondition")(|ys| > 3)
-{
-  @dependency("Explicit")
-  inhale forall x: Int :: x in xs ==> x > 0
-  @irrelevant("Explicit")
-  inhale forall y: Int :: y in ys ==> y >= 0
-
-  @dependency("SourceCode")
-  res := xs[0 := 1]
-
-  @testAssertion("Explicit")
+  @dependencyInfo("assertionType:Explicit, label:L12, expectedDependencies:[L5,L1,L3]")
   assert forall x: Int :: x in res ==> x > 0
 }
 
 method sequence2(xs: Seq[Int], ys: Seq[Int]) returns (res: Seq[Int])
-  requires @irrelevant("Precondition")(|xs| > 5)
-  requires @irrelevant("Precondition")(|ys| > 3)
+  requires @dependencyInfo("assumptionType:Precondition, label:L13")((|xs| > 5))
+  requires @dependencyInfo("assumptionType:Precondition, label:L14")((|ys| > 3))
 {
-  @irrelevant("Explicit")
-  inhale forall x: Int :: x in xs ==> x > 0
-  @dependency("Explicit")
-  inhale forall y: Int :: y in ys ==> y >= 0
+  inhale @dependencyInfo("assumptionType:Explicit, label:L15")(forall x: Int :: x in xs ==> x > 0)
+  inhale @dependencyInfo("assumptionType:Explicit, label:L16")(forall y: Int :: y in ys ==> y >= 0)
 
-  @irrelevant("SourceCode")
+  @dependencyInfo("assumptionType:SourceCode, label:L17")
   res := xs[0 := 1]
 
-  @testAssertion("Explicit")
+  @dependencyInfo("assertionType:Explicit, label:L18, expectedDependencies:[L16]")
   assert forall y: Int :: y in ys ==> y >= 0
 }

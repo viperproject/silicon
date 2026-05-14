@@ -1,49 +1,52 @@
 field f: Int
 
 function sum(x: Int, y: Int) : Int
-  requires x >= 0
-  requires y >= 0
-  ensures result == x + y
-  ensures result >= 0
+  requires @dependencyInfo("assumptionType:Precondition, label:L2, expectedDependencies:[L11,L19]")(x >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L3, expectedDependencies:[L12,L20]")(y >= 0)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L4, expectedDependencies:[L6]")(result == x + y)
+  ensures @dependencyInfo("assertionType:ImplicitPostcondition, label:L5, expectedDependencies:[L6,L2,L3,L11,L12,L19,L20]")(result >= 0)
 {
- x + y
+ @dependencyInfo("assumptionType:FunctionBody, label:L6")(x + y)
 }
 
 function sumUnverified(x: Int, y: Int): Int
-  requires x >= 0
-  requires y >= 0
-  ensures result == x + y
-  ensures result >= 0
+  requires @dependencyInfo("assumptionType:Precondition, label:L7, expectedDependencies:[L15,L19]")(x >= 0)
+  requires @dependencyInfo("assumptionType:Precondition, label:L8, expectedDependencies:[L16,L20]")(y >= 0)
+  ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L9, expectedDependencies:[L7,L8,L15,L16,L19,L20]")(result == x + y)
+  ensures @dependencyInfo("assertionType:ExplicitPostcondition, label:L10, expectedDependencies:[L7,L8,L15,L16,L19,L20]")(result >= 0)
 
 method call2(){
     var x: Int, y: Int, z: Int
-    @dependency("Explicit")
-    assume x > 10
-    @dependency("Explicit")
-    assume y > 0
+    assume @dependencyInfo("assumptionType:Explicit, label:L11")(x > 10)
+    assume @dependencyInfo("assumptionType:Explicit, label:L12")(y > 0)
 
-    @dependency("SourceCode")
+    @dependencyInfo("assumptionType:SourceCode, label:L13, expectedDependencies:[L11,L12]")
     z := sum(x, y)
 
-    // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
-
-    @testAssertion("Explicit")
+    @dependencyInfo("assertionType:Explicit, label:L14, expectedDependencies:[L11,L12,L13,L6]")
     assert z == x + y
 }
 
 method call2Unv(){
     var x: Int, y: Int, z: Int
-    @dependency("Explicit")
-    assume x > 10
-    @dependency("Explicit")
-    assume y > 0
+    assume @dependencyInfo("assumptionType:Explicit, label:L15")(x > 10)
+    assume @dependencyInfo("assumptionType:Explicit, label:L16")(y > 0)
 
-    @dependency("SourceCode")
+    @dependencyInfo("assumptionType:SourceCode, label:L17, expectedDependencies:[L15,L16]")
     z := sumUnverified(x, y)
 
-    // $PrecisionTest: $READ_ONLY=x,y,z $INVARIANT=x>0
-
-    @testAssertion("Explicit")
+    @dependencyInfo("assertionType:Explicit, label:L18, expectedDependencies:[L15,L16,L17,L7,L8,L9]")
     assert z == x + y
 }
 
+method client2() {
+    var x: Int, y: Int, z: Int
+    assume @dependencyInfo("assumptionType:Explicit, label:L19")(x > 10)
+    assume @dependencyInfo("assumptionType:Explicit, label:L20")(y > 0)
+
+    @dependencyInfo("assumptionType:SourceCode, label:L21, expectedDependencies:[L19,L20]")
+    z := sum(x, y) + sumUnverified(x+x, y) + 4
+
+    @dependencyInfo("assertionType:Explicit, label:L22, expectedDependencies:[L19,L20,L21,L6,L7,L8,L9]")
+    assert z == 3*x + 2*y + 4
+}
