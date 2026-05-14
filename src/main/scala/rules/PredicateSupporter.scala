@@ -92,10 +92,7 @@ object predicateSupporter extends PredicateSupportRules {
 
       v1.heapSupporter.produceSingle(s2, predicate, tArgs, eArgs, snap.get.convert(s2.predicateSnapMap(predicate.name)), None, tPerm, ePerm, pve, true, v1)((s3, v3) => {
         val s4 = v3.heapSupporter.triggerResourceIfNeeded(s3, pa, tArgs, eArgs, v3)
-        val s4a = if (debugOn && s.recordIntermediateHeaps)
-          v3.recordDebugHeap(s4, oldHeap, s.intermediateHeapCause.get, pa, oldPCS)
-        else s4
-        Q(s4a, v3)
+        Q(s4, v3)
       })
     })
   }
@@ -209,12 +206,9 @@ object predicateSupporter extends PredicateSupportRules {
     v.heapSupporter.consumeSingle(s1, s1.h, pa, tArgs, eArgs, tPerm, ePerm, true, pve, v)((s2, h2, snap, v1) => {
       val s3 = s2.copy(g = gIns, h = h2)
         .setConstrainable(constrainableWildcards, false)
-      val s3a = if (debugOn && s.recordIntermediateHeaps)
-        v1.recordDebugHeap(s3, oldHeap, s.intermediateHeapCause.get, pa, oldPCS)
-      else s3
-      if (s3a.predicateData(predicate.name).predContents.isDefined) {
-        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3a.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
-        producePredicateContents(s3a, s3a.predicateData(predicate.name).predContents.get, toReplace, v1, false)((s4, v4) => {
+      if (s3.predicateData(predicate.name).predContents.isDefined) {
+        val toReplace: silicon.Map[Term, Term] = silicon.Map.from(s3.predicateData(predicate.name).params.get.zip(Seq(snap.get) ++ tArgs))
+        producePredicateContents(s3, s3.predicateData(predicate.name).predContents.get, toReplace, v1, false)((s4, v4) => {
           v4.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
@@ -229,7 +223,7 @@ object predicateSupporter extends PredicateSupportRules {
             v4)
         })
       } else {
-        produce(s3a, toSf(snap.get), body, pve, v1)((s4, v2) => {
+        produce(s3, toSf(snap.get), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =

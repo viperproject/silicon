@@ -206,12 +206,17 @@ object evaluator extends EvaluationRules {
 
           val ve = pve dueTo InsufficientPermission(fa)
           v.heapSupporter.evalFieldAccess(s1, fa, tRcvr, eRcvr, ve, v1)((s2, snap, v2) => {
-            val (_, debugLabel) = v1.getDebugOldLabel(s2, fa.pos, Some(magicWandSupporter.getEvalHeap(s2)))
+            val s2a = if (debugOn && s.recordIntermediateHeaps) {
+              val withHeap = v2.recordDebugHeap(s2, s.intermediateHeapCause.get._1, s.intermediateHeapCause.get._2, fa, oldPCS)
+              val newInterCause = (v2.getDebugHeapLabel(withHeap), s.intermediateHeapCause.get._2, v2.decider.pcs.duplicate())
+              withHeap.copy(intermediateHeapCause = Some(newInterCause))
+            } else s2
+            val (_, debugLabel) = v2.getDebugOldLabel(s2a, fa.pos, Some(magicWandSupporter.getEvalHeap(s2a)))
             val newFa = Option.when(debugOn)({
               if (s1.isEvalInOld) ast.FieldAccess(eRcvr.get, fa.field)(fa.pos, fa.info, fa.errT)
               else ast.DebugLabelledOld(ast.FieldAccess(eRcvr.get, fa.field)(), debugLabel)(fa.pos, fa.info, fa.errT)
             })
-            Q(s2, snap, newFa, v2)
+            Q(s2a, snap, newFa, v2)
           })
         })
 
@@ -570,16 +575,20 @@ object evaluator extends EvaluationRules {
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, eArgsNew, v1) => {
+          val s1a = if (debugOn && s.recordIntermediateHeaps) {
+            val withHeap = v1.recordDebugHeap(s1, s.intermediateHeapCause.get._1, s.intermediateHeapCause.get._2, fapp, oldPCS)
+            val newInterCause = (v1.getDebugHeapLabel(withHeap), s.intermediateHeapCause.get._2, v1.decider.pcs.duplicate())
+            withHeap.copy(intermediateHeapCause = Some(newInterCause))
+          } else s1
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
-          val (debugHeapName, debugLabel) = v1.getDebugOldLabel(s1, fapp.pos)
+          val (_, debugLabel) = v1.getDebugOldLabel(s1a, fapp.pos)
 
           val funcAppNew = eArgsNew.map(args => ast.FuncApp(funcName, args)(fapp.pos, fapp.info, fapp.typ, fapp.errT))
           val joinExp = Option.when(debugOn)({
-            if (s1.isEvalInOld || func.pres.forall(_.isPure)) funcAppNew.get
+            if (s1a.isEvalInOld || func.pres.forall(_.isPure)) funcAppNew.get
             else ast.DebugLabelledOld(funcAppNew.get, debugLabel)(fapp.pos, fapp.info, fapp.errT)
           })
-
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
            *       in an expression that is used as a function argument?
@@ -590,7 +599,7 @@ object evaluator extends EvaluationRules {
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1, v1)((s2, v2, QB) => {
+          joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s1a, v1)((s2, v2, QB) => {
             val pres = func.pres.map(_.transform {
               /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
                * for Carbon issue #210, fail if the subsequent code that strips out triggers from
@@ -696,8 +705,8 @@ object evaluator extends EvaluationRules {
           v.decider.startDebugSubExp()
           evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
             eval(s1, ePerm.getOrElse(ast.FullPerm()()), pve, v1)((s2, tPerm, ePermNew, v2) => {
-              val (_, debugLabel) = v1.getDebugOldLabel(s2, uf.pos)
-              val s2a = if (debugOn) s2.copy(intermediateHeapCause = Some(Right(uf))) else s2
+              val (debugHeapLabel, debugLabel) = v1.getDebugOldLabel(s2, uf.pos)
+              val s2a = if (debugOn) s2.copy(intermediateHeapCause = Some(debugHeapLabel, EvalExp(uf), oldPCS)) else s2
 
               val unfoldingNew = eArgsNew.map(args => uf.copy(acc = acc.copy(loc = pa.copy(args = args)(pa.pos, pa.info, pa.errT),
                 permExp = Some(ePermNew.get))(acc.pos, acc.info, acc.errT))(uf.pos, uf.info, uf.errT))
@@ -774,7 +783,7 @@ object evaluator extends EvaluationRules {
                     joinExp, v2))((s12, r12, v7)
                     => {
                     v7.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
-                    Q(s12, r12._1, r12._2, v7)})
+                    Q(s12.copy(intermediateHeapCause = s.intermediateHeapCause), r12._1, r12._2, v7)})
                 case false =>
                   v2.decider.finishDebugSubExp(s"unfolded(${predicate.name})")
                   createFailure(pve dueTo NonPositivePermission(ePerm.get), v2, s2, IsPositive(tPerm), ePermNew.map(p => ast.PermGtCmp(p, ast.NoPerm()())(p.pos, p.info, p.errT)))}}))
@@ -785,20 +794,19 @@ object evaluator extends EvaluationRules {
         }
 
       case apl@ast.Applying(wand, eIn) =>
-        val (_, debugLabel) = v.getDebugOldLabel(s, apl.pos)
+        val (debugHeapLabel, debugLabel) = v.getDebugOldLabel(s, apl.pos)
         val joinExp = Option.when(debugOn)({
           if (s.isEvalInOld) apl
           else ast.DebugLabelledOld(apl, debugLabel)(apl.pos, apl.info, apl.errT)
         })
-        joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s, v)((s1, v1, QB) =>
+        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(debugHeapLabel, EvalExp(apl), oldPCS)) else s
+        joiner.join[(Term, Option[ast.Exp]), (Term, Option[ast.Exp])](s0, v)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
-            eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) => {
-              val s4 = if (debugOn) v1.recordDebugHeap(s3, s.h, apl, oldPCS) else s3
-              QB(s4, (t, eInNew), v3)
-            })
+            eval(s2, eIn, pve, v2)((s3, t, eInNew, v3) =>
+              QB(s3, (t, eInNew), v3))
         }))(join(eIn.typ, "joined_applying", s.relevantQuantifiedVariables.map(_._1),
           joinExp, v))((s4, r4, v4)
-          => Q(s4, r4._1, r4._2, v4))
+          => Q(s4.copy(intermediateHeapCause = s.intermediateHeapCause), r4._1, r4._2, v4))
 
       case ast.Asserting(eAss, eIn) =>
         consume(s, eAss, false, pve, v)((s2, _, v2) => {

@@ -11,7 +11,7 @@ import viper.silicon.decider.{Decider, PathConditionStack}
 import viper.silicon.reporting.StateFormatter
 import viper.silicon.state.terms.{AxiomRewriter, Term, TriggerGenerator}
 import viper.silicon.rules.{HeapSupportRules, StateConsolidationRules, defaultHeapSupporter, magicWandSupporter}
-import viper.silicon.state.{DebugHeap, Heap, IdentifierFactory, State, SymbolConverter}
+import viper.silicon.state.{DebugHeap, EvalExp, ExecStmt, Heap, HeapCause, IdentifierFactory, State, SymbolConverter}
 import viper.silicon.supporters.{QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
 import viper.silicon.Config
@@ -71,7 +71,7 @@ trait Verifier {
   def getDebugHeapLabel(s: State, h: Option[Heap] = None): String = {
     val heap = h match {
       case Some(heap) => heap
-      case None => s.h
+      case None => magicWandSupporter.getEvalHeap(s)
     }
     val equalHeaps = s.debugOldHeaps.filter(dh => dh._2.heap.equals(heap)).keys
     if (equalHeaps.nonEmpty){
@@ -83,35 +83,39 @@ trait Verifier {
   }
 
   def recordDebugHeap(s: State, parent: Heap, cause: ast.Stmt): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), None, None)
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)),
+                    ExecStmt(cause), None, None)
   }
 
   def recordDebugHeap(s: State, parent: Heap, cause: ast.Stmt, oldPCS: PathConditionStack): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Left(cause), None, Some(oldPCS))
-  }
-
-  def recordDebugHeap(s: State, parent: Heap, cause: ast.Exp): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None, None)
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)),
+                    ExecStmt(cause), None, Some(oldPCS))
   }
 
   def recordDebugHeap(s: State, parent: Heap, cause: ast.Exp, oldPCS: PathConditionStack): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, Right(cause), None, Some(oldPCS))
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)),
+                    EvalExp(cause), None, Some(oldPCS))
   }
 
-  def recordDebugHeap(s: State, parent: Heap, cause: Either[ast.Stmt, ast.Exp],
+  def recordDebugHeap(s: State, parent: Heap, cause: HeapCause,
                       intermediateCause: ast.Exp, oldPCS: PathConditionStack): State = {
-    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parent, cause, Some(intermediateCause), Some(oldPCS))
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), getDebugHeapLabel(s, Some(parent)),
+                    cause, Some(intermediateCause), Some(oldPCS))
   }
 
-  def recordDebugHeap(s: State, heap: Heap, parent: Heap,
-                      cause: Either[ast.Stmt, ast.Exp],
+  def recordDebugHeap(s: State, parentLabel: String, cause: HeapCause,
+                      intermediateCause: ast.Exp, oldPCS: PathConditionStack): State = {
+    recordDebugHeap(s, magicWandSupporter.getEvalHeap(s), parentLabel, cause, Some(intermediateCause), Some(oldPCS))
+  }
+
+  def recordDebugHeap(s: State, heap: Heap, parentLabel: String,
+                      cause: HeapCause,
                       intermediateCause: Option[ast.Exp],
                       oldPCS: Option[PathConditionStack]): State = {
     val heapLabel = getDebugHeapLabel(s, Some(heap))
     if (s.debugOldHeaps.contains(heapLabel))
       s // Don't overwrite parents if we return to a heap
     else {
-      val parentLabel = getDebugHeapLabel(s, Some(parent))
       val newBranchConds = oldPCS match {
         case None => Seq()
         case Some(pcs) =>

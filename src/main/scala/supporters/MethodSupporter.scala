@@ -14,7 +14,7 @@ import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{DebugHeap, State, Store}
+import viper.silicon.state.{DebugHeap, InhalePre, ExhalePost, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
@@ -69,7 +69,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val s = sInit.copy(g = g,
                          h = v.heapSupporter.getEmptyHeap(sInit.program),
                          oldHeaps = OldHeaps(),
+                         debugOldHeaps = Map(),
                          methodCfg = body)
+      val s0 = if (producer.debugOn)
+        s.copy(intermediateHeapCause = Some("nil", InhalePre(), decider.pcs.duplicate()))
+      else s
 
       if (Verifier.config.printMethodCFGs()) {
         viper.silicon.common.io.toFile(
@@ -82,14 +86,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
-        executionFlowController.locally(s, v)((s1, v1) => {
+        executionFlowController.locally(s0, v)((s1, v1) => {
           produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             val s2b = if (producer.debugOn) {
-              val dummyStmt = MethodCall(method, Seq(), Seq())()
               val branchConds = v2.decider.pcs.branchConditionExps.map(bc => bc._1).zip(v2.decider.pcs.branchConditions)
-              val initDebugHeap = DebugHeap(s2.h, Verifier.PRE_STATE_LABEL, Left(dummyStmt), None, branchConds)
+              val initDebugHeap = DebugHeap(s2.h, "nil", InhalePre(), None, branchConds)
               s2a.copy(debugOldHeaps = s2a.debugOldHeaps + (Verifier.PRE_STATE_LABEL -> initDebugHeap))
             } else s2a
             (  executionFlowController.locally(s2b, v2)((s3, v3) => {
@@ -101,9 +104,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     Success()})})
             && {
                executionFlowController.locally(s2b, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>
-                    consumes(s4, posts, false, postViolated, v4)((_, _, _) =>
-                      Success()))}) }  )})})
+                  exec(s3, body, v3)((s4, v4) => {
+                    val currentLabel = v4.getDebugHeapLabel(s4)
+                    val s4a = if (producer.debugOn)
+                      s4.copy(intermediateHeapCause = Some(currentLabel, ExhalePost(), v4.decider.pcs.duplicate()))
+                    else s4
+                    consumes(s4a, posts, false, postViolated, v4)((_, _, _) =>
+                      Success())})}) }  )})})
 
       v.decider.resetProverOptions()
 

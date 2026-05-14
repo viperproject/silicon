@@ -334,7 +334,8 @@ object executor extends ExecutionRules {
     val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
-    lazy val oldPCS = v.decider.pcs.duplicate()
+    val oldLabel = v.getDebugHeapLabel(s)
+    val oldPCS = v.decider.pcs.duplicate()
 
     /* For debugging-purposes only */
     stmt match {
@@ -426,15 +427,18 @@ object executor extends ExecutionRules {
           /* We're done */
           Success()
         case _ =>
-          val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(inhale))) else s
-          produce(s1, freshSnap, a, InhaleFailed(inhale), v)((s2, v1) => {
+          val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(inhale), oldPCS)) else s
+          produce(s0, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            Q(s2.copy(intermediateHeapCause = None), v1)})
+            val s1a = if (debugOn) {
+              v1.recordDebugHeap(s1, magicWandSupporter.getEvalHeap(s1), s1.intermediateHeapCause.get._1, ExecStmt(inhale), None, Some(v1.decider.pcs.duplicate()))
+            } else s1
+            Q(s1a.copy(intermediateHeapCause = None), v1)})
       }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(exhale))) else s
+        val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(exhale), oldPCS)) else s
         consume(s1, a, false, pve, v)((s2, _, v1) =>
           Q(s2.copy(intermediateHeapCause = None), v1))
 
@@ -512,7 +516,9 @@ object executor extends ExecutionRules {
         val sepIdentifier = v.symbExLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
         val paramId = v.symbExLog.openScope(paramLog)
-        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(call))) else s
+        val s0 = if (debugOn)
+          s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(call), oldPCS))
+        else s
 
         evals(s0, eArgs, _ => pveCall, v)((s1, tArgs, eArgsNew, v1) => {
           v1.symbExLog.closeScope(paramId)
@@ -554,7 +560,7 @@ object executor extends ExecutionRules {
         v.decider.startDebugSubExp()
         val ePerm = pap.perm
         val pve = FoldFailed(fold)
-        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(fold))) else s
+        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(fold), oldPCS)) else s
         evals(s0, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) =>
             permissionSupporter.assertPositive(s2, tPerm, if (debugOn) ePermNew.get else ePerm, pve, v2)((s3, v3) => {
@@ -571,7 +577,7 @@ object executor extends ExecutionRules {
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(unfold))) else s
+        val s0 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(unfold), oldPCS)) else s
         evals(s0, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, ePermNew, v2) => {
             val s2a = v2.heapSupporter.triggerResourceIfNeeded(s2, pa, tArgs, eArgsNew, v2)
@@ -588,7 +594,8 @@ object executor extends ExecutionRules {
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-          magicWandSupporter.packageWand(s.copy(isInPackage = true), wand, proofScript, pve, v)((s1, chWand, v1) => {
+        val s0 = s.copy(isInPackage = true, intermediateHeapCause = Some(oldLabel, ExecStmt(pckg), oldPCS))
+          magicWandSupporter.packageWand(s0, wand, proofScript, pve, v)((s1, chWand, v1) => {
 
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
@@ -620,12 +627,12 @@ object executor extends ExecutionRules {
 
             val s4 = if (debugOn) v1.recordDebugHeap(s3, s.h, pckg, oldPCS) else s3
 
-            continuation(s4.copy(isInPackage = s.isInPackage), v1)
+            continuation(s4.copy(isInPackage = s.isInPackage, intermediateHeapCause = None), v1)
           })
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(Left(apply))) else s
+        val s1 = if (debugOn) s.copy(intermediateHeapCause = Some(oldLabel, ExecStmt(apply), oldPCS)) else s
         magicWandSupporter.applyWand(s1, e, pve, v)((s2, v1) =>
           Q(s2.copy(intermediateHeapCause = None), v1))
 

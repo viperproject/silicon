@@ -12,7 +12,7 @@ import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
 import viper.silicon.interfaces.state.GeneralChunk
 import viper.silicon.state.State.{DebugOldHeaps, OldHeaps}
 import viper.silicon.state.terms.{Term, Var}
@@ -34,7 +34,8 @@ final case class State(g: Store = Store(),
                        functionData: Map[String, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
                        debugOldHeaps: DebugOldHeaps = Map.empty,
-                       intermediateHeapCause: Option[Either[ast.Stmt, ast.Exp]] = None,
+                       // (parentLabel, cause, oldPCS) if an operation might cause intermediate heaps
+                       intermediateHeapCause: Option[(String, HeapCause, PathConditionStack)] = None,
 
                        parallelizeBranches: Boolean = false,
 
@@ -193,9 +194,15 @@ final case class State(g: Store = Store(),
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
 
+sealed trait HeapCause
+case class InhalePre() extends HeapCause
+case class ExhalePost() extends HeapCause
+case class ExecStmt(stmt: ast.Stmt) extends HeapCause
+case class EvalExp(exp: ast.Exp) extends HeapCause
+
 case class DebugHeap(heap: Heap,
                      parentLabel: String,
-                     cause: Either[ast.Stmt, ast.Exp],
+                     cause: HeapCause,
                      intermediateCause: Option[ast.Exp],
                      branchConds: Seq[(ast.Exp, Term)])
 

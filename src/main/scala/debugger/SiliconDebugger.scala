@@ -6,7 +6,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.{Failure, SiliconDebuggingFailureContext, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.evaluator
-import viper.silicon.state.{BasicChunk, DebugHeap, Heap, IdentifierFactory, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
+import viper.silicon.state.{BasicChunk, DebugHeap, EvalExp, ExecStmt, ExhalePost, Heap, IdentifierFactory, InhalePre, MagicWandChunk, QuantifiedFieldChunk, QuantifiedMagicWandChunk, QuantifiedPredicateChunk, State}
 import viper.silicon.state.terms.{Term, True}
 import viper.silicon.utils.ast.simplifyVariableName
 import viper.silicon.verifier.{MainVerifier, Verifier, WorkerVerifier}
@@ -60,35 +60,37 @@ case class ProofObligation(s: State,
       s"Store:\n\t\t${s.g.values.map(v => s"${v._1} -> ${v._2._2.get}").mkString("\n\t\t")}\n\n"
   }
 
-  private def heapString: String = {
-    def heapToString(h: Heap): String = if (h.values.nonEmpty)
-      h.values.map(c => s"\t\t${chunkString(c)}\n").mkString("")
+  private def heapToString(h: Heap): String =
+    if (h.values.nonEmpty) h.values.map(c => s"\t\t${chunkString(c)}\n").mkString("")
     else "\t\t(Empty heap)\n"
-    def debugHeapString(label: String, debugHeap: DebugHeap): String = {
-      val condString = if (debugHeap.branchConds.nonEmpty)
-        "\tUnder condition: " + debugHeap.branchConds.map(bc => bc._1.toString).mkString(", ") + "\n"
-      else ""
-      val causeString = "\"" + debugHeap.cause.fold(_.toString(), _.toString.split(" in ").dropRight(1).mkString(", ")) + "\""
-      val causeString2 = if (debugHeap.intermediateCause.isDefined)
-        "\"" + debugHeap.intermediateCause.get.toString + "\" during " + causeString
-      else causeString
-      s"Heap $label:\n" +
-        s"\tParent: ${debugHeap.parentLabel}\n" +
-        condString +
-        s"\tCause: $causeString2$condString\n" +
-        heapToString(debugHeap.heap) + "\n"
-    }
 
+  private def debugHeapString(label: String, debugHeap: DebugHeap): String = {
+    val condString = if (debugHeap.branchConds.nonEmpty)
+      "\tNew branch conditions: " + debugHeap.branchConds.map(bc => bc._1.toString).mkString(", ") + "\n"
+    else ""
+    val causeString = debugHeap.cause match {
+      case InhalePre() => "inhale precondition"
+      case ExhalePost() => "exhale postcondition"
+      case ExecStmt(stmt) => s"\"$stmt\""
+      case EvalExp(exp) => s"\"$exp\""
+    }
+    val causeString2 = debugHeap.intermediateCause match {
+      case Some(exp) => s"eval \"$exp\" during $causeString"
+      case None => causeString
+    }
+    s"Heap $label:\n" +
+      s"\tParent: ${debugHeap.parentLabel}\n" +
+      s"\tCause: $causeString2\n" +
+      condString +
+      heapToString(debugHeap.heap) + "\n"
+  }
+
+  private def heapString: String = {
     if (!printConfig.printOldHeaps)
       s"Heap:\n${heapToString(s.h)}\n"
     else {
-      val (oldLabel, oldHeap) = s.debugOldHeaps.head
-      val oldHeapCondition = if (oldHeap.branchConds.nonEmpty)
-        "\tBranch conditions: " + oldHeap.branchConds.map(bc => bc._1.toString).mkString(", ") + "\n"
-      else ""
       s"Current Heap:\n${heapToString(s.h)}\n" +
-        s"Heap $oldLabel:\n$oldHeapCondition${heapToString(oldHeap.heap)}\n" +
-        s.debugOldHeaps.tail.map { case (label, dh) => debugHeapString(label, dh) }.mkString("")
+        s.debugOldHeaps.map { case (label, dh) => debugHeapString(label, dh) }.mkString("")
     }
   }
 
